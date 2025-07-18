@@ -8,7 +8,7 @@ import { BaseItemsTable } from "metabase/common/components/ItemsTable/BaseItemsT
 import { Box, Portal } from "metabase/ui";
 
 // NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
-// so we exclude files named `*DragLayer.jsx` in webpack.config.js
+// so we exclude files named `*DragLayer.jsx` in rspack.config.js
 
 class ItemsDragLayerInner extends Component {
   render() {

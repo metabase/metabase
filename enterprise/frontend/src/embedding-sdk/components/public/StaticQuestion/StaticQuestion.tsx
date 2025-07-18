@@ -6,7 +6,7 @@ import {
 } from "embedding-sdk/components/private/SdkQuestion/context";
 import { Group, Stack } from "metabase/ui";
 
-import { InteractiveQuestion } from "../SdkQuestion";
+import { SdkQuestion } from "../SdkQuestion";
 import type { SdkQuestionIdProps } from "../SdkQuestion/types";
 
 /**
@@ -38,11 +38,11 @@ const StaticQuestionInner = ({
     <Stack gap="sm" w="100%" h="100%">
       {(withChartTypeSelector || withDownloads) && (
         <Group justify="space-between">
-          {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
-          {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
+          {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+          {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
         </Group>
       )}
-      <InteractiveQuestion.QuestionVisualization
+      <SdkQuestion.QuestionVisualization
         height={height}
         width={width}
         className={className}
@@ -52,10 +52,4 @@ const StaticQuestionInner = ({
   </SdkQuestionProvider>
 );
 
-/**
- * A component that renders a static question.
- *
- * @function
- * @category StaticQuestion
- */
 export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);

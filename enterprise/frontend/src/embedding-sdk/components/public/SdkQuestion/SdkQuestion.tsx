@@ -78,7 +78,38 @@ export type DrillThroughQuestionProps = Omit<
 export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
   InteractiveQuestionDefaultViewProps;
 
-export const _InteractiveQuestion = ({
+/**
+ * @interface
+ */
+export type InteractiveQuestionComponents = {
+  BackButton: typeof BackButton;
+  Filter: typeof Filter;
+  FilterDropdown: typeof FilterDropdown;
+  ResetButton: typeof QuestionResetButton;
+  Title: typeof Title;
+  Summarize: typeof Summarize;
+  SummarizeDropdown: typeof SummarizeDropdown;
+  /** @deprecated Use `InteractiveQuestion.Editor` instead */
+  Notebook: typeof Editor;
+  Editor: typeof Editor;
+  /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+  NotebookButton: typeof EditorButton;
+  EditorButton: typeof EditorButton;
+  QuestionVisualization: typeof QuestionVisualization;
+  VisualizationButton: typeof VisualizationButton;
+  SaveQuestionForm: typeof SdkSaveQuestionForm;
+  SaveButton: typeof SaveButton;
+  ChartTypeSelector: typeof ChartTypeSelector;
+  ChartTypeDropdown: typeof ChartTypeDropdown;
+  QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
+  Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+};
+
+export const _SdkQuestion = ({
   questionId,
   withResetButton = true,
   title,
@@ -124,42 +155,9 @@ export const _InteractiveQuestion = ({
   </SdkQuestionProvider>
 );
 
-/**
- * A component that renders an interactive question.
- *
- * @function
- * @category InteractiveQuestion
- * @param props
- */
 const SdkQuestion = withPublicComponentWrapper(
-  _InteractiveQuestion,
-) as typeof _InteractiveQuestion & {
-  BackButton: typeof BackButton;
-  Filter: typeof Filter;
-  FilterDropdown: typeof FilterDropdown;
-  ResetButton: typeof QuestionResetButton;
-  Title: typeof Title;
-  Summarize: typeof Summarize;
-  SummarizeDropdown: typeof SummarizeDropdown;
-  /** @deprecated Use `InteractiveQuestion.Editor` instead */
-  Notebook: typeof Editor;
-  Editor: typeof Editor;
-  /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
-  NotebookButton: typeof EditorButton;
-  EditorButton: typeof EditorButton;
-  QuestionVisualization: typeof QuestionVisualization;
-  VisualizationButton: typeof VisualizationButton;
-  SaveQuestionForm: typeof SdkSaveQuestionForm;
-  SaveButton: typeof SaveButton;
-  ChartTypeSelector: typeof ChartTypeSelector;
-  ChartTypeDropdown: typeof ChartTypeDropdown;
-  QuestionSettings: typeof QuestionSettings;
-  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
-  Breakout: typeof Breakout;
-  BreakoutDropdown: typeof BreakoutDropdown;
-  DownloadWidget: typeof DownloadWidget;
-  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
-};
+  _SdkQuestion,
+) as typeof _SdkQuestion & InteractiveQuestionComponents;
 
 SdkQuestion.BackButton = BackButton;
 SdkQuestion.Filter = Filter;

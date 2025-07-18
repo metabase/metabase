@@ -1,5 +1,5 @@
 import type { StorybookConfig } from "@storybook/react-webpack5";
-const appConfig = require("../webpack.config");
+const appConfig = require("../rspack.main.config.js");
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
@@ -58,7 +58,7 @@ const config: StorybookConfig = {
             (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),
           ...appConfig.module.rules.filter(
-            (rule) => isCSSRule(rule) || isSvgRule(rule),
+            (rule: any) => isCSSRule(rule) || isSvgRule(rule),
           ),
         ],
       },
@@ -67,5 +67,5 @@ const config: StorybookConfig = {
 };
 export default config;
 
-const isCSSRule = (rule) => rule.test?.toString() === "/\\.css$/";
-const isSvgRule = (rule) => rule.test?.test(".svg");
+const isCSSRule = (rule: any) => rule.test?.toString() === "/\\.css$/";
+const isSvgRule = (rule: any) => rule.test?.test(".svg");

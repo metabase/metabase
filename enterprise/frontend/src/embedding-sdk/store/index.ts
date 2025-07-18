@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-imports */
 import {
+  type Action,
   type AnyAction,
   type Reducer,
   type Store,
@@ -53,7 +54,7 @@ export const useSdkDispatch = () => {
 export const useSdkStore = () => {
   useCheckSdkReduxContext();
 
-  return useStore();
+  return useStore() as Store<SdkStoreState, Action>;
 };
 
 const useCheckSdkReduxContext = () => {

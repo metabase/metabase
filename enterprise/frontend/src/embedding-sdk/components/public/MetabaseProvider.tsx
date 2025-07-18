@@ -4,6 +4,7 @@ import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { useInitData } from "embedding-sdk/hooks";
+import { useMetabaseProviderStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-store";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -18,12 +19,12 @@ import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import type { SdkErrorComponent } from "embedding-sdk/types/ui";
+import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
-import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
@@ -136,7 +137,7 @@ export const MetabaseProviderInternal = ({
     store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
   }, [store, authConfig.metabaseInstanceUrl]);
 
-  const instanceLocale = getSetting(store.getState(), "site-locale");
+  const instanceLocale = useInstanceLocale();
 
   return (
     <SdkContextProvider>
@@ -160,20 +161,20 @@ export const MetabaseProviderInternal = ({
   );
 };
 
-/**
- * A component that provides the Metabase SDK context and theme.
- *
- * @function
- * @category MetabaseProvider
- */
 export const MetabaseProvider = memo(function MetabaseProvider(
   props: MetabaseProviderProps,
 ) {
-  // This makes the store stable across re-renders, but still not a singleton:
-  // we need a different store for each test or each storybook story
-  const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);
+  const storeRef = useRef<Store<SdkStoreState, Action> | null>(null);
+  const metabaseProviderStore = useMetabaseProviderStore();
+
   if (!storeRef.current) {
-    storeRef.current = getSdkStore();
+    const existingStore = metabaseProviderStore?.sdkStore;
+
+    if (existingStore) {
+      storeRef.current = existingStore;
+    } else {
+      storeRef.current = getSdkStore();
+    }
   }
 
   return (

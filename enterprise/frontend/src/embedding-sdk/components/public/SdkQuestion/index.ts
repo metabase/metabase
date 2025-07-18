@@ -20,8 +20,9 @@ export {
 } from "embedding-sdk/components/private/SdkQuestion/components";
 
 export {
-  SdkQuestion as InteractiveQuestion,
+  SdkQuestion,
   type BaseInteractiveQuestionProps,
   type InteractiveQuestionProps,
   type DrillThroughQuestionProps,
+  type InteractiveQuestionComponents,
 } from "./SdkQuestion";

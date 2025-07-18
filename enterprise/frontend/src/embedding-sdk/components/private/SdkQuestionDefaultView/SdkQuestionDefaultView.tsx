@@ -23,7 +23,7 @@ import {
   Stack,
 } from "metabase/ui";
 
-import { InteractiveQuestion } from "../../public/SdkQuestion";
+import { SdkQuestion } from "../../public/SdkQuestion";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
@@ -126,13 +126,11 @@ export const InteractiveQuestionDefaultView = ({
         <Group justify="space-between" align="flex-end">
           <Group gap="xs">
             <Box mr="sm">
-              <InteractiveQuestion.BackButton />
+              <SdkQuestion.BackButton />
             </Box>
             <DefaultViewTitle title={title} withResetButton={withResetButton} />
           </Group>
-          {showSaveButton && (
-            <InteractiveQuestion.SaveButton onClick={openSaveModal} />
-          )}
+          {showSaveButton && <SdkQuestion.SaveButton onClick={openSaveModal} />}
         </Group>
         {queryResults && (
           <Group
@@ -157,8 +155,8 @@ export const InteractiveQuestionDefaultView = ({
                   {withChartTypeSelector && (
                     <>
                       <Button.Group>
-                        <InteractiveQuestion.ChartTypeDropdown />
-                        <InteractiveQuestion.QuestionSettingsDropdown />
+                        <SdkQuestion.ChartTypeDropdown />
+                        <SdkQuestion.QuestionSettingsDropdown />
                       </Button.Group>
                       <Divider
                         mx="xs"
@@ -168,15 +166,15 @@ export const InteractiveQuestionDefaultView = ({
                       />
                     </>
                   )}
-                  <InteractiveQuestion.FilterDropdown />
-                  <InteractiveQuestion.SummarizeDropdown />
-                  <InteractiveQuestion.BreakoutDropdown />
+                  <SdkQuestion.FilterDropdown />
+                  <SdkQuestion.SummarizeDropdown />
+                  <SdkQuestion.BreakoutDropdown />
                 </>
               )}
             </Group>
             <Group gap="sm">
-              {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
-              <InteractiveQuestion.EditorButton
+              {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+              <SdkQuestion.EditorButton
                 isOpen={isEditorOpen}
                 onClick={toggleEditor}
               />
@@ -188,9 +186,9 @@ export const InteractiveQuestionDefaultView = ({
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>
           {isEditorOpen ? (
-            <InteractiveQuestion.Editor onApply={closeEditor} />
+            <SdkQuestion.Editor onApply={closeEditor} />
           ) : (
-            <InteractiveQuestion.QuestionVisualization height="100%" />
+            <SdkQuestion.QuestionVisualization height="100%" />
           )}
         </Box>
       </Box>
