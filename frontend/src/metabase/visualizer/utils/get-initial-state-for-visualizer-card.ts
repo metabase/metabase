@@ -10,6 +10,7 @@ import { getVisualizationColumns } from "./get-visualization-columns";
 export function getInitialStateForVisualizerCard(
   dashcard: VisualizerDashboardCard,
   datasets: Record<number, Dataset | null | undefined>,
+  parameters: unknown[],
 ) {
   const visualizationEntity = dashcard.visualization_settings?.visualization;
 
@@ -38,5 +39,5 @@ export function getInitialStateForVisualizerCard(
     dataSources,
   );
 
-  return { ...visualizationEntity, columns };
+  return { ...visualizationEntity, columns, parameters };
 }

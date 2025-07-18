@@ -133,9 +133,11 @@ const initializeFromState = async (
     dataSourceIds
       .map((sourceId) => {
         const [, cardId] = sourceId.split(":");
+        const parameters = initialState.parameters;
+
         return [
           dispatch(fetchCard(Number(cardId))),
-          dispatch(fetchCardQuery(Number(cardId))),
+          dispatch(fetchCardQuery({ cardId: Number(cardId), parameters })),
         ];
       })
       .flat(),
@@ -150,7 +152,7 @@ export const initializeFromCard = async (
 ) => {
   await Promise.all([
     dispatch(fetchCard(cardId)),
-    dispatch(fetchCardQuery(cardId)),
+    dispatch(fetchCardQuery({ cardId })),
   ]);
   const { cards, datasets } = getState().visualizer.present;
   const card = cards.find((card) => card.id === cardId);
@@ -174,7 +176,9 @@ export const addDataSource = createAsyncThunk(
     if (type === "card") {
       // TODO handle rejected requests
       const cardAction = await dispatch(fetchCard(sourceId));
-      const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
+      const cardQueryAction = await dispatch(
+        fetchCardQuery({ cardId: sourceId }),
+      );
 
       const card = cardAction.payload as Card;
       dataset = cardQueryAction.payload as Dataset;
@@ -266,11 +270,14 @@ const fetchCard = createAsyncThunk<Card, CardId>(
   },
 );
 
-const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
+const fetchCardQuery = createAsyncThunk<
+  Dataset,
+  { cardId: CardId; parameters?: unknown[] }
+>(
   "visualizer/fetchCardQuery",
-  async (cardId, { dispatch }) => {
+  async ({ cardId, parameters = [] }, { dispatch }) => {
     const result = await dispatch(
-      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters }),
     );
     if (result.data != null) {
       return result.data;
@@ -593,14 +600,20 @@ const visualizerSlice = createSlice({
         state.error = action.error.message || "Failed to fetch card";
       })
       .addCase(fetchCardQuery.pending, (state, action) => {
-        const cardId = action.meta.arg;
+        const { cardId } = action.meta.arg;
         state.loadingDatasets[`card:${cardId}`] = true;
         state.error = null;
       })
       .addCase(
         fetchCardQuery.fulfilled,
-        (state, action: { payload: Dataset; meta: { arg: CardId } }) => {
-          const cardId = action.meta.arg;
+        (
+          state,
+          action: {
+            payload: Dataset;
+            meta: { arg: { cardId: CardId; parameters?: unknown[] } };
+          },
+        ) => {
+          const { cardId } = action.meta.arg;
           const dataset = action.payload;
 
           // `any` prevents the "Type instantiation is excessively deep" error
@@ -610,7 +623,7 @@ const visualizerSlice = createSlice({
         },
       )
       .addCase(fetchCardQuery.rejected, (state, action) => {
-        const cardId = action.meta.arg;
+        const { cardId } = action.meta.arg;
         if (cardId) {
           state.loadingDatasets[`card:${cardId}`] = false;
         }
