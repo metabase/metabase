@@ -88,7 +88,7 @@
                                                                :display-name "id"
                                                                :type         :temporal-unit
                                                                :dimension    [:field (mt/id :orders :created_at)]
-                                                               :alias        "created_at"}}))
+                                                               :alias        (mt/make-alias driver/*driver* "created_at")}}))
             parameterized-query (assoc native-query
                                        :parameters [{:type   :temporal-unit
                                                      :name   "time-unit"
