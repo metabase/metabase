@@ -1,13 +1,11 @@
 (ns metabase-enterprise.semantic-search.test-util
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]))
@@ -164,16 +162,6 @@
        (search.core/reindex! :search.engine/semantic {:force-reset true})
        ~@body)))
 
-(defn- table->name
-  [table-name-or-kw]
-  (cond-> table-name-or-kw
-    (keyword? table-name-or-kw)
-    ;; TODO The nano ids we use for temp test table names can contain uppercase chars and hyphens, which postgres will
-    ;; convert to lowercase and _ if unquoted. We should just quote the table names and avoid the need for this.
-    (-> name
-        u/lower-case-en
-        (str/replace "-" "_"))))
-
 (defn table-exists-in-db?
   "Check if a table actually exists in the database"
   [table-name]
@@ -181,7 +169,7 @@
     (try
       (let [result (jdbc/execute! @semantic.db/data-source
                                   ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
-                                   (table->name table-name)])]
+                                   (name table-name)])]
         (-> result first vals first))
       (catch Exception _ false))))
 
@@ -191,7 +179,7 @@
     (try
       (let [result (jdbc/execute! @semantic.db/data-source
                                   ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname LIKE ?)"
-                                   (table->name table-name)
+                                   (name table-name)
                                    index-name-pattern])]
         (-> result first vals first))
       (catch Exception _ false))))

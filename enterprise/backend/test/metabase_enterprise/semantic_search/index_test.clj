@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.index-test
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.index :as semantic.index]
@@ -50,7 +49,7 @@
                           (sql.helpers/where :and
                                              [:= :model model]
                                              [:= :model_id model_id])
-                          sql/format))
+                          semantic.index/sql-format-quoted))
        (map #'semantic.index/unqualify-keys)
        (map decode-embedding)))
 
