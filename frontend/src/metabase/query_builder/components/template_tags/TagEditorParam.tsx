@@ -11,7 +11,7 @@ import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Radio, Stack } from "metabase/ui";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -19,7 +19,6 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 import {
   getDefaultParameterOptions,
   getDefaultParameterWidgetType,
@@ -48,6 +47,7 @@ import {
   FilterWidgetLabelInput,
   FilterWidgetTypeSelect,
 } from "./TagEditorParamParts";
+import { ParameterMultiSelectInput } from "./TagEditorParamParts/ParameterMultiSelectInput";
 import {
   ContainerLabel,
   InputContainer,
@@ -395,22 +395,13 @@ class TagEditorParamInner extends Component<
         )}
 
         {parameter && isSingleOrMultiSelectable(parameter) && (
-          <InputContainer>
-            <ContainerLabel>{t`People can pick`}</ContainerLabel>
-            <Radio.Group
-              value={getIsMultiSelect(parameter).toString()}
-              onChange={(value) =>
-                setTemplateTagConfig(tag, {
-                  isMultiSelect: value === "true",
-                })
-              }
-            >
-              <Stack gap="xs">
-                <Radio label={t`Multiple values`} value="true" />
-                <Radio label={t`A single value`} value="false" />
-              </Stack>
-            </Radio.Group>
-          </InputContainer>
+          <ParameterMultiSelectInput
+            tag={tag}
+            parameter={parameter}
+            onChangeMultiSelect={(isMultiSelect) =>
+              setTemplateTagConfig(tag, { isMultiSelect })
+            }
+          />
         )}
 
         {parameter && (
