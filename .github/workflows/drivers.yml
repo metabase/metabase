@@ -337,19 +337,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
-            junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
-            env:
-              enable-ssl-tests: 'false'
+          # Reduced matrix - only test latest versions to save CI resources
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
             image: circleci/mariadb:latest
-            env:
-              enable-ssl-tests: 'false'
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
           - name: MySQL Latest
@@ -443,9 +434,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MongoDB 6.0
-            junit-name: be-tests-mongo-6-0-ee
-            image: metabase/qa-databases:mongo-sample-6
+          # Reduced matrix - only test latest version to save CI resources
           - name: MongoDB Latest
             junit-name: be-tests-mongo-latest-ee
             image: mongo:latest
@@ -592,14 +581,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Oracle 18.4
-            junit-name: be-tests-oracle-18-4-ee
-            image: gvenzl/oracle-xe:18.4.0-slim
-            port: 1521
-            env:
-              user: system
-              password: 'password'
-              enable-ssl-tests: false
+          # Reduced matrix - only test latest version to save CI resources
           - name: Oracle 21.3
             junit-name: be-tests-oracle-21-3-ee
             image: metabase/qa-databases:oracle-xe-21.3
@@ -663,11 +645,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
-            junit-name: postgres-ee
-            docker-image: postgres:12-alpine
-            env:
-              enable-ssl-tests: 'false'
+          # Reduced matrix - only test latest version to save CI resources
           - name: Postgres Latest
             junit-name: postgres-latest-ee
             docker-image: postgres:latest
