@@ -11,7 +11,9 @@ interface ScalarContainerProps {
   isClickable: boolean;
 }
 
-export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
+export const ScalarContainer = styled(Ellipsified, {
+  shouldForwardProp: (prop) => prop !== "isClickable",
+})<ScalarContainerProps>`
   padding: 0 ${space(1)};
   max-width: 100%;
   box-sizing: border-box;

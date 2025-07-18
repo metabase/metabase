@@ -1,17 +1,16 @@
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsDashCardsLoadingComplete } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
-import type { AIDashboardAnalysisSidebarProps } from "metabase/plugins";
 
 import { useDashCardAnalysis } from "../../hooks/useDashCardAnalysis";
 import { AIAnalysisContentWrapper } from "../AIAnalysisContentWrapper/AIAnalysisContentWrapper";
 
-export function AIDashboardAnalysisSidebar({
-  onClose,
-  dashcardId,
-}: AIDashboardAnalysisSidebarProps) {
+export function AIDashboardAnalysisSidebar() {
+  const { sidebar, closeSidebar } = useDashboardContext();
+  const dashcardId = sidebar.props?.dashcardId;
   const isDashCardsLoadingComplete = useSelector(getIsDashCardsLoadingComplete);
 
   const dashcards = useSelector((state) => state.dashboard.dashcards);
@@ -32,7 +31,7 @@ export function AIDashboardAnalysisSidebar({
         title={t`Explain this chart`}
         explanation={analysisData}
         isLoading={isLoading}
-        onClose={onClose}
+        onClose={closeSidebar}
       />
     </Sidebar>
   );

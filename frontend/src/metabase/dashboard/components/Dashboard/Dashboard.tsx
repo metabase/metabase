@@ -41,30 +41,10 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
     isFullscreen,
     isSharing,
     selectedTabId,
-    setSharing,
     shouldRenderAsNightMode,
     setArchivedDashboard,
     moveDashboardToCollection,
     deletePermanently,
-
-    removeParameter,
-    addCardToDashboard,
-    clickBehaviorSidebarDashcard,
-    onReplaceAllDashCardVisualizationSettings,
-    onUpdateDashCardVisualizationSettings,
-    onUpdateDashCardColumnSettings,
-    setParameterName,
-    setParameterType,
-    setParameterDefaultValue,
-    setParameterIsMultiSelect,
-    setParameterQueryType,
-    setParameterSourceType,
-    setParameterSourceConfig,
-    setParameterFilteringParameters,
-    setParameterRequired,
-    setParameterTemporalUnits,
-    sidebar,
-    closeSidebar,
   } = useDashboardContext();
 
   const canWrite = Boolean(dashboard?.can_write);
@@ -186,34 +166,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           </FullWidthContainer>
         </Box>
 
-        <DashboardSidebars
-          dashboard={dashboard}
-          removeParameter={removeParameter}
-          addCardToDashboard={addCardToDashboard}
-          clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-          onReplaceAllDashCardVisualizationSettings={
-            onReplaceAllDashCardVisualizationSettings
-          }
-          onUpdateDashCardVisualizationSettings={
-            onUpdateDashCardVisualizationSettings
-          }
-          onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-          setParameterName={setParameterName}
-          setParameterType={setParameterType}
-          setParameterDefaultValue={setParameterDefaultValue}
-          setParameterIsMultiSelect={setParameterIsMultiSelect}
-          setParameterQueryType={setParameterQueryType}
-          setParameterSourceType={setParameterSourceType}
-          setParameterSourceConfig={setParameterSourceConfig}
-          setParameterFilteringParameters={setParameterFilteringParameters}
-          setParameterRequired={setParameterRequired}
-          setParameterTemporalUnits={setParameterTemporalUnits}
-          isFullscreen={isFullscreen}
-          sidebar={sidebar}
-          closeSidebar={closeSidebar}
-          selectedTabId={selectedTabId}
-          onCancel={() => setSharing(false)}
-        />
+        <DashboardSidebars />
       </Flex>
     </Flex>
   );

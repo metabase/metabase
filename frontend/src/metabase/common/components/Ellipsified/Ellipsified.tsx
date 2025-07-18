@@ -1,12 +1,10 @@
 import type { FloatingPosition } from "@mantine/core/lib";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { useIsTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Text, type TextProps, Tooltip } from "metabase/ui";
 
-interface EllipsifiedProps {
-  style?: CSSProperties;
-  className?: string;
+interface EllipsifiedProps extends TextProps {
   showTooltip?: boolean;
   alwaysShowTooltip?: boolean;
   tooltip?: ReactNode;
@@ -15,13 +13,9 @@ interface EllipsifiedProps {
   lines?: number;
   multiline?: boolean;
   placement?: FloatingPosition;
-  "data-testid"?: string;
-  id?: string;
 }
 
 export const Ellipsified = ({
-  style,
-  className,
   showTooltip = true,
   alwaysShowTooltip,
   tooltip,
@@ -30,8 +24,7 @@ export const Ellipsified = ({
   lines = 1,
   multiline = false,
   placement = "top",
-  "data-testid": dataTestId,
-  id,
+  ...textProps
 }: EllipsifiedProps) => {
   const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
@@ -55,13 +48,10 @@ export const Ellipsified = ({
       <Text
         c="inherit"
         ref={ref}
-        className={className}
-        style={style}
-        data-testid={dataTestId}
-        id={id}
         fz="inherit"
         lh="inherit"
         {...truncatedProps}
+        {...textProps}
       >
         {children}
       </Text>
