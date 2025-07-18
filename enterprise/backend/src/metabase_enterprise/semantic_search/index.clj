@@ -70,8 +70,6 @@
      :legacy_input        [:cast (json/encode legacy_input) :jsonb]
      :metadata            [:cast (json/encode doc) :jsonb]}))
 
-(def ^:private batch-size 150)
-
 (defn- batch-update!
   ([records->sql documents]
    (jdbc/with-transaction [tx @db/data-source]
@@ -79,7 +77,7 @@
   ([tx records->sql documents]
    (when (seq documents)
      (u/prog1 (transduce (comp (map doc->db-record)
-                               (partition-all batch-size)
+                               (partition-all *batch-size*)
                                (map (fn [db-records]
                                       (jdbc/execute! tx (records->sql db-records))
                                       ;; TODO should this return (or at least log) the number of docs actually
@@ -97,7 +95,7 @@
      (batch-delete-ids! tx model ids->sql ids)))
   ([tx model ids->sql ids]
    (when (seq ids)
-     (u/prog1 (->> (transduce (comp (partition-all batch-size)
+     (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
                                     (map (fn [ids]
                                            (jdbc/execute! tx (ids->sql ids))
                                            (u/prog1 (count ids)

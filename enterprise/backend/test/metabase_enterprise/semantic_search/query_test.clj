@@ -179,3 +179,18 @@
                 (unrestrict-table monsters-table)
                 (data-perms/disable-perms-cache
                  (is (some #{"Monsters Table"} (q "table" "monster facts"))))))))))))
+
+(deftest basic-batched-query-test
+  (testing "Small-batch reindexing"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (semantic.tu/with-mocked-embeddings!
+          (binding [semantic.index/*batch-size* 1]
+            (semantic.tu/with-index!
+              (testing "Horse-related query finds horse content"
+                (let [results (semantic.index/query-index {:search-string "equine"})]
+                  (is (= "Horse Racing Analysis" (-> results first :name)))))
+
+              (testing "Tiger-related query finds tiger content"
+                (let [results (semantic.index/query-index {:search-string "endangered species"})]
+                  (is (= "Tiger Conservation" (-> results first :name))))))))))))

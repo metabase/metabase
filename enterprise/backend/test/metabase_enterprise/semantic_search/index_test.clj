@@ -149,17 +149,35 @@
           (is (= {"card" 1}
                  (semantic.index/delete-from-index! "card" ["123"])))
           (check-index-has-no-mock-docs))))))
-        (testing "populate-index! before delete!"
-          (is (= {"card" 1, "dashboard" 1}
-                 (semantic.index/populate-index! semantic.tu/mock-documents))))
-        (testing "delete-from-index! returns nil if you pass it an empty collection"
-          (is (nil? (semantic.index/delete-from-index! "card" []))))
-        (testing "delete-from-index! works for cards"
-          (is (= {"card" 1}
-                 (semantic.index/delete-from-index! "card" ["123"]))))
-        (testing "delete-from-index! works for dashboards"
-          (is (= {"dashboard" 1}
-                 (semantic.index/delete-from-index! "dashboard" ["456"]))))
-        (testing "delete-from-index! works if you delete a document that doesn't exist"
-          (is (= {"card" 1}
-                 (semantic.index/delete-from-index! "card" ["123"]))))))))
+
+(deftest batch-process-mock-docs!-test
+  (mt/with-premium-features #{:semantic-search}
+    (semantic.tu/with-mocked-embeddings!
+      (semantic.tu/with-temp-index-table!
+        (binding [semantic.index/*batch-size* 1]
+          (let [extra-ids (->> (range 1337 1347) (map str))
+                extra-docs (map (fn [id doc]
+                                  (assoc doc :id id))
+                                extra-ids
+                                (flatten (repeat semantic.tu/mock-documents)))
+                mock-docs (into semantic.tu/mock-documents extra-docs)]
+            (testing "ensure populate! upsert! and delete! work when batch size is exceeded"
+              (check-index-has-no-mock-docs)
+              (testing "populate-index! with batch processing"
+                (is (= {"card" 6, "dashboard" 6}
+                       (semantic.index/populate-index! mock-docs)))
+                (check-index-has-mock-docs))
+              (testing "upsert-index! with batch processing"
+                (is (= {"card" 6, "dashboard" 6}
+                       (semantic.index/upsert-index! mock-docs)))
+                (check-index-has-mock-docs))
+              (testing "delete-from-index! with batch processing"
+                (testing "delete just the card"
+                  (is (= {"card" 11}
+                         (semantic.index/delete-from-index! "card" (into ["123"] extra-ids))))
+                  (check-index-has-no-mock-card)
+                  (check-index-has-mock-dashboard))
+                (testing "delete the dashboard"
+                  (is (= {"dashboard" 11}
+                         (semantic.index/delete-from-index! "dashboard" (into ["456"] extra-ids))))
+                  (check-index-has-no-mock-docs))))))))))
