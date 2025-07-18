@@ -50,34 +50,39 @@
   8000)
 
 (defn- create-batches
-  "Split texts into batches that don't exceed the token limit.
-   Returns a vector of batches, where each batch is a vector of texts."
-  [texts]
-  (let [step (fn [{:keys [current-batch current-tokens batches] :as acc} text]
-               (let [tokens (count-tokens text)]
+  "Split texts into batches that don't exceed the threshold.
+   Returns a vector of batches, where each batch is a vector of texts.
+   - threshold: Maximum allowed measure per batch
+   - measure: Function to measure each text (e.g., count-tokens)
+   - texts: Collection of texts to batch"
+  [threshold measure texts]
+  (let [step (fn [{:keys [current-batch current-measure batches] :as acc} text]
+               (let [text-measure (measure text)]
                  (cond
                    ;; Single text exceeds the limit - skip it with warning
-                   (> tokens *max-tokens-per-batch*)
+                   (> text-measure threshold)
                    (do
-                     (log/warn "Skipping text that exceeds maximum tokens per batch:"
-                               {:tokens tokens :max-tokens *max-tokens-per-batch*})
+                     (log/warn
+                      (format "Skipping text that exceeds maximum measure per batch: %s"
+                              (str (subs text 0 10) "..."))
+                      {:measure text-measure :threshold threshold})
                      acc)
 
                    ;; Adding this text would exceed the limit - start new batch
-                   (> (+ current-tokens tokens) *max-tokens-per-batch*)
+                   (> (+ current-measure text-measure) threshold)
                    (assoc acc
                           :current-batch [text]
-                          :current-tokens tokens
+                          :current-measure text-measure
                           :batches (conj batches current-batch))
 
                    ;; Add to current batch
                    :else
                    (assoc acc
                           :current-batch (conj current-batch text)
-                          :current-tokens (+ current-tokens tokens)))))
+                          :current-measure (+ current-measure text-measure)))))
         {:keys [batches current-batch]}
         (reduce step
-                {:current-batch [] :current-tokens 0 :batches []}
+                {:current-batch [] :current-measure 0 :batches []}
                 texts)]
     (if (seq current-batch)
       (conj batches current-batch)
@@ -116,7 +121,7 @@
   EmbeddingProvider
   (-get-embedding [_ text]
     (try
-      (log/info "Generating Ollama embedding for text of length:" (count text))
+      (log/debug "Generating Ollama embedding for text of length:" (count text))
       (-> (http/post "http://localhost:11434/api/embeddings"
                      {:headers {"Content-Type" "application/json"}
                       :body    (json/encode {:model (get-model)
@@ -131,12 +136,12 @@
   (-get-embeddings-batch [this texts]
     ;; Ollama doesn't have a native batch API, so we fall back to individual calls
     ;; No special batching needed for Ollama - just process all texts
-    (log/info "Generating" (count texts) "Ollama embeddings (using individual calls)")
+    (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
     (mapv #(-get-embedding this %) texts))
 
   (-pull-model [_]
     (try
-      (log/info "Pulling embedding model from Ollama...")
+      (log/debug "Pulling embedding model from Ollama...")
       (http/post "http://localhost:11434/api/pull"
                  {:headers {"Content-Type" "application/json"}
                   :body    (json/encode {:model (get-model)})})
@@ -151,22 +156,22 @@
   EmbeddingProvider
   (-get-embedding [this text]
     (try
-      (log/info "Generating OpenAI embedding for text of length:" (count text))
+      (log/debug "Generating OpenAI embedding for text of length:" (count text))
       (first (-get-embeddings-batch this [text]))
       (catch Exception e
         (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
         (throw e))))
 
   (-get-embeddings-batch [_ texts]
-    (let [batches (create-batches texts)
-          batch-results (mapv (fn [batch-texts]
-                                (try
-                                  (log/info "Generating" (count batch-texts) "OpenAI embeddings in batch")
-                                  (let [api-key (semantic-settings/openai-api-key)
-                                        model (get-model)
-                                        endpoint "https://api.openai.com/v1/embeddings"]
-                                    (when-not api-key
-                                      (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
+    (let [api-key (semantic-settings/openai-api-key)
+          model (get-model)
+          endpoint "https://api.openai.com/v1/embeddings"]
+      (when-not api-key
+        (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
+      (let [batches (create-batches *max-tokens-per-batch* count-tokens texts)
+            batch-results (mapv (fn [batch-texts]
+                                  (try
+                                    (log/debug "Generating" (count batch-texts) "OpenAI embeddings in batch")
                                     (-> (http/post endpoint
                                                    {:headers {"Content-Type" "application/json"
                                                               "Authorization" (str "Bearer " api-key)}
@@ -175,15 +180,15 @@
                                         :body
                                         (json/decode true)
                                         :data
-                                        (->> (map :embedding))))
-                                  (catch Exception e
-                                    (log/error e "Failed to generate OpenAI embeddings for batch of" (count batch-texts) "texts")
-                                    (throw e))))
-                              batches)]
-      (log/info "Processed" (count texts) "texts in" (count batches) "batches"
-                "with token counts:" (mapv count-tokens-batch batches))
-      ;; Flatten the batch results to get a single vector of embeddings
-      (vec (mapcat identity batch-results))))
+                                        (->> (map :embedding)))
+                                    (catch Exception e
+                                      (log/error e "Failed to generate OpenAI embeddings for batch of" (count batch-texts) "texts")
+                                      (throw e))))
+                                batches)]
+        (log/debug "Processed" (count texts) "texts in" (count batches) "batches"
+                   "with token counts:" (mapv count-tokens-batch batches))
+        ;; Flatten the batch results to get a single vector of embeddings
+        (vec (mapcat identity batch-results)))))
 
   (-pull-model [_]
     (log/info "OpenAI provider does not require pulling a model"))

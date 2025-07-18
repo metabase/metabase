@@ -107,27 +107,24 @@
 
 (deftest test-batching-logic
   (testing "create-batches handles empty input"
-    (is (empty? (#'embedding/create-batches [])))
-    (is (empty? (#'embedding/create-batches nil))))
+    (is (empty? (#'embedding/create-batches 10 count [])))
+    (is (empty? (#'embedding/create-batches 10 count nil))))
 
   (testing "create-batches with single short text"
     (let [texts ["Short text"]
-          batches (#'embedding/create-batches texts)]
+          batches (#'embedding/create-batches 10 count texts)]
       (is (= 1 (count batches)))
       (is (= texts (first batches)))))
 
   (testing "create-batches splits texts appropriately with smaller token limit"
     ;; Use a smaller token limit to make testing more predictable
-    (binding [embedding/*max-tokens-per-batch* 10]
-      ;; Create texts that would exceed the smaller token limit if combined
-      (let [texts ["This is document 1" "This is document 2" "This is document 3"]
-            batches (#'embedding/create-batches texts)]
-        (is (= [["This is document 1" "This is document 2"] ["This is document 3"]]
-               batches)))))
+    (let [texts ["This is document 1" "This is document 2" "This is document 3"]
+          batches (#'embedding/create-batches 10 #'embedding/count-tokens texts)]
+      (is (= [["This is document 1" "This is document 2"] ["This is document 3"]]
+             batches))))
 
   (testing "create-batches skips texts that exceed token limit"
-    (binding [embedding/*max-tokens-per-batch* 5]
-      (let [texts ["Short" "This is a much longer text that exceeds the limit" "Also short"]
-            batches (#'embedding/create-batches texts)]
-        ;; Should skip the long text and batch the short ones
-        (is (= [["Short" "Also short"]] batches))))))
+    (let [texts ["Short" "This is a much longer text that exceeds the limit" "Also short"]
+          batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
+      ;; Should skip the long text and batch the short ones
+      (is (= [["Short" "Also short"]] batches)))))
