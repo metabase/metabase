@@ -26,16 +26,20 @@ jobs:
         run: |
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
           HAS_TEAM_LABEL="${{ contains(github.event.pull_request.labels.*.name, '.Team/Drivers') || contains(github.event.pull_request.labels.*.name, '.Team/Querying') || contains(github.event.pull_request.labels.*.name, '.Team/SemanticLayer') }}"
-
+          HAS_FORCE_DRIVERS_LABEL="${{ contains(github.event.pull_request.labels.*.name, 'force-drivers') }}"
 
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
           echo "Has '.Team/Drivers' or '.Team/Querying' or '.Team/SemanticLayer' label: ${HAS_TEAM_LABEL}"
+          echo "Has 'force-drivers' label: ${HAS_FORCE_DRIVERS_LABEL}"
           if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "Merging into master or a release branch. Tier 3 driver tests will run."
           elif [[ "${HAS_TEAM_LABEL}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "A relevant team label is present. Tier 3 driver tests will run."
+          elif [[ "${HAS_FORCE_DRIVERS_LABEL}" == "true" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "'force-drivers' label is present. Tier 3 driver tests will run."
           else
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "Not labeled with required team and not merging into master/release. Tier 3 driver tests will be skipped."
@@ -78,7 +82,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-bigquery-cloud-sdk-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -113,7 +118,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-clickhouse-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -785,7 +791,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-redshift-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -834,7 +841,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-snowflake-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
