@@ -1,6 +1,7 @@
 import type {
   CreateFieldDimensionRequest,
   Field,
+  FieldDimension,
   FieldId,
   FieldValue,
   GetFieldRequest,
@@ -87,7 +88,10 @@ export const fieldApi = Api.injectEndpoints({
           tag("parameter-values"),
         ]),
     }),
-    createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
+    createFieldDimension: builder.mutation<
+      FieldDimension,
+      CreateFieldDimensionRequest
+    >({
       query: ({ id, ...body }) => ({
         method: "POST",
         url: `/api/field/${id}/dimension`,

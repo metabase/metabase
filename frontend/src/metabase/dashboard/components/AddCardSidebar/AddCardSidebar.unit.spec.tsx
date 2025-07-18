@@ -126,8 +126,11 @@ async function setup({
   });
 
   renderWithProviders(
-    <MockDashboardContext>
-      <AddCardSidebar onSelect={jest.fn()} onClose={jest.fn()} />
+    <MockDashboardContext
+      dashboardId={dashboard.id}
+      navigateToNewCardFromDashboard={null}
+    >
+      <AddCardSidebar />
     </MockDashboardContext>,
     {
       storeInitialState: createMockState({
