@@ -4,12 +4,13 @@ import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Node } from "@tiptap/core";
-import { createPortal } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { t } from "ttag";
 
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useSearchQuery } from "metabase/api";
+import { skipToken } from "@reduxjs/toolkit/query";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { MentionSuggestions } from "./MentionSuggestions";
@@ -20,11 +21,139 @@ import {
   StyledEditorContent,
 } from "./ReportEditor.styled";
 
+// React component for the visualization node
+const VisualizationNode = ({ node }: { node: any }) => {
+  const [cardData, setCardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch card data from the API
+        const response = await fetch(`/api/card/${node.attrs.id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch card: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        setCardData(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (node.attrs.id) {
+      fetchCardData();
+    }
+  }, [node.attrs.id]);
+
+  if (loading) {
+    return (
+      <Box
+        style={{
+          border: "2px solid red",
+          borderRadius: "8px",
+          backgroundColor: "#f8f9fa",
+          margin: "1rem 0",
+          padding: "1rem",
+          minHeight: "200px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text>Loading visualization...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box
+        style={{
+          border: "2px solid red",
+          borderRadius: "8px",
+          backgroundColor: "#f8f9fa",
+          margin: "1rem 0",
+          padding: "1rem",
+          minHeight: "200px",
+        }}
+      >
+        <Text color="red">Error: {error}</Text>
+      </Box>
+    );
+  }
+
+  if (!cardData) {
+    return (
+      <Box
+        style={{
+          border: "2px solid red",
+          borderRadius: "8px",
+          backgroundColor: "#f8f9fa",
+          margin: "1rem 0",
+          padding: "1rem",
+          minHeight: "200px",
+        }}
+      >
+        <Text>No data available</Text>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      style={{
+        border: "2px solid red",
+        borderRadius: "8px",
+        backgroundColor: "#f8f9fa",
+        margin: "1rem 0",
+        padding: "1rem",
+        minHeight: "200px",
+      }}
+    >
+      <Text
+        size="sm"
+        color="dimmed"
+        style={{ marginBottom: "0.5rem", fontWeight: "bold" }}
+      >
+        {node.attrs.name} ({node.attrs.type || node.attrs.model})
+      </Text>
+      <Box style={{ height: "300px", width: "100%" }}>
+        <Visualization
+          rawSeries={[{ card: cardData, data: cardData.result_metadata }]}
+          isDashboard
+          width={600}
+          height={300}
+        />
+      </Box>
+    </Box>
+  );
+};
+
 // Custom extension for rendering Metabase visualizations
 const MetabaseVisualization = Node.create({
   name: "metabaseVisualization",
+
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+    };
+  },
+
   group: "block",
+
   atom: true,
+
+  draggable: true,
+
+  selectable: true,
 
   addAttributes() {
     return {
@@ -47,15 +176,6 @@ const MetabaseVisualization = Node.create({
     return [
       {
         tag: "div[data-type='metabase-visualization']",
-        getAttrs: (element) => {
-          if (typeof element === "string") return {};
-          return {
-            id: element.getAttribute("data-id"),
-            name: element.getAttribute("data-name"),
-            type: element.getAttribute("data-type"),
-            model: element.getAttribute("data-model"),
-          };
-        },
       },
     ];
   },
@@ -69,121 +189,55 @@ const MetabaseVisualization = Node.create({
         "data-name": HTMLAttributes.name,
         "data-visualization-type": HTMLAttributes.type,
         "data-model": HTMLAttributes.model,
+        "style": "border: 2px solid red; border-radius: 8px; background-color: #f8f9fa; margin: 1rem 0; padding: 1rem; min-height: 200px;",
       },
+      0, // This means the content is not editable
     ];
   },
 
-  addNodeView() {
+    addNodeView() {
     return ({ node, getPos, editor }: any) => {
+      console.log("Creating React node view for:", node.attrs);
+
       const dom = document.createElement("div");
       dom.className = "metabase-visualization-container";
       dom.setAttribute("data-type", "metabase-visualization");
       dom.setAttribute("data-id", node.attrs.id);
       dom.setAttribute("data-name", node.attrs.name);
-      dom.setAttribute("data-type", node.attrs.type);
+      dom.setAttribute("data-visualization-type", node.attrs.type);
       dom.setAttribute("data-model", node.attrs.model);
 
-      // Create a React component to render inside the DOM element
-      const VisualizationComponent = () => {
-        const [cardData, setCardData] = useState<any>(null);
-        const [loading, setLoading] = useState(true);
-        const [error, setError] = useState<string | null>(null);
+      // Set basic styling on the container
+      dom.style.display = "block";
+      dom.style.width = "100%";
 
-        useEffect(() => {
-          const fetchCardData = async () => {
-            try {
-              setLoading(true);
-              // Fetch the card data from the API
-              const response = await fetch(`/api/card/${node.attrs.id}`);
-              if (!response.ok) {
-                throw new Error("Failed to fetch card data");
-              }
-              const data = await response.json();
-              setCardData(data);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Unknown error');
-            } finally {
-              setLoading(false);
-            }
-          };
+      // Create React root and render component
+      const root = createRoot(dom);
 
-          fetchCardData();
-        }, [node.attrs.id]);
-
-        if (loading) {
-          return (
-            <Box
-              style={{
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                backgroundColor: "#f8f9fa",
-                margin: "1rem 0",
-                padding: "1rem",
-                minHeight: "200px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text c="dimmed">{t`Loading visualization...`}</Text>
-            </Box>
-          );
+      const renderComponent = () => {
+        try {
+          root.render(React.createElement(VisualizationNode, { node }));
+          console.log("React component rendered successfully");
+        } catch (error) {
+          console.error("Error rendering React component:", error);
+          // Fallback to simple HTML if React fails
+          dom.innerHTML = `
+            <div style="border: 2px solid red; border-radius: 8px; background-color: #f8f9fa; margin: 1rem 0; padding: 1rem; min-height: 200px;">
+              <div style="font-weight: bold; margin-bottom: 0.5rem;">
+                ${node.attrs.name} (${node.attrs.type || node.attrs.model})
+              </div>
+              <div style="color: #666;">
+                Error rendering React component - ID: ${node.attrs.id}
+              </div>
+            </div>
+          `;
         }
-
-        if (error) {
-          return (
-            <Box
-              style={{
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                backgroundColor: "#f8f9fa",
-                margin: "1rem 0",
-                padding: "1rem",
-                minHeight: "200px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text c="red">{t`Error loading visualization`}</Text>
-            </Box>
-          );
-        }
-
-        if (!cardData) {
-          return null;
-        }
-
-        return (
-          <Box
-            style={{
-              border: "1px solid #e0e0e0",
-              borderRadius: "8px",
-              backgroundColor: "#f8f9fa",
-              margin: "1rem 0",
-              padding: "1rem",
-            }}
-          >
-            <Text size="sm" c="dimmed" mb="0.5rem">
-              {node.attrs.name} ({node.attrs.type})
-            </Text>
-            <Box style={{ height: "300px" }}>
-              <Visualization
-                rawSeries={[{ card: cardData, data: cardData.result_metadata }]}
-                isDashboard
-              />
-            </Box>
-          </Box>
-        );
       };
 
-      // Render the React component into the DOM element using createPortal
-      const renderVisualization = () => {
-        const root = createPortal(<VisualizationComponent />, dom);
-        return root;
-      };
+      // Initial render
+      renderComponent();
 
-      const portal = renderVisualization();
+      console.log("DOM element created:", dom.outerHTML);
 
       return {
         dom,
@@ -192,12 +246,20 @@ const MetabaseVisualization = Node.create({
           if (updatedNode.type !== node.type) {
             return false;
           }
-          // Re-render the component if the node attributes changed
-          renderVisualization();
+          // Re-render with updated node
+          try {
+            root.render(React.createElement(VisualizationNode, { node: updatedNode }));
+          } catch (error) {
+            console.error("Error updating React component:", error);
+          }
           return true;
         },
         destroy: () => {
-          // Cleanup if needed
+          try {
+            root.unmount();
+          } catch (error) {
+            console.error("Error unmounting React component:", error);
+          }
         },
       };
     };
@@ -210,9 +272,12 @@ const ReportEditor = () => {
   const [mentionCommand, setMentionCommand] = useState<((item: any) => void) | null>(null);
   const [mentionRect, setMentionRect] = useState(null);
 
-  const { data: searchResults } = useSearchQuery(searchQuery, {
-    enabled: searchQuery.length >= 2,
-  });
+  const { data: searchResults } = useSearchQuery(
+    searchQuery.length >= 2 ? { q: searchQuery } : skipToken,
+    {
+      enabled: searchQuery.length >= 2,
+    }
+  );
 
   const editor = useEditor({
     extensions: [
@@ -228,6 +293,9 @@ const ReportEditor = () => {
         suggestion: {
           char: "@",
           command: ({ editor, range, props }: any) => {
+            console.log("Mention command called with props:", props);
+            console.log("Editor state before insertion:", editor.state.doc.toJSON());
+
             editor
               .chain()
               .focus()
@@ -238,7 +306,7 @@ const ReportEditor = () => {
                   attrs: {
                     id: props.id,
                     name: props.name,
-                    type: props.type,
+                    type: props.model, // Use model as the type
                     model: props.model,
                   },
                 },
@@ -249,6 +317,7 @@ const ReportEditor = () => {
               ])
               .run();
 
+            console.log("Editor state after insertion:", editor.state.doc.toJSON());
             setShowMentions(false);
           },
           allow: ({ state, range }: any) => {
@@ -430,11 +499,13 @@ const ReportEditor = () => {
         />
       )}
 
-      <Box mt="md">
-        <Button onClick={handleSave} variant="filled">
-          {t`Save Report`}
-        </Button>
-      </Box>
+      <Stack gap="md" mt="lg">
+        <Group>
+          <Button onClick={handleSave} variant="filled">
+            {t`Save Report`}
+          </Button>
+        </Group>
+      </Stack>
     </EditorContainer>
   );
 };
