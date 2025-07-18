@@ -146,7 +146,7 @@ describe("LogLevelsModal", () => {
 
     expect(calls).toHaveLength(1);
     const [_url, options] = calls[0];
-    const body = checkNotNull(options).body;
+    const body = await checkNotNull(options).body;
 
     if (typeof body !== "string") {
       throw new Error("body should be a string");
