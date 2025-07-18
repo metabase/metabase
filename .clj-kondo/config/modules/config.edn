@@ -99,6 +99,7 @@
            session
            settings
            sso
+           semantic-search
            system
            task
            util
@@ -1766,12 +1767,12 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.core}
    :uses #{connection-pool
-           llm
            models
            premium-features
            search
            settings
-           util}}
+           util
+           enterprise/llm}}
 
   enterprise/serialization
   {:team "Workflows"
