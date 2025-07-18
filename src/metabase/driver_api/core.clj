@@ -132,6 +132,7 @@
  nest-query/nest-expressions
  premium-features/is-hosted?
  qp.compile/compile
+ qp.compile/compile-preprocessed
  qp.compile/compile-with-inline-parameters
  qp.debug/debug>
  qp.i/*disable-qp-logging*

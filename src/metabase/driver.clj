@@ -1153,6 +1153,13 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti validate-query-for-view
+  "Validate an MBQL query for use as a view definition.
+   Results should match the [[metabase.transform.interface/view-validation-result]] schema."
+  {:arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error.
   `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names

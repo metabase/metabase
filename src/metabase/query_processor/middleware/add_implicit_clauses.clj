@@ -5,6 +5,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -212,6 +213,7 @@
      ;; like `:fields` to source queries *inside* joins)
      (if (and (map? form)
               ((some-fn :source-table :source-query) form)
+              (not (:for-transform (lib.options/options form)))
               (not (:condition form)))
        (-> form add-implicit-breakout-order-by add-implicit-fields)
        form))

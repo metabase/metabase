@@ -1,6 +1,5 @@
 (ns metabase.transform.models.transform
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.util :as driver.u]
@@ -28,7 +27,9 @@
 (defn namespaced-view-name
   "Generate view name"
   [schema-name view-name]
-  (str/join "." (remove nil? [schema-name view-name])))
+  (if schema-name
+    (str schema-name "." view-name)
+    view-name))
 
 ;; TODO (lbrdnk 2025-07-15): Presumably, the schema should be inferred from mbql queries and required
 ;;                           for native queries.
@@ -76,7 +77,7 @@
 
 (defn- query-type
   [query]
-  (or (and (lib/native-stage? query 0)
+  (or (and (lib/native-stage? query -1)
            :native)
       :query))
 
@@ -115,6 +116,24 @@
                      :schema schema
                      :display-name display-name
                      :same-display-name-table-ids table-ids}))))
+;; WIP
+(defmethod driver/validate-query-for-view :postgres [_ query]
+  (let [last-stage (lib/query-stage query -1)
+        has-limit (contains? last-stage :limit)
+        has-order-by (seq (:order-by last-stage))]
+
+    (if (and has-order-by (not has-limit))
+      {:status :warning
+       :issues [{:type :order-by-without-limit
+                 :severity :warning
+                 :message "ORDER BY without limit cannot be used in a view, will be ignored"}]}
+      {:status :valid})))
+
+(defn- validate-for-view [driver dataset-query]
+  (let [query (dataset-query->query dataset-query)
+        query-type (query-type query)]
+    (when (not= query-type :native)
+      (driver/validate-query-for-view driver query))))
 
 (defn insert-returning-instance!
   "Create new transform."
