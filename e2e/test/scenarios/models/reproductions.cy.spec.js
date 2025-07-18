@@ -547,6 +547,9 @@ describe(
 
       H.popover().findByText(table).click();
       H.popover().findByText(column).click();
+      cy.findByText("Database column this maps to")
+        .next()
+        .should("contain", `${table} → ${column}`);
     }
 
     beforeEach(() => {
@@ -570,19 +573,12 @@ describe(
 
         // Let's go straight to the model metadata editor
         cy.visit(`/model/${id}/metadata`);
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
         cy.findByText("Database column this maps to");
-        cy.wait(5000);
 
         // The first column `ID` is automatically selected
         mapColumnTo({ table: "Orders", column: "ID" });
-
         cy.findByText("ALIAS_CREATED_AT").click();
 
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.wait(5000);
         mapColumnTo({ table: "Orders", column: "Created At" });
 
         // Make sure the column name updated before saving
@@ -591,22 +587,19 @@ describe(
         cy.button("Save changes").click();
         cy.wait("@updateModel");
 
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
+        H.visitModel(id);
       });
     });
 
     it("when done through the column header action (metabase#22715-1)", () => {
       H.tableHeaderClick("Created At");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Today").click();
-
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Today").click();
+      });
       cy.wait("@dataset");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Today").should("not.exist");
-
       cy.get("[data-testid=cell-data]")
         .should("have.length", 4)
         .and("contain", "Created At");

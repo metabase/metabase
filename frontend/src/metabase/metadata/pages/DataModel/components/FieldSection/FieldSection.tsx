@@ -2,19 +2,24 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, Field } from "metabase-types/api";
+
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
+import { useResponsiveButtons } from "./hooks";
+
+const OUTLINE_SAFETY_MARGIN = 2;
 
 interface Props {
   databaseId: DatabaseId;
@@ -35,53 +40,51 @@ const FieldSectionBase = ({
 }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setFieldValuesButtonWidth,
+    setPreviewButtonWidth,
+  } = useResponsiveButtons({ isPreviewOpen });
 
   const handleNameChange = async (name: string) => {
-    if (field.display_name === name) {
-      return;
-    }
-
     const { error } = await updateField({ id, display_name: name });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update name of ${field.display_name}`,
-      });
+      sendErrorToast(t`Failed to update name of ${field.display_name}`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Name of ${field.display_name} updated`,
+      sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
+        const { error } = await updateField({
+          id,
+          display_name: field.display_name,
+        });
+        sendUndoToast(error);
       });
     }
   };
 
   const handleDescriptionChange = async (description: string) => {
-    const newDescription = description.trim();
-
-    if ((field.description ?? "") === newDescription) {
-      return;
-    }
-
     const { error } = await updateField({
       id,
       // API does not accept empty strings
-      description: newDescription.length === 0 ? null : newDescription,
+      description: description.length === 0 ? null : description,
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update description of ${field.display_name}`,
-      });
+      sendErrorToast(t`Failed to update description of ${field.display_name}`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Description of ${field.display_name} updated`,
-      });
+      sendSuccessToast(
+        t`Description of ${field.display_name} updated`,
+        async () => {
+          const { error } = await updateField({
+            id,
+            description: field.description ?? "",
+          });
+          sendUndoToast(error);
+        },
+      );
     }
   };
 
@@ -109,35 +112,41 @@ const FieldSectionBase = ({
         />
       </Box>
 
-      <Stack gap={12} mb={12} px="xl">
-        <Group align="center" gap="md" justify="space-between">
+      <Stack gap={12} mb={12} pt={OUTLINE_SAFETY_MARGIN} px="xl">
+        <Group
+          align="center"
+          gap="md"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
           <Group
-            className={S.buttons}
             flex="1"
             gap="md"
             justify="flex-end"
+            miw={0}
+            ref={buttonsContainerRef}
             wrap="nowrap"
           >
+            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+
             {!isPreviewOpen && (
-              <Button
-                leftSection={<Icon name="eye" />}
-                px="sm"
-                py="xs"
-                size="xs"
+              <ResponsiveButton
+                icon="eye"
+                showLabel={showButtonLabel}
                 onClick={onPreviewClick}
-              >{t`Preview`}</Button>
+                onRequestWidth={setPreviewButtonWidth}
+              >{t`Preview`}</ResponsiveButton>
             )}
 
-            <Button
-              h={32}
-              leftSection={<Icon name="gear_settings_filled" />}
-              px="sm"
-              py="xs"
-              size="xs"
+            <ResponsiveButton
+              icon="gear_settings_filled"
+              showLabel={showButtonLabel}
               onClick={onFieldValuesClick}
-            >{t`Field values`}</Button>
+              onRequestWidth={setFieldValuesButtonWidth}
+            >{t`Field values`}</ResponsiveButton>
           </Group>
         </Group>
       </Stack>

@@ -68,7 +68,7 @@ describe("scenarios > admin > datamodel", () => {
     );
   });
 
-  describe("data loading", () => {
+  describe("Data loading", () => {
     it("should show 404 if database does not exist (metabase#14652)", () => {
       H.DataModel.visit({ databaseId: 54321, skipWaiting: true });
       cy.wait("@databases");
@@ -3158,6 +3158,261 @@ describe("scenarios > admin > datamodel", () => {
         .should("be.visible");
     });
   });
+
+  describe("Undos", { tags: "@external" }, () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
+      cy.signInAsAdmin();
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "many_data_types",
+      });
+    });
+
+    it("allows to undo every action", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      cy.log("table section");
+
+      cy.log("name");
+      TableSection.getNameInput().type("a").blur();
+      verifyToastAndUndo("Table name updated");
+      TableSection.getNameInput().should("have.value", "Orders");
+
+      cy.log("description");
+      TableSection.getDescriptionInput().type("a").blur();
+      verifyToastAndUndo("Table description updated");
+      TableSection.getDescriptionInput().should(
+        "have.value",
+        "Confirmed Sample Company orders for a product, from a user.",
+      );
+
+      cy.log("predefined field order");
+      TableSection.getSortButton().click();
+      TableSection.getSortOrderInput()
+        .findByLabelText("Alphabetical order")
+        .click();
+      verifyToastAndUndo("Field order updated");
+      TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      cy.log("custom field order");
+      H.moveDnDKitElement(TableSection.getSortableField("ID"), {
+        vertical: 50,
+      });
+      verifyToastAndUndo("Field order updated");
+      TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+      TableSection.get().button("Done").click();
+
+      cy.log("field name");
+      TableSection.getFieldNameInput("Quantity").type("a").blur();
+      verifyToastAndUndo("Name of Quantity updated");
+      TableSection.getFieldNameInput("Quantity").should(
+        "have.value",
+        "Quantity",
+      );
+
+      cy.log("field description");
+      TableSection.getFieldDescriptionInput("Quantity").type("a").blur();
+      verifyToastAndUndo("Description of Quantity updated");
+      TableSection.getFieldDescriptionInput("Quantity").should(
+        "have.value",
+        "Number of products bought.",
+      );
+
+      cy.log("field section");
+
+      cy.log("name");
+      FieldSection.getNameInput().type("a").blur();
+      verifyToastAndUndo("Name of Quantity updated");
+      FieldSection.getNameInput().should("have.value", "Quantity");
+
+      cy.log("description");
+      FieldSection.getDescriptionInput().type("a").blur();
+      verifyToastAndUndo("Description of Quantity updated");
+      FieldSection.getDescriptionInput().should(
+        "have.value",
+        "Number of products bought.",
+      );
+
+      cy.log("coercion strategy");
+      FieldSection.getCoercionToggle().parent().scrollIntoView().click();
+      H.popover()
+        .findByText("UNIX seconds → Datetime")
+        .scrollIntoView()
+        .click();
+      verifyToastAndUndo("Casting enabled for Quantity");
+      FieldSection.getCoercionToggle().should("not.be.checked");
+
+      cy.log("semantic type");
+      FieldSection.getSemanticTypeInput().click();
+      H.popover().findByText("Score").click();
+      verifyToastAndUndo("Semantic type of Quantity updated");
+      FieldSection.getSemanticTypeInput().should("have.value", "Quantity");
+
+      cy.log("visibility");
+      FieldSection.getVisibilityInput().click();
+      H.popover().findByText("Only in detail views").click();
+      verifyToastAndUndo("Visibility of Quantity updated");
+      FieldSection.getVisibilityInput().should("have.value", "Everywhere");
+
+      cy.log("filtering");
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+      verifyToastAndUndo("Filtering of Quantity updated");
+      FieldSection.getFilteringInput().should(
+        "have.value",
+        "A list of all values",
+      );
+
+      cy.log("display values");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      H.modal().should("be.visible");
+      H.modal().button("Close").click();
+      verifyToastAndUndo("Display values of Quantity updated");
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use original value",
+      );
+
+      cy.log("custom mapping");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Custom mapping").click();
+      verifyAndCloseToast("Display values of Quantity updated");
+      H.modal().within(() => {
+        cy.findByDisplayValue("0")
+          .clear()
+          .type("XYZ", { scrollBehavior: "center" })
+          .blur();
+        cy.button("Save").click();
+      });
+      verifyToastAndUndo("Display values of Quantity updated");
+      FieldSection.get().button("Edit mapping").click();
+      H.modal().within(() => {
+        cy.findByDisplayValue("0").should("be.visible");
+        cy.findByDisplayValue("XYZ").should("not.exist");
+        cy.button("Close").click();
+      });
+
+      cy.log("foreign key");
+      TableSection.clickField("User ID");
+      FieldSection.getDisplayValuesInput().click();
+      H.popover().findByText("Use foreign key").click();
+      verifyToastAndUndo("Display values of User ID updated");
+      FieldSection.getDisplayValuesInput().should(
+        "have.value",
+        "Use original value",
+      );
+
+      cy.log("JSON unfolding");
+      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getTable("Many Data Types").click();
+      TableSection.clickField("Json");
+      FieldSection.getUnfoldJsonInput().click();
+      H.popover().findByText("No").click();
+      verifyToastAndUndo("JSON unfolding disabled for Json");
+      FieldSection.getUnfoldJsonInput().should("have.value", "Yes");
+
+      cy.log("formatting");
+      TablePicker.getTable("Orders").click();
+      TableSection.clickField("Quantity");
+
+      cy.log("prefix (ChartSettingInput)");
+      FieldSection.getPrefixInput().type("5").blur();
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getPrefixInput().should("have.value", "");
+
+      cy.log("multiply by number (ChartSettingInputNumeric)");
+      FieldSection.getMultiplyByNumberInput().type("5").blur();
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getMultiplyByNumberInput().should("have.value", "");
+
+      cy.log("mini bar chart (ChartSettingToggle)");
+      FieldSection.getMiniBarChartToggle()
+        .parent()
+        .click({ scrollBehavior: "center" });
+      verifyToastAndUndo("Formatting of Quantity updated");
+      FieldSection.getMiniBarChartToggle().should("not.be.checked");
+    });
+  });
+
+  describe("Responsiveness", () => {
+    it("should hide labels of buttons when they don't fit", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      cy.log("buttons should show labels when they fit");
+      TableSection.getSyncOptionsButton().should("have.text", "Sync options");
+      TableSection.getSortButton().should("have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("have.text", "Done").click();
+      FieldSection.getPreviewButton().should("have.text", "Preview");
+      FieldSection.getFieldValuesButton().should("have.text", "Field values");
+
+      cy.log("buttons should not show labels when they don't fit");
+      cy.viewport(800, 800);
+      TableSection.getSyncOptionsButton().should(
+        "not.have.text",
+        "Sync options",
+      );
+      TableSection.getSortButton().should("not.have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("not.have.text", "Done").click();
+      FieldSection.getPreviewButton().should("not.have.text", "Preview");
+      FieldSection.getFieldValuesButton().should(
+        "not.have.text",
+        "Field values",
+      );
+
+      cy.log("buttons should have tooltips when labels are not shown");
+      TableSection.getSyncOptionsButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Sync options");
+
+      TableSection.getSortButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Sorting");
+
+      TableSection.getSortButton().click();
+      TableSection.getSortDoneButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Done");
+      TableSection.getSortDoneButton().click();
+
+      FieldSection.getPreviewButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Preview");
+
+      FieldSection.getFieldValuesButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Field values");
+
+      cy.log("button labels should reappear when they can fit again");
+      cy.viewport(1200, 800);
+      TableSection.getSyncOptionsButton().should("have.text", "Sync options");
+      TableSection.getSortButton().should("have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("have.text", "Done").click();
+      FieldSection.getPreviewButton().should("have.text", "Preview");
+      FieldSection.getFieldValuesButton().should("have.text", "Field values");
+    });
+  });
 });
 
 function turnTableVisibilityOff(tableId: TableId) {
@@ -3271,5 +3526,12 @@ function verifyObjectDetailPreview({
 
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
+  H.undoToast().icon("close").click({ force: true });
+}
+
+function verifyToastAndUndo(message: string) {
+  H.undoToast().should("contain.text", message);
+  H.undoToast().button("Undo").click();
+  H.undoToast().should("contain.text", "Change undone");
   H.undoToast().icon("close").click();
 }
