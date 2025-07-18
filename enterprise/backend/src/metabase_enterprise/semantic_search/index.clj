@@ -9,6 +9,7 @@
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [nano-id.core :as nano-id]
    [next.jdbc :as jdbc]
    [toucan2.core :as t2])
@@ -21,6 +22,10 @@
 (def ^:dynamic *index-table-name*
   "The name of the index table used for semantic search."
   :search_index)
+
+(def ^:dynamic *batch-size*
+  "The number of documents to process per batch when updating the index."
+  150)
 
 (defn- index-table-schema
   "Schema for the index table."
@@ -69,38 +74,80 @@
      :legacy_input        [:cast (json/encode legacy_input) :jsonb]
      :metadata            [:cast (json/encode doc) :jsonb]}))
 
+(defn- batch-update!
+  ([records->sql documents]
+   (jdbc/with-transaction [tx @db/data-source]
+     (batch-update! tx records->sql documents)))
+  ([tx records->sql documents]
+   (when (seq documents)
+     (u/prog1 (transduce (comp (map doc->db-record)
+                               (partition-all *batch-size*)
+                               (map (fn [db-records]
+                                      (jdbc/execute! tx (records->sql db-records))
+                                      ;; TODO should this return (or at least log) the number of docs actually
+                                      ;; updated, not just the number in the batch?
+                                      (u/prog1 (->> db-records (map :model) frequencies)
+                                        (log/trace "semantic search processed a batch of" (count db-records)
+                                                   "documents with frequencies" <>)))))
+                         (partial merge-with +)
+                         documents)
+       (log/trace "semantic search processed" (count documents) "total documents with frequencies" <>)))))
+
+(defn- batch-delete-ids!
+  ([model ids->sql ids]
+   (jdbc/with-transaction [tx @db/data-source]
+     (batch-delete-ids! tx model ids->sql ids)))
+  ([tx model ids->sql ids]
+   (when (seq ids)
+     (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
+                                    (map (fn [ids]
+                                           (jdbc/execute! tx (ids->sql ids))
+                                           (u/prog1 (count ids)
+                                             (log/trace "semantic search deleted a batch of" <>
+                                                        "documents with model type" model)))))
+                              +
+                              ids)
+                   (array-map model))
+       (log/trace "semantic search deleted" <> "total documents with model type" model)))))
+
 (defn populate-index!
   "Inserts a set of documents into the index table. Throws when trying to insert
   existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
-  (jdbc/with-transaction [tx @db/data-source]
-    (doseq [doc documents]
-      (jdbc/execute!
-       tx
-       (sql/format
-        (-> (sql.helpers/insert-into *index-table-name*)
-            (sql.helpers/values [(doc->db-record doc)])))))))
+  (batch-update!
+   (fn [db-records]
+     (-> (sql.helpers/insert-into *index-table-name*)
+         (sql.helpers/values db-records)
+         sql/format))
+   documents))
 
-(defn- upsert-honeysql
-  [doc]
-  (let [db-record (doc->db-record doc)]
-    (->
-     (sql.helpers/insert-into *index-table-name*)
-     (sql.helpers/values [db-record])
-     (sql.helpers/on-conflict :model :model_id)
-     (sql.helpers/do-update-set
-      (dissoc db-record :model :model_id)))))
+(defn- db-records->update-set
+  [db-records]
+  (let [update-keys (-> db-records first (dissoc :id :model :model_id) keys)
+        excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+    (zipmap update-keys (map excluded-kw update-keys))))
+
+(comment
+  (db-records->update-set
+   [{:id 123
+     :model "card"
+     :model_id 123
+     :creator_id 456
+     :content "foo"}]))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
   [documents]
-  (jdbc/with-transaction [tx @db/data-source]
-    (doseq [doc documents]
-      (jdbc/execute!
-       tx
-       (sql/format
-        (upsert-honeysql doc))))))
+  (batch-update!
+   (fn [db-records]
+     (->
+      (sql.helpers/insert-into *index-table-name*)
+      (sql.helpers/values db-records)
+      (sql.helpers/on-conflict :model :model_id)
+      (sql.helpers/do-update-set (db-records->update-set db-records))
+      sql/format))
+   documents))
 
 (defn- drop-index-table-sql
   []
@@ -183,10 +230,15 @@
   [row]
   (into {} (map (fn [[k v]] [(keyword (name k)) v]) row)))
 
-(defn- decode-metadata
+(defn- decode-pgobject
   "Decode a PGObject (returned from a jsonb field) into a Clojure map."
+  [^PGobject obj]
+  (json/decode (.getValue ^PGobject obj) true))
+
+(defn- decode-metadata
+  "Decode `row`s `:metadata`."
   [row]
-  (update row :metadata #(json/decode (.getValue ^PGobject %) true)))
+  (update row :metadata decode-pgobject))
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
@@ -217,20 +269,25 @@
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
   [model model-ids]
-  (jdbc/with-transaction [tx @db/data-source]
-    (jdbc/execute!
-     tx
-     (sql/format
-      (-> (sql.helpers/delete-from *index-table-name*)
-          (sql.helpers/where [:and
-                              [:= :model model]
-                              [:in :model_id model-ids]]))))))
+  (batch-delete-ids!
+   model
+   (fn [batch-ids]
+     (-> (sql.helpers/delete-from *index-table-name*)
+         (sql.helpers/where [:and
+                             [:= :model model]
+                             [:in :model_id batch-ids]])
+         sql/format))
+   model-ids))
 
 (comment
   (create-index-table! {:force-reset? true})
   (populate-index! [{:model "card"
                      :id "1"
                      :searchable_text "This is a test card"}])
+  (upsert-index! [{:model "card"
+                   :id "1"
+                   :searchable_text "This is a test card"}])
+  (delete-from-index! "card" ["1"])
   (delete-from-index! "dashboard" ["13"])
   ;; no user
   (query-index {:search-string "Copper knife"})
