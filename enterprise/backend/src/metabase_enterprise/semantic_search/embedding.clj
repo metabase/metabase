@@ -129,6 +129,7 @@
 
   (-get-embeddings-batch [this texts]
     ;; Ollama doesn't have a native batch API, so we fall back to individual calls
+    ;; No special batching needed for Ollama - just process all texts
     (log/info "Generating" (count texts) "Ollama embeddings (using individual calls)")
     (mapv #(-get-embedding this %) texts))
 
@@ -168,25 +169,33 @@
         (throw e))))
 
   (-get-embeddings-batch [_ texts]
-    (try
-      (log/info "Generating" (count texts) "OpenAI embeddings in batch")
-      (let [api-key (semantic-settings/openai-api-key)
-            model (get-model)
-            endpoint "https://api.openai.com/v1/embeddings"]
-        (when-not api-key
-          (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
-        (-> (http/post endpoint
-                       {:headers {"Content-Type" "application/json"
-                                  "Authorization" (str "Bearer " api-key)}
-                        :body    (json/encode {:model model
-                                               :input texts})})
-            :body
-            (json/decode true)
-            :data
-            (->> (map :embedding))))
-      (catch Exception e
-        (log/error e "Failed to generate OpenAI embeddings for batch of" (count texts) "texts")
-        (throw e))))
+    ;; OpenAI provider handles its own token-aware batching
+    (let [batches (create-batches texts)
+          batch-results (mapv (fn [batch-texts]
+                                (try
+                                  (log/info "Generating" (count batch-texts) "OpenAI embeddings in batch")
+                                  (let [api-key (semantic-settings/openai-api-key)
+                                        model (get-model)
+                                        endpoint "https://api.openai.com/v1/embeddings"]
+                                    (when-not api-key
+                                      (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
+                                    (-> (http/post endpoint
+                                                   {:headers {"Content-Type" "application/json"
+                                                              "Authorization" (str "Bearer " api-key)}
+                                                    :body    (json/encode {:model model
+                                                                           :input batch-texts})})
+                                        :body
+                                        (json/decode true)
+                                        :data
+                                        (->> (map :embedding))))
+                                  (catch Exception e
+                                    (log/error e "Failed to generate OpenAI embeddings for batch of" (count batch-texts) "texts")
+                                    (throw e))))
+                              batches)]
+      (log/info "Processed" (count texts) "texts in" (count batches) "batches"
+                "with token counts:" (mapv count-tokens-batch batches))
+      ;; Flatten the batch results to get a single vector of embeddings
+      (vec (mapcat identity batch-results))))
 
   (-pull-model [_]
     (log/info "OpenAI provider does not require pulling a model"))
@@ -230,21 +239,11 @@
 
 (defn get-embeddings-batch
   "Generate embeddings for multiple texts using the configured provider.
-   Automatically handles batching for OpenAI to stay under token limits.
-   Returns a vector of embeddings in the same order as input texts."
+   Each provider handles its own batching logic internally if needed."
   [texts]
   (when (seq texts)
     (let [provider (get-provider)]
-      (if (instance? OpenAIProvider provider)
-        ;; Use token-aware batching for OpenAI
-        (let [batches (create-batches texts)
-              batch-results (mapv #(-get-embeddings-batch provider %) batches)]
-          (log/info "Processed" (count texts) "texts in" (count batches) "batches"
-                    "with token counts:" (mapv count-tokens-batch batches))
-          ;; Flatten the batch results to get a single vector of embeddings
-          (vec (mapcat identity batch-results)))
-        ;; For other providers, use their batch implementation directly
-        (-get-embeddings-batch provider texts)))))
+      (-get-embeddings-batch provider texts))))
 
 (comment
   ;; Configuration:
