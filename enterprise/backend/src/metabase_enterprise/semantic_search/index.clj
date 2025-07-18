@@ -113,7 +113,7 @@
                               +
                               ids)
                    (array-map model))
-       (log/trace "semantic search deleted" <> "total documents with model type" model)))))
+       (log/trace "semantic search deleted" (get <> model) "total documents with model type" model)))))
 
 (defn populate-index!
   "Inserts a set of documents into the index table. Throws when trying to insert
