@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
