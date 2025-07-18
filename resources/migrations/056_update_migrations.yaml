@@ -201,22 +201,7 @@ databaseChangeLog:
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
   - changeSet:
-      id: v56.2025-07-07T11:26:31
-      author: johnswanson
-      rollback:
-        - sql:
-            sql: >-
-              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
-      comment: Add All External Users group
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO permissions_group (name, magic_group_type, is_tenant_group)
-              VALUES
-              ('All External Users', 'all-external-users', true);
-
-  - changeSet:
-      id: v56.2025-07-07T06:58:36
+      id: v56.2025-07-18T06:58:36
       author: johnswanson
       comment: Create `tenant` table
       preConditions: # not needed
@@ -269,7 +254,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v56.2025-07-07T06:58:40
+      id: v56.2025-07-18T06:58:40
       author: johnswanson
       comment: add an index for `core_user.tenant_id`
       changes:
@@ -281,7 +266,7 @@ databaseChangeLog:
                   name: tenant_id
 
   - changeSet:
-      id: v56.2025-07-07T06:58:42
+      id: v56.2025-07-18T06:58:42
       author: johnswanson
       comment: Add foreign key for `core_user.tenant_id`
       preConditions: # not needed
@@ -295,7 +280,7 @@ databaseChangeLog:
             onDelete: RESTRICT
 
   - changeSet:
-      id: v56.2025-07-07T06:58:44
+      id: v56.2025-07-18T06:58:44
       author: johnswanson
       comment: Rename any existing `@.+` user attributes to add a preceding underscore
       changes:
@@ -303,7 +288,7 @@ databaseChangeLog:
             class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
 
   - changeSet:
-      id: v56.2025-07-07T07:13:58
+      id: v56.2025-07-18T07:13:58
       author: johnswanson
       comment: Mark users with `deactivated_with_tenant`
       changes:
@@ -321,7 +306,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v56.2025-07-07T08:59:40
+      id: v56.2025-07-18T08:59:40
       author: edpaget
       comment: add column for tenant attributes
       preConditions: # not needed
@@ -335,6 +320,21 @@ databaseChangeLog:
                   remarks: JSON object containing custom tenant attributes
                   constraints:
                     nullable: true
+  - changeSet:
+      id: v56.2025-07-18T11:26:31
+      author: johnswanson
+      comment: Add All External Users group
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name, magic_group_type, is_tenant_group)
+              VALUES
+              ('All External Users', 'all-external-users', true);
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
