@@ -26,18 +26,13 @@
   [document-reducible]
   (let [documents (vec document-reducible)]
     (when (seq documents)
-      (semantic.index/upsert-index! documents))
-    (->> documents
-         (group-by :model)
-         (map (fn [[model docs]] [model (count docs)]))
-         (into {}))))
+      (semantic.index/upsert-index! documents))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (semantic.index/delete-from-index! model ids)
-  {model (count ids)})
+  (semantic.index/delete-from-index! model ids))
 
 ;; TODO: add reindexing logic when index is detected as stale
 (defenterprise init!
@@ -61,3 +56,15 @@
   :feature :semantic-search
   []
   nil)
+
+(comment
+  (update-index! [{:model "card"
+                   :id "1"
+                   :searchable_text "This is a test card"}
+                  {:model "card"
+                   :id "2"
+                   :searchable_text "This is a test card too"}
+                  {:model "dashboard"
+                   :id "3"
+                   :searchable_text "This is a test dashboard"}])
+  (delete-from-index! "card" ["1" "2"]))
