@@ -453,18 +453,19 @@
            jwt-attribute-groups
            "GrOuPs"]
           (with-users-with-email-deleted "newuser@metabase.com"
-            (let [response    (client/client-real-response :get 302 "/auth/sso"
-                                                           {:request-options {:redirect-strategy :none}}
-                                                           :return_to default-redirect-uri
-                                                           :jwt
-                                                           (jwt/sign
-                                                            {:email      "newuser@metabase.com"
-                                                             :first_name "New"
-                                                             :last_name  "User"
-                                                             :more       "stuff"
-                                                             :GrOuPs     ["my_group"]
-                                                             :for        "the new user"}
-                                                            default-jwt-secret))]
+            (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email      "newuser@metabase.com"
+                                                          :first_name "New"
+                                                          :last_name  "User"
+                                                          :more       "stuff"
+                                                          :GrOuPs     ["my_group"]
+                                                          :for        "the new user"}
+                                                         default-jwt-secret))]
+              #p (t2/select [:model/User :jwt_attributes :login_attributes] :email "newuser@metabase.com")
               (is (saml-test/successful-login? response))
               (is
                (=
@@ -555,6 +556,41 @@
           clojure.lang.ExceptionInfo
           #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
+
+(deftest non-string-jwt-claims-dropped-test
+  (testing "JWT claims with non-string values are dropped and warning is logged"
+    (with-jwt-default-setup!
+      (mt/with-log-messages-for-level [jwt-log-messages [metabase-enterprise :warn]]
+        (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                    {:request-options {:redirect-strategy :none}}
+                                                    :return_to default-redirect-uri
+                                                    :jwt
+                                                    (jwt/sign
+                                                     {:email      "rasta@metabase.com"
+                                                      :first_name "Rasta"
+                                                      :last_name  "Toucan"
+                                                      :string_attr "valid-string"
+                                                      :number_attr 42
+                                                      :boolean_attr true
+                                                      :array_attr ["item1" "item2"]
+                                                      :object_attr {:nested "value"}
+                                                      :null_attr nil}
+                                                     default-jwt-secret))]
+          (is (saml-test/successful-login? response))
+
+          (testing "only string attributes are saved to jwt_attributes"
+            (is (= {"string_attr" "valid-string"}
+                   (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
+
+          (testing "warning messages are logged for non-string values"
+            (is (some #(re-find #"Dropping JWT claim 'number_attr' with non-string value: 42" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping JWT claim 'boolean_attr' with non-string value: true" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping JWT claim 'array_attr' with non-string value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping JWT claim 'object_attr' with non-string value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping JWT claim 'null_attr' with non-string value: null" %) (map :message (jwt-log-messages)))))
+
+          (testing "no warning for valid string attribute"
+            (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))
 
 (deftest jwt-token-test
   (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
