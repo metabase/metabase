@@ -9,7 +9,7 @@ export function getCompatibleSemanticTypes(
 ) {
   const fieldType = field.effective_type ?? field.base_type;
   const isFieldText = isa(fieldType, TYPE.Text);
-  const isFieldBoolean = isa(fieldType, Type.Boolean);
+  const isFieldBoolean = isa(fieldType, TYPE.Boolean);
   const fieldLevelOneTypes = LEVEL_ONE_TYPES.filter((levelOneType) => {
     return isa(fieldType, levelOneType);
   });
