@@ -131,8 +131,8 @@ describe("LogLevelsModal", () => {
     await waitForLoaderToBeRemoved();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    await userEvent.clear(screen.getByPlaceholderText("Duration"));
-    await userEvent.type(screen.getByPlaceholderText("Duration"), "24");
+    await userEvent.clear(screen.getByPlaceholderText("60"));
+    await userEvent.type(screen.getByPlaceholderText("60"), "24");
     await userEvent.click(screen.getByPlaceholderText("Unit"));
     await userEvent.click(screen.getByText("Hours"));
     await userEvent.click(screen.getByText("Load preset"));
@@ -146,7 +146,7 @@ describe("LogLevelsModal", () => {
 
     expect(calls).toHaveLength(1);
     const [_url, options] = calls[0];
-    const body = await checkNotNull(options).body;
+    const body = checkNotNull(options).body;
 
     if (typeof body !== "string") {
       throw new Error("body should be a string");
@@ -168,7 +168,7 @@ describe("LogLevelsModal", () => {
     await waitForLoaderToBeRemoved();
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
 
-    await userEvent.clear(screen.getByPlaceholderText("Duration"));
+    await userEvent.clear(screen.getByPlaceholderText("60"));
 
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
