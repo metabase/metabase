@@ -1069,8 +1069,8 @@
        (subs s 0 (.-read result)))))
 
 ;; The next two helpers exist to squelch the anti-pattern of using `System/currentTimeMillis` for computing durations.
-;; Unlike its better known sibling, `System/nanoTime` avoids a costly system call fetching the wall clock time, and
-;; instead uses a relative counter which is unaffected by system clock corrections, and guaranteed increasing.
+;; Unlike its better known sibling, `System/nanoTime` avoids a costly system call to fetch the wall clock time, 
+;; instead using a relative counter which is unaffected by system clock corrections, and guaranteed to be increasing.
 ;;
 ;; Our linter won't force you to use these helpers, but they're convenient if you're thinking in milliseconds.
 
