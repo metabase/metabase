@@ -308,4 +308,4 @@
              :custom-query query
              :custom-row   {"IS_OPEN" true
                             "count"   10}}
-            (expecting ["IS_OPEN"] [:category])))))
+            (expecting ["IS_OPEN"] [:category :time])))))
