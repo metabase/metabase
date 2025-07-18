@@ -45,7 +45,8 @@
 ;;; Batching Logic
 
 (def ^:dynamic ^:private *max-tokens-per-batch*
-  "Maximum number of tokens allowed per batch for OpenAI embedding API."
+  "Maximum number of tokens allowed per batch for OpenAI embedding API. The real limit is 8192, but we're using a lower
+  limit in case there are discrepencies between the tokenizers."
   8000)
 
 (defn- create-batches
@@ -148,28 +149,15 @@
 
 (defrecord OpenAIProvider []
   EmbeddingProvider
-  (-get-embedding [_ text]
+  (-get-embedding [this text]
     (try
       (log/info "Generating OpenAI embedding for text of length:" (count text))
-      (let [api-key (semantic-settings/openai-api-key)
-            model (get-model)
-            endpoint "https://api.openai.com/v1/embeddings"]
-        (when-not api-key
-          (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
-        (-> (http/post endpoint
-                       {:headers {"Content-Type" "application/json"
-                                  "Authorization" (str "Bearer " api-key)}
-                        :body    (json/encode {:model model
-                                               :input text})})
-            :body
-            (json/decode true)
-            (get-in [:data 0 :embedding])))
+      (first (-get-embeddings-batch this [text]))
       (catch Exception e
         (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
         (throw e))))
 
   (-get-embeddings-batch [_ texts]
-    ;; OpenAI provider handles its own token-aware batching
     (let [batches (create-batches texts)
           batch-results (mapv (fn [batch-texts]
                                 (try
