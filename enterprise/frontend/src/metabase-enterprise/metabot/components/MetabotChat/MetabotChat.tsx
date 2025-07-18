@@ -190,8 +190,7 @@ export const MetabotChat = () => {
               {metabot.isDoingScience && (
                 <MetabotThinking
                   toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
-                  hideLoader={
-                    metabot.useStreaming &&
+                  hasStartedResponse={
                     _.last(metabot.messages)?.role === "agent"
                   }
                 />
