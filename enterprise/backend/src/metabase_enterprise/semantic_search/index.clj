@@ -56,31 +56,30 @@
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
 (defn- doc->db-record
-  "Convert a document to a database record with embedding."
-  [{:keys [model id searchable_text created_at creator_id updated_at
-           last_editor_id archived verified official_collection legacy_input] :as doc}]
-  (let [embedding (embedding/get-embedding searchable_text)]
-    {:model               model
-     :model_id            id
-     :creator_id          creator_id
-     :model_created_at    created_at
-     :last_editor_id      last_editor_id
-     :model_updated_at    updated_at
-     :archived            archived
-     :verified            verified
-     :official_collection official_collection
-     :embedding           [:raw (format-embedding embedding)]
-     :content             searchable_text
-     :legacy_input        [:cast (json/encode legacy_input) :jsonb]
-     :metadata            [:cast (json/encode doc) :jsonb]}))
+  "Convert a document to a database record with a provided embedding."
+  [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
+                         last_editor_id archived verified official_collection legacy_input] :as doc}]
+  {:model               model
+   :model_id            id
+   :creator_id          creator_id
+   :model_created_at    created_at
+   :last_editor_id      last_editor_id
+   :model_updated_at    updated_at
+   :archived            archived
+   :verified            verified
+   :official_collection official_collection
+   :embedding           [:raw (format-embedding embedding-vec)]
+   :content             searchable_text
+   :legacy_input        [:cast (json/encode legacy_input) :jsonb]
+   :metadata            [:cast (json/encode doc) :jsonb]})
 
 (defn- batch-update!
-  ([records->sql documents]
+  ([records->sql documents embeddings]
    (jdbc/with-transaction [tx @db/data-source]
-     (batch-update! tx records->sql documents)))
-  ([tx records->sql documents]
+     (batch-update! tx records->sql documents embeddings)))
+  ([tx records->sql documents embeddings]
    (when (seq documents)
-     (u/prog1 (transduce (comp (map doc->db-record)
+     (u/prog1 (transduce (comp (map (fn [[doc embedding]] (doc->db-record embedding doc)))
                                (partition-all *batch-size*)
                                (map (fn [db-records]
                                       (jdbc/execute! tx (records->sql db-records))
@@ -90,7 +89,7 @@
                                         (log/trace "semantic search processed a batch of" (count db-records)
                                                    "documents with frequencies" <>)))))
                          (partial merge-with +)
-                         documents)
+                         (map vector documents embeddings))
        (log/trace "semantic search processed" (count documents) "total documents with frequencies" <>)))))
 
 (defn- batch-delete-ids!
@@ -114,12 +113,16 @@
   "Inserts a set of documents into the index table. Throws when trying to insert
   existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
-  (batch-update!
-   (fn [db-records]
-     (-> (sql.helpers/insert-into *index-table-name*)
-         (sql.helpers/values db-records)
-         sql/format))
-   documents))
+  (when (seq documents)
+    (let [texts (mapv :searchable_text documents)
+          embeddings (embedding/get-embeddings-batch texts)]
+      (batch-update!
+       (fn [db-records]
+         (-> (sql.helpers/insert-into *index-table-name*)
+             (sql.helpers/values db-records)
+             sql/format))
+       documents
+       embeddings))))
 
 (defn- db-records->update-set
   [db-records]
@@ -139,15 +142,19 @@
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
   [documents]
-  (batch-update!
-   (fn [db-records]
-     (->
-      (sql.helpers/insert-into *index-table-name*)
-      (sql.helpers/values db-records)
-      (sql.helpers/on-conflict :model :model_id)
-      (sql.helpers/do-update-set (db-records->update-set db-records))
-      sql/format))
-   documents))
+  (when (seq documents)
+    (let [texts (mapv :searchable_text documents)
+          embeddings (embedding/get-embeddings-batch texts)]
+      (batch-update!
+       (fn [db-records]
+         (->
+          (sql.helpers/insert-into *index-table-name*)
+          (sql.helpers/values db-records)
+          (sql.helpers/on-conflict :model :model_id)
+          (sql.helpers/do-update-set (db-records->update-set db-records))
+          sql/format))
+       documents
+       embeddings))))
 
 (defn- drop-index-table-sql
   []
