@@ -45,6 +45,14 @@ export const SelectEmbedResourceStep = () => {
     experience: SdkIframeEmbedSetupExperience,
     id: string | number,
   ) => {
+    // Do not update if the selected item is already selected.
+    if (
+      (experience === "dashboard" && settings.dashboardId === id) ||
+      (experience === "chart" && settings.questionId === id)
+    ) {
+      return;
+    }
+
     trackEmbedWizardResourceSelected(Number(id), experience);
 
     if (experience === "dashboard") {

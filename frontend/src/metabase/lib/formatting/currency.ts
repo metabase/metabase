@@ -2,9 +2,36 @@ import { t } from "ttag";
 
 import { currency } from "cljs/metabase.util.currency";
 
-let currencyMapCache;
+export interface CurrencyInfo {
+  symbol: string;
+  name: string;
+  symbol_native: string;
+  decimal_digits: number;
+  rounding: number;
+  code: string;
+  name_plural: string;
+}
 
-export function getCurrencySymbol(currencyCode) {
+export interface CurrencyOption {
+  name: string;
+  value: string;
+}
+
+export type CurrencyStyle = "symbol" | "code" | "name";
+
+export interface CurrencyStyleOption {
+  name: string;
+  value: CurrencyStyle;
+}
+
+export interface CompactCurrencyOptions {
+  digits: number;
+  currency_style: CurrencyStyle;
+}
+
+let currencyMapCache: Record<string, CurrencyInfo>;
+
+export function getCurrencySymbol(currencyCode: string): string {
   if (!currencyMapCache) {
     // only turn the array into a map if we call this function
     currencyMapCache = Object.fromEntries(currency);
@@ -12,7 +39,7 @@ export function getCurrencySymbol(currencyCode) {
   return currencyMapCache[currencyCode]?.symbol || currencyCode || "$";
 }
 
-export const COMPACT_CURRENCY_OPTIONS = {
+export const COMPACT_CURRENCY_OPTIONS: CompactCurrencyOptions = {
   // Currencies vary in how many decimals they display, so this is probably
   // wrong in some cases. Intl.NumberFormat has some of that data built-in, but
   // I couldn't figure out how to use it here.
@@ -20,7 +47,9 @@ export const COMPACT_CURRENCY_OPTIONS = {
   currency_style: "symbol",
 };
 
-export function getCurrencyStyleOptions(currency = "USD") {
+export function getCurrencyStyleOptions(
+  currency = "USD",
+): CurrencyStyleOption[] {
   const symbol = getCurrencySymbol(currency);
   const code = getCurrency(currency, "code");
   const name = getCurrency(currency, "name");
@@ -29,22 +58,25 @@ export function getCurrencyStyleOptions(currency = "USD") {
       ? [
           {
             name: t`Symbol` + ` ` + `(${symbol})`,
-            value: "symbol",
+            value: "symbol" as const,
           },
         ]
       : []),
     {
       name: t`Code` + ` ` + `(${code})`,
-      value: "code",
+      value: "code" as const,
     },
     {
       name: t`Name` + ` ` + `(${name})`,
-      value: "name",
+      value: "name" as const,
     },
   ];
 }
 
-export function getCurrency(currency, currencyStyle) {
+export function getCurrency(
+  currency: string,
+  currencyStyle: CurrencyStyle,
+): string {
   try {
     return (0)
       .toLocaleString("en", {
@@ -59,8 +91,8 @@ export function getCurrency(currency, currencyStyle) {
   }
 }
 
-export function getCurrencyOptions() {
-  return currency.map(([, currency]) => ({
+export function getCurrencyOptions(): CurrencyOption[] {
+  return currency.map(([, currency]: [string, CurrencyInfo]) => ({
     name: currency.name,
     value: currency.code,
   }));

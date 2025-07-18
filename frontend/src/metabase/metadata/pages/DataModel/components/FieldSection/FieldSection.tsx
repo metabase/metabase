@@ -6,19 +6,25 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type { DatabaseId, Field, Table } from "metabase-types/api";
+
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
+import { useResponsiveButtons } from "./hooks";
+
+const OUTLINE_SAFETY_MARGIN = 2;
 
 interface Props {
   databaseId: DatabaseId;
   field: Field;
+  table: Table;
   isPreviewOpen: boolean;
   parent?: Field;
   onFieldValuesClick: () => void;
@@ -30,6 +36,7 @@ const FieldSectionBase = ({
   field,
   isPreviewOpen,
   parent,
+  table,
   onFieldValuesClick,
   onPreviewClick,
 }: Props) => {
@@ -37,6 +44,12 @@ const FieldSectionBase = ({
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setFieldValuesButtonWidth,
+    setPreviewButtonWidth,
+  } = useResponsiveButtons({ isPreviewOpen });
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateField({ id, display_name: name });
@@ -101,42 +114,48 @@ const FieldSectionBase = ({
         />
       </Box>
 
-      <Stack gap={12} mb={12} px="xl">
-        <Group align="center" gap="md" justify="space-between">
+      <Stack gap={12} mb={12} pt={OUTLINE_SAFETY_MARGIN} px="xl">
+        <Group
+          align="center"
+          gap="md"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
           <Group
-            className={S.buttons}
             flex="1"
             gap="md"
             justify="flex-end"
+            miw={0}
+            ref={buttonsContainerRef}
             wrap="nowrap"
           >
+            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+
             {!isPreviewOpen && (
-              <Button
-                leftSection={<Icon name="eye" />}
-                px="sm"
-                py="xs"
-                size="xs"
+              <ResponsiveButton
+                icon="eye"
+                showLabel={showButtonLabel}
                 onClick={onPreviewClick}
-              >{t`Preview`}</Button>
+                onRequestWidth={setPreviewButtonWidth}
+              >{t`Preview`}</ResponsiveButton>
             )}
 
-            <Button
-              h={32}
-              leftSection={<Icon name="gear_settings_filled" />}
-              px="sm"
-              py="xs"
-              size="xs"
+            <ResponsiveButton
+              icon="gear_settings_filled"
+              showLabel={showButtonLabel}
               onClick={onFieldValuesClick}
-            >{t`Field values`}</Button>
+              onRequestWidth={setFieldValuesButtonWidth}
+            >{t`Field values`}</ResponsiveButton>
           </Group>
         </Group>
       </Stack>
 
       <Stack gap="xl" px="xl">
         <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} />
+        <MetadataSection databaseId={databaseId} field={field} table={table} />
         <BehaviorSection databaseId={databaseId} field={field} />
         <FormattingSection field={field} />
       </Stack>

@@ -2,15 +2,12 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { DashboardArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/DashboardArchivedEntityBanner";
 import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import Bookmarks from "metabase/entities/bookmarks";
-import Dashboards from "metabase/entities/dashboards";
-import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -42,18 +39,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
     isSharing,
     selectedTabId,
     shouldRenderAsNightMode,
-    setArchivedDashboard,
-    moveDashboardToCollection,
-    deletePermanently,
   } = useDashboardContext();
-
-  const canWrite = Boolean(dashboard?.can_write);
-  const canRestore = Boolean(dashboard?.can_restore);
-  const canDelete = Boolean(dashboard?.can_delete);
-
-  const dispatch = useDispatch();
-  const invalidateBookmarks = async () =>
-    await dispatch(Bookmarks.actions.invalidateLists());
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -102,25 +88,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
       flex="1 0 auto"
       data-testid="dashboard"
     >
-      {dashboard.archived && (
-        <ArchivedEntityBanner
-          name={dashboard.name}
-          entityType="dashboard"
-          canMove={canWrite}
-          canRestore={canRestore}
-          canDelete={canDelete}
-          onUnarchive={async () => {
-            await setArchivedDashboard(false);
-            await invalidateBookmarks();
-          }}
-          onMove={({ id }) => moveDashboardToCollection({ id })}
-          onDeletePermanently={() => {
-            const { id } = dashboard;
-            const deleteAction = Dashboards.actions.delete({ id });
-            deletePermanently(deleteAction);
-          }}
-        />
-      )}
+      {dashboard.archived && <DashboardArchivedEntityBanner />}
 
       <Box
         component="header"
