@@ -96,6 +96,7 @@ function pickColumns(
 export function getInitialStateForCardDataSource(
   card: Card,
   dataset: Dataset,
+  parameters?: unknown[],
 ): VisualizerVizDefinitionWithColumns {
   const {
     data: { cols: originalColumns },
@@ -107,6 +108,7 @@ export function getInitialStateForCardDataSource(
       : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
+    parameters,
     settings: {
       "card.title": card.name,
     },
