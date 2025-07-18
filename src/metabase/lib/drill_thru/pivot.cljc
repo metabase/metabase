@@ -69,18 +69,17 @@
     (->> (lib.breakout/breakoutable-columns query stage-number)
          (filter field-pred))))
 
-(def ^:private pivot-type-predicates
-  {:category (every-pred lib.types.isa/category?
-                         (complement lib.types.isa/address?))
-   :location lib.types.isa/address?
-   :time     lib.types.isa/temporal?})
+(defn- column-pivot-type
+  [column]
+  (cond
+    (lib.types.isa/temporal? column)     :date
+    (lib.types.isa/address? column)      :address
+    (or (lib.types.isa/category? column)
+        (lib.types.isa/boolean? column)) :category))
 
-(defn- breakout-type [query stage-number breakout]
-  (let [column (lib.metadata.calculation/metadata query stage-number breakout)]
-    (cond
-      (lib.types.isa/temporal? column) :date
-      (lib.types.isa/address? column) :address
-      (lib.types.isa/category? column) :category)))
+(defn- breakout-pivot-type [query stage-number breakout]
+  (some-> (lib.metadata.calculation/metadata query stage-number breakout)
+          column-pivot-type))
 
 (mu/defn- permitted-pivot-types :- [:maybe [:set ::lib.schema.drill-thru/pivot-types]]
   "This captures some complex conditions formerly encoded by `visualizations/click-actions/Mode/*` in the FE.
@@ -98,7 +97,7 @@
   [query                                         :- ::lib.schema/query
    stage-number                                  :- :int]
   (case (->> (lib.breakout/breakouts query stage-number)
-             (map #(breakout-type query stage-number %))
+             (map #(breakout-pivot-type query stage-number %))
              frequencies)
     ({:date 1}
      {:date 1, :category 1})
@@ -132,7 +131,7 @@
                (-> (lib.aggregation/aggregations query stage-number) count pos?))
       (let [breakout-pivot-types (permitted-pivot-types query stage-number)
             pivots               (into {} (for [pivot-type breakout-pivot-types
-                                                :let [pred    (get pivot-type-predicates pivot-type)
+                                                :let [pred    #(= pivot-type (column-pivot-type %))
                                                       columns (pivot-drill-pred query stage-number context pred)]
                                                 :when (not-empty columns)]
                                             [pivot-type columns]))]
