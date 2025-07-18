@@ -18,7 +18,8 @@ import { useVisualizerUi } from "../VisualizerUiContext";
 import S from "./Footer.module.css";
 
 export function Footer({ className }: { className?: string }) {
-  const { setVizSettingsSidebarOpen } = useVisualizerUi();
+  const { setVizSettingsSidebarOpen, isVizSettingsSidebarOpen } =
+    useVisualizerUi();
   const dispatch = useDispatch();
   const display = useSelector(getVisualizationType);
   const datasets = useSelector(getDatasets);
@@ -41,6 +42,7 @@ export function Footer({ className }: { className?: string }) {
         <Button
           ml="auto"
           data-testid="visualizer-settings-button"
+          aria-pressed={isVizSettingsSidebarOpen}
           onClick={() => {
             trackSimpleEvent({
               event: "visualizer_settings_clicked",
