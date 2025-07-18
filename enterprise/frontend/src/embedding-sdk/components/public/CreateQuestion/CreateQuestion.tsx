@@ -1,7 +1,4 @@
-import {
-  type BaseInteractiveQuestionProps,
-  InteractiveQuestion,
-} from "../SdkQuestion";
+import { type BaseSdkQuestionProps, SdkQuestion } from "../question";
 
 /**
  * @interface
@@ -9,7 +6,7 @@ import {
  * @category CreateQuestion
  */
 export type CreateQuestionProps = Omit<
-  Partial<BaseInteractiveQuestionProps>,
+  Partial<BaseSdkQuestionProps>,
   "questionId" | "children"
 >;
 
@@ -19,5 +16,5 @@ export type CreateQuestionProps = Omit<
  * @deprecated Use `<InteractiveQuestion questionId="new" />` instead.
  * */
 export const CreateQuestion = (props: CreateQuestionProps = {}) => (
-  <InteractiveQuestion {...props} questionId="new" />
+  <SdkQuestion {...props} questionId="new" />
 );

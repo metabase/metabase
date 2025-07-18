@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 
+import type { SdkQuestionIdProps } from "embedding-sdk/components/public/question/SdkQuestion/types";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
@@ -9,7 +10,7 @@ import type {
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk/types/question";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { DashboardId } from "metabase-types/api";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
@@ -88,9 +89,10 @@ export type QuestionMockLocationParameters = {
 
 export type SdkQuestionProviderProps = PropsWithChildren<
   SdkQuestionConfig &
-    Omit<LoadSdkQuestionParams, "questionId"> & {
-      questionId: SdkQuestionId | null;
-      variant?: "static" | "interactive";
+    Omit<LoadSdkQuestionParams, "questionId"> &
+    SdkQuestionIdProps & {
+      mode?: QueryClickActionsMode;
+      enableNavigationToNewCard?: boolean;
     }
 >;
 
@@ -107,9 +109,8 @@ export type SdkQuestionContextType = Omit<
     | "withDownloads"
     | "backToDashboard"
   > &
-  Pick<SdkQuestionProviderProps, "variant"> & {
+  Pick<SdkQuestionProviderProps, "mode"> & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
-    mode: Mode | null | undefined;
     originalId: SdkQuestionId | null;
     resetQuestion: () => void;
     onReset: () => void;

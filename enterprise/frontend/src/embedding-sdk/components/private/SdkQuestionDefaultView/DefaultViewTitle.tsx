@@ -5,13 +5,10 @@ import { Anchor, Stack, Text } from "metabase/ui";
 import { getQuestionTitle } from "../QuestionTitle";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
-import type { InteractiveQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
+import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
 
 interface DefaultViewTitleTextProps
-  extends Pick<
-    InteractiveQuestionDefaultViewProps,
-    "withResetButton" | "title"
-  > {
+  extends Pick<SdkQuestionDefaultViewProps, "withResetButton" | "title"> {
   isQuestionChanged?: boolean;
   onReset?: () => void;
   originalName?: string | null;
@@ -47,7 +44,7 @@ const DefaultViewTitleText = ({
 export const DefaultViewTitle = ({
   title,
   withResetButton = false,
-}: InteractiveQuestionDefaultViewProps) => {
+}: SdkQuestionDefaultViewProps) => {
   const { question, originalQuestion, onReset } = useSdkQuestionContext();
 
   const isQuestionChanged = originalQuestion

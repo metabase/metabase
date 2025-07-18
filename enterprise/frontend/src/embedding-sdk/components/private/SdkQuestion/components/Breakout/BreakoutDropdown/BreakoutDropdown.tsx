@@ -18,14 +18,12 @@ import { type SDKBreakoutItem, useBreakoutData } from "../use-breakout-data";
  * @expand
  * @category InteractiveQuestion
  */
-export type InteractiveQuestionBreakoutDropdownProps = Omit<
+export type BreakoutDropdownProps = Omit<
   PopoverProps,
   "children" | "onClose" | "opened"
 >;
 
-export const BreakoutDropdownInner = (
-  popoverProps: InteractiveQuestionBreakoutDropdownProps,
-) => {
+export const BreakoutDropdownInner = (popoverProps: BreakoutDropdownProps) => {
   const items = useBreakoutData();
 
   const [step, setStep] = useState<MultiStepState<"picker" | "list">>(null);
@@ -98,9 +96,7 @@ export const BreakoutDropdownInner = (
  * @category InteractiveQuestion
  * @param props
  */
-export const BreakoutDropdown = (
-  props: InteractiveQuestionBreakoutDropdownProps,
-) => {
+export const BreakoutDropdown = (props: BreakoutDropdownProps) => {
   const { question } = useSdkQuestionContext();
 
   if (!question) {

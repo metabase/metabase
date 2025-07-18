@@ -3,7 +3,7 @@ import {
   CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
-  InteractiveQuestion,
+  SdkQuestion,
   MetabaseProvider,
   StaticQuestion,
   defineMetabaseTheme,
@@ -75,7 +75,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion questionId="new" />
+          <SdkQuestion questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -98,7 +98,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion questionId="new" />
+          <SdkQuestion questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -124,7 +124,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion questionId="new" />
+          <SdkQuestion questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -349,7 +349,7 @@ describe("scenarios > embedding-sdk > styles", () => {
     it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          <SdkQuestion questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
@@ -379,7 +379,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       cy.mount(
         <div style={{ paddingLeft: "9999px" }}>
           <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            <SdkQuestion questionId={ORDERS_QUESTION_ID} />
           </MetabaseProvider>
         </div>,
       );
@@ -506,7 +506,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       it("should render DragOverlay of SortableList with our styles", () => {
         mountSdkContent(
-          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          <SdkQuestion questionId={ORDERS_QUESTION_ID} />,
           {
             sdkProviderProps: {
               theme: {
@@ -582,7 +582,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           >
             <Button color="brand">outside sdk wrapper</Button>
 
-            <InteractiveQuestion
+            <SdkQuestion
               questionId={ORDERS_QUESTION_ID}
               isSaveEnabled
             />

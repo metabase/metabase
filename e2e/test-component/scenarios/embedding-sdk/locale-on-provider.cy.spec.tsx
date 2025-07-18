@@ -1,5 +1,5 @@
 import {
-  InteractiveQuestion,
+  SdkQuestion,
   MetabaseProvider,
 } from "@metabase/embedding-sdk-react";
 
@@ -34,7 +34,7 @@ function setup({
       }}
       locale={locale}
     >
-      <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+      <SdkQuestion questionId={ORDERS_QUESTION_ID} />,
     </MetabaseProvider>,
   );
 

@@ -1,5 +1,5 @@
 import {
-  InteractiveQuestion,
+  SdkQuestion,
   type MetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 import Color from "color";
@@ -246,7 +246,7 @@ function setupInteractiveQuestionWithTheme(theme: MetabaseTheme) {
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
       <Box bg={theme.colors?.background} h="100vh">
-        <InteractiveQuestion questionId={questionId} />
+        <SdkQuestion questionId={questionId} />
       </Box>,
       { sdkProviderProps: { theme } },
     );

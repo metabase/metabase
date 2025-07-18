@@ -25,33 +25,35 @@ export type {
 } from "./dashboard";
 export {
   InteractiveQuestion,
-  type BaseInteractiveQuestionProps,
   type InteractiveQuestionProps,
-  type InteractiveQuestionBackButtonProps,
-  type InteractiveQuestionBreakoutDropdownProps,
-  type InteractiveQuestionChartTypeDropdownProps,
-  type InteractiveQuestionChartTypeSelectorProps,
-  type InteractiveQuestionDownloadWidgetProps,
-  type InteractiveQuestionDownloadWidgetDropdownProps,
-  type InteractiveQuestionEditorProps,
-  type InteractiveQuestionEditorButtonProps,
-  type InteractiveQuestionFilterProps,
-  type InteractiveQuestionFilterDropdownProps,
-  type InteractiveQuestionQuestionSettingsProps,
-  type InteractiveQuestionQuestionSettingsDropdownProps,
-  type InteractiveQuestionQuestionVisualizationProps,
-  type InteractiveQuestionResetButtonProps,
-  type InteractiveQuestionSaveButtonProps,
-  type InteractiveQuestionSaveQuestionFormProps,
-  type InteractiveQuestionSummarizeDropdownProps,
-  type InteractiveQuestionTitleProps,
+  type BaseSdkQuestionProps,
+  type SdkQuestionProps,
+  type BackButtonProps,
+  type BreakoutDropdownProps,
+  type ChartTypeDropdownProps,
+  type ChartTypeSelectorProps,
+  type DownloadWidgetProps,
+  type DownloadWidgetDropdownProps,
+  type EditorProps,
+  type EditorButtonProps,
+  type FilterProps,
+  type FilterDropdownProps,
+  type QuestionSettingsProps,
+  type QuestionSettingsDropdownProps,
+  type QuestionVisualizationProps,
+  type ResetButtonProps,
+  type SaveButtonProps,
+  type SaveQuestionFormProps,
+  type SummarizeDropdownProps,
+  type TitleProps,
   type DrillThroughQuestionProps,
-} from "./SdkQuestion";
+  StaticQuestion,
+  type StaticQuestionProps,
+} from "./question";
 export {
   MetabaseProvider,
   type MetabaseProviderProps,
 } from "./MetabaseProvider";
-export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 
 // These functions looks useless but it's a trick to have a way to type the config
 // while having code snippets the same across js and ts. This works because the

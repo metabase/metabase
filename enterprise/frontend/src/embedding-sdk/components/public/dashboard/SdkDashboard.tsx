@@ -18,7 +18,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import { SdkQuestionProvider } from "embedding-sdk/components/private/SdkQuestion/context";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
+import { SdkQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -50,10 +50,7 @@ import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
 
-import type {
-  DrillThroughQuestionProps,
-  InteractiveQuestionProps,
-} from "../SdkQuestion";
+import type { DrillThroughQuestionProps, SdkQuestionProps } from "../question";
 
 import {
   SdkDashboardStyledWrapper,
@@ -106,7 +103,7 @@ export type EditableDashboardOwnProps = {
   /**
    * Additional props to pass to the query builder rendered by `InteractiveQuestion` when creating a new dashboard question.
    */
-  dataPickerProps?: Pick<InteractiveQuestionProps, "entityTypes">;
+  dataPickerProps?: Pick<SdkQuestionProps, "entityTypes">;
 };
 
 export type SdkDashboardInnerProps = SdkDashboardProps &
@@ -406,7 +403,7 @@ function DashboardQueryBuilder({
       backToDashboard={dashboard}
       entityTypes={dataPickerProps?.entityTypes}
     >
-      <InteractiveQuestionDefaultView
+      <SdkQuestionDefaultView
         withResetButton
         withChartTypeSelector
         // The default value is 600px and it cuts off the "Visualize" button.

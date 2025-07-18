@@ -1,8 +1,4 @@
-import {
-  InteractiveQuestion,
-  MetabaseProvider,
-  defineMetabaseTheme,
-} from "embedding-sdk";
+import { MetabaseProvider, defineMetabaseTheme } from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
@@ -19,6 +15,8 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
+
+import { SdkQuestion } from "../question";
 
 import { SdkDashboard, type SdkDashboardProps } from "./SdkDashboard";
 
@@ -181,8 +179,8 @@ export const WithCustomQuestionLayout = {
     dashboardId: DASHBOARD_ID,
     renderDrillThroughQuestion: () => (
       <Stack>
-        <InteractiveQuestion.Title />
-        <InteractiveQuestion.QuestionVisualization />
+        <SdkQuestion.Title />
+        <SdkQuestion.QuestionVisualization />
         <div>This is a custom question layout.</div>
       </Stack>
     ),

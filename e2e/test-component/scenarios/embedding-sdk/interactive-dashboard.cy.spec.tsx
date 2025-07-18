@@ -1,7 +1,7 @@
 const { H } = cy;
 import {
   InteractiveDashboard,
-  InteractiveQuestion,
+  SdkQuestion,
 } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
@@ -83,8 +83,8 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
           dashboardId={dashboardId}
           renderDrillThroughQuestion={() => (
             <Stack>
-              <InteractiveQuestion.Title />
-              <InteractiveQuestion.QuestionVisualization />
+              <SdkQuestion.Title />
+              <SdkQuestion.QuestionVisualization />
               <div>This is a custom question layout.</div>
             </Stack>
           )}

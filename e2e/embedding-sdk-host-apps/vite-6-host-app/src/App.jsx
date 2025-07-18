@@ -1,7 +1,7 @@
 import {
   InteractiveDashboard,
-  InteractiveQuestion,
   MetabaseProvider,
+  SdkQuestion,
   defineMetabaseAuthConfig,
 } from "@metabase/embedding-sdk-react";
 import { useMemo } from "react";
@@ -39,7 +39,7 @@ function App() {
           />
           <Route
             path="/interactive-question"
-            component={() => <InteractiveQuestion questionId={questionId} />}
+            component={() => <SdkQuestion questionId={questionId} />}
           />
           <Route
             path="/interactive-dashboard"

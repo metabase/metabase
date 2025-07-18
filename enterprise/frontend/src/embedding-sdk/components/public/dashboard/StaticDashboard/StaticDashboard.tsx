@@ -1,10 +1,10 @@
+import { StaticQuestionSdkMode } from "embedding-sdk/components/public/question/StaticQuestion/mode";
 import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 /**

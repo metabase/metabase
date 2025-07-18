@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import { SdkQuestion } from "@metabase/embedding-sdk-react";
 
 import { popover } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -20,7 +20,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
       mountSdkContent(
         <Flex p="xl">
-          <InteractiveQuestion questionId="new" />
+          <SdkQuestion questionId="new" />
         </Flex>,
       );
 
@@ -62,7 +62,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
       mountSdkContent(
         <Flex p="xl">
-          <InteractiveQuestion questionId="new" />
+          <SdkQuestion questionId="new" />
         </Flex>,
       );
 
