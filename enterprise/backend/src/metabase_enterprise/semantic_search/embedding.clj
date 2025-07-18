@@ -29,9 +29,9 @@
 (defn- get-model
   "Get the model to use for the current provider, either the default or an override from settings."
   []
-  (let [provider-key (keyword (semantic-settings/ee-embedding-provider))
+  (let [provider-key (semantic-settings/ee-embedding-provider)
         override-model (semantic-settings/ee-embedding-model)]
-    (if (and override-model (not= override-model ""))
+    (if-not (str/blank? override-model)
       override-model
       (default-model-for-provider provider-key))))
 
@@ -137,11 +137,11 @@
 
 (comment
   ;; Configuration:
-  ;; MB_EE_EMBEDDING_PROVIDER:  "openai" (default) or "ollama"
+  ;; MB_EE_EMBEDDING_PROVIDER:  "openai" or "ollama" (default)
   ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"
-  ;; MB_EE_OPENAI_API_KEY your OpenAI API key (reuses existing env var from LLM settings)
+  ;; MB_EE_OPENAI_API_KEY your OpenAI API key
 
   (pull-model)
   (get-embedding "hello")

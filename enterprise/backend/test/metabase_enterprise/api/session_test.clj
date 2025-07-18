@@ -48,7 +48,6 @@
                               :collection-cleanup
                               :database-routing
                               :cloud-custom-smtp}
-    (def res (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true

@@ -6,10 +6,11 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ee-embedding-provider
-  (deferred-tru "The embedding provider to use (''openai'' or ''ollama'')")
+  (deferred-tru "The embedding provider to use (:openai or :ollama)")
   :encryption :no
   :visibility :settings-manager
-  :default "openai"
+  :default :ollama
+  :type :keyword
   :export? false
   :doc "This feature is experimental.")
 
