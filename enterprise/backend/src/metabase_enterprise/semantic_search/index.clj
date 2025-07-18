@@ -176,6 +176,12 @@
          tx
          (-> (sql.helpers/create-table *index-table-name*)
              (sql.helpers/with-columns (index-table-schema vector-dimensions))
+             sql/format))
+        (jdbc/execute!
+         tx
+         (-> (sql.helpers/create-index
+              (keyword (str "embedding_hnsw_index_" (nano-id/nano-id)))
+              [*index-table-name* :using-hnsw [:raw "embedding vector_cosine_ops"]])
              sql/format))))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {:cause e})))))
