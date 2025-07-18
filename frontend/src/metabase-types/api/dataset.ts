@@ -201,11 +201,8 @@ export interface TemplateTag {
   name: TemplateTagName;
   "display-name": string;
   type: TemplateTagType;
-  dimension?: LocalFieldReference;
-  "widget-type"?: string;
   required?: boolean;
   default?: string | null;
-  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;
@@ -214,8 +211,13 @@ export interface TemplateTag {
   "snippet-id"?: number;
   "snippet-name"?: string;
 
-  // Field filter specific
+  // Field filter and time grouping specific
+  dimension?: LocalFieldReference;
   alias?: string;
+
+  // Field filter specific
+  "widget-type"?: string;
+  options?: ParameterOptions;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
