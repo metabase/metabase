@@ -6,13 +6,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  getIcon,
-  queryIcon,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -419,7 +413,7 @@ describe("TagEditorParam", () => {
         expect(screen.getByLabelText("Multiple values")).toBeInTheDocument();
         expect(screen.getByLabelText("A single value")).toBeInTheDocument();
 
-        await userEvent.hover(getIcon("info_filled"));
+        await userEvent.hover(screen.getByTestId("multi-select-info-icon"));
         expect(await screen.findByText(/category IN/)).toBeInTheDocument();
       },
     );
@@ -432,7 +426,9 @@ describe("TagEditorParam", () => {
       setup({ tag });
       expect(screen.getByLabelText("Multiple values")).toBeInTheDocument();
       expect(screen.getByLabelText("A single value")).toBeInTheDocument();
-      expect(queryIcon("info_filled")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("multi-select-info-icon"),
+      ).not.toBeInTheDocument();
     });
 
     it("should not support single and multiple values with date variables", () => {

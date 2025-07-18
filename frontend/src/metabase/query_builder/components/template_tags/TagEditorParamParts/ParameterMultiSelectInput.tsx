@@ -54,7 +54,11 @@ function ParameterMultiSelectHelpInfo() {
   return (
     <HoverCard>
       <HoverCard.Target>
-        <Icon c="text-secondary" name="info_filled" />
+        <Icon
+          c="text-secondary"
+          name="info_filled"
+          data-testid="multi-select-info-icon"
+        />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Box p="md" maw="24rem">

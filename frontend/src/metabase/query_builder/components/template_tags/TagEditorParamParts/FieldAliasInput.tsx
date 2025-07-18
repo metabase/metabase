@@ -49,7 +49,11 @@ function FieldAlisHelpInfo() {
   return (
     <HoverCard>
       <HoverCard.Target>
-        <Icon c="text-secondary" name="info_filled" />
+        <Icon
+          c="text-secondary"
+          name="info_filled"
+          data-testid="field-alias-info-icon"
+        />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Box p="md" maw="24rem">
