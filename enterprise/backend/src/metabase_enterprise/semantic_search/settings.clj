@@ -36,4 +36,3 @@
                 (and (setting/get-value-of-type :boolean :semantic-search-enabled)
                      (premium-features/enable-semantic-search?)))
   :type       :boolean)
-
