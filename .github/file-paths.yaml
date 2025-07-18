@@ -103,6 +103,33 @@ backend_all: &backend_all
   - *backend_sources
   - *backend_specs
 
+# Driver-specific patterns for selective testing
+driver_sources: &driver_sources
+  - "modules/drivers/**"
+  - "test_modules/**"
+  - "src/**/driver/**"
+  - "enterprise/backend/src/**/driver/**"
+
+driver_specific_sources:
+  athena:
+    - "modules/drivers/athena/**"
+    - "test_modules/athena/**"
+  bigquery:
+    - "modules/drivers/bigquery-cloud-sdk/**"
+    - "test_modules/bigquery-cloud-sdk/**"
+  clickhouse:
+    - "modules/drivers/clickhouse/**"
+    - "test_modules/clickhouse/**"
+  mysql:
+    - "modules/drivers/mysql/**"
+    - "test_modules/mysql/**"
+  postgres:
+    - "modules/drivers/postgres/**"
+    - "test_modules/postgres/**"
+  mongo:
+    - "modules/drivers/mongo/**"
+    - "test_modules/mongo/**"
+
 sources: &sources
   - *shared_sources
   - *frontend_sources
@@ -180,3 +207,18 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+# Driver-specific change detection for smarter testing
+drivers_all:
+  - *driver_sources
+  - ".github/workflows/drivers.yml"
+  - ".github/actions/test-driver/**"
+
+drivers_core:
+  - *driver_sources
+  - "modules/drivers/h2/**"
+  - "modules/drivers/postgres/**"
+  - "modules/drivers/mysql/**"
+  - "test_modules/h2/**"
+  - "test_modules/postgres/**"
+  - "test_modules/mysql/**"
