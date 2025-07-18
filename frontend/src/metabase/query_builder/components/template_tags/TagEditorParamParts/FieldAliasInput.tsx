@@ -42,9 +42,9 @@ export function FieldAliasInput({
         </Group>
       </ContainerLabel>
       <TextInputBlurChange
-        id={`tag-editor-field-alias_${tag.id}`}
         value={tag["alias"]}
         placeholder={field?.name}
+        data-testid="field-alias-input"
         onBlurChange={(event) => handleChange(event.target.value)}
       />
     </InputContainer>
