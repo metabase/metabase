@@ -18,7 +18,11 @@ describe("scenarios > metrics > search", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/search?q=*").as("search");
+    cy.intercept({
+      method: "GET",
+      pathname: "/api/search",
+      query: { q: "*" },
+    }).as("search");
   });
 
   it("should be able to search for metrics in global search", () => {

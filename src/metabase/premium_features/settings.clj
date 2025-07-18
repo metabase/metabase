@@ -270,6 +270,10 @@
   "Does the Metabase Cloud instance have ETL connections with PG?"
   :etl-connections-pg)
 
+(define-premium-feature ^{:added "0.56.0"} enable-semantic-search?
+  "Should we enable the semantic search backend?"
+  :semantic-search)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -303,6 +307,7 @@
    :query_reference_validation     (enable-query-reference-validation?)
    :sandboxes                      (enable-sandboxes?)
    :scim                           (enable-scim?)
+   :semantic_search                (enable-semantic-search?)
    :serialization                  (enable-serialization?)
    :session_timeout_config         (enable-session-timeout-config?)
    :snippet_collections            (enable-snippet-collections?)

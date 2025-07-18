@@ -43,7 +43,7 @@
   (search/reindex!))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
-  (quick-task/submit-task! (init!)))
+  (quick-task/submit-task! init!))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
@@ -65,4 +65,5 @@
   (ingestion/start-listener!))
 
 (comment
-  (task/job-exists? reindex-job-key))
+  (task/job-exists? reindex-job-key)
+  (task/trigger-now! reindex-job-key))
