@@ -23,6 +23,10 @@
   "The name of the index table used for semantic search."
   :search_index)
 
+(def ^:dynamic *batch-size*
+  "The number of documents to process per batch when updating the index."
+  150)
+
 (defn- index-table-schema
   "Schema for the index table."
   [vector-dimensions]

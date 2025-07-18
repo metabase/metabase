@@ -76,10 +76,10 @@
 (defmacro with-mocked-embeddings! [& body]
   ;; TODO: it's warning about not using with-redefs outside of tests but we *are* using it in tests
   #_:clj-kondo/ignore
-  `(binding [semantic.index/*vector-dimensions* 4]
-     (with-redefs [semantic.embedding/pull-model (fn [] nil)
-                   semantic.embedding/get-embedding get-mock-embedding]
-       ~@body)))
+  `(with-redefs [semantic.embedding/model-dimensions (constantly 4)
+                 semantic.embedding/pull-model (constantly nil)
+                 semantic.embedding/get-embedding get-mock-embedding]
+     ~@body))
 
 (defmacro with-temp-index-table! [& body]
   `(let [test-table-name# (keyword (str "test_search_index_" (nano-id/nano-id)))]
@@ -101,24 +101,50 @@
   [& body]
   `(mt/dataset ~(symbol "test-data")
                (mt/with-temp [:model/Collection       {col1# :id}  {:name "Wildlife Collection" :archived false}
+
                               :model/Collection       {col2# :id}  {:name "Archived Animals" :archived true}
+
+                              :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
+
                               :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+
                               :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+
                               :model/Card             {}           {:name "Cat Behavior Study" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
+
                               :model/Card             {}           {:name "Horse Racing Analysis" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+
                               :model/Card             {}           {:name "Fish Tank Setup" :collection_id col2# :creator_id (mt/user->id :crowberto) :archived true}
+
+                              :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
+
                               :model/ModerationReview {}           {:moderated_item_type "card"
+
                                                                     :moderated_item_id card1#
+
                                                                     :moderator_id (mt/user->id :crowberto)
+
                                                                     :status "verified"
+
                                                                     :most_recent true}
+
                               :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
+
                               :model/Dashboard        {}           {:name "Lion Pride Dynamics" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+
                               :model/Dashboard        {}           {:name "Penguin Colony Study" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
+
                               :model/Dashboard        {}           {:name "Whale Communication" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+
                               :model/Dashboard        {}           {:name "Tiger Conservation" :collection_id col2# :creator_id (mt/user->id :rasta) :archived true}
+
+                              :model/Dashboard        {}           {:name "Loch Ness Stuff" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
+
                               :model/Database         {db-id# :id} {:name "Animal Database"}
-                              :model/Table            {}           {:name "Species Table", :db_id db-id#}]
+
+                              :model/Table            {}           {:name "Species Table", :db_id db-id#}
+
+                              :model/Table            {}           {:name "Monsters Table", :db_id db-id#, :active true}]
                  ~@body)))
 
 (defmacro with-index!

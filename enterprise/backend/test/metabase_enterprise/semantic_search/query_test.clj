@@ -3,11 +3,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -148,8 +149,8 @@
 
 (deftest permissions-test
   (mt/with-premium-features #{:semantic-search}
-    (with-mocked-embeddings!
-      (with-index!
+    (semantic.tu/with-mocked-embeddings!
+      (semantic.tu/with-index!
         (let [monsters-table   (t2/select-one-pk :model/Table :name "Monsters Table")
               q                (fn [model s] (map :name (semantic.index/query-index {:search-string s, :models [model]})))
               all-users        (perms-group/all-users)
