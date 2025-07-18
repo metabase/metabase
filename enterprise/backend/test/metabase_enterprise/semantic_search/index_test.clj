@@ -19,21 +19,21 @@
           ;; with-temp-index-table! creates the temp table, so drop it in order to test create!.
           (semantic.index/drop-index-table!)
           (testing "index table is not present before create!"
-            (is (not (semantic.tu/table-exists-in-db?! semantic.index/*index-table-name*))))
+            (is (not (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*))))
           (testing "index table is present after create!"
             (semantic.index/create-index-table! {:force-reset? false})
-            (is (semantic.tu/table-exists-in-db?! semantic.index/*index-table-name*)))))))
+            (is (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*)))))))
 
 #_(deftest drop-index-table!-test
     (mt/with-premium-features #{:semantic-search}
       (semantic.tu/with-mocked-embeddings!
         (semantic.tu/with-temp-index-table!
-        ;; with-temp-index-table! creates the temp table
+          ;; with-temp-index-table! creates the temp table
           (testing "index table is present before drop!"
-            (is (semantic.tu/table-exists-in-db?! semantic.index/*index-table-name*)))
+            (is (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*)))
           (testing "index table is not present after drop!"
             (semantic.index/drop-index-table!)
-            (is (not (semantic.tu/table-exists-in-db?! semantic.index/*index-table-name*))))))))
+            (is (not (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*))))))))
 
 (defn- decode-embedding
   "Decode `row`s `:embedding`."
