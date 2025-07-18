@@ -2694,6 +2694,73 @@ describe("scenarios > dashboard > parameters", () => {
         H.filterWidget({ isEditing: true }).contains("Count").should("exist");
       });
     });
+
+    it("should provide a way to 'focus' the recently moved filter", () => {
+      const TAB_1 = { id: 1, name: "Tab 1" };
+      const TAB_2 = { id: 2, name: "Tab 2" };
+
+      H.createDashboardWithTabs({
+        parameters: [categoryParameter, countParameter],
+        tabs: [TAB_1, TAB_2],
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            dashboard_tab_id: TAB_1.id,
+            size_x: 18,
+            size_y: 6,
+          }),
+          createMockHeadingDashboardCard({
+            id: -2,
+            dashboard_tab_id: TAB_2.id,
+            size_x: 24,
+            size_y: 30,
+            text: "Tall heading card",
+          }),
+          createMockHeadingDashboardCard({
+            id: -3,
+            dashboard_tab_id: TAB_2.id,
+            size_x: 24,
+            size_y: 2,
+            text: "Heading text card",
+          }),
+        ],
+      }).then((dashboard) => {
+        H.visitDashboard(dashboard.id);
+        H.editDashboard();
+      });
+
+      H.editingDashboardParametersContainer().within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").click();
+      });
+      H.moveDashboardFilter("Heading text card", { showFilter: true });
+
+      // Assert tab changed and the filter is in viewport now
+      cy.findByRole("tab", { name: "Tab 2" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      H.getDashboardCard(1).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .isRenderedWithinViewport();
+      });
+
+      // Move filter to another card on the same tab
+      H.moveDashboardFilter("Tall heading card", { showFilter: true });
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget({ isEditing: true }).contains("Count").should("exist");
+        H.filterWidget({ isEditing: true })
+          .contains("Count")
+          .isRenderedWithinViewport();
+      });
+
+      // Move filter to top nav and assert the "Show filter" button isn't displayed
+      H.moveDashboardFilter("Top of page");
+      H.undoToast().button("Show filter").should("not.exist");
+    });
   });
 });
 

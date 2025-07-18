@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
   closeAddCardAutoWireToasts,
@@ -18,6 +20,7 @@ import {
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
@@ -53,6 +56,7 @@ import {
   getDashboardBeforeEditing,
   getDashboardComplete,
   getDashboardId,
+  getDashcardList,
   getDashcards,
   getDraftParameterValues,
   getFiltersToReset,
@@ -77,6 +81,7 @@ import {
   setDashboardAttributes,
   setMultipleDashCardAttributes,
 } from "./core";
+import { selectTab } from "./tabs";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -187,7 +192,11 @@ export const moveParameter =
       );
     }
 
-    if (typeof destination === "object" && destination.type === "dashcard") {
+    const isMovedToTopNav = destination === "top-nav";
+    const isMovedToDashcard =
+      typeof destination === "object" && destination.type === "dashcard";
+
+    if (isMovedToDashcard) {
       const dashcard = dashcardMap[destination.id];
       if (!dashcard) {
         throw new Error(`Dashcard with id ${destination.id} not found`);
@@ -209,42 +218,79 @@ export const moveParameter =
     trackFilterMoved(dashboardId, analyticsOrigin, analyticsDestination);
 
     if (canUndo) {
+      const undoMove = () => {
+        dispatch(
+          moveParameter({
+            parameterId,
+            destination: parameterDashcard
+              ? {
+                  type: "dashcard",
+                  id: parameterDashcard.id,
+                }
+              : "top-nav",
+            canUndo: false,
+          }),
+        );
+      };
+
       dispatch(
         addUndo({
-          message: t`Filter moved`,
           undo: true,
-          action: () =>
-            dispatch(
-              moveParameter({
-                parameterId,
-                destination: parameterDashcard
-                  ? {
-                      type: "dashcard",
-                      id: parameterDashcard.id,
-                    }
-                  : "top-nav",
-                canUndo: false,
-              }),
-            ),
+          action: undoMove,
+
+          // Workaround to make the text show up without being truncated
+          message: (
+            <Text
+              className={cx(CS.flex, CS.flexFull, CS.flexNoShrink)}
+              c="text-white"
+              w="8rem"
+            >{t`Filter moved`}</Text>
+          ),
+
+          // Top nav filters are always visible, so we don't need a "Show" button
+          extraAction: isMovedToTopNav
+            ? null
+            : {
+                label: t`Show filter`,
+                action: () => {
+                  dispatch(setEditingParameter(parameterId));
+                },
+              },
         }),
       );
     }
   };
 
 export const setEditingParameter =
-  (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
-    if (parameterId != null) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId,
-          },
-        }),
-      );
-    } else {
+  (parameterId: ParameterId | null) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    if (parameterId === null) {
       dispatch(closeSidebar());
+      return;
     }
+
+    const currentTabId = getSelectedTabId(getState());
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      getDashcardList(getState()),
+    );
+
+    if (
+      parameterDashcard &&
+      currentTabId !== null &&
+      currentTabId !== parameterDashcard.dashboard_tab_id
+    ) {
+      dispatch(selectTab({ tabId: parameterDashcard.dashboard_tab_id }));
+    }
+
+    dispatch(
+      setSidebar({
+        name: SIDEBAR_NAME.editParameter,
+        props: {
+          parameterId,
+        },
+      }),
+    );
   };
 
 interface AddParameterPayload {

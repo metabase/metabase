@@ -29,6 +29,10 @@ export interface Undo {
   count?: number;
   verb?: string;
   subject?: string;
+  extraAction?: {
+    label: string;
+    action: () => void;
+  };
   ref?: RefObject<HTMLDivElement>;
 }
 
