@@ -201,6 +201,7 @@ describe("LinkedEntityPicker", () => {
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
             context: "entity-picker",
             models: "dashboard",
+            search_engine: "appdb",
             q: typedText,
             filter_items_in_personal_collection: "exclude",
           });
@@ -262,6 +263,7 @@ describe("LinkedEntityPicker", () => {
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
             context: "entity-picker",
             models: "dashboard",
+            search_engine: "appdb",
             q: typedText,
           });
         });
@@ -347,6 +349,7 @@ describe("LinkedEntityPicker", () => {
             models: ["card", "dataset"],
             q: typedText,
             filter_items_in_personal_collection: "exclude",
+            search_engine: "appdb",
           });
         });
       });
@@ -404,6 +407,7 @@ describe("LinkedEntityPicker", () => {
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
             context: "entity-picker",
             models: ["card", "dataset"],
+            search_engine: "appdb",
             q: typedText,
           });
         });
