@@ -1479,13 +1479,23 @@ function(bin) {
 ;; When users query nest fields within MongoDB's special "_id" field (e.g., grouping by _id.widgetType),
 ;; we must not generate projections like:
 ;;   {$project: {"_id": false, "_id.widgetType": "$_id.widgetType"}}
+;;
+;; Why we care:
+;;; 1. MongoDB documents can have compound _id fields: {_id: {widgetType: "button", userId: 123}}
+;;;    - in fact, it is encouraged as best practice in Mongoland
+;; 2. Users want to group/breakout by these nested fields in Metabase
+;; 3. We typically wish to suppress _id to avoid cluttering results
+;; 4. But suppressing _id while projecting _id.widgetType creates the collision error
 
 (defn- build-projections
   [projected-fields]
+  ;; A case could be made for writing a nested projection into `_id`, but in my tests
+  ;; it doesn't make a difference to Mongo and it's a marginal difference in our codebase.
+  ;; See `projection-syntax-efficiency-test`
   (let [projects-id-subfields? (some
                                 (fn [[field-name _]]
-                    (str/starts-with? field-name "_id."))
-                  projected-fields)]
+                                  (str/starts-with? field-name "_id."))
+                                projected-fields)]
     (if projects-id-subfields?
       (into (ordered-map/ordered-map) projected-fields)
       (into (ordered-map/ordered-map "_id" false) projected-fields))))

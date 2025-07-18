@@ -234,6 +234,8 @@
                   :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
                                            "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
+                                ;; Or should this be {"source" {"username" "$_id.source.username"}} ?
+                                ;; TODO: see mongo-test/nested-id-deep-projection-style-combined-test
                                 {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}]
                   :collection  "tips"
                   :mbql?       true}
