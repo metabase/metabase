@@ -103,6 +103,7 @@ export function useEditTableData({ tableId, databaseId, location }: Props) {
     isLoading,
     isFetching,
     tableQuestion,
+    tableQuery,
     getColumnSortDirection,
     handleTableQuestionChange,
     handleChangeColumnSort,

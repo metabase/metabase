@@ -1,10 +1,12 @@
 import type { Location } from "history";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetDatabaseQuery } from "metabase/api";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 
+import type { TableEditingActionScope } from "../api/types";
 import { TableHeader } from "../common/TableHeader";
 import { getRowCountMessage } from "../common/getRowCountMessage";
 import { useCloseNavbarOnMount } from "../common/use-close-navbar-on-mount";
@@ -17,6 +19,8 @@ import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { useEditTableData } from "./use-edit-table-data";
 import { useEditTableLoadingOverlay } from "./use-edit-table-loading-overlay";
 import { useEditingTableRowSelection } from "./use-table-row-selection";
+import { useTableEditingStateAdHocQueryUpdateStrategy } from "./use-table-state-adhoc-query-update-strategy";
+import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
 type EditTableDataContainerProps = {
   params: {
@@ -35,6 +39,7 @@ export const EditTableDataContainer = ({
 
   const databaseId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
+  const { rowSelection, setRowSelection } = useEditingTableRowSelection();
 
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
   const {
@@ -42,6 +47,7 @@ export const EditTableDataContainer = ({
     isLoading,
     isFetching,
     tableQuestion,
+    tableQuery,
     getColumnSortDirection,
     handleTableQuestionChange,
     handleChangeColumnSort,
@@ -51,18 +57,35 @@ export const EditTableDataContainer = ({
     location,
   });
 
-  const { enabled: showLoadingOverlay, message: loadingOverlayMessage } =
-    useEditTableLoadingOverlay({
-      isDatasetLoading: isLoading,
-      isDatasetFetching: isFetching,
-    });
+  const stateUpdateStrategy =
+    useTableEditingStateAdHocQueryUpdateStrategy(tableQuery);
 
-  const { rowSelection, setRowSelection } = useEditingTableRowSelection();
+  const actionScope = useMemo<TableEditingActionScope>(
+    () => ({ "table-id": tableId }),
+    [tableId],
+  );
+
+  const { undo, redo, isUndoLoading, isRedoLoading } = useTableEditingUndoRedo({
+    tableId,
+    scope: actionScope,
+    stateUpdateStrategy,
+  });
+
+  const loadingOverlayProps = useEditTableLoadingOverlay({
+    isDatasetLoading: isLoading,
+    isDatasetFetching: isFetching,
+    isUndoLoading,
+    isRedoLoading,
+  });
 
   // eslint-disable-next-line no-constant-condition
   if (database && !isDatabaseTableEditingEnabled(database) && false) {
     return (
-      <Stack gap={0} data-testid="edit-table-data-root" className={S.container}>
+      <Stack
+        gap={0}
+        data-testid="edit-table-data-restricted"
+        className={S.container}
+      >
         <TableHeader
           databaseId={databaseId}
           tableId={tableId}
@@ -84,12 +107,13 @@ export const EditTableDataContainer = ({
         tableId={tableId}
         question={tableQuestion}
         onQuestionChange={handleTableQuestionChange}
+        isUndoLoading={isUndoLoading}
+        isRedoLoading={isRedoLoading}
+        onUndo={undo}
+        onRedo={redo}
       />
       <Box pos="relative" className={S.gridWrapper}>
-        <EditTableDataOverlay
-          show={showLoadingOverlay}
-          message={loadingOverlayMessage ?? ""}
-        />
+        <EditTableDataOverlay {...loadingOverlayProps} />
         {dataset && (
           <EditTableDataGrid
             data={dataset.data}
@@ -112,32 +136,4 @@ export const EditTableDataContainer = ({
       )}
     </Stack>
   );
-
-  //         <EditTableDataGrid
-  //           data={datasetData}
-  //           fieldMetadataMap={tableFieldMetadataMap}
-  //           cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
-  //           getColumnSortDirection={getColumnSortDirection}
-  //           onCellValueUpdate={handleCellValueUpdate}
-  //           onRowExpandClick={openUpdateRowModal}
-  //           onRowSelectionChange={setRowSelection}
-  //           hasRowSelection
-  //           rowSelection={rowSelection}
-  //           onColumnSort={handleChangeColumnSort}
-  //         />
-  //       </Box>
-  //       <Flex
-  //         py="0.5rem"
-  //         px="1.5rem"
-  //         h="2.5rem"
-  //         justify="flex-end"
-  //         align="center"
-  //         className={S.gridFooter}
-  //       >
-  //         <Text fw="bold" size="md" c="inherit" component="span">
-  //           {getRowCountMessage(rawDatasetResult)}
-  //         </Text>
-  //       </Flex>
-  //     </Stack>
-  //   );
 };

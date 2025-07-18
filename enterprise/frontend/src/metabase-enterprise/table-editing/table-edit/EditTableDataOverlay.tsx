@@ -3,7 +3,7 @@ import { Flex, Loader, Text } from "metabase/ui";
 import S from "./EditTableDataOverlay.module.css";
 
 type EditTableDataOverlayProps = {
-  message: string;
+  message?: string;
   show?: boolean;
 };
 
@@ -18,7 +18,7 @@ export function EditTableDataOverlay({
   return (
     <Flex className={S.overlay}>
       <Loader size="lg" color="currentColor" />
-      <Text className={S.message}>{message}</Text>
+      {message && <Text className={S.message}>{message}</Text>}
     </Flex>
   );
 }

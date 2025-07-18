@@ -4,29 +4,47 @@ import { t } from "ttag";
 type UseEditTableLoadingOverlayProps = {
   isDatasetLoading: boolean;
   isDatasetFetching: boolean;
+  isUndoLoading: boolean;
+  isRedoLoading: boolean;
 };
 
 export function useEditTableLoadingOverlay({
   isDatasetLoading,
   isDatasetFetching,
+  isUndoLoading,
+  isRedoLoading,
 }: UseEditTableLoadingOverlayProps) {
   return useMemo(() => {
+    if (isUndoLoading) {
+      return {
+        show: true,
+        message: t`Undoing changes...`,
+      };
+    }
+
+    if (isRedoLoading) {
+      return {
+        show: true,
+        message: t`Redoing changes...`,
+      };
+    }
+
     if (isDatasetLoading) {
       return {
-        enabled: true,
+        show: true,
         message: t`Loading data...`,
       };
     }
 
     if (isDatasetFetching) {
       return {
-        enabled: true,
+        show: true,
         message: t`Updating...`,
       };
     }
 
     return {
-      enabled: false,
+      show: false,
     };
-  }, [isDatasetLoading, isDatasetFetching]);
+  }, [isDatasetLoading, isDatasetFetching, isUndoLoading, isRedoLoading]);
 }
