@@ -24,7 +24,11 @@ export const commandPaletteInput = () =>
   cy.findByPlaceholderText("Search for anything or jump somewhere…");
 
 export const commandPaletteSearch = (query, viewAll = true) => {
-  cy.intercept("GET", "/api/search?q=*").as("paletteSearch");
+  cy.intercept({
+    method: "GET",
+    pathname: "/api/search",
+    query: { q: "*" },
+  }).as("paletteSearch");
   commandPaletteButton().click();
   commandPaletteInput().type(query);
   cy.wait("@paletteSearch");
