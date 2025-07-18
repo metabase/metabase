@@ -52,6 +52,11 @@
   ^MongoCollection [^MongoDatabase db coll-name]
   (.getCollection db coll-name))
 
+(defn drop
+  "Drop `MongoCollection` from db"
+  [^MongoCollection coll]
+  (.drop coll))
+
 ;; https://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-sync/com/mongodb/client/MongoCollection.html#listIndexes()
 (defn list-indexes
   "Return vector of Documets describing indexes."
