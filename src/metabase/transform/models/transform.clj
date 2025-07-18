@@ -150,9 +150,12 @@
                                         :db_id database-id
                                         :schema schema
                                         :name view-name)]
+          ;; TODO (lbrdnk 2025-07-16): Make analysis async.
+          (sync/analyze-table! view-table)
           (t2/update! :model/TransformView :id transform-id
                       {:view_name view-name
                        :view_schema (:schema view-table)
+                       :view_table_id (:id view-table)
                        :status :view_synced})
           (t2/update! :model/Table :id (:id view-table)
                       {:display_name display-name
@@ -170,6 +173,7 @@
         namespaced-view-name* (namespaced-view-name schema-name view-name)
         query (dataset-query->query dataset-query)
         database-id (:database query)
+        query-type (query-type query)
         compiled (:query (qp.compile/compile-with-inline-parameters query))
         database (t2/select-one :model/Database :id database-id)
         driver (driver.u/database->driver database)]
@@ -179,11 +183,17 @@
     (driver/drop-view! driver database-id namespaced-view-name*)
     (driver/create-view! driver database-id namespaced-view-name* compiled)
     (t2/with-transaction [_conn]
-      (t2/update! :model/TransformView :id transform-id
-                  {:dataset_query dataset-query
-                   :creator_id (:id creator)})
-      ;; TODO (lbrdnk 2025-07-15): Add async analysis.
-      (sync/sync-table-metadata! (t2/select-one :model/Table :transform_id transform-id)))))
+      (let [table (t2/select-one :model/Table :transform_id transform-id)]
+        (t2/update! :model/TransformView :id transform-id
+                    {:dataset_query dataset-query
+                     :dataset_query_type query-type
+                     ;; TODO (lbrdnk 2025-07-16): Handle schema upgrades later, now hardcoded.
+                     :dataset_query_schema dataset-query-current-schema
+                     :creator_id (:id creator)})
+        (sync/sync-table-metadata! table)
+        ;; TODO (lbrdnk 2025-07-16): Make analysis async.
+        (sync/analyze-table! table))
+      (t2/select-one :model/TransformView :id transform-id))))
 
 (defn delete-transform!
   "Delete transform and view."
