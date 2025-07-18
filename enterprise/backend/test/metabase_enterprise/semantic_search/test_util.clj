@@ -83,7 +83,8 @@
   #_:clj-kondo/ignore
   `(with-redefs [semantic.embedding/model-dimensions (constantly 4)
                  semantic.embedding/pull-model (constantly nil)
-                 semantic.embedding/get-embeddings-batch get-mock-embeddings-batch]
+                 semantic.embedding/get-embeddings-batch get-mock-embeddings-batch
+                 semantic.embedding/get-embedding get-mock-embedding]
      ~@body))
 
 (defmacro with-temp-index-table! [& body]
