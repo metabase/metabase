@@ -583,7 +583,7 @@ Related: [notEmpty](#notempty), [isNull](#isnull).
 
 ### integer
 
-> Unavailable for the non-JDBC Apache Druid driver.
+> Only available for BigQuery, ClickHouse, MySQL, PostgreSQL, Amazon Redshift, and Snowflake.
 
 - Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
 - Converts a floating point value by rounding it to an integer.

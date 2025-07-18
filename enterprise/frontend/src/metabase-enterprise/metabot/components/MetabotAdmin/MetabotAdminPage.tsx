@@ -8,12 +8,12 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import {
   LeftNavPane,
   LeftNavPaneItem,
 } from "metabase/common/components/LeftNavPane";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";

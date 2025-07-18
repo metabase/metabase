@@ -1,430 +1,162 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
-import { useCallback, useEffect } from "react";
-import type { ConnectedProps } from "react-redux";
+import type { PropsWithChildren } from "react";
+import { useState } from "react";
 import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
-import { useUnmount } from "react-use";
-import { t } from "ttag";
-import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
-import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
-import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
-  addHeadingDashCardToDashboard,
-  addLinkDashCardToDashboard,
-  addMarkdownDashCardToDashboard,
-  cancelFetchDashboardCardData,
-  closeDashboard,
-  closeSidebar,
-  fetchDashboard,
-  fetchDashboardCardData,
-  hideAddParameterPopover,
-  initialize,
   navigateToNewCardFromDashboard,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardColumnSettings,
-  onUpdateDashCardVisualizationSettings,
-  removeParameter,
-  reset,
-  setDashboardAttributes,
   setEditingDashboard,
-  setParameterDefaultValue,
-  setParameterFilteringParameters,
-  setParameterIsMultiSelect,
-  setParameterName,
-  setParameterQueryType,
-  setParameterRequired,
-  setParameterSourceConfig,
-  setParameterSourceType,
-  setParameterTemporalUnits,
-  setParameterType,
-  setSharing,
-  setSidebar,
   toggleSidebar,
-  updateDashboardAndCards,
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import {
+  DASHBOARD_EDITING_ACTIONS,
+  DASHBOARD_VIEW_ACTIONS,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
-import {
-  useDashboardUrlParams,
-  useDashboardUrlQuery,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
-import title from "metabase/hoc/Title";
-import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import { parseHashOptions } from "metabase/lib/browser";
-import { connect, useDispatch } from "metabase/lib/redux";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { DashboardContextProvider } from "metabase/dashboard/context";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
+import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
+import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { closeNavbar, setErrorPage } from "metabase/redux/app";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { getIsNavbarOpen } from "metabase/selectors/app";
-import {
-  canManageSubscriptions,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
-import type { DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { setErrorPage } from "metabase/redux/app";
+import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
-import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
-import {
-  getClickBehaviorSidebarDashcard,
-  getDashboardBeforeEditing,
-  getDashboardComplete,
-  getDocumentTitle,
-  getFavicon,
-  getIsAddParameterPopoverOpen,
-  getIsAdditionalInfoVisible,
-  getIsDashCardsLoadingComplete,
-  getIsDashCardsRunning,
-  getIsDirty,
-  getIsEditing,
-  getIsEditingParameter,
-  getIsHeaderVisible,
-  getIsNavigatingBackToDashboard,
-  getIsSharing,
-  getLoadingStartTime,
-  getParameterValues,
-  getSelectedTabId,
-  getSidebar,
-  getSlowCards,
-} from "../../selectors";
+import { getFavicon } from "../../selectors";
 
-type OwnProps = {
+import { DashboardTitle } from "./DashboardTitle";
+import { useDashboardLocationSync } from "./use-dashboard-location-sync";
+import { useSlowCardNotification } from "./use-slow-card-notification";
+
+interface DashboardAppProps
+  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
   dashboardId?: DashboardId;
   route: Route;
-  params: { slug: string };
-  children?: ReactNode;
-};
+}
 
-const mapStateToProps = (state: State) => {
-  return {
-    canManageSubscriptions: canManageSubscriptions(state),
-    isAdmin: getUserIsAdmin(state),
-    isNavbarOpen: getIsNavbarOpen(state),
-    isEditing: getIsEditing(state),
-    isSharing: getIsSharing(state),
-    dashboardBeforeEditing: getDashboardBeforeEditing(state),
-    isEditingParameter: getIsEditingParameter(state),
-    isDirty: getIsDirty(state),
-    dashboard: getDashboardComplete(state),
-    slowCards: getSlowCards(state),
-    parameterValues: getParameterValues(state),
-    loadingStartTime: getLoadingStartTime(state),
-    clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
-    isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
-    sidebar: getSidebar(state),
-    pageFavicon: getFavicon(state),
-    documentTitle: getDocumentTitle(state),
-    isRunning: getIsDashCardsRunning(state),
-    isLoadingComplete: getIsDashCardsLoadingComplete(state),
-    isHeaderVisible: getIsHeaderVisible(state),
-    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
-    selectedTabId: getSelectedTabId(state),
-    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-  };
-};
+type DashboardAppInnerProps = Pick<
+  DashboardAppProps,
+  "location" | "route" | "children"
+>;
 
-const mapDispatchToProps = {
-  initialize,
-  cancelFetchDashboardCardData,
-  addCardToDashboard,
-  addHeadingDashCardToDashboard,
-  addMarkdownDashCardToDashboard,
-  addLinkDashCardToDashboard,
-  setEditingDashboard,
-  setDashboardAttributes,
-  setSharing,
-  toggleSidebar,
-  closeSidebar,
-  closeNavbar,
-  setErrorPage,
-  setParameterName,
-  setParameterType,
-  navigateToNewCardFromDashboard,
-  setParameterDefaultValue,
-  setParameterRequired,
-  setParameterTemporalUnits,
-  setParameterIsMultiSelect,
-  setParameterQueryType,
-  setParameterSourceType,
-  setParameterSourceConfig,
-  setParameterFilteringParameters,
-  removeParameter,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
-  onUpdateDashCardColumnSettings,
-  updateDashboardAndCards,
-  setSidebar,
-  hideAddParameterPopover,
-  fetchDashboard,
-  fetchDashboardCardData,
-  onChangeLocation: push,
-};
+function DashboardAppInner({
+  location,
+  route,
+  children,
+}: DashboardAppInnerProps) {
+  useDashboardLocationSync({ location });
+  const pageFavicon = useSelector(getFavicon);
+  useFavicon({ favicon: pageFavicon });
+  useSlowCardNotification();
 
-const connector = connect(mapStateToProps, mapDispatchToProps);
-type ReduxProps = ConnectedProps<typeof connector>;
+  return (
+    <>
+      <DashboardTitle />
+      <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
+        <DashboardLeaveConfirmationModal route={route} />
+        <Dashboard />
+        {/* For rendering modal urls */}
+        {children}
+      </div>
+    </>
+  );
+}
 
-export type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
+export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
+  isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
-const DashboardApp = (props: DashboardAppProps) => {
-  useFavicon({ favicon: props.pageFavicon });
+export const DashboardApp = ({
+  location,
+  params,
+  router,
+  route,
+  dashboardId: _dashboardId,
+  children,
+}: DashboardAppProps) => {
+  const dispatch = useDispatch();
 
-  const {
-    dashboard,
-    isRunning,
-    isLoadingComplete,
-    isEditing,
-    isDirty,
-    route,
-    router,
-    documentTitle: _documentTitle,
-    isRunning: _isRunning,
-    isLoadingComplete: _isLoadingComplete,
-    location,
-    canManageSubscriptions,
-    isAdmin,
-    isNavbarOpen,
-    isSharing,
-    dashboardBeforeEditing,
-    isEditingParameter,
-    slowCards,
-    parameterValues,
-    loadingStartTime,
-    clickBehaviorSidebarDashcard,
-    isAddParameterPopoverOpen,
-    sidebar,
-    isHeaderVisible,
-    isAdditionalInfoVisible,
-    selectedTabId,
-    isNavigatingBackToDashboard,
-    initialize,
-    cancelFetchDashboardCardData,
-    addCardToDashboard,
-    addHeadingDashCardToDashboard,
-    addMarkdownDashCardToDashboard,
-    addLinkDashCardToDashboard,
-    setEditingDashboard,
-    setDashboardAttributes,
-    setSharing,
-    toggleSidebar,
-    closeSidebar,
-    closeNavbar,
-    setErrorPage,
-    setParameterName,
-    setParameterType,
-    navigateToNewCardFromDashboard,
-    setParameterDefaultValue,
-    setParameterRequired,
-    setParameterTemporalUnits,
-    setParameterIsMultiSelect,
-    setParameterQueryType,
-    setParameterSourceType,
-    setParameterSourceConfig,
-    setParameterFilteringParameters,
-    removeParameter,
-    onReplaceAllDashCardVisualizationSettings,
-    onUpdateDashCardVisualizationSettings,
-    onUpdateDashCardColumnSettings,
-    updateDashboardAndCards,
-    setSidebar,
-    hideAddParameterPopover,
-    fetchDashboard,
-    fetchDashboardCardData,
-  } = props;
+  const [error, setError] = useState<string>();
 
   const parameterQueryParams = location.query;
-  const dashboardId = getDashboardId(props);
+  const dashboardId =
+    _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
 
-  const dispatch = useDispatch();
+  useRegisterDashboardMetabotContext();
+  useDashboardUrlQuery(router, location);
 
-  const { requestPermission, showNotification } = useWebNotification();
+  const extractAndRemoveHashOption = (key: string) => {
+    const { [key]: removed, ...restHashOptions } = options;
+    const hash = stringifyHashOptions(restHashOptions);
+    dispatch(push({ ...location, hash: hash ? "#" + hash : "" }));
+  };
 
-  useUnmount(() => {
-    dispatch(reset());
-    dispatch(closeDashboard());
-  });
+  const onLoadDashboard = (dashboard: IDashboard) => {
+    try {
+      if (editingOnLoad) {
+        dispatch(setEditingDashboard(dashboard));
+        extractAndRemoveHashOption("edit");
+      }
+      if (addCardOnLoad != null) {
+        extractAndRemoveHashOption("add");
+        const searchParams = new URLSearchParams(window.location.search);
+        const tabParam = searchParams.get("tab");
+        const tabId = tabParam ? parseInt(tabParam, 10) : null;
 
-  const slowToastId = useUniqueId();
-
-  useEffect(() => {
-    if (isLoadingComplete) {
-      if (
-        "Notification" in window &&
-        Notification.permission === "granted" &&
-        document.hidden
-      ) {
-        showNotification(
-          t`All Set! ${dashboard?.name} is ready.`,
-          t`All questions loaded`,
+        dispatch(
+          addCardToDashboard({
+            dashId: dashboardId,
+            cardId: addCardOnLoad,
+            tabId,
+          }),
         );
       }
+    } catch (error) {
+      if (error instanceof Response && error.status === 404) {
+        setErrorPage({ ...error, context: "dashboard" });
+      } else {
+        console.error(error);
+        setError(error as string);
+      }
     }
+  };
 
-    return () => {
-      dispatch(dismissUndo({ undoId: slowToastId }));
-    };
-  }, [
-    dashboard?.name,
-    dispatch,
-    isLoadingComplete,
-    showNotification,
-    slowToastId,
-  ]);
-
-  const onConfirmToast = useCallback(async () => {
-    await requestPermission();
-    dispatch(dismissUndo({ undoId: slowToastId }));
-  }, [dispatch, requestPermission, slowToastId]);
-
-  const onTimeout = useCallback(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      dispatch(
-        addUndo({
-          id: slowToastId,
-          timeout: false,
-          message: t`Would you like to be notified when this dashboard is done loading?`,
-          action: onConfirmToast,
-          actionLabel: t`Turn on`,
-        }),
-      );
-    }
-  }, [dispatch, onConfirmToast, slowToastId]);
-
-  useLoadingTimer(isRunning, {
-    timer: DASHBOARD_SLOW_TIMEOUT,
-    onTimeout,
-  });
-
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId: dashboardId,
-    parameterQueryParams,
-  });
-
-  const {
-    hasNightModeToggle,
-    isFullscreen,
-    isNightMode,
-    onNightModeChange,
-    refreshPeriod,
-    onFullscreenChange,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
-  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
-  useDashboardUrlQuery(router, location);
-  useRegisterDashboardMetabotContext();
+  const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+    useAutoScrollToDashcard(location);
 
   return (
-    <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-      <DashboardLeaveConfirmationModal route={route} />
-      <Dashboard
+    <ErrorBoundary message={error}>
+      <DashboardContextProvider
         dashboardId={dashboardId}
-        editingOnLoad={editingOnLoad}
-        addCardOnLoad={addCardOnLoad}
+        parameterQueryParams={parameterQueryParams}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-        isFullscreen={isFullscreen}
-        refreshPeriod={refreshPeriod}
-        isNightMode={isNightMode}
-        hasNightModeToggle={hasNightModeToggle}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onNightModeChange={onNightModeChange}
-        onFullscreenChange={onFullscreenChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        parameterQueryParams={parameterQueryParams}
-        canManageSubscriptions={canManageSubscriptions}
-        isAdmin={isAdmin}
-        isNavbarOpen={isNavbarOpen}
-        isEditing={isEditing}
-        isSharing={isSharing}
-        dashboardBeforeEditing={dashboardBeforeEditing}
-        isEditingParameter={isEditingParameter}
-        isDirty={isDirty}
-        dashboard={dashboard}
-        slowCards={slowCards}
-        parameterValues={parameterValues}
-        loadingStartTime={loadingStartTime}
-        clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-        isAddParameterPopoverOpen={isAddParameterPopoverOpen}
-        sidebar={sidebar}
-        isHeaderVisible={isHeaderVisible}
-        isAdditionalInfoVisible={isAdditionalInfoVisible}
-        selectedTabId={selectedTabId}
-        isNavigatingBackToDashboard={isNavigatingBackToDashboard}
-        initialize={initialize}
-        cancelFetchDashboardCardData={cancelFetchDashboardCardData}
-        addCardToDashboard={addCardToDashboard}
-        addHeadingDashCardToDashboard={addHeadingDashCardToDashboard}
-        addMarkdownDashCardToDashboard={addMarkdownDashCardToDashboard}
-        addLinkDashCardToDashboard={addLinkDashCardToDashboard}
-        setEditingDashboard={setEditingDashboard}
-        setDashboardAttributes={setDashboardAttributes}
-        setSharing={setSharing}
-        toggleSidebar={toggleSidebar}
-        closeSidebar={closeSidebar}
-        closeNavbar={closeNavbar}
-        setErrorPage={setErrorPage}
-        setParameterName={setParameterName}
-        setParameterType={setParameterType}
-        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-        setParameterDefaultValue={setParameterDefaultValue}
-        setParameterRequired={setParameterRequired}
-        setParameterTemporalUnits={setParameterTemporalUnits}
-        setParameterIsMultiSelect={setParameterIsMultiSelect}
-        setParameterQueryType={setParameterQueryType}
-        setParameterSourceType={setParameterSourceType}
-        setParameterSourceConfig={setParameterSourceConfig}
-        setParameterFilteringParameters={setParameterFilteringParameters}
-        removeParameter={removeParameter}
-        onReplaceAllDashCardVisualizationSettings={
-          onReplaceAllDashCardVisualizationSettings
+        onLoad={onLoadDashboard}
+        onError={(error) => dispatch(setErrorPage(error))}
+        navigateToNewCardFromDashboard={(opts) =>
+          dispatch(navigateToNewCardFromDashboard(opts))
         }
-        onUpdateDashCardVisualizationSettings={
-          onUpdateDashCardVisualizationSettings
-        }
-        onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-        updateDashboardAndCards={updateDashboardAndCards}
-        setSidebar={setSidebar}
-        hideAddParameterPopover={hideAddParameterPopover}
-        fetchDashboard={fetchDashboard}
-        fetchDashboardCardData={fetchDashboardCardData}
-      />
-      {/* For rendering modal urls */}
-      {props.children}
-    </div>
+        onAddQuestion={(dashboard: IDashboard | null) => {
+          dispatch(setEditingDashboard(dashboard));
+          dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+        }}
+        dashboardActions={DASHBOARD_APP_ACTIONS}
+      >
+        <DashboardAppInner location={location} route={route}>
+          {children}
+        </DashboardAppInner>
+      </DashboardContextProvider>
+    </ErrorBoundary>
   );
 };
-
-function getDashboardId({ dashboardId, params }: DashboardAppProps) {
-  if (dashboardId) {
-    return dashboardId;
-  }
-
-  return Urls.extractEntityId(params.slug) as DashboardId;
-}
-
-export const DashboardAppConnected = _.compose(
-  connector,
-  title(
-    ({
-      dashboard,
-      documentTitle,
-    }: Pick<ReduxProps, "dashboard" | "documentTitle">) => ({
-      title: documentTitle || dashboard?.name,
-      titleIndex: 1,
-    }),
-  ),
-  titleWithLoadingTime("loadingStartTime"),
-)(DashboardApp);

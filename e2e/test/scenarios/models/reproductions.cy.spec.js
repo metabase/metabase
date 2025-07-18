@@ -536,16 +536,6 @@ describe(
   "filtering based on the remapped column name should result in a correct query (metabase#22715)",
   { tags: "@flaky" },
   () => {
-    function mapColumnTo({ table, column } = {}) {
-      cy.findByText("Database column this maps to")
-        .parent()
-        .contains("None")
-        .click();
-
-      H.popover().findByText(table).click();
-      H.popover().findByText(column).click();
-    }
-
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("PUT", "/api/card/*").as("updateModel");
@@ -567,20 +557,13 @@ describe(
 
         // Let's go straight to the model metadata editor
         cy.visit(`/model/${id}/metadata`);
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.findByText("Database column this maps to");
-        cy.wait(5000);
+        cy.findByText("Database column this maps to").should("be.visible");
 
         // The first column `ID` is automatically selected
-        mapColumnTo({ table: "Orders", column: "ID" });
-
+        H.mapColumnTo({ table: "Orders", column: "ID" });
         cy.findByText("ALIAS_CREATED_AT").click();
 
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.wait(5000);
-        mapColumnTo({ table: "Orders", column: "Created At" });
+        H.mapColumnTo({ table: "Orders", column: "Created At" });
 
         // Make sure the column name updated before saving
         cy.findByDisplayValue("Created At");
@@ -588,22 +571,19 @@ describe(
         cy.button("Save changes").click();
         cy.wait("@updateModel");
 
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
+        H.visitModel(id);
       });
     });
 
     it("when done through the column header action (metabase#22715-1)", () => {
       H.tableHeaderClick("Created At");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Today").click();
-
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Today").click();
+      });
       cy.wait("@dataset");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Today").should("not.exist");
-
       cy.get("[data-testid=cell-data]")
         .should("have.length", 4)
         .and("contain", "Created At");

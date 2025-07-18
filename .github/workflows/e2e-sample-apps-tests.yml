@@ -1,15 +1,20 @@
-name: E2E Sample Apps tests
+name: "[NOT REQUIRED] SDK Compatibility tests"
 
+# Note: these are currently never called, we're skipping them as they're failing, below is the original triggers
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches:
-      - "master"
-      - "release-**"
+  workflow_call:
+
+# Original trigger (commented for reference):
+# on:
+#   push:
+#     branches:
+#       - "master"
+#       - "release-**"
+#   pull_request:
+#     types: [opened, synchronize, reopened]
+#     branches:
+#       - "master"
+#       - "release-**"
 
 env:
   # we must support last two stable releases

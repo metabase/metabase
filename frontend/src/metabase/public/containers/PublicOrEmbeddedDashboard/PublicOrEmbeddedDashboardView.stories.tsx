@@ -1,14 +1,20 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
-import { type ComponentProps, useEffect, useMemo } from "react";
+import { HttpResponse, http } from "msw";
+import { useEffect, useMemo } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
@@ -22,6 +28,7 @@ import {
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockParameter,
@@ -32,10 +39,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  PublicOrEmbeddedDashboardView,
-  type PublicOrEmbeddedDashboardViewProps,
-} from "./PublicOrEmbeddedDashboardView";
+import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
@@ -52,6 +56,13 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get("*/api/database", () =>
+          HttpResponse.json(createMockDatabase()),
+        ),
+      ],
+    },
   },
 };
 
@@ -151,13 +162,18 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
-  return <PublicOrEmbeddedDashboardView {...args} />;
-};
-
-const defaultArgs: Partial<
-  ComponentProps<typeof PublicOrEmbeddedDashboardView>
-> = {
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => (
+  <MockDashboardContext
+    {...args}
+    dashboardId={args.dashboardId ?? args.dashboard?.id}
+    dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+  >
+    <PublicOrEmbeddedDashboardView />
+  </MockDashboardContext>
+);
+const defaultArgs: Partial<MockDashboardContextProps> = {
   dashboard: createDashboard(),
   downloadsEnabled: { pdf: true, results: true },
   titled: true,
@@ -176,6 +192,14 @@ const defaultArgs: Partial<
 export const LightThemeDefault = {
   render: Template,
   args: defaultArgs,
+};
+
+export const LightThemeNoResults = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ dashcards: [] }),
+  },
 };
 
 export const LightThemeScroll = {

@@ -386,6 +386,24 @@ describe("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
+    it("mantine modals should render with proper position", () => {
+      cy.mount(
+        <div style={{ paddingLeft: "9999px" }}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </div>,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Summarize").click();
+        cy.findByText("Count of rows").click();
+        cy.findByText("Save").click();
+
+        cy.findByText("Save question").should("be.visible");
+      });
+    });
+
     describe("popover/tooltips/overlays styles", () => {
       beforeEach(() => {
         signInAsAdminAndEnableEmbeddingSdk();

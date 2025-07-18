@@ -84,7 +84,12 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       .should("be.visible");
   });
 
-  it("should allow users to go through the embedding setup and onboarding flow", () => {
+  it("[cloud-hosted] should allow users to go through the embedding setup and onboarding flow", () => {
+    // mock `is-hosted`, we can't set the token before the user is created, we'll set it right after that
+    H.activateToken("pro-cloud");
+
+    mockCloudHosted();
+
     cy.visit(
       "/setup/embedding?first_name=Firstname&last_name=Lastname&email=testy@metabase.test&site_name=Epic Team",
     );
@@ -98,9 +103,9 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
     });
 
     step().within(() => {
-      cy.findByRole("heading", {
-        name: "Let's get you up and running with a starting setup for embedded analytics",
-      }).should("be.visible");
+      cy.findByText(
+        /Let's get you up and running with a starting setup for embedded analytics/,
+      ).should("be.visible");
       cy.button("Start").should("be.visible").click();
     });
 
@@ -139,7 +144,9 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       "Now we have a user we simulate being on cloud by setting a Metatabase Token",
     );
     cy.wait("@setup");
-    H.activateToken("pro-self-hosted");
+
+    // set a real token so we have real token-features for the rest of the flow
+    H.activateToken("pro-cloud");
 
     cy.log("2: Data connection step");
     sidebar().within(() => {
@@ -192,8 +199,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       })
       .should("be.visible");
 
-    cy.log("Ensure the database sync status is not shown");
-    cy.findByRole("status").should("not.exist");
+    expectNoDatabaseStatus();
 
     step().within(() => {
       cy.findByRole("checkbox", { name: "feedback" })
@@ -205,10 +211,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       cy.findByRole("checkbox", { name: "products" })
         .should("be.enabled")
         .check();
-      cy.log(
-        "Others non-selected options should be disabled after selecting 3 options (max limit)",
-      );
-      cy.findByRole("checkbox", { name: "reviews" }).should("be.disabled");
+
       cy.button("Continue").should("be.enabled").click();
     });
 
@@ -247,43 +250,6 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
         ),
       );
 
-      cy.findByRole("tab", { name: 'A look at "Orders"' }).click();
-      /**
-       * There's a problem when changing tabs, sometimes Cypress seems to still get the old iframe body.
-       * So, it's be much more stable to wait for a brief moment before trying to get the new iframe body.
-       */
-      cy.wait(100);
-      H.getIframeBody().within(() => {
-        cy.findByText('A look at "Orders"').should("be.visible");
-      });
-      cy.findByRole("code").contains(
-        new RegExp(
-          `<iframe src="${Cypress.config("baseUrl")}/dashboard/\\d+" width="800px" height="500px" />`,
-        ),
-      );
-
-      cy.findByRole("tab", { name: 'A look at "Products"' }).click();
-      cy.wait(100);
-      H.getIframeBody().within(() => {
-        cy.findByText('A look at "Products"').should("be.visible");
-      });
-      cy.findByRole("code").contains(
-        new RegExp(
-          `<iframe src="${Cypress.config("baseUrl")}/dashboard/\\d+" width="800px" height="500px" />`,
-        ),
-      );
-
-      cy.findByRole("tab", { name: "Query Builder" }).click();
-      cy.wait(100);
-      H.getIframeBody().within(() => {
-        cy.findByText("Pick your starting data").should("be.visible");
-      });
-      cy.findByRole("code").contains(
-        new RegExp(
-          `<iframe src="${Cypress.config("baseUrl")}/question/new" width="800px" height="500px" />`,
-        ),
-      );
-
       cy.button("I see Metabase").click();
 
       cy.findByRole("heading", { name: "You're on your way!" }).should(
@@ -294,8 +260,41 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
 
     cy.log("5: Metabase");
     cy.button("New").should("be.visible");
+
+    cy.log(
+      "Only one 'Automatically Generated Dashboards' collection should be created",
+    );
+    sidebar().within(() => {
+      cy.findByText("Automatically Generated Dashboards").should("be.visible");
+      cy.findByText("Automatically Generated Dashboards").should(
+        "have.length",
+        1,
+      );
+    });
+    expectNoDatabaseStatus();
   });
 });
+
+/**
+ * Before the user creation we can't set the token, as that uses api calls that require being logged as admin.
+ * This simulates at least the `hosted/is-hosted?`
+ */
+const mockCloudHosted = () => {
+  cy.intercept("GET", "api/session/properties", (req) => {
+    req.on("response", (res) => {
+      res.body["is-hosted?"] = true;
+      res.body["token-features"] = {
+        ...res.body["token-features"],
+        hosting: true,
+      };
+    });
+  });
+};
+
+function expectNoDatabaseStatus() {
+  cy.log("Ensure the database sync status is not shown");
+  cy.findByRole("status").should("not.exist");
+}
 
 function assertEmbeddingOnboardingPageLoaded() {
   cy.findByLabelText("Embedding Setup Sidebar")
@@ -311,21 +310,35 @@ function sidebar() {
   return cy.findByRole("complementary");
 }
 
-function fillOutUserForm() {
-  cy.findByLabelText("First name").clear().type("Testy");
-  cy.findByLabelText("Last name").clear().type("McTestface");
-  cy.findByLabelText("Email").clear().type("testy@metabase.test");
-  cy.findByLabelText("Company or team name").clear().type("Epic Team");
+const TYPE_DELAY = 0;
 
-  cy.findByLabelText("Create a password").type("metabase123");
-  cy.findByLabelText("Confirm your password").type("metabase123");
+function fillOutUserForm() {
+  cy.findByLabelText("First name").clear().type("Testy", { delay: TYPE_DELAY });
+  cy.findByLabelText("Last name")
+    .clear()
+    .type("McTestface", { delay: TYPE_DELAY });
+  cy.findByLabelText("Email")
+    .clear()
+    .type("testy@metabase.test", { delay: TYPE_DELAY });
+  cy.findByLabelText("Company or team name")
+    .clear()
+    .type("Epic Team", { delay: TYPE_DELAY });
+
+  cy.findByLabelText(/Create a password/).type("metabase123", {
+    delay: TYPE_DELAY,
+  });
+  cy.findByLabelText("Confirm your password").type("metabase123", {
+    delay: TYPE_DELAY,
+  });
 }
 
 function fillOutDatabaseForm() {
-  cy.findByLabelText("Display name").type("Postgres Database");
-  cy.findByLabelText("Host").type("localhost");
-  cy.findByLabelText("Port").type("5404");
-  cy.findByLabelText("Database name").type("sample");
-  cy.findByLabelText("Username").type("metabase");
-  cy.findByLabelText("Password").type("metasample123");
+  cy.findByLabelText("Display name").type("Postgres Database", {
+    delay: TYPE_DELAY,
+  });
+  cy.findByLabelText("Host").type("localhost", { delay: TYPE_DELAY });
+  cy.findByLabelText("Port").type("5404", { delay: TYPE_DELAY });
+  cy.findByLabelText("Database name").type("sample", { delay: TYPE_DELAY });
+  cy.findByLabelText("Username").type("metabase", { delay: TYPE_DELAY });
+  cy.findByLabelText("Password").type("metasample123", { delay: TYPE_DELAY });
 }

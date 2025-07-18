@@ -86,7 +86,7 @@ export const DatesRange = {
 export const DatesRangeSdk = {
   render: () => (
     <SdkVisualizationWrapper theme={theme}>
-      <Box bg="background">
+      <Box bg={theme.colors.background}>
         <DatePicker {...DatesRange.args} />
       </Box>
     </SdkVisualizationWrapper>

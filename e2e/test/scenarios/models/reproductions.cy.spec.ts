@@ -1604,3 +1604,74 @@ describe("issue 55486", () => {
     checkIsShowingQueryEditorTab();
   });
 });
+
+describe("Issue 30712", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.startNewModel();
+
+    H.entityPickerModal().findByText("Orders").click();
+    H.join();
+    H.joinTable("Products");
+
+    H.join();
+    H.joinTable("People");
+  });
+
+  it("should not crash the editor when ordering by columns on joined tables (metabase#30712)", () => {
+    H.getNotebookStep("summarize").findByLabelText("Sort").click();
+    H.popover().findByText("Total").click();
+
+    cy.log("no error should be thrown");
+    cy.get("main").findByText("Something's gone wrong").should("not.exist");
+    cy.findByTestId("run-button").should("be.visible");
+  });
+});
+
+describe("Issue 56913", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openQuestionActions();
+    H.popover().findByText("Turn into a model").click();
+    H.modal().button("Turn this into a model").click();
+
+    H.createNativeQuestion(
+      {
+        native: {
+          query: "select {{ x }}",
+          "template-tags": {
+            x: {
+              id: "d7f1fb15-c7b8-6051-443d-604b6ed5457b",
+              name: "x",
+              "display-name": "X",
+              type: "text",
+              default: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should show the error modal when converting a native question with variables into a model, even when the 'turn into a model' modal was previously acknowledged (metabase#56913)", () => {
+    H.openQuestionActions();
+    H.popover().findByText("Turn into a model").click();
+    H.modal()
+      .findByText("Variables in models aren't supported yet")
+      .should("be.visible");
+  });
+});

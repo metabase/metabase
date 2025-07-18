@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 import type { Route } from "react-router";
@@ -15,10 +14,8 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
-import Button from "metabase/common/components/Button";
-import { LeaveConfirmationModal } from "metabase/common/components/LeaveConfirmationModal";
-import Modal from "metabase/common/components/Modal";
-import ModalContent from "metabase/common/components/ModalContent";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -91,7 +88,9 @@ export function PermissionsPageLayout({
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     dispatch(push(`/admin/permissions/${tab}`));
-  const clearSaveError = () => dispatch(clearPermissionsSaveError());
+  const clearSaveError = () => {
+    dispatch(clearPermissionsSaveError());
+  };
 
   const handleToggleHelpReference = useCallback(() => {
     dispatch(toggleHelpReference());
@@ -116,20 +115,18 @@ export function PermissionsPageLayout({
           />
         )}
 
-        <Modal isOpen={saveError != null}>
-          <ModalContent
-            title={t`There was an error saving`}
-            formModal
-            onClose={clearSaveError}
-          >
-            <p className={CS.mb4}>{saveError}</p>
-            <div className={cx(CS.mlAuto)}>
-              <Button onClick={clearSaveError}>{t`OK`}</Button>
-            </div>
-          </ModalContent>
-        </Modal>
+        <ConfirmModal
+          opened={saveError != null}
+          onClose={clearSaveError}
+          onConfirm={clearSaveError}
+          title={t`There was an error saving`}
+          message={saveError}
+          confirmButtonText={t`OK`}
+          confirmButtonProps={{ variant: "outline" }}
+          closeButtonText={null}
+        />
 
-        <LeaveConfirmationModal isEnabled={!!isDirty} route={route} />
+        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
 
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />

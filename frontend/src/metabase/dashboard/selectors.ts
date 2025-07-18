@@ -2,11 +2,12 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
@@ -475,7 +476,9 @@ export function getEmbeddedParameterVisibility(
 export const getIsHeaderVisible = createSelector(
   [getIsEmbeddingIframe, getEmbedOptions],
   (isEmbeddingIframe, embedOptions) =>
-    !isEmbeddingIframe || !!embedOptions.header,
+    (isEmbeddingSdk() && isEmbeddingIframe) ||
+    !isEmbeddingIframe ||
+    !!embedOptions.header,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(

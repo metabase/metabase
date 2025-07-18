@@ -1175,7 +1175,7 @@ describe("issue 31628", () => {
 
         previousValue()
           .findByText("35%")
-          .then(($element) => H.assertIsEllipsified($element[0]));
+          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 

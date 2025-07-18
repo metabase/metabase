@@ -24,7 +24,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { checkNotNull } from "metabase/lib/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -91,7 +91,7 @@ async function setup({ dashboard }: Options = {}) {
     return (
       <main>
         <link rel="icon" />
-        <DashboardAppConnected {...props} />
+        <DashboardApp {...props} />
       </main>
     );
   };
@@ -234,7 +234,9 @@ describe("DashboardApp", () => {
     it("should show an empty state without the 'add a question' prompt if the user lacks write access", async () => {
       await setup({ dashboard: { can_write: false } });
 
-      expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
+      expect(
+        await screen.findByText("This dashboard is empty"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Add a chart" }),
       ).not.toBeInTheDocument();

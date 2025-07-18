@@ -8,12 +8,12 @@ import type {
   HeaderButtonProps,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getDashboardComplete,
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
-import { isEmbeddingSdk } from "metabase/env";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
 import {
@@ -22,10 +22,7 @@ import {
 } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
 
-import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
-
 export const DashboardHeaderButtonRow = ({
-  dashboardActionKeys = null,
   isPublic = false,
   isAnalyticsDashboard = false,
   ...props
@@ -39,18 +36,20 @@ export const DashboardHeaderButtonRow = ({
   const dashboard = useSelector(getDashboardComplete);
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
 
+  const {
+    isFullscreen,
+    onFullscreenChange,
+    hasNightModeToggle,
+    onNightModeChange,
+    downloadsEnabled,
+    dashboardActions,
+  } = useDashboardContext();
+
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
 
   const isEditing = useSelector(getIsEditing);
 
-  const buttonOptions = isEditing
-    ? DASHBOARD_EDITING_ACTIONS
-    : DASHBOARD_VIEW_ACTIONS;
-
-  const visibleDashboardActionKeys = dashboardActionKeys
-    ? buttonOptions.filter((key) => dashboardActionKeys.includes(key))
-    : buttonOptions;
-
+  const visibleDashboardActionKeys = dashboardActions ?? [];
   const dispatch = useDispatch();
 
   const openSettingsSidebar = useCallback(() => {
@@ -72,12 +71,20 @@ export const DashboardHeaderButtonRow = ({
             formInput,
             isAdmin,
             isPublic,
-            isEmbeddingSdk,
             openSettingsSidebar,
             ...props,
           };
 
-          if (config.enabled(buttonComponentProps)) {
+          if (
+            config.enabled({
+              isFullscreen,
+              onFullscreenChange,
+              hasNightModeToggle,
+              onNightModeChange,
+              downloadsEnabled,
+              ...buttonComponentProps,
+            })
+          ) {
             const Component = config.component;
             return (
               <Box

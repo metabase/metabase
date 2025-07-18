@@ -9,6 +9,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
@@ -35,6 +36,7 @@ export const QuestionVisualization = ({
   className,
   style,
 }: InteractiveQuestionQuestionVisualizationProps) => {
+  const { isLocaleLoading } = useLocale();
   const {
     question,
     queryResults,
@@ -52,7 +54,7 @@ export const QuestionVisualization = ({
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
 
-  if (isQuestionLoading || isQueryResultLoading) {
+  if (isLocaleLoading || isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 

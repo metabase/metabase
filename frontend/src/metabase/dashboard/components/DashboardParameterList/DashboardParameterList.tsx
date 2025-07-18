@@ -1,53 +1,45 @@
+import { useDashboardContext } from "metabase/dashboard/context";
+import { getValuePopulatedParameters } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
+
 import {
-  setEditingParameter,
-  setParameterIndex,
-  setParameterValue,
-  setParameterValueToDefault,
-} from "metabase/dashboard/actions";
-import {
-  getDashboardComplete,
-  getEditingParameter,
-  getIsEditing,
-  getIsNightMode,
-  getTabHiddenParameterSlugs,
-  getValuePopulatedParameters,
-} from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+  ParametersList,
+  type ParametersListProps,
+} from "../../../parameters/components/ParametersList";
 
-import { ParametersList } from "../../../parameters/components/ParametersList";
+export type DashboardParameterListProps = Pick<ParametersListProps, "vertical">;
 
-interface DashboardParameterListProps {
-  isFullscreen: boolean;
-}
-
-export function DashboardParameterList({
-  isFullscreen,
-}: DashboardParameterListProps) {
-  const dashboard = useSelector(getDashboardComplete);
+export function DashboardParameterList(props: DashboardParameterListProps) {
   const parameters = useSelector(getValuePopulatedParameters);
-  const editingParameter = useSelector(getEditingParameter);
-  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
-  const isEditing = useSelector(getIsEditing);
-  const isNightMode = useSelector(getIsNightMode);
-  const shouldRenderAsNightMode = isNightMode && isFullscreen;
-  const dispatch = useDispatch();
+
+  const {
+    hideParameters,
+    isEditing,
+    shouldRenderAsNightMode,
+    editingParameter,
+    dashboard,
+    setParameterValue,
+    setParameterIndex,
+    setParameterValueToDefault,
+    setEditingParameter,
+    isFullscreen,
+  } = useDashboardContext();
 
   return (
     <ParametersList
       parameters={parameters}
       editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
+      hideParameters={hideParameters}
       dashboard={dashboard}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
-      setParameterValue={(id, value) => dispatch(setParameterValue(id, value))}
-      setParameterIndex={(id, index) => dispatch(setParameterIndex(id, index))}
-      setEditingParameter={(id) => dispatch(setEditingParameter(id))}
-      setParameterValueToDefault={(id) =>
-        dispatch(setParameterValueToDefault(id))
-      }
+      setParameterValue={setParameterValue}
+      setParameterIndex={setParameterIndex}
+      setEditingParameter={setEditingParameter}
+      setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
+      {...props}
     />
   );
 }

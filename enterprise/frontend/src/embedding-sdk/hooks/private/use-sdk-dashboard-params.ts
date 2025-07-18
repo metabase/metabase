@@ -3,11 +3,6 @@ import { pick } from "underscore";
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
-import {
-  useDashboardFullscreen,
-  useDashboardRefreshPeriod,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
@@ -60,15 +55,15 @@ export type SdkDashboardDisplayProps = {
 } & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   withDownloads,
   withTitle,
+  withCardTitle,
   hiddenParameters,
-  initialParameters = {},
 }: SdkDashboardDisplayProps) => {
   const { id: dashboardId, isLoading = false } = useValidatedEntityId({
     type: "dashboard",
-    id: initialDashboardId,
+    id: dashboardIdProp,
   });
 
   // temporary name until we change `hideDownloadButton` to `downloads`
@@ -79,31 +74,16 @@ export const useSdkDashboardParams = ({
     ...pick(
       {
         titled: withTitle,
+        cardTitled: withCardTitle,
         hideDownloadButton,
+        downloadsEnabled: { pdf: withDownloads, results: withDownloads },
         hideParameters: hiddenParameters?.join(",") ?? null,
       },
       isNotNull,
     ),
   };
-
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId,
-    parameterQueryParams: initialParameters,
-  });
-  const { isFullscreen, onFullscreenChange, ref } = useDashboardFullscreen();
-  const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
-    useDashboardRefreshPeriod({
-      onRefresh: refreshDashboard,
-    });
-
   return {
     displayOptions,
-    isFullscreen,
-    onFullscreenChange,
-    ref,
-    onRefreshPeriodChange,
-    refreshPeriod,
-    setRefreshElapsedHook,
     dashboardId,
     isLoading,
   };

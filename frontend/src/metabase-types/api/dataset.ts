@@ -15,7 +15,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
-export type RowValue = string | number | null | boolean;
+export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 
 export type BinningMetadata = {
