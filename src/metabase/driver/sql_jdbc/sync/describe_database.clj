@@ -94,7 +94,7 @@
         ;; else if the connection closes, even if we manage to reopen it in this local context
         ;; outer unrealized resultsets (like the [[all-schemas]] results) may get
         ;; unrecoverably closed
-        conn (sql-jdbc.execute/try-ensure-open-conn! driver conn :force-local? true)]
+        conn (sql-jdbc.execute/try-ensure-open-conn! driver conn :force-context-local? true)]
     (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
                 (pr-table table-schema table-name)
                 (pr-str sql-args))

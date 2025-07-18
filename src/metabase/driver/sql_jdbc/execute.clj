@@ -897,17 +897,17 @@
   The connection will automatically be closed when exiting the [[driver/do-with-resilient-connection]]
   context.
 
-  The `:force-local?` option forces creation of a new local connection even if
-  the current connection is still open.
+  The `:force-context-local?` option forces creation of a new context-local
+  connection even if the outer connection is still open.
 
   ConnectionOptions can be passed as `opts`, but `:keep-open?` will always be
   overridden to `true`.
 
   Not thread-safe."
 
-  ^Connection [driver ^Connection connection & {:keys [force-local?] :as opts}]
+  ^Connection [driver ^Connection connection & {:keys [force-context-local?] :as opts}]
   (cond
-    (and (not force-local?) (is-conn-open? connection))
+    (and (not force-context-local?) (is-conn-open? connection))
     connection
 
     (not (thread-bound? #'*resilient-connection-ctx*))
