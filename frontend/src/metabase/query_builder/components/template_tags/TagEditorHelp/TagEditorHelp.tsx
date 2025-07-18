@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import Button from "metabase/common/components/Button";
 import Code from "metabase/common/components/Code";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/uuid";
 import type Database from "metabase-lib/v1/metadata/Database";

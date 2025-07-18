@@ -6,7 +6,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";

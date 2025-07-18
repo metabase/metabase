@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 
 import ActionButton from "metabase/common/components/ActionButton";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import { goToNextStep, updateTracking } from "../../actions";

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { highlight } from "metabase/query_builder/components/expressions/HighlightExpression/utils";
 import {
   Box,

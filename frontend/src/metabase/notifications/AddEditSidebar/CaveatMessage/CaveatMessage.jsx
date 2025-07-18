@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import CS from "metabase/css/core/index.css";
 
 import { CaveatText } from "./CaveatMessage.styled";
