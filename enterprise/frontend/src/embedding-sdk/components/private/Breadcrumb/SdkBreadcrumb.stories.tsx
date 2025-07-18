@@ -52,6 +52,7 @@ export const Default = {
               onClick={(item) => {
                 const type = match<string, BreadcrumbItemType>(item.model)
                   .with("card", () => "question")
+                  .with("dataset", () => "model")
                   .otherwise((model) => model as BreadcrumbItemType);
 
                 setView({ type, id: item.id });

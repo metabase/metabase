@@ -21,11 +21,8 @@ export interface SdkBreadcrumbContextType {
   isBreadcrumbEnabled: boolean;
 
   breadcrumbs: BreadcrumbItem[];
-  setBreadcrumbs: (items: BreadcrumbItem[]) => void;
-  addBreadcrumb: (item: BreadcrumbItem) => void;
   updateCurrentLocation: (item: BreadcrumbItem) => void;
   navigateToBreadcrumb: (item: BreadcrumbItem) => void;
-  clearBreadcrumbs: () => void;
 }
 
 export const SdkBreadcrumbContext =
@@ -39,20 +36,6 @@ export const SdkBreadcrumbProvider = ({
   children,
 }: SdkBreadcrumbProviderProps) => {
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
-
-  const addBreadcrumb = useCallback((item: BreadcrumbItem) => {
-    setBreadcrumbs((prev) => {
-      // Mark previous current item as not current and add action
-      const updated = prev.map((breadcrumb) => ({
-        ...breadcrumb,
-        isCurrent: false,
-        action: breadcrumb.navigateTo || (() => {}),
-      }));
-
-      // Add new item as current
-      return [...updated, { ...item, isCurrent: true }];
-    });
-  }, []);
 
   const updateCurrentLocation = useCallback((item: BreadcrumbItem) => {
     setBreadcrumbs((prev) => {
@@ -108,18 +91,11 @@ export const SdkBreadcrumbProvider = ({
     [breadcrumbs],
   );
 
-  const clearBreadcrumbs = useCallback(() => {
-    setBreadcrumbs([]);
-  }, []);
-
   const value: SdkBreadcrumbContextType = {
     isBreadcrumbEnabled: true,
     breadcrumbs,
-    setBreadcrumbs,
-    addBreadcrumb,
     updateCurrentLocation,
     navigateToBreadcrumb,
-    clearBreadcrumbs,
   };
 
   return (
@@ -132,9 +108,6 @@ export const SdkBreadcrumbProvider = ({
 export const EmptyBreadcrumbContext: SdkBreadcrumbContextType = {
   isBreadcrumbEnabled: false,
   breadcrumbs: [],
-  setBreadcrumbs: _.noop,
-  addBreadcrumb: _.noop,
   updateCurrentLocation: _.noop,
   navigateToBreadcrumb: _.noop,
-  clearBreadcrumbs: _.noop,
 };
