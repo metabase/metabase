@@ -1,6 +1,7 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type {
+  Collection,
   CollectionId,
   CollectionItemModel,
   ListCollectionItemsRequest,
@@ -16,12 +17,24 @@ import type {
 export const getCollectionIdPath = (
   collection: Pick<
     CollectionPickerItem,
-    "id" | "location" | "is_personal" | "effective_location" | "model"
-  >,
+    | "id"
+    | "location"
+    | "is_personal"
+    | "effective_location"
+    | "model"
+    | "is_tenant_collection"
+    | "is_tenant_dashboard"
+  > & {
+    type?: Collection["type"];
+  },
   userPersonalCollectionId?: CollectionId,
 ): CollectionId[] => {
   if (collection.id === null || collection.id === "root") {
     return ["root"];
+  }
+
+  if (collection.id === "tenant") {
+    return ["tenant"];
   }
 
   if (collection.id === PERSONAL_COLLECTIONS.id) {
@@ -48,6 +61,12 @@ export const getCollectionIdPath = (
     return [...pathFromRoot, id];
   } else if (collection.is_personal) {
     return ["personal", ...pathFromRoot, id];
+  } else if (
+    collection.is_tenant_collection ||
+    collection.is_tenant_dashboard ||
+    collection.type === "shared-tenant-collection"
+  ) {
+    return ["tenant", ...pathFromRoot, id];
   } else {
     return ["root", ...pathFromRoot, id];
   }
@@ -82,13 +101,14 @@ export const getStateFromIdPath = ({
       idPath[index + 1],
     );
 
-    const { entityId, model: entityModel } = resolveEntityId(id);
+    const { entityId, model: entityModel, ...extra } = resolveEntityId(id);
 
     statePath.push({
       query: {
         id: entityId,
         models: ["collection", ...models],
         namespace,
+        ...extra,
       },
       entity: entityModel,
       selectedItem: nextLevelId

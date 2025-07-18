@@ -1,16 +1,17 @@
-import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
+  setupTenantRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
-  screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type {
@@ -22,16 +23,18 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type {
   DashboardPickerItem,
   DashboardPickerStatePath,
   DashboardPickerValueModel,
-} from "../types";
-
-import { DashboardPicker, defaultOptions } from "./DashboardPicker";
-import { DashboardPickerModal } from "./DashboardPickerModal";
+} from "../../../types";
+import { DashboardPickerModal } from "../../DashboardPickerModal";
+import { DashboardPicker, defaultOptions } from "../DashboardPicker";
 
 type NestedCollectionItem = Partial<Omit<CollectionItem, "id">> & {
   id: any;
@@ -49,6 +52,12 @@ const myDashboard2 = createMockDashboard({
   id: 101,
   name: "My Dashboard 2",
   collection_id: 3,
+});
+
+const sharedTenantDashboard = createMockDashboard({
+  id: 102,
+  name: "Shared Dashboard",
+  collection_id: 7,
 });
 
 const collectionTree: NestedCollectionItem[] = [
@@ -125,6 +134,42 @@ const collectionTree: NestedCollectionItem[] = [
   },
 ];
 
+const tenantCollectionsTree: NestedCollectionItem[] = [
+  {
+    name: "Shared Tenant Collection",
+    id: 6,
+    location: "/",
+    effective_location: "/",
+    is_personal: false,
+    is_tenant_collection: true,
+    model: "collection",
+    here: ["collection"],
+    below: ["dashboard"],
+    can_write: true,
+    descendants: [
+      {
+        id: 7,
+        location: "/6/",
+        effective_location: "/6/",
+        name: "Tenant Sub Collection",
+        model: "collection",
+        is_personal: false,
+        is_tenant_collection: true,
+        can_write: true,
+        descendants: [
+          {
+            ...sharedTenantDashboard,
+            model: "dashboard",
+            is_tenant_dashboard: true,
+            descendants: [],
+          },
+        ],
+        here: ["dashboard"],
+      },
+    ],
+  },
+];
+
 const flattenCollectionTree = (
   nodes: NestedCollectionItem[],
 ): Omit<NestedCollectionItem, "descendants">[] => {
@@ -158,7 +203,7 @@ const setupCollectionTreeMocks = (node: NestedCollectionItem[]) => {
   });
 };
 
-interface SetupOpts {
+export interface SetupOpts {
   initialValue?: {
     id: CollectionId | DashboardId;
     model: "collection" | "dashboard";
@@ -166,9 +211,10 @@ interface SetupOpts {
   onChange?: (item: DashboardPickerItem) => void;
   models?: [DashboardPickerValueModel, ...DashboardPickerValueModel[]];
   options?: typeof defaultOptions;
+  ee?: boolean;
 }
 
-const commonSetup = () => {
+const commonSetup = ({ ee = false }: { ee?: boolean } = {}) => {
   setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
   setupSearchEndpoints([]);
@@ -186,13 +232,46 @@ const commonSetup = () => {
   });
 
   setupCollectionTreeMocks(collectionTree);
+
+  if (ee) {
+    const allTenantItems = flattenCollectionTree(tenantCollectionsTree).map(
+      createMockCollectionItem,
+    );
+
+    setupEnterprisePlugins();
+    setupCollectionTreeMocks(tenantCollectionsTree);
+    setupTenantRootCollectionItemsEndpoint({
+      collectionItems: [createMockCollectionItem(tenantCollectionsTree[0])],
+    });
+
+    allTenantItems.forEach((item) => {
+      if (item.model !== "collection") {
+        fetchMock.get(`path:/api/dashboard/${item.id}`, item);
+      } else {
+        fetchMock.get(`path:/api/collection/${item.id}`, {
+          ...item,
+          type: "shared-tenant-collection",
+        });
+      }
+    });
+  }
 };
 
-const setupPicker = async ({
+export const setupPicker = async ({
   initialValue = { id: "root", model: "collection" },
   onChange = jest.fn<void, [DashboardPickerItem]>(),
+  ee = false,
 }: SetupOpts = {}) => {
-  commonSetup();
+  const settings = mockSettings(
+    createMockSettings({
+      "token-features": createMockTokenFeatures({
+        tenants: ee ? true : false,
+      }),
+      "use-tenants": ee,
+    }),
+  );
+
+  commonSetup({ ee });
 
   function TestComponent() {
     const [path, setPath] = useState<DashboardPickerStatePath>();
@@ -208,12 +287,14 @@ const setupPicker = async ({
     );
   }
 
-  renderWithProviders(<TestComponent />);
+  renderWithProviders(<TestComponent />, {
+    storeInitialState: createMockState({ settings }),
+  });
 
   await waitForLoaderToBeRemoved();
 };
 
-const setupModal = async ({
+export const setupModal = async ({
   initialValue,
   onChange = jest.fn<void, [DashboardPickerItem]>(),
   options = defaultOptions,
@@ -231,138 +312,3 @@ const setupModal = async ({
 
   await waitForLoaderToBeRemoved();
 };
-
-describe("DashboardPicker", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it("should select the root collection by default", async () => {
-    await setupPicker();
-
-    expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
-    ).toHaveAttribute("data-active", "true");
-
-    expect(
-      await screen.findByRole("link", { name: /Collection 4/ }),
-    ).toBeInTheDocument();
-
-    expect(
-      await screen.findByRole("link", { name: /Collection 2/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("should render the path to the collection provided", async () => {
-    await setupPicker({ initialValue: { id: 3, model: "collection" } });
-    expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
-    ).toHaveAttribute("data-active", "true");
-
-    expect(
-      await screen.findByRole("link", { name: /Collection 4/ }),
-    ).toHaveAttribute("data-active", "true");
-
-    expect(
-      await screen.findByRole("link", { name: /Collection 3/ }),
-    ).toHaveAttribute("data-active", "true");
-  });
-
-  it("should render the path to the dashboard provided", async () => {
-    await setupPicker({ initialValue: { id: 100, model: "dashboard" } });
-
-    expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
-    ).toHaveAttribute("data-active", "true");
-
-    expect(
-      await screen.findByRole("link", { name: /Collection 4/ }),
-    ).toHaveAttribute("data-active", "true");
-
-    expect(
-      await screen.findByRole("link", { name: /Collection 3/ }),
-    ).toHaveAttribute("data-active", "true");
-
-    // dashboard itself should start selected
-    expect(
-      await screen.findByRole("link", { name: /My Dashboard 1/ }),
-    ).toHaveAttribute("data-active", "true");
-
-    expect(
-      await screen.findByRole("link", { name: /My Dashboard 2/ }),
-    ).not.toHaveAttribute("data-active", "true");
-  });
-});
-
-describe("DashboardPickerModal", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it("should render the modal", async () => {
-    await setupModal();
-
-    expect(await screen.findByText(/choose a dashboard/i)).toBeInTheDocument();
-    expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
-    ).toBeInTheDocument();
-
-    expect(screen.getByRole("button", { name: /Select/ })).toBeInTheDocument();
-  });
-
-  it("should render the modal with no select button", async () => {
-    await setupModal({
-      options: { ...defaultOptions, hasConfirmButtons: false },
-    });
-
-    expect(await screen.findByText(/choose a dashboard/i)).toBeInTheDocument();
-    expect(
-      await screen.findByRole("link", { name: /Our Analytics/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Select/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should render no tabs by default", async () => {
-    await setupModal();
-
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-  });
-
-  it("should automatically switch to the search tab when a search query is provided", async () => {
-    await setupModal();
-
-    const searchInput = await screen.findByPlaceholderText(/search/i);
-
-    await userEvent.type(searchInput, "sizzlipede");
-
-    expect(
-      await screen.findByRole("tab", { name: /Dashboards/ }),
-    ).toHaveAttribute("aria-selected", "false");
-    expect(await screen.findByRole("tab", { name: /Search/ })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-  });
-
-  it("should switch back to not having tabs when the search query is cleared", async () => {
-    await setupModal();
-
-    const searchInput = await screen.findByPlaceholderText(/search/i);
-
-    await userEvent.type(searchInput, "sizzlipede");
-
-    expect(
-      await screen.findByRole("tab", { name: /Dashboards/ }),
-    ).toHaveAttribute("aria-selected", "false");
-    expect(await screen.findByRole("tab", { name: /Search/ })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-
-    await userEvent.clear(searchInput);
-
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
-  });
-});

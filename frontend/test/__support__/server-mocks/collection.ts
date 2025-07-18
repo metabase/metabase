@@ -37,21 +37,35 @@ export function setupCollectionsEndpoints({
   fetchMock.get("path:/api/collection/root", rootCollection);
   fetchMock.get(`path:/api/collection/trash`, trashCollection);
   fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection);
-  fetchMock.get(
-    {
-      url: "path:/api/collection/tree",
-      query: { "exclude-archived": true },
-      overwriteRoutes: false,
-    },
-    collections.filter((collection) => !collection.archived),
-  );
+
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
       overwriteRoutes: false,
+      name: "collection_tree",
     },
-    collections,
+    (uri) => {
+      const url = new URL(uri);
+      const excludeArchived =
+        url.searchParams.get("exclude-archived") === "true";
+      const includeTenantCollections =
+        url.searchParams.get("include-tenant-collections") === "true";
+
+      return collections.filter((collection) => {
+        if (excludeArchived && collection.archived) {
+          return false;
+        }
+        if (
+          includeTenantCollections &&
+          collection.type !== "shared-tenant-collection"
+        ) {
+          return false;
+        }
+        return true;
+      });
+    },
   );
+
   fetchMock.get(
     { url: "path:/api/collection", overwriteRoutes: false },
     collections,
@@ -88,6 +102,33 @@ export function setupCollectionVirtualSchemaEndpoints(
   fetchMock.get(urls.models, modelVirtualTables);
 }
 
+function handleCollectionItemsResponse({
+  uri,
+  collectionItems,
+  modelsParam,
+}: {
+  uri: string;
+  collectionItems: CollectionItem[];
+  modelsParam?: string[];
+}) {
+  const url = new URL(uri);
+  const models = modelsParam ?? url.searchParams.getAll("models");
+  const matchedItems = collectionItems.filter(({ model }) =>
+    models.includes(model),
+  );
+
+  const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
+  const offset = Number(url.searchParams.get("offset")) || 0;
+
+  return {
+    data: matchedItems.slice(offset, offset + limit),
+    total: matchedItems.length,
+    models,
+    limit,
+    offset,
+  };
+}
+
 export function setupCollectionItemsEndpoint({
   collection,
   collectionItems = [],
@@ -97,24 +138,21 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, (uri) => {
-    const url = new URL(uri);
-    const models = modelsParam ?? url.searchParams.getAll("models");
-    const matchedItems = collectionItems.filter(({ model }) =>
-      models.includes(model),
-    );
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, (uri) =>
+    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
+  );
+}
 
-    const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
-    const offset = Number(url.searchParams.get("offset")) || 0;
-
-    return {
-      data: matchedItems.slice(offset, offset + limit),
-      total: matchedItems.length,
-      models,
-      limit,
-      offset,
-    };
-  });
+export function setupTenantRootCollectionItemsEndpoint({
+  collectionItems = [],
+  models: modelsParam,
+}: {
+  collectionItems: CollectionItem[];
+  models?: string[];
+}) {
+  fetchMock.get(`path:/api/ee/tenant/collection/root/items`, (uri) =>
+    handleCollectionItemsResponse({ uri, collectionItems, modelsParam }),
+  );
 }
 
 export function setupDashboardItemsEndpoint({

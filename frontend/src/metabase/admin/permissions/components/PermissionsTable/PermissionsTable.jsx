@@ -111,7 +111,10 @@ export function PermissionsTable({
               </span>
             );
             return (
-              <PermissionsTableRow key={entity.id}>
+              <PermissionsTableRow
+                key={entity.id}
+                aria-label={`${entity.name} permissions`}
+              >
                 <PermissionsTableCell>
                   {entity.canSelect ? (
                     <EntityNameLink onClick={() => onSelect(entity)}>

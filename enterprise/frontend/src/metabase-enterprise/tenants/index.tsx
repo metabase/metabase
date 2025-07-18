@@ -22,7 +22,9 @@ import * as Urls from "metabase-enterprise/urls";
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
 import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
+import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
+import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
 import { TenantDisplayName } from "./components/TenantDisplayName";
 import { FormTenantWidget } from "./components/TenantFormWidget";
 import { EditTenantModal } from "./containers/EditTenantModal";
@@ -113,4 +115,6 @@ if (hasPremiumFeature("tenants")) {
   PLUGIN_TENANTS.isExternalUser = isExternalUser;
   PLUGIN_TENANTS.isTenantCollection = isTenantCollection;
   PLUGIN_TENANTS.ReactivateExternalUserButton = ReactivateExternalUserButton;
+  PLUGIN_TENANTS.MainNavSharedCollections = MainNavSharedCollections;
+  PLUGIN_TENANTS.TenantCollectionItemList = TenantCollectionItemList;
 }

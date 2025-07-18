@@ -6,6 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -30,6 +32,7 @@
     (throw (ex-info "Invalid Tenant"
                     {:status-code 400
                      :errors (mr/explain CreateTenantArguments tenant)})))
+  (api/check-403 api/*is-superuser?*)
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
   (u/prog1 (t2/insert-returning-instance! :model/Tenant (dissoc tenant ::is-verified?))
@@ -55,6 +58,7 @@
    {:keys [status]} :- [:map
                         [:status {:default "all"} [:enum "all" "deactivated" "active"]]]
    _]
+  (api/check-403 api/*is-superuser?*)
   {:data (present-tenants
           (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]}
                                      (request/paged?) (assoc :limit (request/limit) :offset (request/offset))
@@ -89,6 +93,7 @@
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- UpdateTenantArguments]
+  (api/check-403 api/*is-superuser?*)
   (when (:name tenant)
     (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant) :id [:not= id]))
                    "This name is already taken."))
@@ -98,8 +103,29 @@
 (api.macros/defendpoint :get "/:id"
   "Get info about a tenant"
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-403 api/*is-superuser?*)
   (present-tenant (t2/select-one :model/Tenant :id id)))
+
+(api.macros/defendpoint :get "/collection/root/items"
+  "Get collections, analogous to `/api/collection/root/items` but for tenant collections"
+  [_route-params
+   {:keys [archived sort_column sort_direction official_collections_first]}
+   :- [:map
+       [:archived {:default false} [:maybe ms/BooleanValue]]
+       [:sort_column {:default :name} [:enum :name :last_edited_at :last_edited_by :model]]
+       [:sort_direction {:default :asc} [:enum :asc :desc]]
+       [:official_collections_first {:default true} [:maybe ms/BooleanValue]]]]
+  (api.collection/collection-children
+   collection/root-collection
+   {:archived? (boolean archived)
+    :models #{:collection}
+    :pinned-state :all
+    :show-dashboard-questions? false
+    :include-tenant-collections? true
+    :sort-info {:sort-column sort_column
+                :sort-direction sort_direction
+                :official-collections-first? official_collections_first}}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/tenant` routes"
-  (api.macros/ns-handler *ns* api/+check-superuser +auth))
+  (api.macros/ns-handler *ns* +auth))
