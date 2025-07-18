@@ -42,6 +42,7 @@ export const SettingsJWTForm = () => {
   const { data: settingValues, isLoading: isLoadingValues } =
     useGetSettingsQuery();
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
+  const { value: tenantEnabled } = useAdminSetting("use-tenants");
 
   const handleSubmit = async (values: Partial<JWTFormValues>) => {
     const result = await updateSettings({
@@ -136,6 +137,15 @@ export const SettingsJWTForm = () => {
                       settingDetails?.["jwt-attribute-lastname"],
                     )}
                   />
+                  {tenantEnabled && (
+                    <FormTextInput
+                      name="jwt-attribute-tenant"
+                      label={t`Tenant assignment attribute`}
+                      {...getExtraFormFieldProps(
+                        settingDetails?.["jwt-attribute-tenant"],
+                      )}
+                    />
+                  )}
                 </Stack>
               </FormSection>
               <FormSection
@@ -178,6 +188,7 @@ const getFormValues = (
     "jwt-attribute-email",
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
+    "jwt-attribute-tenant",
   ]);
 
   if (jwtSettings["jwt-user-provisioning-enabled?"] == null) {
