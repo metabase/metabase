@@ -1,7 +1,6 @@
 (ns metabase.search.settings
   (:require
    [metabase.appearance.core :as appearance]
-   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :as i18n]))
 

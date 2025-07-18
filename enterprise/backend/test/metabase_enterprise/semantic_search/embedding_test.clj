@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.embedding :as embedding]
-   [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.test :as mt]))
 
 (deftest test-get-provider
