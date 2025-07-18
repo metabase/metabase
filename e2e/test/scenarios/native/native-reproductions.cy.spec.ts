@@ -424,6 +424,7 @@ describe("issue 52806", () => {
         "candidates",
       );
       H.visitQuestionAdhoc(questionDetails);
+      cy.findByTestId("visualization-root").should("contain", "37.65");
       cy.findByTestId("main-logo-link").click();
       H.modal().button("Discard changes").click();
       cy.wait("@candidates");
