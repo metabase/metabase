@@ -6,7 +6,6 @@ const webpack = require("webpack");
 const mainConfig = require("../../webpack.config");
 
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
-const isCI = process.env["CYPRESS_CI"] === "true";
 
 const { isEmbeddingSdkPackageInstalled, embeddingSdkPath } =
   resolveEmbeddingSdkPackage();
@@ -77,13 +76,6 @@ module.exports = {
   plugins: [
     new webpack.ProvidePlugin({
       React: "react",
-    }),
-    new webpack.EnvironmentPlugin({
-      ...(!isCI && {
-        // Locally we serve SDK bundle from a custom server to support watch mode
-        // On CI we serve it from the MB instance
-        EMBEDDING_SDK_BUNDLE_HOST: "http://localhost:3100",
-      }),
     }),
   ],
 };

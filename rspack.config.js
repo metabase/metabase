@@ -405,6 +405,7 @@ const additionalRspackConfig = [];
 if (process.env.MB_EDITION === "ee") {
   // Build the embed.js script for the sdk iframe embedding.
   additionalRspackConfig.push(require("./rspack.iframe-sdk-embed.config"));
+  additionalRspackConfig.push(require("./rspack.embedding-sdk-bundle.config"));
 }
 
 module.exports = [config, ...additionalRspackConfig];

@@ -205,7 +205,7 @@ const config = {
        * These aliases are used by Eslint import/resolver rule.
        * @see {@link https://github.com/metabase/metabase/blob/a59d8af558e6e0977fa02863a14611330c3489b0/.eslintrc.js#L155-L159}
        *
-       * And by the SDK's webpack config {@link file://./webpack.embedding-sdk.config.js}
+       * And by the SDK's webpack config {@link file://./rspack.embedding-sdk-bundle.config.js}
        */
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
