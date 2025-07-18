@@ -16,6 +16,8 @@
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -37,6 +39,21 @@
                           {:http-only true
                            :path      "/"
                            :expires   (cookie-expiry)}))))
+
+(defn- process-non-temporal-dim-ids
+  "Parse and process non-temporal dimension IDs JSON string.
+  Filters out null values and sorts ascending, returning as JSON string."
+  [non-temporal-dim-ids]
+  (when non-temporal-dim-ids
+    (try
+      (->> (json/decode non-temporal-dim-ids)
+           (remove nil?)
+           sort
+           vec
+           json/encode)
+      (catch Exception e
+        (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
+        nil))))
 
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
@@ -128,8 +145,8 @@
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
-  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs
-  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions
+  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)
+  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)
 
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
@@ -203,7 +220,7 @@
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
                 :include-metadata?                   include-metadata
-                :non-temporal-dim-ids                non-temporal-dim-ids
+                :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
                 :has-temporal-dim                    has-temporal-dim
                 :display-type                        (set display-type)})]
       (u/prog1 (search/search ctx)

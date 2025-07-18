@@ -138,10 +138,7 @@ export function DatasetsList({
         include_dashboard_questions: true,
         include_metadata: true,
         has_temporal_dim: timeDimensions.length > 0,
-        non_temporal_dim_ids:
-          nonTemporalDimIds.length > 0
-            ? JSON.stringify(nonTemporalDimIds)
-            : undefined,
+        non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
       },
       {
         skip: muted,

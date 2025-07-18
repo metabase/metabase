@@ -1241,8 +1241,7 @@
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (defn- dataset-query->dimensions
-  "Extract dimensions (non-aggregation columns) from a dataset query.
-  Returns a sequence of dimension column objects, or empty sequence if query is invalid."
+  "Extract dimensions (non-aggregation columns) from a dataset query."
   [dataset-query-str]
   (when dataset-query-str
     (lib.metadata.jvm/with-metadata-provider-cache
@@ -1254,7 +1253,7 @@
         (remove (comp #{:source/aggregations} :lib/source) columns)))))
 
 (defn extract-non-temporal-dimension-ids
-  "Populate list of nontemporal dimension field IDs"
+  "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
   [{:keys [dataset_query]}]
   (let [dimensions (dataset-query->dimensions dataset_query)
         dim-ids    (->> dimensions
@@ -1265,7 +1264,7 @@
     (json/encode (or dim-ids []))))
 
 (defn has-temporal-dimension?
-  "Return true if the query has any temporal dimensions (non-aggregation columns of temporal type)"
+  "Return true if the query has any temporal dimensions. See PR 60912"
   [{:keys [dataset_query]}]
   (let [dimensions (dataset-query->dimensions dataset_query)]
     (boolean (some lib.types/temporal? dimensions))))
