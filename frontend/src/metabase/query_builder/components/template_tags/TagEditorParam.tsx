@@ -317,7 +317,7 @@ class TagEditorParamInner extends Component<
         )}
 
         {(isDimension || isTemporalUnit) && field != null && (
-          <FieldAliasInput tag={tag} field={field} onChange={this.setAlias} />
+          <FieldAliasInput tag={tag} onChange={this.setAlias} />
         )}
 
         {isDimension && field != null && (

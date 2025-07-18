@@ -9,22 +9,16 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type { TemplateTag } from "metabase-types/api";
 
 import { ContainerLabel, InputContainer } from "./TagEditorParam";
 
 type FieldAliasInputProps = {
   tag: TemplateTag;
-  field: Field | null;
   onChange: (value: string | undefined) => void;
 };
 
-export function FieldAliasInput({
-  tag,
-  field,
-  onChange,
-}: FieldAliasInputProps) {
+export function FieldAliasInput({ tag, onChange }: FieldAliasInputProps) {
   const handleChange = (value: string) => {
     if (value.length > 0) {
       onChange(value);
@@ -43,7 +37,7 @@ export function FieldAliasInput({
       </ContainerLabel>
       <TextInputBlurChange
         value={tag["alias"] ?? ""}
-        placeholder={field?.name}
+        placeholder={"MY_ALIAS.FIELD"}
         data-testid="field-alias-input"
         onBlurChange={(event) => handleChange(event.target.value)}
       />
