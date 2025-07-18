@@ -134,8 +134,7 @@
                  :creator_common_name "Rasta Toucan"
                  :display             "table"
                  :can_write           true
-                 :display_type        "table"
-                 :has_temporal_dimensions false)
+                 :display_type        "table")
     (make-result "dataset test dataset"
                  :model               "dataset"
                  :bookmark            false
@@ -144,8 +143,7 @@
                  :creator_common_name "Rasta Toucan"
                  :display             "table"
                  :can_write           true
-                 :display_type        "table"
-                 :has_temporal_dimensions false)
+                 :display_type        "table")
     (make-result "action test action"
                  :model               "action"
                  :model_name          (:name action-model-params)
@@ -161,8 +159,7 @@
                  :creator_common_name "Rasta Toucan"
                  :display             "table"
                  :can_write           true
-                 :display_type        "table"
-                 :has_temporal_dimensions false)
+                 :display_type        "table")
     (merge
      (make-result "segment test segment"
                   :model "segment"
@@ -437,7 +434,7 @@
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
                          :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
-                         :display "table" :display_type "table" :can_write true :has_temporal_dimensions false))]
+                         :display "table" :display_type "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))

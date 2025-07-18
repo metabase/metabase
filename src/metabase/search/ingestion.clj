@@ -60,24 +60,54 @@
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
 
+(defn- execute-function-attr
+  "Execute a single function attribute and return the result"
+  [attr-key attr-def record]
+  (try
+    (let [f (:fn attr-def)]
+      (f record))
+    (catch Exception e
+      (log/warn e "Function execution failed for attribute" attr-key)
+      false)))
+
+(defn- execute-all-function-attrs
+  "Execute all function attributes for a given spec and return computed values"
+  [spec record]
+  (reduce-kv
+   (fn [acc attr-key attr-def]
+     (if (search.spec/function-attr? attr-def)
+       (let [snake-key (keyword (u/->snake_case_en (name attr-key)))]
+         (assoc acc snake-key (execute-function-attr attr-key attr-def record)))
+       acc))
+   {}
+   (:attrs spec)))
+
 (defn- ->document [m]
-  (-> m
-      (perf/select-keys
-       (into [:model] search.spec/attr-columns))
-      (update :archived boolean)
-      (assoc
-       :display_data (display-data m)
-       :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
-       :searchable_text (searchable-text m))))
+  (let [spec (search.spec/spec (:model m))
+        fn-results (execute-all-function-attrs spec m)
+        sql-results (-> m
+                        (perf/select-keys
+                         (into [:model] search.spec/attr-columns))
+                        (update :archived boolean)
+                        (assoc
+                         :display_data (display-data m)
+                         :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
+                         :searchable_text (searchable-text m)))]
+    (merge fn-results sql-results)))
 
 (defn- attrs->select-items [attrs]
-  (for [[k v] attrs :when v]
+  (for [[k v] attrs
+        :when (and v (not (search.spec/function-attr? v)))]
     (let [as (keyword (u/->snake_case_en (name k)))]
       (if (true? v) as [v as]))))
 
 (defn- spec-index-query*
   [search-model]
-  (let [spec (search.spec/spec search-model)]
+  (let [spec (search.spec/spec search-model)
+        fn-deps (search.spec/collect-fn-attr-req-fields spec)
+        fn-selects (map (fn [field]
+                          [(keyword (str "this." (name field))) field])
+                        fn-deps)]
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
@@ -89,7 +119,8 @@
                                                                   (->> k
                                                                        (get spec)
                                                                        (remove (comp search-terms key))))))
-                                                       [:attrs :render-terms])))
+                                                       [:attrs :render-terms])
+                                               fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]
       :where     (:where spec [:inline [:= 1 1]])
       :left-join (when (:joins spec)
