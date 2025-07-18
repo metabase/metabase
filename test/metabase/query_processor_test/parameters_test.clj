@@ -228,14 +228,14 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "text params"
       (field-filter-param-test-is-count-= 1
-                                          :venues :name :text "In-N-Out Burger" "name"))
+                                          :venues :name :text "In-N-Out Burger" (mt/make-alias driver/*driver* "name")))
     (testing "number params"
       (field-filter-param-test-is-count-= 22
-                                          :venues :price :number "1" "price"))
+                                          :venues :price :number "1" (mt/make-alias driver/*driver* "price")))
     (testing "boolean params"
       (mt/dataset places-cam-likes
         (field-filter-param-test-is-count-= 2
-                                            :places :liked :boolean true "liked")))))
+                                            :places :liked :boolean true (mt/make-alias driver/*driver* "liked"))))))
 
 (deftest ^:parallel empty-alias-field-filter-param-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
