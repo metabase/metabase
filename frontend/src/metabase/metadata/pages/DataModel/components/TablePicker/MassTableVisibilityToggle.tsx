@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateTableListMutation } from "metabase/api";
@@ -9,20 +10,30 @@ import type { Table } from "metabase-types/api";
 interface Props {
   className?: string;
   tables: Table[];
+  onUpdate: () => void;
 }
 
-export function MassTableVisibilityToggle({ className, tables }: Props) {
+export function MassTableVisibilityToggle({
+  className,
+  tables,
+  onUpdate,
+}: Props) {
   const [updateTables, { isLoading }] = useUpdateTableListMutation();
   const ids = tables.map((table) => table.id);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const isHidden = false;
+  const areAllHidden = tables.every(
+    (table) => table.visibility_type === "hidden",
+  );
+  const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
     const { error } = await updateTables({
       ids,
       visibility_type: "hidden",
     });
+
+    onUpdateRef.current();
 
     if (error) {
       sendErrorToast(t`Failed to hide tables`);
@@ -32,6 +43,8 @@ export function MassTableVisibilityToggle({ className, tables }: Props) {
           ids,
           visibility_type: null,
         });
+
+        onUpdateRef.current();
         sendUndoToast(error);
       });
     }
@@ -43,14 +56,18 @@ export function MassTableVisibilityToggle({ className, tables }: Props) {
       visibility_type: null,
     });
 
+    onUpdateRef.current();
+
     if (error) {
       sendErrorToast(t`Failed to unhide`);
     } else {
-      sendSuccessToast(t`Tables unhidden}`, async () => {
+      sendSuccessToast(t`Tables unhidden`, async () => {
         const { error } = await updateTables({
           ids,
           visibility_type: "hidden",
         });
+
+        onUpdateRef.current();
         sendUndoToast(error);
       });
     }
@@ -59,7 +76,7 @@ export function MassTableVisibilityToggle({ className, tables }: Props) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
-    if (isHidden) {
+    if (areAllHidden) {
       unhide();
     } else {
       hide();
@@ -69,21 +86,21 @@ export function MassTableVisibilityToggle({ className, tables }: Props) {
   if (isLoading) {
     return (
       <ActionIcon disabled variant="transparent">
-        <Loader size="xs" data-testid="loading-indicator" />
+        <Loader data-testid="loading-indicator" size="xs" />
       </ActionIcon>
     );
   }
 
   return (
-    <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
+    <Tooltip label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}>
       <ActionIcon
-        aria-label={isHidden ? t`Unhide table` : t`Hide table`}
+        aria-label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}
         className={className}
         disabled={isLoading}
         variant="transparent"
         onClick={handleClick}
       >
-        <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
+        <Icon name={areAllHidden ? "eye_crossed_out" : "eye"} />
       </ActionIcon>
     </Tooltip>
   );

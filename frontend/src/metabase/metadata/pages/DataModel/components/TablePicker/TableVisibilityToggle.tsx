@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
@@ -9,13 +10,15 @@ import type { Table } from "metabase-types/api";
 interface Props {
   className?: string;
   table: Table;
+  onUpdate: () => void;
 }
 
-export function TableVisibilityToggle({ className, table }: Props) {
+export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   const [updateTable, { isLoading }] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const isHidden = table.visibility_type != null;
+  const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
     const { error } = await updateTable({
@@ -23,6 +26,7 @@ export function TableVisibilityToggle({ className, table }: Props) {
       visibility_type: "hidden",
     });
 
+    onUpdateRef.current();
     if (error) {
       sendErrorToast(t`Failed to hide ${table.display_name}`);
     } else {
@@ -31,6 +35,8 @@ export function TableVisibilityToggle({ className, table }: Props) {
           id: table.id,
           visibility_type: null,
         });
+
+        onUpdateRef.current();
         sendUndoToast(error);
       });
     }
@@ -42,6 +48,8 @@ export function TableVisibilityToggle({ className, table }: Props) {
       visibility_type: null,
     });
 
+    onUpdateRef.current();
+
     if (error) {
       sendErrorToast(t`Failed to unhide ${table.display_name}`);
     } else {
@@ -50,6 +58,8 @@ export function TableVisibilityToggle({ className, table }: Props) {
           id: table.id,
           visibility_type: "hidden",
         });
+
+        onUpdateRef.current();
         sendUndoToast(error);
       });
     }
@@ -68,7 +78,7 @@ export function TableVisibilityToggle({ className, table }: Props) {
   if (isLoading) {
     return (
       <ActionIcon disabled variant="transparent">
-        <Loader size="xs" data-testid="loading-indicator" />
+        <Loader data-testid="loading-indicator" size="xs" />
       </ActionIcon>
     );
   }
