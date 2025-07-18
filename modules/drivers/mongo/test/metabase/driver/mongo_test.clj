@@ -1069,7 +1069,6 @@
         (let [coll-name (u.random/random-name)
               ^MongoCollection coll (mongo.util/collection db coll-name)]
           (try
-            ;; Insert documents using mongo.util/insert-many
             (mongo.util/insert-many coll
                                     [{:_id {:type "A" :seq 1}
                                       :metadata {:category "X"}
@@ -1124,7 +1123,6 @@
         (let [coll-name (u.random/random-name)
               ^MongoCollection coll (mongo.util/collection db coll-name)]
           (try
-            ;; Insert documents using mongo.util/insert-many
             (mongo.util/insert-many coll
                                     [{:_id {:Country "USA" :type "A"}
                                       :type "X" ; top-level type for collision test
@@ -1179,9 +1177,9 @@
                          (set rows))
                       "Count aggregation with nested _id field works correctly")
 
-                  ;; Column names should be correct
                   (let [col-names (mapv :name (get-in result [:data :cols]))]
-                    (is (= ["_id.Country" "count"] col-names)))))
+                    (is (= ["_id.Country" "count"] col-names)
+                        "Column names are correct"))))
 
               (testing "Collision regression guard: breaking out by both _id.type and type"
                 (let [query {:database (mt/id)
@@ -1209,7 +1207,6 @@
         (let [coll-name (u.random/random-name)
               ^MongoCollection coll (mongo.util/collection db coll-name)]
           (try
-            ;; Insert documents using mongo.util/insert-many
             (mongo.util/insert-many coll
                                     [{:_id {:widgetType "button"
                                             :userId 123
@@ -1301,6 +1298,5 @@
                   (is (= #{["Alice" 250] ["Bob" 200]}
                          (set (get-in result [:data :rows])))
                       "Results are what we expect"))))
-
             (finally
               (.drop coll))))))))
