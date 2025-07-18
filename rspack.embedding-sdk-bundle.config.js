@@ -7,7 +7,7 @@ const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
-const mainConfig = require("./webpack.config");
+const mainConfig = require("./rspack.main.config");
 const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");

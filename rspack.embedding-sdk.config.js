@@ -6,7 +6,7 @@ const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
-const mainConfig = require("./webpack.config");
+const mainConfig = require("./rspack.main.config");
 const { resolve } = require("path");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
@@ -40,8 +40,6 @@ class TypescriptConvertErrorsToWarnings {
 }
 
 const config = {
-  ...mainConfig,
-
   context: SDK_SRC_PATH,
 
   entry: "./index.ts",
@@ -52,6 +50,10 @@ const config = {
     library: {
       type: "commonjs2",
     },
+  },
+
+  resolve: {
+    ...mainConfig.resolve,
   },
 
   module: {
@@ -120,10 +122,6 @@ const config = {
         reportFilename: BUILD_PATH + "/dist/report.html",
       }),
   ].filter(Boolean),
-};
-
-config.resolve.alias = {
-  ...mainConfig.resolve.alias,
 };
 
 module.exports = config;

@@ -205,6 +205,9 @@ module.exports = {
         "release/**/*",
         "webpack.config.js",
         "rspack.config.js",
+        "rspack.main.config.js",
+        "rspack.embedding-sdk.config.js",
+        "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {
         "no-color-literals": "off",
