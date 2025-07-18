@@ -28,7 +28,7 @@ export const DurationInput = () => {
           error={null}
           id={id}
           name="duration"
-          placeholder={t`60`}
+          placeholder={t`Duration`}
           w={80}
         />
 

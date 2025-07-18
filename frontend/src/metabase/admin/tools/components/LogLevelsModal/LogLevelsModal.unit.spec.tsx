@@ -131,8 +131,8 @@ describe("LogLevelsModal", () => {
     await waitForLoaderToBeRemoved();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
-    await userEvent.clear(screen.getByPlaceholderText("60"));
-    await userEvent.type(screen.getByPlaceholderText("60"), "24");
+    await userEvent.clear(screen.getByPlaceholderText("Duration"));
+    await userEvent.type(screen.getByPlaceholderText("Duration"), "24");
     await userEvent.click(screen.getByPlaceholderText("Unit"));
     await userEvent.click(screen.getByText("Hours"));
     await userEvent.click(screen.getByText("Load preset"));
@@ -168,7 +168,7 @@ describe("LogLevelsModal", () => {
     await waitForLoaderToBeRemoved();
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
 
-    await userEvent.clear(screen.getByPlaceholderText("60"));
+    await userEvent.clear(screen.getByPlaceholderText("Duration"));
 
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
