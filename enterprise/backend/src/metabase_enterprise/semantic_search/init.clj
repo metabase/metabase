@@ -1,3 +1,3 @@
-(ns metabase-enterprise.semantic-search.core
+(ns metabase-enterprise.semantic-search.init
   (:require
-   [metabase-enterprise.semantic-search.settings :as semantic.settings]))
+   [metabase-enterprise.semantic-search.settings]))
