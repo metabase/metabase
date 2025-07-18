@@ -50,6 +50,11 @@
   [text]
   (get mock-embeddings text [0.01 0.02 0.03 0.04]))
 
+(defn get-mock-embeddings-batch
+  "Lookup embeddings for multiple texts in [[mock-embeddings]]."
+  [texts]
+  (mapv get-mock-embedding texts))
+
 (def mock-documents
   [{:model "card"
     :id "123"
@@ -78,6 +83,7 @@
   #_:clj-kondo/ignore
   `(with-redefs [semantic.embedding/model-dimensions (constantly 4)
                  semantic.embedding/pull-model (constantly nil)
+                 semantic.embedding/get-embeddings-batch get-mock-embeddings-batch
                  semantic.embedding/get-embedding get-mock-embedding]
      ~@body))
 
