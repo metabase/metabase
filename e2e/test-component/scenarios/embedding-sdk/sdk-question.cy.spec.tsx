@@ -540,4 +540,26 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
     });
   });
+
+  it("should not show 'Back to previous results' button when filtering returns no results on a new question (EMB-620)", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Visualize").click();
+
+      cy.log("add a filter that returns no results");
+      cy.findByText("Filter").click();
+
+      H.popover().within(() => {
+        cy.findByText("ID").click();
+        cy.findByPlaceholderText("Enter an ID").type("555555");
+        cy.findByText("Add filter").click();
+      });
+
+      cy.log("back to previous result button should not be visible");
+      cy.findByText("No results!").should("be.visible");
+      cy.findByText("Back to previous results").should("not.exist");
+    });
+  });
 });
