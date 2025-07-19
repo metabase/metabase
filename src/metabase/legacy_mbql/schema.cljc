@@ -19,7 +19,9 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
@@ -1338,8 +1340,7 @@
   "Schema for a valid, normalized MBQL [inner] query."
   [:ref ::MBQLQuery])
 
-(def SourceQuery
-  "Schema for a valid value for a `:source-query` clause."
+(mr/def ::SourceQuery
   [:multi
    {:dispatch (fn [x]
                 (if ((every-pred map? :native) x)
@@ -1351,21 +1352,27 @@
    [:native [:ref ::NativeSourceQuery]]
    [:mbql   MBQLQuery]])
 
+(def SourceQuery
+  "Schema for a valid value for a `:source-query` clause."
+  [:ref ::SourceQuery])
+
 (mr/def ::legacy-column-metadata
   "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
   `:metabase.lib.schema.metadata/column`."
   [:and
    [:map
-    [:name         ::lib.schema.common/non-blank-string]
-    [:base_type    ::lib.schema.common/base-type]
-    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
-    ;; able to remove this as a requirement
-    [:display_name ::lib.schema.common/non-blank-string]
-    [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-    ;; you'll need to provide this in order to use BINNING
-    [:fingerprint   {:optional true} [:maybe [:ref ::lib.schema.metadata/column.fingerprint]]]
-    [:source        {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
-    [:field_ref     {:optional true} [:maybe [:ref ::Reference]]]]
+    [:base_type          ::lib.schema.common/base-type]
+    [:display_name       ::lib.schema.common/non-blank-string]
+    [:name               :string]
+    [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
+    [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+    ;; Fingerprint is required in order to use BINNING
+    [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+    [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+    ;; name is allowed to be empty in some databases like SQL Server.
+    [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+    [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
+    [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]]
    [:fn
     {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
     (complement :lib/type)]
@@ -1576,20 +1583,17 @@
 (mr/def ::MBQLQuery
   [:and
    [:map
-    [:source-query       {:optional true} SourceQuery]
-    [:source-table       {:optional true} SourceTable]
-    [:aggregation        {:optional true} [:sequential {:min 1} Aggregation]]
-    [:aggregation-idents {:optional true} [:ref ::IndexedIdents]]
-    [:breakout           {:optional true} [:sequential {:min 1} Field]]
-    [:breakout-idents    {:optional true} [:ref ::IndexedIdents]]
-    [:expressions        {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
-    [:expression-idents  {:optional true} [:ref ::ExpressionIdents]]
-    [:fields             {:optional true} Fields]
-    [:filter             {:optional true} Filter]
-    [:limit              {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
-    [:order-by           {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
-    [:page               {:optional true} [:ref ::Page]]
-    [:joins              {:optional true} [:ref ::Joins]]
+    [:source-query {:optional true} SourceQuery]
+    [:source-table {:optional true} SourceTable]
+    [:aggregation  {:optional true} [:sequential {:min 1} Aggregation]]
+    [:breakout     {:optional true} [:sequential {:min 1} Field]]
+    [:expressions  {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
+    [:fields       {:optional true} Fields]
+    [:filter       {:optional true} Filter]
+    [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+    [:order-by     {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
+    [:page         {:optional true} [:ref ::Page]]
+    [:joins        {:optional true} [:ref ::Joins]]
 
     [:source-metadata
      {:optional true
@@ -1782,14 +1786,13 @@
    [:fn
     {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
     (complement (every-pred :native :query))]
-   ;; NOCOMMIT
-   #_[:fn
-      {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
-      (fn [{native :native, mbql :query, query-type :type}]
-        (core/case query-type
-          :native (core/not mbql)
-          :query  (core/not native)
-          false))]])
+   [:fn
+    {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
+    (fn [{native :native, mbql :query, query-type :type}]
+      (core/case query-type
+        :native (core/not mbql)
+        :query  (core/not native)
+        false))]])
 
 (mr/def ::check-query-does-not-have-source-metadata
   "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the

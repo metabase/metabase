@@ -16,7 +16,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.legacy-mbql.schema :as mbql.s]))
 
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
@@ -127,7 +128,7 @@
           (add-extra-column-metadata ::mlv2)))
     (result-metadata* query current-user-id))))
 
-(mu/defn- ensure-legacy :- [:ref :metabase.analyze.query-results/ResultColumnMetadata]
+(mu/defn- ensure-legacy :- ::mbql.s/legacy-column-metadata
   [col :- :map]
   (letfn [(->legacy [col]
             (-> col

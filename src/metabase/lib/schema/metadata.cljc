@@ -6,6 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
@@ -239,15 +240,6 @@
          (= (:lib/source m) :source/joins)
          true))])
 
-(mr/def ::column.fingerprint
-  [:map
-   {:decode/normalize lib.schema.common/normalize-map}
-   [:global {:optional true} [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]
-   [:type   {:optional true} [:map-of
-                              {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-                              ::lib.schema.common/base-type
-                              [:map-of {:decode/normalize lib.schema.common/normalize-map-no-kebab-case} :keyword :any]]]])
-
 (def column-visibility-types
   "Possible values for column `:visibility-type`."
   #{:normal       ; Default setting.  field has no visibility restrictions.
@@ -429,7 +421,7 @@
     ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
     [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
     ;;
-    [:fingerprint {:optional true} [:maybe [:ref ::column.fingerprint]]]
+    [:fingerprint {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.

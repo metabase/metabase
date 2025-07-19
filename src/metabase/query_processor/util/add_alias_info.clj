@@ -201,7 +201,7 @@
   [:or ::mbql.s/field ::mbql.s/expression ::mbql.s/aggregation-options])
 
 (mu/defn- exports :- [:set ::exported-clause]
-  [query :- ::mbql.s/MBQLQuery]
+  [query :- ::mbql.s/SourceQuery]
   (into #{} (lib.util.match/match (dissoc query :source-query :source-metadata :joins)
               [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
@@ -253,7 +253,7 @@
                (first matches))))))))
 
 (mu/defn- matching-field-in-source-query*
-  [source-query    :- ::mbql.s/MBQLQuery
+  [source-query    :- ::mbql.s/SourceQuery
    source-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
    field-clause    :- ::mbql.s/field
    & {:keys [normalize-fn]
