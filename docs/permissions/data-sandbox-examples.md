@@ -27,7 +27,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 5. **Add Mr. Beer to the Customers group**: See [adding people to groups](../people-and-groups/managing.md#adding-people-to-groups).
 
-6. **Create a collection that is only viewable by Admins.**. Call it "Admin collection". We'll use this collection to store SQL questions that we use to sandbox tables in examples 2 and 3. See [Collection permissions](./collections.md).
+6. **Create a collection that is only viewable by Admins.** Call it "Admin collection". We'll use this collection to store SQL questions that we use to sandbox tables in examples 2 and 3. See [Collection permissions](./collections.md).
 
 ## Basic sandbox setup - filtering rows based on user attributes
 
