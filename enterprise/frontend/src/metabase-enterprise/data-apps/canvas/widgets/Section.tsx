@@ -58,6 +58,7 @@ export const SectionWidget = ({
         border: "1px solid var(--mb-color-border)",
         // eslint-disable-next-line no-color-literals
         background: "rgba(0,0,0, 0.1)",
+        flex: "1 1 100%",
 
         opacity,
       }}

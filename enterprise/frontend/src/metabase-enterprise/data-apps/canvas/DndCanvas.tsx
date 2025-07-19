@@ -1,14 +1,15 @@
 import { useCallback } from "react";
 
-import { TrashDropZone } from "metabase-enterprise/data-apps/canvas/TrashDropZone";
+import { uuid } from "metabase/lib/uuid";
+
+import S from "./DndCanvas.module.css";
+import { TrashDropZone } from "./TrashDropZone";
 import type {
   CanvasComponentsMap,
   DataAppWidget,
   HandleDropFnArguments,
   RenderCanvasComponentFn,
-} from "metabase-enterprise/data-apps/canvas/canvas-types";
-
-import S from "./DndCanvas.module.css";
+} from "./canvas-types";
 import {
   findParent,
   handleMoveSidebarComponentIntoParent,
@@ -32,6 +33,7 @@ export const Container = ({
 }: Props) => {
   const handleDrop = useCallback(
     ({ item, over, index }: HandleDropFnArguments) => {
+      console.log("components", components);
       console.log("dropZone", over);
       console.log("item", item);
 
@@ -40,6 +42,7 @@ export const Container = ({
         // 1. Move sidebar item into page
         const newItem = {
           ...item,
+          id: uuid(),
         };
         delete newItem.fromSidebar;
 
@@ -95,7 +98,7 @@ export const Container = ({
 
   return (
     <div className={S.container}>
-      {renderCanvasComponent("root", handleDrop, componentsMap)}
+      {renderCanvasComponent("root", handleDrop)}
 
       <TrashDropZone onDrop={handleDropToTrashBin} />
     </div>
