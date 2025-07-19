@@ -1,6 +1,5 @@
+import type { BaseInteractiveQuestionProps } from "embedding-sdk";
 import { QuestionEditor } from "embedding-sdk/components/private/QuestionEditor";
-
-import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
 
 /**
  * @deprecated Use `InteractiveQuestion` with `isSaveEnabled={true}` instead.

@@ -1,7 +1,7 @@
 import {
   type BaseInteractiveQuestionProps,
   InteractiveQuestion,
-} from "../InteractiveQuestion";
+} from "../SdkQuestion";
 
 /**
  * @interface
