@@ -1,3 +1,5 @@
+import { action } from "@storybook/addon-actions";
+
 import { ReduxProvider } from "__support__/storybook";
 import { Flex } from "metabase/ui";
 
@@ -56,6 +58,11 @@ export default {
   component: _UpsellCard,
   args,
   argTypes,
+};
+
+export const WithOnClick = {
+  render: DefaultTemplate,
+  args: { ...args, onClick: action("clicked") },
 };
 
 export const WithImage = {

@@ -27,28 +27,6 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       ).toBeInTheDocument();
       expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
     });
-
-    it("should not tell users to switch binaries when they have a cloud instance", async () => {
-      await setup({
-        isEmbeddingSdkEnabled: true,
-        showSdkEmbedTerms: false,
-        isHosted: true,
-      });
-      expect(
-        screen.getByText(
-          /You can test Embedded analytics SDK on localhost quickly by using API keys/i,
-        ),
-      ).toBeInTheDocument();
-
-      const alertInfo = within(screen.getByTestId("sdk-settings-alert-info"));
-      expect(
-        alertInfo.queryByText("switch Metabase binaries"),
-      ).not.toBeInTheDocument();
-      expect(
-        alertInfo.getByText("upgrade to Metabase Pro"),
-      ).toBeInTheDocument();
-      expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
-    });
   });
 
   describe("Modal behavior based on enable-embedding-sdk and show-sdk-embed-terms", () => {

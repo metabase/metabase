@@ -33,7 +33,7 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
 
-type StorePaths =
+export type StorePaths =
   /** store main page */
   | ""
   /** checkout page */
@@ -43,11 +43,23 @@ type StorePaths =
   /** development instance specific upsell */
   | "account/new-dev-instance"
   /** redirects to the specific instance storage management page */
-  | "account/storage";
+  | "account/storage"
+  /** EE, self-hosted upsell that communicates back with the instance */
+  | "checkout/upgrade/self-hosted";
 
+// @deprecated Please use getStoreUrlFromState or useStoreUrl that read the store-url from the state
 export const getStoreUrl = (path: StorePaths = "") => {
   return `https://store.metabase.com/${path}`;
 };
+
+export function getStoreUrlFromState(state: State, path: StorePaths = "") {
+  const storeUrl = getSetting(state, "store-url");
+  if (!storeUrl) {
+    return undefined;
+  }
+  const url = new URL(path, storeUrl);
+  return url.toString();
+}
 
 export const migrateToCloudGuideUrl = () =>
   "https://www.metabase.com/cloud/docs/migrate/guide";

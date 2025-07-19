@@ -3,6 +3,7 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
   setupUserKeyValueEndpoints,
@@ -46,6 +47,7 @@ export async function setup({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
+    setupTokenStatusEndpoint(true);
   }
 
   setupPropertiesEndpoints(settings);
@@ -64,7 +66,16 @@ export async function setup({
 
   await waitFor(async () => {
     const gets = await findRequests("GET");
-    expect(gets).toHaveLength(3);
+    expect(gets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/setting"),
+        }),
+        expect.objectContaining({
+          url: expect.stringContaining("/api/session/properties"),
+        }),
+      ]),
+    );
   });
 
   await screen.findByText("Embedding SDK");

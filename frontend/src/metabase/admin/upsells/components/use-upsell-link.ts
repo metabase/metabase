@@ -2,7 +2,7 @@ import { useUrlWithUtm } from "metabase/common/hooks";
 
 interface UpsellLinkProps {
   /* The URL we're sending them to */
-  url: string;
+  url: string | undefined;
   /* The name of the feature we're trying to sell */
   campaign: string;
   /* The location, specific component/view of the upsell notification */

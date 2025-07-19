@@ -9,3 +9,4 @@ export * from "./use-temp-storage";
 export * from "./use-temporary-state";
 export * from "./use-toast";
 export * from "./use-url-with-utm";
+export { useStoreUrl } from "./use-store-url/use-store-url";
