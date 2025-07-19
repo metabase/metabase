@@ -1212,6 +1212,7 @@
    [:map
     [:type        [:= :dimension]]
     [:dimension   field]
+    [:alias       {:optional true} :string]
 
     [:widget-type
      [:ref
@@ -1235,7 +1236,10 @@
   "Schema for a temporal unit template tag."
   [:merge
    TemplateTag:Value:Common
-   [:map [:type [:= :temporal-unit]]]])
+   [:map
+    [:type      [:= :temporal-unit]]
+    [:dimension field]
+    [:alias     {:optional true} :string]]])
 
 ;; Example:
 ;;

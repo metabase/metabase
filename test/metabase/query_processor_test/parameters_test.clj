@@ -118,19 +118,23 @@
 ;;; |                                              Field Filter Params                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- field-filter-count-query [table field value-type value]
-  {:database   (mt/id)
-   :type       :native
-   :native     (assoc (mt/count-with-field-filter-query driver/*driver* table field)
-                      :template-tags {(name field) {:name         (name field)
-                                                    :display-name (name field)
-                                                    :type         :dimension
-                                                    :widget-type  value-type
-                                                    :dimension    [:field (mt/id table field) nil]}})
-   :parameters [{:type   value-type
-                 :name   (name field)
-                 :target [:dimension [:template-tag (name field)]]
-                 :value  value}]})
+(defn- field-filter-count-query
+  ([table field value-type value]
+   (field-filter-count-query table field value-type value ""))
+  ([table field value-type value alias]
+   {:database   (mt/id)
+    :type       :native
+    :native     (assoc (mt/count-with-field-filter-query driver/*driver* table field)
+                       :template-tags {(name field) (cond-> {:name         (name field)
+                                                             :display-name (name field)
+                                                             :type         :dimension
+                                                             :widget-type  value-type
+                                                             :dimension    [:field (mt/id table field) nil]}
+                                                      alias (assoc :alias alias))})
+    :parameters [{:type   value-type
+                  :name   (name field)
+                  :target [:dimension [:template-tag (name field)]]
+                  :value  value}]}))
 
 ;; TODO: fix this test for Presto JDBC (detailed explanation follows)
 ;; Spent a few hours and need to move on. Here is the query being generated for the failing case
@@ -149,11 +153,14 @@
 ;; Tried manually syncing the DB (with attempted-murders dataset), and storing it to an initialized QP, to no avail.
 
 ;; this isn't a complete test for all possible field filter types, but it covers mostly everything
-(defn- field-filter-param-test-is-count-= [expected-count table field value-type value]
-  (let [query (field-filter-count-query table field value-type value)]
-    (mt/with-native-query-testing-context query
-      (is (= expected-count
-             (run-count-query query))))))
+(defn- field-filter-param-test-is-count-=
+  ([expected-count table field value-type value]
+   (field-filter-param-test-is-count-= expected-count table field value-type value ""))
+  ([expected-count table field value-type value alias]
+   (let [query (field-filter-count-query table field value-type value alias)]
+     (mt/with-native-query-testing-context query
+       (is (= expected-count
+              (run-count-query query)))))))
 
 (deftest ^:parallel field-filter-param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/dynamic-dataset-loading)
@@ -196,6 +203,45 @@
       (mt/dataset places-cam-likes
         (field-filter-param-test-is-count-= 2
                                             :places :liked :boolean true)))))
+
+(deftest ^:parallel alias-field-filter-param-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/dynamic-dataset-loading)
+    (testing "temporal field filters"
+      (mt/dataset attempted-murders-no-time
+        (doseq [field
+                [:datetime
+                 :date
+                 :datetime_tz]
+
+                [value-type value expected-count]
+                [[:date/relative     "past30days" 0]
+                 [:date/range        "2019-11-01~2020-01-09" 20]
+                 [:date/single       "2019-11-12" 1]
+                 [:date/quarter-year "Q4-2019" 20]
+                 [:date/month-year   "2019-11" 20]]]
+          (testing (format "\nField filter with %s Field" field)
+            (testing (format "\nfiltering against %s value '%s'" value-type value)
+              (field-filter-param-test-is-count-= expected-count
+                                                  :attempts field value-type value (mt/make-alias driver/*driver* (name field))))))))))
+
+(deftest ^:parallel alias-field-filter-param-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+    (testing "text params"
+      (field-filter-param-test-is-count-= 1
+                                          :venues :name :text "In-N-Out Burger" (mt/make-alias driver/*driver* "name")))
+    (testing "number params"
+      (field-filter-param-test-is-count-= 22
+                                          :venues :price :number "1" (mt/make-alias driver/*driver* "price")))
+    (testing "boolean params"
+      (mt/dataset places-cam-likes
+        (field-filter-param-test-is-count-= 2
+                                            :places :liked :boolean true (mt/make-alias driver/*driver* "liked"))))))
+
+(deftest ^:parallel empty-alias-field-filter-param-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+    (testing "text params"
+      (field-filter-param-test-is-count-= 1
+                                          :venues :name :text "In-N-Out Burger" ""))))
 
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)

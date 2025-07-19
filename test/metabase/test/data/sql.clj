@@ -348,6 +348,18 @@
            query           (str/replace query (re-pattern #"(.*)(?:1337)(.*)") (format "$1%s$2" to-insert))]
        {:query query}))))
 
+(defmethod tx/make-alias :sql/test-extensions
+  ([_driver alias]
+   alias))
+
+(defmethod tx/make-alias :oracle
+  ([_driver alias]
+   (str "\"" alias "\"")))
+
+(defmethod tx/make-alias :snowflake
+  ([_driver alias]
+   (str "\"" alias "\"")))
+
 (defmulti session-schema
   "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
   to use the schema to create tables outside the regular test data setup. Test code that uses this should assume that
