@@ -49,7 +49,7 @@ function Tree({
 }) {
   const { databaseId, schemaName } = path;
   const { isExpanded, toggle } = useExpandedState(path);
-  const { tree } = useTableLoader(path);
+  const { tree, reload } = useTableLoader(path);
 
   const items = flatten(tree, {
     isExpanded,
@@ -103,7 +103,14 @@ function Tree({
   }
 
   return (
-    <Results items={items} toggle={toggle} path={path} onItemClick={onChange} />
+    <Results
+      items={items}
+      path={path}
+      reload={reload}
+      toggle={toggle}
+      withMassToggle
+      onItemClick={onChange}
+    />
   );
 }
 

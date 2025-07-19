@@ -4,6 +4,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
+import { MassTableVisibilityToggle } from "./MassTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
 import type { FlatItem, TreePath } from "./types";
@@ -13,21 +14,27 @@ const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
 const INDENT_OFFSET = 18;
 
+interface Props {
+  items: FlatItem[];
+  path: TreePath;
+  reload?: (path: TreePath) => void;
+  selectedIndex?: number;
+  toggle?: (key: string, value?: boolean) => void;
+  withMassToggle?: boolean;
+  onItemClick?: (path: TreePath) => void;
+  onSelectedIndexChange?: (index: number) => void;
+}
+
 export function Results({
   items,
-  toggle,
   path,
-  onItemClick,
+  reload,
   selectedIndex,
+  toggle,
+  withMassToggle,
+  onItemClick,
   onSelectedIndexChange,
-}: {
-  items: FlatItem[];
-  toggle?: (key: string, value?: boolean) => void;
-  path: TreePath;
-  onItemClick?: (path: TreePath) => void;
-  selectedIndex?: number;
-  onSelectedIndexChange?: (index: number) => void;
-}) {
+}: Props) {
   const [activeTableId, setActiveTableId] = useState(path.tableId);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -97,6 +104,10 @@ export function Results({
           } = item;
           const isActive = type === "table" && value?.tableId === activeTableId;
           const parentIndex = items.findIndex((item) => item.key === parent);
+          const children = items.filter((item) => item.parent === key);
+          const hasTableChildren = children.some(
+            (child) => child.type === "table",
+          );
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -234,6 +245,38 @@ export function Results({
                 </Flex>
               </Flex>
 
+              {withMassToggle &&
+                type === "database" &&
+                value?.databaseId !== undefined &&
+                hasTableChildren &&
+                !disabled && (
+                  <MassTableVisibilityToggle
+                    className={S.massVisibilityToggle}
+                    tables={children.flatMap((child) =>
+                      child.type === "table" && child.table != null
+                        ? [child.table]
+                        : [],
+                    )}
+                    onUpdate={() => reload?.(value)}
+                  />
+                )}
+
+              {withMassToggle &&
+                type === "schema" &&
+                value?.schemaName !== undefined &&
+                hasTableChildren &&
+                !disabled && (
+                  <MassTableVisibilityToggle
+                    className={S.massVisibilityToggle}
+                    tables={children.flatMap((child) =>
+                      child.type === "table" && child.table != null
+                        ? [child.table]
+                        : [],
+                    )}
+                    onUpdate={() => reload?.(value)}
+                  />
+                )}
+
               {type === "table" &&
                 value?.tableId !== undefined &&
                 item.table &&
@@ -241,6 +284,7 @@ export function Results({
                   <TableVisibilityToggle
                     className={S.visibilityToggle}
                     table={item.table}
+                    onUpdate={() => reload?.(value)}
                   />
                 )}
             </Flex>
