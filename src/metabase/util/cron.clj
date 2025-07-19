@@ -12,24 +12,24 @@
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::CronScheduleString
-  (mu/with-api-error-message
-   [:and
-    ms/NonBlankString
-    [:fn
-     {:error/fn (fn [{:keys [value]} _]
-                  (try
-                    (CronExpression/validateExpression value)
-                    (catch Throwable e
-                      (str "Invalid cron schedule string: " (.getMessage e)))))}
-     (fn [^String s]
-       (try
-         (CronExpression/validateExpression s)
-         true
-         (catch Throwable _
-           false)))]]
-   (i18n/deferred-tru "value must be a valid Quartz cron schedule string.")))
+(letfn [(f [^String s]
+          (try
+            (CronExpression/validateExpression s)
+            true
+            (catch Throwable _
+              false)))]
+  (mr/def ::CronScheduleString
+    (mu/with-api-error-message
+     [:and
+      ms/NonBlankString
+      [:fn
+       {:error/fn (fn [{:keys [value]} _]
+                    (try
+                      (CronExpression/validateExpression value)
+                      (catch Throwable e
+                        (str "Invalid cron schedule string: " (.getMessage e)))))}
+       f]]
+     (i18n/deferred-tru "value must be a valid Quartz cron schedule string."))))
 
 (def CronScheduleString
   "Malli Schema for a valid cron schedule string."
