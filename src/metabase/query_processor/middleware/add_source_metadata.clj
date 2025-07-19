@@ -27,7 +27,7 @@
                   (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(mu/defn- native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn- native-source-query->metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
@@ -44,7 +44,7 @@
                   {:source-query source-query}))
       nil)))
 
-(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
@@ -63,7 +63,7 @@
 (mu/defn- add-source-metadata :- [:map
                                   [:source-metadata
                                    {:optional true}
-                                   [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+                                   [:maybe [:sequential ::mbql.s/legacy-column-metadata]]]]
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                     native-source-query->metadata

@@ -7,6 +7,7 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -127,7 +128,7 @@
           (add-extra-column-metadata ::mlv2)))
     (result-metadata* query current-user-id))))
 
-(mu/defn- ensure-legacy :- [:ref :metabase.analyze.query-results/ResultColumnMetadata]
+(mu/defn- ensure-legacy :- ::mbql.s/legacy-column-metadata
   [col :- :map]
   (letfn [(->legacy [col]
             (-> col

@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -21,23 +22,17 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
+   [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------- Type Mappings --------------------------------------------------
+(comment metabase.lib.schema.metadata/keep-me)
 
-(def visibility-types
-  "Possible values for `Field.visibility_type`."
-  #{:normal         ; Default setting.  field has no visibility restrictions.
-    :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
-    :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
-    :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
-    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
-
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
+(p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 

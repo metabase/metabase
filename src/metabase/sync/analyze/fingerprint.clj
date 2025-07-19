@@ -8,6 +8,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -33,7 +34,7 @@
 
 (mu/defn- save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe analyze/Fingerprint]]
+   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 

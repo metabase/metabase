@@ -24,6 +24,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
+;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
+
 (def ^:private counter (atom 2000))
 
 (defn- add-aggregation-options

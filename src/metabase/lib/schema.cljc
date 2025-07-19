@@ -80,7 +80,10 @@
     #(not (contains? % :source-table))]
    [:fn
     {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]])
+    #(not (contains? % :source-card))]
+   [:fn
+    {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
+    (complement :query)]])
 
 (mr/def ::breakout
   [:ref ::ref/ref])

@@ -42,10 +42,10 @@
                                          (lib/with-join-fields :all)
                                          (lib/with-join-alias "j")))]
             (mt/with-native-query-testing-context query
-              ;; should return a single row with two columns, but fails instead
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column \"j\.ID\" not found"
-                                    (mt/rows+column-names
-                                     (qp/process-query query)))))))))))
+              (testing "should return a single row with two columns"
+                (is (= {:rows [[1 1]], :columns ["_ID" "_ID_2"]}
+                       (mt/rows+column-names
+                        (qp/process-query query))))))))))))
 
 (deftest ^:parallel long-column-name-in-card-test
   (testing "Should be able to handle long column names in saved questions (#35252)"
@@ -418,8 +418,10 @@
                                                                    (lib/visible-columns $)))))]
           ;; should return {:rows [[1746]], :columns ("count")}
           (mt/with-native-query-testing-context query
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Duplicate column name"
-                                  (-> query qp/process-query mt/rows+column-names)))))))))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"\QBreakouts must be distinct\E"
+                 (-> query qp/process-query mt/rows+column-names)))))))))
 
 (deftest model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"

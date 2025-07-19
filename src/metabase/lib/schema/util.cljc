@@ -54,6 +54,19 @@
                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
    #'unique-uuids?])
 
+(defn ref-distinct-key
+  "For deduplicating refs: keep just the keys that are essential to distinguishing one ref from another."
+  [ref]
+  (let [options (lib.options/options ref)]
+    (lib.options/with-options ref
+      ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
+      (reduce-kv (fn [acc k _]
+                   (if (or (qualified-keyword? k)
+                           (#{:base-type :effective-type :ident} k))
+                     (dissoc acc k)
+                     acc))
+                 options options))))
+
 (defn distinct-refs?
   "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
   aren't important such as namespaced keys and type info)?"
@@ -62,16 +75,7 @@
    (< (count refs) 2)
    (apply
     distinct?
-    (for [ref refs]
-      (let [options (lib.options/options ref)]
-        (lib.options/with-options ref
-          ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
-          (reduce-kv (fn [acc k _]
-                       (if (or (qualified-keyword? k)
-                               (#{:base-type :effective-type :ident} k))
-                         (dissoc acc k)
-                         acc))
-                     options options)))))))
+    (map ref-distinct-key refs))))
 
 (defn remove-randomized-idents
   "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."

@@ -21,6 +21,7 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
@@ -42,6 +43,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -517,6 +519,9 @@
     (dashboard-internal-card? card) check-dashboard-internal-card-insert))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
+;;
+;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
+;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []
@@ -686,7 +691,11 @@
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
-(defn- upgrade-card-schema-to-latest [card]
+(mu/defn- upgrade-card-schema-to-latest :- [:map
+                                            [:result_metadata {:optional true} [:maybe
+                                                                                [:sequential
+                                                                                 ::lib.schema.metadata/lib-or-legacy-column]]]]
+  [card]
   (if (and (:id card)
            (or (:dataset_query card)
                (:result_metadata card)
@@ -749,7 +758,10 @@
     (assoc card :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     card))
 
-(defn- populate-result-metadata
+(mu/defn- populate-result-metadata :- [:map
+                                       [:result_metadata {:optional true} [:maybe
+                                                                           [:sequential
+                                                                            ::lib.schema.metadata/lib-or-legacy-column]]]]
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
@@ -762,7 +774,6 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-
   (let [changes (t2/changes card)]
     (-> card
         (dissoc :verified-result-metadata?)

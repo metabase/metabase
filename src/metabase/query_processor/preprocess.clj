@@ -2,7 +2,9 @@
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
@@ -65,7 +67,12 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
-(defn- ->mbql-5 [query]
+(mu/defn- ->mbql-5 :- ::lib.schema/query
+  [query :- [:map
+             [:database ::lib.schema.id/database]
+             ;; sanity check: info should only get added in Clojure-land and shouldn't get transformed back and forth
+             ;; from JSON; make sure it's in the expected shape
+             [:info {:optional true} [:maybe ::lib.schema.info/info]]]]
   (cond->> query
     (not (:lib/type query)) (lib/query (qp.store/metadata-provider))))
 
@@ -132,7 +139,7 @@
    (ensure-legacy #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
-   (ensure-legacy #'qp.add-implicit-joins/add-implicit-joins)
+   (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
@@ -148,6 +155,13 @@
    (ensure-legacy #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)])
+
+(defn- middleware-fn-name [middleware-fn]
+  (if-let [fn-name (:name (meta middleware-fn))]
+    (if-let [fn-ns (:ns (meta middleware-fn))]
+      (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
+      fn-name)
+    middleware-fn))
 
 (mu/defn preprocess :- [:map
                         [:database ::lib.schema.id/database]]
@@ -168,11 +182,7 @@
           (u/prog1 (middleware-fn query)
             (qp.debug/debug>
               (when-not (= <> query)
-                (let [middleware-fn-name (if-let [fn-name (:name (meta middleware-fn))]
-                                           (if-let [fn-ns (:ns (meta middleware-fn))]
-                                             (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
-                                             fn-name)
-                                           middleware-fn)]
+                (let [middleware-fn-name (middleware-fn-name middleware-fn)]
                   (list middleware-fn-name '=> <>
                         ^{:portal.viewer/default :portal.viewer/diff}
                         [(or (-> <> meta :converted-form) query)
@@ -180,15 +190,16 @@
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")
-                              {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp}))))
+                              {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp}))))
           (catch Throwable e
-            (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
-                            {:fn middleware-fn, :query query, :type qp.error-type/qp}
-                            e))))))
+            (let [middleware-fn (middleware-fn-name middleware-fn)]
+              (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
+                              {:fn middleware-fn, :query query, :type qp.error-type/qp}
+                              e)))))))
      query
      middleware)))
 
-(mu/defn query->expected-cols :- [:maybe [:sequential ::annotate/qp-results-cased-col]]
+(mu/defn query->expected-cols :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."

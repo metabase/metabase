@@ -759,21 +759,23 @@
 
 (deftest ^:parallel find-matching-field-ignore-MLv2-extra-type-info-in-field-opts-test
   (testing "MLv2 refs can include extra info like `:base-type`; make sure we ignore that when finding matching refs (#33083)"
-    (let [source-query {:joins [{:alias        "Card_2"
-                                 :source-query {:breakout    [[:field 78 {:join-alias         "Products"
-                                                                          :temporal-unit      :month
-                                                                          ::add/source-table  "Products"
-                                                                          ::add/source-alias  "CREATED_AT"
-                                                                          ::add/desired-alias "Products__CREATED_AT"
-                                                                          ::add/position      0}]]
-                                                :aggregation [[:aggregation-options
-                                                               [:distinct [:field 76 {:join-alias        "Products"
-                                                                                      ::add/source-table "Products"
-                                                                                      ::add/source-alias "ID"}]]
-                                                               {:name               "count"
-                                                                ::add/source-alias  "count"
-                                                                ::add/position      1
-                                                                ::add/desired-alias "count"}]]}}]}
+    (let [source-query {:source-table 1
+                        :joins        [{:alias        "Card_2"
+                                        :source-query {:source-table 2
+                                                       :breakout     [[:field 78 {:join-alias         "Products"
+                                                                                  :temporal-unit      :month
+                                                                                  ::add/source-table  "Products"
+                                                                                  ::add/source-alias  "CREATED_AT"
+                                                                                  ::add/desired-alias "Products__CREATED_AT"
+                                                                                  ::add/position      0}]]
+                                                       :aggregation  [[:aggregation-options
+                                                                       [:distinct [:field 76 {:join-alias        "Products"
+                                                                                              ::add/source-table "Products"
+                                                                                              ::add/source-alias "ID"}]]
+                                                                       {:name               "count"
+                                                                        ::add/source-alias  "count"
+                                                                        ::add/position      1
+                                                                        ::add/desired-alias "count"}]]}}]}
           field-clause [:field 78 {:base-type :type/DateTime, :temporal-unit :month, :join-alias "Card_2"}]]
       (is (=? [:field
                78

@@ -54,7 +54,7 @@
 
 (mu/defn- source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
-  [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
+  [source-metadata :- [:sequential {:min 1} ::mbql.s/legacy-column-metadata]]
   ;; We want to allow columns to be bucketed or binned in several different ways.
   ;; Such columns would be collapsed into a single column if referenced by ID,
   ;; so we make sure that they get a reference by name, which is unique.

@@ -71,10 +71,16 @@
    ;;
    ;; TODO (Cam 6/13/25) -- weird to put this at the top-level of the query as opposed to in the stage to which this
    ;; applies... I guess it's mostly only used to in [[metabase.lib.metadata.result-metadata]] tho
-   [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/card.result-metadata.map]]]
+   [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
    ;; Pivot QP runs multiple queries, and in the dataset api, we need to have access to the original query
    ;; so that we can pass it to the pivot.qp for downloads on unsaved questions
    [:pivot/original-query    {:optional true} [:maybe [:map-of :any :any]]]
+   ;; this gets added by [[metabase.query-processor.pivot]] for pivot queries; it's merged in to other metadata
+   ;; by [[metabase.query-processor.middleware.results-metadata]] before recording it.
+   [:pivot/result-metadata   {:optional true} [:maybe [:multi
+                                                       {:dispatch keyword?}
+                                                       [true  [:= :none]]
+                                                       [false [:sequential ::lib.schema.metadata/column]]]]]
    ;; `:hash` gets added automatically for userland queries (see [[metabase.query-processor/userland-query]]), so
    ;; don't try passing these in yourself. In fact, I would like this a lot better if we could take these keys xout of
    ;; `:info` entirely and have the code that saves QueryExceutions figure out their values when it goes to save them

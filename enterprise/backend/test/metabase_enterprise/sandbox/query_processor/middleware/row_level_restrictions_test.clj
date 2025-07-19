@@ -29,10 +29,13 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- identifier
   ([table-key]
@@ -977,6 +980,11 @@
                                                    :attributes {"user_id" 1, "user_cat" "Widget"}}
                                    (mt/with-column-remappings [orders.product_id products.title]
                                      (mt/run-mbql-query orders)))]
+        (testing "Sanity check: merged results metadata should not get normalized incorrectly"
+          (is (=? {:type {:type/Number {}}}
+                  (-> (get-in mbql-sandbox-results [:data :cols])
+                      (nth 3)
+                      :fingerprint))))
         (doseq [orders-gtap-card-has-metadata?   [true false]
                 products-gtap-card-has-metadata? [true false]]
           (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"

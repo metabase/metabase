@@ -5,7 +5,6 @@
    [metabase.analyze.classifiers.core]
    [metabase.analyze.classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters]
-   [metabase.analyze.fingerprint.schema]
    [metabase.analyze.query-results]
    [potemkin :as p]))
 
@@ -14,7 +13,6 @@
   metabase.analyze.classifiers.core/keep-me
   metabase.analyze.classifiers.name/keep-me
   metabase.analyze.fingerprint.fingerprinters/keep-me
-  metabase.analyze.fingerprint.schema/keep-me
   metabase.analyze.query-results/keep-me)
 
 (p/import-vars
@@ -30,8 +28,6 @@
   col-wise
   constant-fingerprinter
   fingerprint-fields]
- [metabase.analyze.fingerprint.schema
-  Fingerprint]
  [metabase.analyze.query-results
   ResultsMetadata
   insights-rf])

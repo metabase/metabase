@@ -305,7 +305,8 @@
    (mtx/string-transformer)
    (mtx/json-transformer)
    (mtx/default-value-transformer)
-   {:name :api}))
+   {:name :api}
+   {:name :normalize}))
 
 (def ^:private encode-transformer
   (mtx/transformer

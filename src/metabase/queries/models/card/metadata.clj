@@ -6,6 +6,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
@@ -202,7 +203,8 @@ saved later when it is ready."
                  (->> (remove (comp old-names :name) new-metadata)
                       (map update-fn))))))
 
-(defn populate-result-metadata
+(mu/defn populate-result-metadata :- [:map
+                                      [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
   ([card]
