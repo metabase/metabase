@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { t } from "ttag";
 
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import CS from "metabase/css/core/index.css";
@@ -16,9 +15,9 @@ type GetQuestionTitleProps = {
 
 export const getQuestionTitle = ({
   question,
-}: GetQuestionTitleProps): string => {
+}: GetQuestionTitleProps): string | null => {
   if (!question) {
-    return t`New question`;
+    return null;
   }
 
   const isSaved = question.isSaved();
@@ -39,7 +38,7 @@ export const getQuestionTitle = ({
     return adhocDescription;
   }
 
-  return t`New question`;
+  return null;
 };
 
 type QuestionTitleProps = GetQuestionTitleProps & CommonStylingProps;
@@ -50,6 +49,10 @@ export const QuestionTitle = ({
   style,
 }: QuestionTitleProps) => {
   const questionTitle = getQuestionTitle({ question });
+
+  if (questionTitle === null) {
+    return null;
+  }
 
   return (
     <h2 className={cx(CS.h2, CS.textWrap, className)} style={style}>
