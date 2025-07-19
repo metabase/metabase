@@ -62,7 +62,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
@@ -196,7 +197,11 @@
                        :clause field-clause
                        :query  inner-query})))))
 
-(defn- exports [query]
+(mr/def ::exported-clause
+  [:or ::mbql.s/field ::mbql.s/expression ::mbql.s/aggregation-options])
+
+(mu/defn- exports :- [:set ::exported-clause]
+  [query :- ::mbql.s/MBQLQuery]
   (into #{} (lib.util.match/match (dissoc query :source-query :source-metadata :joins)
               [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
@@ -213,7 +218,11 @@
   [field-clause]
   [(second field-clause) (get-in field-clause [2 :join-alias])])
 
-(defn- field-name-match [field-name all-exports source-metadata field-exports]
+(mu/defn- field-name-match :- [:maybe ::exported-clause]
+  [field-name      :- :string
+   all-exports     :- [:set ::exported-clause]
+   source-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
+   field-exports   :- [:sequential ::mbql.s/field]]
   ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
   ;; name we're searching for.
   (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
@@ -243,9 +252,12 @@
              (when (= (count matches) 1)
                (first matches))))))))
 
-(defn- matching-field-in-source-query*
-  [source-query source-metadata field-clause & {:keys [normalize-fn]
-                                                :or   {normalize-fn normalize-clause}}]
+(mu/defn- matching-field-in-source-query*
+  [source-query    :- ::mbql.s/MBQLQuery
+   source-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
+   field-clause    :- ::mbql.s/field
+   & {:keys [normalize-fn]
+      :or   {normalize-fn normalize-clause}}]
   (let [normalized    (normalize-fn field-clause)
         all-exports   (exports source-query)
         field-exports (filter (partial mbql.u/is-clause? :field)
@@ -274,6 +286,16 @@
                                  (when (string? id-or-name)
                                    [id-or-name (some-> driver/*driver* (driver/escape-alias id-or-name))]))]
           (some #(field-name-match % all-exports source-metadata field-exports) field-names))
+        ;; if all of that failed then try to find a match using `:lib/deduplicated-name` (if present)
+        (let [[_ id-or-name] field-clause]
+          (when (string? id-or-name)
+            (when-let [col (m/find-first (fn [col]
+                                           (= (:lib/deduplicated-name col) id-or-name))
+                                         source-metadata)]
+              (when-let [desired-column-alias (:lib/desired-column-alias col)]
+                (m/find-first (fn [[_tag _id-or-name opts]]
+                                (= (::desired-alias opts) desired-column-alias))
+                              all-exports)))))
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)

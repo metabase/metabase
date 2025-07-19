@@ -1606,16 +1606,7 @@
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]
-   ;; TODO: Re-enable this - it's a useful check but it currently breaks a pile of too-literal legacy tests.
-   #_[:fn
-      {:error/message ":expressions must have the same keys as :expression-idents"}
-      (fn [{:keys [expressions expression-idents]}]
-        (core/or (core/= nil expressions expression-idents)
-                 (core/and (map? expressions)
-                           (map? expression-idents)
-                           (core/= (set (keys expressions))
-                                   (set (keys expression-idents))))))]])
+      (empty? (set/intersection (set breakout) (set fields))))]])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
