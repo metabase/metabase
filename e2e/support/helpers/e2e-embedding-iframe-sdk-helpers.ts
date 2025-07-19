@@ -184,3 +184,34 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
     );
   }
 }
+
+export const getNewEmbedScript = () => {
+  return `
+    <script src="${EMBED_JS_PATH}"></script>
+    <script>
+    // TODO: add the shimmed function to define settings
+    </script>
+    <h1>hello</h1>
+  `;
+};
+
+export const visitCustomHtmlPage = (
+  html: string,
+  {
+    origin = "",
+    onVisitPage,
+  }: {
+    origin?: string;
+    onVisitPage?: () => void;
+  } = {},
+) => {
+  const testPageUrl = `${origin}/custom-html-page`;
+  cy.intercept("GET", testPageUrl, {
+    body: html,
+    headers: { "content-type": "text/html" },
+  }).as("dynamicPage");
+
+  cy.visit(testPageUrl, { onLoad: onVisitPage });
+
+  return cy;
+};
