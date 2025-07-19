@@ -30,3 +30,5 @@ export type UpdateDataAppDefinitionRequest = {
   id: DataApp["id"];
   config: DataAppDefinition["config"];
 };
+
+export type SettingsSectionKey = "components";

@@ -22,13 +22,41 @@ import {
   useGetDataAppQuery,
   useUpdateDataAppMutation,
 } from "metabase-enterprise/api";
+import type { DataAppWidget } from "metabase-enterprise/data-apps/canvas/canvas-types";
 
-import { DataAppsComponentsList } from "./DataAppsComponentsList";
+import { DataAppWidgetsCanvas } from "./canvas/DataAppWidgetsCanvas";
+import { DataAppsComponentsList } from "./canvas/DataAppsComponentsList";
 import { DataAppEditSettingsModal } from "./modals/DataAppEditSettingsModal";
 import { DataAppPublishModal } from "./modals/DataAppPublishModal";
-import type { DataAppEditSettings } from "./types";
+import type { DataAppEditSettings, SettingsSectionKey } from "./types";
 
-type SettingsSectionKey = "components";
+const MOCK_COMPONENTS: DataAppWidget[] = [
+  {
+    id: "root",
+    type: "section",
+    childrenIds: ["1"],
+    options: {
+      direction: "column",
+      width: 3,
+    },
+  },
+  {
+    id: "1",
+    type: "section",
+    childrenIds: ["2"],
+    options: {
+      direction: "row",
+      width: 1,
+    },
+  },
+  {
+    id: "2",
+    type: "button",
+    options: {
+      text: "Testio 2",
+    },
+  },
+];
 
 type DataAppContainerProps = {
   params: {
@@ -48,6 +76,8 @@ export const DataAppContainer = ({
   const [activeSettingsSection, setActiveSettingsSection] = useState<
     SettingsSectionKey | undefined
   >(isNewApp ? "components" : undefined); // show components list by default for new empty data app
+
+  const [components, setComponents] = useState(MOCK_COMPONENTS);
 
   const { data: dataApp } = useGetDataAppQuery({ id: appId });
   const [updateDataApp] = useUpdateDataAppMutation();
@@ -138,32 +168,13 @@ export const DataAppContainer = ({
             </Button>
           </Group>
         </Group>
-        <Group
-          bg="var(--mb-color-bg-light)"
-          align="stretch"
-          gap={0}
-          style={{
-            flexGrow: 1,
-          }}
-        >
-          <Box
-            style={{
-              flexGrow: 1,
-              backgroundImage:
-                "radial-gradient(circle, var(--mb-color-border) 1px, transparent 0)",
-              backgroundSize: "16px 16px",
-              backgroundRepeat: "repeat",
-            }}
-          >
-            {`Canvas here`}
-          </Box>
 
-          {activeSettingsSection === "components" && (
-            <ComponentsSidebar
-              onClose={() => setActiveSettingsSection(undefined)}
-            />
-          )}
-        </Group>
+        <DataAppWidgetsCanvas
+          components={components}
+          onComponentsUpdate={setComponents}
+          activeSettingsSection={activeSettingsSection}
+          setActiveSettingsSection={setActiveSettingsSection}
+        />
       </Stack>
 
       <DataAppEditSettingsModal

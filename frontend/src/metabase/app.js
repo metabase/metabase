@@ -31,8 +31,8 @@ import "ee-plugins";
 import "metabase/lib/csp";
 
 import { createHistory } from "history";
-import { DragDropContextProvider } from "react-dnd";
-import HTML5Backend from "react-dnd-html5-backend";
+// import { DragDropContextProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import { createRoot } from "react-dom/client";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
@@ -77,14 +77,14 @@ function _init(reducers, getRoutes, callback) {
   root.render(
     <MetabaseReduxProvider store={store}>
       <EmotionCacheProvider>
-        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-          <ThemeProvider>
-            <GlobalStyles />
-            <MetabotProvider>
-              <Router history={history}>{routes}</Router>
-            </MetabotProvider>
-          </ThemeProvider>
-        </DragDropContextProvider>
+        {/*<DragDropContextProvider backend={HTML5Backend} context={{ window }}>*/}
+        <ThemeProvider>
+          <GlobalStyles />
+          <MetabotProvider>
+            <Router history={history}>{routes}</Router>
+          </MetabotProvider>
+        </ThemeProvider>
+        {/*</DragDropContextProvider>*/}
       </EmotionCacheProvider>
     </MetabaseReduxProvider>,
   );
