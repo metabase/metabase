@@ -1,3 +1,4 @@
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
   DatabaseId,
@@ -12,7 +13,6 @@ import type {
 } from "metabase-types/api";
 
 import type { ColumnExtractionTag } from "./extractions";
-import type { DefinedClauseName } from "./v1/expressions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,

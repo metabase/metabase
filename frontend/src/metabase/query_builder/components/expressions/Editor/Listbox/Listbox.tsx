@@ -15,9 +15,9 @@ import {
 import { c } from "ttag";
 
 import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import type { ExpressionSuggestion } from "metabase/querying/expressions";
 import { Box, DelayGroup, Icon, type IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { Completion } from "metabase-lib/v1/expressions/complete";
 
 import S from "./Listbox.module.css";
 import { MatchText } from "./MatchText";
@@ -85,7 +85,7 @@ function CompletionItem({
   query,
   stageIndex,
 }: {
-  completion: Completion;
+  completion: ExpressionSuggestion;
   index: number;
   onCompletionClick: (index: number) => void;
   selected: boolean;

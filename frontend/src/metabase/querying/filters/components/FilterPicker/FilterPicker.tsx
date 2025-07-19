@@ -1,10 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/query_builder/components/expressions";
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
-import type { DefinedClauseName } from "metabase-lib/v1/expressions";
 
 import {
   FilterColumnPicker,

@@ -649,7 +649,7 @@
           (when-let [nested (invalid-nesting expr)]
             {:message (i18n/tru "Embedding {0} in aggregation functions is not supported"
                                 ;; special names duplicated from
-                                ;; frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts
+                                ;; frontend/src/metabase/querying/expressions/config.ts
                                 (clojure.core/case nested
                                   :avg            "Average"
                                   :count-where    "CountIf"
