@@ -9,7 +9,6 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -623,8 +622,7 @@
                         (not (existing-ids (:id remapped))))]
         (assoc remapped
                :lib/source              (:lib/source column) ; TODO: What's the right source for a remap?
-               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)
-               :ident                   (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
+               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -666,7 +664,7 @@
         id->table (m/index-by :id (lib.metadata/bulk-metadata
                                    query :metadata/table (into #{} (map :table-id) target-fields)))]
     (into []
-          (mapcat (fn [{:keys [table-id], ::keys [fk-ident fk-field-id fk-field-name fk-join-alias]}]
+          (mapcat (fn [{:keys [table-id], ::keys [fk-field-id fk-field-name fk-join-alias]}]
                     (let [table-metadata (id->table table-id)
                           ;; Shouldn't we be forwarding the rest of the `options` as well? -- Cam
                           ;;
@@ -675,10 +673,8 @@
                           ;; the future) the other options (including joins, expressions, etc.) are not relevant. It's
                           ;; always the table's columns, or the returned-columns of the card. -- Braden
                           options        {:include-implicitly-joinable? false}]
-                      (for [field (visible-columns-method query stage-number table-metadata options)
-                            :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)]]
+                      (for [field (visible-columns-method query stage-number table-metadata options)]
                         (m/assoc-some field
-                                      :ident                    ident
                                       :fk-field-id              fk-field-id
                                       :fk-field-name            fk-field-name
                                       :fk-join-alias            fk-join-alias

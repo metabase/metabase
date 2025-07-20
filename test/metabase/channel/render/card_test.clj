@@ -6,7 +6,6 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
-   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
@@ -223,18 +222,17 @@
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
     (mt/dataset test-data
       (let [card-eid (u/generate-nano-id)]
-        (mt/with-temp [:model/Card {base-card-id :id
-                                    base-query :dataset_query} {:dataset_query
-                                                                {:database (mt/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table (mt/id :orders)
-                                                                            :expressions  {"Tax Rate" [:/
-                                                                                                       [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                       [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                            :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                           [:expression "Tax Rate"]]
-                                                                            :limit        10}}}
+        (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query
+                                                       {:database (mt/id)
+                                                        :type     :query
+                                                        :query    {:source-table (mt/id :orders)
+                                                                   :expressions  {"Tax Rate" [:/
+                                                                                              [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                              [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                   :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                  [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                  [:expression "Tax Rate"]]
+                                                                   :limit        10}}}
                        :model/Card {model-card-id  :id
                                     model-query    :dataset_query
                                     model-metadata :result_metadata
@@ -245,19 +243,12 @@
                                                                                   :query    {:source-table (format "card__%s" base-card-id)}}
                                                                 :result_metadata [{:name         "TAX"
                                                                                    :display_name "Tax"
-                                                                                   :ident        (lib/model-ident (mt/ident :orders :tax)
-                                                                                                                  card-eid)
                                                                                    :base_type    :type/Float}
                                                                                   {:name         "TOTAL"
                                                                                    :display_name "Total"
-                                                                                   :ident        (lib/model-ident (mt/ident :orders :total)
-                                                                                                                  card-eid)
                                                                                    :base_type    :type/Float}
                                                                                   {:name          "Tax Rate"
                                                                                    :display_name  "Tax Rate"
-                                                                                   :ident         (-> base-query
-                                                                                                      (get-in [:query :expression-idents "Tax Rate"])
-                                                                                                      (lib/model-ident card-eid))
                                                                                    :base_type     :type/Float
                                                                                    :semantic_type :type/Percentage
                                                                                    :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}

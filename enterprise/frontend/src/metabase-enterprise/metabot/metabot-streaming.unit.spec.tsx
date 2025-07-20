@@ -383,6 +383,28 @@ describe("metabot-streaming", () => {
         ]);
       });
     });
+
+    it("should start a new message if there's tool calls between streamed text parts", async () => {
+      setup();
+      mockAgentEndpoint(
+        {
+          textChunks: [
+            `0:"Response 1"`,
+            `9:{"toolCallId":"x","toolName":"x","args":""}`,
+            `a:{"toolCallId":"x","result":""}`,
+            `0:"Response 2"`,
+            `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+          ],
+        }, // small delay to cause loading state
+      );
+      await enterChatMessage("Request");
+
+      await assertConversation([
+        ["user", "Request"],
+        ["agent", "Response 1"],
+        ["agent", "Response 2"],
+      ]);
+    });
   });
 
   describe("errors", () => {
