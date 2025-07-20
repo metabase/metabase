@@ -1427,10 +1427,13 @@ describe("Notebook Editor > Join Step", () => {
       mockWindowOpen.mockClear();
     });
 
-    it("opening in new window does not affect unrelated join step elements", () => {
+    it("opening in new window does not affect unrelated join step elements", async () => {
       const { mockWindowOpen } = setup({
         step: createMockNotebookStep({ query: getJoinedQuery() }),
       });
+      // it is required to make Meta> and Ctrl> work useEvent is slower than
+      // fireEvent, but it awaits for under the hood updates of the components
+      const user = userEvent.setup();
 
       const middleClick = new MouseEvent("auxclick", {
         bubbles: true,
@@ -1450,15 +1453,27 @@ describe("Notebook Editor > Join Step", () => {
         screen.getByLabelText("Change operator"),
       ).getByText("=");
 
-      fireEvent.click(lhsTable, { metaKey: true });
-      fireEvent.click(lhsColumn, { metaKey: true });
-      fireEvent.click(rhsColumn, { metaKey: true });
-      fireEvent.click(operator, { metaKey: true });
+      // press and hold Meta
+      await user.keyboard("{Meta>}");
 
-      fireEvent.click(lhsTable, { ctrlKey: true });
-      fireEvent.click(lhsColumn, { ctrlKey: true });
-      fireEvent.click(rhsColumn, { ctrlKey: true });
-      fireEvent.click(operator, { ctrlKey: true });
+      await user.click(lhsTable);
+      await user.click(lhsColumn);
+      await user.click(rhsColumn);
+      await user.click(operator);
+
+      // release Meta
+      await user.keyboard("{/Meta}");
+
+      // press and hold Ctrl
+      await user.keyboard("{Control>}");
+
+      await user.click(lhsTable);
+      await user.click(lhsColumn);
+      await user.click(rhsColumn);
+      await user.click(operator);
+
+      // release Ctrl
+      await user.keyboard("{/Control}");
 
       fireEvent(lhsTable, middleClick);
       fireEvent(lhsColumn, middleClick);
