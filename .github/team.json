@@ -8,10 +8,10 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "appleby",
         "uladzimirdev",
         "wzimrin",
-        "ericnormand"
+        "ericnormand",
+        "galdre"
       ]
     },
     {
@@ -19,7 +19,8 @@
       "label": ".Team/SemanticLayer",
       "members": [
         "kamilmielnik",
-        "lbrdnk"
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
@@ -49,7 +50,6 @@
         "piranha",
         "crisptrutski",
         "deniskaber",
-        "wotbrew",
         "spalt08",
         "stasgavrylov"
       ]
@@ -61,7 +61,6 @@
         "npfitz",
         "johnswanson",
         "rafpaf",
-        "sloansparger",
         "iethree",
         "nvoxland",
         "fraserdrops",
@@ -76,7 +75,7 @@
         "kulyk",
         "tsplude",
         "lorem--ipsum",
-        "noahmoss"
+        "bpander"
       ]
     },
     {
@@ -91,13 +90,25 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
-        "somtom"
+        "appleby",
+        "noahmoss",
+        "retro",
+        "sloansparger",
+        "somtom",
+        "wotbrew"
       ]
     },
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac"]
+      "members": ["nemanjaglumac", "chodorowicz"]
+    },
+    {
+      "name": "Cloud",
+      "label": "cloud",
+      "members": [
+        "filipesilva"
+      ]
     }
   ]
 }

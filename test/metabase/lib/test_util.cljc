@@ -4,11 +4,9 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -63,6 +61,7 @@
 (def ^:private cards
   {:cards [{:name          "My Card"
             :id            1
+            :entity-id     (u/generate-nano-id)
             :type          :question
             :dataset-query (lib.tu.macros/mbql-query checkins
                              {:aggregation [[:count]]
@@ -211,13 +210,13 @@
                    :lib/stage-metadata {:lib/type :metadata/results
                                         :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__abc"
+                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
                                                    {:lib/type      :metadata/column
                                                     :name          "sum"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__sum"
+                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
@@ -237,7 +236,7 @@
                                 (merge
                                  {:lib/type      :metadata/card
                                   :id            (inc idx)
-                                  :entity_id     eid
+                                  :entity-id     eid
                                   :database-id   (:id (lib.metadata/database metadata-provider))
                                   :name          (str "Mock " (name table) " card")
                                   :dataset-query (if native?
@@ -251,10 +250,7 @@
                                    {:result-metadata
                                     (cond->> (lib.metadata/fields metadata-provider table-id)
                                       true    (sort-by :id)
-                                      native? (mapv #(-> %
-                                                         (dissoc :table-id :id :fk-target-field-id)
-                                                         (assoc :ident (lib.metadata.ident/native-ident
-                                                                        (:name %) eid)))))}))]))))
+                                      native? (mapv #(dissoc % :table-id :id :fk-target-field-id)))}))]))))
         table-key-and-ids))
 
 (defn- make-mock-cards-special-cases
@@ -269,6 +265,7 @@
       :database-id   (:id (lib.metadata/database metadata-provider))
       :name          "Mock model - Products and Reviews"
       :type          :model
+      :entity-id     (lib/random-ident)
       :dataset-query
       {:database (:id (lib.metadata/database metadata-provider))
        :type     :query
@@ -276,6 +273,7 @@
                   :joins        [{:fields       :all
                                   :alias        "Reviews"
                                   :source-table (:id reviews)
+                                  :ident        (lib/random-ident)
                                   :condition    [:=
                                                  [:field (:id pk) {:base-type :type/BigInteger}]
                                                  [:field (:id fk)
@@ -328,6 +326,21 @@
    (providers.mock/mock-metadata-provider
     {:cards (vals (mock-cards))})))
 
+(defn as-model
+  "Given a mock card, make it a model.
+
+  This sets the `:type` of the card, and also adds `model[...]__...` to the `:ident`s in its `:result-metadata`, if any.
+
+  If the `:type` is already `:model`, this does nothing. Randomizes an `:entity-id` if not provided."
+  [card]
+  (if (= (:type card) :model)
+    card ; Do nothing if it's already a model.
+    (let [eid (or (:entity-id card)
+                  (lib/random-ident))]
+      (-> card
+          (assoc :type      :model
+                 :entity-id eid)))))
+
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
   with `column-name` returned by a `query`. This only makes sense for queries with multiple stages, or ones with a
@@ -341,9 +354,7 @@
                        (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
                                        {:column column-name
                                         :found  col-names}))))]
-    (lib/ref (cond-> metadata
-               ;; This forces a string column in the presence of force-broken-id-refs
-               (::lib.card/force-broken-id-refs metadata) (dissoc :id)))))
+    (lib/ref metadata)))
 
 (mu/defn query-with-stage-metadata-from-card :- ::lib.schema/query
   "Convenience for creating a query that has `:lib/metadata` stage metadata attached to it from a Card. Note that this

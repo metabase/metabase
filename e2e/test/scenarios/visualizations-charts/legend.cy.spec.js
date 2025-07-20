@@ -388,24 +388,13 @@ describe("scenarios > visualizations > legend", () => {
       H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     }
 
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Show visualization options").click();
+    H.showDashcardVisualizerModal(0, {
+      isVisualizerCard: false,
+    });
 
     H.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
-      cy.button("Cancel").click();
-    });
-
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Add series").click();
-
-    H.modal().within(() => {
-      ensureCanNotToggleSeriesVisibility();
-      cy.button("Cancel").click();
-    });
-
-    H.getDashboardCard(0).within(() => {
-      ensureCanNotToggleSeriesVisibility();
+      cy.realPress("Escape");
     });
   });
 
@@ -486,6 +475,7 @@ describe("scenarios > visualizations > legend", () => {
         { name: "Doohickey", value: "177" },
         { name: "Widget", value: "210" },
       ],
+      blurAfter: true,
     });
 
     hideSeries(3); // Widget
@@ -529,12 +519,14 @@ describe("scenarios > visualizations > legend", () => {
     showSeries(3);
 
     H.openVizSettingsSidebar();
+    H.ensureChartIsActive();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Stack - 100%").click();
     });
-    cy.wait(500);
+
+    cy.wait(1000);
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
     H.assertEChartsTooltip({
@@ -546,6 +538,7 @@ describe("scenarios > visualizations > legend", () => {
         { name: "Widget", value: "210", secondaryValue: "28.23 %" },
       ],
       footer: { name: "Total", value: "744", secondaryValue: "100 %" },
+      blurAfter: true,
     });
 
     hideSeries(2); // Gizmo
@@ -559,6 +552,7 @@ describe("scenarios > visualizations > legend", () => {
         { name: "Gadget", value: "199", secondaryValue: "52.93 %" },
       ],
       footer: { name: "Total", value: "376", secondaryValue: "100 %" },
+      blurAfter: true,
     });
   });
 });

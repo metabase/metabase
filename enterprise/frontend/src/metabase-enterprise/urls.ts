@@ -23,3 +23,7 @@ export function removeDestinationDatabase(
 ) {
   return `/admin/databases/${databaseId}/destination-databases/${destinationDatabaseId}/remove`;
 }
+
+export function newMetabotConversation({ prompt }: { prompt: string }) {
+  return `/metabot/new?q=${encodeURIComponent(prompt)}`;
+}

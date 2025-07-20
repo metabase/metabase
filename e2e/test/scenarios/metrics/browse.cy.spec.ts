@@ -1,13 +1,15 @@
 const { H } = cy;
+import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-type StructuredQuestionDetailsWithName = H.StructuredQuestionDetails & {
+type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
 };
 
@@ -117,6 +119,35 @@ describe("scenarios > browse > metrics", () => {
         ).should("be.visible");
         cy.findByText("Create metric").should("not.exist");
       });
+
+      cy.log("New metric header button should not show either");
+      cy.findByTestId("browse-metrics-header")
+        .findByLabelText("Create a new metric")
+        .should("not.exist");
+    });
+
+    it("user without a collection access should still be able to create and save a metric in his own personal collection", () => {
+      cy.intercept("POST", "/api/card").as("createMetric");
+
+      cy.signIn("nocollection");
+      cy.visit("/browse/metrics");
+
+      cy.findByTestId("browse-metrics-header")
+        .findByLabelText("Create a new metric")
+        .click();
+      cy.findByTestId("entity-picker-modal").findByText("People").click();
+      cy.findByTestId("edit-bar")
+        .should("contain", "New metric")
+        .button("Save")
+        .click();
+      H.modal()
+        .should("contain", "Save metric")
+        .and("contain", H.getPersonalCollectionName(USERS["nocollection"]))
+        .button("Save")
+        .click();
+
+      cy.wait("@createMetric");
+      cy.location("pathname").should("match", /^\/metric\/\d+-.*$/);
     });
   });
 
@@ -349,16 +380,16 @@ describe("scenarios > browse > metrics", () => {
   describe("verified metrics", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
-    it("should not the verified metrics filter when there are no verified metrics", () => {
+    it("should not show the verified metrics filter when there are no verified metrics", () => {
       createMetrics();
       cy.visit("/browse/metrics");
 
       cy.findByLabelText("Table of metrics").should("be.visible");
 
-      cy.findByLabelText("Filters").should("not.exist");
+      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
     });
 
     it("should show the verified metrics filter when there are verified metrics", () => {
@@ -413,10 +444,11 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
       verifyMetric(ORDERS_SCALAR_METRIC);
 
-      cy.findByLabelText("Filters").should("be.visible").click();
-      H.popover()
-        .findByLabelText("Show verified metrics only")
-        .should("be.checked");
+      cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
@@ -426,10 +458,11 @@ describe("scenarios > browse > metrics", () => {
       });
 
       cy.visit("/browse/metrics");
-      cy.findByLabelText("Filters").should("be.visible").click();
-      H.popover()
-        .findByLabelText("Show verified metrics only")
-        .should("not.be.checked");
+      cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
+        "have.attr",
+        "aria-selected",
+        "false",
+      );
     });
   });
 });
@@ -490,7 +523,5 @@ function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
 }
 
 function toggleVerifiedMetricsFilter() {
-  cy.findByLabelText("Filters").should("be.visible").click();
-  H.popover().findByText("Show verified metrics only").click();
-  cy.findByLabelText("Filters").should("be.visible").click();
+  cy.findByLabelText(/show.*verified.*metrics/i).click();
 }

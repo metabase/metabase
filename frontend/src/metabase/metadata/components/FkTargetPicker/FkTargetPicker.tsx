@@ -1,5 +1,11 @@
+import { type FocusEvent, useMemo } from "react";
 import { t } from "ttag";
 
+import {
+  areFieldsComparable,
+  getFieldDisplayName,
+  getRawTableFieldId,
+} from "metabase/metadata/utils/field";
 import {
   Flex,
   Icon,
@@ -8,9 +14,8 @@ import {
   type SelectProps,
   Text,
 } from "metabase/ui";
-import type Field from "metabase-lib/v1/metadata/Field";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field as ApiField, FieldId } from "metabase-types/api";
+import type { Field as ApiField, Field, FieldId } from "metabase-types/api";
 
 import S from "./FkTargetPicker.module.css";
 
@@ -22,27 +27,58 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
 }
 
 export const FkTargetPicker = ({
+  comboboxProps,
   field,
   idFields,
   value,
   onChange,
+  onFocus,
   ...props
 }: Props) => {
-  const comparableIdFields = idFields.filter((idField) => {
-    return idField.isComparableWith(field);
-  });
-  const hasIdFields = comparableIdFields.length > 0;
-  const includeSchema = hasMultipleSchemas(comparableIdFields);
-  const data = getData(comparableIdFields, includeSchema);
+  const { comparableIdFields, hasIdFields, data, optionsByFieldId } =
+    useMemo(() => {
+      const comparableIdFields = idFields.filter((idField) => {
+        return areFieldsComparable(idField, field);
+      });
+      const hasIdFields = comparableIdFields.length > 0;
+      const includeSchema = hasMultipleSchemas(comparableIdFields);
+      const data = getData(comparableIdFields, includeSchema);
+      const optionsByFieldId = Object.fromEntries(
+        data.map((option) => [option.value, option]),
+      );
 
-  const getField = (fieldId: FieldId | null) => {
-    const option = data.find((option) => parseValue(option.value) === fieldId);
+      return { comparableIdFields, data, hasIdFields, optionsByFieldId };
+    }, [field, idFields]);
+
+  const getFieldFromValue = (fieldId: string | null) => {
+    if (fieldId == null) {
+      return null;
+    }
+
+    const option = optionsByFieldId[fieldId];
     return option?.field;
   };
 
-  const handleChange = (value: string) => {
-    const parsedValue = parseValue(value);
-    onChange(parsedValue);
+  const getFieldIdFromValue = (fieldId: string | null): FieldId => {
+    const field = getFieldFromValue(fieldId);
+
+    if (!field) {
+      throw new Error("unreachable");
+    }
+
+    return getRawTableFieldId(field);
+  };
+
+  const handleChange = (value: string | null) => {
+    if (value != null) {
+      const fieldId = getFieldIdFromValue(value);
+      onChange(fieldId);
+    }
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+    onFocus?.(event);
   };
 
   return (
@@ -56,10 +92,9 @@ export const FkTargetPicker = ({
           },
         },
         position: "bottom-start",
-        width: 300,
+        ...comboboxProps,
       }}
       data={data}
-      data-testid="fk-target-select"
       disabled={!hasIdFields}
       filter={({ options, search }) => {
         const query = search.toLowerCase().trim();
@@ -69,37 +104,40 @@ export const FkTargetPicker = ({
             return false;
           }
 
-          const field = getField(parseValue(option.value));
+          const field = getFieldFromValue(option.value);
 
           if (!field) {
             return false;
           }
 
           return (
-            field.display_name.includes(query) ||
-            field.table?.display_name.includes(query) ||
-            field.table?.schema_name?.includes(query)
+            option.label.toLowerCase().includes(query) ||
+            field.description?.toLowerCase().includes(query)
           );
         });
       }}
-      fw="bold"
       nothingFoundMessage={t`Didn't find any results`}
       placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
       renderOption={(item) => {
-        const field = getField(parseValue(item.option.value));
-        const selected = parseValue(item.option.value) === value;
+        const field = getFieldFromValue(item.option.value);
+        const selected = getFieldIdFromValue(item.option.value) === value;
 
         return (
           <SelectItem selected={selected}>
             <Icon name={selected ? "check" : "empty"} />
 
             <Flex direction="column" flex="1" gap="xs">
-              <Text c="inherit" lh="1rem">
+              <Text c="inherit" component="span" lh="1rem">
                 {item.option.label}
               </Text>
 
               {field?.description && (
-                <Text c="text-tertiary" className={S.description} lh="1rem">
+                <Text
+                  c="text-tertiary"
+                  className={S.description}
+                  component="span"
+                  lh="1rem"
+                >
                   {field.description}
                 </Text>
               )}
@@ -110,6 +148,7 @@ export const FkTargetPicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
+      onFocus={handleFocus}
       {...props}
     />
   );
@@ -117,23 +156,22 @@ export const FkTargetPicker = ({
 
 function getData(comparableIdFields: Field[], includeSchema: boolean) {
   return comparableIdFields
-    .map((field) => ({
-      field,
-      label: field.displayName({ includeTable: true, includeSchema }),
-      value:
-        typeof field.id === "object" && field.id != null
-          ? "" // we don't expect field references here, this should never happen
-          : stringifyValue(field.id),
-    }))
+    .map((field) => {
+      return {
+        field,
+        label: getFieldDisplayName(
+          field,
+          field.table,
+          includeSchema && field.table ? field.table.schema : undefined,
+        ),
+        value: stringifyValue(getRawTableFieldId(field)) ?? "",
+      };
+    })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function parseValue(value: string): FieldId | null {
-  return value === "" ? null : JSON.parse(value);
-}
-
-function stringifyValue(value: FieldId | null): string {
-  return value === null ? "" : JSON.stringify(value);
+function stringifyValue(value: FieldId | null): string | null {
+  return value === null ? null : JSON.stringify(value);
 }
 
 function getFkFieldPlaceholder(field: ApiField, idFields: Field[]) {
@@ -150,7 +188,7 @@ function getFkFieldPlaceholder(field: ApiField, idFields: Field[]) {
   return hasIdFields ? t`Select a target` : t`No key available`;
 }
 
-function hasMultipleSchemas(field: Field[]) {
-  const schemas = new Set(field.map((field) => field.table?.schema));
+function hasMultipleSchemas(fields: Field[]) {
+  const schemas = new Set(fields.map((field) => field.table?.schema));
   return schemas.size > 1;
 }

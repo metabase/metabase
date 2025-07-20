@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function DefaultFilterPicker({
   query,
@@ -16,6 +16,8 @@ export function DefaultFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
+  withSubmitButton,
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
@@ -42,13 +44,20 @@ export function DefaultFilterPicker({
     }
   };
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator);
     if (filter) {
-      onChange(filter);
+      onChange(filter, opts);
     }
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleFilterChange({ run: true });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ run: false });
   };
 
   return (
@@ -56,7 +65,7 @@ export function DefaultFilterPicker({
       component="form"
       miw={WIDTH}
       data-testid="default-filter-picker"
-      onSubmit={handleSubmit}
+      onSubmit={handleFormSubmit}
     >
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
@@ -76,7 +85,13 @@ export function DefaultFilterPicker({
             ))}
           </Stack>
         </Radio.Group>
-        <FilterPickerFooter isNew={isNew} canSubmit />
+        <FilterPickerFooter
+          isNew={isNew}
+          isValid
+          withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
+          onAddButtonClick={handleAddButtonClick}
+        />
       </div>
     </Box>
   );

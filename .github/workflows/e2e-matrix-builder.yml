@@ -7,11 +7,17 @@ on:
         required: true
         type: number
         default: 30
+      specs:
+        required: false
+        type: string
+        default: "./e2e/test/scenarios/**/*.cy.spec.*"
     outputs:
       matrix:
         value: ${{ jobs.build-matrix.outputs.matrix }}
       regularChunks:
         value: ${{ jobs.build-matrix.outputs.regularChunks }}
+      isDefaultSpecPattern:
+        value: ${{ jobs.build-matrix.outputs.isDefaultSpecPattern }}
 
 jobs:
   build-matrix:
@@ -20,53 +26,38 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.config }}
       regularChunks: ${{ steps.matrix.outputs.regularChunks }}
+      isDefaultSpecPattern: ${{ steps.matrix.outputs.isDefaultSpecPattern }}
     steps:
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
         with:
-          node-version: '22.x'
-      - uses: actions/github-script@v7
+          sparse-checkout: |
+            .github
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/Jod # 22.x.x
+      - name: Build e2e matrix
+        uses: actions/github-script@v7
         id: matrix
         env:
           chunks: ${{ inputs.chunks }}
         with:
           script: | # js
+            const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
+            const inputSpecs = "${{ inputs.specs }}";
+            const inputChunks = Number(process.env.chunks);
             const java = 21;
             const defaultRunner = "ubuntu-22.04";
-
-            const defaultOptions = {
-              "java-version": java,
-              runner: defaultRunner,
-              edition: "ee",
+            const options = {
+              java,
+              defaultRunner,
             };
-
-            const allSpecs = "./e2e/test/scenarios/**/*.cy.spec.*";
-
-            // see config.js function getSplittableSpecs for logic that excludes some tests from auto splitting
-            const specialTests = [
-              { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
-              { name: "oss-subset", edition: 'oss', tags: "@OSS @smoke+-@EE", specs: allSpecs },
-              { name: "mongo", tags: "@mongo", specs: allSpecs },
-            ];
-
-            const inputChunks = Number(process.env.chunks);
-            const regularChunks = inputChunks - specialTests.length;
-
-            const regularTests = new Array(regularChunks).fill(1)
-              .map((files, index) => ({
-                name: `e2e-group-${index + 1}`,
-              }));
-
-            // regular chunks need to come before special chunks
-            const testSets = [...regularTests, ...specialTests];
-
-            const config = testSets.map((options) => ({
-              ...defaultOptions,
-              ...options,
-            }));
-
+            const { config, regularChunks, isDefaultSpecPattern } = buildMatrix(options, inputSpecs, inputChunks);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
+            core.setOutput("isDefaultSpecPattern", JSON.stringify(isDefaultSpecPattern));
 
             console.log({ regularChunks });
             console.log("matrix config", config);
+            console.log("isDefaultSpecPattern", isDefaultSpecPattern);

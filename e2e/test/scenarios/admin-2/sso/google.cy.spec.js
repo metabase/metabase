@@ -23,8 +23,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     H.typeAndBlurUsingLabel("Client ID", `example2.${CLIENT_ID_SUFFIX}`);
     cy.button("Save changes").click();
     cy.wait("@updateGoogleSettings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Success").should("be.visible");
+    cy.findByRole("button", { name: "Success" }).should("be.visible");
   });
 
   it("should allow to disable and enable google auth (metabase#20442)", () => {
@@ -59,35 +58,36 @@ describe("scenarios > admin > settings > SSO > Google", () => {
 
     H.typeAndBlurUsingLabel("Client ID", "fake-client-id");
     cy.button("Save and enable").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      `Invalid Google Sign-In Client ID: must end with ".${CLIENT_ID_SUFFIX}"`,
-    ).should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText(
+        `Invalid Google Sign-In Client ID: must end with ".${CLIENT_ID_SUFFIX}"`,
+      )
+      .should("be.visible");
   });
 
   it("should show the button to sign in via google only when enabled", () => {
     setupGoogleAuth({ enabled: true });
     cy.signOut();
     cy.visit("/auth/login");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sign in with email").should("be.visible");
+    cy.findByTestId("login-page")
+      .findByText("Sign in with email")
+      .should("be.visible");
     cy.findByRole("button", { name: /Google/ }).should("be.visible");
+    cy.findByRole("checkbox", { name: /remember me/i }).should("be.visible");
 
     cy.signInAsAdmin();
     setupGoogleAuth({ enabled: false });
     cy.signOut();
     cy.visit("/auth/login");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Email address").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Password").should("be.visible");
-    cy.findByRole("button", { name: /Google/ }).should("not.exist");
+    cy.findByTestId("login-page").within(() => {
+      cy.findByText("Email address").should("be.visible");
+      cy.findByText("Password").should("be.visible");
+      cy.findByRole("button", { name: /Google/ }).should("not.exist");
+    });
   });
 });
 
-const getGoogleCard = () => {
-  return cy.findByText("Sign in with Google").parent().parent();
-};
+const getGoogleCard = () => cy.findByTestId("google-setting");
 
 const setupGoogleAuth = ({ enabled = true } = {}) => {
   cy.request("PUT", "/api/google/settings", {

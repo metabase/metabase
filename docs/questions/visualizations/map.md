@@ -2,9 +2,6 @@
 title: Maps
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/maps
-  - /learn/basics/visualizing-data/maps
-  - /learn/visualization/maps
-  - /learn/metabase-basics/querying-and-dashboards/visualization/maps
 description: "Maps in Metabase allow you to visualize geographical data either using coordinates or by region. Metabase gives you three types of maps : pin map for unaggregated data, grid map for histograms, and region map for distributions by regions like countries or states. You can also create custom maps."
 ---
 
@@ -114,7 +111,7 @@ You can change the base color used for the region map, but you can't currently u
 
 ### World Map
 
-To visualize your results in the format of a map of the world broken out by country, your result must contain a column with [two-letter ISO country codes](https://www.metabase.com/glossary/country_code), like "US" or "BR", for example:
+To visualize your results in the format of a map of the world broken out by country, your result must contain a column with [two-letter ISO country codes](https://www.metabase.com/glossary/country-code), like "US" or "BR", for example:
 
 | Country code | Metric |
 | ------------ | ------ |
@@ -162,7 +159,7 @@ If you want to connect the region column in a custom region map to a dashboard f
 - **Grid map**: If you click on a grid cell, you'll get an option to zoom in further into a cell.
 - **World region map and US states region maps**: If your unaggregated data also contains latitude/longitude coordinates for each data point (in addition to the region name), then you'll get an option to zoom into a specific region, which will create a grid map of data points in that region binned by latitude/longitude. This only applies to the built-in region maps, not custom region maps.
 
-### Save as default view
+### Set as default view
 
 On pin and grid maps, the map resets to the default view every time the page is refreshed. To control what is displayed when someone opens a map (e.g. center around a specific point, with a specific level of zoom), adjusted your map orientation. This will be the new default view that the map returns to after a page refresh.
 

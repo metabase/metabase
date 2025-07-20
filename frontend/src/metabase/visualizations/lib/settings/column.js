@@ -1,12 +1,15 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 import _ from "underscore";
 
 import { currency } from "cljs/metabase.util.currency";
 import {
   displayNameForColumn,
+  getCurrency,
+  getCurrencyStyleOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
+  getDateStyleOptionsForUnit,
+  getTimeStyleOptions,
   numberFormatterForOptions,
 } from "metabase/lib/formatting";
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
@@ -39,20 +42,23 @@ import {
 
 import { nestedSettings } from "./nested";
 
-function getCurrency(currency, currencyStyle) {
-  return (0)
-    .toLocaleString("en", {
-      style: "currency",
-      currency: currency,
-      currencyDisplay: currencyStyle,
-    })
-    .replace(/0([.,]0+)?/, "")
-    .trim(); // strip off actual number
-}
+/**
+ * @typedef {import("metabase-types/api").Series} Series
+ * @typedef {import("metabase-types/api").DatasetColumn} DatasetColumn
+ * @typedef {(series: Series, vizSettings) => DatasetColumn[]} GetColumnsFn
+ */
 
+/** @type {GetColumnsFn} */
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
   [].concat(...series.map((s) => (s.data && s.data.cols) || []));
 
+/**
+ * @param {Object}        [settings]
+ * @param {GetColumnsFn}  [settings.getColumns]
+ * @param {boolean}       [settings.hidden]
+ * @param {string}        [settings.section]
+ * @param {string[]}      [settings.readDependencies]
+ */
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   hidden,
@@ -66,14 +72,14 @@ export function columnSettings({
     getObjectSettings: getObjectColumnSettings,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
-    getInheritedSettingsForObject: getInhertiedSettingsForColumn,
+    getInheritedSettingsForObject: getInheritedSettingsForColumn,
     useRawSeries: true,
     hidden,
     ...def,
   });
 }
 
-export function getGlobalSettingsForColumn(column) {
+export function getGlobalSettingsForColumn() {
   const columnSettings = {};
   const customFormatting = MetabaseSettings.get("custom-formatting") || {};
 
@@ -89,60 +95,10 @@ function getLocalSettingsForColumn(column) {
   return column.settings || {};
 }
 
-function getInhertiedSettingsForColumn(column) {
+function getInheritedSettingsForColumn(column) {
   return {
-    ...getGlobalSettingsForColumn(column),
+    ...getGlobalSettingsForColumn(),
     ...getLocalSettingsForColumn(column),
-  };
-}
-
-const EXAMPLE_DATE = moment("2018-01-31 17:24");
-
-function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
-  // hour-of-day shouldn't have any date style. It's handled as a time instead.
-  // Other date parts are handled as dates, but hour-of-day needs to use the
-  // time settings for 12/24 hour clock.
-  if (unit === "hour-of-day") {
-    return [];
-  }
-
-  const options = [
-    dateStyleOption("MMMM D, YYYY", unit, abbreviate, separator),
-    dateStyleOption("D MMMM, YYYY", unit, abbreviate, separator),
-    dateStyleOption("dddd, MMMM D, YYYY", unit, abbreviate, separator),
-    dateStyleOption("M/D/YYYY", unit, abbreviate, separator),
-    dateStyleOption("D/M/YYYY", unit, abbreviate, separator),
-    dateStyleOption("YYYY/M/D", unit, abbreviate, separator),
-  ];
-  const seen = new Set();
-  return options.filter((option) => {
-    const format = getDateFormatFromStyle(option.value, unit);
-    if (seen.has(format)) {
-      return false;
-    } else {
-      seen.add(format);
-      return true;
-    }
-  });
-}
-
-function dateStyleOption(style, unit, abbreviate = false, separator) {
-  let format = getDateFormatFromStyle(style, unit, separator);
-  if (abbreviate) {
-    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
-  }
-  return {
-    name: EXAMPLE_DATE.format(format),
-    value: style,
-  };
-}
-
-function timeStyleOption(style, description) {
-  const format = style;
-  return {
-    name:
-      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
-    value: style,
   };
 }
 
@@ -174,7 +130,9 @@ function getTimeEnabledOptionsForUnit(unit) {
 
 export const DATE_COLUMN_SETTINGS = {
   date_style: {
-    title: t`Date style`,
+    get title() {
+      return t`Date style`;
+    },
     widget: "select",
     getDefault: ({ unit }) => {
       // Grab the first option's value. If there were no options (for
@@ -196,7 +154,9 @@ export const DATE_COLUMN_SETTINGS = {
     getHidden: ({ unit }) => getDateStyleOptionsForUnit(unit).length < 2,
   },
   date_separator: {
-    title: t`Date separators`,
+    get title() {
+      return t`Date separators`;
+    },
     widget: "radio",
     default: "/",
     getProps: (column, settings) => {
@@ -214,7 +174,9 @@ export const DATE_COLUMN_SETTINGS = {
     getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
-    title: t`Abbreviate days and months`,
+    get title() {
+      return t`Abbreviate days and months`;
+    },
     widget: "toggle",
     default: false,
     inline: true,
@@ -225,7 +187,9 @@ export const DATE_COLUMN_SETTINGS = {
     readDependencies: ["date_style"],
   },
   time_enabled: {
-    title: t`Show the time`,
+    get title() {
+      return t`Show the time`;
+    },
     widget: "radio",
     isValid: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
@@ -240,17 +204,13 @@ export const DATE_COLUMN_SETTINGS = {
     getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
   },
   time_style: {
-    title: t`Time style`,
+    get title() {
+      return t`Time style`;
+    },
     widget: "radio",
     default: "h:mm A",
-    getProps: (column, settings) => ({
-      options: [
-        timeStyleOption("h:mm A", t`12-hour clock`),
-        ...(column.unit === "hour-of-day"
-          ? [timeStyleOption("h A", "12-hour clock without minutes")]
-          : []),
-        timeStyleOption("HH:mm", t`24-hour clock`),
-      ],
+    getProps: (column) => ({
+      options: getTimeStyleOptions(column.unit),
     }),
     getHidden: (column, settings) =>
       !settings["time_enabled"] || isDateWithoutTime(column),
@@ -260,14 +220,36 @@ export const DATE_COLUMN_SETTINGS = {
 
 export const NUMBER_COLUMN_SETTINGS = {
   number_style: {
-    title: t`Style`,
+    get title() {
+      return t`Style`;
+    },
     widget: "select",
     props: {
       options: [
-        { name: t`Normal`, value: "decimal" },
-        { name: t`Percent`, value: "percent" },
-        { name: t`Scientific`, value: "scientific" },
-        { name: t`Currency`, value: "currency" },
+        {
+          get name() {
+            return t`Normal`;
+          },
+          value: "decimal",
+        },
+        {
+          get name() {
+            return t`Percent`;
+          },
+          value: "percent",
+        },
+        {
+          get name() {
+            return t`Scientific`;
+          },
+          value: "scientific",
+        },
+        {
+          get name() {
+            return t`Currency`;
+          },
+          value: "currency",
+        },
       ],
     },
     getDefault: getDefaultNumberStyle,
@@ -277,7 +259,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     readDependencies: ["currency"],
   },
   currency: {
-    title: t`Unit of currency`,
+    get title() {
+      return t`Unit of currency`;
+    },
     widget: "select",
     props: {
       // FIXME: rest of these options
@@ -292,32 +276,13 @@ export const NUMBER_COLUMN_SETTINGS = {
     getHidden: (column, settings) => settings["number_style"] !== "currency",
   },
   currency_style: {
-    title: t`Currency label style`,
+    get title() {
+      return t`Currency label style`;
+    },
     widget: "radio",
     getProps: (column, settings) => {
-      const c = settings["currency"] || "USD";
-      const symbol = getCurrencySymbol(c);
-      const code = getCurrency(c, "code");
-      const name = getCurrency(c, "name");
       return {
-        options: [
-          ...(symbol !== code
-            ? [
-                {
-                  name: t`Symbol` + ` ` + `(${symbol})`,
-                  value: "symbol",
-                },
-              ]
-            : []),
-          {
-            name: t`Code` + ` ` + `(${code})`,
-            value: "code",
-          },
-          {
-            name: t`Name` + ` ` + `(${name})`,
-            value: "name",
-          },
-        ],
+        options: getCurrencyStyleOptions(settings["currency"] || "USD"),
       };
     },
     getDefault: getDefaultCurrencyStyle,
@@ -325,7 +290,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     readDependencies: ["number_style"],
   },
   currency_in_header: {
-    title: t`Where to display the unit of currency`,
+    get title() {
+      return t`Where to display the unit of currency`;
+    },
     widget: "radio",
     getProps: (_series, _vizSettings, onChange) => {
       return {
@@ -351,7 +318,9 @@ export const NUMBER_COLUMN_SETTINGS = {
   },
   number_separators: {
     // uses 1-2 character string to represent decimal and thousands separators
-    title: t`Separator style`,
+    get title() {
+      return t`Separator style`;
+    },
     widget: "select",
     props: {
       options: [
@@ -365,7 +334,9 @@ export const NUMBER_COLUMN_SETTINGS = {
     getDefault: getDefaultNumberSeparators,
   },
   decimals: {
-    title: t`Number of decimal places`,
+    get title() {
+      return t`Number of decimal places`;
+    },
     widget: "number",
     props: {
       placeholder: "1",
@@ -376,24 +347,32 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
   },
   scale: {
-    title: t`Multiply by a number`,
+    get title() {
+      return t`Multiply by a number`;
+    },
     widget: "number",
     props: {
       placeholder: "1",
     },
   },
   prefix: {
-    title: t`Add a prefix`,
+    get title() {
+      return t`Add a prefix`;
+    },
     widget: "input",
     props: {
       placeholder: "$",
     },
   },
   suffix: {
-    title: t`Add a suffix`,
+    get title() {
+      return t`Add a suffix`;
+    },
     widget: "input",
     props: {
-      placeholder: t`dollars`,
+      get placeholder() {
+        return t`dollars`;
+      },
     },
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
@@ -521,7 +500,9 @@ export const tableColumnSettings = {
   //   { name: "COLUMN_NAME", enabled: true }
   //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
   "table.columns": {
-    section: t`Columns`,
+    get section() {
+      return t`Columns`;
+    },
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],

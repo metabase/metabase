@@ -50,9 +50,10 @@ databaseChangeLog:
       id: '4'
       author: qnkhuat
       comment: Added 0.47.0 - Custom migration to add a record to the table, but it'll fail when execute
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.force_migration_test.FailCustomMigration"
+            class: "metabase.app_db.force_migration_test.FailCustomMigration"
 
   # This migration will depend on the `002` migration,
   # it's deliberately set up so in order to test that we execute migrations in the order we define it
@@ -60,6 +61,7 @@ databaseChangeLog:
       id: '5'
       author: qnkhuat
       comment: Added 0.47.0 - Custom migraiton that successfully adds a record to the table
+      validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.db.force_migration_test.SuccessCustomMigration"
+            class: "metabase.app_db.force_migration_test.SuccessCustomMigration"

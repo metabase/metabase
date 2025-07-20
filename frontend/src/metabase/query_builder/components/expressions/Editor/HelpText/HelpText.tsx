@@ -8,17 +8,17 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Markdown from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Markdown from "metabase/core/components/Markdown";
 import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { MBQL_CLAUSES } from "metabase-lib/v1/expressions/config";
 import {
-  getHelpDocsUrl,
+  type HelpText,
+  expressionModeSupportsClause,
+  getClauseDefinition,
   getHelpText,
-} from "metabase-lib/v1/expressions/helper-text-strings";
-import type { HelpText } from "metabase-lib/v1/expressions/types";
+} from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
@@ -48,6 +48,7 @@ export type HelpTextProps = {
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
+  expressionMode: Lib.ExpressionMode;
 };
 
 function getDatabase(query: Lib.Query, metadata: Metadata) {
@@ -79,6 +80,7 @@ export function HelpText({
   query,
   metadata,
   reportTimezone,
+  expressionMode,
 }: HelpTextProps) {
   const database = getDatabase(query, metadata);
   const helpText =
@@ -86,11 +88,14 @@ export function HelpText({
       ? getHelpText(enclosingFunction.name, database, reportTimezone)
       : null;
 
-  const clause = helpText && MBQL_CLAUSES[helpText.name];
-  const isSupported = clause && database?.hasFeature(clause?.requiresFeature);
+  const clause = helpText && getClauseDefinition(helpText.name);
+  const isSupported =
+    clause &&
+    database?.hasFeature(clause?.requiresFeature) &&
+    expressionModeSupportsClause(expressionMode, clause.name);
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    helpText ? getHelpDocsUrl(helpText) : "",
+    helpText?.docsUrl ?? "",
   );
 
   const handleMouseDown = useCallback(
@@ -113,7 +118,7 @@ export function HelpText({
     return null;
   }
 
-  const { description, structure, args, example } = helpText;
+  const { description, displayName: structure, args, example } = helpText;
   const argIndex = enclosingFunction?.arg?.index ?? -1;
 
   return (
@@ -126,10 +131,10 @@ export function HelpText({
       >
         <Box>
           {structure}
-          {args != null && (
+          {
             <>
               (
-              {args.map(({ name }, index) => (
+              {args?.map(({ name }, index) => (
                 <span key={index}>
                   <span
                     className={cx(S.arg, {
@@ -145,7 +150,7 @@ export function HelpText({
               ))}
               )
             </>
-          )}
+          }
         </Box>
         <UnstyledButton className={S.toggle} px="sm">
           <Icon
@@ -177,7 +182,9 @@ export function HelpText({
                     {wrapPlaceholder(name)}
                   </Box>
                   <Box data-testid={`arg-${name}-description`}>
-                    <Markdown components={components}>{description}</Markdown>
+                    <Markdown components={components}>
+                      {description ?? ""}
+                    </Markdown>
                   </Box>
                 </Fragment>
               ))}

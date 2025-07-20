@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import {
@@ -15,6 +15,7 @@ export interface EmptyVizStateProps {
   chartType?: VisualizationDisplay;
   isSummarizeSidebarOpen?: boolean;
   onEditSummary?: () => void;
+  isNativeView: boolean;
 }
 
 const utmTags = {
@@ -28,6 +29,7 @@ export const EmptyVizState = ({
   chartType,
   isSummarizeSidebarOpen,
   onEditSummary,
+  isNativeView,
 }: EmptyVizStateProps) => {
   const isValidChartType =
     isCardDisplayType(chartType) &&
@@ -43,20 +45,13 @@ export const EmptyVizState = ({
     utm: utmTags,
   });
 
-  const handleClick = () => {
-    if (!onEditSummary) {
-      return;
-    }
-
-    onEditSummary();
-  };
-
   if (!isValidChartType) {
     return null;
   }
 
-  const isDocsCTA = !!docsLink;
-  const isSummarizeCTA = !isDocsCTA;
+  const hasDocsLink = !!docsLink;
+  const showNativeEmptyState = !hasDocsLink && isNativeView;
+  const showQBEmptyState = !hasDocsLink && !isNativeView && !!onEditSummary;
 
   return (
     <Flex
@@ -69,13 +64,14 @@ export const EmptyVizState = ({
     >
       <Box maw="20rem" mb="3rem">
         <img
+          className={CS.pointerEventsNone}
           src={imgSrc}
           alt={c("{0} refers to the chart type")
             .t`${emptyVizChart} chart example illustration`}
         />
       </Box>
       <Stack gap="0.75rem" maw="25rem" ta="center" align="center">
-        {isDocsCTA && (
+        {hasDocsLink && (
           <>
             <Text>{primaryText}</Text>
             {showMetabaseLinks && (
@@ -89,19 +85,33 @@ export const EmptyVizState = ({
           </>
         )}
 
-        {isSummarizeCTA && (
+        {showQBEmptyState && (
           <>
-            <Text>{c(
-              "{0} refers to the 'Summarize'. {1} refers to the follow up instructions.",
-            ).jt`Click on ${
-              isSummarizeSidebarOpen ? (
-                <strong key="summarize">{t`Summarize`}</strong>
-              ) : (
-                <SummarizeCTA onClick={handleClick} key="summarize-cta" />
-              )
-            } at the top right corner. ${primaryText}`}</Text>
+            <Text>
+              {c(
+                "{0} refers to the 'Summarize'. {1} refers to the follow up instructions.",
+              ).jt`Click on ${
+                isSummarizeSidebarOpen ? (
+                  <strong key="summarize">{t`Summarize`}</strong>
+                ) : (
+                  <SummarizeCTA onClick={onEditSummary} key="summarize-cta" />
+                )
+              } at the top right corner. ${primaryText}`}
+            </Text>
             <Text c="text-light">{secondaryText}</Text>
           </>
+        )}
+
+        {showNativeEmptyState && (
+          <Text>
+            {c("{0} refers to the 'settings icon'.").jt`Click on ${(
+              <Icon
+                name="gear"
+                key="settings-icon"
+                style={{ verticalAlign: "middle" }}
+              />
+            )} in the bottom left corner. Then pick one or more metrics for your axes.`}
+          </Text>
         )}
       </Stack>
     </Flex>

@@ -1,4 +1,5 @@
 import _userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {
@@ -11,13 +12,15 @@ import type {
   SpecificDatePickerValue,
 } from "metabase/querying/filters/types";
 
+import type { DatePickerSubmitButtonProps } from "../types";
+
 import { SpecificDatePicker } from "./SpecificDatePicker";
 
 interface SetupOpts {
   value?: SpecificDatePickerValue;
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerUnit[];
-  submitButtonLabel?: string;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
 const userEvent = _userEvent.setup({
@@ -28,7 +31,7 @@ function setup({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_UNITS,
-  submitButtonLabel = "Apply",
+  renderSubmitButton,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -38,7 +41,7 @@ function setup({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -162,5 +165,62 @@ describe("SpecificDatePicker", () => {
       hasTime: false,
     });
     expect(screen.queryByText("Add time")).not.toBeInTheDocument();
+  });
+
+  it("should pass the date value to the submit button callback", async () => {
+    const renderSubmitButton = jest.fn().mockReturnValue(null);
+    setup({ renderSubmitButton });
+
+    await userEvent.click(screen.getByText("On"));
+    await userEvent.click(screen.getByText("15"));
+
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2020, 0, 15)],
+        hasTime: false,
+      },
+    });
+  });
+
+  it("should pass the date range value to the submit button callback", async () => {
+    const renderSubmitButton = jest.fn().mockReturnValue(null);
+    setup({ renderSubmitButton });
+
+    const calendars = screen.getAllByRole("table");
+    await userEvent.click(within(calendars[0]).getByText("12"));
+    await userEvent.click(within(calendars[1]).getByText("5"));
+
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2019, 11, 12), new Date(2020, 0, 5)],
+        hasTime: false,
+      },
+    });
+  });
+
+  it('should swap values for "between" filter when min > max when passing to the submit button callback', async () => {
+    const renderSubmitButton = jest.fn().mockReturnValue(null);
+    setup({ renderSubmitButton });
+
+    const startDateInput = screen.getByLabelText("Start date");
+    await userEvent.clear(startDateInput);
+    await userEvent.type(startDateInput, "Feb 15, 2020");
+
+    const endDateInput = screen.getByLabelText("End date");
+    await userEvent.clear(endDateInput);
+    await userEvent.type(endDateInput, "Dec 29, 2019");
+
+    expect(renderSubmitButton).toHaveBeenLastCalledWith({
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2019, 11, 29), new Date(2020, 1, 15)],
+        hasTime: false,
+      },
+    });
   });
 });

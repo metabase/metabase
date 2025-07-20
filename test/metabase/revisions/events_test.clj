@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.revisions.impl.dashboard :as impl.dashboard]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -192,6 +192,7 @@
                                                                                    :dashboard_tab_id      nil
                                                                                    :action_id nil
                                                                                    :parameter_mappings     []
+                                                                                   :inline_parameters      []
                                                                                    :visualization_settings {}
                                                                                    :dashboard_id           dashboard-id}])
               :is_reversion false

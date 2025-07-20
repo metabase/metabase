@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
+import { findRequests } from "__support__/server-mocks";
 import { screen, within } from "__support__/ui";
 
 import { setup } from "./setup";
-import { assertLegaleseModal } from "./util";
 
 describe("EmbeddingSdkSettings (OSS)", () => {
   describe("banner text when user is self-hosted or cloud", () => {
-    it("should tell users to use localhost and API keys to test the SDK", () => {
-      setup({
+    it("should tell users to use localhost and API keys to test the SDK", async () => {
+      await setup({
         isEmbeddingSdkEnabled: true,
         showSdkEmbedTerms: false,
       });
@@ -28,8 +28,8 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
     });
 
-    it("should not tell users to switch binaries when they have a cloud instance", () => {
-      setup({
+    it("should not tell users to switch binaries when they have a cloud instance", async () => {
+      await setup({
         isEmbeddingSdkEnabled: true,
         showSdkEmbedTerms: false,
         isHosted: true,
@@ -52,38 +52,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
   });
 
   describe("Modal behavior based on enable-embedding-sdk and show-sdk-embed-terms", () => {
-    describe("when enable-embedding-sdk=true & show-sdk-embed-terms=true", () => {
-      beforeEach(() => {
-        setup({
-          isEmbeddingSdkEnabled: true,
-          showSdkEmbedTerms: true,
-        });
-      });
-
-      it("should show the modal when the user loads the page", () => {
-        expect(
-          screen.getByText("Embedded analytics SDK for React"),
-        ).toBeInTheDocument();
-        assertLegaleseModal();
-      });
-    });
-
-    describe("when enable-embedding-sdk=true & show-sdk-embed-terms=false", () => {
-      beforeEach(() => {
-        setup({
-          isEmbeddingSdkEnabled: true,
-          showSdkEmbedTerms: false,
-        });
-      });
-
-      it("should not show the modal when the user loads the page", () => {
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      });
-    });
-
     describe("when enable-embedding-sdk=false & show-sdk-embed-terms=true", () => {
       it("should update settings when user accepts the SDK terms", async () => {
-        const { updateSetting } = setup({
+        await setup({
           isEmbeddingSdkEnabled: false,
           showSdkEmbedTerms: true,
         });
@@ -96,20 +67,17 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-        expect(updateSetting).toHaveBeenCalledTimes(2);
-
-        expect(updateSetting).toHaveBeenCalledWith(
-          { key: "enable-embedding-sdk" },
-          true,
-        );
-        expect(updateSetting).toHaveBeenCalledWith(
-          { key: "show-sdk-embed-terms" },
-          false,
-        );
+        const puts = await findRequests("PUT");
+        expect(puts).toHaveLength(1);
+        const [{ body }] = puts;
+        expect(body).toEqual({
+          "enable-embedding-sdk": true,
+          "show-sdk-embed-terms": false,
+        });
       });
 
       it("should not update settings when user declines the SDK terms", async () => {
-        const { updateSetting } = setup({
+        await setup({
           isEmbeddingSdkEnabled: false,
           showSdkEmbedTerms: true,
         });
@@ -122,13 +90,14 @@ describe("EmbeddingSdkSettings (OSS)", () => {
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-        expect(updateSetting).not.toHaveBeenCalled();
+        const puts = await findRequests("PUT");
+        expect(puts).toHaveLength(0);
       });
     });
 
     describe("when enable-embedding-sdk=false & show-sdk-embed-terms=false", () => {
       it("should not show the modal when the user clicks the toggle", async () => {
-        const { updateSetting } = setup({
+        await setup({
           isEmbeddingSdkEnabled: false,
           showSdkEmbedTerms: false,
         });
@@ -137,13 +106,38 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         await userEvent.click(screen.getByRole("switch"));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-        expect(updateSetting).toHaveBeenCalledTimes(1);
-
-        expect(updateSetting).toHaveBeenCalledWith(
-          { key: "enable-embedding-sdk" },
-          true,
-        );
+        const puts = await findRequests("PUT");
+        expect(puts).toHaveLength(1);
+        const [{ url, body }] = puts;
+        expect(url).toContain("api/setting/enable-embedding-sdk");
+        expect(body).toEqual({
+          value: true,
+        });
       });
     });
   });
+
+  it("should not show version pinning section", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      showSdkEmbedTerms: false,
+    });
+    expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Request version pinning" }),
+    ).not.toBeInTheDocument();
+  });
 });
+
+function assertLegaleseModal() {
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+  expect(screen.getByText("First, some legalese")).toBeInTheDocument();
+  expect(screen.getByText("Decline and go back")).toBeInTheDocument();
+  expect(screen.getByText("Agree and continue")).toBeInTheDocument();
+}

@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.distinct-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))

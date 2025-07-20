@@ -26,7 +26,7 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   const themeOverride = useMemo(() => {
     // !! Mutate the global colors object to apply the new colors.
     // This must be done before ThemeProvider calls getThemeOverrides.
-    setGlobalEmbeddingColors(theme?.colors, appColors);
+    setGlobalEmbeddingColors(theme?.colors, appColors ?? {});
 
     return getEmbeddingThemeOverride(theme || {}, font);
   }, [appColors, theme, font]);

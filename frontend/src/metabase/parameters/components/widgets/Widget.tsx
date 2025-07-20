@@ -2,10 +2,6 @@ import { Box, type BoxProps } from "metabase/ui";
 
 import S from "./Widget.module.css";
 
-export const WidgetRoot = (props: BoxProps & { children: React.ReactNode }) => {
-  return <Box miw="300px" {...props} />;
-};
-
 export const WidgetLabel = (
   props: BoxProps & { children: React.ReactNode },
 ) => {

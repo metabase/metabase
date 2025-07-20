@@ -4,15 +4,12 @@ import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import type { StartRule } from "../types";
-
 export type SuggestOptions = {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  reportTimezone?: string;
-  startRule: StartRule;
-  expressionIndex: number | undefined;
+  expressionMode: Lib.ExpressionMode;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
 import { suggestAggregations } from "./aggregations";

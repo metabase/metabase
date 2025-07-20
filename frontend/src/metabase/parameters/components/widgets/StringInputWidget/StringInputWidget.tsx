@@ -1,12 +1,13 @@
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { t } from "ttag";
 
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deserializeStringParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Box, MultiAutocomplete, TextInput } from "metabase/ui";
+import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
-import { Footer, WidgetLabel, WidgetRoot } from "../Widget";
+import { Footer, WidgetLabel } from "../Widget";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 type StringInputWidgetProps = {
@@ -35,6 +36,8 @@ export function StringInputWidget({
   const [unsavedInputValue, setUnsavedInputValue] = useState(
     normalizedValue[0] ?? "",
   );
+  const isEmpty = unsavedValue.length === 0;
+  const isRequired = parameter?.required;
 
   const handleFieldChange = (event: ChangeEvent<HTMLInputElement>) => {
     const inputValue = event.target.value;
@@ -43,12 +46,25 @@ export function StringInputWidget({
     setUnsavedValue(trimmedInputValue.length > 0 ? [trimmedInputValue] : []);
   };
 
-  const handleUpdateClick = () => {
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default);
+      }
+      return;
+    }
+
     setValue(unsavedValue.length > 0 ? unsavedValue : undefined);
   };
 
   return (
-    <WidgetRoot className={className} w={WIDTH}>
+    <Box
+      component="form"
+      className={className}
+      w={WIDTH}
+      onSubmit={handleSubmit}
+    >
       {label && <WidgetLabel>{label}</WidgetLabel>}
       <Box m="sm">
         {isMultiSelect ? (
@@ -75,9 +91,8 @@ export function StringInputWidget({
           defaultValue={parameter.default}
           isValueRequired={parameter.required ?? false}
           isValid
-          onClick={handleUpdateClick}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }

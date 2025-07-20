@@ -276,7 +276,14 @@ export default class NativeQuery {
 
   variableTemplateTags(): TemplateTag[] {
     return this.templateTags().filter((t) =>
-      ["dimension", "text", "number", "date"].includes(t.type),
+      [
+        "dimension",
+        "text",
+        "number",
+        "date",
+        "boolean",
+        "temporal-unit",
+      ].includes(t.type),
     );
   }
 
@@ -332,7 +339,13 @@ export default class NativeQuery {
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ): NativeQuery {
-    const newParameter = getTemplateTagParameter(tag, config);
+    const oldParameter = this.question()
+      .parameters()
+      .find((parameter) => parameter.id === tag.id);
+    const newParameter = getTemplateTagParameter(tag, {
+      ...oldParameter,
+      ...config,
+    });
     return this.question()
       .setParameter(tag.id, newParameter)
       .legacyNativeQuery();
@@ -350,6 +363,7 @@ export default class NativeQuery {
       .filter((tag) => tag.type === "dimension" && operatorFilter(tag))
       .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter((dimension) => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,

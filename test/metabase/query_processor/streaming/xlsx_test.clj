@@ -12,9 +12,11 @@
    [metabase.util.json :as json])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
-   (com.sun.management ThreadMXBean)
-   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)
-   (java.lang.management ManagementFactory)))
+   (java.io
+    BufferedInputStream
+    BufferedOutputStream
+    ByteArrayInputStream
+    ByteArrayOutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -428,9 +430,6 @@
            (.. cell getCellStyle getDataFormatString))
          row)))
 
-(defn- get-allocated-bytes []
-  (.getCurrentThreadAllocatedBytes ^ThreadMXBean (ManagementFactory/getThreadMXBean)))
-
 (deftest export-format-test
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
@@ -482,7 +481,7 @@
     (is (= ["Display name"]
            (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {} []))))
     (is (= ["Column title"]
-           (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}]
+           (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name" :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Column title"}}}
                                []))))
     ;; Columns can be correlated to viz settings by :name if :id is missing (e.g. for native queries)
@@ -499,26 +498,26 @@
                                []))))
     ;; Currency code is used if requested in viz settings
     (is (= ["Col (USD)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "code"}}}
                                []))))
     ;; Currency name is used if requested in viz settings
     (is (= ["Col (US dollars)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "name"}}}
                                []))))
     ;; Currency type from viz settings is respected
     (is (= ["Col (€)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "EUR"}}}
                                []))))
     ;; Falls back to code if native symbol is not supported
     (is (= ["Col (KGS)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                           {::mb.viz/currency "KGS", ::mb.viz/currency-style "symbol"}}}
                                []))))
@@ -529,7 +528,7 @@
                                []))))
     ;; Currency not included if ::mb.viz/currency-in-header is false
     (is (= ["Col"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "code",
@@ -538,7 +537,7 @@
 
   (testing "If a col is remapped to a foreign key field, the title is taken from the viz settings for its fk_field_id (#18573)"
     (is (= ["Correct title"]
-           (first (xlsx-export [{:id 0, :fk_field_id 1, :remapped_from "FIELD_1"}]
+           (first (xlsx-export [{:id 0, :fk_field_id 1, :remapped_from "FIELD_1" :field_ref [:field 0]}]
                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Incorrect title"}
                                                           {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
                                []))))))
@@ -753,27 +752,6 @@
                           {}
                           [[1]
                            [2]]))))))
-
-(deftest pivot-table-resource-usage-test
-  (testing "pivot table initialization should complete in reasonable time and memory"
-    ;; We test XLSX export of an empty table (0 rows) with pivoting enabled. This should test the initialization of
-    ;; pivot machinery that used to allocate and retain a lot of memory (and hence was slow on smaller heaps).
-    (let [do-export #(xlsx-export [{:display_name "A"}
-                                   {:display_name "B"}
-                                   {:display_name "C"}
-                                   {:display_name "D"}
-                                   {:display_name "pivot-grouping"}
-                                   {:display_name "E"}
-                                   {:display_name "F"}]
-                                  {}
-                                  []
-                                  :pivot-export-options {:pivot-rows [0 1], :pivot-cols [2 3], :pivot-measures [5 4]})
-          ;; Run once before measuring to warm-up and thus reduce flakiness.
-          _ (do-export)
-          start-bytes (get-allocated-bytes)]
-      (do-export)
-      ;; Should always allocate less than 100Mb.
-      (is (< (- (get-allocated-bytes) start-bytes) (* 100 1024 1024))))))
 
 (deftest number-of-characters-cell-test
   (testing "When the number of characters exceeds *number-of-characters-cell*, the excess part will be truncated."

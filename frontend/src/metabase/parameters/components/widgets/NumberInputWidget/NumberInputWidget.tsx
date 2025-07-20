@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import NumericInput from "metabase/core/components/NumericInput";
+import NumericInput from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
 import { type NumberValue, parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
@@ -11,19 +11,20 @@ import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ParameterValue,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
-import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
+import { Footer, TokenFieldWrapper, WidgetLabel } from "../Widget";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 export type NumberInputWidgetProps = {
-  value: ParameterValueOrArray | undefined;
-  setValue: (value: ParameterValueOrArray | undefined) => void;
+  value: ParameterValueOrArray | null | undefined;
+  setValue: (value: ParameterValueOrArray | null | undefined) => void;
   className?: string;
   arity?: "n" | number;
   infixText?: string;
@@ -53,16 +54,8 @@ export function NumberInputWidget({
   const isValid =
     (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
-
-  const onClick = () => {
-    if (isValid) {
-      if (allValuesUnset || unsavedArrayValue.length === 0) {
-        setValue(undefined);
-      } else {
-        setValue(serializeNumberParameterValue(unsavedArrayValue));
-      }
-    }
-  };
+  const isEmpty = unsavedArrayValue.length === 0 || allValuesUnset;
+  const isRequired = parameter?.required;
 
   const filteredUnsavedArrayValue = useMemo(
     () => unsavedArrayValue.filter((x): x is number => x !== undefined),
@@ -70,10 +63,7 @@ export function NumberInputWidget({
   );
 
   const values = parameter?.values_source_config?.values ?? [];
-  const options =
-    values
-      .map(getOption)
-      .filter((item): item is ComboboxItem => item !== null) ?? [];
+  const options = values.map(getOption).filter(isNotNull);
   const labelByValue = Object.fromEntries(
     options.map((option) => [option.value, option.label]),
   );
@@ -89,10 +79,35 @@ export function NumberInputWidget({
     );
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!isValid) {
+      return;
+    }
+
+    if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default);
+      }
+      return;
+    }
+
+    if (allValuesUnset || unsavedArrayValue.length === 0) {
+      setValue(undefined);
+    } else {
+      setValue(serializeNumberParameterValue(unsavedArrayValue));
+    }
+  };
+
   return (
-    <WidgetRoot className={className} w={WIDTH}>
+    <Box
+      component="form"
+      className={className}
+      w={WIDTH}
+      onSubmit={handleSubmit}
+    >
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      {arity === "n" ? (
+      {arity === "n" || options.length > 0 ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
             value={filteredUnsavedArrayValue.map((value) => value?.toString())}
@@ -135,10 +150,9 @@ export function NumberInputWidget({
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
           isValid={isValid}
-          onClick={onClick}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }
 
@@ -147,8 +161,7 @@ function getOption(
 ): ComboboxItem | null {
   const value = getValue(entry);
   const label = getLabel(entry);
-
-  if (!value) {
+  if (value == null) {
     return null;
   }
 

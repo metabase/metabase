@@ -69,6 +69,7 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
+    ai-service-base-url: http://localhost:8000
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -102,7 +103,6 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    backfill-entity-ids-repeat-ms: 2000
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
@@ -113,6 +113,7 @@ config:
     custom-geojson-enabled: true
     custom-homepage: false
     custom-homepage-dashboard: null
+    dashboards-save-last-used-parameters: true
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
     default-maps-enabled: true
@@ -136,7 +137,6 @@ config:
     enable-embedding-interactive: false
     enable-embedding-sdk: false
     enable-embedding-static: false
-    enable-field-usage-analysis: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
@@ -183,6 +183,7 @@ config:
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
+    license-token-missing-banner-dismissal-timestamp: []
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
@@ -193,13 +194,14 @@ config:
     no-data-illustration-custom: null
     no-object-illustration: default
     no-object-illustration-custom: null
+    non-table-chart-generated: false
     not-behind-proxy: false
     notification-link-base-url: null
+    notification-system-event-thread-pool-size: 5
     notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
-    query-analysis-enabled: false
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
@@ -213,7 +215,7 @@ config:
     saml-application-name: Metabase
     saml-attribute-email: null
     saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
-    saml-attribute-group: member_of
+    saml-attribute-group: null
     saml-attribute-lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
     saml-enabled: false
     saml-group-mappings: {}
@@ -222,13 +224,15 @@ config:
     saml-identity-provider-issuer: null
     saml-identity-provider-slo-uri: null
     saml-identity-provider-uri: null
-    saml-keystore-alias: metabase
+    saml-keystore-alias: null
     saml-keystore-password: changeit
     saml-keystore-path: null
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
     scim-enabled: null
-    search-engine: in-place
+    sdk-encryption-validation-key: null
+    search-engine: appdb
+    search-language: null
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
@@ -249,7 +253,6 @@ config:
     slack-bug-report-channel: metabase-bugs
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
-    sql-parsing-enabled: true
     ssh-heartbeat-interval-sec: 180
     start-of-week: sunday
     subscription-allowed-domains: null
@@ -258,5 +261,6 @@ config:
     unaggregated-query-row-limit: null
     update-channel: latest
     uploads-settings: null
+    use-tenants: false
     user-visibility: all
 ```

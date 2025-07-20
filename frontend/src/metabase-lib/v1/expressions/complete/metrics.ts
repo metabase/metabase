@@ -7,12 +7,12 @@ import { formatIdentifier } from "../identifier";
 import { content, fuzzyMatcher, tokenAtPos } from "./util";
 
 export type Options = {
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
 };
 
-export function suggestMetrics({ startRule, query, stageIndex }: Options) {
+export function suggestMetrics({ expressionMode, query, stageIndex }: Options) {
   const metrics = Lib.availableMetrics(query, stageIndex)?.map((metric) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
     return {
@@ -23,11 +23,11 @@ export function suggestMetrics({ startRule, query, stageIndex }: Options) {
     };
   });
 
-  if (startRule !== "aggregation" || metrics.length === 0) {
+  if (expressionMode !== "aggregation" || metrics.length === 0) {
     return null;
   }
 
-  const matcher = fuzzyMatcher(metrics);
+  const matcher = fuzzyMatcher({ options: metrics });
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();

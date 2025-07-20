@@ -24,6 +24,7 @@
                                   :dataset_query
                                   :result_metadata
                                   :visualization_settings
+                                  :card_schema
                                   :serdes/meta]
  [:Card :dataset_query]          []
  [:Card :visualization_settings] []
@@ -155,4 +156,10 @@
                                   :initial_sync_status
                                   :points_of_interest
                                   :caveats
+                                  :serdes/meta]
+ :Metabot                        [:name
+                                  :description
+                                  :created_at
+                                  :entity_id
+                                  :updated_at
                                   :serdes/meta]}

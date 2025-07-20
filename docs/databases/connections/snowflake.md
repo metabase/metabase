@@ -94,6 +94,8 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 
 ## Role (optional)
 
+> **WARNING:** Metabase gets _all the permissions_ combined from _every_ role you grant the user in Snowflake. Setting the 'Role' here just adds the role to the connection string to tell Snowflake which role to default to – it **won't restrict** access on its own. So **be careful which roles you assign to the connection user**: if down the line you grant that user broader roles in Snowflake, Metabase will automatically gets those new permissions, potentially showing data you didn't mean for it to see. If instead you want Metabase to issue `SET ROLE` commands before querying anything, check out [connection impersonation](../../permissions/impersonation.md).
+
 Specify a role to override the database user's default role. For example, if the database user `METABASE` has the roles:
 
 - Default role `APPLICATION`.

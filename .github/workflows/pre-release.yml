@@ -103,8 +103,14 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
+      # these are needed for backwards compatibility with release branches earlier than v55, since
+      # this workflow always runs from master, but we run tests from the release branch
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
       # disabled because of out of memory issues
       # probably related to https://github.com/cypress-io/cypress/issues/27415
       CYPRESS_NO_COMMAND_LOG: 1
@@ -122,6 +128,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
+          snowplow: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK 21
@@ -132,8 +139,6 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
       - uses: actions/download-artifact@v4
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
         with:

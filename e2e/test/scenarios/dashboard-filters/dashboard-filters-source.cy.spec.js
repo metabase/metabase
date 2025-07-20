@@ -373,7 +373,7 @@ describe("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
   });
 
@@ -509,7 +509,7 @@ const getParameterMapping = ({ card_id }) => ({
 function setSearchFilter(label) {
   H.filterWidget().click();
   H.popover().within(() => {
-    H.fieldValuesInput().type(label);
+    H.fieldValuesCombobox().type(label);
   });
 
   // eslint-disable-next-line no-unsafe-element-filtering

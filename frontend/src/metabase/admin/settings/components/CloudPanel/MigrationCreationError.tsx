@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
@@ -24,11 +24,14 @@ export const MigrationCreationError = ({
           {error.data && <Text mt=".5rem">{error.data}</Text>}
           <Text mt="1rem">
             {c("{0} is an email address")
-              .jt`Please try again later, and reach out to us at ${(
-              <Link key="email" variant="brand" to="mailto:help@metabase.com">
-                help@metabase.com
-              </Link>
-            )} if you need help.`}
+              .jt`Please try again later, and reach out to us at ${
+              (
+                // eslint-disable-next-line i18next/no-literal-string
+                <Link key="email" variant="brand" to="mailto:help@metabase.com">
+                  help@metabase.com
+                </Link>
+              )
+            } if you need help.`}
           </Text>
         </Box>
       </Flex>

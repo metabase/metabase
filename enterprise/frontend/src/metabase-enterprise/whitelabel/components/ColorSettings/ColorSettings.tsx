@@ -1,23 +1,20 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { Box, Stack } from "metabase/ui";
+import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
+
 import BrandColorSettings from "../BrandColorSettings";
 import ChartColorPreview from "../ChartColorPreview";
 import ChartColorSettings from "../ChartColorSettings";
 
-import {
-  BrandColorSection,
-  ChartColorSection,
-  SectionContent,
-  SettingDescription,
-  SettingRoot,
-  SettingTitle,
-} from "./ColorSettings.styled";
+import { SectionContent } from "./ColorSettings.styled";
 
 export interface ColorSettingsProps {
-  initialColors: Record<string, string> | null;
-  originalColors: Record<string, string>;
-  onChange?: (colors: Record<string, string>) => void;
+  initialColors: ColorSettingsType | null;
+  originalColors: ColorSettingsType;
+  onChange?: (colors: ColorSettingsType) => void;
 }
 
 export const ColorSettings = ({
@@ -32,7 +29,7 @@ export const ColorSettings = ({
   }, [colors, originalColors]);
 
   const handleChange = useCallback(
-    (colors: Record<string, string>) => {
+    (colors: ColorSettingsType) => {
       setColors(colors);
       onChange?.(colors);
     },
@@ -40,23 +37,25 @@ export const ColorSettings = ({
   );
 
   return (
-    <SettingRoot>
-      <BrandColorSection>
-        <SettingTitle hasDescription>{t`User interface colors`}</SettingTitle>
-        <SettingDescription>
-          {t`Note: deleting each of the values will revert them back to default.`}
-        </SettingDescription>
+    <Stack gap="lg">
+      <Box>
+        <SettingHeader
+          id="user-interface-colors"
+          title={t`User interface colors`}
+          description={t`Note: deleting each of the values will revert them back to default.`}
+        />
         <BrandColorSettings
           colors={colors}
           colorPalette={colorPalette}
           onChange={handleChange}
         />
-      </BrandColorSection>
-      <ChartColorSection>
-        <SettingTitle hasDescription>{t`Chart colors`}</SettingTitle>
-        <SettingDescription>
-          {t`Choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
-        </SettingDescription>
+      </Box>
+      <Box>
+        <SettingHeader
+          id="chart-colors"
+          title={t`Chart colors`}
+          description={t`Choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
+        />
         <SectionContent>
           <ChartColorSettings
             colors={colors}
@@ -65,7 +64,7 @@ export const ColorSettings = ({
           />
           <ChartColorPreview colorPalette={colorPalette} />
         </SectionContent>
-      </ChartColorSection>
-    </SettingRoot>
+      </Box>
+    </Stack>
   );
 };

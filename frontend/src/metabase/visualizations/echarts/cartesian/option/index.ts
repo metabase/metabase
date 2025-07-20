@@ -19,10 +19,12 @@ import type {
 import type { TimelineEventId } from "metabase-types/api";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { CHART_STYLE } from "../constants/style";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
+import type { EChartsSeriesOption } from "./types";
 
 export const getSharedEChartsOptions = (isAnimated: boolean) => ({
   useUTC: true,
@@ -38,6 +40,38 @@ export const getSharedEChartsOptions = (isAnimated: boolean) => ({
     throttleType: "debounce" as const,
     throttleDelay: 200,
   },
+});
+
+type Axes = ReturnType<typeof buildAxes>;
+
+export const ensureRoomForLabels = (
+  axes: Axes,
+  { leftAxisModel, rightAxisModel }: CartesianChartModel,
+  chartMeasurements: ChartMeasurements,
+  seriesOption: EChartsSeriesOption[],
+): Axes => ({
+  ...axes,
+  yAxis: axes.yAxis.map((axis) => {
+    const axisModel = axis.position === "left" ? leftAxisModel : rightAxisModel;
+    if (!axisModel) {
+      return axis;
+    }
+    const isAxisUsedForBarChart = axisModel.seriesKeys.some((key) => {
+      return seriesOption.some((o) => o.id === key && o.type === "bar");
+    });
+    if (!isAxisUsedForBarChart) {
+      return axis;
+    }
+    const [min] = axisModel.extent;
+    if (min < 0) {
+      const { bounds } = chartMeasurements;
+      const innerHeight = Math.abs(bounds.bottom - bounds.top);
+      const labelPct = CHART_STYLE.seriesLabels.size / innerHeight;
+      const lowerBoundaryGap = labelPct / 2; // `/ 2` because it's okay if the bar label overlaps the axis *line*, we just don't want it to overlap the axis *labels*
+      return { ...axis, boundaryGap: [lowerBoundaryGap, 0] };
+    }
+    return axis;
+  }),
 });
 
 export const getCartesianChartOption = (
@@ -123,13 +157,18 @@ export const getCartesianChartOption = (
     },
     dataset: echartsDataset,
     series: seriesOption,
-    ...buildAxes(
+    ...ensureRoomForLabels(
+      buildAxes(
+        chartModel,
+        chartWidth,
+        chartMeasurements,
+        settings,
+        hasTimelineEvents,
+        renderingContext,
+      ),
       chartModel,
-      chartWidth,
       chartMeasurements,
-      settings,
-      hasTimelineEvents,
-      renderingContext,
+      dataSeriesOptions,
     ),
   };
 };

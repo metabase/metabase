@@ -2,9 +2,9 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
-import { useDispatch } from "metabase/lib/redux";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -20,7 +20,8 @@ import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
-import { Icon, Menu, Tooltip } from "metabase/ui";
+import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
@@ -52,6 +53,7 @@ export const QuestionMoreActionsMenu = ({
   onSetQueryBuilderMode,
 }: QuestionMoreActionsMenuProps): JSX.Element | null => {
   const [opened, setOpened] = useState(false);
+  const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const dispatch = useDispatch();
 
@@ -67,9 +69,9 @@ export const QuestionMoreActionsMenu = ({
   const hasCollectionPermissions = question.canWrite();
   const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
 
-  const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
-    question.query(),
-  );
+  const hasDataPermissions =
+    underlyingQuestion != null &&
+    Lib.queryDisplayInfo(underlyingQuestion.query()).isEditable;
 
   const reload = () => dispatch(softReloadCard());
 
@@ -86,11 +88,10 @@ export const QuestionMoreActionsMenu = ({
   const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");
 
   const handleTurnToModel = () => {
-    if (!ackedModelModal) {
-      const modal = checkCanBeModel(question)
-        ? MODAL_TYPES.TURN_INTO_DATASET
-        : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
-      onOpenModal(modal);
+    if (!checkCanBeModel(question)) {
+      onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
+    } else if (!ackedModelModal) {
+      onOpenModal(MODAL_TYPES.TURN_INTO_DATASET);
     } else {
       dispatch(turnQuestionIntoModel());
     }
@@ -210,7 +211,7 @@ export const QuestionMoreActionsMenu = ({
     hasCollectionPermissions
       ? [
           {
-            id: "trash-question",
+            id: "query-builder-send-to-trash",
             perform: () => onOpenModal(MODAL_TYPES.ARCHIVE),
           },
         ]
@@ -225,9 +226,11 @@ export const QuestionMoreActionsMenu = ({
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
-          <Tooltip label={label} disabled={opened}>
-            <Button onlyIcon icon="ellipsis" aria-label={label} />
-          </Tooltip>
+          <ToolbarButton
+            icon="ellipsis"
+            aria-label={label}
+            tooltipLabel={label}
+          />
         </div>
       </Menu.Target>
 

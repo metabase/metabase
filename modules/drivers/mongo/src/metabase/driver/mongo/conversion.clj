@@ -19,8 +19,8 @@
   (:require
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
-   [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.query-processor.timezone :as qp.timezone])
+   [metabase.driver-api.core :as driver-api]
+   [metabase.driver.mongo.query-processor :as mongo.qp])
   (:import
    (java.nio ByteBuffer)
    (java.util UUID)
@@ -137,7 +137,7 @@
   (to-document [t]
     ;; QP store won't be bound when loading test data for example.
     (to-document (t/instant t (t/zone-id (try
-                                           (qp.timezone/results-timezone-id)
+                                           (driver-api/results-timezone-id)
                                            (catch Throwable _
                                              "UTC"))))))
 

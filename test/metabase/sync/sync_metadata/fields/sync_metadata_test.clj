@@ -245,7 +245,12 @@
 (deftest base-type-change-will-trigger-fingerprint-and-analyze-test
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).
            In this case, we should make sure effective type is set to base type"
-    (is (= [["Field"
+    (is (= [["FieldUserSettings"
+             1
+             {:effective_type      :type/Text
+              :coercion_strategy   nil
+              :semantic_type       nil}]
+            ["Field"
              1
              {:base_type           :type/Text
               :effective_type      :type/Text
@@ -290,7 +295,7 @@
             (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
             (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
               (testing "updated field is re-fingerprinted and analyzed"
-                (is (=? {:semantic_type  :type/Category
+                (is (=? {:semantic_type  nil
                          :fingerprint    (mt/malli=? :map)
                          :base_type      :type/Integer
                          :effective_type :type/Integer}

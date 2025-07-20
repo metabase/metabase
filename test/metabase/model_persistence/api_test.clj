@@ -4,7 +4,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.sync.task.sync-databases :as task.sync-databases]
-   [metabase.task :as task]
+   [metabase.task.impl :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

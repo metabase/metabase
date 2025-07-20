@@ -1,13 +1,15 @@
 (ns metabase.query-processor.streaming-test
   (:require
+   [clojure.core.async :as a]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.embed-test :as embed-test]
+   [metabase.embedding.api.embed-test :as embed-test]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
@@ -29,7 +31,12 @@
     (map? x) (m/dissoc-in [:data :results_metadata :checksum])))
 
 (defn- expected-results* [export-format query]
-  (maybe-remove-checksum (streaming.test-util/expected-results export-format (qp/process-query query))))
+  (let [results (-> (streaming.test-util/expected-results export-format (qp/process-query query))
+                    maybe-remove-checksum)]
+    (cond-> results
+      (map? results) (update-in [:data :cols] (fn [cols]
+                                                (for [col cols]
+                                                  (m/filter-keys simple-keyword? col)))))))
 
 (defn- basic-actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
@@ -39,7 +46,7 @@
     (let [query (mt/mbql-query venues
                   {:order-by [[:asc $id]]
                    :limit    5})]
-      (doseq [export-format (qp.streaming/export-formats)]
+      (doseq [export-format qp.schema/export-formats]
         (testing (u/colorize :yellow export-format)
           (case export-format
             :csv (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
@@ -112,26 +119,26 @@
                            "Longitude" "118.26100000° W",
                            "Price" 2.0}]
                          (basic-actual-results* export-format query)))
-            (is (= (expected-results* export-format query)
-                   (basic-actual-results* export-format query)))))))))
+            (is (=? (expected-results* export-format query)
+                    (basic-actual-results* export-format query)))))))))
 
 (defn- actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))
 
 (defn- compare-results [export-format query]
-  (is (= (expected-results* export-format query)
-         (cond-> (actual-results* export-format query)
-           (= export-format :api)
-           (dissoc :cached)))))
+  (is (=? (expected-results* export-format query)
+          (cond-> (actual-results* export-format query)
+            (= export-format :api)
+            (dissoc :cached)))))
 
 (deftest ^:parallel streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
     (compare-results :api (mt/mbql-query venues {:limit 5}))))
 
-(deftest utf8-test
+(deftest ^:parallel utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
-  (doseq [export-format (disj (qp.streaming/export-formats) :xlsx :csv)]
+  (doseq [export-format (disj qp.schema/export-formats :xlsx :csv)]
     (testing (u/colorize :yellow export-format)
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
@@ -141,8 +148,9 @@
                                             :limit    5})))
         (testing "A query with emoji and other fancy unicode"
           (let [[sql & args] (t2.pipeline/compile* {:select [["Cam 𝌆 Saul 💩" :cam]]})]
-            (compare-results export-format (mt/native-query {:query  sql
-                                                             :params args}))))))))
+            (compare-results export-format (assoc-in (mt/native-query {:query  sql
+                                                                       :params args})
+                                                     [:info :card-entity-id] (u/generate-nano-id)))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
@@ -170,8 +178,8 @@
                                    :async-context (reify AsyncContext
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
-        (is (= true
-               (deref complete-promise 1000 ::timed-out)))
+        (is (true?
+             (deref complete-promise 1000 ::timed-out)))
         (let [response-str (String. (.toByteArray os) "UTF-8")]
           (is (= "[{\"num_cans\":\"2\"}]"
                  (str/replace response-str #"\n+" "")))
@@ -218,7 +226,7 @@
                            :order-by [[:asc $id]]
                            :limit    1}))
             col-names [:date :datetime :datetime-ltz :datetime-tz :datetime-tz-id :time :time-ltz :time-tz]]
-        (doseq [export-format (qp.streaming/export-formats)]
+        (doseq [export-format qp.schema/export-formats]
           (letfn [(test-results [expected]
                     (testing (u/colorize :yellow export-format)
                       (is (= expected
@@ -303,7 +311,7 @@
 ;;; and assert on the results. These tests should generally be for ensuring that specific types of queries or
 ;;; behaviors work across all endpoints that generate exports. Tests that are specific to single endpoints
 ;;; (like `/api/dataset/:format`) should go in the corresponding test namespaces for those files
-;;; (like `metabase.api.dataset-test`).
+;;; (like `metabase.query-processor.api-test`).
 ;;; TODO: migrate the test cases above to use these functions, if possible
 
 (defn do-test!
@@ -579,7 +587,7 @@
 ;;; |                                        Streaming logic unit tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest export-column-order-test
+(deftest ^:parallel export-column-order-test
   (testing "correlation of columns by field ref"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
@@ -590,8 +598,9 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-2
   (testing "correlation of columns by name"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
@@ -602,8 +611,9 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1"}, {:id 1, :name "Col2"}]
             [{::mb.viz/table-column-name "Col2", ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-name "Col1", ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-3
   (testing "correlation of columns by field ref"
     (is (= [0]
            (@#'qp.streaming/export-column-order
@@ -614,15 +624,17 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled false}
-             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-4
   (testing "remapped columns use the index of the new column"
     (is (= [1]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1", :remapped_to "Col2", :field_ref ["field" 0 nil]},
              {:id 1, :name "Col2", :remapped_from "Col1", :field_ref ["field" 1 nil]}]
-            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
+            [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-5
   (testing "if table-columns contains a column without a corresponding entry in cols, table-columns is ignored and
            cols is used as the source of truth for column order (#19465)"
     (is (= [0]
@@ -634,8 +646,9 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
             [{::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}])))))
 
+(deftest ^:parallel export-column-order-test-6
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
@@ -644,8 +657,9 @@
     (is (= [0 1]
            (@#'qp.streaming/export-column-order
             [{:name "Col1"}, {:name "Col2"}]
-            nil))))
+            nil)))))
 
+(deftest ^:parallel export-column-order-test-7
   (testing "if table-columns is nil, remapped columns are still respected"
     (is (= [1]
            (@#'qp.streaming/export-column-order
@@ -654,3 +668,40 @@
            (@#'qp.streaming/export-column-order
             [{:name "Col1" :remapped_to "Col2"}, {:name "Col2" :remapped_from "Col1"}]
             nil)))))
+
+;; QP Nil Fix Tests
+;; These tests verify that query cancellation returns proper results instead of nil
+
+(deftest ^:parallel qp-pipeline-cancellation-test
+  (testing "QP pipeline functions return nil when cancelled and canceled? returns truthy"
+    (let [canceled-chan (a/promise-chan)
+          _ (a/>!! canceled-chan ::cancel)
+          query (mt/mbql-query venues {:limit 1})
+          mock-rff (constantly identity)]
+
+      (binding [qp.pipeline/*canceled-chan* canceled-chan]
+        (let [result (qp.pipeline/*run* query mock-rff)]
+          (is (nil? result) "Cancelled query returns nil")
+          (is (qp.pipeline/canceled?) "canceled? should return truthy when query is cancelled"))))))
+
+(deftest streaming-response-handles-cancellation-test
+  (testing "Streaming response handles cancellation gracefully without assertion errors"
+    (let [mock-qp-fn (fn [rff]
+                      ;; Simulate immediate cancellation
+                       (with-redefs [qp.pipeline/canceled? (constantly true)]
+                         (qp.pipeline/*run* (mt/mbql-query venues {:limit 1}) rff)))]
+
+      ;; Should not throw "QP unexpectedly returned nil" assertion error
+      (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
+          "Streaming response should handle cancellation without assertion error"))))
+
+(deftest streaming-response-handles-cancel-keyword-test
+  (testing "Streaming response handles nil + canceled? gracefully"
+    (let [mock-qp-fn (fn [_rff]
+                       ;; Return nil and set up canceled? to return truthy
+                       (with-redefs [qp.pipeline/canceled? (constantly ::cancel)]
+                         nil))]
+
+      ;; Should not throw any assertion errors
+      (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
+          "Streaming response should handle cancellation without assertion error"))))

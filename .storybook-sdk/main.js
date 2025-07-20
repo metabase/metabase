@@ -1,8 +1,10 @@
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const appConfig = require("../webpack.config");
+const getAppConfig = require("../webpack.embedding-sdk.config");
 const fs = require("fs");
 const path = require("path");
+
+const appConfig = getAppConfig();
 
 const {
   isEmbeddingSdkPackageInstalled,
@@ -11,7 +13,7 @@ const {
 
 module.exports = {
   stories: ["../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx"],
-  staticDirs: ["../resources/frontend_client"],
+  staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-interactions",
@@ -25,9 +27,9 @@ module.exports = {
     options: {},
   },
   typescript: {
-    reactDocgen: "react-docgen-typescript",
+    reactDocgen: false,
   },
-  webpackFinal: storybookConfig => ({
+  webpackFinal: (storybookConfig) => ({
     ...storybookConfig,
     plugins: [
       ...storybookConfig.plugins,
@@ -37,17 +39,17 @@ module.exports = {
       }),
       new webpack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION,
-        IS_EMBEDDING_SDK: true,
+        IS_EMBEDDING_SDK: "true",
       }),
     ],
     module: {
       ...storybookConfig.module,
       rules: [
         ...storybookConfig.module.rules.filter(
-          rule => !isCSSRule(rule) && !isSvgRule(rule),
+          (rule) => !isCSSRule(rule) && !isSvgRule(rule),
         ),
         ...appConfig.module.rules.filter(
-          rule => isCSSRule(rule) || isSvgRule(rule),
+          (rule) => isCSSRule(rule) || isSvgRule(rule),
         ),
       ],
     },
@@ -65,8 +67,8 @@ module.exports = {
   }),
 };
 
-const isCSSRule = rule => rule.test?.toString() === "/\\.css$/";
-const isSvgRule = rule => rule.test && rule.test?.test(".svg");
+const isCSSRule = (rule) => rule.test?.toString() === "/\\.css$/";
+const isSvgRule = (rule) => rule.test && rule.test?.test(".svg");
 
 function resolveEmbeddingSdkPackage() {
   let isEmbeddingSdkPackageInstalled = false;

@@ -96,7 +96,8 @@
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
   #_expr [:schema [:ref ::expression/number]])
 
-(doseq [tag [:avg
+(doseq [tag [:aggregation
+             :avg
              :count
              :cum-count
              :count-where
@@ -113,7 +114,6 @@
              :cum-sum
              :sum-where
              :var
-             ;; legacy metric ref
              :metric]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
@@ -123,7 +123,11 @@
   [x]
   (when-let [[tag _opts & args] (and (vector? x) x)]
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
-        (some aggregation-expression? args))))
+        ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
+        (if (= :case tag)
+          (or (some aggregation-expression? (ffirst args))
+              (some aggregation-expression? (fnext args)))
+          (some aggregation-expression? args)))))
 
 (mr/def ::aggregation
   [:and

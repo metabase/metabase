@@ -4,10 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.integrations.slack]
    [metabase.test :as mt]))
-
-(comment metabase.integrations.slack/keep-me) ; so the Setting exists
 
 (deftest segmented-users-pulse-test
   (testing "GET /api/pulse/form_input"

@@ -2,7 +2,7 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref var])
+                            + - * / time abs concat replace ref var float])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -27,11 +27,11 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -66,7 +66,6 @@
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
-         lib.metadata.ident/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -83,9 +82,9 @@
 
 (shared.ns/import-fns
  [lib.aggregation
+  aggregable-columns
   aggregate
   aggregation-clause
-  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations
@@ -96,6 +95,7 @@
   avg
   count-where
   distinct
+  distinct-where
   max
   median
   min
@@ -163,6 +163,7 @@
   round
   power
   date
+  datetime
   interval
   relative-datetime
   time
@@ -173,11 +174,11 @@
   get-year
   get-month
   get-day
+  get-day-of-week
   get-hour
   get-minute
   get-second
   get-quarter
-  get-day-of-week
   datetime-add
   datetime-subtract
   concat
@@ -192,8 +193,10 @@
   lower
   offset
   text
+  today
   split-part
-  integer]
+  integer
+  float]
  [lib.extraction
   column-extractions
   extract
@@ -299,10 +302,6 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
- [lib.metadata.ident
-  implicit-join-clause-ident
-  model-ident
-  native-ident]
  [lib.native
   engine
   extract-template-tags
@@ -327,6 +326,8 @@
   orderable-columns]
  [lib.normalize
   normalize]
+ [lib.parse
+  parse]
  [lib.query
   ->query
   can-preview

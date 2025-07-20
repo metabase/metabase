@@ -1,9 +1,9 @@
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -101,15 +101,6 @@ function getParameterTargetFieldFromFieldRef(
   }
 
   const { query, columns } = getParameterColumns(question, parameter);
-
-  if (columns.length === 0) {
-    // query and metadata are not available: 1) no data permissions 2) embedding
-    // there is no way to find the correct field so pick the first one matching by name
-    return fields.find(
-      (field) => typeof field.id === "number" && field.name === fieldIdOrName,
-    );
-  }
-
   const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
 
   for (const stageIndex of stageIndexes) {
@@ -165,8 +156,13 @@ export function buildColumnTarget(
 
 export function buildTemplateTagVariableTarget(
   variable: TemplateTagVariable,
-): ParameterVariableTarget {
-  return ["variable", normalize(variable.mbql())];
+): ParameterVariableTarget | NativeParameterDimensionTarget {
+  const tag = variable.tag();
+  if (tag?.type === "temporal-unit") {
+    return ["dimension", variable.mbql(), { "stage-number": 0 }];
+  } else {
+    return ["variable", variable.mbql()];
+  }
 }
 
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {
@@ -206,9 +202,9 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
 }
 
 function getTemporalColumns(query: Lib.Query, stageIndex: number) {
-  const columns = Lib.breakouts(query, stageIndex).map((breakout) => {
-    return Lib.breakoutColumn(query, stageIndex, breakout);
-  });
+  const columns = Lib.breakouts(query, stageIndex)
+    .map((breakout) => Lib.breakoutColumn(query, stageIndex, breakout))
+    .filter(isNotNull);
   const [group] = Lib.groupColumns(columns);
 
   return columns.map((column) => ({

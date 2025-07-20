@@ -17,7 +17,8 @@ import {
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 function capitalize(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
@@ -648,7 +649,7 @@ describe("issue 29076", () => {
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -954,10 +955,7 @@ describe("issue 34382", () => {
   }
 
   function applyFilter() {
-    H.dashboardParametersContainer()
-      .findByRole("button", { name: "Apply" })
-      .click();
-
+    cy.findByRole("button", { name: "Apply" }).click();
     cy.wait("@dashcardQuery");
   }
 
@@ -1771,5 +1769,183 @@ describe("issue 44937", () => {
     H.main().findByText(
       "Browse your collections to find and add existing questions.",
     );
+  });
+});
+
+describe("issue 56716", () => {
+  function setupDashboard() {
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.RATING, null],
+        ],
+      },
+    };
+
+    const parameterDetails = {
+      id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+      type: "number/=",
+      target: ["dimension", ["field", PRODUCTS.RATING, null]],
+      name: "Number",
+      slug: "number",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    const vizSettings = {
+      column_settings: {
+        '["name","RATING"]': {
+          click_behavior: {
+            type: "crossfilter",
+            parameterMapping: {
+              [parameterDetails.id]: {
+                id: parameterDetails.id,
+                source: { id: "RATING", name: "RATING", type: "column" },
+                target: {
+                  id: parameterDetails.id,
+                  type: "parameter",
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const getParameterMapping = (cardId) => ({
+      card_id: cardId,
+      parameter_id: parameterDetails.id,
+      target: ["dimension", ["field", PRODUCTS.RATING, null]],
+    });
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard, questionId }) => {
+      const { dashboard_id } = dashcard;
+
+      H.editDashboardCard(dashcard, {
+        parameter_mappings: [getParameterMapping(questionId)],
+        visualization_settings: vizSettings,
+      });
+
+      H.visitDashboard(dashboard_id);
+    });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should reset the filter when clicking on a column value twice with a click behavior enabled (metabase#56716)", () => {
+    setupDashboard();
+
+    H.getDashboardCard().findByText("4.6").click();
+    H.filterWidget().should("contain.text", "4.6");
+    H.getDashboardCard().findByText("4 rows").should("be.visible");
+
+    H.getDashboardCard().findAllByText("4.6").first().click();
+    H.filterWidget().should("not.contain.text", "4.6");
+    H.getDashboardCard().findByText("200 rows").should("be.visible");
+  });
+});
+
+describe("Issue 46337", () => {
+  const MODEL_NAME = "Model 46337";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion({
+      type: "model",
+      name: MODEL_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        fields: [
+          [
+            "field",
+            ORDERS.ID,
+            {
+              "base-type": "type/BigInteger",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TAX,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.DISCOUNT,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.QUANTITY,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+          [
+            "field",
+            ORDERS.PRODUCT_ID,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+        ],
+        joins: [
+          {
+            fields: "all",
+            alias: "Products",
+            "source-table": PEOPLE_ID,
+            strategy: "left-join",
+            condition: [
+              "=",
+              ["field", ORDERS.USER_ID, {}],
+              ["field", PEOPLE.ID, { "join-alias": "Products" }],
+            ],
+          },
+        ],
+      },
+    }).then(({ body: model }) => {
+      cy.visit(`/auto/dashboard/model/${model.id}`);
+    });
+  });
+
+  // TODO: unskip when metabase#46337 is fixed
+  // See: https://github.com/metabase/metabase/issues/46337
+  it.skip("should (metabase#46337)", () => {
+    cy.log("ensure the dashcards render data not errors");
+
+    cy.findByTestId("dashboard-grid").within(() => {
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
+      cy.findByText(`Total ${MODEL_NAME}`).should("be.visible");
+    });
   });
 });

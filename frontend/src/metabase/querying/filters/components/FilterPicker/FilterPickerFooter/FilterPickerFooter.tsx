@@ -1,28 +1,45 @@
 import type { ReactNode } from "react";
 import { isValidElement } from "react";
-import { t } from "ttag";
 
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
+
+import { FilterSubmitButton } from "../FilterSubmitButton";
 
 import S from "./FilterPickerFooter.module.css";
 
 interface FilterPickerFooterProps {
   isNew: boolean;
-  canSubmit: boolean;
+  isValid: boolean;
+  withAddButton: boolean;
+  withSubmitButton: boolean;
   children?: ReactNode;
+  onAddButtonClick: () => void;
 }
 
 export function FilterPickerFooter({
   isNew,
-  canSubmit,
+  isValid,
+  withAddButton,
+  withSubmitButton,
   children,
+  onAddButtonClick,
 }: FilterPickerFooterProps) {
+  if (!isValidElement(children) && !withSubmitButton) {
+    return null;
+  }
+
   return (
     <Flex className={S.FilterFooterRoot} p="md" justify="space-between">
       {isValidElement(children) ? children : <Box />}
-      <Button type="submit" variant="filled" disabled={!canSubmit}>
-        {isNew ? t`Add filter` : t`Update filter`}
-      </Button>
+
+      {withSubmitButton && (
+        <FilterSubmitButton
+          isNew={isNew}
+          isDisabled={!isValid}
+          withAddButton={withAddButton}
+          onAddButtonClick={onAddButtonClick}
+        />
+      )}
     </Flex>
   );
 }

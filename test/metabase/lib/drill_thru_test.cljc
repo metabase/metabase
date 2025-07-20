@@ -10,6 +10,7 @@
    [metabase.lib.field :as-alias lib.field]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -857,6 +858,108 @@
                      :table-name "Orders"}]
       ;; Underlying records and automatic insights are not supported for native.
       :native-drills #{:drill-thru/quick-filter}})))
+
+(deftest ^:parallel available-drill-thrus-use-correct-field-with-models-test
+  (testing "drills get the model's column instead of the result metadata column #56799"
+    (let [card (:orders (lib.tu/mock-cards))
+          metadata-provider (lib.tu/metadata-provider-with-mock-card card)
+          query (lib/query metadata-provider card)
+          lib-col  (-> (m/find-first #(= (:name %) "CREATED_AT") (lib/returned-columns query))
+                       (dissoc :lib/deduplicated-name :lib/original-name))
+          card-col (m/find-first #(= (:name %) "CREATED_AT") (:result-metadata card))
+          context {:column     card-col
+                   :column-ref (lib/ref card-col)
+                   :value      nil}
+          drills (lib/available-drill-thrus query context)]
+      (is (=? [;; filter drills are special and use a column from filterable-columns
+               {:type :drill-thru/column-filter}
+               {:type :drill-thru/distribution
+                :column lib-col}
+               {:type :drill-thru/sort
+                :column lib-col}
+               {:type :drill-thru/summarize-column
+                :column lib-col}
+               {:type :drill-thru/column-extract
+                :column lib-col}]
+              drills)))))
+
+(deftest ^:parallel available-drill-thrus-for-joined-pk-test
+  (testing "ORDERS + PRODUCTS click on PRODUCTS.ID PK key value from a join (#28095)"
+    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/join (-> (lib/join-clause (meta/table-metadata :products)
+                                                         [(lib/=
+                                                           (meta/field-metadata :orders :product-id)
+                                                           (-> (meta/field-metadata :products :id)
+                                                               (lib/with-join-alias "Products")))])
+                                        (lib/with-join-alias "Products")
+                                        (lib/with-join-strategy :left-join))))
+          orders-id   (meta/field-metadata :orders :id)
+          products-id (-> (m/find-first #(= (:id %) (meta/id :products :id))
+                                        (lib/returned-columns query))
+                          (lib/with-join-alias "Products"))
+          context     {:column     products-id
+                       :column-ref (lib/ref products-id)
+                       :value      (meta/id :products :id)
+                       :row        [{:column     orders-id
+                                     :column-ref (lib/ref orders-id)
+                                     :value      (meta/id :orders :id)}
+                                    {:column     products-id
+                                     :column-ref (lib/ref products-id)
+                                     :value      (meta/id :products :id)}]}]
+      (is (=? [{:lib/type     :metabase.lib.drill-thru/drill-thru
+                :type         :drill-thru/zoom
+                :object-id    (meta/id :orders :id)
+                :many-pks?    false
+                :column       orders-id}
+               {:lib/type     :metabase.lib.drill-thru/drill-thru
+                :type         :drill-thru/quick-filter
+                :operators    [{:name "<"}
+                               {:name ">"}
+                               {:name "="}
+                               {:name "≠"}]
+                :query        {:stages [{}]}
+                :stage-number -1
+                :value        (meta/id :products :id)}]
+              (lib/available-drill-thrus query -1 context))))))
+
+(deftest ^:parallel primary-key?-test
+  (let [orders+products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                  (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                             [(lib/=
+                                                               (meta/field-metadata :orders :product-id)
+                                                               (meta/field-metadata :products :id))])))
+        source-table-pk       (m/find-first #(= (:id %) (meta/id :orders :id))
+                                            (lib/returned-columns orders+products-query))
+
+        joined-table-pk       (m/find-first #(= (:id %) (meta/id :products :id))
+                                            (lib/returned-columns orders+products-query))
+        source-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns orders+products-query))]
+    (testing "primary key from source table"
+      (is (lib.drill-thru.common/primary-key? orders+products-query -1 source-table-pk)))
+    (testing "primary key from joined table"
+      (is (not (lib.drill-thru.common/primary-key? orders+products-query -1 joined-table-pk))))
+    (testing "foreign key from source table"
+      (is (not (lib.drill-thru.common/primary-key? orders+products-query -1 source-table-fk))))))
+
+(deftest ^:parallel foreign-key?-test
+  (let [products+orders-query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                  (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                                             [(lib/=
+                                                               (meta/field-metadata :products :id)
+                                                               (meta/field-metadata :orders :product-id))])))
+        source-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns orders-query))
+        joined-table-fk       (m/find-first #(= (:id %) (meta/id :orders :product-id))
+                                            (lib/returned-columns products+orders-query))
+        source-table-pk       (m/find-first #(= (:id %) (meta/id :orders :id))
+                                            (lib/returned-columns orders-query))]
+    (testing "foreign key from source table"
+      (is (lib.drill-thru.common/foreign-key? orders-query -1 source-table-fk)))
+    (testing "foreign key from joined table"
+      (is (not (lib.drill-thru.common/foreign-key? products+orders-query -1 joined-table-fk))))
+    (testing "primary key from source table"
+      (is (not (lib.drill-thru.common/foreign-key? products+orders-query -1 source-table-pk))))))
 
 (deftest ^:parallel drill-value->js-test
   (testing "should convert :null to nil"

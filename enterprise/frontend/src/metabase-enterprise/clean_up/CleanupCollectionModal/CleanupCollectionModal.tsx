@@ -3,11 +3,11 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUserSetting } from "metabase/common/hooks";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/components/PaginationControls";
+import { useListSelect } from "metabase/common/hooks/use-list-select";
 import Search from "metabase/entities/search";
-import { useListSelect } from "metabase/hooks/use-list-select";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";
@@ -15,7 +15,10 @@ import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collec
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import { trackStaleItemsArchived } from "../analytics";
-import type { StaleCollectionItem } from "../types";
+import type {
+  ListStaleCollectionItemsSortColumn,
+  StaleCollectionItem,
+} from "../types";
 
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
 import CS from "./CleanupCollectionModal.module.css";
@@ -50,12 +53,16 @@ const _CleanupCollectionModal = ({
   const pagination = usePagination({ initialPage: 0, pageSize: 10 });
 
   // sorting
-  const [sortOptions, setSortOptions] = useState<SortingOptions>({
+  const [sortOptions, setSortOptions] = useState<
+    SortingOptions<ListStaleCollectionItemsSortColumn>
+  >({
     sort_column: "name",
     sort_direction: SortDirection.Asc,
   });
 
-  const handleSortingChange = (sortingOpts: SortingOptions) => {
+  const handleSortingChange = (
+    sortingOpts: SortingOptions<ListStaleCollectionItemsSortColumn>,
+  ) => {
     setSortOptions(sortingOpts);
     pagination.resetPage();
   };

@@ -3,6 +3,7 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
+   [clojure.string :as str]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -10,6 +11,7 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -19,20 +21,51 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- comparable-metadata
+  "Smooth out any unimportant differences in metadata so we can do an easy equality check."
+  [metadata]
+  (letfn [(remove-underscore-nil-keys
+            ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
+            ;; dash. Remove the nil value
+            [m]
+            (reduce-kv
+             (fn [acc k v]
+               (let [kebab-cased-key (when (str/includes? (name k) "_")
+                                       (keyword (str/replace (name k) "_" "-")))]
+                 (if (and kebab-cased-key
+                          (nil? v)
+                          (contains? m kebab-cased-key))
+                   acc
+                   (assoc acc k v))))
+             {} m))
+          (standardize-metadata [m]
+            (cond
+              (keyword? m) (u/qualified-name m)
+              (map? m) (-> (update-vals m standardize-metadata)
+                           (dissoc :ident)
+                           (remove-underscore-nil-keys))
+              (sequential? m) (mapv standardize-metadata m)
+              (set? m) (into #{} (map standardize-metadata) m)
+              :else m))]
+    (standardize-metadata metadata)))
+
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
-    (when (and metadata
-               driver/*driver*
-               (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
-               card-id
-               ;; don't want to update metadata when we use a Card as a source Card.
-               (not (:qp/source-card-id query))
-               ;; Only update changed metadata
-               (not= metadata (qp.store/miscellaneous-value [::card-stored-metadata])))
-      (t2/update! :model/Card card-id {:result_metadata metadata
-                                       :updated_at      :updated_at}))
+    (let [actual-metadata (get-in query [:info :pivot/result-metadata] metadata)]
+      (when (and actual-metadata
+                 driver/*driver*
+                 ;; pivot queries can run multiple queries, only record metadata for the main query
+                 (not= actual-metadata :none)
+                 (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+                 card-id
+                 ;; don't want to update metadata when we use a Card as a source Card.
+                 (not (:qp/source-card-id query))
+                 ;; Only update changed metadata
+                 (not= (comparable-metadata actual-metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
+        (t2/update! :model/Card card-id {:result_metadata actual-metadata
+                                         :updated_at      :updated_at})))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
@@ -50,10 +83,10 @@
   (mapv
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
-      (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
+      (select-keys final-col [:id :ident :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :base_type :effective_type :database_type
                               :remapped_from :remapped_to :coercion_strategy :visibility_type
-                              :was_binned])
+                              :was_binned :table_id])
       insights-col
       {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)

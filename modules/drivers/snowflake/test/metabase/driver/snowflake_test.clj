@@ -17,21 +17,22 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.events.core :as events]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.models.database :as database]
-   [metabase.models.secret :as secret]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
+   [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.impl :as data.impl]
@@ -43,6 +44,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.random :as u.random]
+   [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -69,11 +72,14 @@
                         (thunk))))
 
 (deftest sanity-check-test
-  (mt/test-driver :snowflake
-    (is (= [100]
-           (mt/first-row
-            (mt/run-mbql-query venues
-              {:aggregation [[:count]]}))))))
+  (mt/test-driver
+    :snowflake
+    (mt/dataset
+      attempted-murders
+      (is (= [20]
+             (mt/first-row
+              (mt/run-mbql-query attempts
+                {:aggregation [[:count]]})))))))
 
 (deftest ^:parallel describe-fields-test
   (mt/test-driver
@@ -173,13 +179,12 @@
         false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
 
-(deftest ^:parallel ddl-statements-test
+(deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v4_")]
+    (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
         (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
-
       (testing "Create Table DDL statements"
         (is (= (map
                 #(str/replace % #"\s+" " ")
@@ -258,6 +263,34 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
+(deftest additional-options-test
+  (mt/test-driver
+    :snowflake
+    (let [existing-details (dissoc (:details (mt/db)) :password)]
+      (testing "By default no subname"
+        (is (=? {:subname complement :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec :snowflake existing-details))))
+      (testing "add additional-options to subname"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details :additional-options "foo=bar")))))
+      (testing "role has no affect if private-key is missing"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details
+                        :role "test-role"
+                        :additional-options "foo=bar")))))
+      (testing "private-key-value sets connection-uri and so make sure it doesn't clobber additional-options or role"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri #".*foo=bar.*role=test-role"}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details
+                        :role "test-role"
+                        :private-key-value "pk"
+                        :additional-options "foo=bar"))))))))
+
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -286,7 +319,7 @@
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
     (mt/test-driver :snowflake
-      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db {:database-name "Default-Schema-Test"})
+      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "Default-Schema-Test-" (u.random/random-name))}))
                                ;; simulate a DB default schema or session schema by including it in the connection
                                ;; details... see
                                ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706219065462619?thread_ts=1706156558.940489&cid=C04DN5VRQM6
@@ -318,7 +351,7 @@
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
     (testing "describe-database views"
-      (let [details (mt/dbdef->connection-details :snowflake :db {:database-name "views_test"})
+      (let [details (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "views_test_" (u.random/random-name))}))
             db-name (:db details)
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
@@ -488,7 +521,12 @@
              net.snowflake.client.jdbc.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
-
+        (is (can-connect? (-> (:details (mt/db))
+                              (assoc :host (str (get-in (mt/db) [:details :account])
+                                                ".snowflakecomputing.com")
+                                     :use-hostname true)
+                              (dissoc :account)))
+            "can-connect? with host and no account")
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
             (mt/with-temp [:model/Secret {path-secret-id :id} {:name "Private key for Snowflake"
@@ -505,6 +543,13 @@
                                                                         :value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}]
               (testing "private key authentication via uploaded keys or local key with path stored in a secret"
                 (spit pk-path pk-key)
+                (is (can-connect? (-> (:details (mt/db))
+                                      (assoc :host (str (get-in (mt/db) [:details :account])
+                                                        ".snowflakecomputing.com")
+                                             :use-hostname true)
+                                      (dissoc :password :account)
+                                      (merge {:db pk-db :user pk-user} {:private-key-id path-secret-id})))
+                    "can-connect? with pk, host and no account")
                 (doseq [to-merge [;; uploaded string
                                   {:private-key-value pk-key
                                    :private-key-options "uploaded"}
@@ -525,6 +570,7 @@
                     (is (can-connect? details))))))))))))
 
 (deftest maybe-test-and-migrate-details!-test
+  ;; We create very ambiguous database details and loop over which version should succeed on connect.
   (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var-or-throw :snowflake :pk-user)
         pk-db (tx/db-test-env-var-or-throw :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
@@ -551,42 +597,54 @@
                                                 :private-key-id secret-id}))
                             all-possible-details (driver/db-details-to-test-and-migrate :snowflake details)]
                       details-to-succeed all-possible-details
-                      :let [uses-secret? (set/intersection details-to-succeed #{:private-key-id :private-key-path :private-key-value})]]
-                (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))
+                      :let [uses-secret? (seq (set/intersection (m/remove-vals nil? details-to-succeed)
+                                                                #{:private-key-id :private-key-path :private-key-value}))]]
+                ;; Looping over all-possible-details and succeeding on details-to-succeed is stateful:
+                ;;  If a password detail succeeds it will delete the secret, this resets it.
+                (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
+                  (when (not= (:id updated-secret) secret-id)
+                    (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]
-                  (testing (format "use-password: %s private-key-options: %s" use-password options)
+                  (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)
                     (is (= 4 (count all-possible-details)))
                     (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
-                    (log/with-no-logs
-                      (log.capture/with-log-messages-for-level [messages [metabase.models.database :info]]
-                        (is (= details-to-succeed
-                               (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
-                                                                                :details details))))
-                        (let [success-re #"^Successfully connected, migrating to: (.*)"
-                              msgs (messages)
-                              migrating-to (edn/read-string (str/replace (:message (second msgs)) success-re "$1"))
-                              success-keys (set (keys details-to-succeed))
-                              [_ keys-removed _] (data/diff success-keys (set (keys details)))]
-                          (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
-                                   {:level :info, :message success-re}]
-                                  msgs))
-                          (is (= {:keys success-keys
-                                  :keys-removed keys-removed}
-                                 migrating-to)))))
-                    (is (= (-> details-to-succeed
-                               (cond-> uses-secret? (assoc :private-key-id secret-id))
-                               (dissoc :private-key-options :private-key-value :private-key-path))
-                           (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) (mt/id))))
-                    (when uses-secret?
-                      (let [source (case (:private-key-options details-to-succeed "local")
-                                     "local" :file-path
-                                     "uploaded" :uploaded)]
-                        (is (=? {:value (u/string-to-bytes (if (= :file-path source)
-                                                             (:private-key-path details-to-succeed pk-path)
-                                                             pk-key))
-                                 :source source}
-                                (secret/latest-for-id secret-id)))))))))))))))
+                    (testing "Connection succeeds and migration occurs"
+                      (log/with-no-logs
+                        (log.capture/with-log-messages-for-level [messages [metabase.warehouses.models.database :info]]
+                          (is (= details-to-succeed
+                                 (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
+                                                                                  :details details))))
+                          (let [success-re #"^Successfully connected, migrating to: (.*)"
+                                msgs (messages)
+                                migrating-to (edn/read-string (str/replace (:message (second msgs)) success-re "$1"))
+                                success-keys (set (keys details-to-succeed))
+                                [_ keys-removed _] (data/diff success-keys (set (keys details)))]
+                            (is (=? [{:level :info, :message "Attempting to connect to 4 possible legacy details"}
+                                     {:level :info, :message success-re}]
+                                    msgs))
+                            (is (= {:keys success-keys
+                                    :keys-removed keys-removed}
+                                   migrating-to))))
+                        (let [migrated-details (:details (t2/select-one :model/Database (mt/id)))
+                              expected-migrated (cond-> details-to-succeed
+                                                  uses-secret? (assoc :private-key-id secret-id)
+                                                  :always (dissoc :private-key-options :private-key-value :private-key-path))]
+
+                          (testing "Migration persists as expected"
+                            (is (= expected-migrated migrated-details)))
+                          (testing "Migration results in unambiguous details"
+                            (is (nil? (driver/db-details-to-test-and-migrate :snowflake migrated-details)))))
+                        (testing "Secrets persist as expected"
+                          (when uses-secret?
+                            (let [source (case (:private-key-options details-to-succeed "local")
+                                           "local" :file-path
+                                           "uploaded" :uploaded)]
+                              (is (=? {:value (u/string-to-bytes (if (= :file-path source)
+                                                                   (:private-key-path details-to-succeed pk-path)
+                                                                   pk-key))
+                                       :source source}
+                                      (secret/latest-for-id secret-id))))))))))))))))))
 
 (deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
@@ -731,8 +789,10 @@
       (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                    (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
-                                                            (test.data.snowflake/*database-prefix-fn*))
+                                                    (format "FROM \"%s\".\"PUBLIC\".\"users\" "
+                                                            (test.data.snowflake/qualified-db-name
+                                                             (tx/get-dataset-definition
+                                                              (data.impl/resolve-dataset-definition *ns* 'test-data))))
                                                     "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                     "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                 :template-tags {:filter_date {:name         "filter_date"
@@ -885,7 +945,7 @@
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
     (mt/test-driver :snowflake
       (let [expected-map {"pulseId" nil
-                          "serverId" (public-settings/site-uuid)
+                          "serverId" (system/site-uuid)
                           "client" "Metabase"
                           "queryHash" "cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
                           "queryType" "query"
@@ -1171,3 +1231,80 @@
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
                 [idxs result])))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :snowflake
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))
+
+(defn- priv-key->base64 [priv-key-var]
+  (-> (tx/db-test-env-var-or-throw :snowflake priv-key-var)
+      format-env-key
+      u/string-to-bytes
+      mt/bytes->base64-data-uri))
+
+(defn- get-db-priv-key [db]
+  (-> (:details db)
+      (#'driver.snowflake/resolve-private-key)
+      :private_key_file
+      slurp))
+
+(defn- get-priv-key-details [details pk-user priv-key]
+  (merge (dissoc details :password)
+         {:user pk-user
+          :private-key-options "uploaded"
+          :private-key-value (priv-key->base64 priv-key)
+          :use-password false}))
+
+(deftest private-key-file-updated-test
+  (mt/test-driver :snowflake
+    (let [details (assoc (:details (mt/db)) :role "ACCOUNTADMIN")
+          pk-user (mt/random-name)
+          pub-key (tx/db-test-env-var-or-throw :snowflake :pk-public-key)
+          rsa-details (get-priv-key-details details pk-user :pk-private-key)
+          pub-key-2 (tx/db-test-env-var-or-throw :snowflake :pk-public-key-2)
+          rsa-details-2 (get-priv-key-details details pk-user :pk-private-key-2)]
+      (tx/with-temp-db-user! driver/*driver* details pk-user
+        (testing "healthcheck after updating db with new private key file should work correctly"
+          (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
+            ;; set the public key for the db user
+            (test.data.snowflake/set-user-public-key details pk-user pub-key)
+            ;; assert we can connect to the db with the original rsa details
+            (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))
+            ;; update the snowflake rsa user to use the new public key
+            (test.data.snowflake/set-user-public-key details pk-user pub-key-2)
+            ;; assert we can no longer connect with the original rsa details
+            (let [resp (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))]
+              (is (= "error" (:status resp)))
+              (is (str/starts-with? (:message resp) "JWT token is invalid.")))
+            ;; update the database details to use the new rsa details
+            (mt/user-http-request :crowberto :put 200 (str "database/" (:id rsa-db)) {:details rsa-details-2})
+            ;; assert we can connect to the db with the new rsa details
+            (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" (:id rsa-db) "/healthcheck"))))))
+        (testing "publishing a db update event when details have changed notifies the db it was updated and clears the secret file memoization"
+          (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
+            (let [original-priv-key (get-db-priv-key rsa-db)
+                  updating-rsa-db (merge rsa-db {:details rsa-details-2})
+                  _ (t2/update! :model/Database (:id rsa-db) updating-rsa-db)
+                  details-changed? (not= (:details rsa-db) (:details updating-rsa-db))
+                  new-rsa-db (t2/select-one :model/Database (:id rsa-db))
+                  priv-key-after-update (get-db-priv-key new-rsa-db)
+                  _ (events/publish-event! :event/database-update {:object new-rsa-db
+                                                                   :user-id 1
+                                                                   :previous-object rsa-db
+                                                                   :details-changed? details-changed?})
+                  priv-key-after-event (get-db-priv-key new-rsa-db)]
+              (is (= rsa-db new-rsa-db))
+              (is (true? details-changed?))
+              (is (= original-priv-key priv-key-after-update))
+              (is (not= priv-key-after-update priv-key-after-event)))))))))

@@ -8,9 +8,10 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -18,16 +19,17 @@
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection PreparedStatement ResultSet Time)
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    Time)
    (java.time
     LocalDate
     LocalDateTime
@@ -40,13 +42,17 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent :sql-jdbc)
+(driver/register! :sqlserver, :parent #{:sql-jdbc})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :index-info                             true
+                              :expression-literals                    true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]
@@ -111,7 +117,7 @@
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
       :as   details}]
-  (-> {:applicationName    config/mb-version-and-process-identifier
+  (-> {:applicationName    driver-api/mb-version-and-process-identifier
        :subprotocol        "sqlserver"
        ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
        ;; can be passed as part of the Properties
@@ -206,7 +212,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (lib.util.match/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -315,6 +321,10 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
 
+(defmethod sql.qp/float-dbtype :sqlserver
+  [_]
+  :float)
+
 (defn- sanitize-contents
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
@@ -362,11 +372,11 @@
         y (sql.qp/->honeysql driver y)
         _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
         x (if (h2x/is-of-type? x "datetimeoffset")
-            (h2x/at-time-zone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            (h2x/at-time-zone x (zone-id->windows-zone (driver-api/results-timezone-id)))
             x)
         x (h2x/cast "datetime2" x)
         y (if (h2x/is-of-type? y "datetimeoffset")
-            (h2x/at-time-zone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            (h2x/at-time-zone y (zone-id->windows-zone (driver-api/results-timezone-id)))
             y)
         y (h2x/cast "datetime2" y)]
     (sql.qp/datetime-diff driver unit x y)))
@@ -455,7 +465,7 @@
   The `year`, `month`, and `day` can make use of indexes whereas `DateFromParts` cannot. The optimized version of the
   query is much more efficient. See #9934 for more details."
   [field-clause]
-  (when (mbql.u/is-clause? :field field-clause)
+  (when (driver-api/is-clause? :field field-clause)
     (let [[_ id-or-name {:keys [temporal-unit], :as opts}] field-clause]
       (when (#{:year :month :day} temporal-unit)
         (mapv
@@ -481,7 +491,7 @@
   ;; this is basically the same implementation as the default one in the `sql.qp` namespace, the only difference is
   ;; that we optimize the fields in the GROUP BY clause using `optimize-breakout-clauses`.
   (let [optimized      (optimize-breakout-clauses breakout-fields)
-        unique-name-fn (mbql.u/unique-name-generator)]
+        unique-name-fn (driver-api/unique-name-generator)]
     (as-> honeysql-form new-hsql
       ;; we can still use the "unoptimized" version of the breakout for the SELECT... e.g.
       ;;
@@ -496,6 +506,18 @@
       (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized))
       ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
       (update new-hsql :group-by distinct))))
+
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :fields]
+  [driver _ honeysql-form query]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :fields])
+        ;; Tell [[sql.qp/as]] to insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is
+        ;; preserved in results metadata, so downstream questions and query stages can use the column in contexts
+        ;; where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
+        maybe-add-cast #(cond-> %
+                          (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
+                          (driver-api/assoc-field-options ::sql.qp/add-cast :bit))]
+    (->> (update query :fields #(mapv maybe-add-cast %))
+         (parent-method driver :fields honeysql-form))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
@@ -519,10 +541,36 @@
         ;; order bys have to be distinct in SQL Server!!!!!!!1
         (update :order-by distinct))))
 
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
+  [driver _ honeysql-form query]
+  (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
+    (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
+         (parent-method driver :filter honeysql-form))))
+
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
   [_ bool]
-  (if bool 1 0))
+  [:inline (if bool 1 0)])
+
+(defmethod sql.qp/->honeysql [:sqlserver :and]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :or]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :not]
+  [driver clause]
+  (->> (mapv sql.qp.boolean-to-comparison/boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :case]
+  [driver clause]
+  (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause)
+       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:sqlserver Time]
   [_ time-value]
@@ -722,13 +770,13 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (lib.util.match/replace inner-query
+    (driver-api/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
       (m :guard (partial remove-order-by? &parents))
       (fix-order-bys (dissoc m :order-by))
 
       (m :guard (partial add-limit? &parents))
-      (fix-order-bys (assoc m :limit limit/absolute-max-results)))))
+      (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
@@ -856,3 +904,29 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:sqlserver UUID]
   [_driver this]
   {:replacement-snippet (format "'%s'" (str this))})
+
+(defmethod sql.qp/->integer :sqlserver
+  [driver value]
+  ;; value can be either string or float
+  ;; if it's a float, coversion to float does nothing
+  ;; if it's a string, we can't round, so we need to convert to float first
+  (h2x/maybe-cast (sql.qp/integer-dbtype driver)
+                  [:round (sql.qp/->float driver value) 0]))
+
+(defmethod sql-jdbc/impl-query-canceled? :sqlserver [_ e]
+  (= (sql-jdbc/get-sql-state e) "HY008"))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/default-database-role :sqlserver
+  [_driver database]
+  ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
+  ;; field automatically, as it represents the login user which may not be a
+  ;; valid database user for impersonation (see issue #60665).
+  (let [{:keys [role]} (:details database)]
+    role))
+
+(defmethod driver.sql/set-role-statement :sqlserver
+  [_driver role]
+  ;; REVERT to handle the case where the users role attribute has changed
+  (format "REVERT; EXECUTE AS USER = '%s';" role))

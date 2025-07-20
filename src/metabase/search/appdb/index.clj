@@ -3,8 +3,9 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.analytics.core :as analytics]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
@@ -13,6 +14,7 @@
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -226,15 +228,19 @@
        :model_updated_at (:updated_at entity))
       (merge (specialization/extra-entry-fields entity))))
 
+(defn- table-not-found-exception? [e]
+  ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
+  ;; TODO we should handle the MySQL and MariaDB flavors here too
+  (or (instance? PSQLException (ex-cause e))
+      (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
+
 (defn- safe-batch-upsert! [table-name entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when table-name
     (try
       (specialization/batch-upsert! table-name entries)
       (catch Exception e
-        ;; TODO we should handle the MySQL and MariaDB flavors here too
-        (if (or (instance? PSQLException (ex-cause e))
-                (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
+        (if (table-not-found-exception? e)
           ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
           ;; suppress the issue - but throw it all the way to the caller if the issue persists
           (do (sync-tracking-atoms!)
@@ -243,7 +249,7 @@
 
 (defn- batch-update!
   "Create the given search index entries in bulk"
-  [documents]
+  [context documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
     (when-let [table (active-table)]
@@ -255,25 +261,59 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [entries          (map document->entry documents)
-        ;; Optimization idea: if the updates are coming from the re-indexing worker, skip updating the active table.
-        ;;                    this should give a close to 2x speed-up as insertion is the bottleneck, and most of the
-        ;;                    updates will be no-ops in any case.
-        active-updated?  (safe-batch-upsert! (active-table) entries)
+  (let [active-table (active-table)
+        entries (map document->entry documents)
+        ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
+        active-updated? (when-not (and active-table (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (log/trace "indexed documents" <>)))))
+        (log/trace "indexed documents for " <>)
+        (when active-updated?
+          (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
 
-(defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible]
+(defn index-docs!
+  "Indexes the documents. The context should be :search/updating or :search/reindexing.
+   Context should be :search/updating or :search/reindexing to help control how to manage the updates"
+  [context document-reducible]
   (transduce (comp (partition-all insert-batch-size)
-                   (map batch-update!))
+                   (map (partial batch-update! context)))
              (partial merge-with +)
              document-reducible))
 
+(defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
+  (index-docs! :search/updating document-reducible))
+
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
-  (doseq [table-name [(active-table) (pending-table)] :when table-name]
-    (t2/delete! table-name :model search-model :model_id [:in ids])))
+  (when (seq ids)
+    (u/prog1 (->> [(active-table) (pending-table)]
+                  (keep (fn [table-name]
+                          (when table-name
+                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
+                                               ;; Race conditions with table being deleted, especially in tests.
+                                               (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+                  (apply merge-with +)
+                  (into {}))
+      (when (active-table)
+        (try
+          (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
+                                                                                   :from   [(active-table)]
+                                                                                   :limit  1})))
+          (catch Exception e
+            ;; No point tracking the size of the newer index table, since we won't have modified it.
+            (when-not (table-not-found-exception? e)
+              (throw e))))))))
+
+(defn when-index-created
+  "Return creation time of the active index, or nil if there is none."
+  []
+  (t2/select-one-fn :created_at
+                    :model/SearchIndexMetadata
+                    :engine :appdb
+                    :version *index-version-id*
+                    :lang_code (i18n/site-locale-string)
+                    :status :active
+                    {:order-by [[:created_at :desc]]}))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."

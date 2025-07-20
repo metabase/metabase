@@ -32,8 +32,6 @@ import type {
   DrillThruDisplayInfo,
   FilterOperator,
   FilterOperatorDisplayInfo,
-  JoinConditionOperator,
-  JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MetadataProvider,
@@ -133,11 +131,6 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  joinConditionOperator: JoinConditionOperator,
-): JoinConditionOperatorDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
   drillThru: DrillThru,
 ): DrillThruDisplayInfo;
 declare function DisplayInfoFn(
@@ -180,7 +173,7 @@ export function describeTemporalUnit(
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
   tableID: TableId,
-): CardMetadata | TableMetadata {
+): CardMetadata | TableMetadata | null {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
 

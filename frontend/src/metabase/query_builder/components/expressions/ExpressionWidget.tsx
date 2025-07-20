@@ -5,7 +5,10 @@ import { t } from "ttag";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { ExpressionError, StartRule } from "metabase-lib/v1/expressions";
+import type {
+  DefinedClauseName,
+  ExpressionError,
+} from "metabase-lib/v1/expressions";
 
 import {
   trackColumnCombineViaShortcut,
@@ -22,16 +25,18 @@ import { NameInput } from "./NameInput";
 const WIDGET_WIDTH = 472;
 
 export type ExpressionWidgetProps = {
-  startRule?: StartRule;
+  expressionMode?: Lib.ExpressionMode;
 
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex?: number;
   clause?: Lib.Expressionable | undefined;
   name?: string;
   withName?: boolean;
   reportTimezone?: string;
   header?: ReactNode;
-  expressionIndex?: number;
+  initialExpressionClause?: DefinedClauseName | null;
+  availableColumns: Lib.ColumnMetadata[];
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
@@ -41,15 +46,17 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   const {
     query,
     stageIndex,
+    expressionIndex,
     name: initialName,
     clause: initialClause,
     withName = false,
-    startRule = "expression",
+    expressionMode = "expression",
     reportTimezone,
     header,
-    expressionIndex,
+    availableColumns,
     onChangeClause,
     onClose,
+    initialExpressionClause,
   } = props;
 
   const [name, setName] = useState(initialName || "");
@@ -103,20 +110,20 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   const shortcuts = useMemo(
     () =>
       [
-        startRule === "expression" &&
-          hasCombinations(query, stageIndex) && {
+        expressionMode === "expression" &&
+          hasCombinations(availableColumns) && {
             name: t`Combine columns`,
             icon: "combine",
             action: () => setIsCombiningColumns(true),
           },
-        startRule === "expression" &&
-          hasExtractions(query, stageIndex) && {
+        expressionMode === "expression" &&
+          hasExtractions(query, availableColumns) && {
             name: t`Extract columns`,
             icon: "arrow_split",
             action: () => setIsExtractingColumn(true),
           },
       ].filter((x): x is Shortcut => Boolean(x)),
-    [startRule, query, stageIndex],
+    [expressionMode, query, availableColumns],
   );
 
   const handleCombineColumnsSubmit = useCallback(
@@ -148,12 +155,13 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     setIsExtractingColumn(false);
   }, []);
 
-  if (startRule === "expression" && isCombiningColumns) {
+  if (expressionMode === "expression" && isCombiningColumns) {
     return (
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
           onCancel={handleCancel}
           onSubmit={handleCombineColumnsSubmit}
           withTitle
@@ -168,6 +176,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
           onCancel={handleCancel}
           onSubmit={handleExtractColumnSubmit}
         />
@@ -181,17 +190,19 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
 
       <Editor
         id="expression-content"
-        startRule={startRule}
+        expressionMode={expressionMode}
         clause={clause}
         onChange={handleExpressionChange}
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}
+        availableColumns={availableColumns}
         reportTimezone={reportTimezone}
         shortcuts={shortcuts}
         error={error}
         hasHeader={Boolean(header)}
         onCloseEditor={onClose}
+        initialExpressionClause={initialExpressionClause}
       />
 
       <LayoutFooter>
@@ -201,7 +212,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
               value={name}
               onChange={setName}
               onSubmit={handleSubmit}
-              startRule={startRule}
+              expressionMode={expressionMode}
             />
           )}
           <Flex py="sm" pr="sm" gap="sm">

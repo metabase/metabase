@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
@@ -123,6 +123,10 @@
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
    :collection  (name table-name)})
+
+(defmethod tx/make-alias :mongo
+  ([_driver alias]
+   alias))
 
 (defmethod tx/aggregate-column-info :mongo
   ([driver ag-type]

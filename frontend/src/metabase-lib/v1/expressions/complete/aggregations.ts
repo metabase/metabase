@@ -3,7 +3,7 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { AGGREGATION_FUNCTIONS, MBQL_CLAUSES } from "../config";
+import { clausesForMode } from "../clause";
 import { GROUP } from "../pratt";
 import { getDatabase } from "../utils";
 
@@ -18,34 +18,25 @@ import {
 
 export type Options = {
   query: Lib.Query;
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
   metadata: Metadata;
-  reportTimezone?: string;
 };
 
 export function suggestAggregations({
-  startRule,
+  expressionMode,
   query,
   metadata,
-  reportTimezone,
 }: Options) {
-  if (startRule !== "aggregation") {
+  if (expressionMode !== "aggregation") {
     return null;
   }
 
   const database = getDatabase(query, metadata);
-  const aggregations = Array.from(AGGREGATION_FUNCTIONS)
-    .map((name) => MBQL_CLAUSES[name])
-    .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
-    .map((agg) =>
-      expressionClauseCompletion(agg, {
-        type: "aggregation",
-        database,
-        reportTimezone,
-      }),
-    );
+  const aggregations = clausesForMode(expressionMode)
+    .filter((clause) => database?.hasFeature(clause.requiresFeature))
+    .map((agg) => expressionClauseCompletion(agg, { type: "aggregation" }));
 
-  const matcher = fuzzyMatcher(aggregations);
+  const matcher = fuzzyMatcher({ options: aggregations });
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -66,6 +57,7 @@ export function suggestAggregations({
       from: token.start,
       to: token.end,
       options,
+      filter: false,
     };
   };
 }

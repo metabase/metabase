@@ -5,14 +5,15 @@
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
    [mb.hawk.parallel]
-   [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.token-check :as token-check]
-   [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +40,7 @@
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'token-check/token-status-url token @#'token-check/token-check-url)
       :query-params (merge (#'token-check/stats-for-token-request)
-                           {:site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
+                           {:site-uuid  (premium-features.settings/site-uuid-for-premium-features-token-checks)
                             :mb-version (:tag config/mb-version-info)})}
      (constantly token-check-response)}
     (#'token-check/fetch-token-status* token)))
@@ -151,16 +152,18 @@
                   (#'token-check/fetch-token-status* (random-token))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
-  (testing "No DB calls are made for the user count when checking token status if the status is cached"
-    (let [token (random-token)]
-      (t2/with-call-count [call-count]
-        ;; First fetch, should trigger a DB call to fetch user count and db calls for other stats
-        (#'token-check/fetch-token-status token)
-        (is (= 6 (call-count)))
-
-        ;; Subsequent fetches with the same token should not trigger additional DB calls
-        (#'token-check/fetch-token-status token)
-        (is (= 6 (call-count)))))))
+  (testing "No DB calls are made when checking token status if the status is cached"
+    (let [token (random-token)
+          _ (#'token-check/fetch-token-status token)
+          ;; Sigh. This is really quite horrific. But we need some wiggle room here: any endpoint that gets some setting
+          ;; inside it is going to check to see whether it's time for an update check. If it is, it'll hit the DB to see
+          ;; when settings were last updated, and the count will be incremented. Therefore, let's do this a few times...
+          call-counts (repeatedly 3 (fn []
+                                      (t2/with-call-count [call-count]
+                                        (#'token-check/fetch-token-status token)
+                                        (call-count))))]
+      ;; ... and then make sure that *some* of the times, we didn't hit the DB again.
+      (is (some zero? call-counts)))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
@@ -182,3 +185,14 @@
     (testing "Default to 0 if db is not setup yet"
       (binding [mdb.connection/*application-db* {:status (atom nil)}]
         (is (zero? (premium-features/active-users-count)))))))
+
+(deftest RemoteCheckedToken-regexp
+  (testing "valid tokens"
+    (is (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 64 "a"))))
+    (is (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str "mb_dev_" (repeat 57 "a")))))
+
+  (testing "invalid tokens"
+    (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 64 "x")))))
+    (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 65 "a")))))
+    (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 63 "a")))))
+    (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str "mb_dev_" (repeat 53 "a")))))))

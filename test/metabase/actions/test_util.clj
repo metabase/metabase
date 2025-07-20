@@ -8,13 +8,13 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.http-client :as client]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
@@ -290,8 +290,8 @@
 
 (defn do-with-actions-set!
   "Impl for [[with-actions-enabled]]."
-  [enable? thunk]
-  (tu/with-temp-vals-in-db :model/Database (data/id) {:settings {:database-enable-actions enable?}}
+  [db-id enable? thunk]
+  (tu/with-temp-vals-in-db :model/Database db-id {:settings {:database-enable-actions enable?}}
     (thunk)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-enabled!` and remove the `:clj-kondo/ignore`
@@ -300,7 +300,7 @@
   "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-set! true (fn [] ~@body)))
+  `(do-with-actions-set! (data/id) true (fn [] ~@body)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-disabled!` and remove the `:clj-kondo/ignore`
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -308,7 +308,7 @@
   "Execute `body` with Actions disabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-set! false (fn [] ~@body)))
+  `(do-with-actions-set! (data/id) false (fn [] ~@body)))
 
 ;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}

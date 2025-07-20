@@ -436,7 +436,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("101");
+      H.fieldValuesCombobox().type("101");
       H.popover().findByText("1018947080336").click();
 
       H.fieldValuesValue(0)
@@ -459,7 +459,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("101");
+      H.fieldValuesCombobox().type("101");
       H.popover().findByText("1018947080336").click();
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -481,7 +481,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("101");
+      H.fieldValuesCombobox().type("101");
       H.popover().findByText("1018947080336").click();
       H.fieldValuesValue(0)
         .should("be.visible")
@@ -512,7 +512,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("Custom Label");
+      H.fieldValuesCombobox().type("Custom Label");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -537,7 +537,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("Custom Label");
+      H.fieldValuesCombobox().type("Custom Label");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -562,7 +562,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.fieldValuesInput().type("Custom Label");
+      H.fieldValuesCombobox().type("Custom Label");
       // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText("1018947080336").should("not.exist");
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -581,7 +581,7 @@ describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
     cy.intercept("GET", "/api/card/*/params/*/values").as(
@@ -900,7 +900,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     SQLFilter.openTypePickerFromSelectedFilterType("Text");
     SQLFilter.chooseType("Number");
 
-    cy.get("[data-checked='true']").should("have.text", "Input box");
+    cy.findByLabelText("Input box").should("be.checked");
 
     H.setSearchBoxFilterType();
     H.checkFilterListSourceHasValue({ values: [] });
@@ -911,7 +911,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     SQLFilter.openTypePickerFromSelectedFilterType("Number");
     SQLFilter.chooseType("Text");
-    cy.get("[data-checked='true']").should("have.text", "Search box");
+    cy.findByLabelText("Search box").should("be.checked");
     H.checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
   });
 });

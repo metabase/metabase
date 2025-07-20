@@ -1,4 +1,3 @@
-export * from "./matchers";
 export * from "./config";
 export * from "./identifier";
 export * from "./formatter";
@@ -6,3 +5,7 @@ export * from "./types";
 export * from "./diagnostics";
 export * from "./position";
 export * from "./errors";
+export * from "./clause";
+export * from "./mode";
+export * from "./help-text";
+export * from "./complete";

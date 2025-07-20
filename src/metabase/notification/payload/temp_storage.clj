@@ -21,16 +21,16 @@
       (.deleteOnExit dir)
       dir)))
 
-(def ^:private deletion-scheduler
+(defonce ^:private deletion-scheduler
   (delay
     (Executors/newScheduledThreadPool 1)))
 
-(defn- temp-file
+(defn- temp-file!
   []
   (doto (File/createTempFile "notification-" ".npy" @temp-dir)
     (.deleteOnExit)))
 
-(defn- write-to-file
+(defn- write-to-file!
   [^File file data]
   (nippy/freeze-to-file file data))
 
@@ -90,8 +90,8 @@
   "Write data to a temporary file. Returns a TempFileStorage type that:
    - Implements IDeref - use @ to read the data from the file
    - Implements Cleanable - call cleanup! when the file is no longer needed"
-  [data]
-  (let [f (temp-file)]
-    (write-to-file f data)
+  ^TempFileStorage [data]
+  (let [f (temp-file!)]
+    (write-to-file! f data)
     (log/debug "stored data in temp file" {:length (.length ^File f)})
     (TempFileStorage. f)))

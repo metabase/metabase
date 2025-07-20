@@ -18,7 +18,6 @@ export { default as tables } from "./tables";
 export { default as fields } from "./fields";
 export { default as segments } from "./segments";
 
-export { default as users } from "./users";
 export { default as groups } from "./groups";
 
 export { default as search } from "./search";

@@ -67,7 +67,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findByRole("heading", {
       name: "Create a new question or browse your collections for an existing one.",
     }).should("exist");
-    H.dashboardCards().should("not.exist");
+    H.dashboardGrid().should("not.exist");
 
     // Add card to second tab
     H.openQuestionsSidebar();
@@ -687,14 +687,14 @@ describe("scenarios > dashboard > tabs", () => {
         // DashboardTabs.unit.spec.tsx will fail.
         clientX: 11,
         clientY: 0,
-        force: true,
       })
       .trigger("mousemove", {
         button: 0,
         clientX: 11,
         clientY: 0,
-        force: true,
       })
+      // UI requires time to update, causes flakiness without the delay
+      .wait(100)
       .trigger("mouseup");
 
     // After the long tab is dragged, it is now in the first position. We need
@@ -742,8 +742,6 @@ describe("scenarios > dashboard > tabs", () => {
 });
 
 H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
-  const PAGE_VIEW_EVENT = 1;
-
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -757,19 +755,18 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
 
   it("should send snowplow events when dashboard tabs are created and deleted", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
 
     H.editDashboard();
     H.createNewTab();
     H.saveDashboard();
-    H.expectGoodSnowplowEvent({ event: "dashboard_saved" }, 1);
-    H.expectGoodSnowplowEvent({ event: "dashboard_tab_created" }, 1);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_created" });
 
     H.editDashboard();
     H.deleteTab("Tab 2");
     H.saveDashboard();
-    H.expectGoodSnowplowEvent({ event: "dashboard_saved" }, 2);
-    H.expectGoodSnowplowEvent({ event: "dashboard_tab_deleted" }, 1);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_saved" }, 2);
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_tab_deleted" });
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {
@@ -777,12 +774,7 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.expectGoodSnowplowEvent(
-      {
-        event: cardMovedEventName,
-      },
-      0,
-    );
+    H.assertNoUnstructuredSnowplowEvent({ event: cardMovedEventName });
 
     H.editDashboard();
     H.createNewTab();
@@ -790,12 +782,7 @@ H.describeWithSnowplow("scenarios > dashboard > tabs", () => {
 
     H.moveDashCardToTab({ tabName: "Tab 2" });
 
-    H.expectGoodSnowplowEvent(
-      {
-        event: cardMovedEventName,
-      },
-      1,
-    );
+    H.expectUnstructuredSnowplowEvent({ event: cardMovedEventName });
   });
 });
 

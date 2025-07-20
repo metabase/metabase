@@ -48,7 +48,6 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
       if (event.isComposing) {
         return;
       }
-
       if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) {
         event.preventDefault();
         event.stopPropagation();
@@ -127,7 +126,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
         return;
       }
       if (item.command) {
-        item.command.perform(item);
+        item.command.perform();
         if (!(e?.metaKey === true || e?.ctrlKey === true)) {
           query.toggle();
         }

@@ -2,8 +2,8 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import DeleteModalWithConfirm from "metabase/common/components/DeleteModalWithConfirm";
+import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 

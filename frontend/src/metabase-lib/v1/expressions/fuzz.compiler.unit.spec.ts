@@ -1,33 +1,36 @@
-import { query } from "./__support__/shared";
+import * as Lib from "metabase-lib";
+
 import { compileExpression } from "./compiler";
 import { fuzz } from "./test/fuzz";
 import { generateExpression } from "./test/generator";
-import type { StartRule } from "./types";
-
-jest.mock("metabase-lib", () => {
-  const mod = jest.requireActual("metabase-lib");
-  return {
-    ...mod,
-    expressionClauseForLegacyExpression() {
-      return null;
-    },
-  };
-});
+import { query, stageIndex } from "./test/shared";
 
 const MAX_SEED = 10_000;
 
-function compile(expression: string, startRule: StartRule = "expression") {
+function compile(
+  expression: string,
+  expressionMode: Lib.ExpressionMode = "expression",
+) {
+  const columns = Lib.expressionableColumns(query, stageIndex);
+
   const result = compileExpression({
     source: expression,
     query,
-    stageIndex: -1,
-    startRule,
-    resolve: false,
+    stageIndex,
+    expressionMode,
+    availableColumns: columns,
+    resolver() {
+      return columns[0];
+    },
   });
   if (result.error) {
     throw result.error;
   }
 }
+
+beforeAll(() => {
+  console.warn = jest.fn();
+});
 
 describe("metabase-lib/v1/expressions/compiler", () => {
   // quick sanity check before the real fuzzing
@@ -50,7 +53,7 @@ fuzz("FUZZING metabase-lib/v1/expressions/compiler", () => {
 
     it("should parse generated boolean expression from seed " + seed, () => {
       const { expression } = generateExpression(seed, "boolean");
-      expect(() => compile(expression, "boolean")).not.toThrow();
+      expect(() => compile(expression, "filter")).not.toThrow();
     });
   }
 });

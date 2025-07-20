@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import {
+  INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -64,6 +65,7 @@ export const getWaterfallDataset = (
       [WATERFALL_VALUE_KEY]: value,
       [WATERFALL_START_KEY]: start,
       [WATERFALL_END_KEY]: end,
+      [INDEX_KEY]: index,
     };
 
     transformedDataset.push(waterfallDatum);
@@ -80,6 +82,7 @@ export const getWaterfallDataset = (
       [WATERFALL_VALUE_KEY]: lastDatum[WATERFALL_END_KEY],
       [WATERFALL_START_KEY]: 0,
       [WATERFALL_TOTAL_KEY]: lastDatum[WATERFALL_END_KEY],
+      [INDEX_KEY]: dataset.length,
     });
   }
 

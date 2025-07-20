@@ -4,12 +4,12 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
-   [metabase-enterprise.scim.api :as scim]
+   [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
-   [metabase.models.user :as user]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -140,8 +140,8 @@
                                                               :join [[:permissions_group :pg] [:= :pg.id :group_id]]
                                                               :where [:and
                                                                       [:in :user_id (map u/the-id users)]
-                                                                      [:not= :pg.id (:id (perms-group/all-users))]
-                                                                      [:not= :pg.id (:id (perms-group/admin))]]}))
+                                                                      [:not= :pg.id (:id (perms/all-users-group))]
+                                                                      [:not= :pg.id (:id (perms/admin-group))]]}))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -162,7 +162,7 @@
    :groups   (map
               (fn [membership]
                 {:value   (:entity_id membership)
-                 :$ref    (str (scim/scim-base-url) "/Groups/" (:entity_id membership))
+                 :$ref    (str (scim.settings/scim-base-url) "/Groups/" (:entity_id membership))
                  :display (:name membership)})
               (:user_group_memberships user))
    :locale   (:locale user)
@@ -338,8 +338,8 @@
                      :entity_id entity-id
                      {:where
                       [:and
-                       [:not= :id (:id (perms-group/all-users))]
-                       [:not= :id (:id (perms-group/admin))]]})
+                       [:not= :id (:id (perms/all-users-group))]
+                       [:not= :id (:id (perms/admin-group))]]})
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
@@ -350,7 +350,7 @@
    :members     (map
                  (fn [member]
                    {:value   (:entity_id member)
-                    :$ref    (str (scim/scim-base-url) "/Users/" (:entity_id member))
+                    :$ref    (str (scim.settings/scim-base-url) "/Users/" (:entity_id member))
                     :display (:email member)})
                  (:members group))
    :displayName (:name group)
@@ -378,8 +378,8 @@
           offset         (if start-index (dec start-index) default-pagination-offset)
           filter-param   (when filter-param (codec/url-decode filter-param))
           where-clause   [:and
-                          [:not= :id (:id perms-group/all-users)]
-                          [:not= :id (:id perms-group/admin)]
+                          [:not= :id (:id perms/all-users-group)]
+                          [:not= :id (:id perms/admin-group)]
                           (when filter-param (group-filter-clause filter-param))]
           groups         (t2/select (cons :model/PermissionsGroup group-cols)
                                     {:where    where-clause
@@ -410,10 +410,10 @@
   [group-id user-entity-ids]
   (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
     (when-let [memberships (map
-                            (fn [user-id] {:group_id group-id :user_id user-id})
+                            (fn [user-id] {:group group-id :user user-id})
                             user-ids)]
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
-      (t2/insert! :model/PermissionsGroupMembership memberships))))
+      (perms/add-users-to-groups! memberships))))
 
 (api.macros/defendpoint :post "/Groups"
   "Create a single group, and populates it if necessary."

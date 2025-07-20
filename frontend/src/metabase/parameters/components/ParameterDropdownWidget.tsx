@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import { TextWidget } from "metabase/components/TextWidget";
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
-import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
-import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
+import { BooleanWidget } from "metabase/querying/parameters/components/BooleanWidget";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
@@ -19,14 +17,18 @@ import { getNumberParameterArity } from "metabase-lib/v1/parameters/utils/operat
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
+  isBooleanParameter,
   isDateParameter,
   isNumberParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getIsMultiSelect } from "metabase-lib/v1/parameters/utils/parameter-values";
 
+import { NumberInputWidget } from "./widgets/NumberInputWidget";
 import { ParameterFieldWidget } from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { StringInputWidget } from "./widgets/StringInputWidget";
 import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
+import { TextWidget } from "./widgets/TextWidget";
 
 type ParameterDropdownWidgetProps = {
   onFocusChanged: (focused: boolean) => void;
@@ -100,6 +102,19 @@ export const ParameterDropdownWidget = ({
     );
   }
 
+  if (isBooleanParameter(parameter)) {
+    return (
+      <BooleanWidget
+        value={value}
+        submitButtonLabel={value ? t`Update filter` : t`Add filter`}
+        onChange={(value) => {
+          setValue?.(value);
+          onPopoverClose?.();
+        }}
+      />
+    );
+  }
+
   if (isTextWidget(parameter)) {
     return (
       <TextWidget
@@ -160,9 +175,10 @@ export const ParameterDropdownWidget = ({
   );
 };
 
-function isTextWidget(parameter: UiParameter) {
+export function isTextWidget(parameter: UiParameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
+  const isMultiSelect = getIsMultiSelect(parameter);
+  return parameter.hasVariableTemplateTagTarget && !canQuery && !isMultiSelect;
 }
 
 function isFieldWidget(

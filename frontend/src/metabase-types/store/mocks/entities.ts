@@ -12,7 +12,6 @@ export const createMockNormalizedEntitiesState = (): EntitiesState => ({
   fields: {},
   segments: {},
   snippets: {},
-  users: {},
   questions: {},
   indexedEntities: {},
 });

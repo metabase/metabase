@@ -239,7 +239,7 @@ const Questions = createEntity({
     return state;
   },
 
-  // NOTE: keep in sync with src/metabase/api/card.clj
+  // NOTE: keep in sync with src/metabase/queries/api/card.clj
   writableProperties: [
     "name",
     "cache_ttl",

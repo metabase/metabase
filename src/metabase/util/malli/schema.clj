@@ -4,17 +4,11 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -78,7 +72,19 @@
 
 (def NonBlankString
   "Schema for a string that cannot be blank."
-  (mu/with-api-error-message ::lib.schema.common/non-blank-string (deferred-tru "value must be a non-blank string.")))
+  (mu/with-api-error-message
+   ;; this is directly copied from [[:metabase.lib.schema.common/non-blank-string]] -- unfortunately using it here would
+   ;; mean we need a dependency of `util` on `lib` -- not worth it to save ~6 duplicate LoC. At some point in the future
+   ;; maybe we can get everyone to use one or the other or better yet make more specific schemas that describe their
+   ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
+   [:and
+    {:error/message "non-blank string"
+     :json-schema   {:type "string" :minLength 1}}
+    [:string {:min 1}]
+    [:fn
+     {:error/message "non-blank string"}
+     (complement str/blank?)]]
+   (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
@@ -109,22 +115,6 @@
                      (str message))
       :api/regex   #"[1-9]\d*"}]))
 
-(def NegativeInt
-  "Schema representing an integer than must be less than zero."
-  (let [message (deferred-tru "value must be a negative integer")]
-    [:int
-     {:max         -1
-      :description (str message)
-      :error/fn    (fn [_ _]
-                     (str message))
-      :api/regex   #"-[1-9]\d*"}]))
-
-(def PositiveNum
-  "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
-  (mu/with-api-error-message
-   [:and number? pos?]
-   (deferred-tru "value must be a number greater than zero.")))
-
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message
@@ -136,18 +126,6 @@
   (mu/with-api-error-message
    [:fn #(isa? % :type/*)]
    (deferred-tru "value must be a valid field type.")))
-
-(def FieldSemanticType
-  "Schema for a valid Field semantic type deriving from `:Semantic/*`."
-  (mu/with-api-error-message
-   [:fn #(isa? % :Semantic/*)]
-   (deferred-tru "value must be a valid field semantic type.")))
-
-(def FieldRelationType
-  "Schema for a valid Field relation type deriving from `:Relation/*`"
-  (mu/with-api-error-message
-   [:fn #(isa? % :Relation/*)]
-   (deferred-tru "value must be a valid field relation type.")))
 
 (def FieldSemanticOrRelationType
   "Schema for a valid Field semantic *or* Relation type. This is currently needed because the `semantic_column` is used
@@ -171,18 +149,6 @@
    [:fn #(isa? (keyword %) :type/*)]
    (deferred-tru "value must be a valid field data type (keyword or string).")))
 
-(def FieldSemanticTypeKeywordOrString
-  "Like `FieldSemanticType` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :Semantic/*)]
-   (deferred-tru "value must be a valid field semantic type (keyword or string).")))
-
-(def FieldRelationTypeKeywordOrString
-  "Like `FieldRelationType` but accepts either a keyword or string."
-  (mu/with-api-error-message
-   [:fn #(isa? (keyword %) :Relation/*)]
-   (deferred-tru "value must be a valid field relation type (keyword or string).")))
-
 (def FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
   (mu/with-api-error-message
@@ -191,15 +157,6 @@
             (or (isa? k :Semantic/*)
                 (isa? k :Relation/*))))]
    (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
-
-(def LegacyFieldOrExpressionReference
-  "Schema for a valid legacy `:field` or `:expression` reference for API usage. TODO -- why are these passed into the
-  REST API at all? MBQL clauses are not things we should ask for as API parameters."
-  (mu/with-api-error-message
-   [:fn (fn [k]
-          ((comp (mr/validator mbql.s/Field)
-                 mbql.normalize/normalize-tokens) k))]
-   (deferred-tru "value must an array with :field id-or-name and an options map")))
 
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
@@ -241,33 +198,6 @@
     [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
    (deferred-tru "password is too common.")))
 
-(def IntString
-  "Schema for a string that can be parsed as an integer.
-  Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (mu/with-api-error-message
-   [:and
-    :string
-    [:fn #(u/ignore-exceptions (Integer/parseInt %))]]
-   (deferred-tru "value must be a valid integer.")))
-
-(def IntStringGreaterThanZero
-  "Schema for a string that can be parsed as an integer, and is greater than zero.
-  Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (mu/with-api-error-message
-   [:and
-    :string
-    [:fn #(u/ignore-exceptions (< 0 (Integer/parseInt %)))]]
-   (deferred-tru "value must be a valid integer greater than zero.")))
-
-(def IntStringGreaterThanOrEqualToZero
-  "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
-  Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (mu/with-api-error-message
-   [:and
-    :string
-    [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]
-   (deferred-tru "value must be a valid integer greater than or equal to zero.")))
-
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mu/with-api-error-message
@@ -287,10 +217,6 @@
             (catch Throwable _
               false))]]
    (deferred-tru "value must be a valid JSON string.")))
-
-(def ^:private keyword-or-non-blank-str-malli
-  (mc/schema
-   [:or {:json-schema {:type "string" :minLength 1}} :keyword NonBlankString]))
 
 (def BooleanValue
   "Schema for a valid representation of a boolean
@@ -312,16 +238,6 @@
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
-(def ValuesSourceConfig
-  "Schema for valid source_options within a Parameter"
-  ;; TODO: This should be tighter
-  (mc/schema
-   [:map
-    [:values {:optional true} [:* :any]]
-    [:card_id {:optional true} PositiveInt]
-    [:value_field {:optional true} LegacyFieldOrExpressionReference]
-    [:label_field {:optional true} LegacyFieldOrExpressionReference]]))
-
 (def RemappedFieldValue
   "Has two components:
     1. <value-of-field>          (can be anything)
@@ -342,49 +258,7 @@
    [:has_more_values :boolean]
    [:values FieldValuesList]])
 
-#_(def ParameterSource
-    (mc/schema
-     [:multi {:dispatch :values_source_type}
-      ["card"        [:map
-                      [:values_source_type :string]
-                      [:values_source_config
-                       [:map {:closed true}
-                        [:card_id {:optional true} IntGreaterThanZero]
-                        [:value_field {:optional true} Field]
-                        [:label_field {:optional true} Field]]]]]
-      ["static-list" [:map
-                      [:values_source_type :string]
-                      [:values_source_config
-                       [:map {:closed true}
-                        [:values {:optional true} [:* :any]]]]]]]))
-
-(def Parameter
-  "Schema for a valid Parameter.
-  We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter is meant to be used for
-  Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
-  ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
-  (mu/with-api-error-message
-   [:map
-    [:id   NonBlankString]
-    [:type keyword-or-non-blank-str-malli]
-     ;; TODO how to merge this with ParameterSource above?
-    [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
-    [:values_source_config {:optional true} ValuesSourceConfig]
-    [:slug                 {:optional true} :string]
-    [:name                 {:optional true} :string]
-    [:default              {:optional true} :any]
-    [:sectionId            {:optional true} NonBlankString]
-    [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]]
-   (deferred-tru "parameter must be a map with :id and :type keys")))
-
-(def ParameterMapping
-  "Schema for a valid Parameter Mapping"
-  (mu/with-api-error-message
-   [:map [:parameter_id NonBlankString]
-    [:target :any]
-    [:card_id {:optional true} PositiveInt]]
-   (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
-
+;;; TODO -- move to `embedding`
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (mu/with-api-error-message
@@ -414,13 +288,6 @@
   (mu/with-api-error-message
    [:re u/uuid-regex]
    (deferred-tru "value must be a valid UUID.")))
-
-(defn CollectionOf
-  "Helper for creating schemas to check whether something is an instance of a collection."
-  [item-schema]
-  [:fn
-   {:error/message (format "Collection of %s" item-schema)}
-   #(and (coll? %) (every? (partial mr/validate item-schema) %))])
 
 (defn QueryVectorOf
   "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."

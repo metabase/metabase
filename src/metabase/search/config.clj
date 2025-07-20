@@ -1,23 +1,12 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
+   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
-
-(defsetting search-typeahead-enabled
-  (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
@@ -150,17 +139,19 @@
 (def filters
   "Specifications for the optional search filters."
   (build-filters
-   {:archived       {:type :single-value, :context-key :archived?}
+   {:archived                   {:type :single-value, :context-key :archived?}
     ;; TODO dry this alias up with the index hydration code
-    :created-at     {:type :date-range, :field "model_created_at"}
-    :creator-id     {:type :list, :context-key :created-by}
+    :created-at                 {:type :date-range, :field "model_created_at"}
+    :creator-id                 {:type :list, :context-key :created-by}
     ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
-    :database-id    {:type :single-value, :context-key :table-db-id}
-    :id             {:type :list, :context-key :ids, :field "model_id"}
-    :last-edited-at {:type :date-range}
-    :last-editor-id {:type :list, :context-key :last-edited-by}
-    :native-query   {:type :native-query, :context-key :search-native-query}
-    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
+    :database-id                {:type :single-value, :context-key :table-db-id}
+    :display-type               {:type :list, :field "display_type"}
+    :has-temporal-dimensions    {:type :single-value, :context-key :has-temporal-dimensions?}
+    :id                         {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at             {:type :date-range}
+    :last-editor-id             {:type :list, :context-key :last-edited-by}
+    :native-query               {:type :native-query, :context-key :search-native-query}
+    :verified                   {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false
@@ -182,7 +173,7 @@
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   [context]
   (let [context   (or context :default)
-        overrides (public-settings/experimental-search-weight-overrides)]
+        overrides (search.settings/experimental-search-weight-overrides)]
     (if (= :all context)
       (merge-with merge static-weights overrides)
       (merge (get static-weights :default)
@@ -246,7 +237,9 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
+   [:has-temporal-dimensions?            {:optional true} [:maybe :boolean]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]

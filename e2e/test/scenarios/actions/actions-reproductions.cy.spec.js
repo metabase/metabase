@@ -34,17 +34,8 @@ describe("metabase#31587", () => {
         cy.button("Add action").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          const actionButtonContainer = cy.findByTestId(
-            "action-button-full-container",
-          );
-          // eslint-disable-next-line no-unsafe-element-filtering
-          const dashCard = cy
-            .findAllByTestId("dashcard-container")
-            .last()
-            .should("have.text", "Click Me");
-
-          actionButtonContainer.then((actionButtonElem) => {
-            dashCard.then((dashCardElem) => {
+          actionButtonContainer().then((actionButtonElem) => {
+            dashCard().then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -62,17 +53,8 @@ describe("metabase#31587", () => {
         cy.icon("info").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          const actionButtonContainer = cy.findByTestId(
-            "action-button-full-container",
-          );
-          // eslint-disable-next-line no-unsafe-element-filtering
-          const dashCard = cy
-            .findAllByTestId("dashcard-container")
-            .last()
-            .should("have.text", "Click Me");
-
-          actionButtonContainer.then((actionButtonElem) => {
-            dashCard.then((dashCardElem) => {
+          actionButtonContainer().then((actionButtonElem) => {
+            dashCard().then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -331,8 +313,7 @@ describe("issue 51020", () => {
       createTemporaryTable();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "foo" });
 
-      cy.visit("/");
-      H.newButton("Model").click();
+      cy.visit("/model/new");
       cy.findByTestId("new-model-options")
         .findByText("Use the notebook editor")
         .click();
@@ -455,22 +436,6 @@ describe("issue 32840", () => {
   });
 });
 
-describe("issue 41831", () => {
-  beforeEach(() => {
-    H.restore("without-models");
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
-    cy.visit("/");
-  });
-
-  it("new action button is hidden without models", () => {
-    cy.findByRole("button", { name: "New" }).click();
-    cy.findByRole("dialog").within(() => {
-      cy.findByText("Action").should("not.exist");
-    });
-  });
-});
-
 describe("issue 32750", () => {
   beforeEach(() => {
     H.restore();
@@ -480,12 +445,7 @@ describe("issue 32750", () => {
   });
 
   it("modal do not dissapear on viewport change", () => {
-    cy.findByRole("button", { name: "New" }).click();
-    cy.findByRole("dialog").within(() => {
-      cy.findByText("Action").click();
-    });
-
-    cy.findByTestId("action-creator").should("be.visible");
+    H.startNewAction();
     cy.viewport(320, 800);
     cy.findByTestId("action-creator").should("be.visible");
     cy.viewport(1440, 800);
@@ -498,3 +458,13 @@ function setupBasicActionsInModel() {
   H.sidesheet().findByText("Actions").click();
   cy.button(/Create basic actions/).click();
 }
+
+const actionButtonContainer = () =>
+  cy.findByTestId("action-button-full-container");
+
+const dashCard = () =>
+  // eslint-disable-next-line no-unsafe-element-filtering
+  cy
+    .findAllByTestId("dashcard-container")
+    .last()
+    .should("have.text", "Click Me");

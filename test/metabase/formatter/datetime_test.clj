@@ -2,10 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
@@ -30,6 +34,8 @@
   ([timezone-id temporal-str col viz-settings]
    ((datetime/make-temporal-str-formatter timezone-id col viz-settings) temporal-str)))
 
+;;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see
+;;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1750288689214359
 (deftest format-temporal-str-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (testing "Null values do not blow up"
@@ -171,7 +177,7 @@
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "MMMM D, YYYY"
                                                                           :date_abbreviate true}}]
       (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
-                                        (public-settings/custom-formatting))]
+                                        (appearance/custom-formatting))]
         (is (= "Jul 16, 2020"
                (format-temporal-str "UTC" now
                                     {:effective_type :type/Date}
@@ -179,7 +185,7 @@
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style     "M/DD/YYYY"
                                                                           :date_separator "-"}}]
       (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
-                                        (public-settings/custom-formatting))]
+                                        (appearance/custom-formatting))]
         (is (= "7-16-2020, 6:04 PM"
                (format-temporal-str
                 "UTC"
@@ -286,3 +292,20 @@
                                       {{::mb.viz/column-name "created_at"} {::mb.viz/date-style "YYYY-MM-dd"}}}))]
       (doseq [the-date (mapcat dates (range 2008 3008))]
         (is (= the-date (fmt the-date)))))))
+
+(deftest site-locale-used-for-formatting-test
+  (testing "Datetime formatting uses site-locale and does not modify JVM locale"
+    (let [original-jvm-locale (Locale/getDefault)
+          test-datetime       "2020-07-16T18:04:00Z[UTC]"
+          col                 {:effective_type :type/DateTime}]
+      (mt/with-temporary-setting-values [site-locale "de"]
+        (let [german-result (format-temporal-str "UTC" test-datetime col)]
+          (is (re-find #"Juli" german-result))
+          (is (= original-jvm-locale (Locale/getDefault)))))
+
+      (mt/with-temporary-setting-values [site-locale "fr"]
+        (let [french-result (format-temporal-str "UTC" test-datetime col)]
+          (is (re-find #"juillet" french-result))
+          (is (= original-jvm-locale (Locale/getDefault)))))
+
+      (is (= original-jvm-locale (Locale/getDefault))))))

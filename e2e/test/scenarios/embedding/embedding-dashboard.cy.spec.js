@@ -104,6 +104,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.filterWidget().contains("Id").should("not.exist");
 
       cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+      cy.findByTestId("scalar-title")
+        .findByText("test question")
+        .should("be.visible");
 
       // verify that disabled filters don't show up
       cy.findByTestId("dashboard-parameters-widget-container").within(() => {
@@ -310,22 +313,22 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("Id");
       H.popover().within(() => {
-        H.fieldValuesInput().type("Aly");
-        cy.contains("Alycia McCullough - 2016");
+        H.fieldValuesCombobox().type("Aly");
+        cy.contains("Alycia McCullough");
       });
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
       H.popover().within(() => {
-        H.fieldValuesInput().type("{backspace}Aly");
+        H.fieldValuesCombobox().type("{backspace}Aly");
         cy.findByText("Alycia McCullough").should("be.visible");
       });
 
@@ -333,7 +336,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.popover()
         .first()
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should show values for PEOPLE.SOURCE");
@@ -345,15 +348,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openFilterOptions("User");
       H.popover().within(() => {
-        H.fieldValuesInput().type("Aly");
-        cy.contains("Alycia McCullough - 2016");
+        H.fieldValuesCombobox().type("Aly");
+        cy.contains("Alycia McCullough");
       });
 
       // close the suggestions popover
       H.popover()
         .first()
         .within(() => {
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
 
       cy.log("should accept url parameters");
@@ -517,6 +520,24 @@ describe("scenarios > embedding > dashboard parameters", () => {
         H.assertSheetRowsCount(54)(sheet);
       },
     );
+
+    cy.log(
+      "The PDF download button should be clickable when there is no title, but has parameters (metabase#59503)",
+    );
+    cy.get("@dashboardId2").then((dashboardId) => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: {},
+      };
+      H.visitEmbeddedPage(payload, {
+        pageStyle: {
+          downloads: true,
+          titled: false,
+        },
+      });
+    });
+
+    cy.findByTestId("export-as-pdf-button").should("be.visible").click();
   });
 
   it("should send 'X-Metabase-Client' header for api requests", () => {
@@ -671,7 +692,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
@@ -1010,8 +1031,10 @@ describe("scenarios > embedding > dashboard appearance", () => {
     cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025, 9:40 PM");
-    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
-    cy.findByText("exportieren", { exact: false });
+
+    cy.findByRole("button", {
+      name: "Automatische Aktualisierung",
+    }).should("exist");
 
     cy.url().should("include", "locale=de");
   });

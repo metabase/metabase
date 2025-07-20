@@ -104,7 +104,7 @@ H.describeWithSnowplow("extract shortcut", () => {
             value,
             example,
           });
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "column_extract_via_plus_modal",
             custom_expressions_used: expressions,
             database_id: SAMPLE_DB_ID,
@@ -173,7 +173,7 @@ H.describeWithSnowplow("extract shortcut", () => {
           value,
           example,
         });
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -213,7 +213,7 @@ H.describeWithSnowplow("extract shortcut", () => {
           value,
           example,
         });
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "column_extract_via_plus_modal",
           custom_expressions_used: expressions,
           database_id: SAMPLE_DB_ID,
@@ -428,7 +428,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       newValue: "borer-hudson@yahoo.com1",
     });
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
@@ -484,8 +484,8 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
 
     H.tableInteractive().should("exist");
     combineColumns({
-      columns: ["Created At: Hour of day", "Category"],
-      newColumn: "Combined Created At: Hour of day, Category",
+      columns: ["Created At: Hour of day", "Product → Category"],
+      newColumn: "Combined Created At: Hour of day, Product → Category",
       example: "2042-01-01 12:34:56.789 text",
       newValue: "0 Doohickey",
     });

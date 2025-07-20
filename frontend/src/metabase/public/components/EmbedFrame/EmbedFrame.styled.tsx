@@ -61,16 +61,22 @@ export const Header = styled.header`
   flex-direction: column;
 `;
 
-export const TitleAndDescriptionContainer = styled(FullWidthContainer)`
+export const TitleAndDescriptionContainer = styled(FullWidthContainer, {
+  shouldForwardProp: (prop) => prop !== "hasTitle",
+})<{ hasTitle?: boolean }>`
   margin-top: 0.5rem;
 
-  ${breakpointMinSmall} {
-    margin-top: 1rem;
-  }
+  ${({ hasTitle }) =>
+    hasTitle &&
+    css`
+      ${breakpointMinSmall} {
+        margin-top: 1rem;
+      }
 
-  ${breakpointMinLarge} {
-    margin-top: 1.5rem;
-  }
+      ${breakpointMinLarge} {
+        margin-top: 1.5rem;
+      }
+    `}
 `;
 
 export const DashboardTabsContainer = styled(FullWidthContainer)`
@@ -81,7 +87,7 @@ export const DashboardTabsContainer = styled(FullWidthContainer)`
 `;
 
 export const Separator = styled.div`
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border);
 `;
 
 export const Body = styled.main`

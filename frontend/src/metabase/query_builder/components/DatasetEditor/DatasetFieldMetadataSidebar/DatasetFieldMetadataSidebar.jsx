@@ -75,8 +75,18 @@ const TAB = {
 };
 
 const TAB_OPTIONS = [
-  { name: t`Settings`, value: TAB.SETTINGS },
-  { name: t`Formatting`, value: TAB.FORMATTING },
+  {
+    get name() {
+      return t`Settings`;
+    },
+    value: TAB.SETTINGS,
+  },
+  {
+    get name() {
+      return t`Formatting`;
+    },
+    value: TAB.FORMATTING,
+  },
 ];
 
 function DatasetFieldMetadataSidebar({
@@ -123,7 +133,7 @@ function DatasetFieldMetadataSidebar({
       column: field,
       value: field.settings,
       onChangeSetting: handleFormattingSettingsChange,
-      inheritedSettings: getGlobalSettingsForColumn(field),
+      inheritedSettings: getGlobalSettingsForColumn(),
       variant: "form-field",
     }),
     [field, handleFormattingSettingsChange],

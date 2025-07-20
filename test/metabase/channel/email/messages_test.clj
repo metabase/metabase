@@ -2,10 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-keys.core :as api-key]
    [metabase.channel.email :as email]
    [metabase.channel.email-test :as et]
    [metabase.channel.email.messages :as messages]
-   [metabase.models.api-key :as api-key]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]

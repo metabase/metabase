@@ -21,6 +21,10 @@ driver:
       placeholder: N/A
     - user
     - password
+    - name: role
+      display-name: Default impersonation user (required for impersonation if the connection's user cannot be impersonated)
+      helper-text: User used to run system queries, required if the connection's user cannot be impersonated, such as the 'sa' user.
+      placeholder: user
     - cloud-ip-address-info
     - ssl
     - ssh-tunnel

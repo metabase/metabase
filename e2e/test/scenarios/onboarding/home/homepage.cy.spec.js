@@ -41,19 +41,30 @@ describe("scenarios > home > homepage", () => {
 
     it("should display x-rays for a user database", () => {
       cy.signInAsAdmin();
-      cy.addSQLiteDatabase();
+      H.addSqliteDatabase();
 
-      cy.visit("/");
-      cy.wait("@getXrayCandidates");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Here are some explorations of");
-      cy.findAllByRole("link").contains("sqlite");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Number With Nulls").click();
+      cy.get("@sqliteID").then((dbId) => {
+        H.withDatabase(dbId, ({ NUMBER_WITH_NULLS: { NUM } }) => {
+          // we first set the semantic type of the num field to Category,
+          // else no X-rays would be computed
+          cy.request("PUT", `/api/field/${NUM}`, {
+            semantic_type: "type/Category",
+            has_field_values: "none",
+          });
 
-      cy.wait("@getXrayDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More X-rays");
+          cy.visit("/");
+          cy.wait("@getXrayCandidates");
+
+          cy.findByText("Here are some explorations of");
+          cy.findAllByRole("link").contains("sqlite");
+
+          cy.findByText("Number With Nulls").click();
+
+          cy.wait("@getXrayDashboard");
+
+          cy.findByText("More X-rays");
+        });
+      });
     });
 
     it("homepage should not flicker when syncing databases and showing xrays", () => {
@@ -176,7 +187,7 @@ describe("scenarios > home > homepage", () => {
         cy.signInAsAdmin();
         // Setting this to true so that displaying popular items for new users works.
         // This requires the audit-app feature to be enabled
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -318,13 +329,13 @@ describe("scenarios > home > custom homepage", () => {
         "Orders in a dashboard",
       );
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
 
-      // Do a page refresh and test dashboard header
+      cy.log("Do a page refresh and test dashboard header");
       cy.visit("/");
       cy.location("pathname").should(
         "equal",
@@ -583,7 +594,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.undoToast().findByText("Changes saved").should("be.visible");
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "admin",
     });
@@ -598,10 +609,80 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
     H.modal().findByText("Save").click();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
       source: "homepage",
     });
+  });
+
+  it("should track when 'New' button is clicked", () => {
+    cy.visit("/");
+
+    cy.log("From the app bar");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "app-bar",
+    });
+
+    cy.log("Track closing the button as well");
+    H.newButton().should("be.visible").click();
+    cy.findByRole("menu", { name: /new/i }).should("not.exist");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "new_button_clicked",
+        triggered_from: "app-bar",
+      },
+      2,
+    );
+
+    cy.log("From the empty collection");
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "new_button_clicked",
+      triggered_from: "empty-collection",
+    });
+  });
+
+  /**
+   * Until we refactor the NewItem menu component and drop EntityMenu from it,
+   * the only menu item that can have onClick handler is a "dashboard".
+   */
+  it("should track when a 'New' button's menu item is clicked", () => {
+    cy.visit("/");
+
+    H.newButton().should("be.visible").click();
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectUnstructuredSnowplowEvent({
+      event: "new_button_item_clicked",
+      triggered_from: "dashboard",
+    });
+
+    cy.findByTestId("new-dashboard-modal").button("Cancel").click();
+    cy.findByTestId("new-dashboard-modal").should("not.exist");
+
+    H.navigationSidebar().findByText("Your personal collection").click();
+    cy.findByTestId("collection-empty-state").within(() => {
+      cy.findByText("This collection is empty").should("be.visible");
+      cy.findByText("New").click();
+    });
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
+    cy.findByTestId("new-dashboard-modal").should("be.visible");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "new_button_item_clicked",
+        triggered_from: "dashboard",
+      },
+      2,
+    );
   });
 });
 

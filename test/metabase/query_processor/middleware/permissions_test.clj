@@ -3,10 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -35,7 +32,7 @@
 (deftest native-query-perms-test
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms"
     (mt/with-temp [:model/Database db {}]
-      (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/create-queries :query-builder)
+      (perms/set-database-permission! (perms/all-users-group) (u/the-id db) :perms/create-queries :query-builder)
       (is (thrown-with-msg?
            ExceptionInfo
            perms-error-msg
@@ -86,10 +83,10 @@
 (deftest nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
     (mt/with-temp [:model/Database db {}]
-      (data-perms/set-database-permission! (perms-group/all-users)
-                                           (u/the-id db)
-                                           :perms/create-queries
-                                           :query-builder)
+      (perms/set-database-permission! (perms/all-users-group)
+                                      (u/the-id db)
+                                      :perms/create-queries
+                                      :query-builder)
       (is (thrown-with-msg?
            ExceptionInfo
            perms-error-msg
@@ -243,8 +240,8 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
           (let [query  (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
                 check! (fn [query]
                          (binding [api/*current-user-id* (mt/user->id :rasta)]
@@ -294,154 +291,459 @@
                :type     :query
                :query    {:source-table (u/the-id table)}})))))))
 
-(deftest e2e-nested-source-card-full-permissions-test
+(deftest e2e-nested-source-card-full-permissions-mbql-mbql-test
   (testing "Make sure permissions are calculated correctly for Card 1 -> Card 2 -> Source Query when there are full
-           Collection permissions to both Cards (#12354)"
+           Collection permissions to both Cards (#12354) - MBQL Card 1, MBQL Card 2"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
           (mt/with-temp [:model/Collection collection]
-            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-            (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues
-                                                                 {:order-by [[:asc $id]], :limit 2})
-                                                      "native" (mt/native-query
-                                                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                                                              "FROM venues "
-                                                                              "ORDER BY id ASC "
-                                                                              "LIMIT 2")})}]
-              (testing (format "\nCard 1 is a %s query" card-1-query-type)
-                (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
-                                                                        :dataset_query card-1-query}]
-                  (doseq [[card-2-query-type card-2-query] {"MBQL"   (mt/mbql-query nil
-                                                                       {:source-table (format "card__%d" card-1-id)})
-                                                            "native" (mt/native-query
-                                                                       {:query         "SELECT * FROM {{card}}"
-                                                                        :template-tags {"card" {:name         "card"
-                                                                                                :display-name "card"
-                                                                                                :type         :card
-                                                                                                :card-id      card-1-id}}})}]
-                    (testing (format "\nCard 2 is a %s query" card-2-query-type)
-                      (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
-                                                         :dataset_query card-2-query}]
-                        (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
-                          (mt/with-test-user :rasta
-                            (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                                            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
-                              (testing "Should be able to run Card 1 directly"
-                                (binding [qp.perms/*card-id* (u/the-id card-1)]
-                                  (is (= expected
-                                         (mt/rows
-                                          (qp/process-query (:dataset_query card-1)))))))
-
-                              (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
-                                (binding [qp.perms/*card-id* (u/the-id card-2)]
-                                  (is (= expected
-                                         (mt/rows
-                                          (qp/process-query (:dataset_query card-2)))))))
-
-                              (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
-                                (is (= expected
-                                       (mt/rows
-                                        (qp/process-query (mt/mbql-query nil
-                                                            {:source-table (format "card__%d" card-1-id)}))))))
-
-                              (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
-                                (is (= expected
-                                       (mt/rows
-                                        (qp/process-query
-                                         (qp/userland-query
-                                          (mt/mbql-query nil
-                                            {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))))
-
-(deftest e2e-nested-source-card-no-permissions-test
-  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
-           but not Card 1."
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp-copy-of-db
-        (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-          (mt/with-temp [:model/Collection {collection-1-id :id} {}
-                         :model/Collection {collection-2-id :id} {}]
-            ;; Grant read permissions for Collection 2 but not Collection 1
-            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
-            (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues
-                                                                 {:order-by [[:asc $id]], :limit 2})
-                                                      "native" (mt/native-query
-                                                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                                                              "FROM venues "
-                                                                              "ORDER BY id ASC "
-                                                                              "LIMIT 2")})}]
-              (testing (format "\nCard 1 is a %s query" card-1-query-type)
-                (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
-                                                                        :dataset_query card-1-query}]
-                  (doseq [[card-2-query-type card-2-query] {"MBQL"   (mt/mbql-query nil
-                                                                       {:source-table (format "card__%d" card-1-id)})
-                                                            "native" (mt/native-query
-                                                                       {:query         "SELECT * FROM {{card}}"
-                                                                        :template-tags {"card" {:name         "card"
-                                                                                                :display-name "card"
-                                                                                                :type         :card
-                                                                                                :card-id      card-1-id}}})}]
-                    (testing (format "\nCard 2 is a %s query" card-2-query-type)
-                      (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
-                                                         :dataset_query card-2-query}]
-                        (mt/with-test-user :rasta
-                          (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
-                                          [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
-                            (testing "Should not be able to run Card 1 directly"
-                              (binding [qp.perms/*card-id* (u/the-id card-1)]
-                                (is (thrown-with-msg?
-                                     ExceptionInfo
-                                     #"You do not have permissions to view Card"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (let [card-1-query (mt/mbql-query venues
+                                 {:order-by [[:asc $id]], :limit 2})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/mbql-query nil
+                                     {:source-table (format "card__%d" card-1-id)})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
+                                                     :dataset_query card-2-query}]
+                    (testing "should be able to read nested-nested Card if we have Collection permissions"
+                      (mt/with-test-user :rasta
+                        (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                        [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                          (testing "Should be able to run Card 1 directly"
+                            (binding [qp.perms/*card-id* (u/the-id card-1)]
+                              (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-1)))))))
 
-                            (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
-                              (binding [qp.perms/*card-id* (u/the-id card-2)]
-                                (is (= expected
-                                       (mt/rows
-                                        (qp/process-query (:dataset_query card-2)))))))
+                          (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                            (binding [qp.perms/*card-id* (u/the-id card-2)]
+                              (is (= expected
+                                     (mt/rows
+                                      (qp/process-query (:dataset_query card-2)))))))
 
-                            (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
-                              (is (thrown-with-msg?
-                                   ExceptionInfo
-                                   #"You do not have permissions to view Card"
+                          (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
+                            (is (= expected
                                    (mt/rows
                                     (qp/process-query (mt/mbql-query nil
                                                         {:source-table (format "card__%d" card-1-id)}))))))
 
-                            (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query
+                                     (qp/userland-query
+                                      (mt/mbql-query nil
+                                        {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
+
+(deftest e2e-nested-source-card-full-permissions-mbql-native-test
+  (testing "Make sure permissions are calculated correctly for Card 1 -> Card 2 -> Source Query when there are full
+           Collection permissions to both Cards (#12354) - MBQL Card 1, native Card 2"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (let [card-1-query (mt/mbql-query venues
+                                 {:order-by [[:asc $id]], :limit 2})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/native-query
+                                     {:query         "SELECT * FROM {{card}}"
+                                      :template-tags {"card" {:name         "card"
+                                                              :display-name "card"
+                                                              :type         :card
+                                                              :card-id      card-1-id}}})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
+                                                     :dataset_query card-2-query}]
+                    (testing "should be able to read nested-nested Card if we have Collection permissions"
+                      (mt/with-test-user :rasta
+                        (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                        [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                          (testing "Should be able to run Card 1 directly"
+                            (binding [qp.perms/*card-id* (u/the-id card-1)]
                               (is (= expected
                                      (mt/rows
-                                      (qp/process-query
-                                       (qp/userland-query
-                                        (mt/mbql-query nil
-                                          {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))))
+                                      (qp/process-query (:dataset_query card-1)))))))
+
+                          (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                            (binding [qp.perms/*card-id* (u/the-id card-2)]
+                              (is (= expected
+                                     (mt/rows
+                                      (qp/process-query (:dataset_query card-2)))))))
+
+                          (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query (mt/mbql-query nil
+                                                        {:source-table (format "card__%d" card-1-id)}))))))
+
+                          (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query
+                                     (qp/userland-query
+                                      (mt/mbql-query nil
+                                        {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
+
+(deftest e2e-nested-source-card-full-permissions-native-mbql-test
+  (testing "Make sure permissions are calculated correctly for Card 1 -> Card 2 -> Source Query when there are full
+           Collection permissions to both Cards (#12354) - native Card 1, MBQL Card 2"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (let [card-1-query (mt/native-query
+                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                              "FROM venues "
+                                              "ORDER BY id ASC "
+                                              "LIMIT 2")})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/mbql-query nil
+                                     {:source-table (format "card__%d" card-1-id)})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
+                                                     :dataset_query card-2-query}]
+                    (testing "should be able to read nested-nested Card if we have Collection permissions"
+                      (mt/with-test-user :rasta
+                        (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                        [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                          (testing "Should be able to run Card 1 directly"
+                            (binding [qp.perms/*card-id* (u/the-id card-1)]
+                              (is (= expected
+                                     (mt/rows
+                                      (qp/process-query (:dataset_query card-1)))))))
+
+                          (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                            (binding [qp.perms/*card-id* (u/the-id card-2)]
+                              (is (= expected
+                                     (mt/rows
+                                      (qp/process-query (:dataset_query card-2)))))))
+
+                          (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query (mt/mbql-query nil
+                                                        {:source-table (format "card__%d" card-1-id)}))))))
+
+                          (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query
+                                     (qp/userland-query
+                                      (mt/mbql-query nil
+                                        {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
+
+(deftest e2e-nested-source-card-full-permissions-native-native-test
+  (testing "Make sure permissions are calculated correctly for Card 1 -> Card 2 -> Source Query when there are full
+           Collection permissions to both Cards (#12354) - native Card 1, native Card 2"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (let [card-1-query (mt/native-query
+                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                              "FROM venues "
+                                              "ORDER BY id ASC "
+                                              "LIMIT 2")})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/native-query
+                                     {:query         "SELECT * FROM {{card}}"
+                                      :template-tags {"card" {:name         "card"
+                                                              :display-name "card"
+                                                              :type         :card
+                                                              :card-id      card-1-id}}})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id (u/the-id collection)
+                                                     :dataset_query card-2-query}]
+                    (testing "should be able to read nested-nested Card if we have Collection permissions"
+                      (mt/with-test-user :rasta
+                        (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                        [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                          (testing "Should be able to run Card 1 directly"
+                            (binding [qp.perms/*card-id* (u/the-id card-1)]
+                              (is (= expected
+                                     (mt/rows
+                                      (qp/process-query (:dataset_query card-1)))))))
+
+                          (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                            (binding [qp.perms/*card-id* (u/the-id card-2)]
+                              (is (= expected
+                                     (mt/rows
+                                      (qp/process-query (:dataset_query card-2)))))))
+
+                          (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query (mt/mbql-query nil
+                                                        {:source-table (format "card__%d" card-1-id)}))))))
+
+                          (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query
+                                     (qp/userland-query
+                                      (mt/mbql-query nil
+                                        {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
+
+(deftest e2e-nested-source-card-no-permissions-mbql-mbql-test
+  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
+           but not Card 1 - MBQL Card 1, MBQL Card 2"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                         :model/Collection {collection-2-id :id} {}]
+            ;; Grant read permissions for Collection 2 but not Collection 1
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection-2-id)
+            (let [card-1-query (mt/mbql-query venues
+                                 {:order-by [[:asc $id]], :limit 2})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/mbql-query nil
+                                     {:source-table (format "card__%d" card-1-id)})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
+                                                     :dataset_query card-2-query}]
+                    (mt/with-test-user :rasta
+                      (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                        (testing "Should not be able to run Card 1 directly"
+                          (binding [qp.perms/*card-id* (u/the-id card-1)]
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-1)))))))
+
+                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                          (binding [qp.perms/*card-id* (u/the-id card-2)]
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query (:dataset_query card-2)))))))
+
+                        (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query (mt/mbql-query nil
+                                                    {:source-table (format "card__%d" card-1-id)}))))))
+
+                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (= expected
+                                 (mt/rows
+                                  (qp/process-query
+                                   (qp/userland-query
+                                    (mt/mbql-query nil
+                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
+
+(deftest e2e-nested-source-card-no-permissions-mbql-native-test
+  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
+           but not Card 1 - MBQL Card 1, native Card 2"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                         :model/Collection {collection-2-id :id} {}]
+            ;; Grant read permissions for Collection 2 but not Collection 1
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection-2-id)
+            (let [card-1-query (mt/mbql-query venues
+                                 {:order-by [[:asc $id]], :limit 2})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/native-query
+                                     {:query         "SELECT * FROM {{card}}"
+                                      :template-tags {"card" {:name         "card"
+                                                              :display-name "card"
+                                                              :type         :card
+                                                              :card-id      card-1-id}}})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
+                                                     :dataset_query card-2-query}]
+                    (mt/with-test-user :rasta
+                      (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                        (testing "Should not be able to run Card 1 directly"
+                          (binding [qp.perms/*card-id* (u/the-id card-1)]
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-1)))))))
+
+                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                          (binding [qp.perms/*card-id* (u/the-id card-2)]
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query (:dataset_query card-2)))))))
+
+                        (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query (mt/mbql-query nil
+                                                    {:source-table (format "card__%d" card-1-id)}))))))
+
+                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (= expected
+                                 (mt/rows
+                                  (qp/process-query
+                                   (qp/userland-query
+                                    (mt/mbql-query nil
+                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
+
+(deftest e2e-nested-source-card-no-permissions-native-mbql-test
+  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
+           but not Card 1 - native Card 1, MBQL Card 2"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                         :model/Collection {collection-2-id :id} {}]
+            ;; Grant read permissions for Collection 2 but not Collection 1
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection-2-id)
+            (let [card-1-query (mt/native-query
+                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                              "FROM venues "
+                                              "ORDER BY id ASC "
+                                              "LIMIT 2")})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/mbql-query nil
+                                     {:source-table (format "card__%d" card-1-id)})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
+                                                     :dataset_query card-2-query}]
+                    (mt/with-test-user :rasta
+                      (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                        (testing "Should not be able to run Card 1 directly"
+                          (binding [qp.perms/*card-id* (u/the-id card-1)]
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-1)))))))
+
+                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                          (binding [qp.perms/*card-id* (u/the-id card-2)]
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query (:dataset_query card-2)))))))
+
+                        (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query (mt/mbql-query nil
+                                                    {:source-table (format "card__%d" card-1-id)}))))))
+
+                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (= expected
+                                 (mt/rows
+                                  (qp/process-query
+                                   (qp/userland-query
+                                    (mt/mbql-query nil
+                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
+
+(deftest e2e-nested-source-card-no-permissions-native-native-test
+  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
+           but not Card 1 - native Card 1, native Card 2"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                         :model/Collection {collection-2-id :id} {}]
+            ;; Grant read permissions for Collection 2 but not Collection 1
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection-2-id)
+            (let [card-1-query (mt/native-query
+                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                              "FROM venues "
+                                              "ORDER BY id ASC "
+                                              "LIMIT 2")})]
+              (mt/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
+                                                                      :dataset_query card-1-query}]
+                (let [card-2-query (mt/native-query
+                                     {:query         "SELECT * FROM {{card}}"
+                                      :template-tags {"card" {:name         "card"
+                                                              :display-name "card"
+                                                              :type         :card
+                                                              :card-id      card-1-id}}})]
+                  (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
+                                                     :dataset_query card-2-query}]
+                    (mt/with-test-user :rasta
+                      (let [expected [[1 "Red Medicine"           4 10.0646 -165.374 3]
+                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                        (testing "Should not be able to run Card 1 directly"
+                          (binding [qp.perms/*card-id* (u/the-id card-1)]
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-1)))))))
+
+                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                          (binding [qp.perms/*card-id* (u/the-id card-2)]
+                            (is (= expected
+                                   (mt/rows
+                                    (qp/process-query (:dataset_query card-2)))))))
+
+                        (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query (mt/mbql-query nil
+                                                    {:source-table (format "card__%d" card-1-id)}))))))
+
+                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (= expected
+                                 (mt/rows
+                                  (qp/process-query
+                                   (qp/userland-query
+                                    (mt/mbql-query nil
+                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
     (mt/with-temp-copy-of-db
       ;; TODO: re-evaluate this test; the error is being thrown at the API-layer and not in the QP
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+        (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
           (mt/with-temp [:model/Collection collection {}
                          :model/Card       card {:collection_id (u/the-id collection)
                                                  :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]
             ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
             ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
-            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :post 403 "dataset" (assoc (mt/mbql-query venues {:limit 1})
                                                                            :info {:card-id (u/the-id card)}))))))))))
 
 (deftest e2e-ignore-user-supplied-perms-test
-  (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"
+  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/perms` in the query"
     (mt/with-no-data-perms-for-all-users!
-      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
-      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
         (testing "Sanity check: should not be able to run this query the normal way"
           (is (thrown-with-msg?
@@ -450,8 +752,8 @@
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
         (letfn [(process-query []
                   (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                           ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
-                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}})))]
+                                           :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                                             :perms/create-queries {(mt/id :venues) :query-builder}}})))]
           (testing "Make sure the middleware is actually preventing something by disabling it"
             (with-redefs [qp.perms/remove-permissions-key identity]
               (is (=? {:status :completed}
@@ -461,11 +763,39 @@
                #"You do not have permissions to run this query"
                (process-query))))))))
 
+(deftest e2e-ignore-user-supplied-gtapped-tables-test
+  (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/gtapped-table` in the query"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT 1"
+                                                                               :query-permissions/gtapped-table (mt/id :venues)}}
+                       :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                         :perms/create-queries :query-builder-and-native}}}]
+        (mt/with-test-user :rasta
+          (testing "Sanity check: should not be able to run this query the normal way"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (qp/process-query bad-query))))
+          (letfn [(process-query []
+                    (qp/process-query bad-query))]
+            (testing "Testing that we will still throw due to the :query-permissions/perms stripping"
+              (with-redefs [qp.perms/remove-gtapped-table-keys identity]
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to run this query"
+                     (process-query)))))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (process-query)))))))))
+
 (deftest e2e-ignore-user-supplied-compiled-from-mbql-key
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"
     (mt/with-temp [:model/Database db    {}
                    :model/Table    table {:db_id (u/the-id db)}]
-      (data-perms/set-database-permission! (perms-group/all-users) (u/the-id db) :perms/create-queries :query-builder)
+      (perms/set-database-permission! (perms/all-users-group) (u/the-id db) :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
         (binding [mu.fn/*enforce* false]
           (is (thrown-with-msg?
@@ -484,7 +814,7 @@
                                                               :type :native
                                                               :native {:query "SELECT * FROM venues"}}}]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
         (let [query (mt/mbql-query checkins
                       {:joins    [{:fields       [$id]
                                    :source-table (format "card__%d" card-id)
@@ -504,7 +834,7 @@
                                                               :type :native
                                                               :native {:query "SELECT * FROM venues"}}}]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
         (let [query (mt/mbql-query checkins
                       {:joins    [{:fields       [$id]
                                    :alias        "v"
@@ -519,3 +849,490 @@
                  ExceptionInfo
                  perms-error-msg
                  (qp/process-query query)))))))))
+
+(deftest e2e-card-join-both-permissions-test
+  (testing "User can run query when they have permissions to both the source card and joined card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id (u/the-id collection)
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}
+                           :model/Card {categories-card-id :id} {:collection_id (u/the-id collection)
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should be able to run query joining two cards when user has access to both"
+                    (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))
+
+(deftest e2e-card-join-partial-permissions-test
+  (testing "User cannot run query when they have permissions to source card but not joined card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection {accessible-collection-id :id} {}
+                         :model/Collection {restricted-collection-id :id} {}]
+            ;; Grant read permissions only to the accessible collection
+            (perms/grant-collection-read-permissions! (perms/all-users-group) accessible-collection-id)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id accessible-collection-id
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}
+                           :model/Card {categories-card-id :id} {:collection_id restricted-collection-id
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should not be able to run query joining cards when user lacks access to joined card"
+                    (is (thrown-with-msg?
+                         ExceptionInfo
+                         #"You do not have permissions to view Card"
+                         (qp/process-query join-query)))))))))))))
+
+(deftest e2e-card-table-join-view-data-permissions-test
+  (testing "User cannot run query joining card to table when they have view-data but no create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow view-data but block create-queries for venues table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+          ;; Allow access to categories table for the card
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {categories-card-id :id} {:collection_id (u/the-id collection)
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query venues
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= $category_id
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should not be able to run ad-hoc query joining card to table without create-queries permission"
+                    (is (thrown-with-msg?
+                         ExceptionInfo
+                         #"You do not have permissions to run this query"
+                         (qp/process-query join-query))))
+                  (testing "Should be able to run card query joining card to table with view-data permission"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-card-source-table-join-view-data-permissions-test
+  (testing "User cannot run query with card as source table joined to table when they have view-data but no create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues table for the card
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Allow view-data but block create-queries for categories table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id (u/the-id collection)
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :categories)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should not be able to run ad-hoc query with card as source joined to table without create-queries permission"
+                    (is (thrown-with-msg?
+                         ExceptionInfo
+                         #"You do not have permissions to run this query"
+                         (qp/process-query join-query))))
+                  (testing "Should be able to run card query with card as source joined to table with view-data permission"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-card-source-table-join-full-permissions-test
+  (testing "User can run query with card as source table joined to table when they have both view-data and create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues table for the card
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Allow full access to categories table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id (u/the-id collection)
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :categories)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should be able to run ad-hoc query with card as source joined to table with full permissions"
+                    (is (= 2 (count (mt/rows (qp/process-query join-query))))))
+                  (testing "Should be able to run card query with card as source joined to table with full permissions"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-card-table-join-full-permissions-test
+  (testing "User can run query joining card to table when they have both view-data and create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow full access to venues table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Allow access to categories table for the card
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {categories-card-id :id} {:collection_id (u/the-id collection)
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query venues
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= $category_id
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should be able to run ad-hoc query joining card to table with full permissions"
+                    (is (= 2 (count (mt/rows (qp/process-query join-query))))))
+                  (testing "Should be able to run card query joining card to table with full permissions"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-card-with-join-table-join-view-data-permissions-test
+  (testing "User cannot run query joining card (that contains a join) to table when they have view-data but no create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow view-data but block create-queries for checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :no)
+          ;; Allow access to venues and categories tables for the card with join
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query checkins
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" venues-with-join-card-id)
+                                           :alias "venues_card"
+                                           :condition [:= $venue_id
+                                                       [:field (mt/id :venues :id) {:base-type :type/Integer, :join-alias "venues_card"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should not be able to run ad-hoc query joining card with join to table without create-queries permission"
+                    (is (thrown-with-msg?
+                         ExceptionInfo
+                         #"You do not have permissions to run this query"
+                         (qp/process-query join-query))))
+                  (testing "Should be able to run card query joining card with join to table with view-data permission"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-card-with-join-table-join-full-permissions-test
+  (testing "User can run query joining card (that contains a join) to table when they have both view-data and create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow full access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          ;; Allow access to venues and categories tables for the card with join
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query checkins
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" venues-with-join-card-id)
+                                           :alias "venues_card"
+                                           :condition [:= $venue_id
+                                                       [:field (mt/id :venues :id) {:base-type :type/Integer, :join-alias "venues_card"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should be able to run ad-hoc query joining card with join to table with full permissions"
+                    (is (= 2 (count (mt/rows (qp/process-query join-query))))))
+                  (testing "Should be able to run card query joining card with join to table with full permissions"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-card-with-join-source-table-join-view-data-permissions-test
+  (testing "User cannot run query with card (that contains a join) as source joined to table when they have view-data but no create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and categories tables for the card with join
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          ;; Allow view-data but block create-queries for checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-with-join-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :checkins)
+                                           :alias "checkins"
+                                           :condition [:= [:field (mt/id :venues :id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :checkins :venue_id) {:base-type :type/Integer, :join-alias "checkins"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should not be able to run ad-hoc query with card with join as source joined to table without create-queries permission"
+                    (is (thrown-with-msg?
+                         ExceptionInfo
+                         #"You do not have permissions to run this query"
+                         (qp/process-query join-query))))
+                  (testing "Should be able to run card query with card with join as source joined to table with view-data permission"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-card-with-join-source-table-join-full-permissions-test
+  (testing "User can run query with card (that contains a join) as source joined to table when they have both view-data and create-queries permissions"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and categories tables for the card with join
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          ;; Allow full access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-with-join-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :checkins)
+                                           :alias "checkins"
+                                           :condition [:= [:field (mt/id :venues :id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :checkins :venue_id) {:base-type :type/Integer, :join-alias "checkins"}]]}]
+                                  :limit 2})]
+                (mt/with-test-user :rasta
+                  (testing "Should be able to run ad-hoc query with card with join as source joined to table with full permissions"
+                    (is (= 2 (count (mt/rows (qp/process-query join-query))))))
+                  (testing "Should be able to run card query with card with join as source joined to table with full permissions"
+                    (mt/with-temp [:model/Card {join-card-id :id} {:collection_id (u/the-id collection)
+                                                                   :dataset_query join-query}]
+                      (binding [qp.perms/*card-id* join-card-id]
+                        (is (= 2 (count (mt/rows (qp/process-query join-query)))))))))))))))))
+
+(deftest e2e-multi-stage-aggregation-source-card-permissions-test
+  (testing "Permissions are checked correctly for ad-hoc queries using source cards with multiple aggregation stages"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            ;; Create a card with an aggregated query (first stage of aggregation)
+            (let [source-card-query (mt/mbql-query nil
+                                      {:source-query (:query (mt/mbql-query checkins
+                                                               {:aggregation [[:count]]
+                                                                :breakout [[:field (mt/id :checkins :date) {:temporal-unit :month}]]}))
+                                       :aggregation [[:count]]
+                                       :limit 1
+                                       :breakout [[:field "DATE"
+                                                   {:base-type :type/DateTime
+                                                    :temporal-unit :month}]]})
+                  expected [["2013-01-01T00:00:00Z" 1]]]
+              (mt/with-temp [:model/Card {source-card-id :id} {:collection_id (u/the-id collection)
+                                                               :dataset_query source-card-query}]
+                (let [multi-stage-query (mt/mbql-query nil {:source-table (format "card__%d" source-card-id)})]
+                  (testing "Should be able to run ad-hoc query that adds second aggregation stage using source card"
+                    (mt/with-test-user :rasta
+                      ;; Create an ad-hoc query that uses the source card and adds another aggregation stage
+                      ;; Should successfully run the multi-stage aggregation query
+                      (is (= expected (mt/rows (qp/process-query (qp/userland-query multi-stage-query)))))))
+
+                  (testing "Should NOT be able to run the same query if source card permissions are revoked"
+                    ;; Remove collection permissions
+                    (perms/revoke-collection-permissions! (perms/all-users-group) collection)
+                    (mt/with-test-user :rasta
+                      ;; Should return failed result with permission error
+                      (let [result (qp/process-query (qp/userland-query multi-stage-query))]
+                        (is (= :failed (:status result)))
+                        (is (re-find #"You do not have permissions to view Card" (:error result)))))))))))))))
+
+(deftest e2e-deeply-nested-source-cards-with-blocked-table-test
+  (testing "Deeply nested source cards (Card 3 -> Card 2 -> Card 1 -> Source Table) work with unrelated blocked table"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          ;; Block access to reviews table (unrelated to our card chain)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            ;; Card 1: Direct query on venues table
+            (let [card-1-query (mt/mbql-query venues
+                                 {:fields [$id $name $category_id]
+                                  :order-by [[:asc $id]]
+                                  :limit 3})]
+              (mt/with-temp [:model/Card {card-1-id :id} {:collection_id (u/the-id collection)
+                                                          :dataset_query card-1-query}]
+                ;; Card 2: Query using Card 1 as source
+                (let [card-2-query (mt/mbql-query nil
+                                     {:source-table (format "card__%d" card-1-id)
+                                      :fields [[:field (mt/id :venues :id) {:base-type :type/BigInteger}]
+                                               [:field (mt/id :venues :name) {:base-type :type/Text}]]
+                                      :limit 2})]
+                  (mt/with-temp [:model/Card {card-2-id :id} {:collection_id (u/the-id collection)
+                                                              :dataset_query card-2-query}]
+                    ;; Card 3: Query using Card 2 as source
+                    (let [card-3-query (mt/mbql-query nil
+                                         {:source-table (format "card__%d" card-2-id)
+                                          :order-by [[:asc [:field (mt/id :venues :id) {:base-type :type/BigInteger}]]]
+                                          :limit 1})]
+                      (mt/with-temp [:model/Card {card-3-id :id} {:collection_id (u/the-id collection)
+                                                                  :dataset_query card-3-query}]
+                        (mt/with-test-user :rasta
+                          (let [expected [[1 "Red Medicine"]]]
+                            (testing "Should be able to run Card 3 directly (Card 3 -> Card 2 -> Card 1 -> venues)"
+                              (binding [qp.perms/*card-id* card-3-id]
+                                (is (= expected
+                                       (mt/rows (qp/process-query card-3-query))))))
+
+                            (testing "Should be able to run ad-hoc query using Card 3 as source"
+                              (let [ad-hoc-query (mt/mbql-query nil
+                                                   {:source-table (format "card__%d" card-3-id)})]
+                                (is (= expected
+                                       (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
+
+                            (testing "Should be able to run ad-hoc query using Card 2 as source"
+                              (let [ad-hoc-query (mt/mbql-query nil
+                                                   {:source-table (format "card__%d" card-2-id)
+                                                    :limit 1})]
+                                (is (= expected
+                                       (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
+
+                            (testing "Should be able to run ad-hoc query using Card 1 as source"
+                              (let [ad-hoc-query (mt/mbql-query nil
+                                                   {:source-table (format "card__%d" card-1-id)
+                                                    :fields [[:field (mt/id :venues :id) {:base-type :type/BigInteger}]
+                                                             [:field (mt/id :venues :name) {:base-type :type/Text}]]
+                                                    :limit 1})]
+                                (is (= expected
+                                       (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
+
+                            (testing "Blocked table (reviews) should still be inaccessible"
+                              (is (thrown-with-msg?
+                                   ExceptionInfo
+                                   #"You do not have permissions to run this query"
+                                   (mt/rows
+                                    (qp/process-query (qp/userland-query (mt/mbql-query reviews {:limit 1})))))))))))))))))))))

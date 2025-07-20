@@ -9,13 +9,13 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -24,20 +24,24 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.sql
+    DatabaseMetaData
+    ResultSet
+    ResultSetMetaData
+    SQLException
+    Types)
+   (java.time
+    LocalDateTime
+    OffsetDateTime
+    OffsetTime
+    ZoneOffset
+    ZonedDateTime)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
@@ -58,12 +62,15 @@
                               ;; server and the columns themselves. Since this isn't something we can really change in
                               ;; the query itself don't present the option to the users in the UI
                               :case-sensitivity-string-filter-options false
+                              :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :describe-fields                        true
                               :describe-fks                           true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
-                              :index-info                             true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                             false
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
@@ -71,12 +78,16 @@
                               :uploads                                true
                               :identifiers-with-spaces                true
                               :expressions/integer                    true
+                              :expressions/float                      true
+                              :expressions/date                       true
+                              :expressions/text                       true
                               :split-part                             true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
                               :window-functions/offset                false
-                              :expression-literals                    true}]
+                              :expression-literals                    true
+                              :database-routing                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -186,6 +197,7 @@
     driver.common/default-dbname-details
     driver.common/default-user-details
     driver.common/default-password-details
+    driver.common/default-role-details
     driver.common/cloud-ip-address-info
     driver.common/default-ssl-details
     default-ssl-cert-details
@@ -206,8 +218,8 @@
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
-  [_]
-  (h2x/with-database-type-info [:now [:inline 6]] "timestamp"))
+  [driver]
+  (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -283,6 +295,10 @@
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
 
+(defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime expr))
+
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
 
@@ -307,14 +323,9 @@
     (-> [:str_to_date expr (h2x/literal format-str)]
         (h2x/with-database-type-info database-type))))
 
-(defmethod sql.qp/->float :mysql
-  [_ value]
-  ;; no-op as MySQL doesn't support cast to float
-  value)
-
-(defmethod sql.qp/->integer :mysql
-  [_ value]
-  (h2x/maybe-cast :signed value))
+(defmethod sql.qp/integer-dbtype :mysql
+  [_]
+  :signed)
 
 (defmethod sql.qp/->honeysql [:mysql :split-part]
   [driver [_ text divider position]]
@@ -347,10 +358,6 @@
 (defmethod sql.qp/->honeysql [:mysql :text]
   [driver [_ value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:mysql :date]
-  [driver [_ value]]
-  [:str_to_date (sql.qp/->honeysql driver value) "%Y-%m-%d"])
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -399,25 +406,21 @@
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as mbql-clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                        (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         honeysql-expr (parent-method driver mbql-clause)]
     (cond
-      (not (lib.field/json-field? stored-field))
+      (not (driver-api/json-field? stored-field))
       honeysql-expr
 
       (::sql.qp/forced-alias opts)
-      (keyword (::add/source-alias opts))
+      (keyword (driver-api/qp.add.source-alias opts))
 
       :else
       (walk/postwalk #(if (h2x/identifier? %)
                         (sql.qp/json-query :mysql % stored-field)
                         %)
                      honeysql-expr))))
-
-(defmethod sql.qp/->honeysql [:mysql :integer]
-  [driver [_ value]]
-  (h2x/maybe-cast "SIGNED" (sql.qp/->honeysql driver value)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -508,7 +511,7 @@
         timestamp? (h2x/is-of-type? expr "timestamp")]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (h2x/with-database-type-info
-     [:convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone]
+     [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]
      "datetime")))
 
 (defn- timestampdiff-dates [unit x y]
@@ -596,7 +599,7 @@
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
   ;; don't contain a comma; our mb-version-and-process-identifier shouldn't contain one, but just to be on the safe side
   (let [set-prog-nm-fn (fn []
-                         (let [prog-name (str/replace config/mb-version-and-process-identifier "," "_")]
+                         (let [prog-name (str/replace driver-api/mb-version-and-process-identifier "," "_")]
                            (assoc jdbc-spec :connectionAttributes (str "program_name:" prog-name))))]
     (if-let [conn-attrs (get additional-options-map "connectionAttributes")]
       (if (str/includes? conn-attrs "program_name")
@@ -622,7 +625,7 @@
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
-       (-> (mdb/spec :mysql details)
+       (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 
@@ -663,7 +666,7 @@
 ;; TIMEZONE FIXME — not 100% sure this behavior makes sense
 (defmethod sql-jdbc.execute/set-parameter [:mysql OffsetDateTime]
   [driver ^java.sql.PreparedStatement ps ^Integer i t]
-  (let [zone   (t/zone-id (qp.timezone/results-timezone-id))
+  (let [zone   (t/zone-id (driver-api/results-timezone-id))
         offset (.. zone getRules (getOffset (t/instant t)))
         t      (t/local-date-time (t/with-offset-same-instant t offset))]
     (sql-jdbc.execute/set-parameter driver ps i t)))
@@ -677,7 +680,7 @@
   (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
     (fn read-timestamp-thunk []
       (when-let [t (.getObject rs i LocalDateTime)]
-        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))))
+        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (driver-api/results-timezone-id))) (t/zone-offset 0))))
     (fn read-datetime-thunk []
       (.getObject rs i LocalDateTime))))
 
@@ -741,21 +744,21 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
-    ::upload/float                    [:double]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:datetime]
-    ::upload/offset-datetime          [:timestamp]))
+    :metabase.upload/varchar-255              [[:varchar 255]]
+    :metabase.upload/text                     [:text]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment]
+    :metabase.upload/float                    [:double]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:datetime]
+    :metabase.upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/allowed-promotions :mysql
   [_driver]
-  {::upload/int     #{::upload/float}
-   ::upload/boolean #{::upload/int
-                      ::upload/float}})
+  {:metabase.upload/int     #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int
+                              :metabase.upload/float}})
 
 (defmethod driver/create-auto-pk-with-append-csv? :mysql [_driver] true)
 
@@ -807,7 +810,7 @@
       offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
   (defmethod value->string OffsetDateTime
     [driver ^OffsetDateTime val]
-    (let [uploads-db (upload/current-database)]
+    (let [uploads-db (driver-api/current-database)]
       (if (mariadb? uploads-db)
         (offset-datetime->unoffset-datetime driver uploads-db val)
         (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
@@ -1030,3 +1033,21 @@
                        (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
+  ;; ok to hardcode driver name here because this function only supports app DB types
+  (driver-api/query-canceled-exception? :mysql e))
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
+(defmethod driver.sql/default-database-role :mysql
+  [_driver database]
+  (-> database :details :role))
+
+(defmethod driver.sql/set-role-statement :mysql
+  [_driver role]
+  (format "SET ROLE '%s';" role))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42S02"))

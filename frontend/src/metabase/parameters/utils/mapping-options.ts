@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { tag_names } from "cljs/metabase.models.params.shared";
+import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isActionDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
@@ -32,6 +32,7 @@ import type {
   ParameterTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  VirtualCard,
   WritebackParameter,
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
@@ -129,9 +130,17 @@ export type ParameterMappingOption =
 export function getParameterMappingOptions(
   question: Question | undefined,
   parameter: Parameter | null | undefined = null,
-  card: Card,
+  card: Card | VirtualCard,
   dashcard: BaseDashboardCard | null | undefined = null,
+  parameterDashcard: BaseDashboardCard | null | undefined = null,
 ): ParameterMappingOption[] {
+  const isInlineParameterOnCardFromOtherTab =
+    parameterDashcard != null &&
+    parameterDashcard.dashboard_tab_id !== dashcard?.dashboard_tab_id;
+  if (isInlineParameterOnCardFromOtherTab) {
+    return [];
+  }
+
   if (dashcard && isVirtualDashCard(dashcard)) {
     if (["heading", "text"].includes(card.display)) {
       const tagNames = tag_names(dashcard.visualization_settings.text || "");

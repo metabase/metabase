@@ -2,11 +2,11 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-import List from "metabase/components/List";
-import S from "metabase/components/List/List.module.css";
-import ListItem from "metabase/components/ListItem";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import AdminAwareEmptyState from "metabase/common/components/AdminAwareEmptyState";
+import List from "metabase/common/components/List";
+import S from "metabase/common/components/List/List.module.css";
+import ListItem from "metabase/common/components/ListItem";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
@@ -16,11 +16,19 @@ import ReferenceHeader from "../../components/ReferenceHeader";
 import { getError, getLoading, getSegments } from "../../selectors";
 
 const emptyStateData = {
-  title: t`Segments are interesting subsets of tables`,
-  adminMessage: t`Defining common segments for your team makes it even easier to ask questions`,
-  message: t`Segments will appear here once your admins have created some`,
+  get title() {
+    return t`Segments are interesting subsets of tables`;
+  },
+  get adminMessage() {
+    return t`Defining common segments for your team makes it even easier to ask questions`;
+  },
+  get message() {
+    return t`Segments will appear here once your admins have created some`;
+  },
   image: "app/assets/img/segments-list",
-  adminAction: t`Learn how to create segments`,
+  get adminAction() {
+    return t`Learn how to create segments`;
+  },
 };
 
 interface SegmentListProps {

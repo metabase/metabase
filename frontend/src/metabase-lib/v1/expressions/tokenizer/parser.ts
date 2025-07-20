@@ -9,7 +9,7 @@ export const tags = styleTags({
   False: t.bool,
   String: t.string,
   Number: t.number,
-  Reference: t.processingInstruction,
+  Field: t.processingInstruction,
   Escape: t.escape,
   "CallExpression/Identifier": t.function(t.variableName),
   And: t.logicOperator,

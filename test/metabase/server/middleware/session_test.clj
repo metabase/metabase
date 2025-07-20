@@ -5,8 +5,8 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
+   [metabase.app-db.core :as mdb]
    [metabase.core.initialization-status :as init-status]
-   [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -231,8 +231,8 @@
           ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
           ;; `enable-advanced-permissions?` will still return false
           (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
-            (is (= true
-                   (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil)))))))
+            (is (true?
+                 (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil)))))))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
 

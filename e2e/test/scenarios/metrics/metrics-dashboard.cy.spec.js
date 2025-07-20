@@ -78,7 +78,65 @@ describe("scenarios > metrics > dashboard", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/search?*").as("search");
+  });
+
+  it("should be able to combine scalar metrics on a dashcard", () => {
+    H.createDashboardWithQuestions({ questions: [ORDERS_SCALAR_METRIC] }).then(
+      ({ dashboard }) => {
+        H.createQuestion(PRODUCTS_SCALAR_METRIC);
+        H.visitDashboard(dashboard.id);
+      },
+    );
+    H.editDashboard();
+
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(PRODUCTS_SCALAR_METRIC.name);
+      cy.findByTestId("visualization-canvas").within(() => {
+        // On the funnel and on the horizontal well
+        cy.findAllByText(ORDERS_SCALAR_METRIC.name).should("have.length", 2);
+        cy.findAllByText(PRODUCTS_SCALAR_METRIC.name).should("exist");
+      });
+      cy.button("Save").click();
+    });
+    H.saveDashboard();
+    H.getDashboardCard().within(() => {
+      // On the funnel and on the horizontal well
+      cy.findAllByText(ORDERS_SCALAR_METRIC.name).should("have.length", 2);
+      cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("be.visible");
+    });
+  });
+
+  it("should be able to combine timeseries metrics on a dashcard (metabase#42575)", () => {
+    H.createDashboardWithQuestions({
+      questions: [ORDERS_TIMESERIES_METRIC],
+    }).then(({ dashboard }) => {
+      H.createQuestion(PRODUCTS_TIMESERIES_METRIC);
+      H.visitDashboard(dashboard.id);
+    });
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0, {
+      isVisualizerCard: false,
+    });
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(PRODUCTS_TIMESERIES_METRIC.name);
+      H.chartLegendItem(ORDERS_TIMESERIES_METRIC.name).should("exist");
+      H.chartLegendItem(PRODUCTS_TIMESERIES_METRIC.name).should("exist");
+      cy.button("Save").click();
+    });
+    H.saveDashboard();
+    H.getDashboardCard().within(() => {
+      H.chartLegendItem(ORDERS_TIMESERIES_METRIC.name).should("exist");
+      H.chartLegendItem(PRODUCTS_TIMESERIES_METRIC.name).should("exist");
+    });
   });
 
   it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
@@ -215,17 +273,6 @@ describe("scenarios > metrics > dashboard", () => {
     H.getDashboardCard().findByText("Orders").should("be.visible");
   });
 
-  it("should be able to combine scalar metrics on a dashcard", () => {
-    combineAndVerifyMetrics(ORDERS_SCALAR_METRIC, PRODUCTS_SCALAR_METRIC);
-  });
-
-  it("should be able to combine timeseries metrics on a dashcard (metabase#42575)", () => {
-    combineAndVerifyMetrics(
-      ORDERS_TIMESERIES_METRIC,
-      PRODUCTS_TIMESERIES_METRIC,
-    );
-  });
-
   it("should be able to use click behaviors with metrics on a dashboard", () => {
     H.createDashboardWithQuestions({
       questions: [ORDERS_TIMESERIES_METRIC],
@@ -295,29 +342,3 @@ describe("scenarios > metrics > dashboard", () => {
       .should("be.visible");
   });
 });
-
-function combineAndVerifyMetrics(metric1, metric2) {
-  H.createDashboardWithQuestions({ questions: [metric1] }).then(
-    ({ dashboard }) => {
-      H.createQuestion(metric2);
-      H.visitDashboard(dashboard.id);
-    },
-  );
-  H.editDashboard();
-  H.getDashboardCard().realHover().findByTestId("add-series-button").click();
-  H.modal().within(() => {
-    cy.findByText(metric2.name).click();
-    cy.findByLabelText("Legend").within(() => {
-      cy.findByText(metric1.name).should("be.visible");
-      cy.findByText(metric2.name).should("be.visible");
-    });
-    cy.button("Done").click();
-  });
-  H.saveDashboard();
-  H.getDashboardCard().within(() => {
-    cy.findByLabelText("Legend").within(() => {
-      cy.findByText(metric1.name).should("be.visible");
-      cy.findByText(metric2.name).should("be.visible");
-    });
-  });
-}

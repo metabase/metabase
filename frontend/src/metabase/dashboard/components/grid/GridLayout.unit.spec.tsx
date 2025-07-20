@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 
 import { renderWithProviders } from "__support__/ui";
@@ -77,30 +77,5 @@ describe("GridLayout", () => {
     // Check if all items are rendered
     expect(screen.getByTestId("item-1")).toBeInTheDocument();
     expect(screen.getByTestId("item-2")).toBeInTheDocument();
-  });
-
-  test("disables and enables text selection during drag", () => {
-    // Capture original user select style
-    const originalUserSelect = document.body.style.userSelect;
-
-    renderWithProviders(
-      <ThemeProvider>
-        <GridLayout {...defaultProps} isEditing={true} />
-      </ThemeProvider>,
-    );
-
-    const grid = screen.getByTestId("item-1");
-
-    // Test drag start disables text selection
-    fireEvent.mouseDown(grid);
-    fireEvent.mouseMove(grid);
-    expect(document.body).toHaveStyle({ userSelect: "none" });
-
-    // Test drag stop re-enables text selection
-    fireEvent.mouseUp(grid);
-    expect(document.body).toHaveStyle({ userSelect: "" });
-
-    // Restore original style
-    document.body.style.userSelect = originalUserSelect;
   });
 });

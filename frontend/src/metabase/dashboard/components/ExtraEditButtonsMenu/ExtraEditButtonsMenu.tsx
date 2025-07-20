@@ -1,12 +1,13 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { setDashboardAttributes } from "metabase/dashboard/actions";
 import { trackDashboardWidthChange } from "metabase/dashboard/analytics";
 import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Popover, Stack, Switch } from "metabase/ui";
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 
 export function ExtraEditButtonsMenu() {

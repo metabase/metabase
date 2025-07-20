@@ -1,6 +1,7 @@
 (ns metabase.search.permissions
   (:require
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.config :refer [SearchContext]]
    [metabase.util.malli :as mu]))
@@ -40,3 +41,14 @@
     {:current-user-id current-user-id
      :is-superuser?   is-superuser?})
    (perms/audit-namespace-clause :collection.namespace nil)])
+
+(mu/defn permitted-tables-clause
+  "Build the WHERE clause corresponding to which tables the given user has access to."
+  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- :keyword]
+  (mi/visible-filter-clause
+   :model/Table
+   table-id-col
+   {:user-id current-user-id
+    :is-superuser? is-superuser?}
+   {:perms/view-data :unrestricted
+    :perms/create-queries :query-builder}))

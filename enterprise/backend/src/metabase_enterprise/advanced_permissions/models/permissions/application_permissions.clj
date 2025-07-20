@@ -3,9 +3,7 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
-   [metabase.models.application-permissions-revision :as a-perm-revision]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -50,11 +48,11 @@
    :subscription (permission-for-type permission-set :subscription)})
 
 (mu/defn graph :- ApplicationPermissionsGraph
-  "Fetch a graph representing the application permissions status for groups that has at least one application permission enabled.
-  This works just like the function of the same name in `metabase.permissions.models.permissions`;
-  see also the documentation for that function."
+  "Fetch a graph representing the application permissions status for groups that has at least one application permission
+  enabled. This works just like the function of the same name in `metabase.permissions.models.permissions`; see also the
+  documentation for that function."
   []
-  {:revision (a-perm-revision/latest-id)
+  {:revision (perms/latest-application-permissions-revision-id)
    :groups   (into {} (for [[group-id perms] (group-id->permissions-set)]
                         {group-id (permissions-set->application-perms perms)}))})
 
@@ -84,10 +82,10 @@
          old-perms          (:groups old-graph)
          new-perms          (:groups new-graph)
          [diff-old changes] (data/diff old-perms new-perms)]
-     (perms.u/log-permissions-changes diff-old changes)
-     (when-not force? (perms.u/check-revision-numbers old-graph new-graph))
+     (perms/log-permissions-changes diff-old changes)
+     (when-not force? (perms/check-revision-numbers old-graph new-graph))
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]
            (update-application-permissions! group-id changes))
-         (perms.u/save-perms-revision! :model/ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes))))))
+         (perms/save-perms-revision! :model/ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes))))))

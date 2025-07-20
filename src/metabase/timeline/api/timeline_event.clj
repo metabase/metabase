@@ -4,7 +4,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]

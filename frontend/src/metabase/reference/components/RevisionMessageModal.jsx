@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ModalContent from "metabase/common/components/ModalContent";
+import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 

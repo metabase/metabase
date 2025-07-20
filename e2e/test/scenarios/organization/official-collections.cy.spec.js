@@ -39,7 +39,7 @@ describe("official collections", () => {
       // Gate the UI
       cy.visit("/collection/root");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -52,7 +52,7 @@ describe("official collections", () => {
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should be able to manage collection authority level", () => {
       cy.visit("/collection/root");
@@ -84,7 +84,7 @@ describe("official collections", () => {
 
       openCollection("First collection");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -107,7 +107,7 @@ describe("official collections", () => {
 
       H.popover().findByText("Make collection official").should("exist");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByPlaceholderText("My new fantastic collection").type(
@@ -124,7 +124,7 @@ describe("official collections", () => {
       });
       H.popover().findByText("Make collection official").should("exist");
 
-      startNewCollectionCreation();
+      H.startNewCollectionFromSidebar();
       cy.findByTestId("new-collection-modal").then((modal) => {
         assertHasCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -133,7 +133,7 @@ describe("official collections", () => {
   });
 
   context("token expired or removed", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should not display official collection icon anymore", () => {
       testOfficialBadgePresence(false);
@@ -161,7 +161,7 @@ function testOfficialBadgePresence(expectBadge = true) {
       collection_id: collectionId,
     });
 
-    !expectBadge && H.setTokenFeatures("none");
+    !expectBadge && H.deleteToken();
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -221,7 +221,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
     });
   });
 
-  !expectBadge && H.setTokenFeatures("none");
+  !expectBadge && H.deleteToken();
 
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
@@ -236,7 +236,7 @@ function openCollection(collectionName) {
 }
 
 function createAndOpenOfficialCollection({ name }) {
-  startNewCollectionCreation();
+  H.startNewCollectionFromSidebar();
   cy.findByTestId("new-collection-modal").then((modal) => {
     cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
@@ -310,5 +310,3 @@ const assertHasCollectionBadgeInNavbar = (expectBadge = true) => {
       }
     });
 };
-
-const startNewCollectionCreation = () => H.newButton("Collection").click();

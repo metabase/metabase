@@ -77,6 +77,8 @@ describe("scenarios > public > question", () => {
 
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then((publicUuid) => {
+        H.main().realHover();
+
         H.downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUuid },
           H.assertSheetRowsCount(5),
@@ -244,7 +246,7 @@ describe("scenarios [EE] > public > question", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     H.updateSetting("enable-public-sharing", true);
   });

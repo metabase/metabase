@@ -1,3 +1,4 @@
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import { type SetupOpts, setup } from "./setup";
@@ -12,6 +13,10 @@ const setupCommon = async (opts?: Partial<SetupOpts>) => {
 };
 
 describe("PublicOrEmbeddedDashboardPage", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   it("should display dashboard tabs", async () => {
     await setupCommon({ numberOfTabs: 2 });
 

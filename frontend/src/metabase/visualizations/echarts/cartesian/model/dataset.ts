@@ -6,11 +6,12 @@ import { checkNumber, isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+  INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
   OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
@@ -188,6 +189,13 @@ export const getJoinedCardsDataset = (
   return Array.from(groupedData.values());
 };
 
+export const appendDataIndex = (dataset: ChartDataset) => {
+  return dataset.map((datum, index) => ({
+    ...datum,
+    [INDEX_KEY]: index,
+  }));
+};
+
 type TransformFn = (
   record: Datum,
   index: number,
@@ -267,6 +275,19 @@ export const getKeyBasedDatasetTransform = (
         transformedRecord[key] = valueTransform(datum[key]);
       }
     }
+    return transformedRecord;
+  };
+};
+
+export const applyXAxisTransformations = (
+  xAxisTransformFn: (value: RowValue) => RowValue,
+): TransformFn => {
+  return (datum) => {
+    const transformedRecord = { ...datum };
+    transformedRecord[X_AXIS_RAW_VALUE_DATA_KEY] = datum[X_AXIS_DATA_KEY];
+    transformedRecord[X_AXIS_DATA_KEY] = xAxisTransformFn(
+      datum[X_AXIS_DATA_KEY],
+    );
     return transformedRecord;
   };
 };
@@ -508,20 +529,20 @@ export function filterNullDimensionValues(
 ) {
   const filteredDataset: ChartDataset = [];
 
-  dataset.forEach((datum, originalIndex) => {
+  dataset.forEach((datum) => {
     if (datum[X_AXIS_DATA_KEY] == null) {
       showWarning?.(nullDimensionWarning().text);
       return;
     }
     filteredDataset.push({
       ...datum,
-      [ORIGINAL_INDEX_DATA_KEY]: originalIndex,
     });
   });
 
   return filteredDataset;
 }
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 export const NO_X_AXIS_VALUES_ERROR_MESSAGE = t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
 
 export function replaceZeroesForLogScale(
@@ -605,10 +626,7 @@ const interpolateTimeSeriesData = (
 
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
-    result.push({
-      ...datum,
-      [ORIGINAL_INDEX_DATA_KEY]: datum[ORIGINAL_INDEX_DATA_KEY] ?? i,
-    });
+    result.push(datum);
 
     if (i === dataset.length - 1) {
       break;
@@ -710,6 +728,7 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
 ) => {
+  dataset = appendDataIndex(dataset);
   const barSeriesModels = seriesModels.filter((seriesModel) => {
     const seriesSettings = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,
@@ -756,15 +775,21 @@ export const applyVisualizationSettingsDataTransformations = (
     ),
     {
       condition: isCategoryAxis(xAxisModel),
-      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], (value) => {
+      fn: applyXAxisTransformations((value) => {
         return isCategoryAxis(xAxisModel) && value == null
           ? ECHARTS_CATEGORY_AXIS_NULL_VALUE
           : value;
       }),
     },
     {
+      condition: isCategoryAxis(xAxisModel),
+      fn: applyXAxisTransformations((value) =>
+        typeof value === "object" ? JSON.stringify(value) : value,
+      ),
+    },
+    {
       condition: isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel),
-      fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], (value) => {
+      fn: applyXAxisTransformations((value) => {
         return isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)
           ? xAxisModel.toEChartsAxisValue(value)
           : value;

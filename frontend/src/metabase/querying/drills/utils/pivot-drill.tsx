@@ -14,17 +14,23 @@ import type Question from "metabase-lib/v1/Question";
 const ACTIONS = {
   category: {
     name: "pivot.category",
-    title: t`Category`,
+    get title() {
+      return t`Category`;
+    },
     icon: "string",
   },
   location: {
     name: "pivot.location",
-    title: t`Location`,
+    get title() {
+      return t`Location`;
+    },
     icon: "location",
   },
   time: {
     name: "pivot.time",
-    title: t`Time`,
+    get title() {
+      return t`Time`;
+    },
     icon: "calendar",
   },
 } as const;

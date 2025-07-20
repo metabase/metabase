@@ -33,7 +33,19 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
 
-export const getStoreUrl = (path = "") => {
+type StorePaths =
+  /** store main page */
+  | ""
+  /** checkout page */
+  | "checkout"
+  /** plans management page */
+  | "account/manage/plans"
+  /** development instance specific upsell */
+  | "account/new-dev-instance"
+  /** redirects to the specific instance storage management page */
+  | "account/storage";
+
+export const getStoreUrl = (path: StorePaths = "") => {
   return `https://store.metabase.com/${path}`;
 };
 
@@ -44,6 +56,8 @@ export const getLearnUrl = (path = "") => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
   return `https://www.metabase.com/learn/${path}`;
 };
+
+export const CROWDIN_URL = "https://crowdin.com/project/metabase-i18n";
 
 export type UtmProps = {
   utm_source?: string;

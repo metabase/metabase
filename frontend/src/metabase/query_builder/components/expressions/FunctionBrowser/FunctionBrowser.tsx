@@ -9,13 +9,13 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import Markdown from "metabase/core/components/Markdown";
+import EmptyState from "metabase/common/components/EmptyState";
+import Markdown from "metabase/common/components/Markdown";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { HelpText, StartRule } from "metabase-lib/v1/expressions";
+import type { HelpText } from "metabase-lib/v1/expressions";
 
 import { HighlightExpressionSource } from "../HighlightExpression";
 
@@ -36,12 +36,12 @@ const components = {
 };
 
 export function FunctionBrowser({
-  startRule,
+  expressionMode,
   reportTimezone,
   query,
   onClauseClick,
 }: {
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   reportTimezone?: string;
   onClauseClick?: (name: string) => void;
@@ -56,8 +56,9 @@ export function FunctionBrowser({
   );
 
   const filteredClauses = useMemo(
-    () => getFilteredClauses({ startRule, filter, database, reportTimezone }),
-    [filter, startRule, database, reportTimezone],
+    () =>
+      getFilteredClauses({ expressionMode, filter, database, reportTimezone }),
+    [filter, expressionMode, database, reportTimezone],
   );
 
   const isEmpty = filteredClauses.length === 0;
@@ -73,7 +74,7 @@ export function FunctionBrowser({
         size="sm"
         mb="sm"
         mx="md"
-        placeholder={getSearchPlaceholder(startRule)}
+        placeholder={getSearchPlaceholder(expressionMode)}
         value={filter}
         onChange={handleFilterChange}
         leftSection={<Icon name="search" />}
@@ -142,7 +143,7 @@ function FunctionBrowserItem({
     >
       <dt>
         <Text size="md" pb="xs" fw="bold" className={S.name}>
-          {clause.structure}
+          {clause.displayName}
         </Text>
       </dt>
       <dd className={S.description}>

@@ -1,4 +1,6 @@
-import { type ChangeEvent, useState } from "react";
+import debounce from "lodash.debounce";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
 
@@ -46,6 +48,32 @@ export const ChartSettingInputNumeric = ({
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
 
+  const handleChangeRef = useLatest((e: ChangeEvent<HTMLInputElement>) => {
+    let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
+    if (options?.isInteger) {
+      num = Math.round(num);
+    }
+    if (options?.isNonNegative && num < 0) {
+      num *= -1;
+    }
+
+    if (isNaN(num)) {
+      onChange(undefined);
+    } else {
+      onChange(num);
+      setInputValue(String(num));
+    }
+  });
+  const handleChangeDebounced = useMemo(() => {
+    return debounce((e: ChangeEvent<HTMLInputElement>) => {
+      handleChangeRef.current(e);
+    }, 400);
+  }, [handleChangeRef]);
+
+  useEffect(() => {
+    setInputValue(value?.toString() ?? "");
+  }, [value]);
+
   return (
     <TextInput
       id={id}
@@ -53,26 +81,11 @@ export const ChartSettingInputNumeric = ({
       placeholder={placeholder}
       type="text"
       error={inputValue && isNaN(Number(inputValue))}
-      value={String(inputValue)}
+      value={inputValue}
       onChange={(e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.value.split("").every((ch) => ALLOWED_CHARS.has(ch))) {
           setInputValue(e.target.value);
-        }
-      }}
-      onBlur={(e) => {
-        let num = e.target.value !== "" ? Number(e.target.value) : Number.NaN;
-        if (options?.isInteger) {
-          num = Math.round(num);
-        }
-        if (options?.isNonNegative && num < 0) {
-          num *= -1;
-        }
-
-        if (isNaN(num)) {
-          onChange(undefined);
-        } else {
-          onChange(num);
-          setInputValue(String(num));
+          handleChangeDebounced(e);
         }
       }}
       className={className}

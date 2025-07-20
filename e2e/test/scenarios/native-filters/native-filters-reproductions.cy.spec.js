@@ -23,24 +23,31 @@ describe("issue 9357", () => {
     cy.signInAsAdmin();
   });
 
-  it("should reorder template tags by drag and drop (metabase#9357)", () => {
-    H.startNewNativeQuestion();
-    SQLFilter.enterParameterizedQuery(
-      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
-    );
+  it(
+    "should reorder template tags by drag and drop (metabase#9357)",
+    { viewportWidth: 800, viewportHeight: 600 },
+    () => {
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      );
 
-    // Drag the firstparameter to last position
-    H.moveDnDKitElement(cy.get("fieldset").findAllByRole("listitem").first(), {
-      horizontal: 430,
-    });
+      // Drag the firstparameter to last position
+      H.moveDnDKitElement(
+        cy.get("fieldset").findAllByRole("listitem").first(),
+        {
+          vertical: 50,
+        },
+      );
 
-    // Ensure they're in the right order
-    cy.findAllByText("Variable name").parent().as("variableField");
+      // Ensure they're in the right order
+      cy.findAllByText("Variable name").parent().as("variableField");
 
-    cy.get("@variableField").first().findByText("nextparameter");
+      cy.get("@variableField").first().findByText("nextparameter");
 
-    cy.get("@variableField").eq(1).findByText("firstparameter");
-  });
+      cy.get("@variableField").eq(1).findByText("firstparameter");
+    },
+  );
 });
 
 describe("issue 11480", () => {
@@ -74,9 +81,7 @@ describe("issue 11480", () => {
     cy.location("search").should("eq", "?x=");
 
     // Although there's no default, we should be still able to run the query.
-    cy.findByTestId("native-query-editor-sidebar")
-      .button("Get Answer")
-      .should("not.be.disabled");
+    SQLFilter.getRunQueryButton().should("not.be.disabled");
   });
 });
 
@@ -948,7 +953,7 @@ describe("issue 27257", () => {
   it("should not drop numeric filter widget value on refresh even if it's zero (metabase#27257)", () => {
     cy.reload();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Query results will appear here.");
+    cy.findByText("Here's where your results will appear");
     cy.findByDisplayValue("0");
   });
 });

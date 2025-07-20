@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -9,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -223,7 +225,7 @@
                 :stages   [{:lib/type     :mbql.stage/mbql
                             :source-table 1
                             :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                            [:field {:lib/uuid string?
+                                            [:field {:lib/uuid (str (random-uuid))
                                                      :effective-type :type/Integer} 1]]]
                             :breakout     [[:aggregation
                                             {:display-name   "Revenue"
@@ -761,8 +763,7 @@
                                                                                          :percent-email 0
                                                                                          :percent-state 0
                                                                                          :average-length 6.375}}}
-                                                        :base_type :type/Text
-                                                        :source_alias "Products"}
+                                                        :base_type :type/Text}
                                                        {:name "count"
                                                         :display_name "Count"
                                                         :base_type :type/Integer
@@ -782,8 +783,7 @@
                                                                           :percent-email 0
                                                                           :percent-state 0
                                                                           :average-length 6.375}}}
-                                         :base_type :type/Text
-                                         :source_alias "Products"}
+                                         :base_type :type/Text}
                                         {:name "count"
                                          :display_name "Count"
                                          :base_type :type/Integer
@@ -1155,21 +1155,41 @@
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
 
 (deftest ^:parallel cumulative-count-test
-  (is (=? {:query {:aggregation [[:aggregation-options
-                                  [:cum-count [:field 48400 {:base-type :type/BigInteger}]]
-                                  {:name "count"}]]}}
-          (lib.convert/->legacy-MBQL
-           {:lib/type :mbql/query
-            :database 48001
-            :stages   [{:lib/type     :mbql.stage/mbql
-                        :source-table 48040
-                        :aggregation  [[:cum-count
-                                        {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "count"}
-                                        [:field
-                                         {:base-type      :type/BigInteger,
-                                          :effective-type :type/BigInteger,
-                                          :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
-                                         48400]]]}]}))))
+  (is (=? (m/dissoc-in (lib.tu.macros/mbql-query
+                         venues
+                         {:source-table $$venues
+                          :aggregation [[:aggregation-options
+                                         [:cum-count [:field %id {:base-type :type/BigInteger}]]
+                                         {:name "count"}]]})
+                       [:query :aggregation-idents])
+          (m/dissoc-in (lib.convert/->legacy-MBQL
+                        (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                            (lib/aggregate (lib.options/update-options
+                                            (lib/cum-count (meta/field-metadata :venues :id))
+                                            assoc :name "count"))))
+                       [:query :aggregation-idents]))))
+
+(deftest ^:parallel cumulative-aggregations-in-expression-test
+  (is (=?  (m/dissoc-in (lib.tu.macros/mbql-query
+                          venues
+                          {:source-table $$venues
+                           :aggregation [[:aggregation-options
+                                          [:+
+                                           [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
+                                           [:aggregation-options [:cum-count] {:name "b"}]]
+                                          {:name "xixix"}]]})
+                        [:query :aggregation-idents])
+           (m/dissoc-in (lib.convert/->legacy-MBQL
+                         (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                             (lib/aggregate (lib.options/update-options
+                                             (lib/+ (lib.options/update-options
+                                                     (lib/cum-sum (meta/field-metadata :venues :id))
+                                                     assoc :name "a")
+                                                    (lib.options/update-options
+                                                     (lib/cum-count)
+                                                     assoc :name "b"))
+                                             assoc :name "xixix"))))
+                        [:query :aggregation-idents]))))
 
 (deftest ^:parallel blank-queries-test
   (testing "minimal legacy"
@@ -1213,3 +1233,74 @@
     "2020-10-20T10:20:00"
     "2020-10-20T10:20:00Z"
     "10:20:00"))
+
+(deftest ^:parallel round-trip-joins-metadata-test
+  (testing "when converting a join, preserve metadata correctly"
+    (let [legacy {:database (meta/id)
+                  :type     :query
+                  :query    {:source-table (meta/id :categories)
+                             :fields       [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                             :joins        [{:alias           "CATEGORIES__via__CATEGORY_ID"
+                                             :ident           (u/generate-nano-id)
+                                             :source-table    (meta/id :venues)
+                                             :condition       [:=
+                                                               [:field (meta/id :venues :category-id) nil]
+                                                               [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                                             :strategy        :left-join
+                                             :fk-field-id     (meta/id :venues :category-id)
+                                             :source-metadata [{:name "ID", :display_name "ID", :base_type :type/Integer}]}]}}]
+      (testing "legacy => MBQL 5"
+        (is (=? {:stages [{:joins [{:lib/type           :mbql/join
+                                    :stages             [{:lib/stage-metadata {:lib/type :metadata/results
+                                                                               :columns  [{:lib/type     :metadata/column
+                                                                                           :name         "ID"
+                                                                                           :display-name "ID"}]}}]
+                                    :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
+                                    :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
+                (-> legacy lib.convert/->pMBQL))))
+      (testing "legacy => MBQL 5 => legacy"
+        (is (=? {:query {:joins [{:alias           "CATEGORIES__via__CATEGORY_ID"
+                                  :source-metadata [{:lib/type     (symbol "nil #_\"key is not present.\"")
+                                                     :name         "ID"
+                                                     :display_name "ID"
+                                                     :base_type    :type/Integer}]}]}}
+                (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL))))
+      (testing "legacy => MBQL 5 => legacy => MBQL 5"
+        (is (=? {:stages [{:joins [{:lib/type           :mbql/join
+                                    :stages             [{:lib/stage-metadata {:lib/type :metadata/results
+                                                                               :columns  [{:lib/type     :metadata/column
+                                                                                           :name         "ID"
+                                                                                           :display-name "ID"}]}}]
+                                    :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
+                                    :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
+                (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL lib.convert/->pMBQL)))))))
+
+(deftest ^:parallel ->pMBQL-datetime-test
+  (is (=? [:datetime {:mode :unix-seconds
+                      :lib/uuid string?} 10]
+          (lib.convert/->pMBQL [:datetime 10 {:mode :unix-seconds}])))
+  (is (=? [:datetime {:mode :iso
+                      :lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime "" {:mode :iso}])))
+  (is (=? [:datetime {:lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime "" {}])))
+  (is (=? [:datetime {:lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime ""]))))
+
+(deftest ^:parallel ->legacy-MBQL-test
+  (is (= [:datetime 10 {:mode :unix-seconds}]
+         (lib.convert/->legacy-MBQL [:datetime {:mode :unix-seconds, :lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} 10])))
+  (is (= [:datetime ""]
+         (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} ""])))
+  (is (= [:datetime "" {:mode :iso}]
+         (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9" :mode :iso} ""]))))
+
+(deftest ^:parallel round-trip-aggregation-reference-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        sum   (->> (lib/aggregable-columns query nil)
+                   (m/find-first (comp #{"sum"} :name)))
+        query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
+        legacy-query (lib.convert/->legacy-MBQL query)]
+    (is (= legacy-query
+           (-> legacy-query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))

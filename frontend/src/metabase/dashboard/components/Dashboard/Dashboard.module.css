@@ -19,16 +19,22 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
-  background-color: var(--mb-color-background);
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border);
+  transition: var(--transition-theme-change);
+
+  &:not(.isEmbeddingSdk) {
+    background-color: var(--mb-color-background);
+  }
 
   &.isFullscreen {
     background-color: transparent;
-    border: none;
+    border-color: transparent;
   }
 
   &.isNightMode {
     color: var(--mb-color-text-white);
+
+    --mb-color-border: var(--mb-color-text-medium);
   }
 }
 
@@ -78,4 +84,13 @@
     margin: 0 auto;
     max-width: var(--dashboard-fixed-width);
   }
+}
+
+/* Make selected text invisible only during drag operations to preserve auto-scroll */
+:global(body.react-grid-layout-dragging ::selection) {
+  background: transparent;
+}
+
+:global(body.react-grid-layout-dragging ::-moz-selection) {
+  background: transparent;
 }

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ButtonGroup from "metabase/core/components/ButtonGroup";
+import ButtonGroup from "metabase/common/components/ButtonGroup";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -37,11 +37,11 @@ export const LeftViewFooterButtonGroup = () => {
   useRegisterShortcut(
     [
       {
-        id: "toggle-viz-types",
+        id: "query-builder-toggle-viz-types",
         perform: handleVizTypeClick,
       },
       {
-        id: "toggle-viz-settings",
+        id: "query-builder-toggle-viz-settings",
         perform: handleVizSettingClick,
       },
     ],

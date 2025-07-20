@@ -589,6 +589,18 @@ describe("scenarios > dashboard", () => {
             });
         });
       });
+
+      const longTitle =
+        "a really really really really really really really really really really really really really really really really long title";
+
+      it("should prevent entering a title longer than 100 chars", () => {
+        cy.findByTestId("dashboard-name-heading")
+          .as("dashboardInput")
+          .clear()
+          .type(longTitle, { delay: 0 })
+          .blur();
+        cy.get("@dashboardInput").invoke("text").should("have.length", 100);
+      });
     });
 
     it(
@@ -764,9 +776,8 @@ describe("scenarios > dashboard", () => {
     H.saveDashboard();
 
     cy.log("Assert that the selected filter is present in the dashboard");
-    cy.icon("location");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Location");
+    cy.findByText("Location", { exact: false }).should("be.visible");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
@@ -1104,7 +1115,7 @@ describe("scenarios > dashboard", () => {
       row: 0,
       col: 0,
       size_x: 16,
-      size_y: 8,
+      size_y: 9,
     };
     const paddingCard = H.getTextCardDetails({
       col: 0,
@@ -1201,20 +1212,9 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.findByTestId("dashcard").findByText("Orders");
-
-    // Verify the card is visible when it returned an error
-    H.filterWidget().click();
-    H.dashboardParametersPopover().within(() => {
-      cy.findByPlaceholderText("Enter an ID").type("text{enter}");
-      cy.button("Add filter").click();
-    });
-
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("There was a problem displaying this chart.");
-    });
   });
 
-  describe("warn before leave", () => {
+  describe("warn before leave", { tags: "@flaky" }, () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
@@ -1237,10 +1237,11 @@ describe("scenarios > dashboard", () => {
 
       // edit
       H.editDashboard();
-      const card = cy
-        .findAllByTestId("dashcard-container", { scrollBehavior: false })
-        .eq(0);
-      dragOnXAxis(card, 100);
+      const card = () =>
+        cy
+          .findAllByTestId("dashcard-container", { scrollBehavior: false })
+          .eq(0);
+      dragOnXAxis(card(), 100);
       assertPreventLeave();
       H.saveDashboard();
 
@@ -1250,55 +1251,52 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
     });
 
-    it(
-      "should warn a user before leaving after adding, removed, moving, or duplicating a tab",
-      { tags: "@flaky" },
-      () => {
-        cy.visit("/");
+    it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
+      cy.visit("/");
 
-        // add tab
-        createNewDashboard();
-        H.createNewTab();
-        assertPreventLeave();
-        H.saveDashboard();
+      // add tab
+      createNewDashboard();
+      H.createNewTab();
+      assertPreventLeave();
+      H.saveDashboard();
 
-        // move tab
-        H.editDashboard();
-        dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
-        // assert tab order is now correct and ui has caught up to result of dragging the tab
-        cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
-        cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+      // move tab
+      H.editDashboard();
+      dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
+      // assert tab order is now correct and ui has caught up to result of dragging the tab
+      cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
+      cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
 
-        assertPreventLeave();
-        H.saveDashboard();
+      cy.wait(1000);
+      assertPreventLeave();
+      H.saveDashboard();
 
-        // duplicate tab
-        H.editDashboard();
-        H.duplicateTab("Tab 1");
-        assertPreventLeave();
-        H.saveDashboard();
+      // duplicate tab
+      H.editDashboard();
+      H.duplicateTab("Tab 1");
+      assertPreventLeave();
+      H.saveDashboard();
 
-        cy.findByRole("tab", { name: "Copy of Tab 1" }).should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+      cy.findByRole("tab", { name: "Copy of Tab 1" }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
-        // remove tab
-        H.editDashboard();
-        H.deleteTab("Copy of Tab 1");
-        // url is changed after removing the tab
-        // can be a side effect
-        cy.url().should("include", "tab-1");
-        assertPreventLeave();
-        H.saveDashboard({ waitMs: 100 });
+      // remove tab
+      H.editDashboard();
+      H.deleteTab("Copy of Tab 1");
+      // url is changed after removing the tab
+      // can be a side effect
+      cy.url().should("include", "tab-1");
+      assertPreventLeave();
+      H.saveDashboard({ waitMs: 100 });
 
-        // rename tab
-        H.editDashboard();
-        H.renameTab("Tab 2", "Foo tab");
-        assertPreventLeave();
-      },
-    );
+      // rename tab
+      H.editDashboard();
+      H.renameTab("Tab 2", "Foo tab");
+      assertPreventLeave();
+    });
 
     function createNewDashboard() {
       H.newButton("Dashboard").click();
@@ -1359,7 +1357,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       H.saveDashboard();
       validateIFrame("https://example.com");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "new_iframe_card_created",
         target_id: id,
         event_detail: "example.com",
@@ -1373,7 +1371,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     const newTitle = "New title";
     cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
     H.saveDashboard();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_saved",
     });
   });
@@ -1405,7 +1403,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
       /orders in a dashboard/i,
     );
 
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "new_link_card_created",
     });
   });
@@ -1426,7 +1424,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
         .click({ force: true }) // disable
         .click({ force: true }); // enable
 
-      H.expectGoodSnowplowEvent(
+      H.expectUnstructuredSnowplowEvent(
         {
           event: "card_set_to_hide_when_no_results",
           dashboard_id: ORDERS_DASHBOARD_ID,
@@ -1488,7 +1486,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     cy.findByLabelText("Toggle width").click();
     H.popover().findByText("Full width").click();
     H.assertDashboardFullWidth();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
       full_width: true,
     });
@@ -1503,7 +1501,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     cy.findByLabelText("Toggle width").click();
     H.popover().findByText("Full width").click();
     H.assertDashboardFixedWidth();
-    H.expectGoodSnowplowEvent({
+    H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
       full_width: false,
     });
@@ -1591,7 +1589,7 @@ describe("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   /**

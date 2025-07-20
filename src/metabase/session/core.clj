@@ -1,13 +1,20 @@
 (ns metabase.session.core
   (:require
-   [metabase.session.models.session :as session]
+   [metabase.session.models.session]
+   [metabase.session.settings]
    [potemkin :as p]))
 
-(comment session/keep-me)
+(comment metabase.session.models.session/keep-me
+         metabase.session.settings/keep-me)
 
 (p/import-vars
- [session
+ [metabase.session.models.session
   create-session!
   generate-session-key
   generate-session-id
-  hash-session-key])
+  hash-session-key]
+ (metabase.session.settings
+  enable-password-login
+  enable-password-login!
+  password-complexity
+  session-cookies))

@@ -2,8 +2,8 @@ import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import ModalContent from "metabase/common/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { ActionsApi } from "metabase/services";

@@ -20,15 +20,17 @@
   (lint-ns form (assoc-in config [:linters :metabase/modules :level] :warning)))
 
 (deftest ^:parallel module-checker-allowed-modules-test
-  (is (=? [{:message "Module task should not be used in the api module. [:metabase/modules api :uses]"
-            :type :metabase/modules}]
-          (lint-modules
-           '(ns metabase.api.search
-              (:require
-               [metabase.request.core :as request]
-               [metabase.task :as task]))
-           '{:metabase/modules {api     {:uses #{request}}
-                                request {:api #{metabase.request.core}}}}))))
+  (are [task-namespace] (=? [{:message "Module task should not be used in the api module. [:metabase/modules api :uses]"
+                              :type :metabase/modules}]
+                            (lint-modules
+                             '(ns metabase.api.search
+                                (:require
+                                 [metabase.request.core :as request]
+                                 [task-namespace :as task]))
+                             '{:metabase/modules {api     {:uses #{request}}
+                                                  request {:api #{metabase.request.core}}}}))
+    metabase.task
+    metabase.task.core))
 
 (deftest ^:parallel module-checker-api-namespaces-test
   (is (=? [{:message "Namespace metabase.search.config is not an allowed external API namespace for the search module. [:metabase/modules search :api]"

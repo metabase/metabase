@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { useMount } from "react-use";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
@@ -37,7 +37,7 @@ export type UpsellCardProps = {
   title: string;
   buttonText: string;
   campaign: string;
-  source: string;
+  location: string;
   illustrationSrc?: string;
   children: React.ReactNode;
   large?: boolean;
@@ -50,7 +50,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   buttonText,
   buttonLink,
   campaign,
-  source,
+  location,
   illustrationSrc,
   internalLink,
   children,
@@ -62,11 +62,11 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   const url = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
-    source,
+    location,
   });
 
   useMount(() => {
-    trackUpsellViewed({ source, campaign });
+    trackUpsellViewed({ location, campaign });
   });
 
   const gemSize = large ? "24px" : undefined;
@@ -88,7 +88,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
       <Stack className={S.MainStack} gap={0}>
         <Flex align="center" gap="sm" p="1rem" pb="0.75rem">
           <UpsellGem size={gemSize} />
-          <Title lh={1.25} order={2} className={S.Title}>
+          <Title lh={1.25} order={3} className={S.Title}>
             {title}
           </Title>
         </Flex>
@@ -99,7 +99,9 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
           <Box mx="md" mb="lg">
             {buttonLink !== undefined ? (
               <ExternalLink
-                onClickCapture={() => trackUpsellClicked({ source, campaign })}
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
                 href={url}
                 className={S.UpsellCTALink}
               >
@@ -107,7 +109,9 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
               </ExternalLink>
             ) : (
               <Link
-                onClickCapture={() => trackUpsellClicked({ source, campaign })}
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
                 to={internalLink}
                 className={S.UpsellCTALink}
               >

@@ -1,88 +1,129 @@
 import { t } from "ttag";
 
 export const globalShortcuts = {
-  "create-question": {
-    name: t`Create a question`,
-    shortcut: ["q"],
-    shortcutGroup: "global",
+  "create-new-question": {
+    get name() {
+      return t`Create a question`;
+    },
+    shortcut: ["c q"],
+    shortcutGroup: "global" as const,
   },
-  "create-native-query": {
-    name: t`Create a native query`,
-    shortcut: ["n"],
-    shortcutGroup: "global",
+  "create-new-native-query": {
+    get name() {
+      return t`Create a native query`;
+    },
+    shortcut: ["c n"],
+    shortcutGroup: "global" as const,
   },
-  "create-dashboard": {
-    name: t`Create a dashboard`,
-    shortcut: ["d"],
-    shortcutGroup: "global",
+  "create-new-dashboard": {
+    get name() {
+      return t`Create a dashboard`;
+    },
+    shortcut: ["c d"],
+    shortcutGroup: "global" as const,
   },
-  "create-collection": {
-    name: t`Create a collection`,
-    shortcut: ["c"],
-    shortcutGroup: "global",
+  "create-new-collection": {
+    get name() {
+      return t`Create a collection`;
+    },
+    shortcut: ["c f"],
+    shortcutGroup: "global" as const,
   },
-  "create-model": {
-    name: t`Create a model`,
-    shortcut: ["m"],
-    shortcutGroup: "global",
+  "create-new-model": {
+    get name() {
+      return t`Create a model`;
+    },
+    shortcut: ["c m"],
+    shortcutGroup: "global" as const,
   },
-  "create-metric": {
-    name: t`Create a metric`,
-    shortcut: ["k"],
-    shortcutGroup: "global",
+  "create-new-metric": {
+    get name() {
+      return t`Create a metric`;
+    },
+    shortcut: ["c k"],
+    shortcutGroup: "global" as const,
   },
-  "browse-database": {
-    name: t`Browse databases`,
-    shortcut: ["b d"],
-    shortcutGroup: "global",
+  "navigate-browse-database": {
+    get name() {
+      return t`Browse databases`;
+    },
+    shortcut: ["g d"],
+    shortcutGroup: "global" as const,
   },
-  "browse-model": {
-    name: t`Browse models`,
-    shortcut: ["b m"],
-    shortcutGroup: "global",
+  "navigate-browse-model": {
+    get name() {
+      return t`Browse models`;
+    },
+    shortcut: ["g m"],
+    shortcutGroup: "global" as const,
   },
-  "browse-metric": {
-    name: t`Browse metrics`,
-    shortcut: ["b k"],
-    shortcutGroup: "global",
+  "navigate-browse-metric": {
+    get name() {
+      return t`Browse metrics`;
+    },
+    shortcut: ["g k"],
+    shortcutGroup: "global" as const,
   },
 
   "report-issue": {
-    name: t`Report an issue`,
+    get name() {
+      return t`Report an issue`;
+    },
     shortcut: ["$mod+f1"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "shortcuts-modal": {
-    name: t`Toggle Shortcuts Modal`,
-    shortcut: ["?"],
-    shortcutGroup: "global",
+    get name() {
+      return t`View shortcuts`;
+    },
+    shortcut: ["Shift+?"],
+    shortcutDisplay: ["?"],
+    shortcutGroup: "global" as const,
   },
 
   "navigate-trash": {
-    name: t`Open trash`,
-    shortcut: ["t"],
-    shortcutGroup: "global",
+    get name() {
+      return t`Open trash`;
+    },
+    shortcut: ["g t"],
+    shortcutGroup: "global" as const,
   },
   "navigate-personal-collection": {
-    name: t`Open personal collection`,
-    shortcut: ["p"],
-    shortcutGroup: "global",
+    get name() {
+      return t`Open personal collection`;
+    },
+    shortcut: ["g p"],
+    shortcutGroup: "global" as const,
   },
 
   "toggle-navbar": {
-    name: t`Toggle sidebar`,
+    get name() {
+      return t`Toggle sidebar`;
+    },
     shortcut: ["["],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
   "navigate-admin-settings": {
-    name: t`Go to admin`,
+    get name() {
+      return t`Go to admin`;
+    },
     shortcut: ["g a"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
   },
 
   "navigate-user-settings": {
-    name: t`Go to user settings`,
+    get name() {
+      return t`Go to user settings`;
+    },
     shortcut: ["g u"],
-    shortcutGroup: "global",
+    shortcutGroup: "global" as const,
+  },
+
+  "navigate-home": {
+    get name() {
+      return t`Go to home`;
+    },
+    shortcut: ["g h"],
+    shortcutGroup: "global" as const,
   },
 };

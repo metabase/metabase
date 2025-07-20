@@ -29,7 +29,6 @@ export interface QueryBuilderUIControls {
   isShowingTemplateTagsEditor: boolean;
   isShowingNewbModal: boolean;
   isRunning: boolean;
-  isQueryComplete: boolean;
   isShowingSummarySidebar: boolean;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
@@ -38,6 +37,7 @@ export interface QueryBuilderUIControls {
   isShowingSnippetSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
+  isShowingAIQuestionAnalysisSidebar: boolean;
   initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode | false;
@@ -50,6 +50,7 @@ export interface QueryBuilderUIControls {
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;
   dataReferenceStack: null;
+  highlightedNativeQueryLineNumbers: number[];
 }
 
 export interface QueryBuilderLoadingControls {

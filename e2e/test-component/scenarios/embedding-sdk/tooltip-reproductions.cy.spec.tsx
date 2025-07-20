@@ -1,13 +1,12 @@
 import { InteractiveDashboard } from "@metabase/embedding-sdk-react";
 
 const { H } = cy;
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { isFixedPositionElementVisible } from "e2e/support/helpers/e2e-element-visibility-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

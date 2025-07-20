@@ -3,10 +3,12 @@ import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
 import { isRootTrashCollection } from "metabase/collections/utils";
-import NewItemMenu from "metabase/containers/NewItemMenu";
+import NewItemMenu from "metabase/common/components/NewItemMenu";
 import { color } from "metabase/lib/colors";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
+
+import { trackCollectionNewButtonClicked } from "./analytics";
 
 export interface CollectionEmptyStateProps {
   collection?: Collection;
@@ -67,6 +69,7 @@ const DefaultCollectionEmptyState = ({
               variant="outline"
               leftSection={<Icon name="add" />}
               w="12.5rem"
+              onClick={() => trackCollectionNewButtonClicked()}
             >{t`New`}</Button>
           }
           collectionId={collection?.id}

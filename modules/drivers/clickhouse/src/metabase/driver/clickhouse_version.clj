@@ -4,11 +4,10 @@
   (:require
    [clojure.core.memoize :as memoize]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.driver.util :as driver.u]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,7 +43,7 @@
   "Is ClickHouse version at least `major.minor` (e.g., 24.4)?"
   ([major minor]
    ;; used from the QP overrides; we don't have access to the DB object
-   (is-at-least? major minor (lib.metadata/database (qp.store/metadata-provider))))
+   (is-at-least? major minor (driver-api/database (driver-api/metadata-provider))))
   ([major minor db]
    ;; used from the Driver overrides; we have access to the DB object
    (let [version  (driver/dbms-version :clickhouse db)

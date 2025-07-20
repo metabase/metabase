@@ -44,6 +44,7 @@ describe("scenarios > models metadata", () => {
 
       H.popover().findByTextEnsureVisible("Edit metadata").click();
       cy.url().should("include", "/metadata");
+      H.waitForLoaderToBeRemoved();
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
@@ -63,6 +64,7 @@ describe("scenarios > models metadata", () => {
 
     it("allows for canceling changes, back navigation (metabase#55162)", () => {
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
@@ -77,6 +79,7 @@ describe("scenarios > models metadata", () => {
 
       // Ensure back navigation works correctly metabase#55162
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
       cy.go("back");
       cy.get("@questionId").then((id) => {
         cy.location("pathname").should("equal", `/model/${id}-gui-model`);
@@ -86,6 +89,7 @@ describe("scenarios > models metadata", () => {
     it("clears custom metadata when a model is turned back into a question", () => {
       H.openQuestionActions();
       H.popover().findByTextEnsureVisible("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
 
       H.openColumnOptions("Subtotal");
       H.renameColumn("Subtotal", "Pre-tax");
@@ -135,6 +139,7 @@ describe("scenarios > models metadata", () => {
 
     H.popover().findByTextEnsureVisible("Edit metadata").click();
     cy.url().should("include", "/metadata");
+    H.waitForLoaderToBeRemoved();
 
     H.openColumnOptions("SUBTOTAL");
 
@@ -171,6 +176,7 @@ describe("scenarios > models metadata", () => {
     );
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
+    H.waitForLoaderToBeRemoved();
     H.openColumnOptions("USER_ID");
     H.setColumnType("No semantic type", "Foreign Key");
     H.sidebar().findByPlaceholderText("Select a target").click();
@@ -234,6 +240,7 @@ describe("scenarios > models metadata", () => {
 
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
+    H.waitForLoaderToBeRemoved();
 
     cy.log("Revision 2");
     H.openColumnOptions("TAX");
@@ -288,6 +295,7 @@ describe("scenarios > models metadata", () => {
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
     cy.url().should("include", "/metadata");
+    H.waitForLoaderToBeRemoved();
 
     cy.log("wait for the hint, otherwise scroll into view doesn't work ");
     cy.findByTestId("tab-hint-toast").should("be.visible");
@@ -393,9 +401,8 @@ describe("scenarios > models metadata", () => {
           cy.findByText("User").click();
           cy.findByText("Source").click();
           cy.findByText("Twitter").click();
-          cy.button("Add filter").click();
+          cy.button("Apply filter").click();
         });
-        H.runButtonOverlay().click();
         cy.wait("@dataset");
         cy.findByTestId("question-row-count")
           .invoke("text")
@@ -463,6 +470,7 @@ describe("scenarios > models metadata", () => {
 
       H.openQuestionActions();
       H.popover().findByTextEnsureVisible("Edit metadata").click();
+      H.waitForLoaderToBeRemoved();
 
       cy.findAllByTestId("header-cell")
         .contains(/^Vendor$/)

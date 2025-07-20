@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.public-settings :as public-settings]
+   [metabase.system.core :as system]
    [metabase.util :as u])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
@@ -201,11 +201,11 @@
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
   correctly in Slack/Email."
   [^String uri]
-  (letfn [(ensure-slash [s] (when s
-                              (cond-> s
-                                (not (str/ends-with? s "/")) (str "/"))))]
+  (letfn [(ensure-slash ^String [s] (when s
+                                      (cond-> s
+                                        (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (if-let [^String site-url (ensure-slash (public-settings/site-url))]
+      (if-let [site-url (ensure-slash (system/site-url))]
         (.. (URI. site-url) (resolve uri) toString)
         uri))))
 

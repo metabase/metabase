@@ -1,11 +1,20 @@
 import type { Meta, StoryFn } from "@storybook/react";
 import { useCallback, useMemo, useState } from "react";
 
+import { getStore } from "__support__/entities-store";
+import { BaseCell } from "metabase/data-grid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { publicReducers } from "metabase/reducers-public";
+import { Checkbox, Flex } from "metabase/ui";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";
@@ -23,14 +32,21 @@ export default {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
-        <Story />
-      </div>
+      <MetabaseReduxProvider store={store}>
+        <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
+          <Story />
+        </div>
+      </MetabaseReduxProvider>
     ),
   ],
 } as Meta<typeof DataGrid>;
 
 type Story = StoryFn<typeof DataGrid>;
+
+const initialState = createMockState({
+  settings: createMockSettingsState(),
+});
+const store = getStore(publicReducers, initialState, []);
 
 const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
   return {
@@ -241,7 +257,8 @@ export const CombinedFeatures: Story = () => {
     columnOrder,
     columnSizingMap: columnSizing,
     onColumnReorder: setColumnOrder,
-    onColumnResize: setColumnSizing,
+    onColumnResize: (columnName, width) =>
+      setColumnSizing((prev) => ({ ...prev, [columnName]: width })),
     rowId,
     enableSelection: true,
   });
@@ -280,4 +297,85 @@ export const CombinedFeatures: Story = () => {
       onAddColumnClick={handleAddColumnClick}
     />
   );
+};
+
+export const SelectableRows: Story = () => {
+  const [rowSelection, setRowSelection] = useState<Record<number, boolean>>({});
+
+  const columns: ColumnOptions<SampleDataType>[] = useMemo(
+    () => [
+      {
+        id: "id",
+        name: "ID",
+        accessorFn: (row) => row.id,
+      },
+      {
+        id: "name",
+        name: "Name",
+        accessorFn: (row) => row.name,
+      },
+      {
+        id: "category",
+        name: "Category",
+        accessorFn: (row) => row.category,
+      },
+      {
+        id: "price",
+        name: "Price",
+        accessorFn: (row) => row.price,
+        formatter: (value) => `$${value}`,
+        align: "right",
+      },
+      {
+        id: "quantity",
+        name: "Quantity",
+        accessorFn: (row) => row.quantity,
+        align: "right",
+      },
+      {
+        id: "description",
+        name: "Description",
+        accessorFn: (row) => row.description,
+      },
+    ],
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+    columnPinning: { left: ["row_selection"] },
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange: setRowSelection,
+    columnRowSelectOptions: {
+      id: "row_selection",
+      name: "Row Selection",
+      accessorFn: (row) => row.id,
+      header: ({ table }) => (
+        <Flex h="100%" align="center" justify="center">
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+            variant="stacked"
+          />
+        </Flex>
+      ),
+      cell: ({ row }) => (
+        <BaseCell>
+          <Flex h="100%" w="100%" align="center" justify="center">
+            <Checkbox
+              checked={row.getIsSelected()}
+              disabled={!row.getCanSelect()}
+              indeterminate={row.getIsSomeSelected()}
+              onChange={row.getToggleSelectedHandler()}
+            />
+          </Flex>
+        </BaseCell>
+      ),
+    },
+  });
+
+  return <DataGrid {...tableProps} />;
 };

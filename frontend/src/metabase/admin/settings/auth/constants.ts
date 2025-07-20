@@ -1,7 +1,6 @@
 import * as Yup from "yup";
 
 import * as Errors from "metabase/lib/errors";
-import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
 import type { SettingDefinition } from "metabase-types/api";
 
 const REQUIRED_SCHEMA = {
@@ -22,7 +21,6 @@ export const GOOGLE_SCHEMA = Yup.object({
 });
 
 export const LDAP_SCHEMA = Yup.object({
-  ...PLUGIN_LDAP_FORM_FIELDS.formFieldsSchemas,
   "ldap-enabled": Yup.boolean().nullable().default(false),
   "ldap-host": Yup.string().nullable().default(null),
   "ldap-port": Yup.number().nullable().default(null),
@@ -37,4 +35,5 @@ export const LDAP_SCHEMA = Yup.object({
   "ldap-group-sync": Yup.boolean().nullable().default(false),
   "ldap-group-base": Yup.string().nullable().default(null),
   "ldap-group-mappings": Yup.object().nullable().default(null),
+  "ldap-group-membership-filter": Yup.string().nullable().default(null),
 });

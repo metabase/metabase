@@ -1,13 +1,20 @@
 (ns metabase-enterprise.sso.api.interface
   (:require
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.util.i18n :refer [tru]]))
 
 (defn- select-sso-backend
   [req]
-  (if (contains? (:params req) :jwt)
-    :jwt
-    :saml))
+  (let [preferred-method (get-in req [:params :preferred_method])]
+    (cond
+      preferred-method (case preferred-method
+                         "jwt"  :jwt
+                         "saml" :saml
+                         (throw (ex-info "Invalid auth method"
+                                         {:preferred-method preferred-method
+                                          :available        [:jwt :saml]})))
+      (contains? (:params req) :jwt) :jwt
+      :else :saml)))
 
 (defn- sso-backend
   "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more

@@ -26,7 +26,7 @@
     (apply io/file (:root-dir ctx) (map escape-segment (concat dirnames [basename])))))
 
 (defn- store-entity! [opts entity]
-  (log/infof "Storing %s" (serdes/log-path-str (:serdes/meta entity)))
+  (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))})
   (spit-yaml! (file opts entity) entity)
   (:serdes/meta entity))
 

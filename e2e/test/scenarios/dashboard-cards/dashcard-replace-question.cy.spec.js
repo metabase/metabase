@@ -139,7 +139,7 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Orders",
     });
-    H.expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
+    H.expectUnstructuredSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
       assertDashCardTitle("Orders");
       cy.findByText("Product ID").should("exist");
@@ -179,7 +179,15 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
 
     // There're two toasts: "Undo replace" and "Auto-connect"
-    H.undoToastList().eq(0).button("Undo").click();
+    H.undoToastList()
+      .should("have.length", 2)
+      .eq(0)
+      .should(($el) => {
+        // we wait for element to take its position after animation
+        expect($el.position().left).to.be.equal(0);
+      })
+      .button("Undo")
+      .click();
 
     // Ensure we kept viz settings and parameter mapping changes from before
     findTargetDashcard().within(() => {
@@ -275,24 +283,21 @@ function overwriteDashCardTitle(dashcardElement, textTitle) {
   });
 }
 
+const filterPanel = () =>
+  cy.findByTestId("edit-dashboard-parameters-widget-container");
+
 function connectDashboardFilter(dashcardElement, { filterName, columnName }) {
-  const filterPanel = cy.findByTestId(
-    "edit-dashboard-parameters-widget-container",
-  );
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
   dashcardElement.button(/Select/).click();
   H.popover().findByText(columnName).click();
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
 }
 
 function assertDashboardFilterMapping(
   dashcardElement,
   { filterName, expectedColumName },
 ) {
-  const filterPanel = cy.findByTestId(
-    "edit-dashboard-parameters-widget-container",
-  );
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
   dashcardElement.findByText(expectedColumName).should("exist");
-  filterPanel.findByText(filterName).click();
+  filterPanel().findByText(filterName).click();
 }

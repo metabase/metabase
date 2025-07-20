@@ -15,11 +15,19 @@ import { createQuestion } from "./api";
  ******************************************/
 
 export function addMongoDatabase(displayName = "QA Mongo") {
+  const { host, user, password, database: dbName } = QA_DB_CREDENTIALS;
+  const port = QA_MONGO_PORT;
+
   // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.4/images/sha256-8cdeaacf28c6f0a6f9fde42ce004fcc90200d706ac6afa996bdd40db78ec0305
   return addQADatabase({
     engine: "mongo",
     displayName,
-    port: QA_MONGO_PORT,
+    details: {
+      "advanced-options": false,
+      "use-conn-uri": true,
+      "conn-uri": `mongodb://${user}:${password}@${host}:${port}/${dbName}?authSource=admin`,
+      "tunnel-enabled": false,
+    },
   });
 }
 
@@ -60,9 +68,8 @@ function addQADatabase({
   port,
   enable_actions = false,
   idAlias,
+  details,
 }) {
-  const PASS_KEY = engine === "mongo" ? "pass" : "password";
-  const AUTH_DB = engine === "mongo" ? "admin" : null;
   const OPTIONS = engine === "mysql" ? "allowPublicKeyRetrieval=true" : null;
 
   const db_name =
@@ -80,15 +87,13 @@ function addQADatabase({
     .request("POST", "/api/database", {
       engine: engine,
       name: displayName,
-      details: {
+      details: details ?? {
         dbname: db_name,
         host: credentials.host,
         port: port,
         user: credentials.user,
-        [PASS_KEY]: QA_DB_CREDENTIALS.password, // NOTE: we're inconsistent in where we use `pass` vs `password` as a key
-        authdb: AUTH_DB,
+        password: QA_DB_CREDENTIALS.password,
         "additional-options": OPTIONS,
-        "use-srv": false,
         "tunnel-enabled": false,
       },
       auto_run_queries: true,
@@ -279,11 +284,30 @@ export function createTestRoles({ type, isWritable }) {
  * @param {string} obj.name - The table's real name, not its display name
  */
 export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
+  return cy.request("GET", "/api/table").then(({ body: tables }) => {
+    const table = tables.find(
+      (table) => table.db_id === databaseId && table.name === name,
+    );
+    if (!table) {
+      throw new TypeError(`Table with name ${name} cannot be found`);
+    }
+    return table.id;
+  });
+}
+
+export function getFieldId({ tableId, name }) {
   return cy
-    .request("GET", `/api/database/${databaseId}/metadata`)
-    .then(({ body }) => {
-      const table = body?.tables?.find((table) => table.name === name);
-      return table ? table.id : null;
+    .request("GET", `/api/table/${tableId}/query_metadata`)
+    .then(({ body: table }) => {
+      const fields = table.fields ?? [];
+      const field = fields.find((field) => field.name === name);
+      if (!field) {
+        throw new TypeError(`Field with name ${name} cannot be found`);
+      }
+      if (typeof field.id !== "number") {
+        throw new TypeError("Unexpected non-integer field id.");
+      }
+      return field.id;
     });
 }
 
@@ -373,4 +397,12 @@ export function resyncDatabase({
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
   waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
+}
+
+export function addSqliteDatabase(displayName = "sqlite") {
+  return addQADatabase({
+    engine: "sqlite",
+    displayName,
+    details: { db: "./resources/sqlite-fixture.db" },
+  });
 }

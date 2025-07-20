@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { type ButtonHTMLAttributes, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Popover } from "metabase/ui";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { type ActionIconProps, Box, Popover } from "metabase/ui";
 
 import { RefreshOption } from "./RefreshOption";
 import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
@@ -9,24 +10,56 @@ import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
 const toSeconds = (minutes: number) => minutes * 60;
 
 const OPTIONS = [
-  { name: t`Off`, period: null },
-  { name: t`1 minute`, period: toSeconds(1) },
-  { name: t`5 minutes`, period: toSeconds(5) },
-  { name: t`10 minutes`, period: toSeconds(10) },
-  { name: t`15 minutes`, period: toSeconds(15) },
-  { name: t`30 minutes`, period: toSeconds(30) },
-  { name: t`60 minutes`, period: toSeconds(60) },
+  {
+    get name() {
+      return t`Off`;
+    },
+    period: null,
+  },
+  {
+    get name() {
+      return t`1 minute`;
+    },
+    period: toSeconds(1),
+  },
+  {
+    get name() {
+      return t`5 minutes`;
+    },
+    period: toSeconds(5),
+  },
+  {
+    get name() {
+      return t`10 minutes`;
+    },
+    period: toSeconds(10),
+  },
+  {
+    get name() {
+      return t`15 minutes`;
+    },
+    period: toSeconds(15),
+  },
+  {
+    get name() {
+      return t`30 minutes`;
+    },
+    period: toSeconds(30),
+  },
+  {
+    get name() {
+      return t`60 minutes`;
+    },
+    period: toSeconds(60),
+  },
 ];
 
-export const RefreshWidget = ({
-  setRefreshElapsedHook,
-  period,
-  onChangePeriod,
-}: {
-  setRefreshElapsedHook?: (hook: (elapsed: number | null) => void) => void;
-  period: number | null;
-  onChangePeriod: (period: number | null) => void;
-}) => {
+export const RefreshWidget = (
+  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+) => {
+  const { setRefreshElapsedHook, refreshPeriod, onRefreshPeriodChange } =
+    useDashboardContext();
+
   const [elapsed, setElapsed] = useState<number | null>(null);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -43,7 +76,11 @@ export const RefreshWidget = ({
     <Popover position="bottom-end" opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Box onClick={() => setIsOpen(!isOpen)}>
-          <RefreshWidgetTarget elapsed={elapsed} period={period} />
+          <RefreshWidgetTarget
+            elapsed={elapsed}
+            period={refreshPeriod}
+            {...props}
+          />
         </Box>
       </Popover.Target>
       <Popover.Dropdown>
@@ -62,10 +99,10 @@ export const RefreshWidget = ({
                 key={option.period}
                 name={option.name}
                 period={option.period}
-                selected={option.period === period}
+                selected={option.period === refreshPeriod}
                 onClick={() => {
                   setIsOpen(false);
-                  onChangePeriod(option.period);
+                  onRefreshPeriodChange(option.period);
                 }}
               />
             ))}

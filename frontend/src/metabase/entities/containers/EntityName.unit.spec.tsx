@@ -1,32 +1,32 @@
 import {
   setupCardEndpoints,
-  setupUserEndpoints,
+  setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockCard, createMockUser } from "metabase-types/api/mocks";
+import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 
 import { EntityName } from "./EntityName";
 
 describe("EntityName", () => {
-  describe("users", () => {
-    test("user with name", async () => {
-      const mockUser = createMockUser({
-        common_name: "Testy Tableton",
+  describe("dashboards", () => {
+    test("dashboard with name", async () => {
+      const mockDash = createMockDashboard({
+        name: "Testy dash dash",
       });
-      setupUserEndpoints(mockUser);
+      setupDashboardEndpoints(mockDash);
 
       renderWithProviders(
-        <EntityName entityType="users" entityId={mockUser.id} />,
+        <EntityName entityType="dashboards" entityId={mockDash.id} />,
         {
           storeInitialState: {
             entities: createMockEntitiesState({
-              users: [mockUser],
+              dashboards: [mockDash],
             }),
           },
         },
       );
-      expect(await screen.findByText("Testy Tableton")).toBeInTheDocument();
+      expect(await screen.findByText("Testy dash dash")).toBeInTheDocument();
     });
   });
 

@@ -21,6 +21,8 @@ yarn dev
 
 This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
 
+To use any other database beside the default ones please take a look at [Building Drivers](#building-drivers) further down in this document.
+
 ### Frontend
 
 Metabase depends on third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.
@@ -369,17 +371,17 @@ some-ns=> (take 10 (keys environ.core/env))
 `clj-kondo` must be [installed separately](https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md).
 
 ```
+# Run clj-kondo
+mage kondo
+
+# Lint the migrations file (if you've written a database migration):
+mage lint-migrations
+
 # Run Eastwood
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
 
 # Run the namespace checker
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
-
-# Run clj-kondo
-./bin/kondo.sh
-
-# Lint the migrations file (if you've written a database migration):
-./bin/lint-migrations-file.sh
 ```
 
 ## Continuous integration

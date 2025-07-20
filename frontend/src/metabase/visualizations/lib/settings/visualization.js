@@ -14,14 +14,18 @@ import {
 
 const COMMON_SETTINGS = {
   "card.title": {
-    title: t`Title`,
+    get title() {
+      return t`Title`;
+    },
     widget: "input",
     getDefault: (series) => (series.length === 1 ? series[0].card.name : null),
     dashboard: true,
     useRawSeries: true,
   },
   "card.description": {
-    title: t`Description`,
+    get title() {
+      return t`Description`;
+    },
     widget: "input",
     getDefault: (series) =>
       series.length === 1 ? series[0].card.description : null,
@@ -29,7 +33,9 @@ const COMMON_SETTINGS = {
     useRawSeries: true,
   },
   "card.hide_empty": {
-    title: t`Hide this card if there are no results`,
+    get title() {
+      return t`Hide this card if there are no results`;
+    },
     widget: "toggle",
     inline: true,
     dashboard: true,
@@ -88,6 +94,11 @@ export function getStoredSettingsForSeries(series) {
   return storedSettings;
 }
 
+/**
+ * @import { ComputedVisualizationSettings } from "metabase/visualizations/types";
+ *
+ * @returns {ComputedVisualizationSettings}
+ */
 export function getComputedSettingsForSeries(series) {
   if (!series) {
     return {};

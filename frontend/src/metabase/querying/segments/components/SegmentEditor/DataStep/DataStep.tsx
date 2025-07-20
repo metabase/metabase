@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   DataPickerModal,
   getDataPickerValue,
-} from "metabase/common/components/DataPicker";
+} from "metabase/common/components/Pickers/DataPicker";
 import Tables from "metabase/entities/tables";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -48,8 +48,13 @@ export function DataStep({
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
-    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    onChange(newQuery);
+    if (table) {
+      const newQuery = Lib.queryFromTableOrCardMetadata(
+        metadataProvider,
+        table,
+      );
+      onChange(newQuery);
+    }
   };
 
   return (

@@ -103,7 +103,7 @@ is equivalent to the Metabase `datetimeDiff` expression:
 datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF` or `DATE_DIFF`. For more info, check out our list of [common SQL reference guides](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides).
+Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF` or `DATE_DIFF`. For more info, check out our list of [common SQL reference guides](https://www.metabase.com/learn/sql/debugging-sql/sql-syntax#common-sql-reference-guides).
 
 ### Spreadsheets
 

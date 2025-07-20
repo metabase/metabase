@@ -9,9 +9,9 @@ import {
 } from "react";
 import { jt, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -119,7 +119,7 @@ export const Onboarding = () => {
     });
   };
 
-  // Scroll the last opened item into view when the user navigates back go this page
+  // Scroll the last opened item into view when the user navigates back to this page
   useEffect(() => {
     if (isValidItemKey(lastItemOpened)) {
       const item = itemRefs[lastItemOpened].current;
@@ -229,7 +229,7 @@ export const Onboarding = () => {
           {isAdmin && (
             <Box mb={64}>
               <Title
-                order={2}
+                order={3}
                 mb="lg"
               >{t`Set up your ${applicationName}`}</Title>
               <Accordion.Item
@@ -316,7 +316,7 @@ export const Onboarding = () => {
           )}
 
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
+            <Title order={3} mb="lg">{t`Start visualizing your data`}</Title>
             <Accordion.Item
               value="x-ray"
               data-testid="x-ray-item"
@@ -493,7 +493,7 @@ export const Onboarding = () => {
             </Accordion.Item>
           </Box>
           <Box mb={64}>
-            <Title order={2} mb="lg">{t`Get email updates and alerts`}</Title>
+            <Title order={3} mb="lg">{t`Get email updates and alerts`}</Title>
             <Accordion.Item
               value="subscription"
               data-testid="subscription-item"
@@ -515,7 +515,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
@@ -579,7 +579,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
@@ -666,7 +666,7 @@ export const Onboarding = () => {
             {showMetabaseLinks && (
               <Box data-testid="learning-section" mb="xl">
                 <Title
-                  order={2}
+                  order={3}
                   mb={12}
                 >{t`Get the most out of ${applicationName}`}</Title>
                 <Text>

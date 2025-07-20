@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs float])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
@@ -15,6 +15,7 @@
    [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.util.i18n :as i18n]
@@ -42,7 +43,7 @@
    {:description "Must be a positive integer."}
    pos-int?])
 
-;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
 ;; 7 = last day of the week (e.g. Saturday)
 (def ^:private date-bucketing-units
@@ -144,9 +145,9 @@
                "datetime" ::lib.schema.literal/datetime
                "unit"     ::DateTimeUnit)]])
 
-(def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
+(def ^:internal absolute-datetime
   "Schema for an `:absolute-datetime` clause."
-  [:ref ::absolute-datetime])
+  (with-meta [:ref ::absolute-datetime] {:clause-name :absolute-datetime}))
 
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
@@ -270,6 +271,14 @@
   If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
   `:source-field` should be for information purposes only."} ::lib.schema.id/field]
 
+    [:source-field-name
+     {:optional true :description "The name or desired alias of the field used for an implicit join."}
+     ::lib.schema.common/non-blank-string]
+
+    [:source-field-join-alias
+     {:optional true :description "The join alias of the source field used for an implicit join."}
+     ::lib.schema.common/non-blank-string]
+
     [:temporal-unit
      {:optional true
       :description
@@ -291,7 +300,7 @@
 
   `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
   JOINING against."}
-     [:maybe ::lib.schema.common/non-blank-string]]
+     [:maybe ::lib.schema.join/alias]]
 
     [:binning
      {:optional true
@@ -324,24 +333,26 @@
    {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
-    "id-or-name" [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
+    "id-or-name" [:or ::lib.schema.id/field :string]
     "options"    [:maybe [:ref ::FieldOptions]])
    [:ref
     {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
     ::require-base-type-for-field-name]])
 
-(def ^{:clause-name :field, :added "0.39.0"} field
+(def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
-  [:ref ::field])
+  (with-meta [:ref ::field] {:clause-name :field}))
 
-(def ^{:clause-name :field, :added "0.39.0"} field:id
+(def ^{:added "0.39.0"} field:id
   "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
-  [:and
-   field
-   [:fn
-    {:error/message "Must be a :field with an integer Field ID."}
-    (fn [[_ id-or-name]]
-      (integer? id-or-name))]])
+  (with-meta
+   [:and
+    field
+    [:fn
+     {:error/message "Must be a :field with an integer Field ID."}
+     (fn [[_ id-or-name]]
+       (integer? id-or-name))]]
+   {:clause-name :field}))
 
 (mr/def ::Field
   [:schema
@@ -415,7 +426,7 @@
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :if :datetime-diff :integer :float
     ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
@@ -432,7 +443,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -464,8 +475,7 @@
    [:numeric-expression NumericExpression]
    [:aggregation        Aggregation]
    [:value              value]
-   [:field              Field]])
-
+   [:field              Reference]])
 (def ^:private NumericExpressionArg
   [:ref ::NumericExpressionArg])
 
@@ -635,8 +645,10 @@
   x NumericExpressionArg)
 
 (defclause ^{:requires-features #{:expressions :expressions/integer}} integer
-  x [:or NumericExpressionArg
-     StringExpressionArg])
+  x [:or NumericExpressionArg StringExpressionArg])
+
+(defclause ^{:requires-features #{:expressions :expressions/float}} float
+  x StringExpressionArg)
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
@@ -709,10 +721,20 @@
   unit     ArithmeticDateTimeUnit)
 
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
-  string StringExpressionArg)
+  string [:or StringExpressionArg DateTimeExpressionArg])
+
+(defclause ^{:requires-features #{:expressions :expressions/today}} today)
+
+(def ^:private LiteralDatetimeModeString
+  (into [:enum {:error/message "datetime mode string"}]
+        lib.schema.expression.temporal/datetime-modes))
+
+(defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
+  value  :any ;; normally a string, number, or bytes
+  options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now date))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -819,10 +841,14 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+(def Emptyable
+  "Schema for a valid is-empty or not-empty argument."
+  [:or StringExpressionArg Field])
+
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
-(defclause ^:sugar is-empty,  field Field)
-(defclause ^:sugar not-empty, field Field)
+(defclause ^:sugar is-empty  field Emptyable)
+(defclause ^:sugar not-empty field Emptyable)
 
 (def ^:private StringFilterOptions
   [:map
@@ -845,22 +871,20 @@
                      "second-string-or-field" StringExpressionArg
                      "more-strings-or-fields" [:rest StringExpressionArg])]))
 
-(def ^{:clause-name :starts-with} starts-with
+(def starts-with
   "Schema for a valid :starts-with clause."
-  [:ref ::starts-with])
-(def ^{:clause-name :ends-with} ends-with
+  (with-meta [:ref ::starts-with] {:clause-name :starts-with}))
+(def ends-with
   "Schema for a valid :ends-with clause."
-  [:ref ::ends-with])
-(def ^{:clause-name :contains} contains
+  (with-meta [:ref ::ends-with] {:clause-name :ends-with}))
+(def contains
   "Schema for a valid :contains clause."
-  [:ref ::contains])
+  (with-meta [:ref ::contains] {:clause-name :contains}))
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
-(def ^{:sugar       true
-       :clause-name :does-not-contain}
-  does-not-contain
+(def ^:sugar does-not-contain
   "Schema for a valid :does-not-contain clause."
-  [:ref ::does-not-contain])
+  (with-meta [:ref ::does-not-contain] {:clause-name :does-not-contain}))
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
@@ -957,9 +981,10 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (mr/def ::NumericExpression
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
-          get-hour get-minute get-second))
+          get-hour get-minute get-second
+          aggregation))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
@@ -1040,10 +1065,9 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
-;; expanded to other aggregations/etc. in the expand-macros middleware
+;;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric
-  metric-id ::lib.schema.id/metric)
+  metric-id ::lib.schema.id/card)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;
@@ -1057,7 +1081,7 @@
                        :numeric-expression
                        :else))}
    [:numeric-expression NumericExpression]
-   [:else (one-of avg cum-sum distinct distinct-where stddev sum min max metric share count-where
+   [:else (one-of aggregation avg cum-sum distinct distinct-where stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
@@ -1180,6 +1204,7 @@
    [:map
     [:type        [:= :dimension]]
     [:dimension   field]
+    [:alias       {:optional true} :string]
 
     [:widget-type
      [:ref
@@ -1192,6 +1217,21 @@
      {:optional    true
       :description "optional map to be appended to filter clause"}
      [:maybe [:map-of :keyword :any]]]]])
+
+;; Example:
+;;
+;;   {:id "cd35d6dc-285b-4944-8a83-21e4c38d6584",
+;;    :type "temporal-unit",
+;;    :name "unit",
+;;    :display-name "Unit"}
+(mr/def ::TemplateTag:TemporalUnit
+  "Schema for a temporal unit template tag."
+  [:merge
+   TemplateTag:Value:Common
+   [:map
+    [:type      [:= :temporal-unit]]
+    [:dimension field]
+    [:alias     {:optional true} :string]]])
 
 ;; Example:
 ;;
@@ -1247,10 +1287,11 @@
   Field filters and raw values usually have their value specified by `:parameters`."
   [:multi
    {:dispatch :type}
-   [:dimension   [:ref ::TemplateTag:FieldFilter]]
-   [:snippet     [:ref ::TemplateTag:Snippet]]
-   [:card        [:ref ::TemplateTag:SourceQuery]]
-   [::mc/default [:ref ::TemplateTag:RawValue]]])
+   [:dimension     [:ref ::TemplateTag:FieldFilter]]
+   [:snippet       [:ref ::TemplateTag:Snippet]]
+   [:card          [:ref ::TemplateTag:SourceQuery]]
+   [:temporal-unit [:ref ::TemplateTag:TemporalUnit]]
+   [::mc/default   [:ref ::TemplateTag:RawValue]]])
 
 (def TemplateTag
   "Alias for ::TemplateTag; prefer that going forward."
@@ -1428,7 +1469,7 @@
   in the options.
 
   Driver implementations: This is guaranteed to be present after pre-processing."}
-     ::lib.schema.common/non-blank-string]
+     ::lib.schema.join/alias]
 
     [:ident
      {:optional true
@@ -1578,9 +1619,9 @@
     [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
     [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
 
-(def ^{:clause-name :dimension} dimension
+(def dimension
   "Schema for a valid dimension clause."
-  [:ref ::dimension])
+  (with-meta [:ref ::dimension] {:clause-name :dimension}))
 
 (defclause variable
   target template-tag)

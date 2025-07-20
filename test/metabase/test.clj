@@ -4,20 +4,19 @@
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
   (:require
+   [clojure.test]
    [humane-are.core :as humane-are]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
+   [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.channel.email-test]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.init]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-   [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.http-client :as client]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
@@ -32,6 +31,7 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
    [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
@@ -42,10 +42,14 @@
    [metabase.test.util.misc :as tu.misc]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.log.capture]
    [metabase.util.random :as u.random]
+   [methodical.core :as methodical]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -81,7 +85,6 @@
   qp.test-util/keep-me
   qp/keep-me
   schema-migrations-test.impl/keep-me
-  sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
   test-runner.assert-exprs/keep-me
   test.redefs/keep-me
@@ -114,16 +117,19 @@
   $ids
   dataset
   db
+  driver-select
   format-name
   id
+  ident
   mbql-query
   metadata-provider
   native-query
+  normal-driver-select
   query
   run-mbql-query
   with-db
   with-temp-copy-of-db
-  with-empty-h2-app-db]
+  with-empty-h2-app-db!]
 
  [data.impl
   *db-is-temp-copy?*]
@@ -206,6 +212,8 @@
 
  [qp.test-util
   boolish->bool
+  card-with-metadata
+  card-with-updated-metadata
   card-with-source-metadata-for-query
   col
   cols
@@ -213,6 +221,7 @@
   formatted-rows+column-names
   format-rows-by
   formatted-rows
+  metadata->native-form
   nest-query
   normal-drivers
   normal-drivers-with-feature
@@ -222,9 +231,6 @@
   with-database-timezone-id
   with-report-timezone-id!
   with-results-timezone-id]
-
- [sql-jdbc.tu
-  sql-jdbc-drivers]
 
  [sql.qp-test-util
   with-native-query-testing-context]
@@ -275,7 +281,7 @@
   with-discarded-collections-perms-changes
   with-discard-model-updates!
   with-env-keys-renamed-by
-  with-locale
+  with-locale!
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
@@ -306,7 +312,7 @@
  [tu.misc
   object-defaults
   with-clock
-  with-single-admin-user]
+  with-single-admin-user!]
 
  [u.random
   random-name
@@ -320,8 +326,10 @@
   with-system-timezone-id!]
 
  [tx
+  arbitrary-select-query
   count-with-template-tag-query
   count-with-field-filter-query
+  make-alias
   dataset-definition
   db-qualified-table-name
   db-test-env-var
@@ -350,3 +358,33 @@
 (alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
   it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
   global state of the application database.")
+
+(defonce ^:private original-test-var clojure.test/test-var)
+
+(defn- test-var-with-context
+  "A modified version of `clojure.test/test-var` that:
+  - logs every toucan2 query we run, with details on the query type, model, args, and resulting query
+  - adds some context to any logs emitted during the test, so that we have information on what test ran
+  "
+  [v]
+  (let [test-n (-> v meta :name)
+        test-ns (-> v meta :ns str)]
+    (log/with-context {:test (str test-ns "/" test-n)}
+      (original-test-var v))))
+
+(alter-var-root #'clojure.test/test-var (constantly test-var-with-context))
+
+(methodical/defmethod t2.pipeline/compile :after
+  [#_query-type  :default
+   #_model       :default
+   #_built-query :default]
+  [query-type model built-query]
+  (u/prog1 built-query
+    (let [compiled-query-arg-map (into {} (map-indexed (fn [i v] [(str "compiled-query-arg-" i) v]) (rest <>)))]
+      (log/with-context (merge {:query-type query-type
+                                :model model
+                                :compiled-query (first <>)
+                                :compiled-query-args (rest <>)}
+                               compiled-query-arg-map)
+        (when config/is-test?
+          (log/info "Compiled query"))))))

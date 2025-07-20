@@ -5,18 +5,11 @@
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
-   [metabase.actions.core :as actions]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -86,38 +79,38 @@
 
 (defn- mbql-query->raw-hsql
   [driver {database-id :database, :as query}]
-  (qp.store/with-metadata-provider database-id
-    (sql.qp/mbql->honeysql driver (qp.preprocess/preprocess query))))
+  (driver-api/with-metadata-provider database-id
+    (sql.qp/mbql->honeysql driver (driver-api/preprocess query))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Action Execution                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti base-type->sql-type-map
-  "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting
-  this from implementations of [[metabase.test.data.sql/field-base-type->sql-type]] so go find that stuff if you need
-  to write more implementations for this."
+  "Return a map of [[metabase.types.core]] type to SQL string type name. Used for casting. Looks like we're just
+  copypasting this from implementations of [[metabase.test.data.sql/field-base-type->sql-type]] so go find that stuff
+  if you need to write more implementations for this."
   {:changelog-test/ignore true, :arglists '([driver]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defn- cast-values :- ::lib.schema.actions/row
+(mu/defn- cast-values :- driver-api/schema.actions.row
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
   [driver        :- :keyword
-   column->value :- ::lib.schema.actions/row
-   database-id   :- ::lib.schema.id/database
-   table-id      :- ::lib.schema.id/table]
+   column->value :- driver-api/schema.actions.row
+   database-id   :- driver-api/schema.id.database
+   table-id      :- driver-api/schema.id.table]
   (let [type->sql-type (base-type->sql-type-map driver)
-        column->field  (actions/cached-value
+        column->field  (driver-api/cached-value
                         [::cast-values table-id]
                         (fn []
                           (into {}
                                 #_{:clj-kondo/ignore [:deprecated-var]}
-                                (map (juxt :name qp.store/->legacy-metadata))
-                                (qp.store/with-metadata-provider database-id
-                                  (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id)))))]
+                                (map (juxt :name driver-api/->legacy-metadata))
+                                (driver-api/with-metadata-provider database-id
+                                  (driver-api/fields (driver-api/metadata-provider) table-id)))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
@@ -203,7 +196,7 @@
 (defn- prepare-query [hsql-query driver action]
   (prepare-query* driver action hsql-query))
 
-(defmethod actions/perform-action!* [:sql-jdbc :row/delete]
+(defmethod driver-api/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
   (let [raw-hsql    (mbql-query->raw-hsql driver query)
         delete-hsql (-> raw-hsql
@@ -222,7 +215,7 @@
                           {:staus-code 400})))
         {:rows-deleted [1]}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :row/update]
+(defmethod driver-api/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
   (let [raw-hsql     (mbql-query->raw-hsql driver query)
         target-table (first (:from raw-hsql))
@@ -274,11 +267,11 @@
     (log/tracef ":row/create SELECT SQL + args:\n\n%s" (u/pprint-to-str select-sql-args))
     (first (jdbc/query {:connection conn} select-sql-args {:identifiers identity, :transaction? false, :keywordize? false}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :row/create] :- [:map [:created-row [:maybe ::created-row]]]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :row/create] :- [:map [:created-row [:maybe ::created-row]]]
   [driver
    action
    database
-   {database-id :database :keys [create-row] :as query} :- ::mbql.s/Query]
+   {database-id :database :keys [create-row] :as query} :- driver-api/mbql.schema.Query]
   (let [raw-hsql    (mbql-query->raw-hsql driver query)
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
@@ -344,7 +337,7 @@
                         driver
                         conn
                         (fn []
-                          (actions/perform-action!* driver action database arg-map)))]
+                          (driver-api/perform-action!* driver action database arg-map)))]
             [errors
              (conj successes result)])
           (catch Throwable e
@@ -354,14 +347,14 @@
 
 ;;;; `:bulk/create`
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :bulk/create]
   [driver                  :- :keyword
    _action
    database                :- [:map
-                               [:id ::lib.schema.id/database]]
+                               [:id driver-api/schema.id.database]]
    {:keys [table-id rows]} :- [:map
-                               [:table-id ::lib.schema.id/table]
-                               [:rows     [:sequential ::lib.schema.actions/row]]]]
+                               [:table-id driver-api/schema.id.table]
+                               [:rows     [:sequential driver-api/schema.actions.row]]]]
   (log/tracef "Inserting %d rows" (count rows))
   (perform-bulk-action-with-repeated-single-row-actions!
    {:driver   driver
@@ -381,17 +374,17 @@
 
 ;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
 
-(mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
+(mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [database-id :- ::lib.schema.id/database
-   table-id    :- ::lib.schema.id/table]
+  [database-id :- driver-api/schema.id.database
+   table-id    :- driver-api/schema.id.table]
   (into {}
         (comp (filter (fn [{:keys [semantic-type], :as _field}]
                         (isa? semantic-type :type/PK)))
               (map (juxt :name :id)))
-        (qp.store/with-metadata-provider database-id
-          (lib.metadata.protocols/fields
-           (qp.store/metadata-provider)
+        (driver-api/with-metadata-provider database-id
+          (driver-api/fields
+           (driver-api/metadata-provider)
            table-id))))
 
 (defn- row->mbql-filter-clause
@@ -458,7 +451,7 @@
                                           (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
+(defmethod driver-api/perform-action!* [:sql-jdbc :bulk/delete]
   [driver _action {database-id :id, :as database} {:keys [table-id rows]}]
   (log/tracef "Deleting %d rows" (count rows))
   (let [pk-name->id (table-id->pk-field-name->id database-id table-id)]
@@ -488,7 +481,7 @@
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
-  [row      :- ::lib.schema.actions/row
+  [row      :- driver-api/schema.actions.row
    pk-names :- [:set :string]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
@@ -499,7 +492,7 @@
 
 (mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
-  [row      :- ::lib.schema.actions/row
+  [row      :- driver-api/schema.actions.row
    pk-names :- [:set :string]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)
@@ -527,7 +520,7 @@
                       :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
          :update-row (apply dissoc row pk-names)}))))
 
-(defmethod actions/perform-action!* [:sql-jdbc :bulk/update]
+(defmethod driver-api/perform-action!* [:sql-jdbc :bulk/update]
   [driver _action database {:keys [table-id rows]}]
   (log/tracef "Updating %d rows" (count rows))
   (perform-bulk-action-with-repeated-single-row-actions!

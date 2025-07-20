@@ -3,21 +3,21 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.channel.urls :as urls]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
-   [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
-   [metabase.public-settings :as public-settings]
+   [metabase.parameters.shared :as shared.params]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (defn is-card-empty?
@@ -45,7 +45,7 @@
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 
-  There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"placeholder\"."
+  There are currently 5 types of virtual card: \"text\", \"action\", \"link\", \"placeholder\", and \"heading\"."
   [dashcard ttype]
   (when (= ttype (get-in dashcard [:visualization_settings :virtual_card :display]))
     dashcard))
@@ -104,14 +104,13 @@
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
-(defn- escape-heading-markdown
-  [dashcard]
-  (if (= "heading" (get-in dashcard [:visualization_settings :virtual_card :display]))
-    ;; If there's no heading text, the heading is empty, so we return nil.
-    (when (get-in dashcard [:visualization_settings :text])
-      (update-in dashcard [:visualization_settings :text]
-                 #(str "## " %)))
-    dashcard))
+(defn- resolve-inline-parameters
+  "Resolves the full parameter definitions for inline parameters on a dashcard, and adds them to the dashcard's
+  visualization settings so that they can be rendered in a subscription."
+  [dashcard parameters]
+  (let [inline-parameters-ids (set (:inline_parameters dashcard))
+        inline-parameters     (filter #(inline-parameters-ids (:id %)) parameters)]
+    (assoc-in dashcard [:visualization_settings :inline_parameters] inline-parameters)))
 
 (defn- escape-markdown-chars?
   "Heading cards should not escape characters."
@@ -119,20 +118,20 @@
   (not= "heading" (get-in dashcard [:visualization_settings :virtual_card :display])))
 
 (defn process-virtual-dashcard
-  "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
-  substituted into connected variables in the text."
+  "Given a virtual (text or heading) dashcard and the parameters on a dashboard, returns the dashcard with any
+  parameter values appropriately substituted into connected variables in the text."
   [dashcard parameters]
-  (let [text               (-> dashcard :visualization_settings :text)
-        parameter-mappings (:parameter_mappings dashcard)
-        tag-names          (shared.params/tag_names text)
-        param-id->param    (into {} (map (juxt :id identity) parameters))
-        tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
-        tag->param         (reduce (fn [m tag-name]
-                                     (when-let [param-id (get tag-name->param-id tag-name)]
-                                       (assoc m tag-name (get param-id->param param-id))))
-                                   {}
-                                   tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+  (let [text                  (-> dashcard :visualization_settings :text)
+        parameter-mappings    (:parameter_mappings dashcard)
+        tag-names             (shared.params/tag_names text)
+        param-id->param       (into {} (map (juxt :id identity) parameters))
+        tag-name->param-id    (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
+        tag->param            (reduce (fn [m tag-name]
+                                        (when-let [param-id (get tag-name->param-id tag-name)]
+                                          (assoc m tag-name (get param-id->param param-id))))
+                                      {}
+                                      tag-names)]
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (system/site-locale) (escape-markdown-chars? dashcard))))
 
 (def ^{:private true
        :doc     "If a query has more than the number of rows specified here, we store the data to disk instead of in memory."}
@@ -148,6 +147,13 @@
     (do
       (log/debugf "Storing %d rows to disk" (:row_count qp-result))
       (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
+
+(defn- fixup-viz-settings
+  "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
+  See #58469.
+  TODO: remove this hack when it's fixed in QP."
+  [qp-result]
+  (update-in qp-result [:data :viz-settings] merge (get-in qp-result [:json_query :viz-settings])))
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -165,22 +171,23 @@
                                 :dashcard dashcard
                                 ;; TODO should this be dashcard?
                                 :type     :card
-                                :result   (qp.dashboard/process-query-for-dashcard
-                                           :dashboard-id  dashboard_id
-                                           :card-id       card-id
-                                           :dashcard-id   (u/the-id dashcard)
-                                           :context       :dashboard-subscription
-                                           :export-format :api
-                                           :parameters    parameters
-                                           :constraints   {}
-                                           :middleware    {:process-viz-settings?             true
-                                                           :js-int-to-string?                 false
-                                                           :add-default-userland-constraints? false}
-                                           :make-run      (fn make-run [qp _export-format]
-                                                            (^:once fn* [query info]
-                                                              (qp
-                                                               (qp/userland-query query info)
-                                                               nil))))})
+                                :result   (fixup-viz-settings
+                                           (qp.dashboard/process-query-for-dashcard
+                                            :dashboard-id  dashboard_id
+                                            :card-id       card-id
+                                            :dashcard-id   (u/the-id dashcard)
+                                            :context       :dashboard-subscription
+                                            :export-format :api
+                                            :parameters    parameters
+                                            :constraints   {}
+                                            :middleware    {:process-viz-settings?             true
+                                                            :js-int-to-string?                 false
+                                                            :add-default-userland-constraints? false}
+                                            :make-run      (fn make-run [qp _export-format]
+                                                             (^:once fn* [query info]
+                                                               (qp
+                                                                (qp/userland-query query info)
+                                                                nil)))))})
               result         (result-fn card_id)
               series-results (mapv (comp result-fn :id) multi-cards)]
           (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -207,7 +214,9 @@
         ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
         ;; memory
         ;; TODO: we need to store series result data rows to disk too
-        (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!)))
+        (-> (execute-dashboard-subscription-card dashcard parameters)
+            (m/update-existing :result data-rows-to-disk!)
+            (m/update-existing :dashcard resolve-inline-parameters parameters))))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -221,13 +230,20 @@
     (virtual-card-of-type? dashcard "placeholder")
     nil
 
+    (virtual-card-of-type? dashcard "heading")
+    (let [parameters (merge-default-values parameters)]
+      (some-> dashcard
+              (process-virtual-dashcard parameters)
+              (resolve-inline-parameters parameters)
+              :visualization_settings
+              (assoc :type :heading)))
+
     ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
     (let [parameters (merge-default-values parameters)]
       (some-> dashcard
               (process-virtual-dashcard parameters)
-              escape-heading-markdown
               :visualization_settings
               (assoc :type :text)))))
 
@@ -276,19 +292,20 @@
   [creator-id :- pos-int?
    card-id :- pos-int?]
   (let [result (request/with-current-user creator-id
-                 (qp.card/process-query-for-card card-id :api
-                                                 ;; TODO rename to :notification?
-                                                 :context     :pulse
-                                                 :constraints {}
-                                                 :middleware  {:skip-results-metadata?            false
-                                                               :process-viz-settings?             true
-                                                               :js-int-to-string?                 false
-                                                               :add-default-userland-constraints? false}
-                                                 :make-run    (fn make-run [qp _export-format]
-                                                                (^:once fn* [query info]
-                                                                  (qp
-                                                                   (qp/userland-query query info)
-                                                                   nil)))))]
+                 (fixup-viz-settings
+                  (qp.card/process-query-for-card card-id :api
+                                                  ;; TODO rename to :notification?
+                                                  :context     :pulse
+                                                  :constraints {}
+                                                  :middleware  {:skip-results-metadata?            false
+                                                                :process-viz-settings?             true
+                                                                :js-int-to-string?                 false
+                                                                :add-default-userland-constraints? false}
+                                                  :make-run    (fn make-run [qp _export-format]
+                                                                 (^:once fn* [query info]
+                                                                   (qp
+                                                                    (qp/userland-query query info)
+                                                                    nil))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)

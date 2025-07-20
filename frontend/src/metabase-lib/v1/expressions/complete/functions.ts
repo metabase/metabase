@@ -3,8 +3,14 @@ import type { CompletionContext } from "@codemirror/autocomplete";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { EXPRESSION_FUNCTIONS, MBQL_CLAUSES } from "../config";
-import { GROUP } from "../pratt";
+import { clausesForMode } from "../clause";
+import {
+  GROUP,
+  LOGICAL_AND,
+  LOGICAL_NOT,
+  LOGICAL_OR,
+  type Token,
+} from "../pratt";
 import { getDatabase } from "../utils";
 
 import {
@@ -13,46 +19,30 @@ import {
   fuzzyMatcher,
   isFieldReference,
   isIdentifier,
-  isOperator,
   tokenAtPos,
 } from "./util";
 
 export type Options = {
-  startRule: string;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   metadata: Metadata;
-  reportTimezone?: string;
 };
 
-export function suggestFunctions({
-  startRule,
-  query,
-  metadata,
-  reportTimezone,
-}: Options) {
-  if (startRule !== "expression" && startRule !== "boolean") {
+export function suggestFunctions({ expressionMode, query, metadata }: Options) {
+  if (expressionMode !== "expression" && expressionMode !== "filter") {
     return null;
   }
 
   const database = getDatabase(query, metadata);
-  const functions = [...EXPRESSION_FUNCTIONS]
-    .map((name) => MBQL_CLAUSES[name])
-    .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
-    .filter(function disableOffsetInFilterExpressions(clause) {
-      const isOffset = clause.name === "offset";
-      const isFilterExpression = startRule === "boolean";
-      const isOffsetInFilterExpression = isOffset && isFilterExpression;
-      return !isOffsetInFilterExpression;
-    })
+  const functions = clausesForMode(expressionMode)
+    .filter((clause) => database?.hasFeature(clause.requiresFeature))
     .map((func) =>
       expressionClauseCompletion(func, {
         type: "function",
-        database,
-        reportTimezone,
       }),
     );
 
-  const matcher = fuzzyMatcher(functions);
+  const matcher = fuzzyMatcher({ options: functions });
 
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
@@ -60,7 +50,7 @@ export function suggestFunctions({
 
     if (
       !token ||
-      !(isIdentifier(token) || isOperator(token)) ||
+      !isPotentialFunctionPrefix(token) ||
       isFieldReference(token)
     ) {
       return null;
@@ -77,6 +67,13 @@ export function suggestFunctions({
       from: token.start,
       to: token.end,
       options,
+      filter: false,
     };
   };
+}
+
+const PREFIX_OPERATORS = new Set([LOGICAL_OR, LOGICAL_AND, LOGICAL_NOT]);
+
+function isPotentialFunctionPrefix(token: Token) {
+  return isIdentifier(token) || PREFIX_OPERATORS.has(token.type);
 }

@@ -18,6 +18,9 @@ inputs:
     required: true
   trunk-api-token:
     required: true
+  variant:
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -45,10 +48,11 @@ runs:
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
 
     - name: Upload results to Trunk
-      if: ${{ always() }}
+      if: ${{ always() && !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
       uses: trunk-io/analytics-uploader@main
       with:
         junit-paths: ${{ inputs.input-path }}
+        variant: ${{ inputs.variant || inputs.output-name }}
         org-slug: metabase
         token: ${{ inputs.trunk-api-token }}
       continue-on-error: true

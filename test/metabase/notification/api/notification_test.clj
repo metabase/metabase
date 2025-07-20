@@ -4,13 +4,14 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections :notifications))
@@ -217,6 +218,44 @@
                                                                               :payload_type "notification/card"})
                    :creator_id)))))))
 
+(deftest notification-with-custom-template-test
+  (mt/with-model-cleanup [:model/Notification]
+    (testing "can create a notification with a template"
+      (let [template     (-> notification.tu/channel-template-email-with-handlebars-body
+                             (update :channel_type u/qualified-name)
+                             (update-in [:details :type] u/qualified-name))
+            notification (mt/user-http-request :crowberto :post 200 "notification"
+                                               {:payload_type  :notification/testing
+                                                :creator_id    (mt/user->id :crowberto)
+                                                :handlers      [(assoc @notification.tu/default-email-handler
+                                                                       :template notification.tu/channel-template-email-with-handlebars-body)]})
+            created-template (-> notification :handlers first :template)]
+        (is (=? template created-template))
+        (testing "and can update the template"
+          (let [updated-notification (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                           (update notification :handlers (fn [[handler]]
+                                                                                            [(assoc-in handler [:template :name] "New Name")])))
+                updated-template    (-> updated-notification :handlers first :template)]
+            (is (=? (-> created-template
+                        (assoc :name "New Name")
+                        (dissoc :updated_at :created_at))
+                    (dissoc updated-template :updated_at :created_at)))))
+
+        (testing "can delete the template"
+          (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                (update notification :handlers (fn [[handler]]
+                                                                 [(dissoc handler :template)])))
+          (is (false? (t2/exists? :model/ChannelTemplate (:id created-template)))))
+
+        (testing "and re-create it again"
+          (let [notification       (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                                         (update notification :handlers (fn [[handler]]
+                                                                                          [(assoc handler
+                                                                                                  :template template
+                                                                                                  :template_id nil)])))
+                recreated-template (-> notification :handlers first :template)]
+            (is (=? template recreated-template))))))))
+
 (defn- update-cron-subscription
   [{:keys [subscriptions] :as notification} new-schedule ui-display-type]
   (assert (= 1 (count subscriptions)))
@@ -353,8 +392,8 @@
         (testing "send to all handlers"
           (is (=? {:channel/email [{:message    (mt/malli=? some?)
                                     :recipients ["crowberto@metabase.com"]}]
-                   :channel/slack [{:attachments (mt/malli=? some?)
-                                    :channel-id  "#general"}]
+                   :channel/slack [{:blocks  (mt/malli=? some?)
+                                    :channel "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
@@ -378,8 +417,8 @@
       (testing "send to all handlers"
         (is (=? {:channel/email [{:message    (mt/malli=? some?)
                                   :recipients ["crowberto@metabase.com"]}]
-                 :channel/slack [{:attachments (mt/malli=? some?)
-                                  :channel-id  "#general"}]
+                 :channel/slack [{:blocks  (mt/malli=? some?)
+                                  :channel "#general"}]
                  :channel/http  [{:body (mt/malli=? some?)}]}
                 (notification.tu/with-captured-channel-send!
                   (mt/user-http-request :crowberto :post 204 "notification/send"
@@ -995,3 +1034,49 @@
               (let [emails (update-notification! noti-id notification
                                                  (assoc-in notification [:payload :send_condition] "goal_above"))]
                 (is (empty? emails))))))))))
+
+(deftest validate-email-domains-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:email-allow-list}
+     (mt/with-model-cleanup [:model/Notification]
+       (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders {:limit 1})}]
+           (let [notification {:payload_type  "notification/card"
+                               :creator_id    (mt/user->id :crowberto)
+                               :payload       {:card_id card-id
+                                               :send_condition "has_result"}}
+                 failed-handlers [{:channel_type "channel/email"
+                                   :recipients   [{:type    "notification-recipient/raw-value"
+                                                   :details {:value "ngoc@metabase.com"}}
+                                                  {:type    "notification-recipient/raw-value"
+                                                   :details {:value "ngoc@metaba.be"}}]}]
+                 success-handlers [{:channel_type "channel/email"
+                                    :recipients   [{:type    "notification-recipient/raw-value"
+                                                    :details {:value "ngoc@example.com"}}]}]]
+             (testing "on creation"
+               (testing "fail if recipients does not match allowed domains"
+                 (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                        (mt/user-http-request :crowberto :post 403 "notification" (assoc notification :handlers failed-handlers)))))
+
+               (testing "success if recipients matches allowed domains"
+                 (mt/user-http-request :crowberto :post 200 "notification" (assoc notification :handlers success-handlers))))
+
+             (testing "on update"
+               (notification.tu/with-card-notification [notification {}]
+                 (testing "fail if recipients does not match allowed domains"
+                   (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                          (mt/user-http-request :crowberto :put 403 (format "notification/%d" (:id notification))
+                                                (assoc notification :handlers failed-handlers)))))
+
+                 (testing "success if recipients matches allowed domains"
+                   (mt/user-http-request :crowberto :put 200 (format "notification/%d" (:id notification))
+                                         (assoc notification :handlers success-handlers)))))
+
+             (testing "on send test"
+               (testing "fail if recipients does not match allowed domains"
+                 (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                        (mt/user-http-request :crowberto :post 403 "notification/send"
+                                              (assoc notification :handlers failed-handlers)))))
+               (testing "success if recipients matches allowed domains"
+                 (mt/user-http-request :crowberto :post 204 "notification/send"
+                                       (assoc notification :handlers success-handlers)))))))))))

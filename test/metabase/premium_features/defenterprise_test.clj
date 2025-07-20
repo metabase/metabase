@@ -1,7 +1,7 @@
 (ns metabase.premium-features.defenterprise-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]))
 

@@ -2,10 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.util.jvm :as u.jvm]
+   [metabase.test.util.namespace :as test.namespace]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel table-name-resolution-test
@@ -19,7 +19,7 @@
   ;; I know I literally just made this var deprecated last week but we really need the entire system to be loaded for
   ;; this to work and I don't have a better way of making this happen yet.
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (doseq [nspace u.jvm/metabase-namespace-symbols]
+  (doseq [nspace test.namespace/metabase-namespace-symbols]
     ;; classloader/require for thread safety
     (classloader/require nspace)))
 

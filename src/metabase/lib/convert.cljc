@@ -182,10 +182,7 @@
                             (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                            [idx ag-uuid]))
                             aggregations)
-        pMBQL->legacy (into {}
-                            (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                           [ag-uuid idx]))
-                            aggregations)]
+        pMBQL->legacy (set/map-invert legacy->pMBQL)]
     (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL
               *pMBQL-uuid->legacy-index* pMBQL->legacy]
       (thunk))))
@@ -197,10 +194,35 @@
      [aggregations & body]
      `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
+(defn- index-ref-clauses->pMBQL [clauses]
+  (letfn [(pass [state]
+            (reduce (fn [{:keys [index index->uuid converted] :as state} clause]
+                      (-> (if (get converted index)
+                            state
+                            (try
+                              (let [pMBQL (binding [*legacy-index->pMBQL-uuid* index->uuid]
+                                            (->pMBQL clause))]
+                                (-> state
+                                    (update :index->uuid assoc index (lib.options/uuid pMBQL))
+                                    (update :converted assoc index pMBQL)))
+                              (catch #?(:cljs js/Error :clj clojure.lang.ExceptionInfo) e
+                                (if (= (-> e ex-data :error) ::legacy-index->pMBQL-uuid-missing)
+                                  state
+                                  (throw e)))))
+                          (update :index inc)))
+                    (assoc state :index 0)
+                    clauses))]
+    (loop [state {:index->uuid {}, :converted (vec (repeat (count clauses) nil))}]
+      (let [{:keys [index->uuid converted] :as state'} (pass state)]
+        (cond
+          (= (count index->uuid) (count clauses)) converted
+          (= converted (:converted state))        (throw (ex-info "Couldn't index clauses" {:clauses clauses}))
+          :else                                   (recur state'))))))
+
 (defn- from-indexed-idents [stage list-key idents-key]
-  (let [idents (get stage idents-key)]
-    (->> (get stage list-key)
-         ->pMBQL
+  (let [idents (get stage idents-key)
+        clauses (get stage list-key)]
+    (->> (index-ref-clauses->pMBQL clauses)
          (map-indexed (fn [i x]
                         (if-let [ident (or (get idents i)
                                            ;; Conversion from JSON keywordizes all keys, including these numbers!
@@ -280,9 +302,8 @@
 
 (defmethod ->pMBQL :value
   [[_tag value opts]]
-  ;; `:value` uses `:snake_case` keys in legacy MBQL for some insane reason (actually this was to match the shape of
-  ;; the keys in Field metadata), at least for the three type keys enumerated below.
-  ;; See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
+  ;; `:value` uses `:snake_case` keys in legacy MBQL (this was to match the shape of the keys in Field metadata), at
+  ;; least for the three type keys enumerated below. See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
   (let [opts (set/rename-keys opts {:base_type     :base-type
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
@@ -328,12 +349,17 @@
    [tag opts (or (get *legacy-index->pMBQL-uuid* aggregation-index)
                  (throw (ex-info (str "Error converting :aggregation reference: no aggregation at index "
                                       aggregation-index)
-                                 {:clause clause})))]))
+                                 {:clause clause
+                                  :error ::legacy-index->pMBQL-uuid-missing})))]))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
   (let [[tag opts & args] (->pMBQL aggregation)]
     (into [tag (merge opts options)] args)))
+
+(defmethod ->pMBQL :datetime
+  [[_tag value options]]
+  (lib.options/ensure-uuid [:datetime (or options {}) (->pMBQL value)]))
 
 (defmethod ->pMBQL :time-interval
   [[_tag field n unit options]]
@@ -408,7 +434,7 @@
   (->> (cond-> m
          ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
          ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
-         (contains? m :metabase.lib.query/transformation-added-base-type)
+         (:metabase.lib.query/transformation-added-base-type m)
          (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
 
          ;; Removing the namespaces from a few
@@ -434,6 +460,10 @@
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
+
+(defmethod aggregation->legacy-MBQL :aggregation
+  [clause]
+  (->legacy-MBQL clause))
 
 (defmethod aggregation->legacy-MBQL :offset
   [clause]
@@ -461,7 +491,8 @@
 
 (doseq [tag [:count :avg :count-where :distinct :distinct-where
              :max :median :min :percentile
-             :share :stddev :sum :sum-where]]
+             :share :stddev :sum :sum-where
+             :cum-sum :cum-count]]
   (lib.hierarchy/derive tag ::aggregation))
 
 (doseq [tag [:+ :- :* :/
@@ -472,9 +503,10 @@
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date
              :concat :substring :replace :regex-match-first :split-part
-             :length :trim :ltrim :rtrim :upper :lower :text :integer]]
+             :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 
+;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so why should expression go through that as well?
 (defmethod ->legacy-MBQL ::aggregation-or-expression
   [input]
   (aggregation->legacy-MBQL input))
@@ -482,7 +514,7 @@
 (defn- stage-metadata->legacy-metadata [stage-metadata]
   (into []
         (comp (map #(update-keys % u/->snake_case_en))
-              (map ->legacy-MBQL))
+              (map #(dissoc % :lib/type)))
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
@@ -543,10 +575,13 @@
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]
   (let [opts (-> opts
+                 ;; remove effective type since it's not used/allowed in legacy MBQL
+                 (dissoc :effective-type)
                  ;; as mentioned above, `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-                 (set/rename-keys  {:base-type     :base_type
-                                    :semantic-type :semantic_type
-                                    :database-type :database_type})
+                 (set/rename-keys  {:base-type      :base_type
+                                    :semantic-type  :semantic_type
+                                    :database-type  :database_type
+                                    :effective-type :effective_type})
                  options->legacy-MBQL)]
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.
@@ -575,14 +610,17 @@
     :always (set/rename-keys {pMBQL-key legacy-key})))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
-  (let [base (cond-> (disqualify join)
-               (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))]
+  (let [base     (cond-> (disqualify join)
+                   (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))
+        metadata (:lib/stage-metadata (last (:stages join)))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
            (-> base
                (select-keys [:conditions])
                (update-list->legacy-boolean-expression :conditions :condition))
+           (when (seq (:columns metadata))
+             {:source-metadata (stage-metadata->legacy-metadata metadata)})
            (chain-stages base))))
 
 (defn- source-card->legacy-source-table

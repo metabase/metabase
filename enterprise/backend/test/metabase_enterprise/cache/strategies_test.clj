@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.cache.strategies :as strategies]
-   [metabase-enterprise.task.cache :as task.cache]
-   [metabase.models.query :as query]
+   [metabase-enterprise.cache.task.refresh-cache-configs :as task.cache]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]))
@@ -13,9 +13,8 @@
   strategies/keep-me)
 
 (deftest caching-strategies
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:cache-granular-controls}
-
       (let [query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 5})
             mkres (fn [input]
                     {:cache/details (if input
@@ -85,7 +84,7 @@
                             (-> (qp/process-query query) (dissoc :data))))))))))))))
 
 (deftest e2e-advanced-caching
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:cache-granular-controls}
       (mt/dataset (mt/dataset-definition "caching1"
                                          ["table"

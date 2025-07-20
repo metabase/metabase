@@ -3,8 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-dimension-projections
@@ -168,15 +168,13 @@
                                  :name          (mt/format-name "name_2")
                                  :remapped_from (mt/format-name "category_id")
                                  :field_ref     $category_id->categories.name))]}
-                (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                                    (mt/format-rows-by
-                                     [str int str str]
-                                     (mt/run-mbql-query venues
-                                       {:fields   [$name $price $category_id]
-                                        :order-by [[:asc $name]]
-                                        :limit    4})))
-                    (update :cols (fn [[c1 c2 c3]]
-                                    [c1 c2 (dissoc c3 :source_alias)])))))))))
+                (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                                (mt/format-rows-by
+                                 [str int str str]
+                                 (mt/run-mbql-query venues
+                                   {:fields   [$name $price $category_id]
+                                    :order-by [[:asc $name]]
+                                    :limit    4})))))))))
 
 (deftest ^:parallel remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
@@ -312,6 +310,7 @@
   [_driver _feature _database]
   false)
 
+;;; see also [[metabase.lib.field-test/remapped-columns-in-joined-source-queries-display-names-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join ::remapped-columns-in-joined-source-queries-test)
     (testing "Remapped columns in joined source queries should work (#15578)"
@@ -325,6 +324,7 @@
                                                     :aggregation  [[:sum $orders.quantity]]}
                                      :alias        "Orders"
                                      :condition    [:= $id &Orders.orders.product_id]
+                                     ;; we can get title since product_id is remapped to title
                                      :fields       [&Orders.title
                                                     &Orders.*sum/Integer]}]
                          :fields   [$title $category]
@@ -334,10 +334,10 @@
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)
                   (testing "Metadata"
-                    (is (= [["TITLE"    "Title"]
-                            ["CATEGORY" "Category"]
-                            ["TITLE_2"  "Orders → Title"]
-                            ["sum"      "Orders → Sum"]]
+                    (is (= [["TITLE"    "Title"]                     ; products.title
+                            ["CATEGORY" "Category"]                  ; products.category
+                            ["TITLE_2"  "Orders → Title"]            ; Orders.title (remapped from orders.product-id => products.title)
+                            ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
                            (map (juxt :name :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]

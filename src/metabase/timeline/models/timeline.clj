@@ -1,6 +1,6 @@
 (ns metabase.timeline.models.timeline
   (:require
-   [metabase.models.collection.root :as collection.root]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]

@@ -6,4 +6,4 @@
    ;; Make sure the custom Metabase logger code gets loaded up so we use our custom logger for performance reasons. TODO
    ;; -- this namespace doesn't follow the module namespace naming pattern and should get moved to
    ;; `metabase.logger.core` or something like that.
-   [metabase.logger]))
+   [metabase.logger.core]))

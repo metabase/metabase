@@ -5,7 +5,7 @@
     :as impersonation]
    [metabase-enterprise.impersonation.util-test
     :as impersonation.util-test]
-   [metabase.models.params.field-values :as params.field-values]
+   [metabase.parameters.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

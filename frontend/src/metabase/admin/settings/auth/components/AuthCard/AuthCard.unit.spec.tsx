@@ -1,11 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
-import type { AuthCardProps, AuthSetting } from "./AuthCard";
-import AuthCard from "./AuthCard";
+import type { AuthCardProps } from "./AuthCard";
+import { AuthCard } from "./AuthCard";
 
 describe("AuthCard", () => {
   it("should render when not configured", () => {
@@ -21,7 +19,7 @@ describe("AuthCard", () => {
 
   it("should pause active authentication", async () => {
     const props = getProps({
-      setting: getSetting({ value: true }),
+      isEnabled: true,
       isConfigured: true,
     });
 
@@ -35,7 +33,7 @@ describe("AuthCard", () => {
 
   it("should resume paused authentication", async () => {
     const props = getProps({
-      setting: getSetting({ value: false }),
+      isEnabled: false,
       isConfigured: true,
     });
 
@@ -49,7 +47,7 @@ describe("AuthCard", () => {
 
   it("should deactivate authentication", async () => {
     const props = getProps({
-      setting: getSetting({ value: false }),
+      isEnabled: false,
       isConfigured: true,
     });
 
@@ -64,11 +62,10 @@ describe("AuthCard", () => {
 
   it("should handle settings set with env vars", () => {
     const props = getProps({
-      setting: getSetting({
-        value: null,
+      setting: {
         env_name: "MB_JWT_ENABLED",
         is_env_setting: true,
-      }),
+      },
       isConfigured: true,
     });
 
@@ -80,22 +77,16 @@ describe("AuthCard", () => {
   });
 });
 
-const getSetting = (opts?: Partial<AuthSetting>): AuthSetting => {
-  const settingDefinition = createMockSettingDefinition({
-    key: "google-auth-enabled",
-    value: false,
-    ...opts,
-  });
-
-  return _.omit(settingDefinition, "key") as AuthSetting;
-};
-
 const getProps = (opts?: Partial<AuthCardProps>): AuthCardProps => ({
-  setting: getSetting(),
+  setting: {
+    is_env_setting: false,
+    env_name: "MY_VAR",
+  },
   type: "type",
   name: "SSO",
   description: "SSO authentication",
   isConfigured: false,
+  isEnabled: false,
   onChange: jest.fn(),
   onDeactivate: jest.fn(),
   ...opts,

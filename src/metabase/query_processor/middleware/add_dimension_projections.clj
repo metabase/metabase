@@ -24,7 +24,9 @@
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`.
 
-  See also [[metabase.models.params.chain-filter]] for another explanation of remapping."
+  See also [[metabase.parameters.chain-filter]] for another explanation of remapping.
+
+  TODO (Cam 6/19/25) -- rename this to `add-remaps` or something that makes it's purposes a little less opaque."
   (:require
    [clojure.data :as data]
    [clojure.walk :as walk]
@@ -32,9 +34,9 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]

@@ -14,7 +14,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
   query,
@@ -22,6 +22,8 @@ export function StringFilterPicker({
   column,
   filter,
   isNew,
+  withAddButton,
+  withSubmitButton,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -54,13 +56,20 @@ export function StringFilterPicker({
     setValues(getDefaultValues(newOperator, values));
   };
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
+  const handleFilterChange = (opts: FilterChangeOpts) => {
     const filter = getFilterClause(operator, values, options);
     if (filter) {
-      onChange(filter);
+      onChange(filter, opts);
     }
+  };
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleFilterChange({ run: true });
+  };
+
+  const handleAddButtonClick = () => {
+    handleFilterChange({ run: false });
   };
 
   return (
@@ -68,7 +77,7 @@ export function StringFilterPicker({
       component="form"
       w={WIDTH}
       data-testid="string-filter-picker"
-      onSubmit={handleSubmit}
+      onSubmit={handleFormSubmit}
     >
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
@@ -89,7 +98,13 @@ export function StringFilterPicker({
           type={type}
           onChange={setValues}
         />
-        <FilterPickerFooter isNew={isNew} canSubmit={isValid}>
+        <FilterPickerFooter
+          isNew={isNew}
+          isValid={isValid}
+          withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
+          onAddButtonClick={handleAddButtonClick}
+        >
           {type === "partial" && (
             <CaseSensitiveOption
               value={options.caseSensitive ?? false}
@@ -121,7 +136,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (type === "exact") {
     return (
-      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
+      <Box p="md" pb={0} mah="25vh" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -131,6 +146,7 @@ function StringValueInput({
           autoFocus
           onChange={onChange}
         />
+        <Box pt="md" />
       </Box>
     );
   }

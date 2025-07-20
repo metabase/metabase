@@ -9,7 +9,7 @@ import type {
   GroupIds,
   UserGroupsType,
 } from "metabase/admin/types";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";
@@ -36,7 +36,7 @@ type MappingRowProps = {
   onDeleteMapping: OnDeleteMappingType;
 };
 
-const MappingRow = ({
+export const MappingRow = ({
   name,
   groups,
   selectedGroupIds,
@@ -86,7 +86,8 @@ const MappingRow = ({
           Promise.all(
             groupIds.map(async (id) => {
               try {
-                if (!isAdminGroup(groups.find((group) => group.id === id))) {
+                const group = groups.find((group) => group.id === id);
+                if (group && !isAdminGroup(group)) {
                   await clearGroupMember({ id });
                 }
               } catch (error) {
@@ -99,7 +100,8 @@ const MappingRow = ({
           Promise.all(
             groupIds.map(async (id) => {
               try {
-                if (!isAdminGroup(groups.find((group) => group.id === id))) {
+                const group = groups.find((group) => group.id === id);
+                if (group && !isAdminGroup(group)) {
                   await deleteGroup({ id });
                 }
               } catch (error) {
@@ -119,6 +121,7 @@ const MappingRow = ({
   const isMappingLinkedOnlyToAdminGroup =
     groups.length > 0 &&
     selectedGroupIdsFromGroupsThatExist.length === 1 &&
+    firstGroupInMapping &&
     isAdminGroup(firstGroupInMapping);
 
   const shouldUseDeleteGroupMappingModal =
@@ -180,6 +183,3 @@ const DeleteButton = ({
     </DeleteMappingButton>
   </Tooltip>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MappingRow;

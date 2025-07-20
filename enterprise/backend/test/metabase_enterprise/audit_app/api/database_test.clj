@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.test :as mt]))
 
 (deftest audit-db-unmodifiable-test

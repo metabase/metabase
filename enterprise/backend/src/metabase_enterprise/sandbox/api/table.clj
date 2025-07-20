@@ -3,12 +3,12 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.table :as api.table]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (mu/defn- find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]
@@ -25,8 +25,8 @@
                            [:= :pgm.user_id (u/the-id user-or-user-id)]]}))
 
 (mu/defn only-sandboxed-perms? :- :boolean
-  "Returns true if the user has sandboxed permissions for the given table. If a sandbox policy exists, it overrides existing permission on
-  the table."
+  "Returns true if the user has sandboxed permissions for the given table. If a sandbox policy exists, it overrides
+  existing permission on the table."
   [table :- (ms/InstanceOf :model/Table)]
   (boolean (seq (sandbox.api.util/enforced-sandboxes-for-tables #{(:id table)}))))
 
@@ -58,14 +58,14 @@
   :feature :sandboxes
   [id opts]
   (let [table (api/check-404 (t2/select-one :model/Table :id id))
-        thunk (fn [] (api.table/fetch-query-metadata* table opts))]
+        thunk (fn [] (schema.table/fetch-query-metadata* table opts))]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
          ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
          ;; fetch the metadata
-       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+       (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            (thunk))))
       ;; Not sandboxed, so user can fetch full metadata
       (thunk))))
@@ -74,14 +74,14 @@
   "Returns the query metadata used to power the Query Builder for the tables specified by`ids`."
   :feature :sandboxes
   [ids]
-  (for [table (api.table/batch-fetch-query-metadatas* ids)]
+  (for [table (schema.table/batch-fetch-query-metadatas* ids)]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
        table
          ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
          ;; fetch the metadata
-       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+       (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            table)))
       ;; Not sandboxed, so user can fetch full metadata
       table)))

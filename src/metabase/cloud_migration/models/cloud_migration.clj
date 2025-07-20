@@ -4,13 +4,15 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [metabase.app-db.core :as mdb]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.setting.cache :as setting.cache]
+   [metabase.settings.core :as setting]
+   [metabase.task.bootstrap :as task.bootstrap]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -166,7 +168,9 @@
     (if-not (> file-length part-size)
       ;; single put uses SSE, but multipart doesn't support it.
       (put-file upload_url file on-progress :headers {"x-amz-server-side-encryption" "aws:kms"})
-      (let [parts
+      (let [;; seq of up to part-size ranges
+            ;; e.g. for a 250mb file [[0 100e6] [100e6 200e6] [200e6 250e6]]
+            parts
             (partition 2 1 (-> (range 0 file-length part-size)
                                vec
                                (conj file-length)))
@@ -179,11 +183,20 @@
                 json/decode+kw)
 
             etags
-            (->> (map (fn [[start end] [part-number url]]
-                        [part-number
-                         (get-in (put-file url file on-progress :start start :end end)
-                                 [:headers "ETag"])])
-                      parts multipart-urls)
+            (->> parts
+                 (map-indexed (fn [idx [start end]]
+                                (let [;; look up idx in multipart-urls, which starts at :1 up to (count parts)
+                                      part-id (-> idx inc str keyword)
+                                      url (or (multipart-urls part-id)
+                                              (throw (ex-info "Missing upload part url" {:keys (keys multipart-urls)
+                                                                                         :attempted part-id})))
+                                      ;; upload and get the etag from the headers
+                                      resp (put-file url file on-progress :start start :end end)
+                                      etag (or (get-in resp [:headers "ETag"])
+                                               (throw (ex-info "No ETag header returned"
+                                                               {:part-id part-id
+                                                                :headers (-> resp :headers keys)})))]
+                                  [part-id etag])))
                  (into {}))]
         (http/put (migration-url external_id "/multipart/complete")
                   {:form-params  {:multipart_upload_id multipart-upload-id
@@ -209,7 +222,9 @@
       (cloud-migration.settings/read-only-mode! true)
       (when (cluster?)
         (log/info "Cluster detected, waiting for read-only mode to propagate")
-        (Thread/sleep (int (* 1.5 setting.cache/cache-update-check-interval-ms))))
+        (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
+      (log/info "Stopping scheduler")
+      (task/stop-scheduler!)
 
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
@@ -226,6 +241,12 @@
       (log/info "Notifying store that upload is done")
       (http/put (migration-url external_id "/uploaded"))
 
+      ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
+      ;; after finishing the dump to h2 migration
+      (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
+      (log/info "Restarting scheduler")
+      (task/start-scheduler!)
+
       (log/info "Migration finished")
       (set-progress id :done 100)
       (catch Exception e
@@ -235,7 +256,7 @@
           (do
             (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")
-            (throw (ex-info "Error performing migration" {:error e})))))
+            (throw (ex-info "Error performing migration" {} e)))))
       (finally
         (cloud-migration.settings/read-only-mode! false)
         (io/delete-file dump-file :silently)))))
@@ -257,13 +278,14 @@
   (read-only-mode)
 
   ;; test settings you might want to change manually
-  ;; force prod if even in dev
-  #_(migration-use-staging! false)
+  ;; local HM store api url
+  #_(cloud-migration.settings/store-api-url! "http://localhost:5010")
   ;; make sure to use a version that store supports, and a dump for that version.
-  #_(migration-dump-version! "v0.49.7")
+  #_(cloud-migration.settings/migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:
   ;;   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar dump-to-h2 dump --dump-plaintext
-  #_(migration-dump-file! "/path/to/dump.mv.db")
+  ;; you can also upload a random file you have lying around if you just want to test file splitting.
+  #_(cloud-migration.settings/migration-dump-file! "/path/to/dump.mv.db")
   ;; force migration with a smaller multipart threshold (~6mb is minimum)
   #_(def ^:private part-size 6e6)
 

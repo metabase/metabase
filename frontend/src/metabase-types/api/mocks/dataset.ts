@@ -26,6 +26,31 @@ export const createMockColumn = (
   };
 };
 
+export const createMockDatetimeColumn = (data: Partial<DatasetColumn> = {}) =>
+  createMockColumn({
+    base_type: "type/DateTime",
+    effective_type: "type/DateTime",
+    semantic_type: null,
+    unit: "month",
+    ...data,
+  });
+
+export const createMockCategoryColumn = (data: Partial<DatasetColumn> = {}) =>
+  createMockColumn({
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    semantic_type: "type/Category",
+    ...data,
+  });
+
+export const createMockNumericColumn = (data: Partial<DatasetColumn> = {}) =>
+  createMockColumn({
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    semantic_type: null,
+    ...data,
+  });
+
 export const createMockDatasetData = ({
   cols = [
     createMockColumn({

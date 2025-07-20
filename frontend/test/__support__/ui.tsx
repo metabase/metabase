@@ -3,29 +3,30 @@ import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher, RenderHookOptions } from "@testing-library/react";
 import {
+  renderHook,
   screen,
   render as testingLibraryRender,
   waitFor,
 } from "@testing-library/react";
-import { renderHook } from "@testing-library/react-hooks/dom";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
 import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import { Router, useRouterHistory } from "react-router";
+import { Route, Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { Api } from "metabase/api";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { mainReducers } from "metabase/reducers-main";
+import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider } from "metabase/ui";
+import { themeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -111,7 +112,11 @@ export function renderHookWithProviders<TProps, TResult>(
     ...renderHookOptions
   }: Omit<RenderHookOptions<TProps>, "wrapper"> & RenderWithProvidersOptions,
 ) {
-  const { wrapper, store } = getTestStoreAndWrapper({
+  const {
+    wrapper: Wrapper,
+    store,
+    history,
+  } = getTestStoreAndWrapper({
     mode,
     initialRoute,
     storeInitialState,
@@ -123,9 +128,19 @@ export function renderHookWithProviders<TProps, TResult>(
     theme,
   });
 
+  const WrapperWithRoute = ({ children, ...props }: any) => {
+    return (
+      <Wrapper {...props}>
+        <Route path="/" component={() => <>{children}</>} />
+      </Wrapper>
+    );
+  };
+
+  const wrapper = withRouter ? WrapperWithRoute : Wrapper;
+
   const renderHookReturn = renderHook(hook, { wrapper, ...renderHookOptions });
 
-  return { ...renderHookReturn, store };
+  return { ...renderHookReturn, store, history };
 }
 
 type GetTestStoreAndWrapperOptions = RenderWithProvidersOptions &
@@ -163,7 +178,7 @@ export function getTestStoreAndWrapper({
   if (mode === "public") {
     reducers = publicReducers;
   } else {
-    reducers = mainReducers;
+    reducers = makeMainReducers();
   }
 
   if (withRouter) {
@@ -218,6 +233,7 @@ export function TestWrapper({
   withDND,
   withUndos,
   theme,
+  withCssVariables = false,
 }: {
   children: React.ReactElement;
   store: any;
@@ -227,23 +243,23 @@ export function TestWrapper({
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
+  withCssVariables?: boolean;
 }): JSX.Element {
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider
-          theme={theme}
-          mantineProviderProps={{ withCssVariables: false }}
-        >
-          <GlobalStylesForTest />
+        <themeProviderContext.Provider value={{ withCssVariables }}>
+          <ThemeProvider theme={theme}>
+            <GlobalStylesForTest />
 
-          <MaybeKBar hasKBar={withKBar}>
-            <MaybeRouter hasRouter={withRouter} history={history}>
-              {children}
-            </MaybeRouter>
-          </MaybeKBar>
-          {withUndos && <UndoListing />}
-        </ThemeProvider>
+            <MaybeKBar hasKBar={withKBar}>
+              <MaybeRouter hasRouter={withRouter} history={history}>
+                {children}
+              </MaybeRouter>
+            </MaybeKBar>
+            {withUndos && <UndoListing />}
+          </ThemeProvider>
+        </themeProviderContext.Provider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
@@ -261,6 +277,7 @@ function MaybeRouter({
   if (!hasRouter) {
     return children;
   }
+
   return <Router history={history}>{children}</Router>;
 }
 
@@ -400,9 +417,9 @@ const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <ThemeProvider mantineProviderProps={{ withCssVariables: false }} {...props}>
-    {children}
-  </ThemeProvider>
+  <themeProviderContext.Provider value={{ withCssVariables: false }}>
+    <ThemeProvider {...props}>{children}</ThemeProvider>
+  </themeProviderContext.Provider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {

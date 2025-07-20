@@ -9,12 +9,14 @@ export const TAG_TYPES = [
   "channel",
   "cloud-migration",
   "collection",
+  "content-translation",
   "dashboard",
   "dashboard-question-candidates",
   "database",
   "field",
   "field-values",
   "indexed-entity",
+  "logger-preset",
   "model-index",
   "notification",
   "parameter-values",
@@ -38,11 +40,13 @@ export const TAG_TYPES = [
   "public-card",
   "embed-card",
   "public-action",
+  "unique-tasks",
   "user-key-value",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
   collection: "collection",
+  "content-translation": "content-translation",
   card: "card",
   dashboard: "dashboard",
   database: "database",

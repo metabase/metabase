@@ -117,10 +117,10 @@
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
 
 (mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
-  "Get metadata for the Metric with `metric-id`, if it can be found."
+  "Get metadata for the Metric with `card-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metric-id             :- ::lib.schema.id/metric]
-  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) metric-id)]
+   card-id               :- ::lib.schema.id/card]
+  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id)]
     (when (= (:type card-meta) :metric)
       (assoc card-meta :lib/type :metadata/metric))))
 

@@ -160,14 +160,12 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: breakout
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
   - v_databases
   visibility_type: normal
-- aggregation_index: 0
-  base_type: type/Float
+- base_type: type/Float
   display_name: Sum of Duration Seconds
   effective_type: type/Float
   field_ref:

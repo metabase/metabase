@@ -1,11 +1,11 @@
 (ns metabase-enterprise.database-routing.model
   (:require
-   [metabase-enterprise.database-routing.common :refer [router-db-or-id->mirror-db-id]]
+   [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
    [metabase.api.common :as api]
-   [metabase.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -29,5 +29,11 @@
   "Enterprise version. Returns a hash input that will be used for fields subject to database routing."
   :feature :database-routing
   [field]
-  (when-let [mirror-db-id (some->> field u/the-id field/field-id->database-id (router-db-or-id->mirror-db-id @api/*current-user*))]
-    {:mirror-db-id mirror-db-id}))
+  (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id (router-db-or-id->destination-db-id @api/*current-user*))]
+    {:destination-db-id destination-db-id}))
+
+(defenterprise delete-associated-database-router!
+  "Deletes the Database Router associated with this router database."
+  :feature :database-routing
+  [db-id]
+  (t2/delete! :model/DatabaseRouter :database_id db-id))

@@ -1015,8 +1015,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should let the user navigate back (metabase#50971)", () => {
-    cy.visit("/");
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
@@ -1169,6 +1168,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
 
       cy.location("pathname").should(
@@ -1177,6 +1177,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
 
       cy.go("back");
       cy.location("pathname").should(
@@ -1276,6 +1277,20 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       //   "not.equal",
       //   `/model/${PRODUCT_QUESTION_ID}-products`,
       // );
+    });
+  });
+
+  it("should be possible to select custom expressions in the aggregation picker", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("Distinc");
+      cy.findByText("Number of distinct values of ...").should("be.visible");
+      cy.findByText("DistinctIf").click();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "DistinctIf(column, condition)",
+      );
     });
   });
 });

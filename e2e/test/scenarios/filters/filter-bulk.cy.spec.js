@@ -94,9 +94,9 @@ describe("scenarios > filters > bulk filtering", () => {
     H.popover().within(() => {
       cy.findByText("Quantity").click();
       cy.findByText("20").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    applyFilters();
+    cy.wait("@dataset");
 
     H.queryBuilderFiltersPanel()
       .findByText("Quantity is equal to 20")
@@ -124,25 +124,25 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Summaries").click();
       cy.findByText("Count").click();
       cy.findByPlaceholderText("Min").type("500");
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    applyFilters();
+    cy.wait("@dataset");
     H.queryBuilderFiltersPanel()
       .findByText("Count is greater than or equal to 500")
       .should("be.visible");
     H.assertQueryBuilderRowCount(21);
   });
 
-  it("should add a filter for linked tables", () => {
+  it("should add a filter for linked tables", { tags: "@flaky" }, () => {
     H.visitQuestionAdhoc(rawQuestionDetails);
     H.filter();
     H.popover().within(() => {
       cy.findByText("Product").click();
       cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    applyFilters();
+    cy.wait("@dataset");
     H.queryBuilderFiltersPanel()
       .findByText("Product → Category is Gadget")
       .should("be.visible");
@@ -184,6 +184,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should be able to add and remove filters for all query stages", () => {
     H.visitQuestionAdhoc(multiStageQuestionDetails);
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.log("add filters for all stages in the filter modal");
     cy.log("stage 0");
@@ -191,33 +192,37 @@ describe("scenarios > filters > bulk filtering", () => {
     H.popover().within(() => {
       cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
+      cy.button("Add another filter").click();
     });
+    cy.get("@dataset.all").should("have.length", 1);
+
     cy.log("stage 1");
-    H.filter();
     H.popover().within(() => {
       cy.findByText("Summaries").click();
       cy.findByText("Category").click();
       cy.findByText("Widget").click();
-      cy.button("Add filter").click();
+      cy.button("Add another filter").click();
     });
+    cy.get("@dataset.all").should("have.length", 1);
+
     cy.log("stage 2");
-    H.filter();
     H.popover().within(() => {
       cy.findByText("Summaries (2)").click();
       cy.findByText("Category").click();
       cy.findByText("Gizmo").click();
-      cy.button("Add filter").click();
+      cy.button("Add another filter").click();
     });
+    cy.get("@dataset.all").should("have.length", 1);
+
     cy.log("stage 3");
-    H.filter();
     H.popover().within(() => {
       cy.findByText("Summaries (3)").click();
       cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    applyFilters();
+    cy.wait("@dataset");
+    cy.get("@dataset.all").should("have.length", 2);
 
     cy.log("check filters from all stages to be present in the filter panel");
     H.queryBuilderFiltersPanel().within(() => {
@@ -295,7 +300,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       H.popover().findByText(SEGMENT_2_NAME).click();
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText(SEGMENT_2_NAME)
         .should("be.visible");
@@ -343,9 +348,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("boolean").click();
         cy.findByText("True").click();
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.assertQueryBuilderRowCount(2);
     });
 
@@ -353,9 +358,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("boolean").click();
         cy.findByText("True").click();
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.assertQueryBuilderRowCount(2);
 
       H.queryBuilderFiltersPanel().findByText("boolean is true").click();
@@ -371,9 +376,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("boolean").click();
         cy.findByText("True").click();
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.assertQueryBuilderRowCount(2);
 
       H.queryBuilderFiltersPanel()
@@ -396,7 +401,7 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByText("Created At").click();
         cy.findByText("Today").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
 
       H.queryBuilderFiltersPanel()
         .findByText("Created At is today")
@@ -408,7 +413,7 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByText("Created At").click();
         cy.findByText("Previous 3 months").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("Created At is in the previous 3 months")
         .should("be.visible");
@@ -425,9 +430,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("Source").click();
         cy.findByText("Affiliate").click();
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("Source is Affiliate")
         .should("be.visible");
@@ -438,9 +443,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("State").click();
         cy.findByText("AZ").click();
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("State is AZ")
         .should("be.visible");
@@ -458,9 +463,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("ID").click();
         cy.findByLabelText("Filter value").type("17,18");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.assertQueryBuilderRowCount(2);
       H.tableInteractive().within(() => {
         cy.findByText("131.68").should("be.visible"); // total for order id 17
@@ -472,9 +477,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("Product ID").click();
         cy.findByLabelText("Filter value").type("65");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.assertQueryBuilderRowCount(107);
     });
   });
@@ -490,9 +495,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.selectFilterOperator("Contains");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("Indian");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.assertQueryBuilderRowCount(5);
     });
 
@@ -501,9 +506,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.selectFilterOperator("Ends with");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("Valley");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.assertQueryBuilderRowCount(8);
     });
 
@@ -513,9 +518,9 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByLabelText("Filter value")
           .type("Indiantown,Indian Valley")
           .blur();
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("City is 2 selections")
         .should("be.visible");
@@ -534,9 +539,9 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByText("Price").click();
         cy.findByPlaceholderText("Min").type("50");
         cy.findByPlaceholderText("Max").type("80");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("Price is between 50 and 80")
         .should("be.visible");
@@ -548,9 +553,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("50");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("Price is greater than 50")
         .should("be.visible");
@@ -561,9 +566,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.popover().within(() => {
         cy.findByText("Price").click();
         cy.findByPlaceholderText("Max").type("50");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("Price is less than or equal to 50")
         .should("be.visible");
@@ -597,9 +602,9 @@ describe("scenarios > filters > bulk filtering", () => {
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("90");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      applyFilters();
+      cy.wait("@dataset");
       H.queryBuilderFiltersPanel()
         .findByText("Price is greater than 90")
         .should("be.visible");
@@ -607,8 +612,3 @@ describe("scenarios > filters > bulk filtering", () => {
     });
   });
 });
-
-const applyFilters = () => {
-  H.runButtonOverlay().click();
-  cy.wait("@dataset");
-};

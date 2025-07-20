@@ -1,162 +1,163 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
+import _ from "underscore";
 
-import type { Expression, ExpressionOperand } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
-import { FIELD_MARKERS, MBQL_CLAUSES, getMBQLName } from "./config";
-import { ResolverError } from "./errors";
-import {
-  isCallExpression,
-  isCaseOrIfOperator,
-  isOptionsObject,
-  isValue,
-} from "./matchers";
+import { CompileError } from "./errors";
+import { EDITOR_FK_SYMBOLS, getDisplayNameWithSeparator } from "./identifier";
+import type { Node } from "./pratt";
 import type { ExpressionType } from "./types";
-import { getNode } from "./utils";
 
-const MAP_TYPE = {
-  boolean: "segment",
-  aggregation: "metric",
-} as const;
-
-type ResolverFunction = (
-  kind: "field" | "segment" | "metric",
+export type Resolver = (
+  type: ExpressionType,
   name: string,
-  expression?: Expression,
-) => Expression;
+  node?: Node,
+) => Lib.ExpressionParts | Lib.ExpressionArg;
 
-type Options<T> = {
-  expression: T;
-  type: ExpressionType;
-  fn: ResolverFunction;
+type Options = {
+  query: Lib.Query;
+  stageIndex: number;
+  expressionMode: Lib.ExpressionMode;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
-export function resolve(options: Options<Expression>): Expression;
-export function resolve(options: Options<ExpressionOperand>): ExpressionOperand;
-export function resolve({
-  expression,
-  type = "expression",
-  fn,
-}: Options<Expression | ExpressionOperand>): Expression | ExpressionOperand {
-  if (!isCallExpression(expression) || isValue(expression)) {
-    return expression;
-  }
+export function resolver(options: Options): Resolver {
+  const { query, stageIndex, expressionMode, availableColumns } = options;
 
-  const [op, ...operands] = expression;
+  const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
+  const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
+  const cache = infoCache(options);
 
-  if (FIELD_MARKERS.has(op)) {
-    const kind = MAP_TYPE[type as keyof typeof MAP_TYPE] ?? "dimension";
-    const [name] = operands;
-    if (typeof name !== "string") {
-      throw new ResolverError(t`Invalid field name`, getNode(expression));
-    }
-    try {
-      return fn(kind, name, expression);
-    } catch (err) {
-      // A second chance when field is not found:
-      // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
-      const func = getMBQLName(name);
-      if (func && MBQL_CLAUSES[func].args.length === 0) {
-        return [func];
+  return function (type, name, node) {
+    const findByName = nameMatcher(name, cache);
+
+    if (type === "aggregation") {
+      // Return metrics
+      const dimension = findByName([...metrics(), ...availableColumns]);
+      if (!dimension) {
+        throw new CompileError(t`Unknown Aggregation or Metric: ${name}`, node);
+      } else if (!Lib.isMetricMetadata(dimension)) {
+        // If no metric was found, but there is a matching column,
+        // show a more sophisticated error message
+        throw new CompileError(
+          c(
+            "{0} is an identifier of the field provided by user in a custom expression",
+          )
+            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`,
+          node,
+        );
       }
-      throw err;
+      return dimension;
     }
-  }
 
-  const clause = MBQL_CLAUSES[op];
-  if (!clause) {
-    throw new ResolverError(t`Unknown function ${op}`, getNode(expression));
-  }
+    if (type === "boolean") {
+      // Return segments and boolean columns
+      const dimension = findByName([
+        ...segments(),
+        ...availableColumns.filter(Lib.isBoolean),
+      ]);
+      if (!dimension) {
+        throw new CompileError(
+          t`Unknown Segment or boolean column: ${name}`,
+          node,
+        );
+      }
+      return dimension;
+    }
 
-  return [
-    op,
-    ...map(op, operands, expression, (operand, index, args) => {
-      if (
-        (index >= clause.args.length && !clause.multiple) ||
-        isOptionsObject(operand)
-      ) {
-        // as-is, optional object for e.g. ends-with, time-interval, etc
-        return operand;
+    // Return columns and, in the case of aggregation expressions, metrics
+    const dimension = findByName([
+      ...availableColumns,
+      ...(expressionMode === "aggregation" ? metrics() : []),
+    ]);
+    if (!dimension) {
+      if (expressionMode === "aggregation") {
+        throw new CompileError(
+          t`Unknown column, Aggregation or Metric: ${name}`,
+          node,
+        );
+      }
+      throw new CompileError(t`Unknown column: ${name}`, node);
+    }
+    return dimension;
+  };
+}
+
+type Dimension = Lib.SegmentMetadata | Lib.MetricMetadata | Lib.ColumnMetadata;
+
+function nameMatcher(
+  name: string,
+  info: (
+    dimension: Dimension,
+  ) => Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo,
+): (dimensions: Dimension[]) => Dimension | undefined {
+  function byName({
+    preserveSeparators,
+    caseSensitive,
+  }: {
+    preserveSeparators: boolean;
+    caseSensitive: boolean;
+  }) {
+    return (dimension: Dimension) => {
+      if (preserveSeparators || !Lib.isColumnMetadata(dimension)) {
+        return equals(caseSensitive, name, info(dimension).longDisplayName);
       }
 
-      return resolve({
-        expression: operand,
-        type: clause.argType?.(index, args, type) ?? clause.args[index],
-        fn,
-      });
-    }),
-  ];
-}
-
-// Map over operands of case/if expressions, but marshal them first and unmarshal them after
-function map(
-  op: string,
-  operands: (Expression | ExpressionOperand)[],
-  expression: Expression,
-  fn: (
-    operand: Expression | ExpressionOperand,
-    index: number,
-    args: (Expression | ExpressionOperand)[],
-  ) => Expression | ExpressionOperand,
-): (Expression | ExpressionOperand)[] {
-  const marshalled = marshalOperands(op, operands);
-  const mapped = marshalled.map(fn);
-  return unmarshalOperands(op, mapped, expression);
-}
-
-// Flatten operands of case/if expressions so they can be easily mapped over
-function marshalOperands(
-  op: string,
-  operands: (Expression | ExpressionOperand)[],
-): (Expression | ExpressionOperand)[] {
-  if (!isCaseOrIfOperator(op)) {
-    return operands;
-  }
-
-  const pairs = operands[0] as [Expression, Expression][];
-  const options = operands[1];
-  const res = pairs.flat();
-
-  if (
-    isOptionsObject(options) &&
-    "default" in options &&
-    options.default !== undefined
-  ) {
-    res.push(options.default as Expression);
-  }
-  return res;
-}
-
-// Unflatten the operands of case/if expressions, as flattened by marshalOperands
-function unmarshalOperands(
-  op: string,
-  operands: (Expression | ExpressionOperand)[],
-  expression: Expression,
-): (Expression | ExpressionOperand)[] {
-  if (!isCaseOrIfOperator(op)) {
-    return operands;
-  }
-
-  const pairs: [Expression, Expression][] = [];
-
-  const pairCount = operands.length >> 1;
-  for (let i = 0; i < pairCount; ++i) {
-    const tst = operands[i * 2];
-    const val = operands[i * 2 + 1];
-    if (isOptionsObject(tst) || isOptionsObject(val)) {
-      throw new ResolverError(
-        t`Unsupported case/if options`,
-        getNode(expression),
+      // When exact = false, we allow matching columns on other separators,
+      // ie. [User.ID] will match [User → ID]
+      return EDITOR_FK_SYMBOLS.symbols.some((separator) =>
+        equals(
+          caseSensitive,
+          name,
+          getDisplayNameWithSeparator(
+            info(dimension).longDisplayName,
+            separator,
+          ),
+        ),
       );
-    }
-    pairs.push([tst, val]);
-  }
-  if (operands.length > 2 * pairCount) {
-    const lastOperand = operands[operands.length - 1];
-    const options = isOptionsObject(lastOperand)
-      ? lastOperand
-      : { default: lastOperand };
-    return [pairs, options] as (Expression | ExpressionOperand)[];
+    };
   }
 
-  return [pairs] as (Expression | ExpressionOperand)[];
+  // Match the name in this order, expanding the search in every step:
+  // - exact matches, ie. [Foo] will Foo and nothing else, [Foo.Bar] will only match Foo.Bar, etc.
+  // - exact matches ignoring case, ie [FOO] will match foo and Foo, and [FOO.Bar] will match Foo.Bar and foo.BAR, etc.
+  // - matches different separators, ie [Foo.Bar] will match [Foo → Bar] and vice versa, but not [FOO → Bar]
+  // - matches different separators, case insensitively, ie [Foo.Bar] will match [Foo → Bar] and [FOO → Bar], etc.
+  //
+  // prettier-ignore this expression because this becomes
+  // unreadable when formatted.
+  // prettier-ignore
+  return (dimensions) =>
+    dimensions.find(byName({ preserveSeparators: true, caseSensitive: true })) ??
+    dimensions.find(byName({ preserveSeparators: true, caseSensitive: false })) ??
+    dimensions.find(byName({ preserveSeparators: false, caseSensitive: true })) ??
+    dimensions.find(byName({ preserveSeparators: false, caseSensitive: false }));
+}
+
+function equals(caseSensitive: boolean, a: string, b: string) {
+  if (caseSensitive) {
+    return a === b;
+  }
+  return a.toLowerCase() === b.toLowerCase();
+}
+
+// A cache for the displayInfo of metadata in the query.
+// The cache only lives for the duration of each compile phase,
+// so the query can not change in the meantime.
+function infoCache(options: Options) {
+  const cache = new Map<
+    Dimension,
+    Lib.ColumnDisplayInfo | Lib.MetricDisplayInfo | Lib.SegmentDisplayInfo
+  >();
+  return function (dimension: Dimension) {
+    const cached = cache.get(dimension);
+    if (cached) {
+      return cached;
+    }
+    // @ts-expect-error: for some reason TS will not allow this to be typed correctly,
+    // even though all the types in the Dimension union match the types for displayInfo
+    const res = Lib.displayInfo(options.query, options.stageIndex, dimension);
+    cache.set(dimension, res);
+    return res;
+  };
 }

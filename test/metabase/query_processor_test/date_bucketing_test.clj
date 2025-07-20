@@ -24,14 +24,15 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -39,6 +40,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.random :as u.random]
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -1163,10 +1165,10 @@
                :breakout    [!year.date]}))))))
 
 ;; RELATIVE DATES
-(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds intervalCount]
+(p.types/deftype+ ^:private TimestampDatasetDef [randomName intervalSeconds intervalCount]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'TimestampDatasetDef. intervalSeconds intervalCount)))
+    (list 'TimestampDatasetDef. randomName intervalSeconds intervalCount)))
 
 (defn- driver->current-datetime-base-type
   "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
@@ -1182,7 +1184,7 @@
   (let [interval-seconds (.intervalSeconds this)
         intervalCount    (.intervalCount this)]
     (mt/dataset-definition
-     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)))
+     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)) "_" (.randomName this))
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
@@ -1214,7 +1216,7 @@
   ([interval-seconds]
    (dataset-def-with-timestamps interval-seconds 30))
   ([interval-seconds interval-count]
-   (TimestampDatasetDef. interval-seconds interval-count)))
+   (TimestampDatasetDef. (u.random/random-name) interval-seconds interval-count)))
 
 (def ^:private checkins:4-per-minute
   "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30
@@ -1785,7 +1787,7 @@
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                     june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-metadata-provider (mt/id)
-                                   (sql.qp/->honeysql driver/*driver* (t2/select-one :model/Table :id (mt/id :checkins))))
+                                   (sql.qp/->honeysql driver/*driver* (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))
                     honeysql     {:select [[june-31 :june_31]]
                                   :from   [[checkins]]}
                     honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})

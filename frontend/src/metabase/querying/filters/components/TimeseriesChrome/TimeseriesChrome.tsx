@@ -60,7 +60,9 @@ function TimeseriesControls({
   );
 
   const breakoutColumn = useMemo(
-    () => breakout && Lib.breakoutColumn(query, stageIndex, breakout),
+    () =>
+      breakout &&
+      (Lib.breakoutColumn(query, stageIndex, breakout) ?? undefined),
     [query, stageIndex, breakout],
   );
 

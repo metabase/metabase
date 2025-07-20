@@ -2,15 +2,20 @@
   "This namespace contains code responsible for connecting to mongo deployment."
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.log :as log])
   (:import
-   (com.mongodb ConnectionString MongoClientSettings MongoClientSettings$Builder MongoCredential)
+   (com.mongodb
+    ConnectionString
+    MongoClientSettings
+    MongoClientSettings$Builder
+    MongoCredential)
    (com.mongodb.connection SslSettings$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -33,8 +38,8 @@
      host
      (when (and (not use-srv) (some? port)) (str ":" port))
      "/"
-     "?connectTimeoutMS=" (driver.u/db-connection-timeout-ms)
-     "&serverSelectionTimeoutMS=" (driver.u/db-connection-timeout-ms)
+     "?connectTimeoutMS=" (driver.settings/db-connection-timeout-ms)
+     "&serverSelectionTimeoutMS=" (driver.settings/db-connection-timeout-ms)
      (when ssl "&ssl=true")
      (when (seq additional-options) (str "&" additional-options)))))
 
@@ -67,7 +72,7 @@
                               db-details->connection-string
                               ConnectionString.)
         builder (com.mongodb.MongoClientSettings/builder)]
-    (.applicationName builder config/mb-app-id-string)
+    (.applicationName builder driver-api/mb-app-id-string)
     (.applyConnectionString builder connection-string)
     (when-not use-conn-uri
       ;; NOTE: authSource connection parameter is the second argument of `createCredential`. We currently set it only

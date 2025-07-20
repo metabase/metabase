@@ -7,6 +7,10 @@
   (fn add-query-for-pivot-rff* [metadata]
     ;; the `qp.si/streaming-results-writer` implmementations can apply/not-apply formatting based on the key's value
     (let [opts     (get-in query [:middleware :pivot-options])
+          ;; Ensure we always have defaults for these settings
+          opts     (-> opts
+                       (update :show-row-totals (fnil identity true))
+                       (update :show-column-totals (fnil identity true)))
           pivot    (get-in query [:middleware :pivot?])
           metadata (cond-> metadata
                      opts  (assoc :pivot-export-options opts)

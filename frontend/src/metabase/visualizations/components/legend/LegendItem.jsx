@@ -2,13 +2,12 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import {
   LegendItemLabel,
-  LegendItemRemoveIcon,
   LegendItemRoot,
   LegendItemTitle,
 } from "./LegendItem.styled";
@@ -24,7 +23,6 @@ const propTypes = {
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onToggleSeriesVisibility: PropTypes.func,
-  onRemoveSeries: PropTypes.func,
 };
 
 const LegendItem = ({
@@ -37,7 +35,6 @@ const LegendItem = ({
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
-  onRemoveSeries,
 }) => {
   const handleDotClick = (event) => {
     onToggleSeriesVisibility?.(event, index);
@@ -53,10 +50,6 @@ const LegendItem = ({
 
   const handleItemMouseLeave = () => {
     onHoverChange && onHoverChange();
-  };
-
-  const handleRemoveClick = (event) => {
-    onRemoveSeries && onRemoveSeries(event, index);
   };
 
   return (
@@ -83,7 +76,6 @@ const LegendItem = ({
           <Ellipsified>{item.name}</Ellipsified>
         </LegendItemTitle>
       </LegendItemLabel>
-      {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}
     </LegendItemRoot>
   );
 };

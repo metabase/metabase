@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
@@ -30,8 +31,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/containers/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
+import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -122,7 +123,7 @@ export const TEST_MODEL_CARD = createMockCard({
     },
   },
   type: "model",
-  display: "scalar",
+  display: "table",
   description: "Test description",
 });
 
@@ -285,6 +286,7 @@ export const setup = async ({
           <Route path="query" component={TestQueryBuilder} />
           <Route path="metadata" component={TestQueryBuilder} />
           <Route path="notebook" component={TestQueryBuilder} />
+          <Route path=":slug" component={TestQueryBuilder} />
           <Route path=":slug/query" component={TestQueryBuilder} />
           <Route path=":slug/metadata" component={TestQueryBuilder} />
           <Route path=":slug/notebook" component={TestQueryBuilder} />
@@ -376,7 +378,7 @@ export const triggerVisualizationQueryChange = async () => {
   await userEvent.click(within(popover).getByText("Total"));
   const maxInput = within(popover).getByPlaceholderText("Max");
   await userEvent.type(maxInput, "1000");
-  await userEvent.click(await screen.findByText("Add filter"));
+  await userEvent.click(await screen.findByText("Apply filter"));
 };
 
 export const triggerNotebookQueryChange = async () => {

@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import { callMockEvent } from "__support__/events";
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import registerVisualizations from "metabase/visualizations/register";
 
 import {
@@ -33,6 +34,7 @@ describe("QueryBuilder - beforeunload events", () => {
     HTMLElement.prototype.getBoundingClientRect = jest
       .fn()
       .mockReturnValue({ height: 1, width: 1 });
+    setupLastDownloadFormatEndpoints();
   });
 
   afterEach(() => {
@@ -124,7 +126,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       await userEvent.click(screen.getByText("New"));
       await userEvent.click(
-        within(await screen.findByRole("dialog")).getByText("SQL query"),
+        within(await screen.findByRole("menu")).getByText("SQL query"),
       );
       await waitForLoaderToBeRemoved();
 
@@ -144,7 +146,7 @@ describe("QueryBuilder - beforeunload events", () => {
 
       await userEvent.click(screen.getByText("New"));
       await userEvent.click(
-        within(await screen.findByRole("dialog")).getByText("SQL query"),
+        within(await screen.findByRole("menu")).getByText("SQL query"),
       );
 
       await waitForLoaderToBeRemoved();

@@ -17,14 +17,9 @@ const TAB_CASES = TABS.flatMap((fromTab) =>
 interface SetupOpts {
   value?: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
-  submitButtonLabel?: string;
 }
 
-function setup({
-  value,
-  availableUnits = DATE_PICKER_UNITS,
-  submitButtonLabel = "Apply",
-}: SetupOpts = {}) {
+function setup({ value, availableUnits = DATE_PICKER_UNITS }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
 
@@ -32,7 +27,6 @@ function setup({
     <RelativeDatePicker
       value={value}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
       onChange={onChange}
       onBack={onBack}
     />,

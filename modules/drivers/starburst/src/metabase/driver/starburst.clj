@@ -1,6 +1,5 @@
 (ns metabase.driver.starburst
   "starburst driver."
-  #_{:clj-kondo/ignore [:metabase/modules]} ; api.common, For legacy impersonation
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -8,10 +7,8 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.api.common :as api]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -22,11 +19,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.public-settings :as public-settings]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -78,11 +70,11 @@
     ""
     (str " " name ": " value)))
 
-(defmethod qp.util/query->remark :starburst
+(defmethod driver-api/query->remark :starburst
   [_ {{:keys [card-id dashboard-id]} :info, :as query}]
   (str
-   (qp.util/default-query->remark query)
-   (format-field "accountID" (public-settings/site-uuid))
+   (driver-api/default-query->remark query)
+   (format-field "accountID" (driver-api/site-uuid))
    (format-field "dashboardID" dashboard-id)
    (format-field "cardID" card-id)))
 
@@ -126,10 +118,6 @@
 ;;; |                                          Misc Implementations                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/->float :starburst
-  [_ value]
-  (h2x/cast :double value))
-
 (defn- format-mod
   [_fn [x y]]
   (let [[x-sql & x-args] (sql/format-expr x {:nested true})
@@ -168,6 +156,10 @@
 ;;; |                                          Temporal Casting                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/cast-temporal-string [:starburst :Coercion/ISO8601->DateTime]
+  [_driver _semantic_type expr]
+  (h2x/->timestamp [:replace expr "T" " "]))
+
 (defmethod sql.qp/cast-temporal-string [:starburst :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_ _coercion-strategy expr]
   [:date_parse expr (h2x/literal "%Y%m%d%H%i%s")])
@@ -175,6 +167,11 @@
 (defmethod sql.qp/cast-temporal-byte [:starburst :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:from_utf8 expr]))
+
+(defmethod sql.qp/cast-temporal-byte [:starburst :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:from_utf8 expr]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -185,15 +182,15 @@
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via starburst's
   `AT TIME ZONE` operator. See https://starburst.io/docs/current/functions/datetime.html#time-zone-conversion"
   [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone (driver-api/report-timezone-id-if-supported :starburst (driver-api/database (driver-api/metadata-provider)))
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
         type-info   (h2x/type-info expr)
         db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these starburst types; if applied to something else (ex: `date`), then
-             ;; an error will be thrown by the query analyzer
+         ;; an error will be thrown by the query analyzer
          db-type
          (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
-             ;; if one has already been set, don't do so again
+         ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
       (-> (h2x/with-database-type-info (h2x/at-time-zone expr report-zone) timestamp-with-time-zone-db-type)
@@ -329,7 +326,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:starburst :seconds]
   [_ _ expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))]
+  (let [report-zone (driver-api/report-timezone-id-if-supported :starburst (driver-api/database (driver-api/metadata-provider)))]
     [:from_unixtime expr (h2x/literal (or report-zone "UTC"))]))
 
 (defn- timestamp-with-time-zone? [expr]
@@ -342,7 +339,7 @@
     (h2x/cast timestamp-with-time-zone-db-type expr)))
 
 (defn- ->at-time-zone [expr]
-  (h2x/at-time-zone (->timestamp-with-time-zone expr) (qp.timezone/results-timezone-id)))
+  (h2x/at-time-zone (->timestamp-with-time-zone expr) (driver-api/results-timezone-id)))
 
 (doseq [unit [:year :quarter :month :week :day]]
   (defmethod sql.qp/datetime-diff [:starburst unit] [_driver unit x y]
@@ -365,7 +362,7 @@
         expr [:at_timezone
               (if with_timezone?
                 expr
-                [:with_timezone expr (or source-timezone (qp.timezone/results-timezone-id))])
+                [:with_timezone expr (or source-timezone (driver-api/results-timezone-id))])
               target-timezone]]
     (h2x/with-database-type-info (h2x/->timestamp expr) "timestamp")))
 
@@ -638,7 +635,8 @@
 (defn- impersonate-user
   [^Connection conn]
   (when (str/includes? (.getProperty (.getClientInfo conn) "ClientInfo" "") "impersonate:true")
-    (let [email (get (deref api/*current-user*) :email)]
+    #_{:clj-kondo/ignore [:deprecated-var]}
+    (let [email (get (deref (driver-api/current-user)) :email)]
       (log/info "[starburst] Using legacy impersonation.")
       (.setSessionUser ^TrinoConnection (.unwrap conn TrinoConnection) email))))
 
@@ -796,7 +794,7 @@
   ;; (which was set via report time zone), it is necessary to use the `from_iso8601_timestamp` function on the string
   ;; representation of the `ZonedDateTime` instance, but converted to the report time zone
   ;_(date-time->substitution (.format (t/offset-date-time (t/local-date-time t) (t/zone-offset 0)) DateTimeFormatter/ISO_OFFSET_DATE_TIME))
-  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :starburst (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone       (driver-api/report-timezone-id-if-supported :starburst (driver-api/database (driver-api/metadata-provider)))
         ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     ;; the `from_iso8601_timestamp` only accepts timestamps with an offset (not a zone ID), so only format with offset
     (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
@@ -907,7 +905,7 @@
   (-> details
       (merge {:classname   "io.trino.jdbc.TrinoDriver"
               :subprotocol "trino"
-              :subname     (mdb/make-subname host port (db-name catalog schema))})
+              :subname     (driver-api/make-subname host port (db-name catalog schema))})
       prepare-addl-opts
       prepare-roles
       (dissoc :host :port :db :catalog :schema :tunnel-enabled :engine :kerberos)
@@ -929,7 +927,8 @@
 (defn- remove-role? [details-map]
   (and
    (:impersonation details-map)
-   (not= (get (deref api/*current-user*) :email) (:user details-map))))
+   #_{:clj-kondo/ignore [:deprecated-var]}
+   (not= (get (deref (driver-api/current-user)) :email) (:user details-map))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :starburst
   [_ details-map]
@@ -944,8 +943,8 @@
                   (assoc :SSL (:ssl details-map))
                   (assoc :source (format
                                   "Metabase %s [%s]"
-                                  (:tag config/mb-version-info "")
-                                  config/local-process-uuid))
+                                  (:tag driver-api/mb-version-info "")
+                                  driver-api/local-process-uuid))
                   (cond-> (:impersonation details-map) (assoc :clientInfo "impersonate:true"))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
                   (dissoc (if (remove-role? details-map) :roles :test))
@@ -1007,3 +1006,7 @@
 (defmethod driver.sql/default-database-role :starburst
   [_driver database]
   (get-in database [:details :user]))
+
+(defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))

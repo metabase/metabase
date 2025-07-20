@@ -3,7 +3,7 @@
   certain permission groups when running queries."
   (:require
    [medley.core :as m]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]

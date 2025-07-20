@@ -847,7 +847,7 @@ describe("issue 23293", () => {
 
       cy.findByTestId("qb-filters-panel").should(
         "contain",
-        "Product → Category is Doohickey",
+        "Orders → Category is Doohickey",
       );
       // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
@@ -991,8 +991,10 @@ describe("issue 29795", () => {
       cy.findByRole("option", { name: "USER_ID" }).click();
     });
 
-    H.visualize(() => {
-      cy.findAllByText(/User ID/i).should("have.length", 2);
+    H.visualize();
+    H.tableInteractive().within(() => {
+      cy.findByText("User ID").should("be.visible");
+      cy.findByText("native question → USER_ID").should("be.visible");
     });
   });
 });
@@ -1031,6 +1033,7 @@ describe("issue 30743", () => {
 
   it("should be possible to sort on the breakout column (metabase#30743)", () => {
     cy.findByLabelText("Sort").click();
+    H.popover().findByText("Products").click();
     H.popover().contains("Category").click();
 
     H.visualize();
@@ -1330,9 +1333,8 @@ describe("issue 45300", () => {
       cy.findAllByText("Product").should("have.length", 2).first().click();
       cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     cy.findByTestId("filter-pill").should(

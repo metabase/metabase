@@ -25,13 +25,17 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
+export type BooleanParameterType = "boolean/=";
+
 export type ParameterType =
   | StringParameterType
   | NumberParameterType
   | DateParameterType
+  | BooleanParameterType
   | "id"
-  | "category"
-  | "temporal-unit";
+  | "category" // x-rays only
+  | "temporal-unit"
+  | string; // x-rays generate broken parameter types not in the list
 
 export type ParameterId = string;
 
@@ -48,7 +52,6 @@ export interface Parameter extends ParameterValuesConfig {
   required?: boolean;
   options?: ParameterOptions;
   filteringParameters?: ParameterId[];
-  isMultiSelect?: boolean;
   value?: any;
   target?: ParameterTarget;
   temporal_units?: TemporalUnit[];
@@ -58,6 +61,8 @@ export interface ParameterValuesConfig {
   values_query_type?: ValuesQueryType;
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;
+  temporal_units?: TemporalUnit[];
+  isMultiSelect?: boolean;
 }
 
 export type ValuesQueryType = "list" | "search" | "none";

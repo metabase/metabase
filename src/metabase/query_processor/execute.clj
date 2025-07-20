@@ -43,7 +43,7 @@
   e.g.
 
     (f (f query rff)) -> (f query rff)"
-  [#'qp.middleware.enterprise/swap-mirror-db-middleware
+  [#'qp.middleware.enterprise/swap-destination-db-middleware
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata

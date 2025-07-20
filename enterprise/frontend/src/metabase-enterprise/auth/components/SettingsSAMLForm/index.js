@@ -1,1 +1,1 @@
-export { default } from "./SettingsSAMLForm";
+export * from "./SettingsSAMLForm";

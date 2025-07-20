@@ -4,9 +4,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.timezones-test :as timezones-test]
@@ -121,6 +121,32 @@
                                {:filter      [:= $liked nil]
                                 :aggregation [[:count]]}))
                             first)))))))
+
+(deftest ^:parallel comparison-test-6
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use != with literals on both sides: true != false (QUE-1499)"
+        (is (= [[1 "Tempest"     true]
+                [2 "Bullit"      true]
+                [3 "The Dentist" false]]
+               (mt/formatted-rows
+                [int str ->bool]
+                :format-nil-values
+                (mt/run-mbql-query places
+                  {:filter   [:!= true false]
+                   :order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel comparison-test-7
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use != with literals on both sides: false != false (QUE-1499)"
+        (is (= []
+               (mt/formatted-rows
+                [int str ->bool]
+                :format-nil-values
+                (mt/run-mbql-query places
+                  {:filter   [:!= false false]
+                   :order-by [[:asc $id]]}))))))))
 
 (deftest ^:parallel between-test
   (mt/test-drivers (mt/normal-drivers)

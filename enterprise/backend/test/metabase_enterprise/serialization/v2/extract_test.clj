@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
@@ -32,7 +32,7 @@
        set))
 
 (deftest fundamentals-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection
                        {coll-id   :id
                         coll-eid  :entity_id
@@ -101,7 +101,7 @@
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection
                        {coll-id    :id
                         coll-eid   :entity_id}
@@ -286,6 +286,7 @@
                        _
                        {:card_id      c1-id
                         :dashboard_id dash-id
+                        :inline_parameters ["12345678"]
                         :parameter_mappings
                         [{:parameter_id "12345678"
                           :card_id      c1-id
@@ -554,7 +555,7 @@
                       (ids-by-model "Dashboard")))))))))
 
 (deftest dashboard-card-series-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
        :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
@@ -584,7 +585,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest dimensions-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [;; Simple case: a singular field, no human-readable field.
                        :model/Database   {db-id        :id}        {:name "My Database"}
                        :model/Table      {no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}
@@ -671,7 +672,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest native-query-snippets-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User
                        {ann-id       :id}
                        {:first_name "Ann"
@@ -730,7 +731,7 @@
               (is (empty? (serdes/dependencies ser))))))))))
 
 (deftest timelines-and-events-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User
                        {ann-id :id}
                        {:first_name "Ann"
@@ -795,7 +796,7 @@
                      (set (serdes/dependencies ser)))))))))))
 
 (deftest segments-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
                                                               :last_name  "Wilson"
                                                               :email      "ann@heart.band"}
@@ -835,7 +836,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest implicit-action-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
                                                      :last_name  "Wilson"
                                                      :email      "ann@heart.band"}
@@ -873,7 +874,7 @@
                          (set (serdes/dependencies ser)))))))))))))
 
 (deftest http-action-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
                                                      :last_name  "Wilson"
                                                      :email      "ann@heart.band"}
@@ -911,7 +912,7 @@
                          (set (serdes/dependencies ser)))))))))))))
 
 (deftest query-action-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
                                                      :last_name  "Wilson"
                                                      :email      "ann@heart.band"}
@@ -955,7 +956,7 @@
                          (set (serdes/dependencies ser)))))))))))))
 
 (deftest field-values-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
                        :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field    {field-id     :id} {:name "Some Field"
@@ -1006,8 +1007,40 @@
                    (t2/count :model/FieldValues)
                    (count (filter #{"FieldValues"} models))))))))))
 
+(deftest field-user-settings-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
+                       :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
+                       :model/Field    {field-id     :id} {:name "Some Field" :table_id no-schema-id}
+
+                       :model/FieldUserSettings {description :description}
+                       {:field_id              field-id
+                        :description "Some custom Description"}]
+      (testing "field values"
+        (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings :field_id field-id))]
+          (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
+                                 {:model "Table"    :id "Schemaless Table"}
+                                 {:model "Field"    :id "Some Field"}
+                                 {:model "FieldUserSettings" :id "1"}] ; Always 1.
+                   :created_at  string?
+                   :description description}
+                  ser))
+          (is (not (contains? ser :field_id))
+              ":field_id is dropped; its implied by the path")
+
+          (testing "depend on the parent Field"
+            (is (= #{[{:model "Database"   :id "My Database"}
+                      {:model "Table"      :id "Schemaless Table"}
+                      {:model "Field"      :id "Some Field"}]}
+                   (set (serdes/dependencies ser)))))))
+      (testing "extract-metabase behavior"
+        (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
+          (is (= 1
+                 (t2/count :model/FieldUserSettings)
+                 (count (filter #{"FieldUserSettings"} models)))))))))
+
 (deftest cards-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/User       {mark-id :id}    {:first_name "Mark"
                                            :last_name  "Knopfler"
@@ -1070,7 +1103,7 @@
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User       {mark-id :id}              {:first_name "Mark"
                                                                      :last_name  "Knopfler"
                                                                      :email      "mark@direstrai.ts"}
@@ -1269,7 +1302,7 @@
                                                                                                     :id        mapping-id
                                                                                                     :dimension dimension}}}}})}}}]
 
-      (testing "selecting a collection includes settings and data model by default"
+      (testing "selecting a collection includes settings metabot and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
                (->> {:targets [["Collection" coll1-id]]}
                     extract/extract
@@ -1369,7 +1402,7 @@
                 (is (some #(str/starts-with? % "Failed to export Cards") msgs))))))))))
 
 (deftest click-behavior-references-to-deleted-cards
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User       {mark-id :id}              {:first_name "Mark"
                                                                      :last_name  "Knopfler"
                                                                      :email      "mark@direstrai.ts"}
@@ -1448,7 +1481,7 @@
                     (into #{}))))))))
 
 (deftest field-references-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database   {db-id          :id}        {:name "My Database"}
                        :model/Table      {no-schema-id   :id}        {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {some-field-id  :id}        {:name "Some Field" :table_id no-schema-id}
@@ -1478,7 +1511,7 @@
                (:serdes/meta (ts/extract-one "Field" nested-id))))))))
 
 (deftest escape-report-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection    {coll1-id :id} {:name "Some Collection"}
                        :model/Collection    {coll2-id :id} {:name "Other Collection"}
                        :model/Collection    {coll3-id :id} {:name "Third Collection"}
@@ -1540,7 +1573,7 @@
                             (messages))))))))))
 
 (deftest recursive-colls-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-temp [:model/Collection {parent-id  :id
                                       parent-eid :entity_id} {:name "Top-Level Collection"}
                    :model/Collection {middle-id  :id
@@ -1563,7 +1596,7 @@
 
 (deftest skip-analytics-collections-test
   (testing "Collections in 'analytics' namespace should not be extracted, see #37453"
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (mbc/ensure-audit-db-installed!)
       (testing "sanity check that the audit collection exists"
         (is (some? (audit/default-audit-collection)))
@@ -1629,7 +1662,7 @@
 
 (deftest extract-nested-partitioned-test
   (testing "extract-nested will partition stuff by 100s"
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (let [d   (ts/create! :model/Dashboard {:name "Dash"})
             c1  (ts/create! :model/Card {:name "Card"})
             dcs (vec (for [_ (range 7)]
@@ -1663,7 +1696,7 @@
                      (u/seek #(= (:display_name %) "Category ID")))))))))
 
 (deftest extract-single-collection-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Collection    {coll-id :id}            {:name "Top-Level Collection"}
        :model/Dashboard     {dash-id :id
@@ -1696,3 +1729,145 @@
                   :tabs [{:name "Tab 1"}
                          {:name "Tab 2"}]}]
                 (by-model "Dashboard" extraction)))))))
+
+(deftest metabot-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc
+      [:model/Card {model-id :id
+                    model-eid :entity_id} {:name "AI Model"
+                                           :type :model}
+
+       :model/Metabot {metabot-id :id
+                       metabot-eid :entity_id} {:name "Test Metabot"
+                                                :description "A test metabot"}
+
+       :model/MetabotEntity {metabot-entity-id :id
+                             metabot-entity-eid :entity_id} {:metabot_id metabot-id
+                                                             :model :dataset
+                                                             :model_id model-id}
+
+       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_entity_id metabot-entity-id
+                                                             :prompt "A sample prompt"
+                                                             :model :model
+                                                             :card_id model-id}]
+
+      (testing "metabot extraction"
+        (let [ser (ts/extract-one "Metabot" metabot-id)]
+          (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
+                   :name "Test Metabot"
+                   :description "A test metabot"
+                   :entity_id metabot-eid
+                   :entities [{:model "dataset"
+                               :model_id model-eid
+                               :entity_id metabot-entity-eid
+                               :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                             {:model "MetabotEntity" :id metabot-entity-eid}]
+                               :prompts [{:prompt "A sample prompt"
+                                          :model "model"
+                                          :entity_id metabot-prompt-eid
+                                          :card_id model-eid
+                                          :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                                        {:model "MetabotEntity" :id metabot-entity-eid}
+                                                        {:model "MetabotPrompt" :id metabot-prompt-eid}]
+                                          :created_at string?}]
+                               :created_at string?}]
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "metabot depends on its model entities"
+            (is (= #{[{:model "Card" :id model-eid}]}
+                   (set (serdes/dependencies ser))))))))))
+
+(deftest metabot-collection-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc
+      [:model/Collection {model-id :id
+                          model-eid :entity_id} {:name "AI Model"}
+
+       :model/Card {card-id :id
+                    card-eid :entity_id} {:name "AI Model"
+                                          :type :model
+                                          :collection_id model-id}
+
+       :model/Metabot {metabot-id :id
+                       metabot-eid :entity_id} {:name "Test Metabot"
+                                                :description "A test metabot"}
+
+       :model/MetabotEntity {metabot-entity-id :id
+                             metabot-entity-eid :entity_id} {:metabot_id metabot-id
+                                                             :model :collection
+                                                             :model_id model-id}
+
+       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_entity_id metabot-entity-id
+                                                             :prompt "A sample prompt"
+                                                             :model :model
+                                                             :card_id card-id}]
+
+      (testing "metabot extraction"
+        (let [ser (ts/extract-one "Metabot" metabot-id)]
+          (is (=? {:serdes/meta [{:model "Metabot" :id metabot-eid}]
+                   :name "Test Metabot"
+                   :description "A test metabot"
+                   :entity_id metabot-eid
+                   :entities [{:model "collection"
+                               :model_id model-eid
+                               :entity_id metabot-entity-eid
+                               :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                             {:model "MetabotEntity" :id metabot-entity-eid}]
+                               :prompts [{:prompt "A sample prompt"
+                                          :model "model"
+                                          :entity_id metabot-prompt-eid
+                                          :card_id card-eid
+                                          :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                                        {:model "MetabotEntity" :id metabot-entity-eid}
+                                                        {:model "MetabotPrompt" :id metabot-prompt-eid}]
+                                          :created_at string?}]
+                               :created_at string?}]
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+
+          (testing "metabot depends on its model entities and their prompts"
+            (is (= #{[{:model "Collection" :id model-eid}] [{:model "Card" :id card-eid}]}
+                   (set (serdes/dependencies ser))))))))))
+
+(deftest visualizer-dashboard-card-settings-test
+  (testing "visualizer settings transform entity IDs <-> card IDs"
+    (let [card-entity-id "WcMlLFNVcy0iO49mKW3WH"
+          card-id 621]
+      (with-redefs [serdes/*import-fk* (fn [_entity-id _model]
+                                         card-id)
+                    serdes/*export-fk* (fn [_card-id _model]
+                                         card-entity-id)]
+        (testing "transforms sourceId in column mappings"
+          (let [input {:visualization
+                       {:columnValuesMapping
+                        {:COLUMN_1 [{:sourceId (str "card:" card-entity-id)
+                                     :originalName "CREATED_AT"
+                                     :name "COLUMN_1"}]
+                         :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
+                expected {:visualization
+                          {:columnValuesMapping
+                           {:COLUMN_1 [{:sourceId (str "card:" card-id)
+                                        :originalName "CREATED_AT"
+                                        :name "COLUMN_1"}]
+                            :DIMENSION [(str "$_card:" card-id "_name")]}}}
+                result (serdes/import-visualizer-settings input)]
+            (is (= expected result))))
+
+        (testing "transforms sourceId in column mappings"
+          (let [input {:visualization
+                       {:columnValuesMapping
+                        {:COLUMN_1 [{:sourceId (str "card:" card-id)
+                                     :originalName "CREATED_AT"
+                                     :name "COLUMN_1"}]
+                         :DIMENSION [(str "$_card:" card-id "_name")]}}}
+                expected {:visualization
+                          {:columnValuesMapping
+                           {:COLUMN_1 [{:sourceId (str "card:" card-entity-id)
+                                        :originalName "CREATED_AT"
+                                        :name "COLUMN_1"}]
+                            :DIMENSION [(str "$_card:" card-entity-id "_name")]}}}
+                result (serdes/export-visualizer-settings input)]
+            (is (= expected result))))))))

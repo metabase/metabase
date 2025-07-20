@@ -1,4 +1,7 @@
+/* eslint-disable no-undef */
+import { Crypto, CryptoKey } from "@peculiar/webcrypto";
 import { TextDecoder, TextEncoder } from "util";
+import { ReadableStream } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-localstorage-mock";
@@ -25,11 +28,28 @@ if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   };
 }
 
-// global TextEncoder is not available in jsdom + Jest, see
+// Patch TextEncoder to coerce to global Uint8Array
+class JSDOMTextEncoder extends TextEncoder {
+  encode(...args) {
+    const result = super.encode(...args);
+    if (!(result instanceof global.Uint8Array)) {
+      return new global.Uint8Array(result);
+    }
+    return result;
+  }
+}
+
+// global TextEncoder and Crypto are not available in jsdom + Jest, see
 // https://stackoverflow.com/questions/70808405/how-to-set-global-textdecoder-in-jest-for-jsdom-if-nodes-util-textdecoder-is-ty
 // (hacky fix)
-global.TextEncoder = TextEncoder;
+delete globalThis.crypto;
+globalThis.crypto = new Crypto();
+globalThis.CryptoKey = CryptoKey;
+global.TextEncoder = JSDOMTextEncoder;
 global.TextDecoder = TextDecoder;
+
+// replace node's ReadableStream what one that matches what is in the browser
+global.ReadableStream = ReadableStream;
 
 // https://github.com/jsdom/jsdom/issues/3002
 Range.prototype.getBoundingClientRect = () => ({

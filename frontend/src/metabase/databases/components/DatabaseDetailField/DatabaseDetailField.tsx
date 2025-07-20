@@ -1,9 +1,9 @@
-import FormFileInput from "metabase/core/components/FormFileInput";
-import FormInput from "metabase/core/components/FormInput";
-import FormNumericInput from "metabase/core/components/FormNumericInput";
-import FormSelect from "metabase/core/components/FormSelect";
-import FormTextArea from "metabase/core/components/FormTextArea";
-import FormToggle from "metabase/core/components/FormToggle";
+import FormFileInput from "metabase/common/components/FormFileInput";
+import FormInput from "metabase/common/components/FormInput";
+import FormNumericInput from "metabase/common/components/FormNumericInput";
+import FormSelect from "metabase/common/components/FormSelect";
+import FormTextArea from "metabase/common/components/FormTextArea";
+import FormToggle from "metabase/common/components/FormToggle";
 import type { EngineField } from "metabase-types/api";
 
 import { FIELD_OVERRIDES } from "../../constants";

@@ -1,7 +1,7 @@
 (ns metabase.revisions.models.revision
   (:require
    [clojure.data :as data]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.revisions.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]

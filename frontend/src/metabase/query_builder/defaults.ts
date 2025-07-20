@@ -11,12 +11,12 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
   isRunning: false,
-  isQueryComplete: false,
   isShowingSummarySidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
+  isShowingAIQuestionAnalysisSidebar: false,
   isNativeEditorOpen: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
@@ -31,6 +31,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
+  highlightedNativeQueryLineNumbers: [],
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
@@ -50,6 +51,7 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingSummarySidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
+  isShowingAIQuestionAnalysisSidebar: false,
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingDataReference: false,

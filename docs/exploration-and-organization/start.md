@@ -1,5 +1,7 @@
 ---
 title: "Organization overview"
+redirect_from:
+  - /docs/latest/exploration-and-organization
 ---
 
 # Organization overview
@@ -13,6 +15,10 @@ Find data, explore questions and dashboards, and bookmark your favorites.
 ## [Collections](./collections.md)
 
 Organize questions, dashboards, and models with collections.
+
+## [Keyboard shortcuts](./keyboard-shortcuts.md)
+
+A handy list of keyboard shortcuts to help you zip around Metabase.
 
 ## [History](./history.md)
 

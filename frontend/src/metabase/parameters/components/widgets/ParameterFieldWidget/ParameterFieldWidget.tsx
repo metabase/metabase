@@ -1,11 +1,11 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
@@ -14,10 +14,16 @@ import {
 } from "metabase-lib/v1/operators/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
+import {
+  getIsMultiSelect,
+  hasValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, RowValue } from "metabase-types/api";
 
-import { Footer, WidgetRoot } from "../Widget";
+import { Footer } from "../Widget";
+import { MIN_WIDTH } from "../constants";
 
+import FieldValuesWidget from "./FieldValuesWidget";
 import { normalizeValue } from "./normalizeValue";
 
 interface ParameterFieldWidgetProps {
@@ -48,15 +54,32 @@ export function ParameterFieldWidget({
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
 
-  const supportsMultipleValues =
-    multi && !parameter.hasVariableTemplateTagTarget;
+  const supportsMultipleValues = multi && getIsMultiSelect(parameter);
 
   const isValid =
     unsavedValue.every((value) => value != null) &&
-    (supportsMultipleValues || unsavedValue.length === numFields);
+    (supportsMultipleValues || unsavedValue.length <= numFields);
+  const isEmpty = unsavedValue.length === 0;
+  const isRequired = parameter?.required;
+
+  const handleFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!isValid) {
+      return;
+    }
+
+    if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default);
+      }
+      return;
+    }
+
+    setValue(unsavedValue);
+  };
 
   return (
-    <WidgetRoot>
+    <Box component="form" miw={MIN_WIDTH} onSubmit={handleFormSubmit}>
       <div className={CS.p1}>
         {verboseName && !isEqualsOp && (
           <div className={cx(CS.textBold, CS.mb1)}>{verboseName}...</div>
@@ -104,9 +127,8 @@ export function ParameterFieldWidget({
           defaultValue={parameter.default}
           isValueRequired={parameter.required ?? false}
           isValid={isValid}
-          onClick={() => setValue(unsavedValue)}
         />
       </Footer>
-    </WidgetRoot>
+    </Box>
   );
 }

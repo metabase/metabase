@@ -4,7 +4,7 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { ErrorMessage } from "metabase/components/ErrorMessage";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
@@ -148,6 +148,7 @@ export default class VisualizationResult extends Component {
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
+            onVisualizationRendered={this.props.onVisualizationRendered}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (

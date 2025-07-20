@@ -1,6 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -20,7 +19,7 @@
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
-   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
+   [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
@@ -54,7 +53,8 @@
 ;;; flavor of MBQL it is written for.
 
 (mu/defn- ->legacy :- mbql.s/Query
-  [query]
+  [query :- [:map
+             [:database ::lib.schema.id/database]]]
   (lib/->legacy-MBQL query))
 
 (defn- ^:deprecated ensure-legacy [middleware-fn]
@@ -65,10 +65,13 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
+(defn- ->mbql-5 [query]
+  (cond->> query
+    (not (:lib/type query)) (lib/query (qp.store/metadata-provider))))
+
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query]
-        (let [query (cond->> query
-                      (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))]
+        (let [query (->mbql-5 query)]
           (vary-meta (middleware-fn query)
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
@@ -84,6 +87,7 @@
              to
              from))
 
+;;; TODO -- this is broken and disables enforcement inside the middleware itself -- see QUE-1346
 (defn- ensure-pmbql-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
@@ -105,9 +109,11 @@
   [#'normalize/normalize-preprocessing-middleware
    (ensure-pmbql #'qp.perms/remove-permissions-key)
    (ensure-pmbql #'qp.perms/remove-source-card-keys)
+   (ensure-pmbql #'qp.perms/remove-gtapped-table-keys)
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)
+   (ensure-pmbql #'expand-aggregations/expand-aggregations)
    (ensure-pmbql #'metrics/adjust)
    (ensure-pmbql #'expand-macros/expand-macros)
    (ensure-pmbql #'qp.resolve-referenced/resolve-referenced-card-resources)
@@ -117,7 +123,7 @@
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-pmbql #'qp.middleware.enterprise/apply-impersonation)
-   (ensure-pmbql #'qp.middleware.enterprise/attach-mirror-db-middleware)
+   (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
@@ -130,14 +136,13 @@
    (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
-   (ensure-legacy #'escape-join-aliases/escape-join-aliases)
    (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
    (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-legacy #'auto-parse-filter-values/auto-parse-filter-values)
+   (ensure-pmbql-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-legacy #'limit/add-default-limit)
@@ -183,25 +188,16 @@
      query
      middleware)))
 
-(defn- restore-join-aliases [preprocessed-query]
-  (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
-    (escape-join-aliases/restore-aliases preprocessed-query replacement)))
-
-(mu/defn query->expected-cols :- [:maybe [:sequential :map]]
+(mu/defn query->expected-cols :- [:maybe [:sequential ::annotate/qp-results-cased-col]]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
-    (let [preprocessed (-> query preprocess restore-join-aliases)]
+    (let [preprocessed (-> query preprocess)]
       (when-not (= (:type preprocessed) :query)
         (throw (ex-info (i18n/tru "Can only determine expected columns for MBQL queries.")
                         {:type qp.error-type/qp})))
       ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
       ;; check where this is used.
-      (->> (annotate/merged-column-info preprocessed nil)
-           ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
-           ;; directly we can stop stripping these out
-           (mapv (fn [col]
-                   (m/remove-keys #(= "lib" (namespace %)) col)))
-           not-empty))))
+      (not-empty (annotate/expected-cols (->mbql-5 preprocessed))))))

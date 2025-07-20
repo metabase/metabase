@@ -20,22 +20,39 @@
         0  "Today"
         1  "Tomorrow"
         2  "Next 2 days")))
-  (testing :month
-    (are [n expected] (= expected
-                         (lib.temporal-bucket/describe-temporal-interval n :month))
-      -2 "Previous 2 months"
-      -1 "Previous month"
-      0  "This month"
-      1  "Next month"
-      2  "Next 2 months"))
+  (doseq [unit [:day nil]]
+    (testing (str (pr-str unit) " including current")
+      (are [n expected] (= expected
+                           (lib.temporal-bucket/describe-temporal-interval n unit {:include-current true}))
+        -2 "Previous 2 days or today"
+        -1 "Today or yesterday"
+        0  "Today"
+        1  "Today or tomorrow"
+        2  "Next 2 days or today")))
+  (doseq [unit [:millisecond :second :minute :hour :week :month :quarter :year]
+          :let [ustr (name unit)]]
+    (testing unit
+      (are [n expected] (= expected
+                           (lib.temporal-bucket/describe-temporal-interval n unit {:include-current false}))
+        -2 (str "Previous 2 " ustr "s")
+        -1 (str "Previous " ustr)
+        0  (str "This " ustr)
+        1  (str "Next " ustr)
+        2  (str "Next 2 " ustr "s"))))
+  (doseq [unit [:millisecond :second :minute :hour :week :month :quarter :year]
+          :let [ustr (name unit)]]
+    (testing (str unit " including current")
+      (are [n expected] (= expected
+                           (lib.temporal-bucket/describe-temporal-interval n unit {:include-current true}))
+        -2 (str "Previous 2 " ustr "s or this " ustr)
+        -1 (str "Previous " ustr " or this " ustr)
+        0  (str "This " ustr)
+        1  (str "Next " ustr " or this " ustr)
+        2  (str "Next 2 " ustr "s or this " ustr))))
   (testing "unknown unit"
-    (are [n expected] (= expected
-                         (lib.temporal-bucket/describe-temporal-interval n :century))
-      -2 "Previous 2 unknown units"
-      -1 "Previous unknown unit"
-      0  "This unknown unit"
-      1  "Next unknown unit"
-      2  "Next 2 unknown units")))
+    (are [n] (= "Unknown unit"
+                (lib.temporal-bucket/describe-temporal-interval n :century))
+      -2 -1 0 1 2)))
 
 (deftest ^:parallel describe-relative-datetime-test
   (doseq [unit [:day nil]]
@@ -48,13 +65,9 @@
         1  "starting 1 day from now"
         2  "starting 2 days from now")))
   (testing "unknown unit"
-    (are [n expected] (= expected
-                         (lib.temporal-bucket/describe-relative-datetime n :century))
-      -2 "starting 2 unknown units ago"
-      -1 "starting 1 unknown unit ago"
-      0  "starting now"
-      1  "starting 1 unknown unit from now"
-      2  "starting 2 unknown units from now")))
+    (are [n] (= "Unknown unit"
+                (lib.temporal-bucket/describe-relative-datetime n :century))
+      -2 -1 0 1 2)))
 
 (deftest ^:parallel describe-temporal-unit-test
   (is (= ""
@@ -72,47 +85,47 @@
          (lib.temporal-bucket/describe-temporal-unit 2 :unknown-unit))))
 
 (deftest ^:parallel available-temporal-buckets-test
-  (let [column {:description nil
-                :lib/type :metadata/column
-                :database-is-auto-increment false
-                :fingerprint-version 5
-                :base-type :type/DateTimeWithLocalTZ
-                :semantic-type :type/CreationTimestamp
-                :database-required false
-                :table-id 806
-                :name "CREATED_AT"
-                :coercion-strategy nil
-                :lib/source :source/fields
-                :lib/source-column-alias "CREATED_AT"
-                :settings nil
-                :caveats nil
-                :nfc-path nil
-                :database-type "TIMESTAMP WITH TIME ZONE"
-                :effective-type :type/DateTimeWithLocalTZ
-                :fk-target-field-id nil
-                :custom-position 0
-                :active true
-                :id 3068
-                :parent-id nil
-                :points-of-interest nil
-                :visibility-type :normal
-                :lib/desired-column-alias "CREATED_AT"
-                :display-name "Created At"
-                :position 7
-                :has-field-values nil
-                :json-unfolding false
-                :preview-display true
-                :database-position 7
-                :fingerprint
-                {:global {:distinct-count 200, :nil% 0.0}}}
-        expected-units #{:minute :hour
-                         :day :week :month :quarter :year
-                         :minute-of-hour :hour-of-day
-                         :day-of-week :day-of-month :day-of-year
-                         :week-of-year :month-of-year :quarter-of-year}
+  (let [column            {:description                nil
+                           :lib/type                   :metadata/column
+                           :database-is-auto-increment false
+                           :fingerprint-version        5
+                           :base-type                  :type/DateTimeWithLocalTZ
+                           :semantic-type              :type/CreationTimestamp
+                           :database-required          false
+                           :table-id                   806
+                           :name                       "CREATED_AT"
+                           :coercion-strategy          nil
+                           :lib/source                 :source/table-defaults
+                           :lib/source-column-alias    "CREATED_AT"
+                           :settings                   nil
+                           :caveats                    nil
+                           :nfc-path                   nil
+                           :database-type              "TIMESTAMP WITH TIME ZONE"
+                           :effective-type             :type/DateTimeWithLocalTZ
+                           :fk-target-field-id         nil
+                           :custom-position            0
+                           :active                     true
+                           :id                         3068
+                           :parent-id                  nil
+                           :points-of-interest         nil
+                           :visibility-type            :normal
+                           :lib/desired-column-alias   "CREATED_AT"
+                           :display-name               "Created At"
+                           :position                   7
+                           :has-field-values           nil
+                           :json-unfolding             false
+                           :preview-display            true
+                           :database-position          7
+                           :fingerprint
+                           {:global {:distinct-count 200, :nil% 0.0}}}
+        expected-units    #{:minute :hour
+                            :day :week :month :quarter :year
+                            :minute-of-hour :hour-of-day
+                            :day-of-week :day-of-month :day-of-year
+                            :week-of-year :month-of-year :quarter-of-year}
         expected-defaults [{:lib/type :option/temporal-bucketing, :unit :month, :default true}]]
     (testing "missing fingerprint"
-      (let [column (dissoc column :fingerprint)
+      (let [column  (dissoc column :fingerprint)
             options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
         (is (= expected-units
                (into #{} (map :unit) options)))
@@ -126,9 +139,9 @@
                              nil                        :month
                              "garbage"                  :month}]
         (testing latest
-          (let [bounds {:earliest "2016-04-26T19:29:55.147Z"
-                        :latest latest}
-                column (assoc-in column [:fingerprint :type :type/DateTime] bounds)
+          (let [bounds  {:earliest "2016-04-26T19:29:55.147Z"
+                         :latest   latest}
+                column  (assoc-in column [:fingerprint :type :type/DateTime] bounds)
                 options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
             (is (= expected-units
                    (into #{} (map :unit) options)))

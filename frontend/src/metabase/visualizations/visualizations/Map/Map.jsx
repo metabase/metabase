@@ -3,7 +3,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ColorRangeSelector } from "metabase/core/components/ColorRangeSelector";
+import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import MetabaseSettings from "metabase/lib/settings";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
@@ -39,7 +39,7 @@ import { CustomMapFooter } from "./CustomMapFooter";
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
 export class Map extends Component {
-  static uiName = t`Map`;
+  static getUiName = () => t`Map`;
   static identifier = "map";
   static iconName = "pinmap";
 
@@ -61,12 +61,24 @@ export class Map extends Component {
   static settings = {
     ...columnSettings({ hidden: true }),
     "map.type": {
-      title: t`Map type`,
+      get title() {
+        return t`Map type`;
+      },
       widget: "select",
       props: {
         options: [
-          { name: t`Region map`, value: "region" },
-          { name: t`Pin map`, value: "pin" },
+          {
+            get name() {
+              return t`Region map`;
+            },
+            value: "region",
+          },
+          {
+            get name() {
+              return t`Pin map`;
+            },
+            value: "pin",
+          },
           // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
           // { name: "Heat map", value: "heat" },
           { name: "Grid map", value: "grid" },
@@ -112,13 +124,25 @@ export class Map extends Component {
       ],
     },
     "map.pin_type": {
-      title: t`Pin type`,
+      get title() {
+        return t`Pin type`;
+      },
       // Don't expose this in the UI for now
       // widget: "select",
       props: {
         options: [
-          { name: t`Tiles`, value: "tiles" },
-          { name: t`Markers`, value: "markers" },
+          {
+            get name() {
+              return t`Tiles`;
+            },
+            value: "tiles",
+          },
+          {
+            get name() {
+              return t`Markers`;
+            },
+            value: "markers",
+          },
           // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
           // { name: "Heat", value: "heat" },
           { name: "Grid", value: "grid" },
@@ -136,21 +160,27 @@ export class Map extends Component {
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },
     ...fieldSetting("map.latitude_column", {
-      title: t`Latitude field`,
+      get title() {
+        return t`Latitude field`;
+      },
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLatitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.longitude_column", {
-      title: t`Longitude field`,
+      get title() {
+        return t`Longitude field`;
+      },
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLongitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.metric_column", {
-      title: t`Metric field`,
+      get title() {
+        return t`Metric field`;
+      },
       fieldFilter: isMetric,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
@@ -158,7 +188,9 @@ export class Map extends Component {
           vizSettings["map.pin_type"] !== "grid"),
     }),
     "map.region": {
-      title: t`Region map`,
+      get title() {
+        return t`Region map`;
+      },
       widget: "select",
       getDefault: ([{ card, data }]) => {
         if (card.display === "state" || _.any(data.cols, isState)) {
@@ -181,15 +213,21 @@ export class Map extends Component {
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
     ...metricSetting("map.metric", {
-      title: t`Metric field`,
+      get title() {
+        return t`Metric field`;
+      },
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
-      title: t`Region field`,
+      get title() {
+        return t`Region field`;
+      },
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     "map.colors": {
-      title: t`Color`,
+      get title() {
+        return t`Color`;
+      },
       widget: ColorRangeSelector,
       props: {
         colors: getAccentColors(),
@@ -208,25 +246,33 @@ export class Map extends Component {
     "map.center_latitude": {},
     "map.center_longitude": {},
     "map.heat.radius": {
-      title: t`Radius`,
+      get title() {
+        return t`Radius`;
+      },
       widget: "number",
       default: 30,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.blur": {
-      title: t`Blur`,
+      get title() {
+        return t`Blur`;
+      },
       widget: "number",
       default: 60,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.min-opacity": {
-      title: t`Min Opacity`,
+      get title() {
+        return t`Min Opacity`;
+      },
       widget: "number",
       default: 0,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.max-zoom": {
-      title: t`Max Zoom`,
+      get title() {
+        return t`Max Zoom`;
+      },
       widget: "number",
       default: 1,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",

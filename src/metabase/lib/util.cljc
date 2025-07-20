@@ -24,7 +24,8 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -136,6 +137,8 @@
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
                                                           (expression-name target-clause)))
+                         ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
+                         #_{:clj-kondo/ignore [:deprecated-var]}
                          (lib.common/preserve-ident-of target-clause))
                      new-clause)]
     (m/update-existing-in
@@ -333,6 +336,12 @@
     (when (< (inc stage-number) (count stages))
       (inc stage-number))))
 
+(defn last-stage?
+  "Whether a `stage-number` is referring to the last stage of a query or not."
+  [query stage-number]
+  ;; Call canonical-stage-index to ensure this throws when given an invalid stage-number.
+  (not (next-stage-number query (canonical-stage-index query stage-number))))
+
 (mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
@@ -360,6 +369,14 @@
         stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]
     (assoc query :stages stages')))
+
+(mu/defn drop-later-stages :- ::lib.schema/query
+  "Drop any stages in the `query` that come after `stage-number`."
+  [query        :- LegacyOrPMBQLQuery
+   stage-number :- :int]
+  (cond-> (pipeline query)
+    (not (last-stage? query stage-number))
+    (update :stages #(take (inc (canonical-stage-index query stage-number)) %))))
 
 (defn native-stage?
   "Is this query stage a native stage?"
@@ -476,15 +493,65 @@
   (-> (str original \_ suffix)
       (truncate-alias)))
 
-(mu/defn unique-name-generator :- [:function
-                                   ;; (f str) => unique-str
-                                   [:=>
-                                    [:cat :string]
-                                    ::lib.schema.common/non-blank-string]
-                                   ;; (f id str) => unique-str
-                                   [:=>
-                                    [:cat :any :string]
-                                    ::lib.schema.common/non-blank-string]]
+(mr/def ::unique-name-generator
+  "Stateful function with the signature
+
+    (f)        => 'fresh' unique name generator
+    (f str)    => unique-str
+    (f id str) => unique-str
+
+  i.e. repeated calls with the same string should return different unique strings."
+  [:function
+   ;; (f) => generates a new instance of the unique name generator for recursive generation without 'poisoning the
+   ;; well'.
+   [:=>
+    [:cat]
+    [:ref ::unique-name-generator]]
+   ;; (f str) => unique-str
+   [:=>
+    [:cat :string]
+    ::lib.schema.common/non-blank-string]
+   ;; (f id str) => unique-str
+   [:=>
+    [:cat :any :string]
+    ::lib.schema.common/non-blank-string]])
+
+(mu/defn- unique-name-generator-with-options :- ::unique-name-generator
+  [options :- :map]
+  ;; ok to use here because this is the one designated wrapper for it.
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (let [f         (mbql.u/unique-name-generator options)
+        truncate* (if (::truncate? options)
+                    truncate-alias
+                    identity)]
+    ;; I know we could just use `comp` here but it gets really hard to figure out where it's coming from when you're
+    ;; debugging things; a named function like this makes it clear where this function came from
+    (fn unique-name-generator-fn
+      ([]
+       (unique-name-generator-with-options options))
+      ([s]
+       (->> s truncate* f))
+      ([id s]
+       (->> s truncate* (f id))))))
+
+(mu/defn- unique-name-generator-factory :- [:function
+                                            [:=>
+                                             [:cat]
+                                             ::unique-name-generator]
+                                            [:=>
+                                             [:cat [:schema [:sequential :string]]]
+                                             ::unique-name-generator]]
+  [options :- :map]
+  (mu/fn :- ::unique-name-generator
+    ([]
+     (unique-name-generator-with-options options))
+    ([existing-names :- [:sequential :string]]
+     (let [f (unique-name-generator-with-options options)]
+       (doseq [existing existing-names]
+         (f existing))
+       f))))
+
+(def ^{:arglists '([] [existing-names])} unique-name-generator
   "Create a new function with the signature
 
     (f str) => str
@@ -500,32 +567,37 @@
   that currently exist on a stage of the query.
 
   The two-arity version of the returned function can be used for idempotence. See docstring
-  for [[metabase.legacy-mbql.util/unique-name-generator]] for more information."
-  ([]
-   (let [uniqify      (mbql.u/unique-name-generator
-                       ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
-                       ;;
-                       ;; some databases treat aliases as case-insensitive so make sure the generated aliases are
-                       ;; unique regardless of case
-                       :name-key-fn     u/lower-case-en
-                       :unique-alias-fn unique-alias)]
-     ;; I know we could just use `comp` here but it gets really hard to figure out where it's coming from when you're
-     ;; debugging things; a named function like this makes it clear where this function came from
-     (fn unique-name-generator-fn
-       ([s]
-        (->> s
-             truncate-alias
-             uniqify))
-       ([id s]
-        (->> s
-             truncate-alias
-             (uniqify id))))))
+  for [[metabase.legacy-mbql.util/unique-name-generator]] for more information.
 
-  ([existing-names    :- [:sequential :string]]
-   (let [f (unique-name-generator)]
-     (doseq [existing existing-names]
-       (f existing))
-     f)))
+  New!
+
+  You can call
+
+    (f)
+
+  to get a new, fresh unique name generator for recursive usage without 'poisoning the well'."
+  ;; unique by lower-case name, e.g. `NAME` and `name` => `NAME` and `name_2`
+   ;;
+   ;; some databases treat aliases as case-insensitive so make sure the generated aliases are unique regardless of
+   ;; case
+  (unique-name-generator-factory
+   {::truncate?      true
+    :name-key-fn     u/lower-case-en
+    :unique-alias-fn unique-alias}))
+
+(def ^{:arglists '([] [existing-names])} non-truncating-unique-name-generator
+  "This is the same as [[unique-name-generator]] but doesn't truncate names, matching the 'classic' behavior in QP
+  results metadata."
+  (unique-name-generator-factory {::truncate? false}))
+
+(mu/defn identity-generator :- ::unique-name-generator
+  "Identity unique name generator that just returns strings as-is."
+  ([]
+   identity-generator)
+  ([s]
+   s)
+  ([_id s]
+   s))
 
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
@@ -569,6 +641,17 @@
                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
+
+(defn find-stage-index-and-clause-by-uuid
+  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
+  ([query lib-uuid]
+   (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
+  ([query stage-number lib-uuid]
+   (first (keep-indexed (fn [idx stage]
+                          (lib.util.match/match-lite-recursive stage
+                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
+                            [idx clause]))
+                        (:stages (drop-later-stages query stage-number))))))
 
 (defn fresh-uuids
   "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more

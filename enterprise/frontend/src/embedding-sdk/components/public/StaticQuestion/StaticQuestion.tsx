@@ -1,20 +1,22 @@
 import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
-import {
-  InteractiveQuestionProvider,
-  type InteractiveQuestionProviderProps,
-} from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkQuestionProvider,
+  type SdkQuestionProviderProps,
+} from "embedding-sdk/components/private/SdkQuestion/context";
+import { Group, Stack } from "metabase/ui";
 
-import { InteractiveQuestion } from "../InteractiveQuestion";
-import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";
+import { InteractiveQuestion } from "../SdkQuestion";
+import type { SdkQuestionIdProps } from "../SdkQuestion/types";
 
 /**
  * @interface
+ * @expand
  * @category StaticQuestion
  */
-export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
+export type StaticQuestionProps = SdkQuestionIdProps & {
   withChartTypeSelector?: boolean;
-} & Pick<InteractiveQuestionProviderProps, "initialSqlParameters"> &
+} & Pick<SdkQuestionProviderProps, "initialSqlParameters" | "withDownloads"> &
   FlexibleSizeProps;
 
 const StaticQuestionInner = ({
@@ -25,20 +27,29 @@ const StaticQuestionInner = ({
   className,
   style,
   initialSqlParameters,
+  withDownloads,
 }: StaticQuestionProps): JSX.Element | null => (
-  <InteractiveQuestionProvider
+  <SdkQuestionProvider
     questionId={initialQuestionId}
     variant="static"
     initialSqlParameters={initialSqlParameters}
+    withDownloads={withDownloads}
   >
-    {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
-    <InteractiveQuestion.QuestionVisualization
-      height={height}
-      width={width}
-      className={className}
-      style={style}
-    />
-  </InteractiveQuestionProvider>
+    <Stack gap="sm" w="100%" h="100%">
+      {(withChartTypeSelector || withDownloads) && (
+        <Group justify="space-between">
+          {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
+          {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
+        </Group>
+      )}
+      <InteractiveQuestion.QuestionVisualization
+        height={height}
+        width={width}
+        className={className}
+        style={style}
+      />
+    </Stack>
+  </SdkQuestionProvider>
 );
 
 /**

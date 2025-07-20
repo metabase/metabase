@@ -29,7 +29,7 @@ describe("scenarios > alert", () => {
         cy.findByText("Set up Slack")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications/slack");
+          .should("have.attr", "href", "/admin/settings/notifications");
         cy.findByText("Add a webhook")
           .should("be.visible")
           .closest("a")
@@ -45,7 +45,7 @@ describe("scenarios > alert", () => {
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook.",
+          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP or Slack.",
         );
 
         cy.findByText("Set up SMTP").should("not.exist");
@@ -146,8 +146,11 @@ describe("scenarios > alert", () => {
       const allowedDomain = "metabase.test";
       const deniedDomain = "metabase.example";
       const deniedEmail = `mailer@${deniedDomain}`;
-      const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
-      const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+      // We're not exposing allowed domains to normal users.
+      const normalUserAlertError = `Failed save alert. The following email addresses are not allowed: ${deniedEmail}`;
+      const normalUserSubscriptionError = `Cannot create subscription. The following email addresses are not allowed: ${deniedEmail} Please contact your administrator.`;
+      const adminAlertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+      const adminSubscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
 
       function addEmailRecipient(email) {
         cy.findByRole("textbox").click().type(`${email}`).blur();
@@ -160,7 +163,7 @@ describe("scenarios > alert", () => {
       beforeEach(() => {
         H.restore();
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.setupSMTP();
         setAllowedDomains();
       });
@@ -177,7 +180,7 @@ describe("scenarios > alert", () => {
             addEmailRecipient(deniedEmail);
           });
 
-          cy.findByText(alertError);
+          cy.findByText(adminAlertError);
           cy.button("Done").should("be.disabled");
         });
       });
@@ -193,7 +196,40 @@ describe("scenarios > alert", () => {
           // Reproduces metabase#17977
           cy.button("Send email now").should("be.disabled");
           cy.button("Done").should("be.disabled");
-          cy.findByText(subscriptionError);
+          cy.findByText(adminSubscriptionError);
+        });
+      });
+
+      it("should not display the list of approved domains for non-admins (metabase#57138)", () => {
+        cy.signInAsNormalUser();
+        H.visitQuestion(ORDERS_QUESTION_ID);
+
+        H.openSharingMenu("Create an alert");
+        H.modal().within(() => {
+          cy.findByText("New alert").should("be.visible");
+
+          cy.findByTestId("token-field").within(() => {
+            addEmailRecipient(deniedEmail);
+          });
+
+          cy.button("Done").click();
+        });
+        cy.findByTestId("toast-undo").within(() => {
+          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.text", normalUserAlertError);
+        });
+
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        H.openSharingMenu("Subscriptions");
+
+        H.sidebar().within(() => {
+          addEmailRecipient(deniedEmail);
+
+          cy.button("Done").click();
+        });
+        cy.findByTestId("toast-undo").within(() => {
+          cy.root().should("have.attr", "color", "error");
+          cy.root().should("have.text", normalUserSubscriptionError);
         });
       });
     },

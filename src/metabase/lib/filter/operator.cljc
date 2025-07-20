@@ -87,23 +87,13 @@
   [(operator-def :is-null :is-empty)
    (operator-def :not-null :not-empty)])
 
-(def join-operators
-  "Operators that should be listed as options in join conditions."
-  [(assoc (operator-def :=) :default true)
-   (operator-def :>)
-   (operator-def :<)
-   (operator-def :>=)
-   (operator-def :<=)
-   (operator-def :!=)])
-
 (mu/defn filter-operators :- [:sequential ::lib.schema.filter/operator]
   "The list of available filter operators.
    The order of operators is relevant for the front end.
    There are slight differences between names and ordering for the different base types."
   [column :- ::lib.schema.metadata/column]
   ;; The order of these clauses is important since we want to match the most relevant type
-  ;; the order is different than `lib.types.isa/field-type` as filters need to operate
-  ;; on the effective-type rather than the semantic-type, eg boolean and number cannot become
+  ;; filters need to operate on the effective-type rather than the semantic-type, eg boolean and number cannot become
   ;; string if semantic type is type/Category
   (condp lib.types.isa/field-type? column
     :metabase.lib.types.constants/temporal    temporal-operators

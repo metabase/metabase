@@ -226,3 +226,34 @@
     [:segment 1]
     [:and [:expression "bool1"] [:expression "bool2"]]
     [:or  [:expression "bool1"] [:expression "bool2"]]))
+
+(deftest ^:parallel emptyable-filter-test
+  (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
+    [:is-empty ""]
+    [:is-empty "A"]
+    [:is-empty [:field 1 nil]]
+    [:is-empty [:ltrim "A"]]
+    [:is-empty [:ltrim [:field 1 nil]]]
+    [:not-empty ""]
+    [:not-empty "A"]
+    [:not-empty [:field 1 nil]]
+    [:not-empty [:ltrim "A"]]
+    [:not-empty [:ltrim [:field 1 nil]]]))
+
+(deftest ^:parallel field-with-empty-name-test
+  (testing "We need to support fields with empty names, this is legal in SQL Server (QUE-1418)"
+    ;; we should support field names with only whitespace as well.
+    (doseq [field-name [""
+                        " "]
+            :let [field-ref [:field field-name {:base-type :type/Text}]]]
+      (testing (pr-str field-ref)
+        (are [schema] (not (me/humanize (mr/explain schema field-ref)))
+          ::mbql.s/Reference
+          ::mbql.s/field)))))
+
+(deftest ^:parallel datetime-schema-test
+  (doseq [expr [[:datetime ""]
+                [:datetime "" {}]
+                [:datetime "" {:mode :iso}]
+                [:datetime 10 {:mode :unix-seconds}]]]
+    (is (mr/validate mbql.s/datetime expr))))

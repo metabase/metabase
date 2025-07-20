@@ -8,6 +8,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -15,14 +16,12 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -61,38 +60,42 @@
                                              fields))))))
 
 (mu/defn- standard-join-condition? :- :boolean
-  "Whether this join condition is a binary condition with two `:field` references (a LHS and a RHS), as you'd produce
-  in the frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]],
-  and [[join-condition-rhs-columns]]."
+  "Whether this join condition is a binary condition with two expressions (LHS and RHS), as you'd produce in the
+  frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]], and
+  [[join-condition-rhs-columns]].
+
+  LHS and RHS expressions can be aribtrary and not only `:field` references. The LHS expression will normally contain
+  columns from [[join-condition-lhs-columns]], and the RHS expression from [[join-condition-rhs-columns]]."
   [condition  :- [:maybe ::lib.schema.expression/boolean]]
   (when condition
-    (lib.util.match/match-one condition
-      [(_operator :guard keyword?)
+    (lib.util.match/match-lite condition
+      [(_operator :guard lib.schema.join/condition-operators)
        _opts
-       [:field _lhs-opts _lhs-id-or-name]
-       [:field _rhs-opts _rhs-id-or-name]]
+       (_lhs :guard lib.util/clause?)
+       (_rhs :guard lib.util/clause?)]
       true
       _
       false)))
 
 (defn- standard-join-condition-lhs
-  "If `condition` is a [[standard-join-condition?]], return the LHS."
+  "If `condition` is a [[standard-join-condition?]], return the LHS expression. The LHS expression can be arbitrary and
+  not only a `:field` reference. The frontend will only use columns from [[join-condition-lhs-columns]] here."
   [condition]
   (when (standard-join-condition? condition)
     (let [[_operator _opts lhs _rhs] condition]
       lhs)))
 
 (defn- standard-join-condition-rhs
-  "If `condition` is a [[standard-join-condition?]], return the RHS."
+  "If `condition` is a [[standard-join-condition?]], return the RHS.  The RHS expression can be arbitrary and
+  not only a `:field` reference. The frontend will only use columns from [[join-condition-rhs-columns]] here."
   [condition]
   (when (standard-join-condition? condition)
     (let [[_operator _opts _lhs rhs] condition]
       rhs)))
 
 (defn- standard-join-condition-update-rhs
-  "If `condition` is a [[standard-join-condition?]], update the RHS with `f` like
-
-    (apply f rhs args)"
+  "If `condition` is a [[standard-join-condition?]], update the RHS with `f` like `(apply f rhs args)`. Note that the
+  RHS expression can be arbitrary and not only a `:field` reference."
   [condition f & args]
   (if-not (standard-join-condition? condition)
     condition
@@ -106,13 +109,13 @@
   If `old-alias` is specified, uses [[metabase.legacy-mbql.util.match]] to update all the `:field` references using the old
   alias.
 
-  If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with two `:field` refs as
-  args, e.g. the kind you'd get if you were using [[join-condition-operators]] and the like to create them). This
-  currently doesn't handle more complex filter clauses that were created without the 'normal' MLv2 functions used by
-  the frontend; we can add this in the future if we need it."
+  If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with the operator from
+  [[join-condition-operators]], the LHS expression with columns from [[join-condition-lhs-columns]], the RHS expression
+  with columns from [[join-condition-rhs-columns]]). This currently doesn't handle more complex filter clauses that
+  were created without the 'normal' MLv2 functions used by the frontend; we can add this in the future if we need it."
   [join      :- lib.join.util/PartialJoin
-   old-alias :- [:maybe ::lib.schema.common/non-blank-string]
-   new-alias :- [:maybe ::lib.schema.common/non-blank-string]]
+   old-alias :- [:maybe ::lib.schema.join/alias]
+   new-alias :- [:maybe ::lib.schema.join/alias]]
   (cond
     (empty? (:conditions join))
     join
@@ -120,15 +123,19 @@
     ;; if we've specified `old-alias`, then update ANY `:field` clause using it to `new-alias` instead.
     old-alias
     (lib.util.match/replace-in join [:conditions]
-      [:field {:join-alias old-alias} _id-or-name]
-      (with-join-alias &match new-alias))
+      (field :guard #(and (lib.util/field-clause? %) (= (lib.join.util/current-join-alias %) old-alias)))
+      (with-join-alias field new-alias))
 
     ;; otherwise if `old-alias` is `nil`, then add (or remove!) `new-alias` to the RHS of any binary
     ;; filter clauses that don't already have a `:join-alias`.
     :else
     (update join :conditions (fn [conditions]
                                (mapv (fn [condition]
-                                       (standard-join-condition-update-rhs condition with-join-alias new-alias))
+                                       (standard-join-condition-update-rhs condition
+                                                                           (fn [rhs]
+                                                                             (lib.util.match/replace rhs
+                                                                               (field :guard lib.util/field-clause?)
+                                                                               (with-join-alias field new-alias)))))
                                      conditions)))))
 
 (defn- with-join-alias-update-join
@@ -151,7 +158,11 @@
     (lib.options/update-options field-or-join u/assoc-dissoc :join-alias join-alias)
 
     :metadata/column
-    (u/assoc-dissoc field-or-join ::join-alias join-alias)
+    (if join-alias
+      (assoc field-or-join ::join-alias join-alias, :lib/source :source/joins)
+      (-> field-or-join
+          (dissoc ::join-alias)
+          (cond-> (= (:lib/source field-or-join) :source/joins) (dissoc :lib/source))))
 
     :mbql/join
     (with-join-alias-update-join field-or-join join-alias)
@@ -161,7 +172,7 @@
     (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
         field-or-join)))
 
-(mu/defn- maybe-resolve-join :- [:maybe ::lib.schema.join/join]
+(mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
   "Resolve a join with a specific `join-alias`. Returns nil if there's no such join."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -223,14 +234,17 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn- column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
-  "For a column that comes from a join `:fields` list, add or update metadata as needed, e.g. include join name in the
-  display name."
+(mu/defn- column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
+  "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query           :- ::lib.schema/query
    stage-number    :- :int
    column-metadata :- ::lib.schema.metadata/column
    join-alias      :- ::lib.schema.common/non-blank-string]
-  (let [column-metadata (assoc column-metadata :source-alias join-alias)
+  ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two keys for
+  ;; join aliases.
+  (let [column-metadata (assoc column-metadata
+                               :source-alias            join-alias
+                               :lib/original-join-alias join-alias)
         col             (-> (assoc column-metadata
                                    :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
@@ -252,80 +266,82 @@
            :display-name (lib.metadata.calculation/display-name query stage-number option)}
     default (assoc :default true)))
 
-(mu/defn- add-source-and-desired-aliases :- :map
-  [join           :- [:map
-                      [:alias
-                       {:error/message "Join must have an alias to determine column aliases!"}
-                       ::lib.schema.common/non-blank-string]]
-   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn
-   col            :- :map]
-  (assoc col
-         :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) col)
-         :lib/desired-column-alias (unique-name-fn (lib.join.util/joined-field-desired-alias
-                                                    (:alias join)
-                                                    ((some-fn :lib/source-column-alias :name) col)))))
+;;; this returns ALL the columns 'visible' within the join, regardless of `:fields` ! `:fields` is only the list of
+;;; things to get added to the parent stage `:fields`! See QUE-1380
+;;;
+;;; If you want just the stuff in `:fields`, use [[join-fields-to-add-to-parent-stage]] instead.
+(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe ::lib.metadata.calculation/returned-columns]
+  [query                                          :- ::lib.schema/query
+   stage-number                                   :- :int
+   {:keys [stages], join-alias :alias, :as _join} :- ::lib.schema.join/join
+   options                                        :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+  (let [join-query (assoc query :stages stages)
+        cols       (lib.metadata.calculation/returned-columns
+                    join-query -1 (lib.util/query-stage join-query -1)
+                    options)]
+    (into []
+          (comp (map #(column-from-join query stage-number % join-alias))
+                (lib.field.util/add-source-and-desired-aliases-xform query))
+          cols)))
 
-(mu/defn- adjust-ident :- :map
-  [join :- [:map
-            [:ident
-             {:error/message "Join must have an ident to determine column idents"}
-             ::lib.schema.common/non-blank-string]]
-   col  :- :map]
-  (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
-
-(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join
+(mu/defn join-fields-to-add-to-parent-stage :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
+  "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."
   [query
    stage-number
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join}
-   {:keys [unique-name-fn], :as options} :- [:map
-                                             [:unique-name-fn ::lib.metadata.calculation/unique-name-fn]]]
+   options :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (when-not (= fields :none)
-    (let [ensure-previous-stages-have-metadata (resolve 'metabase.lib.stage/ensure-previous-stages-have-metadata)
-          join-query (cond-> (assoc query :stages stages)
-                       ensure-previous-stages-have-metadata
-                       (ensure-previous-stages-have-metadata -1 options))
-          join-cols       (lib.metadata.calculation/returned-columns
-                           join-query -1 (lib.util/query-stage join-query -1)
-                           (assoc options :include-remaps? false))
-          field-metadatas (if (= fields :all)
-                            join-cols
-                            (for [field-ref fields
-                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
-                              (assoc (lib.equality/find-matching-column join-field join-cols)
-                                     :lib/source-uuid (lib.options/uuid join-field))))
-          cols  (mapv (fn [field-metadata]
-                        (->> (column-from-join-fields query stage-number field-metadata join-alias)
-                             (adjust-ident join)
-                             (add-source-and-desired-aliases join unique-name-fn)))
-                      field-metadatas)]
-      (concat cols (lib.metadata.calculation/remapped-columns join-query -1 cols options)))))
+    (let [cols   (lib.metadata.calculation/returned-columns query stage-number join options)
+          cols'  (if (= fields :all)
+                   cols
+                   (for [field-ref fields
+                         :let      [match (or (lib.equality/find-matching-column field-ref cols)
+                                              (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
+                                                         (pr-str join-alias)
+                                                         (pr-str field-ref)
+                                                         (u/pprint-to-str cols)))]
+                         :when     match]
+                     (assoc match :lib/source-uuid (lib.options/uuid field-ref))))
+          ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
+          ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
+          cols'  (if (empty? cols') cols cols')
+          ;; add any remaps for the fields as needed.
+          cols'' (concat
+                  cols'
+                  (lib.metadata.calculation/remapped-columns
+                   (assoc query :stages stages)
+                   0
+                   cols'
+                   options))]
+      (mapv #(column-from-join query stage-number % join-alias)
+            cols''))))
 
 (defmethod lib.metadata.calculation/visible-columns-method :mbql/join
   [query stage-number join options]
   (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all) options))
 
-(mu/defn all-joins-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+(mu/defn all-joins-visible-columns :- ::lib.metadata.calculation/visible-columns
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   options        :- lib.metadata.calculation/VisibleColumnsOptions]
+   options        :- ::lib.metadata.calculation/visible-columns.options]
   (into []
         (mapcat (fn [join]
                   (lib.metadata.calculation/visible-columns
                    query stage-number join
                    (-> options
-                       (select-keys [:unique-name-fn :include-remaps?])
+                       (select-keys [:include-remaps?]) ; WHY
                        (assoc :include-implicitly-joinable? false)))))
         (:joins (lib.util/query-stage query stage-number))))
 
-(mu/defn all-joins-expected-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+(mu/defn all-joins-fields-to-add-to-parent-stage :- ::lib.metadata.calculation/returned-columns
   "Convenience for calling [[lib.metadata.calculation/returned-columns-method]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- lib.metadata.calculation/ReturnedColumnsOptions]
+   options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/returned-columns query stage-number join options)))
+                  (join-fields-to-add-to-parent-stage query stage-number join options)))
         (:joins (lib.util/query-stage query stage-number))))
 
 (defmulti ^:private join-clause-method
@@ -379,10 +395,10 @@
   (if-not join-alias
     conditions
     (mapv (fn [condition]
-            (or (when-let [rhs (standard-join-condition-rhs condition)]
-                  (when-not (lib.join.util/current-join-alias rhs)
-                    (standard-join-condition-update-rhs condition with-join-alias join-alias)))
-                condition))
+            (standard-join-condition-update-rhs condition (fn [rhs]
+                                                            (lib.util.match/replace rhs
+                                                              (field :guard #(and (lib.util/field-clause? %) (not (lib.join.util/current-join-alias %))))
+                                                              (with-join-alias field join-alias)))))
           conditions)))
 
 (mu/defn with-join-conditions :- lib.join.util/PartialJoin
@@ -413,20 +429,22 @@
 
 (defn- select-home-column
   [home-cols cond-fields]
-  (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
-    ;; first choice: the leftmost FK or PK in the condition referring to a home column
-    (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
-        ;; otherwise the leftmost home column in the condition
-        (first cond-home-cols)
-        ;; otherwise the first FK home column
-        (m/find-first lib.types.isa/foreign-key? home-cols)
-        ;; otherwise the first PK home column
-        (m/find-first lib.types.isa/primary-key? home-cols)
-        ;; otherwise the first home column
-        (first home-cols))))
+  (when (seq cond-fields)
+    (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
+          ;; first choice: the leftmost FK or PK in the condition referring to a home column
+      (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
+          ;; otherwise the leftmost home column in the condition
+          (first cond-home-cols)
+          ;; otherwise the first FK home column
+          (m/find-first lib.types.isa/foreign-key? home-cols)
+          ;; otherwise the first PK home column
+          (m/find-first lib.types.isa/primary-key? home-cols)
+          ;; otherwise the first home column
+          (first home-cols)))))
 
 (defn- strip-id [s]
-  (when (string? s)
+  (when (and (string? s)
+             (not (re-find #"(?i) → id$" s)))
     (str/trim (str/replace s #"(?i) id$" ""))))
 
 (defn- similar-names?
@@ -498,7 +516,10 @@
               [op op-opts bare-lhs rhs]))
 
           ;; we leave alone the condition otherwise
-          :else &match)))))
+          :else &match))
+    ;; do not replace inner references as there can be a custom join expression
+      _
+      condition)))
 
 (defn- generate-unique-name [base-name taken-names]
   (let [generator (lib.util/unique-name-generator)]
@@ -513,10 +534,16 @@
      (default-alias query stage-number a-join stage home-cols)))
   ([query _stage-number a-join stage home-cols]
    (let [home-cols   home-cols
-         cond-fields (lib.util.match/match (:conditions a-join) :field)
-         home-col    (select-home-column home-cols cond-fields)]
-     (as-> (calculate-join-alias query a-join home-col) s
-       (generate-unique-name s (keep :alias (:joins stage)))))))
+         cond-fields (into []
+                           (mapcat (fn [condition]
+                                     (let [lhs (standard-join-condition-lhs condition)
+                                           rhs (standard-join-condition-rhs condition)]
+                                       (when (and (lib.util/field-clause? lhs) (lib.util/field-clause? rhs))
+                                         [lhs rhs]))))
+                           (:conditions a-join))
+         home-col   (select-home-column home-cols cond-fields)]
+     (-> (calculate-join-alias query a-join home-col)
+         (generate-unique-name (keep :alias (:joins stage)))))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a
@@ -727,7 +754,7 @@
   join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
   of [[join-condition-rhs-columns]].) See #32005 for more info.
 
-  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-expression-or-nil` so we can
   mark the current column as `:selected` in the metadata/display info.
 
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
@@ -736,15 +763,15 @@
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  ([query joinable lhs-column-or-nil rhs-column-or-nil]
-   (join-condition-lhs-columns query -1 joinable lhs-column-or-nil rhs-column-or-nil))
+  ([query joinable lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-lhs-columns query -1 joinable lhs-expression-or-nil rhs-expression-or-nil))
 
-  ([query              :- ::lib.schema/query
-    stage-number       :- :int
-    join-or-joinable   :- [:maybe JoinOrJoinable]
-    lhs-column-or-nil  :- [:maybe lib.join.util/Field]
+  ([query                  :- ::lib.schema/query
+    stage-number           :- :int
+    join-or-joinable       :- [:maybe JoinOrJoinable]
+    lhs-expression-or-nil  :- [:maybe ::lib.schema.expression/expression]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _rhs-column-or-nil :- [:maybe lib.join.util/Field]]
+    _rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    ;; calculate all the visible columns including the existing join; then filter out any columns that come from the
    ;; existing join and any subsequent joins. The reason for doing things this way rather than removing the joins
    ;; before calculating visible columns is that we don't want to either create possibly-invalid queries, or have to
@@ -761,11 +788,15 @@
                                       (joins query stage-number))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
-                                                    {:include-implicitly-joinable? false})
+                                                    {:include-expressions?         false
+                                                     :include-implicitly-joinable? false})
           (remove (fn [col]
                     (when-let [col-join-alias (lib.join.util/current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
-          (mark-selected-column query stage-number lhs-column-or-nil)
+          (mark-selected-column query
+                                stage-number
+                                (when (lib.util/field-clause? lhs-expression-or-nil)
+                                  lhs-expression-or-nil))
           sort-join-condition-columns))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
@@ -777,19 +808,19 @@
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
-  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-column-or-nil` so we can
+  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-expression-or-nil` so we can
   mark the current column as `:selected` in the metadata/display info.
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  ([query joinable lhs-column-or-nil rhs-column-or-nil]
-   (join-condition-rhs-columns query -1 joinable lhs-column-or-nil rhs-column-or-nil))
+  ([query joinable lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-rhs-columns query -1 joinable lhs-expression-or-nil rhs-expression-or-nil))
 
-  ([query              :- ::lib.schema/query
-    stage-number       :- :int
-    join-or-joinable   :- JoinOrJoinable
+  ([query                  :- ::lib.schema/query
+    stage-number           :- :int
+    join-or-joinable       :- JoinOrJoinable
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _lhs-column-or-nil :- [:maybe lib.join.util/Field]
-    rhs-column-or-nil  :- [:maybe lib.join.util/Field]]
+    _lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil  :- [:maybe ::lib.schema.expression/expression]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
    (let [joinable          (if (join? join-or-joinable)
@@ -797,8 +828,8 @@
                              join-or-joinable)
          join-alias        (when (join? join-or-joinable)
                              (lib.join.util/current-join-alias join-or-joinable))
-         rhs-column-or-nil (when rhs-column-or-nil
-                             (cond-> rhs-column-or-nil
+         rhs-column-or-nil (when (lib.util/field-clause? rhs-expression-or-nil)
+                             (cond-> rhs-expression-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
@@ -808,20 +839,20 @@
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
 
-(mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
+(mu/defn join-condition-operators :- [:sequential ::lib.schema.join/condition.operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
   UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
   filtered out based on values of the LHS or RHS, but in the future we can add this -- see #31174."
-  ([query lhs-column-or-nil rhs-column-or-nil]
-   (join-condition-operators query -1 lhs-column-or-nil rhs-column-or-nil))
+  ([query lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-operators query -1 lhs-expression-or-nil rhs-expression-or-nil))
 
-  ([_query             :- ::lib.schema/query
-    _stage-number      :- :int
+  ([_query                 :- ::lib.schema/query
+    _stage-number          :- :int
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible options out.
-    _lhs-column-or-nil :- [:maybe ::lib.schema.metadata/column]
-    _rhs-column-or-nil :- [:maybe ::lib.schema.metadata/column]]
+    _lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    _rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
-   lib.filter.operator/join-operators))
+   lib.schema.join/ordered-condition-operators))
 
 (mu/defn- fk-columns-to :- [:maybe [:sequential
                                     {:min 1}
@@ -890,12 +921,7 @@
                     (m/distinct-by #(-> % ::target :id))
                     not-empty))
              (filter-clause [x y]
-               ;; DO NOT force broken refs for fields that come from Cards (broken refs in this case means use Field
-               ;; ID refs instead of nominal field literal refs), that will break things if a Card returns the same
-               ;; Field more than once (there would be no way to disambiguate). See #34227 for more info
-               (let [x (dissoc x ::lib.card/force-broken-id-refs)
-                     y (dissoc y ::lib.card/force-broken-id-refs)]
-                 (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y)))]
+               (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
        (or
         ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
         (when-let [fks (fks stage joinable)]
@@ -911,17 +937,11 @@
 
 (defn- xform-add-join-alias [a-join]
   (let [join-alias (lib.join.util/current-join-alias a-join)]
-    (fn [xf]
-      (let [unique-name-fn (lib.util/unique-name-generator)]
-        (fn
-          ([] (xf))
-          ([result] (xf result))
-          ([result input]
-           (as-> input col
-             (with-join-alias col join-alias)
-             (assoc col :source-alias join-alias)
-             (add-source-and-desired-aliases a-join unique-name-fn col)
-             (xf result col))))))))
+    (map (fn [col]
+           (-> col
+               (with-join-alias join-alias)
+               ;; TODO (Cam 6/25/25) -- remove `:source-alias` since it is busted
+               (assoc :source-alias join-alias))))))
 
 (defn- xform-mark-selected-joinable-columns
   "Mark the column metadatas in `cols` as `:selected` if they appear in `a-join`'s `:fields`."
@@ -935,7 +955,9 @@
 (def ^:private xform-fix-source-for-joinable-columns
   (map #(assoc % :lib/source :source/joins)))
 
-(mu/defn joinable-columns :- [:sequential ::lib.schema.metadata/column]
+;;; TODO (Cam 7/8/25) -- this is a confusing name. `join-fieldable-columns` would be consistent
+;;; with [[metabase.lib.field/fieldable-columns]] and be less confusing
+(mu/defn joinable-columns :- ::lib.metadata.calculation/visible-columns
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
   something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
@@ -957,11 +979,13 @@
           cols)))
 
 (defn- join-lhs-display-name-from-condition-lhs
-  [query stage-number join-or-joinable condition-lhs-column-or-nil]
-  (when-let [condition-lhs-column (or condition-lhs-column-or-nil
-                                      (when (join? join-or-joinable)
-                                        (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
-    (let [display-info (lib.metadata.calculation/display-info query stage-number condition-lhs-column)]
+  [query stage-number join-or-joinable condition-lhs-or-nil]
+  (when-let [lhs-column-ref (or condition-lhs-or-nil
+                                (when (join? join-or-joinable)
+                                  (when-let [lhs (standard-join-condition-lhs (first (join-conditions join-or-joinable)))]
+                                    (when (lib.util/field-clause? lhs)
+                                      lhs))))]
+    (let [display-info (lib.metadata.calculation/display-info query stage-number lhs-column-ref)]
       (get-in display-info [:table :display-name]))))
 
 (defn- first-join?
@@ -1018,7 +1042,7 @@
     1a. If `join-or-joinable` is a join, we can take the condition LHS column from the join itself, since a join will
         always have a condition. This should only apply to [[standard-join-condition?]] conditions.
 
-    1b. When building a join, you can optionally pass in `condition-lhs-column-or-nil` yourself.
+    1b. When building a join, you can optionally pass in `condition-lhs-expression-or-nil` yourself.
 
   2. If the condition LHS column is unknown, and this is the first join in the first stage of a query, and the query
      uses a `:source-table`, then use the display name for the source Table.
@@ -1031,21 +1055,22 @@
   ([query join-or-joinable]
    (join-lhs-display-name query join-or-joinable nil))
 
-  ([query join-or-joinable condition-lhs-column-or-nil]
-   (join-lhs-display-name query -1 join-or-joinable condition-lhs-column-or-nil))
+  ([query join-or-joinable condition-lhs-expression-or-nil]
+   (join-lhs-display-name query -1 join-or-joinable condition-lhs-expression-or-nil))
 
-  ([query                       :- ::lib.schema/query
-    stage-number                :- :int
-    join-or-joinable            :- [:maybe JoinOrJoinable]
-    condition-lhs-column-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
+  ([query                           :- ::lib.schema/query
+    stage-number                    :- :int
+    join-or-joinable                :- [:maybe JoinOrJoinable]
+    condition-lhs-expression-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
    (or
-    (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-column-or-nil)
+    (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-expression-or-nil)
     (join-lhs-display-name-for-first-join-in-first-stage query stage-number join-or-joinable)
     (i18n/tru "Previous results"))))
 
 (mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
   "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
-   Must be called on a standard join condition as per [[standard-join-condition?]].
+   Must be called on a standard join condition with just columns used for both LHS and RHS expressions, otherwise the
+   join condition will NOT be updated.
    This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
    Fields that do not support the provided option will be ignored."
   ([query :- ::lib.schema/query
@@ -1060,19 +1085,21 @@
     option-or-unit :- [:maybe [:or
                                ::lib.schema.temporal-bucketing/option
                                ::lib.schema.temporal-bucketing/unit]]]
-   (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
-     (assert (standard-join-condition? join-condition)
-             (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
-     (let [unit (cond-> option-or-unit
-                  (not (keyword? option-or-unit)) :unit)
-           stage-number (lib.util/canonical-stage-index query stage-number)
-           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
-           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
-           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
-       (cond-> join-condition
-         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
-         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
+   (if-not (standard-join-condition? join-condition)
+     join-condition
+     (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
+       (if-not (and (lib.util/field-clause? lhs) (lib.util/field-clause? rhs))
+         join-condition
+         (let [unit (cond-> option-or-unit
+                      (not (keyword? option-or-unit)) :unit)
+               stage-number (lib.util/canonical-stage-index query stage-number)
+               available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+               available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+               sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+               sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+           (cond-> join-condition
+             sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+             sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :joins
   [query stage-number _key]

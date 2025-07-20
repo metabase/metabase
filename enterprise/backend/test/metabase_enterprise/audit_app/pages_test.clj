@@ -7,7 +7,7 @@
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader :as tools.reader]
    [metabase-enterprise.audit-app.interface :as audit.i]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]

@@ -4,23 +4,35 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.hive-like :as driver.hive-like]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
-   [java.sql Connection ResultSet ResultSetMetaData Statement]
-   [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime OffsetTime]))
+   [java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    Statement]
+   [java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,9 +47,11 @@
                               :expressions                     true
                               :native-parameters               true
                               :nested-queries                  true
+                              :multi-level-schema              true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false}]
+                              :test/jvm-timezone-setting       false
+                              :database-routing                false}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
@@ -59,19 +73,52 @@
     (and (catalog-present? jdbc-spec (:catalog details))
          (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
 
+(defmethod driver/adjust-schema-qualification :databricks
+  [_driver database schema]
+  (let [multi-level? (get-in database [:details :multi-level-schema])
+        catalog (get-in database [:details :catalog])
+        prefix (str catalog ".")]
+    (cond
+      (and multi-level? (not (str/includes? schema ".")))
+      (str prefix schema)
+
+      (and (not multi-level?) (str/starts-with? schema prefix))
+      (subs schema (count prefix))
+
+      :else
+      schema)))
+
+(defn- split-catalog+schema
+  [schema]
+  (str/split schema #"\."))
+
+(defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
+  [_driver [tag identifier-type components :as _identifier]]
+  (let [components (if (or (and (= identifier-type :table)
+                                (>= (count components) 2))
+                           (and (= identifier-type :field)
+                                (>= (count components) 3)))
+                     ;; period is an illegal character for identifiers in databricks so if it's present we can split and
+                     ;; quote safely. docs.databricks.com/aws/en/sql/language-manual/sql-ref-names
+                     (let [first-split (split-catalog+schema (first components))]
+                       (into first-split (rest components)))
+                     components)]
+    (sql.qp/->honeysql :hive-like [tag identifier-type components])))
+
 (defn- get-tables-sql
-  [catalog]
+  [driver {:keys [catalog multi-level-schema]}]
   (assert (string? (not-empty catalog)))
-  [(str/join
-    "\n"
-    ["select"
-     "  TABLE_NAME as name,"
-     "  TABLE_SCHEMA as schema,"
-     "  COMMENT description"
-     "  from system.information_schema.tables"
-     "  where TABLE_CATALOG = ?"
-     "    AND TABLE_SCHEMA <> 'information_schema'"])
-   catalog])
+  (sql/format {:select [[:t.table_name :name]
+                        (if multi-level-schema
+                          [[:concat :t.table_catalog [:inline "."] :t.table_schema] :schema]
+                          [:t.table_schema :schema])
+                        [:t.comment :description]]
+               :from [[:system.information_schema.tables :t]]
+               :where [:and
+                       (when-not multi-level-schema [:= :t.table_catalog catalog])
+                       [:<> :t.table_schema [:inline "information_schema"]]
+                       [:not [:startswith :t.table_catalog [:inline "__databricks"]]]]}
+              :dialect (sql.qp/quote-style driver)))
 
 (defmethod driver/describe-database :databricks
   [driver database]
@@ -80,23 +127,35 @@
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
            included? (fn [schema]
-                       (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+                       (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
        (into
         #{}
         (filter (comp included? :schema))
-        (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog)))))}
+        (sql-jdbc.execute/reducible-query database (get-tables-sql driver (:details database)))))}
     (catch Throwable e
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
                       e)))))
 
+(defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
+  (when schema-names
+    (if multi-level-schema
+      [:in [:composite catalog-column schema-column]
+       (map (comp (fn [catalog+schema]
+                    (into [:composite] catalog+schema))
+                  split-catalog+schema)
+            schema-names)]
+      [:in schema-column schema-names])))
+
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
-  [driver & {:keys [schema-names table-names] {:keys [catalog]} :details}]
+  [driver & {:keys [schema-names table-names] {:keys [catalog multi-level-schema]} :details}]
   (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select [[:c.column_name :name]
                         [:c.full_data_type :database-type]
                         [:c.ordinal_position :database-position]
-                        [:c.table_schema :table-schema]
+                        (if multi-level-schema
+                          [[:concat :c.table_catalog [:inline "."] :c.table_schema] :table-schema]
+                          [:c.table_schema :table-schema])
                         [:c.table_name :table-name]
                         [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
                         [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
@@ -130,27 +189,32 @@
                             [:= :c.table_name :cs.table_name]
                             [:= :c.column_name :cs.column_name]]]
                :where [:and
-                       [:= :c.table_catalog [:inline catalog]]
+                       (when-not multi-level-schema [:= :c.table_catalog catalog])
                        ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
                        ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
                        ;; is resolved by Databricks in underlying jdbc driver.
                        [:not= :c.full_data_type [:inline "timestamp_ntz"]]
-                       [:not [:in :c.table_schema ["information_schema"]]]
-                       (when schema-names [:in :c.table_schema schema-names])
+                       [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
+                       [:not [:in :c.table_schema [[:inline "information_schema"]]]]
+                       (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
                        (when table-names [:in :c.table_name table-names])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :databricks
-  [driver & {:keys [schema-names table-names catalog]}]
+  [driver & {:keys [schema-names table-names] {:keys [catalog multi-level-schema]} :details}]
   (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
-  (sql/format {:select (vec
-                        {:fk_kcu.table_schema  "fk-table-schema"
-                         :fk_kcu.table_name    "fk-table-name"
-                         :fk_kcu.column_name   "fk-column-name"
-                         :pk_kcu.table_schema  "pk-table-schema"
-                         :pk_kcu.table_name    "pk-table-name"
-                         :pk_kcu.column_name   "pk-column-name"})
+  (sql/format {:select
+               [(if multi-level-schema
+                  [[:concat :fk_kcu.table_catalog [:inline "."] :fk_kcu.table_schema] "fk-table-schema"]
+                  [:fk_kcu.table_schema "fk-table-schema"])
+                [:fk_kcu.table_name "fk-table-name"]
+                [:fk_kcu.column_name "fk-column-name"]
+                (if multi-level-schema
+                  [[:concat :pk_kcu.table_catalog [:inline "."] :pk_kcu.table_schema] "pk-table-schema"]
+                  [:pk_kcu.table_schema "pk-table-schema"])
+                [:pk_kcu.table_name "pk-table-name"]
+                [:pk_kcu.column_name "pk-column-name"]]
                :from [[:system.information_schema.key_column_usage :fk_kcu]]
                :join [[:system.information_schema.referential_constraints :rc]
                       [:and
@@ -163,17 +227,13 @@
                         [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
                         [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
                :where [:and
-                       [:= :fk_kcu.table_catalog [:inline catalog]]
+                       (when-not multi-level-schema [:= :fk_kcu.table_catalog [:inline catalog]])
+                       [:not [:startswith :fk_kcu.table_catalog [:inline "__databricks"]]]
                        [:not [:in :fk_kcu.table_schema ["information_schema"]]]
-                       (when table-names [:in :fk_kcu.table_name table-names])
-                       (when schema-names [:in :fk_kcu.table_schema schema-names])]
+                       (schema-names-filter schema-names multi-level-schema :fk_kcu.table_catalog :fk_kcu.table_schema)
+                       (when table-names [:in :fk_kcu.table_name table-names])]
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
-
-(defmethod driver/describe-fks :databricks
-  [driver database & {:as args}]
-  (let [catalog (get-in database [:details :catalog])]
-    (sql-jdbc.sync/describe-fks driver database (assoc args :catalog catalog))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks
   [_driver]
@@ -209,7 +269,7 @@
          :transportMode  "http"
          :ssl            1
          :HttpPath       http-path
-         :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
+         :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
          :UseNativeQuery 1}]
     (merge base-spec
            (when log-level
@@ -288,12 +348,12 @@
     (assert (timestamp-database-type-names database-type-name))
     (if (= "TIMESTAMP" database-type-name)
       (fn []
-        (assert (some? (qp.timezone/results-timezone-id)))
+        (assert (some? (driver-api/results-timezone-id)))
         (when-let [t (.getTimestamp rs i)]
           (t/with-offset-same-instant
             (t/offset-date-time
              (t/zoned-date-time (t/local-date-time t)
-                                (t/zone-id (qp.timezone/results-timezone-id))))
+                                (t/zone-id (driver-api/results-timezone-id))))
             (t/zone-id "Z"))))
       (fn []
         (when-let [t (.getTimestamp rs i)]
@@ -306,10 +366,10 @@
   [dt]
   (if (instance? LocalDateTime dt)
     dt
-    (let [tz-str      (try (qp.timezone/results-timezone-id)
+    (let [tz-str      (try (driver-api/results-timezone-id)
                            (catch Throwable _
                              (log/trace "Failed to get `results-timezone-id`. Using system timezone.")
-                             (qp.timezone/system-timezone-id)))
+                             (driver-api/system-timezone-id)))
           adjusted-dt (t/with-zone-same-instant (t/zoned-date-time dt) (t/zone-id tz-str))]
       (t/local-date-time adjusted-dt))))
 
@@ -340,3 +400,102 @@
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
+
+(defmethod sql-jdbc.execute/set-parameter [:databricks (Class/forName "[B")]
+  [_driver ^PreparedStatement _prepared-statement ^Integer _index _object]
+  (throw (ex-info "Databricks driver cannot ingest byte array." {}))
+  ;; I really did try all of these options. Databricks team says we need to use the OSS version. See
+  ;; https://metaboat.slack.com/archives/C07L35T7UFQ/p1750703587969479
+
+  ;; .setBytes() with raw byte array
+  ;; Fails with
+  ;; HIVE_PARAMETER_QUERY_DATA_TYPE_ERR_NON_SUPPORT_DATA_TYPE
+  #_(.setBytes prepared-statement index object)
+
+  ;; byte array as object
+  ;; Ingests toString of reference and tests fail with
+  ;; [CANNOT_PARSE_TIMESTAMP] Unparseable date: "[B@3b56756d".
+  #_(.setObject prepared-statement index object)
+
+  ;; byte array as object with jdbc type BINARY
+  ;; Ingests toString of reference and tests fail with
+  ;; [CANNOT_PARSE_TIMESTAMP] Unparseable date: "[B@3b56756d".
+  #_(.setObject prepared-statement index object Types/BINARY)
+
+  ;; byte array as object with jdbc type BINARY
+  ;; Fails with
+  ;; HIVE_PARAMETER_QUERY_DATA_TYPE_ERR_NON_SUPPORT_DATA_TYPE
+  #_(.setObject prepared-statement index object Types/VARBINARY)
+
+  ;; Array of Bytes with jdbc type ARRAY
+  ;; Fails with
+  ;; [Databricks][JDBC](11500) Given type does not match given object: [Ljava.lang.Byte;@1e1ac2b6.
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)) Types/ARRAY)
+
+  ;; Array of Bytes with jdbc type BINARY
+  ;; Fails with
+  ;; [Databricks][JDBC](11500) Given type does not match given object: [Ljava.lang.Byte;@1e1ac2b6.
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)) Types/BINARY)
+
+  ;; Array of Bytes with jdbc type BINARY
+  ;; Fails with
+  ;; [Databricks][JDBC](11500) Given type does not match given object: [Ljava.lang.Byte;@1e1ac2b6.
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)) Types/VARBINARY)
+
+  ;; Array of Bytes with no jdbc type
+  ;; Fails with
+  ;; HIVE_PARAMETER_QUERY_DATA_TYPE_ERR_NON_SUPPORT_DATA_TYPE
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)))
+
+  ;; .setArray with array of Bytes with jdbc type "BINARY"
+  ;; Fails with
+  ;; [Databricks][JDSI](20300) Data type not supported: BINARY ({1})
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "BINARY"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; .setArray with array of Bytes with jdbc type "VARBINARY"
+  ;; Fails with
+  ;; Array is not valid
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "VARBINARY"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; .setArray with array of Bytes with jdbc type "ARRAY"
+  ;; Fails with
+  ;; [Databricks][JDSI](20300) Data type not supported: ARRAY ({1})
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "ARRAY"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; .setArray with array of Bytes with jdbc type "ARRAY<BINARY>"
+  ;; Ingest "succeeds" but there are no rows in the table
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "ARRAY<BINARY>"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; Hex string
+  ;; Fails with:
+  ;; [Databricks][JDBC](11500) Given type does not match given object: 3230313930343231313634333030.
+  #_(.setObject prepared-statement index (codecs/bytes->hex object) Types/BINARY)
+
+  ;; base64 string
+  ;; Fails with:
+  ;; [Databricks][JDBC](11500) Given type does not match given object: MjAxOTA0MjExNjQzMDA=.
+  #_(.setObject prepared-statement index (codecs/bytes->b64-str object) Types/BINARY))
+
+(defmethod sql.qp/->integer :databricks
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
+
+(defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42P01"))

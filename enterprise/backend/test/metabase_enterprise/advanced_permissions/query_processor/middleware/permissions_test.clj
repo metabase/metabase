@@ -4,11 +4,15 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
     :as ee.qp.perms]
-   [metabase.api.dataset :as api.dataset]
+   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
    [metabase.util :as u])
@@ -17,15 +21,24 @@
 
 (defn- do-with-download-perms!
   [db-or-id graph f]
-  (let [all-users-group-id (u/the-id (perms-group/all-users))
+  (let [all-users-group-id (u/the-id (perms/all-users-group))
         db-id              (u/the-id db-or-id)
         revision           (:revision (data-perms.graph/api-graph))]
     (mt/with-premium-features #{:advanced-permissions}
-      (perms.test-util/with-restored-perms!
-        (perms.test-util/with-restored-data-perms!
-          (data-perms.graph/update-data-perms-graph! {:revision revision
-                                                      :groups   {all-users-group-id {db-id {:download graph}}}})
-          (f))))))
+      (perms.test-util/with-restored-data-perms!
+        (data-perms.graph/update-data-perms-graph! {:revision revision
+                                                    :groups   {all-users-group-id {db-id {:download graph}}}})
+        (f)))))
+
+(defn- remove-metadata [m]
+  (lib.util.match/replace m
+    (_ :guard (every-pred map? :source-metadata))
+    (remove-metadata (dissoc &match :source-metadata))))
+
+(defn- apply-row-level-permissions [query]
+  (-> (qp.store/with-metadata-provider (mt/id)
+        (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
+      remove-metadata))
 
 (defmacro ^:private with-download-perms!
   "Runs `f` with the download perms for `db-or-id` set to the values in `graph` for the All Users permissions group."
@@ -144,12 +157,57 @@
         (is (= (mbql-download-query)
                (check-download-permisions (mbql-download-query))))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
+(deftest check-download-permissions-when-advanced-mbql-sandboxed-test
+  (testing "Applying a basic sandbox does not affect the download permissions for a table"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}
+                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                                                      :table_id             (mt/id :checkins)
+                                                      :card_id              card-id
+                                                      :attribute_remappings {}}]
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
+                                                           (mt/id :categories) :none
+                                                           (mt/id :venues)     :limited
+                                                           (mt/id :checkins)   :full
+                                                           (mt/id :products)   :limited
+                                                           (mt/id :people)     :limited
+                                                           (mt/id :reviews)    :limited
+                                                           (mt/id :orders)     :limited}}}
+          (mt/with-metadata-provider (mt/id)
+            (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
+              (is (= with-sandbox
+                     (check-download-permisions with-sandbox))))))))))
+
+(deftest check-download-permissions-when-advanced-sql-sandboxed-test
+  (testing "Applying a advanced sandbox does not affect the download permissions for a table"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
+                     :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                                                      :table_id             (mt/id :checkins)
+                                                      :card_id              card-id
+                                                      :attribute_remappings {}}]
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :users)      :full
+                                                           (mt/id :categories) :none
+                                                           (mt/id :venues)     :limited
+                                                           (mt/id :checkins)   :full
+                                                           (mt/id :products)   :limited
+                                                           (mt/id :people)     :limited
+                                                           (mt/id :reviews)    :limited
+                                                           (mt/id :orders)     :limited}}})
+        (mt/with-metadata-provider (mt/id)
+          (let [with-sandbox (apply-row-level-permissions (mbql-download-query 'checkins))]
+            (is (= with-sandbox
+                   (check-download-permisions with-sandbox)))))))))
+
+;;; +----------------------------------------------------------------------- -----------------------------------------+
 ;;; |                                                E2E tests                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- csv-row-count
   [results]
+  (when-not ((some-fn string? bytes?) results)
+    (throw (ex-info (format "Expected CSV results to be a byte array, got: %s" (class results))
+                    {:actual results})))
   (count
    ;; Ignore first row, since it's the header
    (rest (csv/read-csv results))))
@@ -321,57 +379,260 @@
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))))
 
+(defn- do-joined-card-test! [venues-perms f]
+  (mt/with-full-data-perms-for-all-users!
+    (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :venues)}}}]
+        (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   venues-perms
+                                                           (mt/id :checkins) :full}}}
+          (let [query (mt/mbql-query checkins
+                        {:joins    [{:fields       [&card.venues.id]
+                                     :source-table (format "card__%d" card-id)
+                                     :alias        "card"
+                                     :condition    [:= $checkins.venue_id &card.venues.id]
+                                     :strategy     :left-join}]
+                         :order-by [[:asc $id]]
+                         :limit    10})]
+            (f query)))))))
+
 (deftest joined-card-test
   (testing "Do we correctly check download perms for queries that involve a join between a table and a card? (#50304)"
+    (do-joined-card-test!
+     :full
+     (fn [query]
+       (streaming-test/do-test!
+        "A table joined to a card, both with full download perms"
+        ;; I would expect this to return 5 columns: the four from checkins, and then the one from the Card
+        {:query      query
+         :endpoints  [:card :dataset]
+         :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})))))
+
+(deftest joined-card-test-2
+  (testing "Do we correctly check download perms for queries that involve a join between a table and a card? (#50304)"
+    (do-joined-card-test!
+     :limited
+     (fn [query]
+       (streaming-test/do-test!
+        "A table joined to a card, with limited download perms for the card, results in a limited download"
+        {:query      query
+         :endpoints  [:card :dataset]
+         :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))))
+
+(deftest joined-card-test-3
+  (testing "Do we correctly check download perms for queries that involve a join between a table and a card? (#50304)"
+    (do-joined-card-test!
+     :none
+     (fn [query]
+       (streaming-test/do-test!
+        "A table joined to a card, with no download perms for the card, results in blocked download"
+        {:query      query
+         :endpoints  [:card :dataset]
+         :assertions {:csv (fn [results]
+                             (is (partial=
+                                  {:error "You do not have permissions to download the results of this query."}
+                                  results)))}})))))
+
+(deftest sandbox-card-test
+  (testing "Do we correctly check download perms for queries that involve a sandbox? (#57861)"
     (mt/with-full-data-perms-for-all-users!
       (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                                  :type     :query
-                                                                  :query    {:source-table (mt/id :venues)}}}]
-          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
+                       :model/GroupTableAccessPolicy _ {:group_id             (u/the-id (perms/all-users-group))
+                                                        :table_id             (mt/id :checkins)
+                                                        :card_id              card-id
+                                                        :attribute_remappings {}}]
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
                                                              (mt/id :checkins)   :full}}}
             (streaming-test/do-test!
-             "A table joined to a card, both with full download perms"
-             {:query (mt/mbql-query checkins
-                       {:joins    [{:fields       [$id]
-                                    :source-table (format "card__%d" card-id)
-                                    :alias        "card"
-                                    :condition    [:= $checkins.venue_id &card.venues.id]
-                                    :strategy     :left-join}]
-                        :order-by [[:asc $id]]
-                        :limit    10})
+             "A table with sandbox and full download perms"
+             {:query {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (mt/id :checkins)
+                                 :limit        10}}
               :endpoints  [:card :dataset]
               :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))
 
-          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :limited
-                                                             (mt/id :checkins)   :full}}}
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
+                                                             (mt/id :checkins)   :limited}}}
             (streaming-test/do-test!
-             "A table joined to a card, with limited download perms for the card, results in a limited download"
-             {:query (mt/mbql-query checkins
-                       {:joins    [{:fields       [$id]
-                                    :source-table (format "card__%d" card-id)
-                                    :alias        "card"
-                                    :condition    [:= $checkins.venue_id &card.venues.id]
-                                    :strategy     :left-join}]
-                        :order-by [[:asc $id]]
-                        :limit    10})
+             "A table with sandbox and limited download perms"
+             {:query      {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :checkins)
+                                      :limit        10}}
               :endpoints  [:card :dataset]
               :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
 
-          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :none
-                                                             (mt/id :checkins)   :full}}}
+          (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :categories) :none
+                                                             (mt/id :checkins)   :none}}}
             (streaming-test/do-test!
-             "A table joined to a card, with no download perms for the card, results in blocked download"
-             {:query (mt/mbql-query checkins
-                       {:joins    [{:fields       [$id]
-                                    :source-table (format "card__%d" card-id)
-                                    :alias        "card"
-                                    :condition    [:= $checkins.venue_id &card.venues.id]
-                                    :strategy     :left-join}]
-                        :order-by [[:asc $id]]
-                        :limit    10})
+             "A table with sandbox and not download perms"
+             {:query      {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :checkins)
+                                      :limit        10}}
               :endpoints  [:card :dataset]
               :assertions {:csv (fn [results]
                                   (is (partial=
                                        {:error "You do not have permissions to download the results of this query."}
                                        results)))}})))))))
+
+(deftest joined-cards-with-native-query-test
+  (testing "Do we correctly apply the least permissive download perms when joining cards where one has a native query? (#XXXX)"
+    (mt/with-full-data-perms-for-all-users!
+      (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
+        (mt/with-temp [:model/Card {mbql-card-id :id} {:dataset_query {:database (mt/id)
+                                                                       :type     :query
+                                                                       :query    {:source-table (mt/id :venues)}}}
+                       :model/Card {native-card-id :id} {:dataset_query {:database (mt/id)
+                                                                         :type     :native
+                                                                         :native   {:query "SELECT * FROM checkins"}}}]
+          (testing "When one card has native query, least permissive DB-level permission applies"
+            (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
+                                                               (mt/id :checkins)   :limited
+                                                               (mt/id :users)      :full}}}
+              (streaming-test/do-test!
+               "Join between MBQL card (venues:full) and native card - should use limited perms due to native query"
+               {:query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (format "card__%d" mbql-card-id)
+                                   :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
+                                                   :source-table (format "card__%d" native-card-id)
+                                                   :alias        "native_card"
+                                                   :condition    [:= [:field "ID" {:base-type :type/Integer}]
+                                                                  [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
+                                                   :strategy     :left-join}]
+                                   :limit        10}}
+                :endpoints  [:card :dataset]
+                :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))
+
+          (testing "When native card references tables with no download perms, download is blocked"
+            (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
+                                                               (mt/id :checkins)   :none
+                                                               (mt/id :users)      :limited}}}
+              (streaming-test/do-test!
+               "Join between MBQL card (venues:full) and native card - should block due to checkins:none"
+               {:query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (format "card__%d" mbql-card-id)
+                                   :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
+                                                   :source-table (format "card__%d" native-card-id)
+                                                   :alias        "native_card"
+                                                   :condition    [:= [:field "ID" {:base-type :type/Integer}]
+                                                                  [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
+                                                   :strategy     :left-join}]
+                                   :limit        10}}
+                :endpoints  [:card :dataset]
+                :assertions {:csv (fn [results]
+                                    (is (partial=
+                                         {:error "You do not have permissions to download the results of this query."}
+                                         results)))}})))
+
+          (testing "When all tables have full perms, download works normally"
+            (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)     :full
+                                                               (mt/id :checkins)   :full
+                                                               (mt/id :users)      :full}}}
+              (streaming-test/do-test!
+               "Join between MBQL card and native card - should work with full perms for all tables"
+               {:query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (format "card__%d" mbql-card-id)
+                                   :joins        [{:fields       [[:field "ID" {:base-type :type/Integer}]]
+                                                   :source-table (format "card__%d" native-card-id)
+                                                   :alias        "native_card"
+                                                   :condition    [:= [:field "ID" {:base-type :type/Integer}]
+                                                                  [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "native_card"}]]
+                                                   :strategy     :left-join}]
+                                   :limit        10}}
+                :endpoints  [:card :dataset]
+                :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))))))))
+
+(defn- do-with-card-with-native-source-card! [f]
+  (mt/with-full-data-perms-for-all-users!
+    (with-redefs [ee.qp.perms/max-rows-in-limited-downloads 3]
+      (mt/with-temp [:model/Card {native-source-card-id :id} {:dataset_query {:database (mt/id)
+                                                                              :type     :native
+                                                                              :native   {:query "SELECT * FROM checkins"}}}
+                     :model/Card {mbql-card-id :id} {:dataset_query {:database (mt/id)
+                                                                     :type     :query
+                                                                     :query    {:source-table (format "card__%d" native-source-card-id)
+                                                                                :aggregation  [[:count]]
+                                                                                :breakout     [[:field "VENUE_ID" {:base-type :type/Integer}]]}}}]
+        (f {:mbql-card-id mbql-card-id})))))
+
+(deftest card-with-native-source-card-test
+  (testing "Do we correctly apply download perms when downloading from a card that uses a source card with a native query?"
+    (do-with-card-with-native-source-card!
+     (fn [{:keys [mbql-card-id]}]
+       (testing "When source card has native query with limited perms, download is limited"
+         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   :full
+                                                            (mt/id :checkins) :limited
+                                                            (mt/id :users)    :full}}}
+           (streaming-test/do-test!
+            "Card with native source card - should use limited perms due to native query in source"
+            {:query      {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (format "card__%d" mbql-card-id)
+                                     :limit        10}}
+             :endpoints  [:card :dataset]
+             :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})))))))
+
+(deftest card-with-native-source-card-test-2
+  (testing "Do we correctly apply download perms when downloading from a card that uses a source card with a native query?"
+    (do-with-card-with-native-source-card!
+     (fn [{:keys [mbql-card-id]}]
+       (testing "When source card has native query with no download perms, download is blocked"
+         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   :full
+                                                            (mt/id :checkins) :none
+                                                            (mt/id :users)    :full}}}
+           (streaming-test/do-test!
+            "Card with native source card - should block due to checkins:none in native source"
+            {:query      {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (format "card__%d" mbql-card-id)
+                                     :limit        10}}
+             :endpoints  [:card :dataset]
+             :assertions {:csv (fn [results]
+                                 (is (partial=
+                                      {:error "You do not have permissions to download the results of this query."}
+                                      results)))}})))))))
+
+(deftest card-with-native-source-card-test-3
+  (testing "Do we correctly apply download perms when downloading from a card that uses a source card with a native query?"
+    (do-with-card-with-native-source-card!
+     (fn [{:keys [mbql-card-id]}]
+       (testing "When source card has native query with full perms, download works normally"
+         (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   :full
+                                                            (mt/id :checkins) :full
+                                                            (mt/id :users)    :full}}}
+           (streaming-test/do-test!
+            "Card with native source card - should work with full perms for all tables"
+            {:query      {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (format "card__%d" mbql-card-id)
+                                     :limit        10}}
+             :endpoints  [:card :dataset]
+             :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})))))))
+
+(deftest card-with-native-source-card-test-4
+  (testing "Do we correctly apply download perms when downloading from a card that uses a source card with a native query?"
+    (do-with-card-with-native-source-card!
+     (fn [{:keys [mbql-card-id]}]
+       (testing "Nested source cards with native query apply least permissive perms"
+         (mt/with-temp [:model/Card {nested-card-id :id} {:dataset_query {:database (mt/id)
+                                                                          :type     :query
+                                                                          :query    {:source-table (format "card__%d" mbql-card-id)
+                                                                                     :filter       [:> [:field "count" {:base-type :type/Integer}] 1]}}}]
+           (with-download-perms! (mt/id) {:schemas {"PUBLIC" {(mt/id :venues)   :full
+                                                              (mt/id :checkins) :limited
+                                                              (mt/id :users)    :full}}}
+             (streaming-test/do-test!
+              "Nested card with native source card - should use limited perms from deepest native query"
+              {:query      {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (format "card__%d" nested-card-id)
+                                       :limit        10}}
+               :endpoints  [:card :dataset]
+               :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))))))))

@@ -4,13 +4,15 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.formatter :as formatter]
+   [metabase.formatter.core :as formatter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
+   [metabase.pivot.core :as pivot]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
+
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
@@ -18,14 +20,22 @@
    [metabase.util.json :as json])
   (:import
    (java.io OutputStream)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (org.apache.poi.openxml4j.util ZipSecureFile)
-   (org.apache.poi.ss SpreadsheetVersion)
-   (org.apache.poi.ss.usermodel Cell DataConsolidateFunction DataFormat DateUtil Workbook)
-   (org.apache.poi.ss.util AreaReference CellRangeAddress CellReference)
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
+   (org.apache.poi.ss.usermodel
+    Cell
+    DataConsolidateFunction
+    DataFormat
+    DateUtil
+    Workbook)
+   (org.apache.poi.ss.util CellRangeAddress)
    (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)
-   (org.apache.poi.xssf.usermodel XSSFPivotTable XSSFRow XSSFSheet XSSFWorkbook)
-   (org.openxmlformats.schemas.spreadsheetml.x2006.main STFieldSortType)))
+   (org.apache.poi.xssf.usermodel XSSFRow XSSFSheet)))
 
 (set! *warn-on-reflection* true)
 
@@ -436,7 +446,7 @@
   (proxy [org.apache.poi.xssf.usermodel.helpers.ColumnHelper] [worksheet]
     (getColDefaultStyle [idx] -1)))
 
-(defn- set-no-style-custom-helper [sxssfsheet]
+(defn- set-no-style-custom-helper! [sxssfsheet]
   (let [xssfsheet (sxssfsheet->xssfsheet sxssfsheet)
         new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
     (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
@@ -446,19 +456,19 @@
 
   This is based on the equivalent function in Docjure: [[spreadsheet/add-row!]], but adapted to support Metabase viz
   settings."
-  {:arglists '([sheet values cols col-settings cell-styles typed-cell-styles]
-               [sheet row-num values cols col-settings cell-styles typed-cell-styles])}
+  {:arglists '([sheet values cols viz-settings cell-styles typed-cell-styles]
+               [sheet row-num values cols viz-settings cell-styles typed-cell-styles])}
   (fn [sheet & _args]
     (class sheet)))
 
 ;; TODO this add-row! and the one below (For XSSFSheet) should be consolidated
 (defmethod add-row! org.apache.poi.xssf.streaming.SXSSFSheet
-  ([^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
+  ([^SXSSFSheet sheet values cols viz-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                    0
                    (inc (.getLastRowNum sheet)))]
-     (add-row! ^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
-  ([^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
+     (add-row! ^SXSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles)))
+  ([^SXSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
          ;; Using iterators here to efficiently go over multiple collections at once.
          val-it (.iterator ^Iterable values)
@@ -469,8 +479,7 @@
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               settings     (or (get col-settings {::mb.viz/field-id (:id col)})
-                                (get col-settings {::mb.viz/column-name (:name col)}))
+               settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
                scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
@@ -486,12 +495,12 @@
      row)))
 
 (defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
-  ([^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
+  ([^XSSFSheet sheet values cols viz-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                    0
                    (inc (.getLastRowNum sheet)))]
-     (add-row! ^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
-  ([^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
+     (add-row! ^XSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles)))
+  ([^XSSFSheet sheet row-num values cols viz-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
          ;; Using iterators here to efficiently go over multiple collections at once.
          val-it (.iterator ^Iterable values)
@@ -502,9 +511,7 @@
          (let [value (.next val-it)
                col (.next col-it)
                styles (.next sty-it)
-               id-or-name   (or (:id col) (:name col))
-               settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                                (get col-settings {::mb.viz/column-name id-or-name}))
+               settings     (streaming.common/viz-settings-for-col col viz-settings)
                ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
                scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
@@ -518,6 +525,28 @@
            (set-cell! (.createCell ^XSSFRow row index) parsed-value styles typed-cell-styles))
          (recur (inc index))))
      row)))
+
+(defn write-pivot-table!
+  "Writes pivoted data to the provided sheet as-is, without additional formatting applied."
+  [^SXSSFSheet sheet pivot-output typed-cell-styles viz-settings]
+  (doseq [[row-idx row] (map-indexed vector pivot-output)]
+    (let [^SXSSFRow excel-row (.createRow ^SXSSFSheet sheet ^Integer row-idx)]
+      (doseq [[col-idx cell-data] (map-indexed vector row)]
+        (let [{:keys [col styles value]}
+              (if (map? cell-data)
+                cell-data
+                ;; Fallback: assume it's just a value, no metadata
+                {:value cell-data
+                 :col   {}})
+              ^Cell cell   (.createCell excel-row ^Integer col-idx)
+              settings     (streaming.common/viz-settings-for-col col viz-settings)
+              scaled-val   (if (and (number? value) (::mb.viz/scale settings))
+                             (* value (::mb.viz/scale settings))
+                             value)
+              parsed-value (or (maybe-parse-temporal-value value col)
+                               (maybe-parse-coordinate-value value col)
+                               scaled-val)]
+          (set-cell! cell parsed-value styles typed-cell-styles))))))
 
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
@@ -573,164 +602,150 @@
         (assoc :column-titles titles)
         qp.pivot.postprocess/add-pivot-measures
         (assoc :aggregation-functions agg-fns)
-        (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
+        (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index titles)))))
 
-;; Below, we need to provide an AreaReference to create a pivot table.
-;; Creating an AreaReference will 'realize' every CellReference inside it, and so the larger the AreaReference,
-;; the more memory we use, and the larger the filesize.
-;; Unfortunately, we can't avoid this, so we try to only create a reference that matches the row count, which we can
-;; only estimate using fingerprint distinct counts (which cannot be guaranteed correct).
-;; So, by default we use some large number as a basis.
-;; We have to set the min Inflate Ratio lower than the default's 0.01 because otherwise we get a 'zip bomb detected' error.
-;; Since we're the ones creating the file, we can lower the ratio to get what we want.
-(ZipSecureFile/setMinInflateRatio 0.001)
-(defn- init-native-pivot
-  [{:keys [pivot-grouping-key column-sort-order] :as pivot-spec}
-   {:keys [ordered-cols col-settings viz-settings format-rows?]}]
-  (let [idx-shift                   (fn [indices]
-                                      (map (fn [idx]
-                                             (if (> idx pivot-grouping-key)
-                                               (dec idx)
-                                               idx)) indices))
-        ordered-cols                (vec (m/remove-nth pivot-grouping-key ordered-cols))
-        pivot-rows                  (idx-shift (:pivot-rows pivot-spec))
-        pivot-cols                  (idx-shift (:pivot-cols pivot-spec))
-        pivot-measures              (idx-shift (:pivot-measures pivot-spec))
-        ;; for now, these are unused, since the rows from qp.pivot will already contain their aggregated values
-        _aggregation-functions      (vec (m/remove-nth pivot-grouping-key (:aggregation-functions pivot-spec)))
-        wb                          (spreadsheet/create-workbook
-                                     "pivot" [[]]
-                                     "data" [])
-        data-format                 (. ^XSSFWorkbook wb createDataFormat)
-        cell-styles                 (compute-column-cell-styles wb data-format viz-settings ordered-cols format-rows?)
-        typed-cell-styles           (compute-typed-cell-styles wb data-format)
-        data-sheet                  (spreadsheet/select-sheet "data" wb)
-        pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
-        col-names                   (streaming.common/column-titles ordered-cols col-settings format-rows?)
-        _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
-        ;; keep the initial area-ref small (only 2 rows) so that adding row and column labels keeps the pivot table
-        ;; object small.
-        area-ref                    (AreaReference.
-                                     (format "A1:%s2" (CellReference/convertNumToColString (dec (count ordered-cols))))
-                                     SpreadsheetVersion/EXCEL2007)
-        ^XSSFPivotTable pivot-table (.createPivotTable ^XSSFSheet pivot-sheet
-                                                       ^AreaReference area-ref
-                                                       (CellReference. 0 0)
-                                                       ^XSSFSheet data-sheet)]
-    (doseq [idx pivot-rows]
-      (.addRowLabel pivot-table idx))
-    (doseq [idx pivot-cols]
-      (.addColLabel pivot-table idx))
-    (doseq [idx pivot-measures]
-      ;; Really this should be doing (get _aggregation-functions idx) in place of the hard coded SUM function
-      ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
-      (let [col-name (or (not-empty (nth col-names idx))
-                         (get-in ordered-cols [idx :display_name]))]
-        (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name)))
-    (doseq [[idx sort-setting] column-sort-order]
-      (let [setting (case sort-setting
-                      :ascending  STFieldSortType/ASCENDING
-                      :descending STFieldSortType/DESCENDING)]
-        (when setting
-          (-> pivot-table
-              .getCTPivotTableDefinition
-              .getPivotFields
-              (.getPivotFieldArray idx)
-              (.setSortType setting)))))
-    ;; now that the Pivot Table Rows and Cols are set, we can update the area-ref
-    (-> pivot-table
-        .getPivotCacheDefinition
-        .getCTPivotCacheDefinition
-        .getCacheSource
-        .getWorksheetSource
-        (.setRef (format "A:%s" (CellReference/convertNumToColString (dec (count ordered-cols))))))
-    (let [swb   (-> (SXSSFWorkbook. ^XSSFWorkbook wb)
-                    (doto (.setCompressTempFiles true)))
-          sheet (spreadsheet/select-sheet "data" swb)]
-      (doseq [i (range (count ordered-cols))]
-        (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
-      (setup-header-row! sheet (count ordered-cols))
-      {:workbook swb
-       :sheet    sheet})))
+(defn- track-n-cols-for-autosizing!
+  [n sheet]
+  (doseq [i (range n)]
+    (.trackColumnForAutoSizing ^SXSSFSheet sheet i)))
 
 (defn- init-workbook
-  [{:keys [ordered-cols col-settings format-rows?]}]
-  (let [workbook (SXSSFWorkbook.)
-        sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
-    (doseq [i (range (count ordered-cols))]
-      (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
-    (setup-header-row! sheet (count ordered-cols))
-    (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols col-settings format-rows?))
-    {:workbook workbook
-     :sheet    sheet}))
+  "Initializes the provided workbook, and returns the created sheet"
+  [{:keys [workbook ordered-cols col-count viz-settings format-rows? pivot?]}]
+  (let [sheet (spreadsheet/add-sheet! workbook (tru "Query result"))]
+    (track-n-cols-for-autosizing! (or col-count (count ordered-cols)) sheet)
+    (when (not pivot?)
+      (setup-header-row! sheet (count ordered-cols))
+      (spreadsheet/add-row! sheet (streaming.common/column-titles ordered-cols (or viz-settings {})  format-rows?)))
+    sheet))
+
+(defn get-formatter
+  "Returns a memoized formatter for a column"
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (formatter/create-formatter timezone column settings format-rows?))))
+
+(defn- create-formatters
+  [cell-styles cols indexes timezone settings format-rows?]
+  (let [cell-styles  (vec cell-styles)
+        cols         (vec cols)
+        formatter-fn (get-formatter timezone settings format-rows?)]
+    (mapv (fn [idx]
+            (let [col (nth cols idx)
+                  formatter (formatter-fn col)]
+              (fn [value]
+                {:col                  (nth cols idx)
+                 :value                value
+                 :xlsx-formatted-value (formatter (streaming.common/format-value value))
+                 :styles               (nth cell-styles idx)})))
+          indexes)))
+
+(defn- make-formatters
+  [cell-styles cols row-indexes col-indexes val-indexes settings timezone format-rows?]
+  {:row-formatters (create-formatters cell-styles cols row-indexes timezone settings format-rows?)
+   :col-formatters (create-formatters cell-styles cols col-indexes timezone settings format-rows?)
+   :val-formatters (create-formatters cell-styles cols val-indexes timezone settings format-rows?)})
+
+(defn- generate-styles
+  [workbook viz-settings non-pivot-cols format-rows?]
+  (let [data-format (. ^SXSSFWorkbook workbook createDataFormat)]
+    {:cell-styles (compute-column-cell-styles workbook data-format viz-settings non-pivot-cols format-rows?)
+     :typed-cell-styles (compute-typed-cell-styles workbook data-format)}))
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  (let [workbook-data      (volatile! nil)
-        cell-styles        (volatile! nil)
-        typed-cell-styles  (volatile! nil)
-        pivot-grouping-idx (volatile! nil)]
+  (let [workbook             (SXSSFWorkbook.)
+        workbook-sheet       (volatile! nil)
+        styles               (volatile! nil)
+        pivot-data           (volatile! nil)
+        pivot-grouping-index (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
                           pivot?       false}} :data}
-               {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts               (when (and pivot? pivot-export-options (public-settings/enable-pivoted-exports))
-                                   (pivot-opts->pivot-spec (merge {:pivot-cols []
-                                                                   :pivot-rows []}
-                                                                  pivot-export-options) ordered-cols))
-              col-names          (streaming.common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
-              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
-          (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
-          (if opts
-            (let [wb (init-native-pivot opts
-                                        {:ordered-cols ordered-cols
-                                         :col-settings col-settings
-                                         :viz-settings viz-settings
-                                         :format-rows? format-rows?})]
-              (vreset! workbook-data wb))
-            (let [wb (init-workbook {:ordered-cols (cond->> ordered-cols
-                                                     pivot-grouping-key (m/remove-nth pivot-grouping-key))
-                                     :col-settings col-settings
-                                     :format-rows? true})]
-              (vreset! workbook-data wb)))
-
-          (let [{:keys [workbook sheet]} @workbook-data
-                data-format              (. ^SXSSFWorkbook workbook createDataFormat)
-                cols                     (cond->> ordered-cols
-                                           pivot-grouping-key (m/remove-nth pivot-grouping-key))]
-            (set-no-style-custom-helper sheet)
-            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings cols format-rows?))
-            (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format)))))
+               viz-settings]
+        (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
+                                 (pivot-opts->pivot-spec (merge {:pivot-cols []
+                                                                 :pivot-rows []}
+                                                                pivot-export-options) ordered-cols))
+              non-pivot-cols (pivot/columns-without-pivot-group ordered-cols)]
+          (vreset! pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
+          (def pivot-spec pivot-spec)
+          (if pivot-spec
+            ;; If we're generating a pivot table, just initialize the `pivot-data` volatile but not the workbook, yet
+            (vreset! pivot-data
+                     {:settings             viz-settings
+                      :non-pivot-cols       non-pivot-cols
+                      :data                 {:cols (vec ordered-cols)
+                                             :rows (transient [])}
+                      :timezone             results_timezone
+                      :format-rows?         format-rows?
+                      :pivot-export-options pivot-export-options})
+            (let [sheet (init-workbook {:workbook     workbook
+                                        :ordered-cols non-pivot-cols
+                                        :viz-settings viz-settings
+                                        :format-rows? true})]
+              (set-no-style-custom-helper! sheet)
+              (vreset! styles (generate-styles workbook viz-settings non-pivot-cols format-rows?))
+              (vreset! workbook-sheet sheet)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row          (vec (if output-order
                                           (let [row-v (into [] row)]
                                             (for [i output-order] (row-v i)))
                                           row))
-              col-settings         (::mb.viz/column-settings viz-settings)
-              pivot-grouping-key   @pivot-grouping-idx
-              group                (get row pivot-grouping-key)
+              group                (get row @pivot-grouping-index)
               [row' ordered-cols'] (cond->> [ordered-row ordered-cols]
-                                     pivot-grouping-key
+                                     @pivot-grouping-index
                                      ;; We need to remove the pivot-grouping key if it's there, because we don't show
                                      ;; it in the export. `ordered-cols` is a parallel array, so we must remove the
                                      ;; corresponding col.
-                                     (map #(m/remove-nth pivot-grouping-key %)))
-              {:keys [sheet]}      @workbook-data]
-          (when (or (not group)
-                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
-            (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
-            (when (= (inc row-num) *auto-sizing-threshold*)
-              (autosize-columns! sheet)))))
+                                     (map #(m/remove-nth @pivot-grouping-index %)))]
+          (if @pivot-data
+            (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
+            (when (or (not group)
+                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+              (let [{:keys [cell-styles typed-cell-styles]} @styles]
+                (add-row! @workbook-sheet (inc row-num) row' ordered-cols' viz-settings cell-styles typed-cell-styles)
+                (when (= (inc row-num) *auto-sizing-threshold*)
+                  (autosize-columns! @workbook-sheet)))))))
 
       (finish! [_ {:keys [row_count]}]
-        (let [{:keys [workbook sheet]} @workbook-data]
-          (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
-            ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
-            (autosize-columns! sheet))
-          (try
-            (spreadsheet/save-workbook-into-stream! os workbook)
-            (finally
-              (.dispose ^SXSSFWorkbook workbook)
-              (.close os))))))))
+        (when @pivot-data
+          ;; For pivoted exports, we pivot in-memory (same as CSVs) and then write the results to the
+          ;; document all at once
+          (let [{:keys [settings non-pivot-cols pivot-export-options timezone format-rows?]} @pivot-data
+                {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
+
+                {:keys [cell-styles typed-cell-styles]}
+                (generate-styles workbook settings non-pivot-cols format-rows?)
+
+                formatters (make-formatters cell-styles
+                                            non-pivot-cols
+                                            pivot-rows
+                                            pivot-cols
+                                            pivot-measures
+                                            settings
+                                            timezone
+                                            format-rows?)
+                output (qp.pivot.postprocess/build-pivot-output
+                        (update-in @pivot-data [:data :rows] persistent!)
+                        formatters)
+                sheet (init-workbook {:workbook     workbook
+                                      :pivot?       true
+                                      :col-count    (count (first output))
+                                      :format-rows? true})]
+            (vreset! workbook-sheet sheet)
+            (set-no-style-custom-helper! sheet)
+            (write-pivot-table! sheet output typed-cell-styles settings)))
+        (when (or (nil? row_count)
+                  (< row_count *auto-sizing-threshold*)
+                  @pivot-data)
+          ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
+          (autosize-columns! @workbook-sheet))
+        (try
+          (spreadsheet/save-workbook-into-stream! os workbook)
+          (finally
+            (.dispose ^SXSSFWorkbook workbook)
+            (.close os)))))))

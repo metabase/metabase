@@ -10,11 +10,11 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -75,7 +75,7 @@
     {:database -1337, :type :query, :query {:source-table \"card__1\"}}
 
   Once the *actual* Database ID is resolved, we will create a
-  real [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. (The App DB provider needs to be
+  real [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]]. (The App DB provider needs to be
   initialized with an actual Database ID)."
   []
   (if (qp.store/initialized?)
@@ -169,7 +169,7 @@
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (fn [query]
     (cond
-      setting/*database-local-values*
+      (setting/database-local-values)
       (f query)
 
       (= (query-type query) :internal)
@@ -177,7 +177,7 @@
 
       :else
       (let [{:keys [settings]} (lib.metadata/database (qp.store/metadata-provider))]
-        (binding [setting/*database-local-values* (or settings {})]
+        (setting/with-database-local-values (or settings {})
           (f query))))))
 
 (mu/defn- do-with-canceled-chan :- fn?

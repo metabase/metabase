@@ -211,6 +211,11 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "cardQuery",
+    );
+    cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
   });
 
   describe("mapping targets", () => {
@@ -230,10 +235,15 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       cy.log("single breakout");
       addQuestion(singleBreakoutQuestionDetails.name);
+      H.ensureDashboardCardHasText("April 2022");
+      cy.wait("@queryMetadata");
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.saveDashboard();
+
+      cy.wait("@cardQuery");
+      H.ensureDashboardCardHasText("April 2022");
       H.filterWidget().click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
@@ -250,11 +260,13 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
       H.popover()
-        .findAllByText("Created At")
-        .should("have.length", 2)
+        .findAllByText("Created At: Month")
+        .should("have.length", 1)
         .eq(0)
         .click();
       H.saveDashboard();
+      cy.wait("@cardQuery");
+      H.ensureDashboardCardHasText("Created At: Year");
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
@@ -272,16 +284,16 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(multiStageQuestionDetails.name);
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At: Month").click();
+      H.popover().findByText("Created At: Month: Year").click();
       H.saveDashboard();
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
-        cy.findByText("Created At: Month: Quarter").should("be.visible");
+        cy.findByText("Created At: Quarter").should("be.visible");
         cy.findByText(multiStageQuestionDetails.name).click();
       });
       H.tableInteractive()
-        .findByText("Created At: Month: Quarter")
+        .findByText("Created At: Quarter")
         .should("be.visible");
       backToDashboard();
       H.editDashboard();
@@ -298,7 +310,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(expressionBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Date").click();
+      H.popover().findByText("Date: Day").click();
       H.saveDashboard();
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
@@ -354,7 +366,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(singleBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.saveDashboard();
       H.filterWidget().click();
       H.popover().findByText("Year").click();
@@ -377,10 +389,10 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(multiBreakoutQuestionDetails.name);
       addTemporalUnitParameter();
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findAllByText("Created At").eq(0).click();
+      H.popover().findAllByText("Created At: Month").eq(0).click();
       addTemporalUnitParameter();
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findAllByText("Created At").eq(1).click();
+      H.popover().findAllByText("Created At: Year").click();
       H.saveDashboard();
 
       H.filterWidget().eq(0).click();
@@ -448,9 +460,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("have.length", 2)
         .eq(0)
         .click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At").click();
+      H.popover().findByText("Created At: Month").click();
       H.saveDashboard();
 
       H.filterWidget().click();
@@ -773,7 +785,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addTemporalUnitParameter();
       H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
       // eslint-disable-next-line no-unsafe-element-filtering
-      H.undoToastList().last().button("Auto-connect").click();
+      H.undoToastList().last().findByText("Auto-connect").click();
       H.saveDashboard();
 
       cy.log("verify data with 2 parameters");
@@ -1016,6 +1028,123 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget().click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+  });
+
+  describe("native queries", () => {
+    it("should be able to use temporal unit parameters in a native query", () => {
+      const questionWithoutDefaultValue = {
+        name: "Saved question with time grouping",
+        native: {
+          query: `
+        SELECT
+          count(*),
+          {{unit}} as unit
+        FROM
+          ORDERS
+        GROUP BY
+          unit
+        `,
+          "template-tags": {
+            unit: {
+              type: "temporal-unit",
+              name: "unit",
+              id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+              "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
+              required: true,
+            },
+          },
+        },
+      };
+
+      H.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [questionWithoutDefaultValue],
+      }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
+
+      H.getDashboardCard().should(
+        "contain",
+        "There was a problem displaying this chart.",
+      );
+
+      H.editDashboard();
+      addTemporalUnitParameter();
+      H.selectDashboardFilter(H.getDashboardCard(), "Unit");
+
+      H.dashboardParameterSidebar().findByLabelText("Default value").click();
+
+      H.popover().findByText("Year").click();
+      H.saveDashboard();
+      H.getDashboardCard().should("contain", "January 1, 2022");
+    });
+
+    it("should not be able to use temporal unit parameter with a filter of a different type", () => {
+      const questionWithoutDefaultValue = {
+        name: "Saved question with time grouping",
+        native: {
+          query: `
+        SELECT
+          count(*),
+          {{unit}} as unit
+        FROM
+          ORDERS
+        GROUP BY
+          unit
+        `,
+          "template-tags": {
+            unit: {
+              type: "temporal-unit",
+              name: "unit",
+              id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
+              "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
+              required: true,
+            },
+          },
+        },
+      };
+
+      H.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [questionWithoutDefaultValue],
+      }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
+
+      H.getDashboardCard().should(
+        "contain",
+        "There was a problem displaying this chart.",
+      );
+
+      H.editDashboard();
+
+      H.setFilter("Text or Category", "Is");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "A text variable in this card can only be connected to a text filter with Is operator.",
+        )
+        .should("not.contain", "Select…");
+      H.setFilter("Number", "Equal to");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "A number variable in this card can only be connected to a number filter with Equal to operator.",
+        )
+        .should("not.contain", "Select…");
+      H.setFilter("Date picker", "Relative Date");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "A date variable in this card can only be connected to a time type with the single date option.",
+        )
+        .should("not.contain", "Select…");
+      H.setFilter("Location", "Is");
+      H.getDashboardCard()
+        .should(
+          "contain",
+          "Add a variable to this question to connect it to a dashboard filter.",
+        )
+        .should("not.contain", "Select…");
     });
   });
 });

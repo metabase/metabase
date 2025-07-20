@@ -4,7 +4,12 @@ import { act, waitFor } from "./ui";
 
 export const getNextId = (() => {
   let id = 0;
-  return () => ++id;
+  return (startingId?: number) => {
+    if (startingId) {
+      id = startingId;
+    }
+    return ++id;
+  };
 })();
 
 export async function delay(duration: number) {

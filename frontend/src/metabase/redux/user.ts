@@ -1,9 +1,8 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import Dashboards from "metabase/entities/dashboards";
-import Users from "metabase/entities/users";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
+import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions/modal";
 import { UserApi } from "metabase/services";
 import type { User } from "metabase-types/api";
 
@@ -30,6 +29,7 @@ export const loadCurrentUser = createAsyncThunk(
 export const clearCurrentUser = createAction(
   "metabase/user/CLEAR_CURRENT_USER",
 );
+export const userUpdated = createAction<User>("metabase/user/UPDATED");
 
 export const currentUser = createReducer<User | null>(null, (builder) => {
   builder
@@ -42,14 +42,10 @@ export const currentUser = createReducer<User | null>(null, (builder) => {
       }
       return state;
     })
-    .addCase(Users.actionTypes.UPDATE, (state, { payload }) => {
-      const isCurrentUserUpdated =
-        payload.user && state?.id === payload.user.id;
+    .addCase(userUpdated, (state, { payload: user }) => {
+      const isCurrentUserUpdated = user && state?.id === user.id;
       if (isCurrentUserUpdated) {
-        return {
-          ...state,
-          ...payload.user,
-        };
+        return { ...state, ...user };
       }
       return state;
     })

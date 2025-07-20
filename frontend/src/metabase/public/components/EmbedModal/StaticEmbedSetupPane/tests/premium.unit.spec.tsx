@@ -51,6 +51,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
 
         const fontSelect = screen.getByLabelText("Font");
         expect(fontSelect).toBeVisible();
+        expect(fontSelect).toHaveValue("Use instance font");
 
         await userEvent.click(fontSelect);
 

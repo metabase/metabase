@@ -10,13 +10,13 @@
 
 (deftest ^:parallel add-constraints-test
   (testing "if it is *truthy* add the constraints"
-    (is (= {:middleware  {:add-default-userland-constraints? true
-                          :userland-query?                   true}
-            :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
-                          :max-results-bare-rows @#'qp.constraints/default-unaggregated-query-row-limit}}
-           (qp.constraints/maybe-add-default-userland-constraints
-            {:middleware {:add-default-userland-constraints? true
-                          :userland-query?                   true}})))))
+    (is (=? {:middleware  {:add-default-userland-constraints? true
+                           :userland-query?                   true}
+             :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
+                           :max-results-bare-rows @#'qp.constraints/default-unaggregated-query-row-limit}}
+            (qp.constraints/maybe-add-default-userland-constraints
+             {:middleware {:add-default-userland-constraints? true
+                           :userland-query?                   true}})))))
 
 (deftest ^:parallel no-op-if-option-is-false-test
   (testing "don't do anything if it's not truthy"
@@ -28,10 +28,12 @@
   (testing "if it already has constraints, don't overwrite those!"
     (is (= {:middleware  {:add-default-userland-constraints? true
                           :userland-query?                   true}
+            :info        {:card-entity-id        "TY8R-MaO7V79FKecQyKww"}
             :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
                           :max-results-bare-rows 1}}
            (qp.constraints/maybe-add-default-userland-constraints
             {:constraints {:max-results-bare-rows 1}
+             :info        {:card-entity-id "TY8R-MaO7V79FKecQyKww"}
              :middleware  {:add-default-userland-constraints? true
                            :userland-query?                   true}})))))
 
@@ -39,10 +41,12 @@
   (testing "if you specify just `:max-results` it should make sure `:max-results-bare-rows` is <= `:max-results`"
     (is (= {:middleware  {:add-default-userland-constraints? true
                           :userland-query?                   true}
+            :info        {:card-entity-id        "TY8R-MaO7V79FKecQyKww"}
             :constraints {:max-results           5
                           :max-results-bare-rows 5}}
            (qp.constraints/maybe-add-default-userland-constraints
             {:constraints {:max-results 5}
+             :info        {:card-entity-id        "TY8R-MaO7V79FKecQyKww"}
              :middleware  {:add-default-userland-constraints? true
                            :userland-query?                   true}})))))
 
@@ -50,9 +54,11 @@
   (testing "if you specify both it should still make sure `:max-results-bare-rows` is <= `:max-results`"
     (is (= {:middleware  {:add-default-userland-constraints? true
                           :userland-query?                   true}
+            :info        {:card-entity-id        "TY8R-MaO7V79FKecQyKww"}
             :constraints {:max-results           5
                           :max-results-bare-rows 5}}
            (qp.constraints/maybe-add-default-userland-constraints
             {:constraints {:max-results 5, :max-results-bare-rows 10}
+             :info        {:card-entity-id        "TY8R-MaO7V79FKecQyKww"}
              :middleware  {:add-default-userland-constraints? true
                            :userland-query?                   true}})))))

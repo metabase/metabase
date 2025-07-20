@@ -24,7 +24,8 @@
 
 (doseq [feature [:test/time-type
                  :test/timestamptz-type
-                 :test/dynamic-dataset-loading]]
+                 :test/dynamic-dataset-loading
+                 :test/uuids-in-create-table-statements]]
   (defmethod driver/database-supports? [:athena feature]
     [_driver _feature _database]
     false))

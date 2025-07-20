@@ -5,7 +5,7 @@
    [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -37,24 +37,26 @@
 
 (def attr-types
   "The abstract types of each attribute."
-  {:archived            :boolean
-   :collection-id       :pk
-   :created-at          :timestamp
-   :creator-id          :pk
-   :dashboard-id        :int
-   :dashboardcard-count :int
-   :database-id         :pk
-   :id                  :text
-   :last-edited-at      :timestamp
-   :last-editor-id      :pk
-   :last-viewed-at      :timestamp
-   :name                :text
-   :native-query        nil
-   :official-collection :boolean
-   :pinned              :boolean
-   :updated-at          :timestamp
-   :verified            :boolean
-   :view-count          :int})
+  {:archived                   :boolean
+   :collection-id              :pk
+   :created-at                 :timestamp
+   :creator-id                 :pk
+   :dashboard-id               :int
+   :dashboardcard-count        :int
+   :database-id                :pk
+   :display-type               :text
+   :has-temporal-dimensions    :boolean
+   :id                         :text
+   :last-edited-at             :timestamp
+   :last-editor-id             :pk
+   :last-viewed-at             :timestamp
+   :name                       :text
+   :native-query               nil
+   :official-collection        :boolean
+   :pinned                     :boolean
+   :updated-at                 :timestamp
+   :verified                   :boolean
+   :view-count                 :int})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -151,9 +153,10 @@
          (not (str/includes? (name kw) ".")))))
 
 (defn- get-table [kw]
-  (let [parts (str/split (name kw) #"\.")]
-    (when (> (count parts) 1)
-      (keyword (first parts)))))
+  (let [kws (name kw)
+        dot (str/index-of kws ".")]
+    (when (and dot (< dot (count kws)))
+      (keyword (subs kws 0 dot)))))
 
 (defn- remove-table [table kw]
   (if (and table (not (namespace kw)))
@@ -167,18 +170,18 @@
 
 (defn- find-fields-kw [kw]
   ;; Filter out SQL functions
-  (when-not (str/starts-with? (name kw) "%")
-    (when-not (#{:else :integer :float} kw)
-      (let [table (get-table kw)]
-        (list [(or table :this) (remove-table table kw)])))))
+  (when-not (or (str/starts-with? (name kw) "%")
+                (#{:else :integer :float} kw))
+    (let [table (get-table kw)]
+      [[(or table :this) (remove-table table kw)]])))
 
 (defn- find-fields-expr [expr]
   (cond
     (keyword? expr)
     (find-fields-kw expr)
 
-    (vector? expr)
-    (mapcat find-fields-expr (rest expr))))
+    (and (vector? expr) (> (count expr) 1))
+    (into [] (mapcat find-fields-expr) (subvec expr 1))))
 
 (defn- find-fields-attr [[k v]]
   (when v
@@ -197,10 +200,10 @@
 (defn- find-fields-top [x]
   (cond
     (map? x)
-    (mapcat find-fields-attr x)
+    (into [] (mapcat find-fields-attr) x)
 
     (sequential? x)
-    (mapcat find-fields-select-item x)
+    (into [] (mapcat find-fields-select-item) x)
 
     :else
     (throw (ex-info "Unexpected format for fields" {:x x}))))
@@ -208,13 +211,12 @@
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
   [spec]
-  (u/group-by first second conj #{}
-              (concat
-               (mapcat
-                find-fields-top
-                ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-                (vals (dissoc spec :name :visibility :native-query :where :joins :bookmark :model)))
-               (find-fields-expr (:where spec)))))
+  (u/group-by #(nth % 0) #(nth % 1) conj #{}
+              (-> []
+                  (into (mapcat find-fields-top)
+                        ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
+                        (vals (dissoc spec :name :visibility :native-query :where :joins :bookmark :model)))
+                  (into (find-fields-expr (:where spec))))))
 
 (defn- replace-qualification [expr from to]
   (cond
@@ -252,16 +254,16 @@
   [spec]
   (let [s      (:name spec)
         fields (find-fields spec)]
-    (into {}
-          (cons
-           [(:model spec) #{{:search-model s
-                             :fields       (:this (find-fields spec))
-                             :where        (construct-source-where (-> spec :attrs :id))}}]
-           (for [[table-alias [model join-condition]] (:joins spec)]
-             (let [table-fields (fields table-alias)]
-               [model #{{:search-model s
-                         :fields       table-fields
-                         :where        (replace-qualification join-condition table-alias :updated)}}]))))))
+    (reduce (fn [res [table-alias [model join-condition]]]
+              (let [table-fields (fields table-alias)]
+                (assoc res model #{{:search-model s
+                                    :fields       table-fields
+                                    :where        (replace-qualification join-condition table-alias :updated)}})))
+
+            {(:model spec) #{{:search-model s
+                              :fields       (:this (find-fields spec))
+                              :where        (construct-source-where (-> spec :attrs :id))}}}
+            (:joins spec))))
 
 (defn- merge-hooks
   "Combine the search index hooks corresponding to different search models."
@@ -282,13 +284,13 @@
   identity)
 
 (defn spec
-  "Register a metabase model as a search-model.
+  "Register a Metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  [search-model]
-  ;; make sure the model namespace is loaded.
-  (t2/resolve-model (search-model->toucan-model search-model))
-  (spec* search-model))
+  ([search-model]
+   ;; make sure the model namespace is loaded.
+   (t2/resolve-model (search-model->toucan-model search-model))
+   (spec* search-model)))
 
 (defn specifications
   "A mapping from each search-model to its specification."

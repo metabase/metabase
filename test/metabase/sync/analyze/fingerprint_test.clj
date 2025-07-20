@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
@@ -48,7 +48,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.query/isa :semantic_type :type/PK)]
+              [:not (app-db/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not-in :base_type skip-fingerprint-base-types]
@@ -64,7 +64,7 @@
           [:and
            [:= :active true]
            [:or
-            [:not (mdb.query/isa :semantic_type :type/PK)]
+            [:not (app-db/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
            [:not-in :base_type skip-fingerprint-base-types]
@@ -86,7 +86,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.query/isa :semantic_type :type/PK)]
+              [:not (app-db/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not-in :base_type skip-fingerprint-base-types]
@@ -109,7 +109,7 @@
             [:and
              [:= :active true]
              [:or
-              [:not (mdb.query/isa :semantic_type :type/PK)]
+              [:not (app-db/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
              [:not-in :base_type skip-fingerprint-base-types]
@@ -137,7 +137,7 @@
     (is (= {:where [:and
                     [:= :active true]
                     [:or
-                     [:not (mdb.query/isa :semantic_type :type/PK)]
+                     [:not (app-db/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
                     [:not-in :base_type skip-fingerprint-base-types]]}
@@ -327,8 +327,17 @@
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
           (is (<= @#'sync.fingerprint/max-refingerprint-field-count attempted))
-          ;; but it is bounded.
-          (is (< attempted (+ @#'sync.fingerprint/max-refingerprint-field-count 10))))))))
+          (is (<= attempted
+                  ;; but it is bounded! it's less than the max fingerprint count PLUS the number of fields in the
+                  ;; biggest table in (mt/db).
+                  (+ @#'sync.fingerprint/max-refingerprint-field-count
+                     (:count (t2/query-one {:select [[:%count.* :count]]
+                                            :from :metabase_field
+                                            :join [[:metabase_table :table] [:= :table.id :table_id]]
+                                            :where [:= :table.db_id (:id (mt/db))]
+                                            :group-by [:table_id]
+                                            :order-by [[:count :desc]]
+                                            :limit 1}))))))))))
 
 (deftest abandon-failed-fingerprint-test
   (mt/test-drivers (mt/normal-drivers)
@@ -338,7 +347,7 @@
                                                              (swap! tables-fingerprinted inc)
                                                              (throw (CannotAcquireResourceException. "Unable to acquire resource")))
                       sync.fingerprint/*refingerprint?* true]
-          (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
-                         :throwable #(instance? CannotAcquireResourceException %))
-                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
+          (is (= (assoc (sync.fingerprint/empty-stats-map 0)
+                        :failed-fingerprints 1)
+                 (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))

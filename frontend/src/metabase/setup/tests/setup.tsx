@@ -57,7 +57,7 @@ export async function setup({
     setupEnterprisePlugins();
   }
 
-  fetchMock.post("path:/api/util/password_check", { valid: true });
+  fetchMock.post("path:/api/session/password-check", { valid: true });
   fetchMock.post("path:/api/setup", {});
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
   setupPropertiesEndpoints(
@@ -159,5 +159,5 @@ export const getLastSettingsPutPayload = async () => {
   return JSON.parse((await lastSettingsCall![1]!.body!) as string);
 };
 
-export const skipTokenStep = async () =>
-  await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+export const skipTokenStep = async (name = "Skip") =>
+  await userEvent.click(screen.getByRole("button", { name }));

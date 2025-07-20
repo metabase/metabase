@@ -5,7 +5,7 @@ import { t } from "ttag";
 import {
   DataPickerModal,
   getDataPickerValue,
-} from "metabase/common/components/DataPicker";
+} from "metabase/common/components/Pickers/DataPicker";
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -63,7 +63,9 @@ export function NotebookDataPicker({
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
-    onChangeRef.current?.(table, metadataProvider);
+    if (table) {
+      onChangeRef.current?.(table, metadataProvider);
+    }
   };
 
   if (isEmbedding) {

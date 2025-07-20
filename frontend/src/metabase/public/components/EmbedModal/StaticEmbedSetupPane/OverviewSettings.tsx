@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 import type {

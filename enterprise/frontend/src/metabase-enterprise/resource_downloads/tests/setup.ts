@@ -31,72 +31,34 @@ const ALL_DOWNLOADS_DISABLED: EmbedResourceDownloadOptions = {
 };
 
 export const downloadsEnabledTestData: {
-  hide_download_button?: boolean;
   downloads?: string | boolean;
   downloadsEnabled: EmbedResourceDownloadOptions;
 }[] = [
   {
-    hide_download_button: true,
     downloads: true,
     downloadsEnabled: ALL_DOWNLOADS_ENABLED,
   },
   {
-    hide_download_button: true,
     downloads: false,
     downloadsEnabled: ALL_DOWNLOADS_DISABLED,
   },
   {
-    hide_download_button: true,
-    downloads: undefined,
-    downloadsEnabled: ALL_DOWNLOADS_DISABLED,
-  },
-  {
-    hide_download_button: false,
-    downloads: true,
-    downloadsEnabled: ALL_DOWNLOADS_ENABLED,
-  },
-  {
-    hide_download_button: false,
-    downloads: false,
-    downloadsEnabled: ALL_DOWNLOADS_DISABLED,
-  },
-  {
-    hide_download_button: false,
     downloads: undefined,
     downloadsEnabled: ALL_DOWNLOADS_ENABLED,
   },
   {
-    hide_download_button: undefined,
-    downloads: true,
-    downloadsEnabled: ALL_DOWNLOADS_ENABLED,
-  },
-  {
-    hide_download_button: undefined,
-    downloads: false,
-    downloadsEnabled: ALL_DOWNLOADS_DISABLED,
-  },
-  {
-    hide_download_button: undefined,
-    downloads: undefined,
-    downloadsEnabled: ALL_DOWNLOADS_ENABLED,
-  },
-  {
-    hide_download_button: undefined,
     downloads: "pdf",
     downloadsEnabled: { pdf: true, results: false },
   },
   {
-    hide_download_button: undefined,
     downloads: "results",
     downloadsEnabled: { pdf: false, results: true },
   },
   {
-    hide_download_button: undefined,
     downloads: "pdf,results",
     downloadsEnabled: ALL_DOWNLOADS_ENABLED,
   },
   {
-    hide_download_button: undefined,
     downloads: "results,pdf",
     downloadsEnabled: ALL_DOWNLOADS_ENABLED,
   },

@@ -1,8 +1,8 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Form, useFormContext } from "metabase/forms";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { Box, Flex, Group, Icon, Loader, Text } from "metabase/ui";
 
 import { ResetAllFormSubmitButton } from "./ResetButtonContainer.styled";

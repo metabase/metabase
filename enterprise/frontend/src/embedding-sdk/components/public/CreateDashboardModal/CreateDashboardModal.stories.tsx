@@ -8,8 +8,8 @@ import {
 
 import { EditableDashboard } from "embedding-sdk/components/public";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 import { Box, Button } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
 
 import { CreateDashboardModal } from "./CreateDashboardModal";
 import {
@@ -38,7 +38,7 @@ export const Default = {
 const HookTemplate: StoryFn<
   JSXElementConstructor<Record<string, never>>
 > = () => {
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [dashboard, setDashboard] = useState<MetabaseDashboard | null>(null);
   const { createDashboard } = useCreateDashboardApi();
 
   const props: CreateDashboardValues = {
@@ -71,7 +71,7 @@ export const UseCreateDashboardApiHook = {
 const FullWorkflowExampleTemplate: StoryFn<
   JSXElementConstructor<Record<string, never>>
 > = () => {
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [dashboard, setDashboard] = useState<MetabaseDashboard | null>(null);
 
   if (dashboard) {
     return <EditableDashboard dashboardId={dashboard.id} />;

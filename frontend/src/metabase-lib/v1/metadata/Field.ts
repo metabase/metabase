@@ -1,9 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import _ from "underscore";
 
-import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
+import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
 import { formatField, stripId } from "metabase/lib/formatting";
 import {
   getFieldValues,
@@ -11,15 +11,14 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
+  isAddress,
   isBoolean,
-  isCategory,
   isCoordinate,
   isCurrency,
   isDate,
   isDateWithoutTime,
   isDimension,
   isFK,
-  isLocation,
   isMetric,
   isNumber,
   isNumeric,
@@ -198,16 +197,12 @@ export default class Field extends Base {
     return isCoordinate(this);
   }
 
-  isLocation() {
-    return isLocation(this);
+  isAddress() {
+    return isAddress(this);
   }
 
   isSummable() {
     return isSummable(this);
-  }
-
-  isCategory() {
-    return isCategory(this);
   }
 
   isMetric() {
@@ -286,8 +281,8 @@ export default class Field extends Base {
   getDefaultDateTimeUnit() {
     try {
       const fingerprint = this.fingerprint.type["type/DateTime"];
-      const days = moment(fingerprint.latest).diff(
-        moment(fingerprint.earliest),
+      const days = dayjs(fingerprint.latest).diff(
+        dayjs(fingerprint.earliest),
         "day",
       );
 
@@ -311,21 +306,45 @@ export default class Field extends Base {
 
   // REMAPPINGS
 
+  static remappedField(fields: Field[]): Field | null {
+    const remappedFields = fields.map((field) => field.remappedField());
+    const remappedFieldIds = new Set(remappedFields.map((field) => field?.id));
+    if (remappedFields[0] != null && remappedFieldIds.size === 1) {
+      return remappedFields[0];
+    }
+    return null;
+  }
+
+  remappedField() {
+    return this.remappedInternalField() ?? this.remappedExternalField();
+  }
+
+  remappedInternalField() {
+    const dimensions = this.dimensions ?? [];
+    if (dimensions.length > 0 && dimensions[0].type === "internal") {
+      return this;
+    }
+
+    return null;
+  }
+
   /**
    * Returns the remapped field, if any
    * @return {?Field}
    */
-  remappedField() {
+  remappedExternalField() {
     const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
       return this.metadata.field(displayFieldId);
     }
 
-    // this enables "implicit" remappings from type/PK to type/Name on the same table,
+    // enables "implicit" remapping from type/PK to type/Name on the same table,
+    // or type/FK to type/Name on the type/FK table;
     // used in FieldValuesWidget, but not table/object detail listings
-    if (this.name_field) {
-      return this.name_field;
+    const maybePkField = this.target ?? this;
+    if (maybePkField.name_field) {
+      return maybePkField.name_field;
     }
 
     return null;
@@ -371,7 +390,7 @@ export default class Field extends Base {
       return this.isSearchable() ? this : null;
     }
 
-    const remappedField = this.remappedField();
+    const remappedField = this.remappedExternalField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }

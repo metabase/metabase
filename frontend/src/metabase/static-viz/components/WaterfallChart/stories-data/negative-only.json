@@ -222,7 +222,6 @@
           "base_type": "type/BigInteger",
           "name": "Total Accident Inverted",
           "display_name": "Total Accident Inverted",
-          "expression_name": "Total Accident Inverted",
           "field_ref": ["expression", "Total Accident Inverted"],
           "source": "fields",
           "effective_type": "type/BigInteger"

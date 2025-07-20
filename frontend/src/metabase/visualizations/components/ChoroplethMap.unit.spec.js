@@ -1,3 +1,4 @@
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getLegendTitles,
   getMapUrl,
@@ -42,6 +43,10 @@ describe("getLegendTitles", () => {
 
   describe("getMapUrl", () => {
     describe("when using the embedding SDK", () => {
+      beforeEach(async () => {
+        await mockIsEmbeddingSdk();
+      });
+
       const setup = ({ sdkMetabaseInstanceUrl }) => {
         return getMapUrl(
           { builtin: true, url: "api/geojson/world.json" },
@@ -72,6 +77,21 @@ describe("getLegendTitles", () => {
 
         expect(url).toBe(
           "http://mb-instance.example.com/sub-path/api/geojson/world.json",
+        );
+      });
+
+      it("supports custom GeoJSON maps", () => {
+        const url = getMapUrl(
+          { builtin: false },
+          {
+            isSdk: true,
+            sdkMetabaseInstanceUrl: "http://mb-instance.example.com",
+            settings: { "map.region": "f3b71a29-5e4b-4d6c-8a1f-9c0e2d3a4b5c" },
+          },
+        );
+
+        expect(url).toBe(
+          "http://mb-instance.example.com/api/geojson/f3b71a29-5e4b-4d6c-8a1f-9c0e2d3a4b5c",
         );
       });
     });

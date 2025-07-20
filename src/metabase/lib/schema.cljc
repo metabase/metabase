@@ -24,6 +24,7 @@
    [metabase.lib.schema.info :as info]
    [metabase.lib.schema.join :as join]
    [metabase.lib.schema.literal :as literal]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.parameter :as parameter]
    [metabase.lib.schema.ref :as ref]
@@ -42,8 +43,14 @@
 (mr/def ::stage.native
   [:and
    [:map
-    {:decode/normalize common/normalize-map}
+    {:decode/normalize #(->> %
+                             common/normalize-map
+                             ;; filter out null :collection keys -- see #59675
+                             (m/filter-kv (fn [k v]
+                                            (not (and (= k :collection)
+                                                      (nil? v))))))}
     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
+    [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
     ;; Only restriction is that, if present, it is non-nil.
     ;; It is valid to have a blank query like `{:type :native}` in legacy.
@@ -64,7 +71,7 @@
     ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
     ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
     ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
-    [:metabase.models.query.permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]
+    [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]
     ;;
     ;; TODO -- parameters??
     ]
@@ -172,17 +179,18 @@
   [:and
    [:map
     {:decode/normalize common/normalize-map}
-    [:lib/type     [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
-    [:joins        {:optional true} [:ref ::join/joins]]
-    [:expressions  {:optional true} [:ref ::expression/expressions]]
-    [:breakout     {:optional true} [:ref ::breakouts]]
-    [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
-    [:fields       {:optional true} [:ref ::fields]]
-    [:filters      {:optional true} [:ref ::filters]]
-    [:order-by     {:optional true} [:ref ::order-by/order-bys]]
-    [:source-table {:optional true} [:ref ::id/table]]
-    [:source-card  {:optional true} [:ref ::id/card]]
-    [:page         {:optional true} [:ref ::page]]]
+    [:lib/type           [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
+    [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
+    [:joins              {:optional true} [:ref ::join/joins]]
+    [:expressions        {:optional true} [:ref ::expression/expressions]]
+    [:breakout           {:optional true} [:ref ::breakouts]]
+    [:aggregation        {:optional true} [:ref ::aggregation/aggregations]]
+    [:fields             {:optional true} [:ref ::fields]]
+    [:filters            {:optional true} [:ref ::filters]]
+    [:order-by           {:optional true} [:ref ::order-by/order-bys]]
+    [:source-table       {:optional true} [:ref ::id/table]]
+    [:source-card        {:optional true} [:ref ::id/card]]
+    [:page               {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
@@ -205,9 +213,11 @@
   (when (map? x)
     (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
+;;; TODO -- enforce all kebab-case keys
 (mr/def ::stage
   [:and
-   {:decode/normalize common/normalize-map
+   {:default          {}
+    :decode/normalize common/normalize-map
     :encode/serialize #(dissoc %
                                ;; this stuff is all added at runtime by QP middleware.
                                :params
@@ -219,7 +229,10 @@
    [:multi {:dispatch      lib-type
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
-    [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
+    [:mbql.stage/mbql   [:ref ::stage.mbql]]]
+   [:fn
+    {:error/message "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"}
+    (complement :source-metadata)]])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
@@ -270,8 +283,9 @@
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
          (when (map? stage)
-           (lib.util.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
-             [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
+           (lib.util.match/match-lite-recursive (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
+             [:field {:join-alias (join-alias :guard (and (some? join-alias)
+                                                          (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
          (when (seq more)
            (recur visible-join-alias? (inc i) more)))))))
@@ -324,8 +338,8 @@
     (m/filter-keys (fn [k]
                      (and (not (contains? keys-to-remove k))
                           (or (simple-keyword? k)
-                              ;; remove all random namespaced keys like `:metabase.models.query.permissions/perms`.
-                              ;; Keep `:lib` keys like `:lib/type`
+                              ;; remove all random namespaced keys like
+                              ;; `:metabase.query-permissions.impl/perms`. Keep `:lib` keys like `:lib/type`
                               (= (namespace k) "lib"))))
                    query)))
 
@@ -335,8 +349,12 @@
     {:decode/normalize common/normalize-map
      :encode/serialize serialize-query}
     [:lib/type [:=
-                {:decode/normalize common/normalize-keyword}
+                {:decode/normalize common/normalize-keyword, :default :mbql/query}
                 :mbql/query]]
+    ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
+    ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
+    ;; whatever breaks.
+    [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
     [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
                                  [true  ::id/saved-questions-virtual-database]
                                  [false ::id/database]]]

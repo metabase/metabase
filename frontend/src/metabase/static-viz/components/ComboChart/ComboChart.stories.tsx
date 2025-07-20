@@ -1024,14 +1024,6 @@ export const OffsetBasedTimezone47835 = {
   },
 };
 
-export const NoDimensionColumn54755 = {
-  render: Template,
-  args: {
-    rawSeries: data.noDimensionColumn54755 as any,
-    renderingContext,
-  },
-};
-
 export const BarNonLinearNumericXAxis = {
   render: Template,
   args: {
@@ -1052,6 +1044,23 @@ export const Default = {
   render: Template,
   args: {
     rawSeries: data.messedUpAxis as any,
+    renderingContext,
+  },
+};
+
+export const Watermark = {
+  render: Template,
+  args: {
+    rawSeries: data.barWidthDstTimezones56424 as any,
+    renderingContext,
+    hasDevWatermark: true,
+  },
+};
+
+export const VisualizerTimeseriesDifferentUnits = {
+  render: Template,
+  args: {
+    rawSeries: data.visualizerTimeseriesDifferentUnits as any,
     renderingContext,
   },
 };

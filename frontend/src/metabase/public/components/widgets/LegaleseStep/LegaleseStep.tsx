@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDispatch } from "metabase/lib/redux";
 import { LegaleseStepDetailsContainer } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep.styled";
 import { Button, Center, Stack, Text, Title } from "metabase/ui";
@@ -26,7 +26,7 @@ export const LegaleseStep = ({
   return (
     <Center bg="bg-white" px="18rem" pt="6.25rem" pb="11.75rem">
       <Stack align="center" gap="3rem">
-        <Title order={2} fz="1.25rem">{t`First, some legalese`}</Title>
+        <Title order={3} fz="1.25rem">{t`First, some legalese`}</Title>
 
         <LegaleseStepDetailsContainer p="lg" w="40rem">
           <Text fw={700}>

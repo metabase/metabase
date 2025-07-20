@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:refer-clojure :exclude [group-by])
@@ -5,15 +6,16 @@
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
-             [metabase.config :as config]
+             [metabase.config.core :as config]
+             [clojure.pprint :as pprint]
              #_{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]
-             [ring.util.codec :as codec]))
+             [ring.util.codec :as codec])
+       :cljs-dev ([clojure.pprint :as pprint]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
-   [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -50,7 +52,8 @@
   format-milliseconds
   format-nanoseconds
   format-seconds
-  format-plural])
+  format-plural
+  qualified-name])
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
@@ -149,32 +152,6 @@
   [^String msg]
   #?(:clj  (Exception. msg)
      :cljs (js/Error. msg)))
-
-(defn qualified-name
-  "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
-  (also unlike `name`).
-
-     (u/qualified-name :type/FK) -> \"type/FK\""
-  [k]
-  (cond
-    (nil? k)
-    nil
-
-    ;; optimization in Clojure: calling [[symbol]] on a keyword returns the underlying symbol, and [[str]] on a symbol
-    ;; is cached internally (see `clojure.lang.Symbol/toString()`). So we can avoid constructing a new string here.
-    ;; Not sure whether this is cached in ClojureScript as well.
-    (keyword? k)
-    (str (symbol k))
-
-    (symbol? k)
-    (str k)
-
-    :else
-    (if-let [namespac (when #?(:clj  (instance? clojure.lang.Named k)
-                               :cljs (satisfies? INamed k))
-                        (namespace k))]
-      (str namespac "/" (name k))
-      (name k))))
 
 (defn remove-nils
   "Given a map, returns a new map with all nil values removed."
@@ -332,8 +309,8 @@
      (log/infof "Maximum memory available to JVM: %s" (u.format/format-bytes (.maxMemory (Runtime/getRuntime))))))
 
 ;; Set the default width for pprinting to 120 instead of 72. The default width is too narrow and wastes a lot of space
-#?(:clj  (alter-var-root #'pprint/*print-right-margin* (constantly 120))
-   :cljs (set! pprint/*print-right-margin* (constantly 120)))
+#?(:clj      (alter-var-root #'pprint/*print-right-margin* (constantly 120))
+   :cljs-dev (set! pprint/*print-right-margin* (constantly 120)))
 
 (defn email?
   "Is `s` a valid email address string?"
@@ -692,19 +669,22 @@
 
      (pprint-to-str 'green some-obj)"
   (^String [x]
-   (#?@
-     (:clj
+   #?(:clj
       (with-out-str
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
 
-      :cljs
-     ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
-     ;; default value wastes too much space, 120 is a little easier to read actually.
+      :cljs-dev
+      ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
+      ;; default value wastes too much space, 120 is a little easier to read actually.
       (binding [pprint/*print-right-margin* 120]
         (with-out-str
           #_{:clj-kondo/ignore [:discouraged-var]}
-          (pprint/pprint x))))))
+          (pprint/pprint x)))
+
+      :default
+      ;; For CLJS release, we don't pull cljs.pprint to reduce bundle size.
+      (str x)))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
@@ -797,6 +777,11 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+(defn domain?
+  "Check if `s` is a valid domain name."
+  [s]
+  (sequential? (re-matches #"^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$" s)))
 
 (defn pick-first
   "Returns a pair [match others] where match is the first element of `coll` for which `pred` returns
@@ -1139,10 +1124,17 @@
 
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
+  ([kf]
+   (map (fn [x]
+          [(kf x) x])))
   ([kf coll]
-   (reduce (fn [acc v] (assoc acc (kf v) v)) {} coll))
+   (into {} (index-by kf) coll))
   ([kf vf coll]
-   (reduce (fn [acc v] (assoc acc (kf v) (vf v))) {} coll)))
+   (into {}
+         (comp (index-by kf)
+               (map (fn [[k v]]
+                      [k (vf v)])))
+         coll)))
 
 (defn rfirst
   "Return first item from Reducible"
@@ -1238,3 +1230,16 @@
        (elapsed-ms-fn))"
      [[duration-ms-fn] & body]
      `(do-with-timer-ms (fn [~duration-ms-fn] ~@body))))
+
+(defn find-first-map-indexed
+  "Finds the first map in `maps` that contains the value at the given key path,
+  and returns [index map]."
+  [maps ks value]
+  (first (keep-indexed
+          (fn [idx m] (when (= (get-in m ks) value) [idx m]))
+          maps)))
+
+(defn find-first-map
+  "Finds the first map in `maps` that contains the value at the given key path."
+  [maps ks value]
+  (second (find-first-map-indexed maps ks value)))

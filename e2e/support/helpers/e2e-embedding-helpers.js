@@ -22,7 +22,6 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * @typedef {object} PageStyle
  * @property {boolean} [bordered]
  * @property {boolean} [titled]
- * @property {boolean} [hide_download_button] - EE/PRO only feature to disable downloads
  * @property {boolean} [downloads] - EE/PRO only feature to disable downloads
  */
 
@@ -30,7 +29,7 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {object=} options
+ * @param {object} [options]
  * @param {object} [options.setFilters]
  * @param {PageStyle} options.pageStyle
  * @param {object} options.additionalHashOptions
@@ -183,7 +182,7 @@ export function getIframeBody(selector = "iframe") {
     .its("0.contentDocument")
     .should("exist")
     .its("body")
-    .should("not.be.null")
+    .should("not.be.undefined")
     .then(cy.wrap);
 }
 

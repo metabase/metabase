@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -276,7 +277,7 @@ describe("issue 20683", { tags: "@external" }, () => {
 
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByText("Current").click();
       cy.findByText("Quarter").click();
@@ -366,7 +367,7 @@ describe("issue 22230", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Max of Name").click();
-      cy.findByText("Is").click();
+      cy.findByText("Contains").click();
     });
     cy.findByRole("menu").findByText("Starts with").click();
 
@@ -574,7 +575,7 @@ describe("issue 25378", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Created At: Month").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("months").click();
@@ -682,10 +683,8 @@ describe("issue 25990", () => {
       cy.findByText("People").click();
       cy.findByText("ID").click();
       cy.findByPlaceholderText("Enter an ID").type("10").blur();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel")
@@ -721,7 +720,7 @@ describe("issue 25994", () => {
 
     H.popover().within(() => {
       cy.findByText("Min of Created At: Day").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
 
       // It doesn't really matter which dates we select so let's go with whatever is offered
       cy.button("Add filter").click();
@@ -900,15 +899,18 @@ describe("issue 31340", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept("GET", "/api/field/*/search/*").as("search");
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.PASSWORD,
+    });
 
-    cy.findByTestId("column-PASSWORD")
-      .findByDisplayValue("Password")
-      .type(`{selectAll}${LONG_COLUMN_NAME}`)
+    H.DataModel.FieldSection.getNameInput()
+      .focus()
+      .clear()
+      .type(LONG_COLUMN_NAME)
       .blur();
-
     cy.wait("@fieldUpdate");
 
     H.createQuestion(
@@ -1033,8 +1035,13 @@ describe("metabase#32985", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByPlaceholderText("Search by Email").type("foo");
+      cy.findByPlaceholderText("Search by Email or enter an ID").type("foo");
     });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText("No matching Email found.")
+      .should("be.visible");
   });
 });
 
@@ -1203,9 +1210,8 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.popover().within(() => {
       cy.findByText("Binary").click();
       cy.findByLabelText("Is empty").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(0);
 
@@ -1221,9 +1227,8 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.popover().within(() => {
       cy.findByText("Jsonb").click();
       cy.findByLabelText("Not empty").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(2);
   });
@@ -1385,7 +1390,7 @@ describe("issue 47887", () => {
 
     H.popover().within(() => {
       cy.findByLabelText("asdfdsa").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
     });
   });
 });
@@ -1587,6 +1592,65 @@ describe("issue 50731", () => {
         descendants.forEach((descendant) => {
           H.assertDescendantNotOverflowsContainer(descendant, container);
         });
+      });
+  });
+});
+
+describe("issue 58923", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.viewport(800, 800);
+  });
+
+  it("it should not lose padding when switching filter types (metabase#58923)", () => {
+    H.openPeopleTable();
+    H.tableHeaderClick("Name");
+
+    H.popover().findByText("Filter by this column").click();
+    H.popover().findByText("Is").click();
+    H.popover().should("have.length", 2).last().findByText("Contains").click();
+
+    H.popover().findByText("Contains").click();
+    H.popover().should("have.length", 2).last().findByText("Is").click();
+
+    H.popover()
+      .first()
+      .within(() => {
+        cy.findByPlaceholderText("Search by Name").then((input) => {
+          cy.button("Add filter")
+            .parent()
+            .then((footer) => {
+              const { bottom } = input[0].getBoundingClientRect();
+              const { top } = footer[0].getBoundingClientRect();
+
+              cy.wrap(top - bottom).should("be.gt", 16);
+            });
+        });
+      });
+  });
+});
+
+describe("issue QUE-1359", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render an outline on the custom expression item in the filter popover (QUE-1359)", () => {
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    Cypress._.times(10, () => cy.realPress("ArrowDown"));
+
+    H.popover()
+      .findByText("Custom Expression")
+      .parent()
+      .then((el) => {
+        cy.wrap(window.getComputedStyle(el[0]).outline).should(
+          "contain",
+          "solid",
+        );
       });
   });
 });

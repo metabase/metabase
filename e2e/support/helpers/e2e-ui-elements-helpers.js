@@ -1,5 +1,7 @@
 // Functions that get key elements in the app
 
+import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
@@ -29,10 +31,10 @@ export function menu() {
   return cy.findByRole("menu");
 }
 
-export function modal() {
+export function modal(options = {}) {
   const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
+  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","), options);
 }
 
 export function tooltip() {
@@ -149,6 +151,8 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
+ * @param {boolean} isEditing - whether dashboard editing mode is enabled
+ *
  * @returns HTMLFieldSetElement
  *
  * @example
@@ -165,8 +169,10 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget() {
-  return cy.get("fieldset");
+export function filterWidget({ isEditing = false } = {}) {
+  return cy.findAllByTestId(
+    isEditing ? "editing-parameter-widget" : "parameter-widget",
+  );
 }
 
 export function clearFilterWidget(index = 0) {
@@ -206,6 +212,18 @@ export function toggleFilterWidgetValues(
     values.forEach((value) => cy.findByText(value).click());
     cy.button(buttonLabel).click();
   });
+}
+
+/**
+ * Moves a dashboard filter to a dashcard / top nav
+ * (it must be in 'editing' mode prior to that)
+ */
+export function moveDashboardFilter(destination, { showFilter = false } = {}) {
+  dashboardParameterSidebar().findByPlaceholderText("Move filter").click();
+  popover().findByText(destination).click();
+  if (showFilter) {
+    undoToast().button("Show filter").click();
+  }
 }
 
 export const openQuestionActions = (action) => {
@@ -264,7 +282,7 @@ export const moveColumnDown = (column, distance) => {
 
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0 } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
 ) => {
   element
     .trigger("pointerdown", 0, 0, {
@@ -286,13 +304,41 @@ export const moveDnDKitElement = (
       isPrimary: true,
       button: 0,
     })
-    .wait(200)
-    .trigger("pointerup", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
     .wait(200);
+
+  onBeforeDragEnd?.();
+
+  cy.document().trigger("pointerup").wait(200);
+};
+
+export const moveDnDKitListElement = (
+  dataTestId,
+  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
+) => {
+  const selector = new RegExp(dataTestId);
+
+  const getCenter = ($el) => {
+    const { x, y, width, height } = $el.getBoundingClientRect();
+
+    return { clientX: x + width / 2, clientY: y + height / 2 };
+  };
+
+  cy.findAllByTestId(selector)
+    .then(($all) => {
+      const dragEl = $all.get(startIndex);
+      const dropEl = $all.get(dropIndex);
+      const dragPoint = getCenter(dragEl);
+      const dropPoint = getCenter(dropEl);
+
+      return { dragPoint, dropPoint, dragEl };
+    })
+    .then(({ dragPoint, dropPoint, dragEl }) => {
+      moveDnDKitElement(cy.wrap(dragEl), {
+        vertical: dropPoint.clientY - dragPoint.clientY,
+        horizontal: dropPoint.clientX - dragPoint.clientX,
+        onBeforeDragEnd,
+      });
+    });
 };
 
 export const moveDnDKitElementByAlias = (
@@ -341,6 +387,10 @@ export const dashboardParametersContainer = () => {
   return cy.findByTestId("dashboard-parameters-widget-container");
 };
 
+export const editingDashboardParametersContainer = () => {
+  return cy.findByTestId("edit-dashboard-parameters-widget-container");
+};
+
 export const undoToast = () => {
   return cy.findByTestId("toast-undo");
 };
@@ -379,17 +429,18 @@ export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
       clientY: 0,
     });
 
-  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
   cy.get("body")
-    .trigger("mousemove", {
-      clientX: moveX / 2,
-      clientY: 0,
-    })
     .trigger("mousemove", {
       clientX: moveX,
       clientY: 0,
+    })
+    // UI requires time to update, causes flakiness without the delay
+    .wait(100)
+    .trigger("mouseup", {
+      button: 0,
+      clientX: moveX,
+      clientY: 0,
     });
-  cy.get("body").trigger("mouseup", { force: true });
 }
 
 export function openObjectDetail(rowIndex) {
@@ -427,17 +478,30 @@ export function assertRowHeight(index, height) {
     .should("have.css", "height", `${height}px`);
 }
 
+export function getColumnWidth(columnId) {
+  return cy
+    .findAllByTestId("header-cell")
+    .filter(`:contains(${columnId})`)
+    .invoke("width");
+}
+
 export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
 
-export function tableHeaderColumn(headerString) {
-  // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
-  // from obscuring the target column in the viewport
-  const objectDetailOffset = 50;
-  tableInteractiveHeader()
-    .findByText(headerString)
-    .scrollIntoView({ offset: { left: -objectDetailOffset } });
+export function tableHeaderColumn(
+  headerString,
+  { scrollIntoView = true } = {},
+) {
+  if (scrollIntoView) {
+    // Apply horizontal scroll offset when targeting columns to prevent the sticky 'Object detail' column
+    // from obscuring the target column in the viewport
+    const objectDetailOffset = 50;
+    tableInteractiveHeader()
+      .findByText(headerString)
+      .scrollIntoView({ offset: { left: -objectDetailOffset } });
+  }
+
   return tableInteractiveHeader().findByText(headerString);
 }
 
@@ -445,14 +509,19 @@ export function tableHeaderClick(headerString) {
   tableHeaderColumn(headerString).click();
 }
 
-export function clickActionsPopover() {
-  return popover({ testId: "click-actions-popover" });
+export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
+  return popover({ testId: "click-actions-popover", skipVisibilityCheck });
 }
 
 export function segmentEditorPopover() {
   return popover({ testId: "segment-popover" });
 }
 
+/**
+ * @param {Object} params
+ * @param {string[]} params.columns
+ * @param {string[][]} [params.firstRows=[]]
+ */
 export function assertTableData({ columns, firstRows = [] }) {
   tableInteractive()
     .findAllByTestId("header-cell")
@@ -499,9 +568,12 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").first();
 }
 
-export function fieldValuesInput(filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+export function fieldValuesCombobox() {
+  return cy.findByRole("combobox");
+}
+
+export function fieldValuesTextbox() {
+  return cy.findByRole("textbox");
 }
 
 export function fieldValuesValue(index) {
@@ -511,7 +583,11 @@ export function fieldValuesValue(index) {
 
 export function removeFieldValuesValue(index) {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
+  return cy
+    .findAllByTestId("token-field")
+    .findAllByLabelText("Remove")
+    .eq(index)
+    .click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
@@ -541,4 +617,8 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
 export function mapPinIcon() {
   return cy.get(".leaflet-marker-icon");
+}
+
+export function waitForLoaderToBeRemoved() {
+  cy.findByTestId("loading-indicator").should("not.exist");
 }

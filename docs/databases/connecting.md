@@ -5,6 +5,7 @@ redirect_from:
   - /docs/latest/databases/connections/sql-server
   - /docs/latest/administration-guide/databases/h2
   - /docs/latest/databases/connections/h2
+  - /docs/latest/databases/connections
 ---
 
 # Adding and managing databases
@@ -28,7 +29,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - [ClickHouse](./connections/clickhouse.md)
 - [Databricks](./connections/databricks.md)
 - [Druid](./connections/druid.md)
-- [MongoDB (recommend version 4.2 or higher)](./connections/mongodb.md)
+- [MongoDB](./connections/mongodb.md)
 - [MariaDB](./connections/mariadb.md)
 - [MySQL](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)

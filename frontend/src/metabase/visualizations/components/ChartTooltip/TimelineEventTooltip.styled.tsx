@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import DateTime from "metabase/components/DateTime";
+import DateTime from "metabase/common/components/DateTime";
 
 export const TimelineEventList = styled.ul`
   max-width: 300px;
@@ -34,7 +34,6 @@ export const TimelineEventName = styled.span`
 `;
 
 export const TimelineEventDate = styled(DateTime)`
-  color: var(--mb-color-text-white);
   font-size: 0.75rem;
   margin-top: 0.0625rem;
 `;

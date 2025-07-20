@@ -8,7 +8,7 @@ import { type Options, suggestAggregations } from "./aggregations";
 
 describe("suggestAggregations", () => {
   function setup({
-    startRule = "aggregation",
+    expressionMode = "aggregation",
     features = [],
   }: Partial<Options> & {
     features?: DatabaseFeature[];
@@ -22,10 +22,9 @@ describe("suggestAggregations", () => {
     });
     const query = createQuery({ metadata });
     const source = suggestAggregations({
-      startRule,
+      expressionMode,
       query,
       metadata,
-      reportTimezone: "America/New_York",
     });
 
     return function (doc: string) {
@@ -33,44 +32,36 @@ describe("suggestAggregations", () => {
     };
   }
 
-  describe("startRule = expression", () => {
-    const startRule = "expression";
+  describe("expressionMode = expression", () => {
+    const expressionMode = "expression";
 
     it("should not suggest aggregations", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("Coun|");
       expect(results).toEqual(null);
     });
   });
 
-  describe("startRule = boolean", () => {
-    const startRule = "boolean";
+  describe("expressionMode = boolean", () => {
+    const expressionMode = "filter";
 
     it("should not suggest aggregations", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("Coun|");
       expect(results).toEqual(null);
     });
   });
 
-  describe("startRule = aggregation", () => {
-    const startRule = "aggregation";
+  describe("expressionMode = aggregation", () => {
+    const expressionMode = "aggregation";
 
     const RESULTS = {
       from: 0,
+      to: 4,
+      filter: false,
       options: [
         {
           apply: expect.any(Function),
-          detail: "Only counts rows where the condition is `true`.",
-          displayLabel: "CountIf",
-          icon: "function",
-          label: "CountIf",
-          matches: [[0, 3]],
-          type: "aggregation",
-        },
-        {
-          apply: expect.any(Function),
-          detail: "Returns the count of rows in the selected data.",
           displayLabel: "Count",
           icon: "function",
           label: "Count",
@@ -79,7 +70,14 @@ describe("suggestAggregations", () => {
         },
         {
           apply: expect.any(Function),
-          detail: "The additive total of rows across a breakout.",
+          displayLabel: "CountIf",
+          icon: "function",
+          label: "CountIf",
+          matches: [[0, 3]],
+          type: "aggregation",
+        },
+        {
+          apply: expect.any(Function),
           displayLabel: "CumulativeCount",
           icon: "function",
           label: "CumulativeCount",
@@ -91,7 +89,6 @@ describe("suggestAggregations", () => {
           type: "aggregation",
         },
         {
-          detail: "The rolling sum of a column across a breakout.",
           displayLabel: "CumulativeSum",
           label: "CumulativeSum",
           matches: [
@@ -104,7 +101,6 @@ describe("suggestAggregations", () => {
           apply: expect.any(Function),
         },
       ],
-      to: 4,
     };
 
     const RESULTS_NO_TEMPLATE = {
@@ -116,35 +112,36 @@ describe("suggestAggregations", () => {
     };
 
     it("should suggest aggregations", () => {
-      const completer = setup({ startRule, features: [] });
+      const completer = setup({ expressionMode, features: [] });
       const results = completer("Coun|");
       expect(results).toEqual(RESULTS);
     });
 
     it("should not suggest unsupported aggregations", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("StandardDev|");
       expect(results).toEqual({
         from: 0,
         to: 11,
         options: [],
+        filter: false,
       });
     });
 
     it("should suggest supported aggregations", () => {
       const completer = setup({
-        startRule,
+        expressionMode,
         features: ["standard-deviation-aggregations"],
       });
       const results = completer("StandardDev|");
       expect(results).toEqual({
         from: 0,
         to: 11,
+        filter: false,
         options: [
           {
             label: "StandardDeviation",
             displayLabel: "StandardDeviation",
-            detail: "Calculates the standard deviation of the column.",
             matches: [[0, 10]],
             type: "aggregation",
             icon: "function",
@@ -155,7 +152,7 @@ describe("suggestAggregations", () => {
     });
 
     it("should suggest aggregations, inside a word", () => {
-      const completer = setup({ startRule });
+      const completer = setup({ expressionMode });
       const results = completer("Cou|n");
       expect(results).toEqual(RESULTS);
     });
@@ -180,7 +177,7 @@ describe("suggestAggregations", () => {
         "Cou|n ([Foo])",
       ];
       for (const doc of cases) {
-        const completer = setup({ startRule });
+        const completer = setup({ expressionMode });
         const results = completer(doc);
         expect(results).toEqual(RESULTS_NO_TEMPLATE);
       }
