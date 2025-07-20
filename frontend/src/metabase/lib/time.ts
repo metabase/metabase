@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
@@ -18,18 +19,18 @@ const TEXT_UNIT_FORMATS = {
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
-  "minute-of-hour": (value: number) => moment().minute(value).startOf("minute"),
-  "hour-of-day": (value: number) => moment().hour(value).startOf("hour"),
+  "minute-of-hour": (value: number) => dayjs().minute(value).startOf("minute"),
+  "hour-of-day": (value: number) => dayjs().hour(value).startOf("hour"),
   "day-of-week": (value: number) =>
-    moment()
+    dayjs()
       .weekday(value - 1)
       .startOf("day"),
   "day-of-month": (value: number) =>
-    moment("2016-01-01") // initial date must be in month with 31 days to format properly
+    dayjs("2016-01-01") // initial date must be in month with 31 days to format properly
       .date(value)
       .startOf("day"),
   "day-of-year": (value: number) =>
-    moment("2016-01-01") // initial date must be in leap year to format properly
+    dayjs("2016-01-01") // initial date must be in leap year to format properly
       .dayOfYear(value)
       .startOf("day"),
   "week-of-year": (value: number) =>
@@ -37,12 +38,12 @@ const NUMERIC_UNIT_FORMATS = {
       .isoWeek(value) // set the iso week number to not depend on the first day of week
       .startOf("isoWeek"),
   "month-of-year": (value: number) =>
-    moment()
+    dayjs()
       .month(value - 1)
       .startOf("month"),
   "quarter-of-year": (value: number) =>
-    moment().quarter(value).startOf("quarter"),
-  year: (value: number) => moment().year(value).startOf("year"),
+    dayjs().quarter(value).startOf("quarter"),
+  year: (value: number) => dayjs().year(value).startOf("year"),
 };
 
 // when you define a custom locale, moment automatically makes it the active global locale,
@@ -80,8 +81,8 @@ export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
     return false;
   }
 
-  const now = moment();
-  const newTime = moment().add(interval, unit);
+  const now = dayjs();
+  const newTime = dayjs().add(interval, unit);
   const diff = now.diff(newTime, "years");
 
   return !Number.isNaN(diff);
@@ -93,7 +94,7 @@ export function getDateStyleFromSettings() {
 }
 
 export function getRelativeTime(timestamp: string) {
-  return moment(timestamp).fromNow();
+  return dayjs(timestamp).fromNow();
 }
 
 export function getRelativeTimeAbbreviated(timestamp: string) {
