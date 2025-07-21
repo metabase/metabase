@@ -1800,16 +1800,17 @@
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
       (mt/with-temp [:model/Card {reg-card-id :id} {:name            (named "regular card")
-                                                    :result_metadata [{:description "The state or province of the account’s billing address."
-                                                                       :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]}]
+                                                    :result_metadata [{:name         "STATE"
+                                                                       :display_name "State"
+                                                                       :base_type    :type/Text
+                                                                       :description  "The state or province of the account’s billing address."}]}]
         (testing "Can include `result_metadata` info"
-          (is (= [{:description "The state or province of the account’s billing address."
-                   :ident       "OmdKsPv5v1ct3Ku6X4tJl"}]
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
-                      :data
-                      (filter #(= reg-card-id (:id %)))
-                      first
-                      :result_metadata))))
+          (is (=? [{:description "The state or province of the account’s billing address."}]
+                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
+                       :data
+                       (filter #(= reg-card-id (:id %)))
+                       first
+                       :result_metadata))))
         (testing "result_metadata not included by default"
           (is (nil?
                (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
