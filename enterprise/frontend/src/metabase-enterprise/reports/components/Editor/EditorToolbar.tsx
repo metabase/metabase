@@ -34,9 +34,9 @@ export const EditorToolbar = ({ editor }: EditorToolbarProps) => {
   return (
     <Box p="sm" className={styles.toolbar}>
       <div className={styles.toolbarContent}>
-        <Stack spacing="xs">
-          <Group spacing="xs">
-            <Group spacing="xs">
+        <Stack gap="xs">
+          <Group gap="xs">
+            <Group gap="xs">
               <Tooltip label="Bold (Ctrl+B)">
                 <ActionIcon
                   onClick={toggleBold}
@@ -65,7 +65,7 @@ export const EditorToolbar = ({ editor }: EditorToolbarProps) => {
 
             <Divider orientation="vertical" />
 
-            <Group spacing="xs">
+            <Group gap="xs">
               <Tooltip label="Heading 1">
                 <ActionIcon
                   onClick={() => toggleHeading(1)}
@@ -109,7 +109,7 @@ export const EditorToolbar = ({ editor }: EditorToolbarProps) => {
 
             <Divider orientation="vertical" />
 
-            <Group spacing="xs">
+            <Group gap="xs">
               <Tooltip label="Bullet List">
                 <ActionIcon
                   onClick={toggleBulletList}
