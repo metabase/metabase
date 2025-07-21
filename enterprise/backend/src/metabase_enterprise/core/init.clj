@@ -15,4 +15,5 @@
    [metabase-enterprise.metabot-v3.init]
    [metabase-enterprise.scim.init]
    [metabase-enterprise.sso.init]
-   [metabase-enterprise.stale.init]))
+   [metabase-enterprise.stale.init]
+   [metabase-enterprise.transform.init]))
