@@ -56,17 +56,19 @@ export const UserMessage = ({
       >
         {message.message}
       </Text>
-      {!hideActions && (
-        <Flex className={Styles.messageActions}>
-          <ActionIcon
-            onClick={() => clipboard.copy(message.message)}
-            h="sm"
-            data-testid="metabot-chat-message-copy"
-          >
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
-        </Flex>
-      )}
+      <Flex className={Styles.messageActions}>
+        {!hideActions && (
+          <>
+            <ActionIcon
+              onClick={() => clipboard.copy(message.message)}
+              h="sm"
+              data-testid="metabot-chat-message-copy"
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </>
+        )}
+      </Flex>
     </MessageContainer>
   );
 };
@@ -83,26 +85,28 @@ export const AgentMessage = ({
   return (
     <MessageContainer chatRole={message.role} {...props}>
       <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
-      {!hideActions && (
-        <Flex className={Styles.messageActions}>
-          <ActionIcon
-            onClick={() => clipboard.copy(message.message)}
-            h="sm"
-            data-testid="metabot-chat-message-copy"
-          >
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
-          {onRetry && (
+      <Flex className={Styles.messageActions}>
+        {!hideActions && (
+          <>
             <ActionIcon
-              onClick={() => onRetry(message.id)}
+              onClick={() => clipboard.copy(message.message)}
               h="sm"
-              data-testid="metabot-chat-message-retry"
+              data-testid="metabot-chat-message-copy"
             >
-              <Icon name="revert" size="1rem" />
+              <Icon name="copy" size="1rem" />
             </ActionIcon>
-          )}
-        </Flex>
-      )}
+            {onRetry && (
+              <ActionIcon
+                onClick={() => onRetry(message.id)}
+                h="sm"
+                data-testid="metabot-chat-message-retry"
+              >
+                <Icon name="revert" size="1rem" />
+              </ActionIcon>
+            )}
+          </>
+        )}
+      </Flex>
     </MessageContainer>
   );
 };
