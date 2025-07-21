@@ -21,6 +21,7 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
@@ -30,7 +31,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
@@ -766,11 +766,12 @@
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
   [card changes verified-result-metadata?]
-  (cond-> card
-    (or (empty? (:result_metadata card))
-        (not verified-result-metadata?)
-        (contains? (t2/changes card) :type))
-    (card.metadata/populate-result-metadata changes)))
+  (-> (cond-> card
+        (or (empty? (:result_metadata card))
+            (not verified-result-metadata?)
+            (contains? (t2/changes card) :type))
+        (card.metadata/populate-result-metadata changes))
+      (u/update-some :result_metadata #(lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column] %))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]

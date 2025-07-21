@@ -1365,9 +1365,12 @@
   `:metabase.lib.schema.metadata/column`."
   [:and
    [:map
+    ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
+    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
     [:base_type          ::lib.schema.common/base-type]
     [:display_name       ::lib.schema.common/non-blank-string]
     [:name               :string]
+    [:effective_type     {:optional true} ::lib.schema.common/base-type]
     [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
     [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
     ;; Fingerprint is required in order to use BINNING

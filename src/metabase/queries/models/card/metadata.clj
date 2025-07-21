@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -209,34 +210,37 @@ saved later when it is ready."
   metadata from the query."
   ([card]
    (populate-result-metadata card nil))
+
   ([{query :dataset_query metadata :result_metadata :as card} changes]
-   (cond
-     ;; not updating the query => no-op
-     (and (not-empty changes)
-          (not (contains? changes :dataset_query)))
-     (do
-       (log/debug "Not inferring result metadata for Card: query was not updated")
-       card)
+   (-> (cond
+         ;; not updating the query => no-op
+         (and (not-empty changes)
+              (not (contains? changes :dataset_query)))
+         (do
+           (log/debug "Not inferring result metadata for Card: query was not updated")
+           card)
 
-     ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
-     (or (and (not-empty changes) (contains? changes :result_metadata))
-         (and (empty? changes) metadata))
-     (do
-       (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-       card)
+         ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
+         (or (and (not-empty changes) (contains? changes :result_metadata))
+             (and (empty? changes) metadata))
+         (do
+           (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
+           card)
 
-     ;; query has changed (or new Card) and this is a native query => set metadata to nil
-     ;;
-     ;; we can't infer the metadata for a native query without running it, so it's better to have no metadata than
-     ;; possibly incorrect metadata.
-     (= (:type query) :native)
-     (do
-       (log/debug "Can't infer result metadata for Card: query is a native query. Setting result metadata to nil")
-       (assoc card :result_metadata nil))
+         ;; query has changed (or new Card) and this is a native query => set metadata to nil
+         ;;
+         ;; we can't infer the metadata for a native query without running it, so it's better to have no metadata than
+         ;; possibly incorrect metadata.
+         (= (:type query) :native)
+         (do
+           (log/debug "Can't infer result metadata for Card: query is a native query. Setting result metadata to nil")
+           (assoc card :result_metadata nil))
 
-     ;; otherwise, attempt to infer the metadata. If the query can't be run for one reason or another, set metadata to
-     ;; nil.
-     :else
-     (do
-       (log/debug "Attempting to infer result metadata for Card")
-       (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))))
+         ;; otherwise, attempt to infer the metadata. If the query can't be run for one reason or another, set metadata to
+         ;; nil.
+         :else
+         (do
+           (log/debug "Attempting to infer result metadata for Card")
+           (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
+       ;; now normalize the result metadata as needed so it passes the output schema check
+       (u/update-some :result_metadata #(lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column] %)))))
