@@ -225,8 +225,8 @@
   ::lib.schema.actions/row)
 
 (def schema.actions.args.row
-  ":metabase.actions.actions.args/row"
-  :metabase.actions.actions.args/row)
+  ":metabase.actions.args/row"
+  :metabase.actions.args/row)
 
 (def schema.expression.temporal.timezone-id
   "::lib.schema.expression.temporal/timezone-id"

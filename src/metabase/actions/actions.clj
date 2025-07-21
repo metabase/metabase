@@ -163,6 +163,10 @@
   (fn [effect-type _context _payloads]
     (keyword effect-type)))
 
+(defmethod handle-effects!* :default
+  [effect-type _context _payloads]
+  (log/warnf "Ignoring effect type %s as no handler is defined" effect-type))
+
 (defn- handle-effects! [{:keys [effects] :as context}]
   (let [sans-effects (dissoc context :effects)]
     (doseq [[event-type payloads] (u/group-by first second effects)]
