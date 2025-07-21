@@ -14,7 +14,7 @@ import type { FlatItem, TreePath } from "./types";
 import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
-const ITEM_MIN_HEIGHT = 32;
+const ITEM_HEIGHT = 32;
 const INDENT_OFFSET = 18;
 
 interface Props {
@@ -45,7 +45,7 @@ export function Results({
     count: items.length,
     getScrollElement: () => ref.current,
     overscan: VIRTUAL_OVERSCAN,
-    estimateSize: () => ITEM_MIN_HEIGHT,
+    estimateSize: () => ITEM_HEIGHT,
   });
 
   const virtualItems = virtual.getVirtualItems();
@@ -65,18 +65,6 @@ export function Results({
       virtual.scrollToIndex(index);
     },
     [path.tableId, items, virtual],
-  );
-
-  useEffect(
-    function measureItemsWhenTheyChange() {
-      const { startIndex = 0, endIndex = 0 } = virtual.range ?? {};
-      for (let idx = startIndex; idx <= endIndex; idx++) {
-        virtual.measureElement(
-          ref.current?.querySelector(`[data-index='${idx}']`),
-        );
-      }
-    },
-    [items, virtual],
   );
 
   useEffect(() => {
@@ -193,7 +181,6 @@ export function Results({
               align="center"
               justify="space-between"
               gap="sm"
-              // ref={virtual.measureElement}
               className={cx(S.item, S[type], {
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
@@ -224,7 +211,7 @@ export function Results({
               }}
               onFocus={() => onSelectedIndexChange?.(index)}
             >
-              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
+              <Flex align="center" mih={ITEM_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
                     {hasChildren(type) && (
