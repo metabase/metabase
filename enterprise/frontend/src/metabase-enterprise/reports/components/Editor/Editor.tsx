@@ -33,7 +33,7 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       MarkdownSerializer,
     ],
-    content: "<p>Start writing your report...</p>",
+    content: "",
     autofocus: true,
   });
 

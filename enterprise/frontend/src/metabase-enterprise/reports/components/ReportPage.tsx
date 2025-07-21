@@ -83,13 +83,13 @@ export const ReportPage = () => {
       </Box>
 
       <Box className={styles.sidebar}>
-        <Stack spacing="lg" p="lg">
+        <Stack gap="lg" p="lg">
           <Button variant="filled" onClick={handleSave} fullWidth>
             {t`Save Report`}
           </Button>
 
           <Box>
-            <Text size="sm" weight="bold" mb="sm">
+            <Text size="sm" fw="bold" mb="sm">
               {t`Question References`}
             </Text>
             {questionRefs.length === 0 ? (
@@ -97,7 +97,7 @@ export const ReportPage = () => {
                 {t`No questions embedded yet`}
               </Text>
             ) : (
-              <Stack spacing="xs">
+              <Stack gap="xs">
                 {questionRefs.map((ref) => (
                   <Box
                     key={ref.id}
