@@ -10,7 +10,6 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test

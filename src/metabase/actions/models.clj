@@ -344,7 +344,7 @@
                (m/index-by :id)))]
     (for [dashcard dashcards
           :let [action-id (:action_id dashcard)
-                action    (or (get actions-by-id action-id))]]
+                action    (get actions-by-id action-id)]]
       (m/assoc-some dashcard :action action))))
 
 (defn dashcard->action
