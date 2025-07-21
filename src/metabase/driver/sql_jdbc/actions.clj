@@ -558,16 +558,6 @@
   [action context inputs]
   (table-row-create! action context inputs))
 
-;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
-(mu/defn- table-id->pk-fields
-  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [table-id    :- driver-api/schema.id.table]
-  (driver-api/cached-value
-   [::table-id->pk-fields table-id]
-   (fn []
-     (filter #(isa? (:semantic_type %) :type/PK)
-             (t2/select :model/Field :table_id table-id)))))
-
 (mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- driver-api/schema.id.database
@@ -582,14 +572,6 @@
             (driver-api/fields
              (driver-api/metadata-provider)
              table-id)))))
-
-(mu/defn- field-names->field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
-  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [table-id    :- driver-api/schema.id.table
-   field-names :- [:sequential :string]]
-  (driver-api/cached-value
-   [::field-names->field-name->id table-id]
-   #(t2/select-fn->fn :name :id [:model/Field :id :name] :table_id table-id :name [:in field-names])))
 
 (mu/defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
@@ -617,9 +599,6 @@
 ;;;; Foreign Key Cascade Deletion
 
 (declare check-consistent-row-keys)
-
-(defn- table->ref [{:keys [schema name]}]
-  (if schema (keyword schema name) (keyword name)))
 
 ;;;; `:table.row/delete`
 
@@ -769,116 +748,3 @@
 (methodical/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/update]
   [action context inputs]
   (table-row-update! action context inputs))
-
-(defn- ref->str [table-ref]
-  (let [s (namespace table-ref)
-        t (name table-ref)
-        e #(str \" (str/escape % {\" "\""}) \")]
-    (if s
-      (str (e s) \. (e t))
-      (e t))))
-
-(defn- create-or-update!*
-  [action database {:keys [table-id row row-key]}]
-  (with-jdbc-transaction [conn (u/the-id database)]
-    (let [driver            (:engine database)
-          table             (driver-api/cached-table (:id database) table-id)
-          table-ref         (table->ref table)
-          hsql              (prepare-query {:select [:%count.*]
-                                            :from   [table-ref]
-                                            :where  (into [:and] (for [[k v] row-key] [:= (keyword k) v]))}
-                                           driver action)
-          count-existing    (fn []
-                              (-> (query-rows driver conn hsql) first vals first))
-          before-count      (count-existing)
-          formatted-row-key (delay (if (empty? row-key)
-                                     "<no row key>"
-                                     (str/join
-                                      ", "
-                                      (for [[k v] row-key]
-                                        (format "%s = %s" (u/qualified-name k) (pr-str v))))))]
-      (cond
-        (zero? before-count)
-        (u/prog1 (assoc (row-create!* action database (row-create-input-fn database table-id row)) :op :created)
-          (let [after-count (count-existing)]
-            (when (> after-count 1)
-              (throw (ex-info (tru (str "Unintentionally created {0} duplicate rows for key: table {1} with {2}. "
-                                        "This suggests a concurrent modification. We recommend adding a uniqueness constraint to the table.")
-                                   after-count
-                                   (ref->str table-ref)
-                                   @formatted-row-key)
-                              {:row-key    row-key
-                               :rows-count after-count
-                               :table-id   table-id})))))
-
-        (= 1 before-count)
-        (assoc (row-update!* action database
-                             {:database   (u/the-id database)
-                              :type       :query
-                              :query      {:source-table table-id
-                                           :filter       (row->mbql-filter-clause
-                                                          (field-names->field-name->id table-id (keys row-key)) row-key)}
-                              :update-row (apply dissoc row (keys row-key))})
-               :op :updated)
-
-        (> before-count 1)
-        (throw (ex-info (tru (str "Found {0} duplicate rows in table {1} with {2}. Unsure which row to update. "
-                                  "Only use this action with key combinations which are meant to be unique. "
-                                  "We recommend adding a uniqueness constraint to the table.")
-                             before-count
-                             (ref->str table-ref)
-                             @formatted-row-key)
-                        {:row-key          row-key
-                         :duplicates-count before-count
-                         :table-id         table-id}))))))
-
-(mu/defn- table-row-create-or-update!
-  [action context inputs :- [:sequential ::table-row-input]]
-  (let [databases (into #{} (map (comp driver-api/cached-database-via-table-id :table-id)) inputs)
-        _         (when-not (= 1 (count databases))
-                    (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
-                                    {:status-code  400
-                                     :database-ids (map :id databases)})))
-        database  (first databases)
-        driver    (:engine database)
-        [errors results] (perform-bulk-action-with-repeated-single-row-actions!
-                          {:driver   driver
-                           :database database
-                           :action   action
-                           :proc     create-or-update!*
-                           :rows     inputs
-                           :xform    (map (fn [{:keys [_database row-key row table-id] :as input}]
-                                            ;; Currently we do not have any UX to configure which columns to use for
-                                            ;; the row key. To compensate for this, we fall back to using the pk for now.
-                                            ;; Ideally, this would be explicitly configured in the future.
-                                            ;;
-                                            ;; Note, this falls down in the Assign Engineer case where we don't have
-                                            ;; a semantic PK. This is because our database PK is customer_id, which is
-                                            ;; also an FK to the customer table. The semantic layer has to choose,
-                                            ;; and we pick FK, so that we get nice tables and dashboard filters.
-                                            ;;
-                                            ;; In the case where we don't have a semantic PK, an idea is to fall back
-                                            ;; to using the database PK (but first we'll need to track which columns
-                                            ;; those are).
-                                            (if (empty? row-key)
-                                              (let [pk-fields (table-id->pk-fields table-id)]
-                                                (-> input
-                                                    (assoc :row-key (select-keys row (map :name pk-fields)))
-                                                    ;; make sure the row doesn't include pk that's auto incremented
-                                                    (update :row (fn [row] (apply dissoc row (map :name (filter :database_is_auto_increment pk-fields)))))))
-                                              input)))})]
-    (when (seq errors)
-      (throw (ex-info (tru "Error(s) creating or updating rows.")
-                      {:status-code 400
-                       :errors      errors
-                       :results     results})))
-    {:context (record-mutations context results)
-     :outputs (mapv (fn [{:keys [table-id after op]}]
-                      {:table-id table-id
-                       :op       op
-                       :row      after})
-                    results)}))
-
-(methodical/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create-or-update]
-  [action context inputs]
-  (table-row-create-or-update! action context inputs))
