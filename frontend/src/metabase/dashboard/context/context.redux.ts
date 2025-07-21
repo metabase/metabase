@@ -171,6 +171,8 @@ export const mapDispatchToProps = {
   undoDeleteTab,
 };
 
-export const connector = connect(mapStateToProps, mapDispatchToProps);
+export const connector = connect(mapStateToProps, mapDispatchToProps, null, {
+  forwardRef: true,
+});
 
 export type ReduxProps = ConnectedProps<typeof connector>;
