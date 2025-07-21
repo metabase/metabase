@@ -1,16 +1,16 @@
+import { skipToken } from "@reduxjs/toolkit/query";
 import { Node } from "@tiptap/core";
-import { EditorContent, useEditor } from "@tiptap/react";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { skipToken } from "@reduxjs/toolkit/query";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
-import Questions from "metabase/entities/questions";
 import SavedQuestionLoader from "metabase/common/components/SavedQuestionLoader";
+import Questions from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook/Notebook";
@@ -19,26 +19,26 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { Box, Button, Flex, Group, Modal, Paper, Stack, Text, TextInput, useMantineTheme } from "metabase/ui";
 import { Icon, ThemeProvider } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal/VisualizerModal";
 import type Question from "metabase-lib/v1/Question";
+import type { VisualizerVizDefinition } from "metabase-types/api";
 
-import { updateEntities, runReport } from "../../store/reportSlice";
+import { runReport, runReportEntity, updateEntities } from "../../store/reportSlice";
 import {
-  getReportEntityData,
-  getReportEntityLoading,
-  getReportEntityError,
   getIsReportRunning,
   getReportCanRun,
+  getReportEntityData,
+  getReportEntityError,
+  getReportEntityLoading,
   getReportLastRunAt,
+  getReportResultsWithStatus,
   getReportRunError,
-  getReportResultsWithStatus
 } from "../../store/selectors";
 
-import { MentionSuggestions } from "./MentionSuggestions";
 import { EntityResultModal } from "./EntityResultModal";
+import { MentionSuggestions } from "./MentionSuggestions";
 import {
   EditorContainer,
-  EditorToolbar,
-  ToolbarButton,
   StyledEditorContent,
 } from "./ReportEditor.styled";
 
@@ -122,18 +122,18 @@ const QueryBuilderModal = ({ entity, isOpen, onClose, onVisualize }: {
 };
 
 // Wrapper component that provides Mantine theme and Redux context
-const VisualizationNodeWithProviders = ({ node, store, onOpenQueryBuilder }: { node: any; store: any; onOpenQueryBuilder?: (entityAttrs: any) => void }) => {
+const VisualizationNodeWithProviders = ({ node, store, onOpenQueryBuilder, onOpenVisualizer }: { node: any; store: any; onOpenQueryBuilder?: (entityAttrs: any) => void; onOpenVisualizer?: (entityAttrs: any) => void }) => {
   return (
     <MetabaseReduxProvider store={store}>
       <ThemeProvider>
-        <VisualizationNode node={node} onOpenQueryBuilder={onOpenQueryBuilder} />
+        <VisualizationNode node={node} onOpenQueryBuilder={onOpenQueryBuilder} onOpenVisualizer={onOpenVisualizer} />
       </ThemeProvider>
     </MetabaseReduxProvider>
   );
 };
 
 // React component for the visualization node
-const VisualizationNode = ({ node, onOpenQueryBuilder }: { node: any; onOpenQueryBuilder?: (entityAttrs: any) => void }) => {
+const VisualizationNode = ({ node, onOpenQueryBuilder, onOpenVisualizer }: { node: any; onOpenQueryBuilder?: (entityAttrs: any) => void; onOpenVisualizer?: (entityAttrs: any) => void }) => {
   console.log('VisualizationNode component rendering with node:', node);
 
   const entityId = node.attrs.id;
@@ -259,17 +259,30 @@ const VisualizationNode = ({ node, onOpenQueryBuilder }: { node: any; onOpenQuer
             </a>
           </Text>
           {node.attrs.model === 'card' && (
-            <Button
-              size="xs"
-              variant="subtle"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenQueryBuilder?.(node.attrs);
-              }}
-            >
-              <Icon name="pencil" size={12} style={{ marginRight: '4px' }} />
-              Edit Query
-            </Button>
+            <Group gap="xs">
+              <Button
+                size="xs"
+                variant="subtle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenQueryBuilder?.(node.attrs);
+                }}
+              >
+                <Icon name="pencil" size={12} style={{ marginRight: '4px' }} />
+                Edit Query
+              </Button>
+              <Button
+                size="xs"
+                variant="subtle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenVisualizer?.(node.attrs);
+                }}
+              >
+                <Icon name="lineandbar" size={12} style={{ marginRight: '4px' }} />
+                Edit Visualization
+              </Button>
+            </Group>
           )}
         </Group>
         <Box style={{ height: "400px", width: "100%" }}>
@@ -415,6 +428,10 @@ const createMetabaseVisualizationExtension = (store: any) => {
               onOpenQueryBuilder: () => {
                 // Access the handler from the global scope
                 (window as any).reportEditorHandlers?.openQueryBuilder?.(node.attrs);
+              },
+              onOpenVisualizer: () => {
+                // Access the handler from the global scope
+                (window as any).reportEditorHandlers?.openVisualizer?.(node.attrs);
               }
             }));
             console.log("React component rendered successfully");
@@ -454,6 +471,10 @@ const createMetabaseVisualizationExtension = (store: any) => {
               onOpenQueryBuilder: () => {
                 // Access the handler from the global scope or store
                 (window as any).reportEditorHandlers?.openQueryBuilder?.(updatedNode.attrs);
+              },
+              onOpenVisualizer: () => {
+                // Access the handler from the global scope or store
+                (window as any).reportEditorHandlers?.openVisualizer?.(updatedNode.attrs);
               }
             }));
           } catch (error) {
@@ -488,6 +509,8 @@ const ReportEditor = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [queryBuilderEntity, setQueryBuilderEntity] = useState<any>(null);
   const [isQueryBuilderOpen, setIsQueryBuilderOpen] = useState(false);
+  const [visualizerEntity, setVisualizerEntity] = useState<any>(null);
+  const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
 
   // Redux state and dispatch
   const dispatch = useDispatch();
@@ -696,6 +719,16 @@ const ReportEditor = () => {
     setQueryBuilderEntity(null);
   }, []);
 
+  const handleOpenVisualizer = useCallback((entityAttrs: any) => {
+    setVisualizerEntity(entityAttrs);
+    setIsVisualizerOpen(true);
+  }, []);
+
+  const handleCloseVisualizer = useCallback(() => {
+    setIsVisualizerOpen(false);
+    setVisualizerEntity(null);
+  }, []);
+
     const handleQueryBuilderVisualize = useCallback(async (newQuestion: Question) => {
     // This will be called when user hits "Visualize" in the Query Builder
     // Save the new question and replace it in the document
@@ -773,16 +806,67 @@ const ReportEditor = () => {
     }
   }, [handleCloseQueryBuilder, editor, dispatch, queryBuilderEntity, resultsWithStatus]);
 
+  const handleVisualizerSave = useCallback(async (visualization: VisualizerVizDefinition) => {
+    // This will be called when user hits "Save" in the Visualizer Modal
+    // Update the card's visualization settings
+    try {
+      if (!visualizerEntity || !editor) return;
+
+      // Get the current card from the API
+      const cardResponse = await fetch(`/api/card/${visualizerEntity.id}`);
+      if (!cardResponse.ok) {
+        throw new Error(`Failed to fetch card: ${cardResponse.statusText}`);
+      }
+
+      const card = await cardResponse.json();
+
+      // Update the card with new visualization settings
+      const updatedCard = {
+        ...card,
+        display: visualization.display,
+        visualization_settings: {
+          ...card.visualization_settings,
+          ...visualization.settings,
+        }
+      };
+
+      // Save the updated card
+      const updateResponse = await fetch(`/api/card/${visualizerEntity.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedCard),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error(`Failed to update card: ${updateResponse.statusText}`);
+      }
+
+            // Update the visualization display immediately by triggering a re-run of this specific entity
+      const entity = resultsWithStatus.find(r => r.entity.id == visualizerEntity.id)?.entity;
+      if (entity) {
+        dispatch(runReportEntity(entity));
+      }
+
+      handleCloseVisualizer();
+    } catch (error) {
+      console.error('Error saving visualization:', error);
+      // TODO: Show user-friendly error message
+    }
+  }, [handleCloseVisualizer, editor, dispatch, visualizerEntity, resultsWithStatus]);
+
   // Set up global handlers for the TipTap node views
   useEffect(() => {
     (window as any).reportEditorHandlers = {
       openQueryBuilder: handleOpenQueryBuilder,
+      openVisualizer: handleOpenVisualizer,
     };
 
     return () => {
       delete (window as any).reportEditorHandlers;
     };
-  }, [handleOpenQueryBuilder]);
+  }, [handleOpenQueryBuilder, handleOpenVisualizer]);
 
   // Resize handling
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1065,6 +1149,17 @@ const ReportEditor = () => {
           isOpen={isQueryBuilderOpen}
           onClose={handleCloseQueryBuilder}
           onVisualize={handleQueryBuilderVisualize}
+        />
+      )}
+
+      {/* Visualizer modal */}
+      {visualizerEntity && (
+        <VisualizerModal
+          initialState={{ cardId: parseInt(visualizerEntity.id) }}
+          onSave={handleVisualizerSave}
+          onClose={handleCloseVisualizer}
+          saveLabel={t`Save`}
+          allowSaveWhenPristine
         />
       )}
     </Box>
