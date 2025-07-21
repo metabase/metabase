@@ -32,7 +32,7 @@ export const EditorToolbar = ({ editor }: EditorToolbarProps) => {
     editor.chain().focus().setHorizontalRule().run();
 
   return (
-    <Paper p="sm" shadow="sm" className={styles.toolbar}>
+    <Paper p="sm" className={styles.toolbar}>
       <Stack spacing="xs">
         <Group spacing="xs">
           <Group spacing="xs">

@@ -1,22 +1,58 @@
-.editorWrapper {
-  height: 100vh;
+.reportPage {
   display: flex;
-  flex-direction: column;
-  background-color: #f5f5f5;
+  height: calc(100vh - var(--nav-sidebar-height, 60px));
+  background-color: var(--mb-color-bg-white);
+  position: relative;
 }
 
-.editorContainer {
+.mainContent {
   flex: 1;
   display: flex;
   justify-content: center;
   overflow-y: auto;
-  padding: 2rem 0;
+  padding-right: 300px; /* Make room for sidebar */
 }
 
-.editorPaper {
+.documentContainer {
   width: 100%;
-  max-width: 816px;
-  min-height: 1056px;
-  margin: 0 auto;
-  box-shadow: 0 0 0 1px #dadce0;
+  max-width: 900px;
+  padding: 4rem 0;
+  min-height: 100%;
+}
+
+.sidebar {
+  position: fixed;
+  right: 0;
+  top: var(--nav-sidebar-height, 60px);
+  width: 300px;
+  height: calc(100vh - var(--nav-sidebar-height, 60px));
+  background-color: var(--mb-color-bg-light);
+  border-left: 1px solid var(--mb-color-border);
+  overflow-y: auto;
+}
+
+.questionRef {
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.questionRef:hover {
+  background-color: var(--mb-color-bg-medium);
+}
+
+.highlighted {
+  animation: highlight 2s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: var(--mb-color-brand-light);
+    box-shadow: 0 0 0 4px var(--mb-color-brand-light);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
 }

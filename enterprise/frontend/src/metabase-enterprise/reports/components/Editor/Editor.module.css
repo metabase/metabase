@@ -6,11 +6,12 @@
 
 .editorContent {
   flex: 1;
-  overflow-y: auto;
+  cursor: text;
+  position: relative;
 }
 
 .editorContent :global(.ProseMirror) {
-  padding: 4rem;
+  padding: 0 6rem 4rem 6rem;
   min-height: 100%;
   outline: none;
 }

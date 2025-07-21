@@ -1,0 +1,34 @@
+.embedContainer {
+  margin: 1rem 0;
+}
+
+.embedWrapper {
+  display: block;
+  width: 100%;
+}
+
+.questionEmbed {
+  border: 2px solid var(--mb-color-border);
+  margin: 1rem 0;
+}
+
+.questionHeader {
+  padding: 0.5rem 1rem;
+}
+
+.questionResults {
+  height: 400px;
+  position: relative;
+}
+
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.errorContainer {
+  padding: 1rem;
+  color: var(--mb-color-error);
+}
