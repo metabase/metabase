@@ -36,6 +36,7 @@ jobs:
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
+    if: ${{ !contains(github.event.pull_request.title, '[ci skip]') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
