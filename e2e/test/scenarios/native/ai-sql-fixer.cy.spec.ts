@@ -8,7 +8,7 @@ describe.skip("scenarios > native > ai sql fixer", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/ee/ai-sql-fixer/fix").as("fixSql");
   });
 

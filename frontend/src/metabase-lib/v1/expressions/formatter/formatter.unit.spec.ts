@@ -28,6 +28,7 @@ function setup(
     if (!Array.isArray(expressions)) {
       return assertFormatted([expressions]);
     }
+
     for (const source of expressions) {
       const options = {
         query,
@@ -38,6 +39,7 @@ function setup(
       const res = compileExpression({
         ...options,
         source,
+        availableColumns: Lib.expressionableColumns(query, stageIndex),
       });
 
       if (res.error) {
@@ -639,6 +641,24 @@ describe("if printWidth = Infinity, it should return the same results as the sin
   it("should format metrics", async () => {
     await all({
       "[Foo Metric]": metrics.FOO,
+    });
+  });
+
+  it("should format the mode options for datetime functions", async () => {
+    await all({
+      'datetime(55, "unixSeconds")': opt(
+        "datetime",
+        { mode: "unix-seconds" },
+        55,
+      ),
+    });
+
+    await all({
+      'datetime("2025-03-20", "iso")': opt(
+        "datetime",
+        { mode: "iso" },
+        "2025-03-20",
+      ),
     });
   });
 

@@ -35,7 +35,7 @@ describe("scenarios > admin > localization > content translation", () => {
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("bleeding-edge");
       H.snapshot("snapshot-for-upload-and-download");
     });
 
@@ -68,6 +68,7 @@ describe("scenarios > admin > localization > content translation", () => {
     describe("The translation upload form", () => {
       it("accepts a CSV upload with ASCII characters", () => {
         uploadTranslationDictionary(germanFieldNames);
+        cy.findByRole("status").findByText("Dictionary uploaded");
         cy.findByTestId("content-localization-setting").findByText(
           "Dictionary uploaded",
         );
@@ -128,24 +129,24 @@ describe("scenarios > admin > localization > content translation", () => {
         uploadTranslationDictionary(stringTranslatedTwice);
         cy.findAllByRole("alert")
           .contains(/couldn.*t upload the file/)
-          .should("be.visible");
+          .should("exist");
         cy.findAllByRole("alert")
           .contains(
             new RegExp(
               `Row ${stringTranslatedTwice.length + 1}.*earlier in the file`,
             ),
           )
-          .should("be.visible");
+          .should("exist");
       });
 
       it("rejects a CSV upload with invalid locale in one row", () => {
         uploadTranslationDictionary(invalidLocaleXX);
         cy.findAllByRole("alert")
           .contains(/couldn.*t upload the file/)
-          .should("be.visible");
+          .should("exist");
         cy.findAllByRole("alert")
           .contains(/Row 2: Invalid locale: xx/)
-          .should("be.visible");
+          .should("exist");
       });
 
       it(
@@ -176,15 +177,14 @@ describe("scenarios > admin > localization > content translation", () => {
         uploadTranslationDictionary(multipleInvalidLocales);
         cy.findAllByRole("alert")
           .contains(/couldn.*t upload the file/)
-          .should("be.visible");
+          .should("exist");
         cy.log("The first error is in row 2 (the first row is the header)");
         cy.findAllByRole("alert")
           .contains(/Row 2: Invalid locale/)
-          .should("be.visible");
+          .should("exist");
         cy.findAllByRole("alert")
           .contains(/Row 5: Invalid locale/)
-          .scrollIntoView()
-          .should("be.visible");
+          .should("exist");
       });
 
       it("rejects, in the frontend, a CSV upload that is too big", () => {
@@ -199,9 +199,14 @@ describe("scenarios > admin > localization > content translation", () => {
           },
           { force: true }, // We need this because the input has display: none
         );
+
+        cy.findByRole("dialog", { name: /upload new dictionary/i })
+          .button("Replace existing dictionary")
+          .click();
+
         cy.findAllByRole("alert")
           .contains(/The file is larger than 1.5 MB/)
-          .should("be.visible");
+          .should("exist");
         cy.log(
           "The frontend should prevent the upload attempt; the endpoint should not be called",
         );
@@ -221,10 +226,15 @@ describe("scenarios > admin > localization > content translation", () => {
           },
           { force: true },
         );
+
+        cy.findByRole("dialog", { name: /upload new dictionary/i })
+          .button("Replace existing dictionary")
+          .click();
         cy.findAllByRole("alert")
           .contains(/CSV error/)
-          .should("be.visible");
+          .should("exist");
         cy.wait("@uploadDictionary");
+        cy.findByRole("status").findByText("Could not upload dictionary");
       });
     });
   });

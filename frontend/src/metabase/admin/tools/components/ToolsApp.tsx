@@ -4,7 +4,7 @@ import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
-} from "metabase/admin/settings/components/AdminNav";
+} from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";

@@ -40,6 +40,8 @@ interface DashCardCardParameterMapperContentProps {
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   layoutHeight: number;
+  editingParameterInlineDashcard?: DashboardCard;
+  compact?: boolean;
 }
 
 export const DashCardCardParameterMapperContent = ({
@@ -56,6 +58,8 @@ export const DashCardCardParameterMapperContent = ({
   card,
   target,
   shouldShowAutoConnectHint,
+  editingParameterInlineDashcard,
+  compact,
 }: DashCardCardParameterMapperContentProps) => {
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
@@ -63,6 +67,14 @@ export const DashCardCardParameterMapperContent = ({
     editingParameter != null && isTemporalUnitParameter(editingParameter);
 
   const dispatch = useDispatch();
+
+  const isInlineParameterFromAnotherTab = useMemo(() => {
+    return (
+      editingParameterInlineDashcard != null &&
+      editingParameterInlineDashcard.dashboard_tab_id !==
+        dashcard.dashboard_tab_id
+    );
+  }, [editingParameterInlineDashcard, dashcard.dashboard_tab_id]);
 
   const headerContent = useMemo(() => {
     if (layoutHeight <= 2) {
@@ -99,7 +111,7 @@ export const DashCardCardParameterMapperContent = ({
   const mappingInfoText =
     (virtualCardType &&
       {
-        heading: t`You can connect widgets to {{variables}} in heading cards.`,
+        heading: "",
         text: t`You can connect widgets to {{variables}} in text cards.`,
         link: t`You can connect widgets to {{variables}} in link cards.`,
         iframe: t`You can connect widgets to {{variables}} in iframe cards.`,
@@ -135,6 +147,15 @@ export const DashCardCardParameterMapperContent = ({
     );
   }
 
+  if (isInlineParameterFromAnotherTab) {
+    return (
+      <Flex className={S.TextCardDefault} ta="center">
+        <Icon name="info" size={12} className={CS.pr1} />
+        {t`The selected filter is on another tab.`}
+      </Flex>
+    );
+  }
+
   const shouldShowAutoConnectIcon =
     shouldShowAutoConnectHint && layoutHeight <= 3 && dashcard.size_x > 4;
 
@@ -147,6 +168,7 @@ export const DashCardCardParameterMapperContent = ({
       )}
       <Flex align="center" justify="center" gap="xs" pos="relative">
         <DashCardCardParameterMapperButton
+          key={editingParameter?.id}
           handleChangeTarget={handleChangeTarget}
           isVirtual={isVirtual}
           isQuestion={isQuestion}
@@ -156,6 +178,7 @@ export const DashCardCardParameterMapperContent = ({
           card={card}
           target={target}
           mappingOptions={mappingOptions}
+          compact={compact}
         />
         {shouldShowAutoConnectIcon && <AutoConnectedAnimatedIcon />}
       </Flex>

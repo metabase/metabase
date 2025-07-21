@@ -477,13 +477,15 @@
         ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension
         ;; definitions.
         (let [source-query (mt/mbql-query orders
-                             {:joins        [{:fields       [&u.people.state
+                             {:joins        [{:alias        "u"
+                                              :fields       [&u.people.state
                                                              &u.people.source
                                                              &u.people.longitude
                                                              &u.people.latitude]
                                               :source-table $$people
                                               :condition    [:= $orders.user_id &u.people.id]}
-                                             {:fields       [&p.products.category
+                                             {:alias        "p"
+                                              :fields       [&p.products.category
                                                              &p.products.price]
                                               :source-table $$products
                                               :condition    [:= $orders.product_id &p.products.id]}]

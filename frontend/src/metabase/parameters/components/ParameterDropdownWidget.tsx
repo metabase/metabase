@@ -175,9 +175,10 @@ export const ParameterDropdownWidget = ({
   );
 };
 
-function isTextWidget(parameter: UiParameter) {
+export function isTextWidget(parameter: UiParameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
+  const isMultiSelect = getIsMultiSelect(parameter);
+  return parameter.hasVariableTemplateTagTarget && !canQuery && !isMultiSelect;
 }
 
 function isFieldWidget(

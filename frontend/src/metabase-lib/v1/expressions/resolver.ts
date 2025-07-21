@@ -18,14 +18,14 @@ type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
 export function resolver(options: Options): Resolver {
-  const { query, stageIndex, expressionMode } = options;
+  const { query, stageIndex, expressionMode, availableColumns } = options;
 
   const metrics = _.memoize(() => Lib.availableMetrics(query, stageIndex));
   const segments = _.memoize(() => Lib.availableSegments(query, stageIndex));
-  const columns = _.memoize(() => Lib.expressionableColumns(query, stageIndex));
   const cache = infoCache(options);
 
   return function (type, name, node) {
@@ -33,9 +33,9 @@ export function resolver(options: Options): Resolver {
 
     if (type === "aggregation") {
       // Return metrics
-      const dimension = findByName([...metrics(), ...columns()]);
+      const dimension = findByName([...metrics(), ...availableColumns]);
       if (!dimension) {
-        throw new CompileError(t`Unknown Metric: ${name}`, node);
+        throw new CompileError(t`Unknown Aggregation or Metric: ${name}`, node);
       } else if (!Lib.isMetricMetadata(dimension)) {
         // If no metric was found, but there is a matching column,
         // show a more sophisticated error message
@@ -54,7 +54,7 @@ export function resolver(options: Options): Resolver {
       // Return segments and boolean columns
       const dimension = findByName([
         ...segments(),
-        ...columns().filter(Lib.isBoolean),
+        ...availableColumns.filter(Lib.isBoolean),
       ]);
       if (!dimension) {
         throw new CompileError(
@@ -67,12 +67,15 @@ export function resolver(options: Options): Resolver {
 
     // Return columns and, in the case of aggregation expressions, metrics
     const dimension = findByName([
-      ...columns(),
+      ...availableColumns,
       ...(expressionMode === "aggregation" ? metrics() : []),
     ]);
     if (!dimension) {
       if (expressionMode === "aggregation") {
-        throw new CompileError(t`Unknown column or Metric: ${name}`, node);
+        throw new CompileError(
+          t`Unknown column, Aggregation or Metric: ${name}`,
+          node,
+        );
       }
       throw new CompileError(t`Unknown column: ${name}`, node);
     }

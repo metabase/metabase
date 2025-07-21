@@ -161,7 +161,7 @@ describe("binning related reproductions", () => {
     });
 
     H.getNotebookStep("summarize").findByText(
-      "18646 - Product → Created At: Month",
+      "18646 - Product → CREATED_AT: Month",
     );
 
     H.visualize();

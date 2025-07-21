@@ -7,7 +7,7 @@ import {
   useListDatabasesQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import ActionButton from "metabase/common/components/ActionButton";
 import Alert from "metabase/common/components/Alert";
 import Link from "metabase/common/components/Link";
@@ -40,15 +40,6 @@ const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
-
-const getErrorMessage = (
-  payload: { data?: string; message?: string; error?: string } | string,
-) => {
-  if (typeof payload === "string") {
-    return payload;
-  }
-  return String(payload?.message || payload?.error || t`Something went wrong`);
-};
 
 export function UploadSettingsFormView({
   databases,
@@ -291,14 +282,18 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
   <Stack my="md" maw={620}>
     <Alert icon="warning" variant="warning">
       <Text>
-        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database.`}
+        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
       </Text>
       {isHosted && (
         <Tooltip
           label={
             <>
-              <Text mb="md">{t`By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act).`}</Text>
-              <Text>{t`Additionally, you acknowledge and agree that the ability to upload to the Sample Database is provided “as is” and without warranty of any kind, and Metabase disclaims all warranties, express or implied, and all liability in connection with the uploads to the Sample Database or the data stored within it.`}</Text>
+              <Text mb="md" c="inherit">
+                {t`By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act).`}
+              </Text>
+              <Text c="inherit">
+                {t`Additionally, you acknowledge and agree that the ability to upload to the Sample Database is provided “as is” and without warranty of any kind, and Metabase disclaims all warranties, express or implied, and all liability in connection with the uploads to the Sample Database or the data stored within it.`}
+              </Text>
             </>
           }
           position="bottom"

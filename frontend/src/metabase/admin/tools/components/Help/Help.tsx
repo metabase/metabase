@@ -7,7 +7,7 @@ import _ from "underscore";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
 import Code from "metabase/common/components/Code";
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -121,7 +121,7 @@ export const Help = () => {
         />
       </Group>
 
-      <UpsellBetterSupport source="settings-troubleshooting" />
+      <UpsellBetterSupport location="settings-troubleshooting" />
 
       <SettingsSection
         title={t`Diagnostic info`}

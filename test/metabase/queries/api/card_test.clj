@@ -23,6 +23,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -969,13 +970,12 @@
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (=? [{:base_type         :type/Integer
-                        :display_name      "Count"
-                        :name              "count"
-                        :semantic_type     :type/Quantity
-                        :source            :aggregation
-                        :field_ref         [:aggregation 0]
-                        :aggregation_index 0}]
+              (is (=? [{:base_type     :type/Integer
+                        :display_name  "Count"
+                        :name          "count"
+                        :semantic_type :type/Quantity
+                        :source        :aggregation
+                        :field_ref     [:aggregation 0]}]
                       (t2/select-one-fn :result_metadata :model/Card :name card-name))))))))))
 
 (defn- updating-card-updates-metadata-query []
@@ -1197,13 +1197,10 @@
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
                                                       {:fields [$id $subtotal $created_at]})}]
       (let [base-metadata [{:id    (mt/id :orders :id)
-                            :ident (mt/ident :orders :id)
                             :name  "ID"}
                            {:id    (mt/id :orders :subtotal)
-                            :ident (mt/ident :orders :subtotal)
                             :name  "SUBTOTAL"}
                            {:id    (mt/id :orders :created_at)
-                            :ident (mt/ident :orders :created_at)
                             :name  "CREATED_AT"}]]
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1211,7 +1208,7 @@
             "initial result_metadata is inferred correctly")
 
         (is (=? {:type            "model"
-                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                 :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1223,13 +1220,10 @@
                                      {:dataset_query
                                       (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
       (let [base-metadata [{:name      "ID"
-                            :ident     (lib/native-ident "ID" (:entity_id card))
                             :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
                            {:name      "SUBTOTAL"
-                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
                             :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
                            {:name      "CREATED_AT"
-                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
                             :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1237,7 +1231,7 @@
             "initial result_metadata is inferred correctly")
 
         (is (=? {:type            "model"
-                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                 :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1249,13 +1243,10 @@
                                      {:dataset_query
                                       (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
       (let [base-metadata [{:name      "ID"
-                            :ident     (lib/native-ident "ID" (:entity_id card))
                             :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
                            {:name      "SUBTOTAL"
-                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
                             :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
                            {:name      "CREATED_AT"
-                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
                             :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1263,7 +1254,7 @@
             "initial result_metadata is inferred correctly")
 
         (is (=? {:type            "model"
-                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                 :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                       (assoc card :type "model"))))
         (is (=? {:type            "question"
@@ -1367,6 +1358,37 @@
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
                           (map clean)))))))))))
+
+(deftest fetch-card-entity-id-test
+  (testing "GET /api/card/:id with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to fetch a Card using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (=? {:name (:name card)}
+                  (mt/user-http-request :rasta :get 200 (str "card/" (:entity_id card))))))))))
+
+(deftest card-query-metadata-entity-id-test
+  (testing "GET /api/card/:id/query_metadata with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to get query metadata using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (map? (mt/user-http-request :rasta :get 200 (str "card/" (:entity_id card) "/query_metadata")))))))))
+
+(deftest run-query-entity-id-test
+  (testing "POST /api/card/:card-id/query with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to run query using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (map? (mt/user-http-request :rasta :post 202 (str "card/" (:entity_id card) "/query")))))))))
 
 (deftest ^:parallel fetch-card-404-test
   (testing "GET /api/card/:id"
@@ -2827,7 +2849,7 @@
               (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
               (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
 
-(deftest ^:parallel dataset-card
+(deftest ^:parallel model-card-test
   (testing "Setting a question to a dataset makes it viz type table"
     (mt/with-temp [:model/Card card {:display       :bar
                                      :dataset_query (mbql-count-query)}]
@@ -2835,7 +2857,18 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                     (assoc card :type :model :type "model")))))))
 
-(deftest dataset-card-2
+;;; See also:
+;;;
+;;; - [[metabase.lib.field.resolution-test/preserve-model-metadata-test]]
+;;;
+;;; - [[metabase.lib.card-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.lib.metadata.result-metadata-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.query-processor.preprocess-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.query-processor.card-test/preserve-model-metadata-test]]
+(deftest model-card-test-2
   (testing "Cards preserve their edited metadata"
     (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
             (only-user-edits [col] (select-keys col [:name :description :display_name :semantic_type]))
@@ -2853,55 +2886,60 @@
                                              refine-type
                                              :base_type)
                                             cols)))]
-      (mt/with-temp [:model/Card mbql-ds {:dataset_query
-                                          {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table (mt/id :venues)}}
-                                          :type :model}
-                     :model/Card mbql-nested {:dataset_query
+      (mt/with-temp [:model/Card mbql-model {:name "mbql-model" ; names are for debugging purposes
+                                             :dataset_query
+                                             {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :venues)}}
+                                             :type :model}
+                     :model/Card mbql-nested {:name "mbql-nested"
+                                              :dataset_query
                                               {:database (mt/id)
                                                :type     :query
                                                :query    {:source-table
-                                                          (str "card__" (u/the-id mbql-ds))}}}
-                     :model/Card native-ds {:type :model
-                                            :dataset_query
-                                            {:database (mt/id)
-                                             :type :native
-                                             :native
-                                             {:query
-                                              "select * from venues"
-                                              :template-tags {}}}}
-                     :model/Card native-nested {:dataset_query
+                                                          (str "card__" (u/the-id mbql-model))}}}
+                     :model/Card native-model {:name "native-model"
+                                               :type :model
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type :native
+                                                :native
+                                                {:query
+                                                 "select * from venues"
+                                                 :template-tags {}}}}
+                     :model/Card native-nested {:name "native-nested"
+                                                :dataset_query
                                                 {:database (mt/id)
                                                  :type :query
                                                  :query {:source-table
-                                                         (str "card__" (u/the-id native-ds))}}}]
-        (doseq [[_query-type card-id nested-id] [[:mbql
-                                                  (u/the-id mbql-ds) (u/the-id mbql-nested)]
-                                                 [:native
-                                                  (u/the-id native-ds) (u/the-id native-nested)]]]
-          (query! card-id) ;; populate metadata
-          (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
-                ;; simulate updating metadat with user changed stuff
-                user-edited (add-preserved metadata)]
-            (t2/update! :model/Card card-id {:result_metadata user-edited})
-            (testing "Saved metadata preserves user edits"
-              (is (= (map only-user-edits user-edited)
-                     (map only-user-edits (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
-            (testing "API response includes user edits"
-              (is (= (map only-user-edits user-edited)
-                     (->> (query! card-id)
-                          :data :results_metadata :columns
-                          (map only-user-edits)
-                          (map #(update % :semantic_type keyword))))))
-            (testing "Nested queries have metadata"
-              (is (= (map only-user-edits user-edited)
-                     (->> (query! nested-id)
-                          :data :results_metadata :columns
-                          (map only-user-edits)
-                          (map #(update % :semantic_type keyword))))))))))))
+                                                         (str "card__" (u/the-id native-model))}}}]
+        (doseq [[query-type card-id nested-id] [[:mbql
+                                                 (u/the-id mbql-model) (u/the-id mbql-nested)]
+                                                [:native
+                                                 (u/the-id native-model) (u/the-id native-nested)]]]
+          (testing query-type
+            (query! card-id)            ; populate metadata by running the query.
+            (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
+                  ;; simulate updating metadat with user changed stuff
+                  user-edited (add-preserved metadata)]
+              (t2/update! :model/Card card-id {:result_metadata user-edited})
+              (testing "Saved metadata preserves user edits"
+                (is (= (map only-user-edits user-edited)
+                       (map only-user-edits (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
+              (testing "API response includes user edits"
+                (is (= (map only-user-edits user-edited)
+                       (->> (query! card-id)
+                            :data :results_metadata :columns
+                            (map only-user-edits)
+                            (map #(update % :semantic_type keyword))))))
+              (testing "Nested queries have metadata"
+                (is (= (map only-user-edits user-edited)
+                       (->> (query! nested-id)
+                            :data :results_metadata :columns
+                            (map only-user-edits)
+                            (map #(update % :semantic_type keyword)))))))))))))
 
-(deftest dataset-card-3
+(deftest model-card-test-3
   (testing "Cards preserve edits to metadata when query changes"
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
@@ -2953,7 +2991,7 @@
                             :result_metadata
                             (map :description))))))))))))
 
-(deftest dataset-card-4
+(deftest model-card-test-4
   (testing "Cards preserve edits to `visibility_type` (#22520)"
     (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query venues
                                                        {:fields [$id $name]
@@ -2996,7 +3034,7 @@
    (mt/with-temp
      [:model/Card source-card {:database_id   (mt/id)
                                :table_id      (mt/id :venues)
-                               :dataset_query (mt/mbql-query venues {:limit 5})}
+                               :dataset_query (mt/mbql-query venues {})}
       :model/Card field-filter-card {:dataset_query
                                      {:database (mt/id)
                                       :type     :native
@@ -3086,17 +3124,18 @@
 
 (deftest parameters-with-source-is-card-test
   (testing "getting values"
-    (with-card-param-values-fixtures [{:keys [card param-keys]}]
-      (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                   ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                 :has_more_values false}
-                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
+    (binding [custom-values/*max-rows* 5]
+      (with-card-param-values-fixtures [{:keys [card param-keys]}]
+        (testing "GET /api/card/:card-id/params/:param-key/values"
+          (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                     ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                   :has_more_values true}
+                  (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
-      (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          [["Fred 62"] ["Red Medicine"]]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red"))))))))
+        (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+          (is (= {:values          [["Fred 62"] ["Red Medicine"]]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))))
 
 (deftest parameters-with-source-is-card-test-2
   (testing "fallback to field-values"
@@ -3296,8 +3335,11 @@
           (with-cards-in-readable-collection! [model card]
             (is (=?
                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
-                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
+                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
 
+(deftest pivot-from-model-test-2
+  (testing "Pivot options should match fields through models (#35319)"
+    (mt/dataset test-data
       (testing "visualization_settings references field by name"
         (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
                                           :type :model}
@@ -4237,6 +4279,25 @@
                     (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
                                            :type card-type-c})))))))))))
+
+(deftest cannot-make-query-cycles-with-native-queries-test
+  (testing "Cannot make query cycles that include native queries"
+    (let [mp (mt/metadata-provider)
+          query-a (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :question}]
+        (let [query-b (mt/native-query {:query "select * from {{#100-base-query}}"
+                                        :template-tags
+                                        {:#100-base-query
+                                         {:type :card
+                                          :name "#100-base-query"
+                                          :id (random-uuid)
+                                          :card-id id-a
+                                          :display-name "#100 Base Query"}}})]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query query-b :type :question}]
+            (let [query-cycle (lib/query mp (lib.metadata/card mp id-b))]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                    {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                     :type :question}))))))))
 
 (deftest e2e-card-update-invalidates-cache-test
   (testing "Card update invalidates card's cache (#55955)"

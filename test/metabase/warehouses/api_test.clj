@@ -11,7 +11,6 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -37,6 +36,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.api :as api.database]
    [ring.util.codec :as codec]
@@ -409,6 +409,8 @@
 (deftest create-db-succesful-track-snowplow-test
   ;; h2 is no longer supported as a db source
   ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
+  ;;
+  ;; TODO (Cam 6/20/25) -- we should NOT be hardcoding driver names in tests
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
                          :h2 :bigquery-cloud-sdk :snowflake)
     (snowplow-test/with-fake-snowplow-collector
@@ -595,7 +597,7 @@
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
       (let [;; 1. create a database and sync
-            database-name      (name (gensym))
+            database-name      (u.random/random-name)
             empty-dbdef        {:database-name database-name}
             _                  (tx/create-db! driver/*driver* empty-dbdef)
             connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
@@ -1128,9 +1130,7 @@
     (mt/with-temp [:model/Card card (card-with-native-query
                                      "Birthday Card"
                                      :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
-                                     :result_metadata [{:name "age_in_bird_years"
-                                                        :ident (lib/native-ident "age_in_bird_years"
-                                                                                 "M6W4CLdyJxiW-DyzDbGl4")}])]
+                                     :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1141,7 +1141,6 @@
                 :fields [{:name                     "age_in_bird_years"
                           :table_id                 (str "card__" (u/the-id card))
                           :id                       ["field" "age_in_bird_years" {:base-type "type/*"}]
-                          :ident                    (lib/native-ident "age_in_bird_years" "M6W4CLdyJxiW-DyzDbGl4")
                           :semantic_type            nil
                           :base_type                nil
                           :default_dimension_option nil
@@ -1635,6 +1634,14 @@
         (testing "Non-admins don't have permission to see syncable schemas"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
+
+(deftest get-syncable-schemas-checks-permissions-correctly
+  (testing "GET /api/database/:id/syncable_schemas"
+    (testing "Non-admins can get syncable schemas on the attached DWH"
+      (mt/with-temp [:model/Database {id :id} {:is_attached_dwh true}]
+        (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+          (is (= ["PUBLIC"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%d/syncable_schemas" id)))))))))
 
 (deftest ^:parallel get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp

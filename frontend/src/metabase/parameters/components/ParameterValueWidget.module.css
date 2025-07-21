@@ -5,12 +5,31 @@
   min-height: 30px;
   min-width: 150px;
   color: var(--mb-color-text-secondary);
-}
 
-.parameter.selected {
-  font-weight: bold;
-  color: var(--mb-color-brand);
-  border-color: var(--mb-color-brand);
+  &.subtle {
+    font-weight: 400;
+    border: 1px solid var(--mb-color-border);
+    padding-left: 12px;
+    padding-right: 12px;
+    border-radius: 4px;
+  }
+
+  &.selected {
+    font-weight: bold;
+    color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
+  }
+
+  .Prefix {
+    color: var(--mb-color-text-secondary);
+    font-weight: 400;
+  }
+
+  &:hover {
+    .Prefix {
+      color: inherit;
+    }
+  }
 }
 
 .parameter input {

@@ -35,7 +35,7 @@ export function updateVizSettingsKeysWithRefs(
 
     for (const key in settings) {
       // If the key exists in columnsToRefs, use the reference as the new key
-      const newKey = columnsToRefs[key] || key;
+      const newKey = getMappedVizSettingValue(key, columnsToRefs);
 
       // Process the value recursively
       const value = settings[key];

@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -23,6 +23,7 @@ describe("diagnostics", () => {
         expressionMode,
         query,
         stageIndex,
+        availableColumns: Lib.expressionableColumns(query, stageIndex),
         metadata,
       });
     }
@@ -281,8 +282,28 @@ describe("diagnostics", () => {
       });
 
       expect(err(`percentile(1, 2)`, "expression", metadata)).toBe(
-        "Unsupported function percentile",
+        "Unsupported function Percentile",
       );
+    });
+
+    it("should correctly pass along the position of the error", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            id: 1,
+            features: ["left-join"],
+          }),
+        ],
+      });
+
+      const error = setup({
+        expression: `10 + percentile(1, 2)`,
+        expressionMode: "expression",
+        metadata,
+      });
+
+      expect(error?.pos).toBe(5);
+      expect(error?.len).toBe(10);
     });
 
     it("should reject comparison operator with non-field operand", () => {
@@ -514,6 +535,7 @@ describe("diagnostics", () => {
         query,
         stageIndex,
         expressionMode: "expression",
+        availableColumns: Lib.expressionableColumns(query, stageIndex),
       });
     }
 

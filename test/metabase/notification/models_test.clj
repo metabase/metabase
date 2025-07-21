@@ -371,6 +371,7 @@
               ["by the minute" "0 0/10 * * * ? *" :cron/builder] ;; every 10 minutes
               ["hourly"        "0 8 * * * ? *"    :cron/builder] ;; every hour
               ["daily"         "0 0 2 * * ? *"    :cron/builder] ;; every day
+              ["custom"        "0 0 0/4 * * ? *"   :cron/raw]     ;; every 4 hours starting at midnight #60427
               ["monthly"       "0 0 8 1 * ? *"    :cron/builder] ;; every first day of the month
               ["custom"        "0 * * * * ? *"    :cron/raw]]]
        (notification.tu/with-card-notification

@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 import { Crypto, CryptoKey } from "@peculiar/webcrypto";
 import { TextDecoder, TextEncoder } from "util";
+import { ReadableStream } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-localstorage-mock";
@@ -46,6 +47,9 @@ globalThis.crypto = new Crypto();
 globalThis.CryptoKey = CryptoKey;
 global.TextEncoder = JSDOMTextEncoder;
 global.TextDecoder = TextDecoder;
+
+// replace node's ReadableStream what one that matches what is in the browser
+global.ReadableStream = ReadableStream;
 
 // https://github.com/jsdom/jsdom/issues/3002
 Range.prototype.getBoundingClientRect = () => ({

@@ -274,6 +274,10 @@
   "::add/source"
   ::add/source)
 
+(def qp.add.alias
+  "::add/alias -- use this to get the escaped alias for a join (instead of `:alias`)."
+  ::add/alias)
+
 (def qp.add.none
   "::add/none"
   ::add/none)

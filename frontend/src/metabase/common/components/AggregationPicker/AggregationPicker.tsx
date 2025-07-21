@@ -1,7 +1,10 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/common/components/AccordionList";
+import {
+  AccordionList,
+  type Section as BaseSection,
+} from "metabase/common/components/AccordionList";
 import Markdown from "metabase/common/components/Markdown";
 import {
   HoverParent,
@@ -16,6 +19,12 @@ import { ExpressionWidgetHeader } from "metabase/query_builder/components/expres
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import {
+  type DefinedClauseName,
+  type MBQLClauseFunctionConfig,
+  clausesForMode,
+  getClauseDefinition,
+} from "metabase-lib/v1/expressions";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
@@ -50,15 +59,14 @@ type MetricListItem = Lib.MetricDisplayInfo & {
   selected: boolean;
 };
 
-type ListItem = OperatorListItem | MetricListItem;
-
-type Section = {
-  name?: string;
-  key: string;
-  items: ListItem[];
-  icon?: string;
-  type?: string;
+type ExpressionClauseListItem = {
+  type: "expression-clause";
+  clause: MBQLClauseFunctionConfig;
+  displayName: string;
 };
+
+type Item = OperatorListItem | MetricListItem | ExpressionClauseListItem;
+type Section = BaseSection<Item>;
 
 export function AggregationPicker({
   className,
@@ -77,12 +85,16 @@ export function AggregationPicker({
     ? Lib.displayInfo(query, stageIndex, clause)
     : undefined;
   const initialOperator = getInitialOperator(query, stageIndex, operators);
+  const [searchText, setSearchText] = useState("");
+  const isSearching = searchText !== "";
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(
     isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
   );
+  const [initialExpressionClause, setInitialExpressionClause] =
+    useState<DefinedClauseName | null>(null);
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
@@ -150,12 +162,22 @@ export function AggregationPicker({
     }
 
     if (allowCustomExpressions && supportsCustomExpressions) {
+      if (isSearching) {
+        sections.push({
+          key: "expression-clauses",
+          name: t`Custom Expressions`,
+          icon: "function" as const,
+          items: clausesForMode("aggregation").map(getExpressionClauseListItem),
+          alwaysSortLast: true,
+        });
+      }
       sections.push({
         key: "custom-expression",
         name: t`Custom Expression`,
         items: [],
         icon: "sum",
         type: "action",
+        alwaysSortLast: true,
       });
     }
 
@@ -167,10 +189,16 @@ export function AggregationPicker({
     clauseIndex,
     operators,
     allowCustomExpressions,
+    isSearching,
   ]);
 
+  const availableColumns = useMemo(
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
+  );
+
   const checkIsItemSelected = useCallback(
-    (item: ListItem) => item.selected,
+    (item: Item) => "selected" in item && item.selected,
     [],
   );
 
@@ -187,10 +215,35 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const handleExpressionSelect = useCallback(
+    (clause?: DefinedClauseName) => {
+      if (clause) {
+        setInitialExpressionClause(clause);
+      }
+      openExpressionEditor();
+    },
+    [openExpressionEditor],
+  );
+
   const handleResetOperator = useCallback(() => {
     setOperator(null);
     onBack?.();
   }, [onBack]);
+
+  const handleChangeSearchText = useCallback(
+    (searchText: string) => {
+      setSearchText(searchText);
+
+      if (searchText.trim().endsWith("(")) {
+        const name = searchText.trim().slice(0, -1);
+        const clause = getClauseDefinition(name);
+        if (clause) {
+          handleExpressionSelect(clause.name);
+        }
+      }
+    },
+    [handleExpressionSelect],
+  );
 
   const handleColumnSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -213,14 +266,16 @@ export function AggregationPicker({
   );
 
   const handleChange = useCallback(
-    (item: ListItem) => {
+    (item: Item) => {
       if (item.type === "operator") {
         handleOperatorSelect(item);
       } else if (item.type === "metric") {
         handleMetricSelect(item);
+      } else if (item.type === "expression-clause") {
+        handleExpressionSelect(item.clause.name);
       }
     },
-    [handleOperatorSelect, handleMetricSelect],
+    [handleOperatorSelect, handleMetricSelect, handleExpressionSelect],
   );
 
   const handleSectionChange = useCallback(
@@ -246,13 +301,16 @@ export function AggregationPicker({
       <ExpressionWidget
         query={query}
         stageIndex={stageIndex}
+        availableColumns={availableColumns}
         name={displayInfo?.displayName}
         clause={clause}
         withName
         expressionMode="aggregation"
+        expressionIndex={clauseIndex}
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
+        initialExpressionClause={initialExpressionClause}
       />
     );
   }
@@ -285,23 +343,23 @@ export function AggregationPicker({
   }
 
   return (
-    <Box className={className} c="summarize" data-testid="aggregation-picker">
-      <AccordionList
-        sections={sections}
-        onChange={handleChange}
-        onChangeSection={handleSectionChange}
-        itemIsSelected={checkIsItemSelected}
-        renderItemName={renderItemName}
-        renderItemDescription={omitItemDescription}
-        renderItemExtra={renderItemIcon}
-        renderItemWrapper={renderItemWrapper}
-        // disable scrollbars inside the list
-        style={{ overflow: "visible" }}
-        maxHeight={Infinity}
-        withBorders
-        globalSearch
-      />
-    </Box>
+    <AccordionList<Item, Section>
+      data-testid="aggregation-picker"
+      style={{ color: "var(--mb-color-summarize)" }}
+      sections={sections}
+      onChange={handleChange}
+      onChangeSection={handleSectionChange}
+      onChangeSearchText={handleChangeSearchText}
+      itemIsSelected={checkIsItemSelected}
+      renderItemName={renderItemName}
+      renderItemDescription={omitItemDescription}
+      renderItemExtra={renderItemIcon}
+      renderItemWrapper={renderItemWrapper}
+      maxHeight={Infinity}
+      itemTestId="dimension-list-item"
+      globalSearch
+      fuzzySearch
+    />
   );
 }
 
@@ -324,7 +382,7 @@ function ColumnPickerHeader({
   );
 }
 
-function renderItemName(item: ListItem) {
+function renderItemName(item: Item) {
   return item.displayName;
 }
 
@@ -332,7 +390,7 @@ function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
 
-function renderItemIcon(item: ListItem) {
+function renderItemIcon(item: Item) {
   if (item.type !== "metric") {
     return null;
   }
@@ -423,6 +481,16 @@ function getMetricListItem(
     metric,
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
+  };
+}
+
+function getExpressionClauseListItem(
+  clause: MBQLClauseFunctionConfig,
+): ExpressionClauseListItem {
+  return {
+    type: "expression-clause",
+    clause,
+    displayName: clause.displayName,
   };
 }
 

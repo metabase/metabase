@@ -18,6 +18,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.settings :as dashboards.settings]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -534,15 +535,34 @@
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 
+;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
+
+(api.macros/defendpoint :get "/public"
+  "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
+  enabled."
+  []
+  (perms/check-has-application-permission :setting)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+(api.macros/defendpoint :get "/embeddable"
+  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
+  endpoints and a signed JWT."
+  []
+  (perms/check-has-application-permission :setting)
+  (embedding.validation/check-embedding-enabled)
+  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
+
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
-    (let [dashboard (get-dashboard id)]
+    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+          dashboard (get-dashboard resolved-id)]
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
@@ -743,6 +763,7 @@
    [:parameter_mappings {:optional true} [:maybe [:sequential [:map
                                                                [:parameter_id ms/NonBlankString]
                                                                [:target       :any]]]]]
+   [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
 (def ^:private UpdatedDashboardTab
@@ -1021,11 +1042,12 @@
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {dashboard-load-id :dashboard_load_id}]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
-      (let [dashboard (get-dashboard id)]
+      (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+            dashboard (get-dashboard resolved-id)]
         (queries/batch-fetch-dashboard-metadata [dashboard])))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
@@ -1056,22 +1078,6 @@
               {:public_uuid       nil
                :made_public_by_id nil})
   {:status 204, :body nil})
-
-(api.macros/defendpoint :get "/public"
-  "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
-  enabled."
-  []
-  (perms/check-has-application-permission :setting)
-  (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
-
-(api.macros/defendpoint :get "/embeddable"
-  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
-  endpoints and a signed JWT."
-  []
-  (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."

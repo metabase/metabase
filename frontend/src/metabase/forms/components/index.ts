@@ -2,6 +2,7 @@ export * from "./Form";
 export * from "./FormCheckbox";
 export * from "./FormCheckboxGroup";
 export * from "./FormChipGroup";
+export * from "./FormDateInput";
 export * from "./FormErrorMessage";
 export * from "./FormGroupsWidget";
 export * from "./FormGroupWidget";

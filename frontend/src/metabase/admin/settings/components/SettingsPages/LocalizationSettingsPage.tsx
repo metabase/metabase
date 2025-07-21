@@ -2,6 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
@@ -9,7 +13,6 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Stack } from "metabase/ui";
 
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { FormattingWidget } from "../widgets/FormattingWidget";
 
@@ -35,9 +38,6 @@ export function LocalizationSettingsPage() {
             </Stack>
           }
         />
-        <ErrorBoundary>
-          <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
-        </ErrorBoundary>
         <AdminSettingInput
           name="report-timezone"
           searchable
@@ -72,6 +72,9 @@ export function LocalizationSettingsPage() {
           inputType="select"
         />
       </SettingsSection>
+      <ErrorBoundary>
+        <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+      </ErrorBoundary>
       <FormattingWidget />
     </SettingsPageWrapper>
   );

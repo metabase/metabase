@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
@@ -12,7 +13,7 @@ import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { DatabaseId, GdrivePayload } from "metabase-types/api";
 
 import { SYNC_POLL_INTERVAL } from "./constants";
-import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
+import { getStatus, useShowGdrive } from "./utils";
 
 type GsheetsStatus = GdrivePayload["status"];
 
@@ -60,7 +61,13 @@ export const GdriveSyncStatus = () => {
     }
 
     if (status === "error" && previousStatus === "syncing") {
-      console.error(getErrorMessage(apiError));
+      console.error(
+        getErrorMessage(
+          apiError,
+          // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
+          t`Please check that the folder is shared with the Metabase Service Account.`,
+        ),
+      );
     }
   }, [status, previousStatus, gdriveFolder, dbId, apiError]);
 

@@ -144,6 +144,7 @@ For effective REPL usage:
 
 - End all files with a newline.
 - When editing tabular code, where the columns line up, try to keep them aligned.
+- Spaces on a line with nothing after it is not allowed
 
 ## Critical REPL Usage Rules
 

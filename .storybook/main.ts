@@ -10,7 +10,7 @@ const mainAppStories = [
 
 const config: StorybookConfig = {
   stories: mainAppStories,
-  staticDirs: ["../resources/frontend_client"],
+  staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",
@@ -48,7 +48,7 @@ const config: StorybookConfig = {
           Buffer: ["buffer", "Buffer"],
         }),
         new webpack.EnvironmentPlugin({
-          IS_EMBEDDING_SDK: false,
+          IS_EMBEDDING_SDK: "false",
         }),
       ],
       module: {

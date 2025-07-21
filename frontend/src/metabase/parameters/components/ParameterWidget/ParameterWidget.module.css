@@ -26,12 +26,41 @@
   }
 }
 
-.ParameterContainer {
+.SubtleParameterWidget {
+  height: 32px;
+  border-width: 1px;
+  background: transparent;
+  margin: 0;
+
+  &.fullWidth {
+    width: 100%;
+
+    & > * {
+      width: 100%;
+    }
+  }
+
+  @media screen and (min-width: 440px) {
+    margin-right: 0;
+  }
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.EditingParameterContainer {
   border: 1px solid var(--mb-color-border);
   background-color: var(--mb-color-bg-white);
   border-radius: 0.5rem;
   cursor: pointer;
   margin: 0.25rem 0.5rem 0.25rem 0;
+
+  &.subtle {
+    height: 32px;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
 
   &.isEditingParameter {
     border-color: var(--mb-color-brand);

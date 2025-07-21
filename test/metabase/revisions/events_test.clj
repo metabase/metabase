@@ -192,6 +192,7 @@
                                                                                    :dashboard_tab_id      nil
                                                                                    :action_id nil
                                                                                    :parameter_mappings     []
+                                                                                   :inline_parameters      []
                                                                                    :visualization_settings {}
                                                                                    :dashboard_id           dashboard-id}])
               :is_reversion false

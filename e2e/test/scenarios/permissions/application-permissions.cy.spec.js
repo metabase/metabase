@@ -17,7 +17,7 @@ describe("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("shows permissions help", () => {
