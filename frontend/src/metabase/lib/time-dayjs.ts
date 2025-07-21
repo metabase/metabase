@@ -29,8 +29,8 @@ export function getDaylightSavingsChangeTolerance(unit: string) {
 
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
-    const day = dayjs.tz(value, "ddd").startOf("day");
-    return day.isValid() ? day : dayjs.tz(value).startOf("day");
+    const day = dayjs(value, "ddd").startOf("day");
+    return day.isValid() ? day : dayjs(value).startOf("day");
   },
 };
 
@@ -75,7 +75,7 @@ export function parseTimestamp(
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
-    result = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
+    result = TEXT_UNIT_FORMATS[unit as keyof typeof TEXT_UNIT_FORMATS](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);
   } else if (typeof value === "number") {

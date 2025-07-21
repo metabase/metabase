@@ -5,7 +5,6 @@ import type { unitOfTime } from "moment-timezone";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { parseTimestamp as deprecatedParseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
@@ -808,7 +807,7 @@ export function normalizeDateTimeRangeWithUnit(
   options: OptionsType = {},
 ): [Dayjs, Dayjs, number] | [Dayjs, Dayjs] {
   const [a, b] = [values[0], values[1] ?? values[0]].map((d) =>
-    deprecatedParseTimestamp(d, unit, options.local),
+    parseTimestamp(d, unit, options.local),
   );
   if (!a.isValid() || !b.isValid()) {
     return [a, b];
@@ -858,6 +857,21 @@ export function formatDateTimeRangeWithUnit(
   }
 
   const formatDate = (date: Dayjs, formatStr: string) => {
+    // Handle day-of-year formats with custom logic due to dayjs DDDo format bug
+    if (formatStr.includes("DDDo")) {
+      const dayOfYear = date.dayOfYear();
+      const ordinals = ["th", "st", "nd", "rd"];
+      const v = dayOfYear % 100;
+      const suffix = ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0];
+      const dayOfYearOrdinal = dayOfYear + suffix;
+      let format = formatStr.replace(/DDDo/g, dayOfYearOrdinal);
+      // month format is configurable, so we need to insert it after lookup
+      format = format.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat);
+      // Remove dayjs escaping brackets for literal text
+      format = format.replace(/\[([^\]]+)\]/g, "$1");
+      return format;
+    }
+
     // month format is configurable, so we need to insert it after lookup
     return date.format(
       formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat),
