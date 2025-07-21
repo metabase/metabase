@@ -64,7 +64,7 @@ describe("issue 12578", () => {
 });
 
 describe("issue 61013", () => {
-  const dashboardName = "This P1 was caused by Nick, I promise";
+  const dashboardName = "Dashboard 61013";
 
   beforeEach(() => {
     H.restore();
