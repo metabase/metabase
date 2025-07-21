@@ -239,7 +239,8 @@ export function Results({
                       c={
                         type === "table" &&
                         item.table &&
-                        item.table.visibility_type != null
+                        item.table.visibility_type != null &&
+                        !isActive
                           ? "text-secondary"
                           : undefined
                       }
