@@ -1050,14 +1050,14 @@ function formatDateTimeWithFormats(
 }
 
 export function formatDateTimeWithUnit(
-  value: number | string | Date | Moment,
+  value: number | string | Date,
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
   if (options.isExclude && unit === "hour-of-day") {
-    return moment.utc(value).format("h A");
+    return dayjs.utc(value).format("h A");
   } else if (options.isExclude && unit === "day-of-week") {
-    const date = moment.utc(value);
+    const date = dayjs.utc(value);
     if (date.isValid()) {
       return date.format("dddd");
     }
