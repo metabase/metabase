@@ -153,6 +153,18 @@
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
+  quick-test
+  {:doc      "Run a quick test against a namespace or directory"
+   :requires [[mage.quick-test-runner :as qt]]
+   :examples [["./bin/mage quick-test metabase.events" "Run all tests in the metabase.events namespace"]
+              ["./bin/mage quick-test metabase.events -n" "Run only the tests with the name 'n' in the metabase.events namespace"]]
+   :options  [["-n" "--name NAME" "Run only tests matching this pattern, if multiple matches any"]
+              ["-v" "--verbose" :default 0 :update-fn inc]]
+   :arg-schema [:or
+                [:tuple]
+                [:string {:description "Namespace to test"}]]
+   :task     (task! (qt/go parsed))}
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.

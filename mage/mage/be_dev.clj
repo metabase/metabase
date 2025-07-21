@@ -1,6 +1,7 @@
 (ns mage.be-dev
   (:require
    [bencode.core :as bencode]
+   [clojure.edn :as edn]
    ^:clj-kondo/ignore
    [clojure.pprint :as pp]
    [clojure.string :as str]
@@ -41,16 +42,21 @@
                 (in-ns ns-sym)
                 (eval (read-string " (pr-str (or code "::loaded")) ")))"))
 
+(defn read-repl-port []
+  (try (slurp ".nrepl-port")
+       (catch Exception _
+         (throw (ex-info
+                 (str
+                  "Unable to find .nrepl-port, is the server's repl running?"
+                  " See: the :dev-start alias in deps.edn")
+                 {:missing-port true})))))
+
 (defn nrepl-eval
   "Evaluate Clojure code in a running nREPL server. With one arg, reads port from .nrepl-port file.
    With two args, uses the provided port number. Returns and formats the evaluation results."
   ([nns code]
-   (nrepl-eval (or nns "user") code (try (slurp ".nrepl-port")
-                                         (catch Exception _
-                                           (throw (ex-info
-                                                   (str
-                                                    "Unable to find .nrepl-port, is the server's repl running?"
-                                                    " See: the :dev-start alias in deps.edn") {}))))))
+   (prn ["repl port" (read-repl-port)])
+   (nrepl-eval (or nns "user") code (read-repl-port)))
   ([nns code port]
    (try (let [port (safe-parse-int port)
               s (java.net.Socket. "localhost" port)
@@ -78,7 +84,12 @@
                     (doseq [err (str/split-lines (:stderr v))]
                       (println "  " err))))
                 (println "value: " v))
-              (println (str k ":") v))))
+              (println (str k ":") v)))
+          (try (let [out (edn/read-string (get return "value"))]
+                 (cond-> out
+                   (str/blank? (:stdout out)) (dissoc :stdout)
+                   (str/blank? (:stderr out)) (dissoc :stderr)))
+               (catch Exception _ (get return "value"))))
         (catch java.net.ConnectException _
           (println (str "Could not connect to the REPL server on port: " (c/red port) " (found port number in .nrepl-port).\n"
                         "Is the Metabase backend running?\n\n"
@@ -95,15 +106,19 @@
                :message (ex-message e)
                :data (ex-data e)}))))))
 
+(defn nrepl-open? []
+  (try (= :user/open? (:value (nrepl-eval "user" "::open?")))
+       (catch Exception _ false)))
+
 (comment
 
-  (nrepl-eval "metabase.logger.core-test" "(do (println :!! hi) hi)" 59498)
+  (nrepl-eval "metabase.logger.core-test" "(do (println :!! hi) hi)")
 
   (nrepl-eval "metabase.logger.core-test" "*ns*")
 
   (nrepl-eval "dev.migrate" "(do (rollback! :count 1) ::rollback-done)")
   (nrepl-eval "dev.migrate" "(do (migrate! :up) ::migrate-up-done)")
 
-  (nrepl-eval "")
+  (nrepl-eval "metabase.session.task.session-cleanup-test" "(println ::a)")
 
   (println code-str))

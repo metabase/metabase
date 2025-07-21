@@ -90,6 +90,14 @@
 
 (comment
 
+  (binding [*command-line-args* ["./bin/mage" "env" "-m" "MB_" "-m" "XX"]]
+    (parse! '{:name env,
+              :doc "Prints the current environment variables",
+              :examples [["./bin/mage env" "Prints all current environment variables"]
+                         ["./bin/mage env -m MB_" "Prints all environment variables matching the pattern 'MB_'"]],
+              :options [["-m" "--matching <pattern>" "Only print environment variables matching this pattern"
+                         :update-fn conj :multi true]]}))
+
   {:options {:force-check true},
    :arguments ["asd" "qwe"],
    :summary "  -c, --force-check  false  Check staged files",

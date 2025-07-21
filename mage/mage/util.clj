@@ -1,6 +1,7 @@
 (ns mage.util
   (:require
    [babashka.fs :as fs]
+   [babashka.process :as p]
    [babashka.tasks :refer [shell]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -52,14 +53,20 @@
 
 (defn print-env
   "Prints environment variables matching `match`, or all if no match is given."
-  ([] (print-env ".*" (env)))
-  ([match] (print-env match (env)))
-  ([match env]
+  ([]
+   (print-env ".*" (env) {}))
+  ([options]
+   (print-env ".*" (env) options))
+  ([match options]
+   (print-env match (env) options))
+  ([match env & options]
+   ;;(println "match" match "pat:" (str "(?i).*" match ".*"))
    (let [important-env (->> env
                             (filter (fn [[k _]] (re-find (re-pattern (str "(?i).*" match ".*")) k)))
                             (sort-by first))]
-     (println (c/underline
-               (str "Environemnt Variables" (when (not= ".*" match) (str " containing '" match "'")) " :")))
+     (when (:verbose options)
+       (println (c/underline
+                 (str "Environemnt Variables" (when (not= ".*" match) (str " containing '" match "'")) " :"))))
      (doseq [[setting value] important-env]
        (print (c/yellow setting))
        (print (c/white "="))
@@ -143,10 +150,42 @@
       (finally
         (reset! done? true)))))
 
-(defn- without-slash [s] (str/replace s #"/$" ""))
+(defn without-slash [s] (str/replace s #"/$" ""))
 
 (defn pp [& xs]
   (doseq [x xs] (puget/cprint x)))
 
 (defn pp-line [& xs]
   (doseq [x xs] (puget/cprint x {:width 10e20})))
+
+(defn can-run? [cmd]
+  (try (boolean (sh "command -v " cmd))
+       (catch Exception _
+         (println (c/red "MAGE: Consider installing " (c/underline cmd) " for a better experience."))
+         false)))
+
+(defn check-run!
+  [cmd]
+  (when-not (can-run? cmd)
+    (throw
+     (ex-info
+      nil
+      {:command cmd
+       :mage/error (str "You don't have " cmd " installed, maybe try\n " (c/green "brew install " cmd) "\nor your package manager of choice.")
+       :babashka/exit 1}))))
+
+(defn fzf-select
+  "Useful fzf-opts:
+    --multi                - select multiple options
+    --preview='cat {}'     - show preview of selected item
+    --header='header text' - show header text
+    --prompt='prompt text' - set custom prompt text
+
+  See: fzf -h
+
+  Returns: stdout of fzf, if you use --multi str/split-lines it."
+  [coll & [fzf-opts]]
+  (check-run! "fzf")
+  (str/trim
+   (:out (p/shell {:out :string :in (str/join "\n" coll)}
+                  (str "fzf" (when (seq fzf-opts) " ") fzf-opts)))))
