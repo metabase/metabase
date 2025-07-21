@@ -7,7 +7,7 @@ import { skipToken, useListDatabasesQuery } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import Link, { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

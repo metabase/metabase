@@ -10,7 +10,7 @@ import { FormFooter } from "metabase/common/components/FormFooter";
 import FormSelect from "metabase/common/components/FormSelect";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import Link from "metabase/common/components/Link/Link";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";

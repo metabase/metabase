@@ -9,7 +9,7 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks/use-docs-url";
 import { Box, Button } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
