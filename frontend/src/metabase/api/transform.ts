@@ -19,7 +19,7 @@ export const transformApi = Api.injectEndpoints({
     listTransforms: builder.query<Transform[], void>({
       query: (params) => ({
         method: "GET",
-        url: "/api/transform",
+        url: "/api/ee/transform",
         params,
       }),
       providesTags: (transforms = []) => provideTransformListTags(transforms),
@@ -27,7 +27,7 @@ export const transformApi = Api.injectEndpoints({
     getTransform: builder.query<Transform, TransformId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/transform/${id}`,
+        url: `/api/ee/transform/${id}`,
       }),
       providesTags: (transform) =>
         transform ? provideTransformTags(transform) : [],
@@ -35,7 +35,7 @@ export const transformApi = Api.injectEndpoints({
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/transform",
+        url: "/api/ee/transform",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -44,7 +44,7 @@ export const transformApi = Api.injectEndpoints({
     executeTransform: builder.mutation<Transform, TransformId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/transform/${id}/execute`,
+        url: `/api/ee/transform/${id}/execute`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [
@@ -56,7 +56,7 @@ export const transformApi = Api.injectEndpoints({
     deleteTransform: builder.mutation<Transform, TransformId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/transform/${id}`,
+        url: `/api/ee/transform/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
