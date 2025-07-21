@@ -112,7 +112,8 @@
   existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
   (when (seq documents)
-    (let [texts (mapv :searchable_text documents)
+    (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
+          texts (mapv :searchable_text documents)
           embeddings (embedding/get-embeddings-batch texts)]
       (batch-update!
        (fn [db-records]
@@ -141,7 +142,8 @@
   model + model_id already exists, it will be replaced."
   [documents]
   (when (seq documents)
-    (let [texts (mapv :searchable_text documents)
+    (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
+          texts (mapv :searchable_text documents)
           embeddings (embedding/get-embeddings-batch texts)]
       (batch-update!
        (fn [db-records]
