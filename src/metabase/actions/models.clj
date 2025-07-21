@@ -363,6 +363,12 @@
                         (table-primitive-action table (get fields-by-id table_id []) (keyword kind)))))]]
       (m/assoc-some dashcard :action action))))
 
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+           (select-action :id)))
+
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Action [_action]

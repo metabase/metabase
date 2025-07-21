@@ -55,9 +55,7 @@
  [metabase.actions.models
   dashcard->action
   select-action
-  select-actions
-  table-primitive-action
-  unpack-encoded-action-id]
+  select-actions]
  [metabase.actions.events
   publish-action-success!]
  [metabase.actions.scope
