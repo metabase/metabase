@@ -6,8 +6,8 @@ export const EditorContainer = styled.div`
   .ProseMirror {
     outline: none;
     min-height: 400px;
-    padding: 16px;
-    border: 1px solid #e0e0e0;
+    padding: 40px;
+    padding-top: 0;
     border-radius: 8px;
     background-color: white;
     font-family: inherit;

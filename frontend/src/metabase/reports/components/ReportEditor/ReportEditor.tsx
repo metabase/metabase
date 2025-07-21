@@ -7,7 +7,7 @@ import { Node } from "@tiptap/core";
 import { createRoot } from "react-dom/client";
 import { t } from "ttag";
 
-import { Box, Button, Group, Paper, Stack, Text, useMantineTheme, Flex } from "metabase/ui";
+import { Box, Button, Group, Paper, Stack, Text, useMantineTheme, Flex, TextInput } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useSearchQuery } from "metabase/api";
 import { skipToken } from "@reduxjs/toolkit/query";
@@ -325,6 +325,7 @@ const createMetabaseVisualizationExtension = (store: any) => {
 };
 
 const ReportEditor = () => {
+  const [reportTitle, setReportTitle] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [mentionCommand, setMentionCommand] = useState<((item: any) => void) | null>(null);
@@ -586,7 +587,34 @@ const ReportEditor = () => {
           }}
         >
           <EditorContainer>
-            <Paper m="lg" style={{ maxWidth: 'none' }}>
+            <Paper m="lg" style={{ maxWidth: 'none', border: '1px solid #e0e0e0' }}>
+              <Box p="md" px="xl" mt="lg">
+                <TextInput
+                  value={reportTitle}
+                  onChange={(event) => setReportTitle(event.currentTarget.value)}
+                  placeholder="New Report"
+                  variant="unstyled"
+                  size="xl"
+                  styles={{
+                    input: {
+                      fontSize: '2rem',
+                      fontWeight: 700,
+                      lineHeight: 1.2,
+                      padding: 0,
+                      border: 'none',
+                      borderRadius: 0,
+                      '&:focus': {
+                        outline: '2px solid #1976d2',
+                        outlineOffset: '2px'
+                      },
+                      '&::placeholder': {
+                        color: '#999',
+                        opacity: 0.7
+                      }
+                    }
+                  }}
+                />
+              </Box>
               <StyledEditorContent>
                 <EditorContent editor={editor} />
               </StyledEditorContent>

@@ -152,7 +152,13 @@ export const EntityResultModal = ({
               <EmotionCacheProvider>
                 <Box style={{ height: '100%', width: '100%' }}>
                   <Visualization
-                    rawSeries={result.data}
+                    rawSeries={result.data.map(series => ({
+                      ...series,
+                      card: {
+                        ...series.card,
+                        display: "table"
+                      }
+                    }))}
                     isDashboard={false}
                     width={null}
                     height={null}
