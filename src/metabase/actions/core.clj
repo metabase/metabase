@@ -6,7 +6,6 @@
    [metabase.actions.error]
    [metabase.actions.events]
    [metabase.actions.execution]
-   [metabase.actions.foreign-keys]
    [metabase.actions.http-action]
    [metabase.actions.models]
    [metabase.actions.scope]
