@@ -131,9 +131,8 @@
   [connectable index documents]
   (log/info "Populating semantic search index with" (count documents) "documents")
   (when (seq documents)
-    (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
-          text->docs         (group-by :searchable_text filtered-documents)
-          searchable-texts   (map :searchable_text filtered-documents)]
+    (let [text->docs         (group-by :searchable_text documents)
+          searchable-texts   (map :searchable_text documents)]
       (embedding/process-embeddings-streaming
        (:embedding-model index)
        searchable-texts

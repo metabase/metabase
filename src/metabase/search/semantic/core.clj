@@ -75,12 +75,19 @@
 
 (defmethod search.engine/model-set :search.engine/semantic
   [_search-ctx]
-  search.config/all-models)
+  (disj search.config/all-models "indexed-entity"))
+
+(defn- remove-indexed-entities
+  "Remove indexed-entities from `document-reducible`"
+  [document-reducible]
+  (eduction (remove (comp #{"indexed-entity"} :model))
+            document-reducible))
 
 (defmethod search.engine/update! :search.engine/semantic
   [_ document-reducible]
   (try
-    (update-index! document-reducible)
+    (update-index! (-> document-reducible
+                       remove-indexed-entities))
     (catch Exception e
       (log/error e "Error updating semantic search index")
       {})))
@@ -97,7 +104,9 @@
   [_ opts]
   (try
     (log/info "Initializing semantic search engine")
-    (init! (search.ingestion/searchable-documents) opts)
+    (init! (-> (search.ingestion/searchable-documents)
+               remove-indexed-entities)
+           opts)
     (catch Exception e
       (log/error e "Failed to initialize semantic search engine")
       (throw e))))
@@ -106,14 +115,19 @@
   [_ opts]
   (try
     (log/info "Reindexing semantic search engine")
-    (reindex! (search.ingestion/searchable-documents) opts)
+    (reindex! (-> (search.ingestion/searchable-documents)
+                  remove-indexed-entities)
+              opts)
     (log/info "Semantic search engine reindexed successfully")
     (catch Exception e
       (log/error e "Failed to reindex semantic search engine")
       (throw e))))
 
 (comment
-  (def docs (vec (search.ingestion/searchable-documents)))
+  (def docs (->> (search.ingestion/searchable-documents)
+                 remove-indexed-entities
+                 vec))
+  (into #{} (map :model docs))
   (init! docs {})
   (reindex! docs {}))
 
