@@ -5,7 +5,8 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [next.jdbc :as jdbc]))
 
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
@@ -43,18 +44,20 @@
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents _opts]
-  (doto (semantic.db/init-db!)
-    (semantic.index/create-index-table! (semantic.embedding/get-active-model) {:force-reset? false})
-    (semantic.index/populate-index! (semantic.embedding/get-active-model) (into [] searchable-documents))))
+  (let [embedding-model (semantic.embedding/get-active-model)]
+    (jdbc/with-transaction [tx (semantic.db/init-db!)]
+      (semantic.index/create-index-table! tx embedding-model {:force-reset? false}))
+    (semantic.index/upsert-index! tx embedding-model (into [] searchable-documents))))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
   [searchable-documents _opts]
   (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (doto @semantic.db/data-source
-    (semantic.index/create-index-table! (semantic.embedding/get-active-model) {:force-reset? false})
-    (semantic.index/populate-index! (semantic.embedding/get-active-model) (into [] searchable-documents))))
+  (let [embedding-model (semantic.embedding/get-active-model)]
+    (jdbc/with-transaction [tx (semantic.db/init-db!)]
+      (semantic.index/create-index-table! tx embedding-model {:force-reset? false}))
+    (semantic.index/upsert-index! tx embedding-model (into [] searchable-documents))))
 
 ;; TODO: implement
 (defenterprise reset-tracking!

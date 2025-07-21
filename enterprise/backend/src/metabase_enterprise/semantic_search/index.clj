@@ -140,22 +140,6 @@
                   (array-map model))
       (log/trace "semantic search deleted" <> "total documents with model type" model))))
 
-(defn populate-index!
-  "Inserts a set of documents into the index table. Throws when trying to insert
-  existing model + model_id pairs. (Use upsert-index! to update existing documents)"
-  [db embedding-model documents]
-  (when (seq documents)
-    (let [texts (mapv :searchable_text documents)
-          embeddings (embedding/get-embeddings-batch embedding-model texts)]
-      (batch-update!
-       db
-       (fn [db-records]
-         (-> (sql.helpers/insert-into (keyword (index-table-name embedding-model)))
-             (sql.helpers/values db-records)
-             (sql/format :quoted true)))
-       documents
-       embeddings))))
-
 (defn- db-records->update-set
   [db-records]
   (let [update-keys (-> db-records first (dissoc :id :model :model_id) keys)
@@ -171,24 +155,24 @@
     (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
           searchable-texts   (map :searchable_text filtered-documents)]
       (embedding/process-embeddings-streaming
-        embedding-model
-        searchable-texts
-        (fn [_batch-texts batch-embeddings]
-          (let [batch-documents
-                (mapv (fn [doc embedding]
-                        (assoc doc :embedding embedding))
-                      filtered-documents
-                      batch-embeddings)]
-            (batch-update!
-              connectable
-              (fn [db-records]
-                (-> (sql.helpers/insert-into *index-table-name*)
-                    (sql.helpers/values db-records)
-                    (sql.helpers/on-conflict :model :model_id)
-                    (sql.helpers/do-update-set (db-records->update-set db-records))
-                    sql-format-quoted))
-              batch-documents
-              batch-embeddings)))))))
+       embedding-model
+       searchable-texts
+       (fn [_batch-texts batch-embeddings]
+         (let [batch-documents
+               (mapv (fn [doc embedding]
+                       (assoc doc :embedding embedding))
+                     filtered-documents
+                     batch-embeddings)]
+           (batch-update!
+            connectable
+            (fn [db-records]
+              (-> (sql.helpers/insert-into *index-table-name*)
+                  (sql.helpers/values db-records)
+                  (sql.helpers/on-conflict :model :model_id)
+                  (sql.helpers/do-update-set (db-records->update-set db-records))
+                  sql-format-quoted))
+            batch-documents
+            batch-embeddings)))))))
 
 (defn- drop-index-table-sql
   [embedding-model]
@@ -215,11 +199,11 @@
            (sql.helpers/with-columns (index-table-schema vector-dimensions))
            sql-format-quoted))
       (jdbc/execute!
-        connectable
-        (-> (sql.helpers/create-index
-              [:embedding_hnsw_idx :if-not-exists]
-              [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
-            sql-format-quoted)))
+       connectable
+       (-> (sql.helpers/create-index
+            [:embedding_hnsw_idx :if-not-exists]
+            [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
+           sql-format-quoted)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {:cause e})))))
 
@@ -353,9 +337,6 @@
 (comment
   (def embedding-model (embedding/get-active-model))
   (create-index-table! embedding-model {:force-reset? true})
-  (populate-index! [{:model "card"
-                     :id "1"
-                     :searchable_text "This is a test card"}])
   (upsert-index! [{:model "card"
                    :id "1"
                    :searchable_text "This is a test card"}])
