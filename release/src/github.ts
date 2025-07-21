@@ -2,7 +2,7 @@ import type { GithubCheck, GithubProps, Issue, ReleaseProps } from "./types";
 import {
   getLastReleaseTag,
   getMilestoneName,
-  getNextVersions,
+  getNextMilestones,
   getOSSVersion,
 } from "./version-helpers";
 
@@ -64,7 +64,7 @@ export const openNextMilestones = async ({
   repo,
   version,
 }: ReleaseProps) => {
-  const nextMilestones = getNextVersions(version).map(versionString =>
+  const nextMilestones = getNextMilestones(version).map(versionString =>
     getMilestoneName(versionString),
   );
 

@@ -12,6 +12,7 @@ import {
   getMajorVersion,
   getMinorVersion,
   getOSSVersion,
+  getVersionParts,
   isEnterpriseVersion,
   isPreReleaseVersion,
   isValidVersionString,
@@ -63,9 +64,8 @@ export const getDownloadUrl = (version: string) => {
 };
 
 export const getChangelogUrl = (version: string ) => {
-  const majorVersion = getMajorVersion(version);
-  const minorVersion = getMinorVersion(version);
-  return `https://www.metabase.com/changelog/${majorVersion}#metabase-${majorVersion}${minorVersion}`
+  const { major, minor } = getVersionParts(version);
+  return `https://www.metabase.com/changelog/${major}#metabase-${major}${minor}`
 }
 
 export const getReleaseTitle = (version: string) => {

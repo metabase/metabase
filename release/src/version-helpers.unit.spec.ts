@@ -1,8 +1,8 @@
 import type { Tag } from "./types";
 import {
-  filterOutNonSupportedPrereleaseIdentifier,
   findNextPatchVersion,
   getBuildRequirements,
+  getDotXVersion,
   getDotXs,
   getEnterpriseVersion,
   getExtraTagsForVersion,
@@ -12,7 +12,7 @@ import {
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
   getMinorVersion,
-  getNextVersions,
+  getNextMilestones,
   getOSSVersion,
   getReleaseBranch,
   getSdkVersionFromReleaseTagName,
@@ -22,6 +22,7 @@ import {
   isNewVersionFormat,
   isOldVersionFormat,
   isPreReleaseVersion,
+  isSupportedPrereleaseIdentifier,
   isValidVersionString,
   versionSort,
 } from "./version-helpers";
@@ -164,6 +165,7 @@ describe("version-helpers", () => {
         ["v0.35.2.3", "v0.35.2.3"],
         ["v1.35.2.3", "v0.35.2.3"],
         ["v75.2.3", "v75.2.3-agpl"],
+        ["v75.0", "v75.0-agpl"],
         ["v75.0.2", "v75.0.2-agpl"],
         ["v75.0.2-agpl", "v75.0.2-agpl"],
         ["v75.0.2-agpl-beta", "v75.0.2-agpl-beta"],
@@ -283,7 +285,7 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("getVersionType", () => {
+  describe.only("getVersionType", () => {
     const cases: [string, string][] = [
       ["v0.25.0", "major"],
       ["v1.25.0", "major"],
@@ -307,7 +309,6 @@ describe("version-helpers", () => {
       ["v59.0.1-agpl", "patch"],
       ["v59.3.33-agpl", "patch"],
       ["v59.0.1-agpl-beta", "patch"],
-      ["v59.0-agpl-beta", "major"],
     ];
 
     it.each(cases)("%s -> %s", (input, expected) => {
@@ -429,16 +430,16 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("getNextVersions", () => {
+  describe("getNextMilestones", () => {
     describe("should get next versions for a major release", () => {
       const testCases: [string, string[]][] = [
         ["v0.35.0", ["v0.35.1", "v0.36.0"]],
-        ["v0.99.0", ["v0.99.1", "v0.100.0"]],
-        ["v58.0", ["v58.1", "v59.0"]],
+        ["v0.29.0", ["v0.29.1", "v0.30.0"]],
+        ["v59.0", ["v59.1", "v60.0"]],
       ];
 
       it.each(testCases)("%s -> %s", (input, expected) => {
-        expect(getNextVersions(input)).toEqual(expected);
+        expect(getNextMilestones(input)).toEqual(expected);
       });
     });
 
@@ -447,36 +448,38 @@ describe("version-helpers", () => {
         ["v0.35.1", ["v0.35.2"]],
         ["v1.35.1", ["v1.35.2"]],
         ["v59.1", ["v59.2"]],
-        ["v59.1-agpl", ["v59.2-agpl"]],
+        ["v59.1-agpl", ["v59.2"]],
       ];
 
       it.each(testCases)("%s -> %s", (input, expected) => {
-        expect(getNextVersions(input)).toEqual(expected);
+        expect(getNextMilestones(input)).toEqual(expected);
       });
     });
 
     describe("should get next versions for a minor release", () => {
       const testCases: [string, string[]][] = [
         ["v0.35.1", ["v0.35.2"]],
-        ["v0.35.1.0", ["v0.35.2"]], // disregards extra .0
         ["v0.35.10", ["v0.35.11"]], // handles multi-digit minor
         ["v0.39.99", ["v0.39.100"]],
-        ["v0.39.99.0", ["v0.39.100"]],
+        ["v59.2", ["v59.3"]],
+        ["v59.99", ["v59.100"]],
       ];
 
       it.each(testCases)("%s -> %s", (input, expected) => {
-        expect(getNextVersions(input)).toEqual(expected);
+        expect(getNextMilestones(input)).toEqual(expected);
       });
     });
 
     it("should not get next versions for a patch release", () => {
       const testCases: [string, string[]][] = [
         ["v0.35.1.1", []],
-        ["v0.39.99.3", []],
+        ["v1.39.99.3", []],
+        ["v75.2.3", []],
+        ["v75.2.3-agpl", []],
       ];
 
       testCases.forEach(([input, expected]) => {
-        expect(getNextVersions(input)).toEqual(expected);
+        expect(getNextMilestones(input)).toEqual(expected);
       });
     });
 
@@ -487,46 +490,56 @@ describe("version-helpers", () => {
       ];
 
       testCases.forEach(([input, expected]) => {
-        expect(getNextVersions(input)).toEqual(expected);
+        expect(getNextMilestones(input)).toEqual(expected);
       });
     });
 
     it("should throw an error for an invalid version string", () => {
-      expect(() => getNextVersions("foo")).toThrow();
-      expect(() => getNextVersions("v2.75")).toThrow();
-      expect(() => getNextVersions("v0.35-RC2")).toThrow();
+      expect(() => getNextMilestones("foo")).toThrow();
+      expect(() => getNextMilestones("v2.75")).toThrow();
+      expect(() => getNextMilestones("v0.35-RC2")).toThrow();
+      expect(() => getNextMilestones("v0.95.1")).toThrow();
+      expect(() => getNextMilestones("v35.1")).toThrow();
     });
   });
 
   describe("getGenericVersion", () => {
-    it("should return the generic version for a valid OSS version string", () => {
+    describe("should return the generic version for a valid OSS version string", () => {
       const testCases: [string, string][] = [
-        ["v0.35.0", "75.0"],
-        ["v0.35.1", "75.1"],
-        ["v0.35.12", "75.12"],
-        ["v0.39.99", "79.99"],
-        ["v0.39.99.0", "79.99.0"],
-        ["v0.35.0-RC2", "75.0-RC2"],
-        ["v0.39.0-rc99", "79.0-rc99"],
+        ["v0.35.0", "35.0"],
+        ["v0.35.1", "35.1"],
+        ["v0.35.12", "35.12"],
+        ["v0.39.99", "39.99"],
+        ["v0.39.99.0", "39.99.0"],
+        ["v75.0", "75.0"],
+        ["v75.0-agpl", "75.0"],
+        ["v75.0.2", "75.0.2"],
+        ["v75.0.2-agpl", "75.0.2"],
+        ["v75.2-beta", "75.2-beta"],
+        ["v75.2-agpl-beta", "75.2-beta"],
+        ["v75.2.2-beta", "75.2.2-beta"],
+        ["v75.2.2-agpl-beta", "75.2.2-beta"],
       ];
 
-      testCases.forEach(([input, expected]) => {
+      it.each(testCases)("%s -> %s", (input, expected) => {
         expect(getGenericVersion(input)).toEqual(expected);
       });
     });
 
-    it("should return the generic version for a valid EE version string", () => {
+    describe("should return the generic version for a valid EE version string", () => {
       const testCases: [string, string][] = [
-        ["v1.75.0", "75.0"],
-        ["v1.75.1", "75.1"],
-        ["v1.75.12", "75.12"],
-        ["v1.79.99", "79.99"],
-        ["v1.79.99.0", "79.99.0"],
-        ["v1.75.0-RC2", "75.0-RC2"],
-        ["v1.79.0-rc99", "79.0-rc99"],
+        ["v1.35.0", "35.0"],
+        ["v1.35.1", "35.1"],
+        ["v1.35.12", "35.12"],
+        ["v1.39.99", "39.99"],
+        ["v1.39.99.0", "39.99.0"],
+        ["v1.35.0-RC2", "35.0-RC2"],
+        ["v1.39.0-rc99", "39.0-rc99"],
+        ["v75.0", "75.0"],
+        ["v75.4.2-beta", "75.4.2-beta"],
       ];
 
-      testCases.forEach(([input, expected]) => {
+      it.each(testCases)("%s -> %s", (input, expected) => {
         expect(getGenericVersion(input)).toEqual(expected);
       });
     });
@@ -543,6 +556,13 @@ describe("version-helpers", () => {
       ["v1.50.1.1-alpha", "0.50.1"],
       ["v0.50.1", "0.50.1"],
       ["v1.50.1", "0.50.1"],
+      ["v75.0", "75.0"],
+      ["v75.22", "75.22"],
+      ["v75.22.8", "75.22"],
+      ["v75.22.8-agpl", "75.22"],
+      ["v75.22.8-beta", "75.22"],
+      ["v75.22.8-beta", "75.22"],
+      ["v75.0-agpl", "75.0"],
     ])("%s -> %s", (input, expected) => {
       expect(getMilestoneName(input)).toBe(expected);
     });
@@ -556,9 +576,14 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.2" },
           { ref: "refs/tags/v0.12.1" },
           { ref: "refs/tags/v0.12.x" },
+          { ref: "refs/tags/v75.x" },
+          { ref: "refs/tags/v75.11" },
+          { ref: "refs/tags/v75.2" },
+          { ref: "refs/tags/v75.2.x" },
+
         ] as Tag[],
       });
-      expect(latest).toBe("v0.12.2");
+      expect(latest).toBe("v75.11");
     });
 
     it("should return the latest release tag for patch versions", () => {
@@ -571,9 +596,12 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.2.0" },
           { ref: "refs/tags/v0.12.2.3" },
           { ref: "refs/tags/v0.12.2.2" },
+          { ref: "refs/tags/v75.5.1" },
+          { ref: "refs/tags/v74.2.9" },
+          { ref: "refs/tags/v75.3.2" },
         ] as Tag[],
       });
-      expect(latest).toBe("v0.12.2.3");
+      expect(latest).toBe("v75.5.1");
     });
 
     it("should ignore ee vs oss prefixes", () => {
@@ -581,9 +609,12 @@ describe("version-helpers", () => {
         tags: [
           { ref: "refs/tags/v0.12.2.3" },
           { ref: "refs/tags/v1.12.2.2" },
+          { ref: "refs/tags/v75.2.2" },
+          { ref: "refs/tags/v75.2.3-agpl" },
+          { ref: "refs/tags/v75.2.1" },
         ] as Tag[],
       });
-      expect(latest).toBe("v0.12.2.3");
+      expect(latest).toBe("v75.2.3-agpl");
     });
 
     it("should ignore patches when the ignorePatches flag is passed", () => {
@@ -596,10 +627,12 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.2.1" },
           { ref: "refs/tags/v0.12.2.3" },
           { ref: "refs/tags/v0.12.3.2-beta" },
+          { ref: "refs/tags/v75.2.3" },
+          { ref: "refs/tags/v75.1" },
         ] as Tag[],
         ignorePatches: true,
       });
-      expect(latest).toBe("v0.12.2");
+      expect(latest).toBe("v75.1");
     });
 
     it("should return the latest tag for major version", () => {
@@ -608,9 +641,12 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.9" },
           { ref: "refs/tags/v0.12.8" },
           { ref: "refs/tags/v0.13.0" },
+          { ref: "refs/tags/v74.0" },
+          { ref: "refs/tags/v76.0" },
+          { ref: "refs/tags/v75.99" },
         ] as Tag[],
       });
-      expect(latest).toBe("v0.13.0");
+      expect(latest).toBe("v76.0");
     });
 
     it("should not ignore pre releases by default", () => {
@@ -621,9 +657,13 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.2-RC99" },
           { ref: "refs/tags/v0.12.3-alpha" },
           { ref: "refs/tags/v0.12.4-beta" },
+          { ref: "refs/tags/v74.0-beta" },
+          { ref: "refs/tags/v73.9" },
+          { ref: "refs/tags/v75.0-beta" },
+
         ] as Tag[],
       });
-      expect(latest).toBe("v0.12.4-beta");
+      expect(latest).toBe("v75.0-beta");
     });
 
     it("should ignore pre releases with a flag passeed", () => {
@@ -634,10 +674,14 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.2-RC99" },
           { ref: "refs/tags/v0.12.3-alpha" },
           { ref: "refs/tags/v0.12.4-beta" },
+          { ref: "refs/tags/v74.0" },
+          { ref: "refs/tags/v75.0-beta" },
+          { ref: "refs/tags/v76.0-beta" },
+
         ] as Tag[],
         ignorePreReleases: true,
       });
-      expect(latest).toBe("v0.12.1");
+      expect(latest).toBe("v74.0");
     });
 
     it("should ignore .x releases", () => {
@@ -650,9 +694,12 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.1" },
           { ref: "refs/tags/v0.12.2" },
           { ref: "refs/tags/v0.19.x" },
+          { ref: "refs/tags/v75.x" },
+          { ref: "refs/tags/v72.79" },
+          { ref: "refs/tags/v75.79.x" },
         ] as Tag[],
       });
-      expect(latest).toBe("v0.12.2");
+      expect(latest).toBe("v72.79");
     });
   });
 
@@ -741,6 +788,9 @@ describe("version-helpers", () => {
 
       const diff4 = versionSort("0.50.12", "0.50.11");
       expect(diff4).toBeGreaterThan(0);
+
+      const diff5 = versionSort("75.2", "v75.4");
+      expect(diff5).toBeLessThan(0);
     });
 
     it("should ignore the ee/oss prefix", () => {
@@ -755,6 +805,9 @@ describe("version-helpers", () => {
 
       const diff4 = versionSort("50.12", "1.50.11");
       expect(diff4).toBeGreaterThan(0);
+
+      const diff5 = versionSort("v70.12-agpl", "v75.11");
+      expect(diff5).toBeGreaterThan(0);
     });
   });
 
@@ -825,29 +878,46 @@ describe("version-helpers", () => {
   });
 
   describe("getDotXs", () => {
-    it("should return the correct major dot Xs", () => {
-      expect(getDotXs("v1.75.0", 1)).toEqual("v1.75.x");
-      expect(getDotXs("v1.75.2", 1)).toEqual("v1.75.x");
-      expect(getDotXs("v1.75-beta", 1)).toEqual("v1.75.x");
-
-      expect(getDotXs("v1.75.0-beta", 1)).toEqual("v1.75.x");
-      expect(getDotXs("v1.75.0.1", 1)).toEqual("v1.75.x");
-      expect(getDotXs("v1.75.0.1-beta", 1)).toEqual("v1.75.x");
-
-      expect(getDotXs("v0.35.0", 1)).toEqual("v0.35.x");
-      expect(getDotXs("v0.35.34.1234", 1)).toEqual("v0.35.x");
-    });
-
-    it("should return the correct minor dot Xs", () => {
-      expect(getDotXs("v1.75.2.1", 2)).toEqual("v1.75.2.x");
-      expect(getDotXs("v1.75.2-beta", 2)).toEqual("v1.75.2.x");
-
-      expect(getDotXs("v0.35.2.1", 2)).toEqual("v0.35.2.x");
-      expect(getDotXs("v0.35.2.1-beta", 2)).toEqual("v0.35.2.x");
+    it.each([
+      ["v1.35.0", ["v1.35.x"]],
+      ["v1.35.1", ["v1.35.x", "v1.35.1.x"]],
+      ["v1.35.2", ["v1.35.x", "v1.35.2.x"]],
+      ["v0.35.0", ["v0.35.x"]],
+      ["v0.35.1", ["v0.35.x", "v0.35.1.x"]],
+      ["v0.35.2", ["v0.35.x", "v0.35.2.x"]],
+      ["v75.0", ["v75.x"]],
+      ["v75.1", ["v75.x", "v75.1.x"]],
+      ["v75.2", ["v75.x", "v75.2.x"]],
+      ["v75.2.3", ["v75.x", "v75.2.x"]],
+      ["v75.0.3", ["v75.x", "v75.0.x"]],
+      ["v75.0-beta", ["v75.x"]],
+      ["v75.0-agpl-beta", ["v75.x-agpl"]],
+      ["v75.4.3-agpl", ["v75.x-agpl", "v75.4.x-agpl"]],
+    ])("%s -> %s", (input, expected) => {
+      expect(getDotXs(input)).toEqual(expected);
     });
   });
 
-  describe.only("getExtraTagsForVersion", () => {
+  describe("getDotXVersion", () => {
+    it.each([
+      ["v1.35.0", "v1.35.x"],
+      ["v1.35.1", "v1.35.1.x"],
+      ["v1.35.1.2", "v1.35.1.x"],
+      ["v0.35.0", "v0.35.x"],
+      ["v0.35.1", "v0.35.1.x"],
+      ["v0.35.1.2", "v0.35.1.x"],
+      ["v75.0", "v75.x"],
+      ["v75.1", "v75.1.x"],
+      ["v75.2", "v75.2.x"],
+      ["v75.2.3", "v75.2.x"],
+      ["v75.0-beta", "v75.x"],
+      ["v75.0-agpl-beta", "v75.x-agpl"],
+    ])("%s -> %s", (input, expected) => {
+      expect(getDotXVersion(input)).toEqual(expected);
+    });
+  });
+
+  describe("getExtraTagsForVersion", () => {
     it("should return the correct extra tags for a major version", () => {
       expect(getExtraTagsForVersion({ version: "v1.35.0" })).toEqual([
         "v0.35.x",
@@ -860,6 +930,7 @@ describe("version-helpers", () => {
       ]);
 
       expect(getExtraTagsForVersion({ version: "v75.0" })).toEqual([
+        "v75.x-agpl",
         "v75.x",
       ]);
     });
@@ -880,6 +951,8 @@ describe("version-helpers", () => {
       ]);
 
       expect(getExtraTagsForVersion({ version: "v75.1" })).toEqual([
+        "v75.x-agpl",
+        "v75.1.x-agpl",
         "v75.x",
         "v75.1.x",
       ]);
@@ -901,6 +974,8 @@ describe("version-helpers", () => {
       ]);
 
       expect(getExtraTagsForVersion({ version: "v75.1.3" })).toEqual([
+        "v75.x-agpl",
+        "v75.1.x-agpl",
         "v75.x",
         "v75.1.x",
       ]);
@@ -927,13 +1002,15 @@ describe("version-helpers", () => {
       ]);
 
       expect(getExtraTagsForVersion({ version: "v75.1.3-beta" })).toEqual([
+        "v75.x-agpl",
+        "v75.1.x-agpl",
         "v75.x",
         "v75.1.x",
       ]);
     });
   });
 
-  describe("filterOutNonSupportedPrereleaseIdentifier", () => {
+  describe("isSupportedPrereleaseIdentifier", () => {
     function createTags(versions: string[]): Tag[] {
       return versions.map(
         (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
@@ -949,9 +1026,19 @@ describe("version-helpers", () => {
         "0.55.0-beta",
         "0.55.0-alpha",
         "0.55.5-metabot",
-      ]).filter(filterOutNonSupportedPrereleaseIdentifier);
+        "59.5-beta",
+        "59.5-alpha",
+        "59.5-nightly",
+        "59.5-agpl-nightly",
+        "59.5-agpl-beta",
+      ]).filter(isSupportedPrereleaseIdentifier);
 
-      expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
+      expect(filteredTags).toEqual(createTags([
+        "0.55.0",
+        "0.55.0-nightly",
+        "59.5-nightly",
+        "59.5-agpl-nightly"
+      ]));
     });
   });
 

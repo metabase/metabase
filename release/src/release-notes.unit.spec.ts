@@ -490,12 +490,15 @@ describe("Release Notes", () => {
   it.each([
     ["v0.53.2", "53#metabase-532"],
     ["v1.53.0", "53#metabase-530"],
-    ["v1.57.16", "57#metabase-5716"],
-    ["v1.59.0.4-beta", "59#metabase-590"],
-    ["v1.60.0", "60#metabase-600"],
-    ["v0.32.0", "32#metabase-320"],
-    ["v0.444.1", "444#metabase-4441"],
-
+    ["v1.51.16", "51#metabase-5116"],
+    ["v1.51.0.4-beta", "51#metabase-510"],
+    ["v1.20.0", "20#metabase-200"],
+    ["v0.22.0", "22#metabase-220"],
+    ["v0.16.1", "16#metabase-161"],
+    ["v59.3", "59#metabase-593"],
+    ["v59.3.2", "59#metabase-593"],
+    ["v59.3.2-agpl", "59#metabase-593"],
+    ["v59.3.2-agpl-beta", "59#metabase-593"],
   ])("getChangelogUrl: %s -> %s", (input, expected)=> {
     expect(getChangelogUrl(input)).toEqual(`https://www.metabase.com/changelog/${expected}`);
   });

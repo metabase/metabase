@@ -1,3 +1,5 @@
+import { get } from "underscore";
+
 import type { GithubProps, Tag } from "./types";
 
 // in v56 we introduced a new versioning format
@@ -76,8 +78,10 @@ export const getCanonicalVersion = (
 };
 
 export const getGenericVersion = (versionString: string) => {
-  // turn v0.88.0 into 88.0
-  return getOSSVersion(versionString).replace(/v0\./, "");
+  // turn v0.88.0 into 88.0 or v75.2-agpl into 75.2
+  return getEnterpriseVersion(versionString)
+    .replaceAll(/^(v1|v)/g, "")
+    .replace(/-agpl/, "")
 };
 
 export const getVersionType = (versionString: string) => {
@@ -226,37 +230,34 @@ export const getSdkVersionFromReleaseBranchName = async ({
   return sdkVersion;
 };
 
+const removePreReleaseIdentifier = (version: string) => {
+  return version.replace(/-(alpha|beta|nightly)$/, "");
+};
+
+// get all relevant .x tags for a version
 export const getDotXs = (version: string): string[] => {
-  const { prefix, major, minor } = getVersionParts(version);
+  const { prefix, major, minor, suffix } = getVersionParts(removePreReleaseIdentifier(version));
   const versionType = getVersionType(version);
 
   if (versionType === 'major') {
-    return [`${prefix}${major}.x`];
+    return [`${prefix}${major}.x${suffix}`];
   }
-  return [`${prefix}${major}.x`, `${prefix}${major}.${minor}.x`];
+  return [`${prefix}${major}.x${suffix}`, `${prefix}${major}.${minor}.x${suffix}`];
 };
 
+// get the most specific .x tag
 export const getDotXVersion = (version: string) => {
-  const versionType = getVersionType(version);
-  const { prefix, major, minor } = getVersionParts(version);
-
-  if (versionType === "major") {
-    return `${prefix}${major}.x`;
-  }
-
-  return  `${prefix}${major}.${minor}.x`;
+  const tags = getDotXs(version);
+  return tags[tags.length - 1];
 };
 
 export const getExtraTagsForVersion = ({ version }: { version: string }): string[] => {
-  const ossVerion = getOSSVersion(version);
+  const ossVersion = getOSSVersion(version);
   const eeVersion = getEnterpriseVersion(version);
 
-  // eg. v0.23.x / v1.23.x
-  const tags = isOldVersionFormat(version)
-    ? [...getDotXs(ossVerion), ...getDotXs(eeVersion)]
-    : getDotXs(eeVersion);
+  console.log({ ossVersion, eeVersion })
 
-  return tags;
+  return [...getDotXs(ossVersion), ...getDotXs(eeVersion)]
 };
 
 /**
@@ -277,7 +278,7 @@ export async function getLastEmbeddingSdkReleaseTag({
   });
 
   const lastRelease = getLastReleaseFromTags({
-    tags: tags.filter(filterOutNonSupportedPrereleaseIdentifier),
+    tags: tags.filter(isSupportedPrereleaseIdentifier),
   });
 
   return lastRelease;
@@ -288,13 +289,17 @@ const ALLOWED_SDK_PRERELEASE_IDENTIFIERS = ["nightly"];
  *
  * @param tag a GitHub tag object
  */
-export function filterOutNonSupportedPrereleaseIdentifier(tag: Tag) {
-  const prereleaseIdentifier = /\d+\.\d+\.\d+-(?<prerelease>\w+)$/.exec(tag.ref)
-    ?.groups?.prerelease;
+export function isSupportedPrereleaseIdentifier(tag: Tag): boolean {
+  const tagPrefix = "refs/tags/embedding-sdk-";
+  const version = tag.ref.replace(tagPrefix, "");
+  const { suffix } = getVersionParts(version);
 
-  return (
-    !prereleaseIdentifier ||
-    ALLOWED_SDK_PRERELEASE_IDENTIFIERS.includes(prereleaseIdentifier)
+  if (!suffix) {
+    return true;
+  }
+
+  return ALLOWED_SDK_PRERELEASE_IDENTIFIERS.some(
+    (identifier) => suffix.includes(identifier),
   );
 }
 
@@ -347,43 +352,31 @@ export const getBuildRequirements = (version: string) => {
   return versionRequirements[Number(lastKey)];
 };
 
-// used for opening the next milestone
-export const getNextVersions = (versionString: string): string[] => {
-  if (!isValidVersionString(versionString)) {
-    throw new Error(`Invalid version string: ${versionString}`);
-  }
+export const getNextMilestones = (versionString: string): string[] => {
+  const versionType = getVersionType(versionString);
 
-  if (isPreReleaseVersion(versionString) || isPatchVersion(versionString)) {
+  if (isPreReleaseVersion(versionString) || versionType === "patch") {
     return [];
   }
 
-  const editionString = isEnterpriseVersion(versionString) ? "v1." : "v0.";
+  const { prefix, major, minor } = getVersionParts(versionString);
 
-  // minor releases -> next minor release
-  const {major, minor} = getVersionParts(versionString);
-
-  const versionType = getVersionType(versionString);
-
-  if (versionType === "minor") {
-    return [editionString + [major, minor + 1].join(".")];
-  }
-
-  // major releases -> x.1 minor release AND next .0 major release
   if (versionType === "major") {
     return [
-      editionString + [major, 1].join("."),
-      editionString + [major + 1, 0].join("."),
+      `${prefix}${major}.${Number(minor) + 1}`, // next minor
+      `${prefix}${Number(major) + 1}.0`,// next major
     ];
   }
 
-  return [];
+  return [`${prefix}${major}.${Number(minor) + 1}`]; // next minor
 };
 
-// our milestones don't have the v prefix or a .0 suffix
+// our milestones don't have the v prefix and ignore patches
 export const getMilestoneName = (version: string) => {
-  const { major, minor } = getVersionParts(version);
-
-  return Number(minor) ? `0.${major}.${minor}` : `0.${major}`;
+  const { prefix, major, minor } = getVersionParts(version);
+  return isOldVersionFormat(version)
+    ? `0.${major}${minor === "0" ? "" : `.${minor}`}`
+    : getGenericVersion(`${prefix}${major}.${minor}`);
 };
 
 // for auto-setting milestones, we don't ever want to auto-set a patch milestone
@@ -397,16 +390,14 @@ export function isPatchVersion(version: string) {
   return getVersionType(version) === "patch";
 }
 
-const normalizeVersionForSorting = (version: string) =>
-  version.replace(/^(v?)(0|1)\./, "");
+const parseVersionForSorting = (version: string) => {
+  const { major, minor, patch } = getVersionParts(version);
+  return { major : Number(major), minor: Number(minor), patch: Number(patch) };
+}
 
 export function versionSort(a: string, b: string) {
-  const [aMajor, aMinor, aPatch] = normalizeVersionForSorting(a)
-    .split(".")
-    .map(Number);
-  const [bMajor, bMinor, bPatch] = normalizeVersionForSorting(b)
-    .split(".")
-    .map(Number);
+  const { major: aMajor, minor: aMinor, patch: aPatch } = parseVersionForSorting(a);
+  const { major: bMajor, minor: bMinor, patch: bPatch } = parseVersionForSorting(b);
 
   if (aMajor !== bMajor) {
     return aMajor - bMajor;

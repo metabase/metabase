@@ -349,8 +349,8 @@ jobs:
     with:
       version: ${{ inputs.version }}
       tag_name: ${{ matrix.tag }}
-      tag_ee: ${{ contains(matrix.tag, 'v1') }}
-      tag_oss: ${{ contains(matrix.tag, 'v0') }}
+      tag_ee: ${{ contains(matrix.tag, 'v1') }} // FIXME
+      tag_oss: ${{ contains(matrix.tag, 'v0') }} // FIXME
       dot-x-tag: true
 
   trigger-cloud-issues:
@@ -386,8 +386,9 @@ jobs:
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
+            const { getEnterpriseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
             const version = '${{ inputs.version }}';
-            const enterpriseVersion = version.replace(/^v0\./, "v1.");
+            const enterpriseVersion = getEnterpriseVersion(version);
 
             github.rest.repos.createDispatchEvent({
               owner: '${{ github.repository_owner }}',
