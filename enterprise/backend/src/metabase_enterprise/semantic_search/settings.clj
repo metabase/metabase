@@ -37,3 +37,12 @@
                 (and (setting/get-value-of-type :boolean :semantic-search-enabled)
                      (premium-features/enable-semantic-search?)))
   :type       :boolean)
+
+(defsetting openai-max-tokens-per-batch
+  (deferred-tru "The maximum number of tokens sent in a single OpenAI embedding API call.")
+  :type :integer
+  :default 4000
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :description "Maximum number of texts per batch for embedding.")
