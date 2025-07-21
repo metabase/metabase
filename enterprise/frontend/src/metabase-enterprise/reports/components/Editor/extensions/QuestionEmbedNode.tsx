@@ -8,6 +8,7 @@ import { CardApi } from "metabase/services";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
+import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import styles from "./QuestionEmbedNode.module.css";
 
 export interface QuestionEmbedAttributes {
@@ -110,8 +111,10 @@ export const QuestionEmbedComponent = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(customName || "");
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
 
   const displayName = customName || card?.name || questionName;
+  const isGuiQuestion = card?.dataset_query?.type !== "native";
 
   useEffect(() => {
     if (card?.id) {
@@ -266,6 +269,11 @@ export const QuestionEmbedComponent = ({
                     </Box>
                   </Menu.Target>
                   <Menu.Dropdown>
+                    {isGuiQuestion && (
+                      <Menu.Item onClick={() => setIsModifyModalOpen(true)}>
+                        {t`Modify question`}
+                      </Menu.Item>
+                    )}
                     <Menu.Item onClick={handleReplaceQuestion}>
                       {t`Replace question`}
                     </Menu.Item>
@@ -290,6 +298,21 @@ export const QuestionEmbedComponent = ({
           </Box>
         )}
       </Box>
+      {isModifyModalOpen && card && (
+        <ModifyQuestionModal
+          card={card}
+          isOpen={isModifyModalOpen}
+          onClose={() => setIsModifyModalOpen(false)}
+          onSave={(newCard) => {
+            updateAttributes({
+              questionId: newCard.id,
+              questionName: newCard.name,
+              customName: null,
+            });
+            setIsModifyModalOpen(false);
+          }}
+        />
+      )}
     </NodeViewWrapper>
   );
 };
