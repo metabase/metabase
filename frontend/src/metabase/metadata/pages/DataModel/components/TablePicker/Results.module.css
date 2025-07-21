@@ -56,9 +56,12 @@
   overflow-wrap: anywhere;
 }
 
+.hidden {
+  opacity: 0;
+}
+
 .visibilityToggle {
   flex-shrink: 0;
-  opacity: 0;
 
   &:focus,
   .item:hover &,

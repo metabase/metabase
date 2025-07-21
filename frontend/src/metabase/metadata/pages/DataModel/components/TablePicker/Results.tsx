@@ -282,7 +282,9 @@ export function Results({
                 item.table &&
                 !disabled && (
                   <TableVisibilityToggle
-                    className={S.visibilityToggle}
+                    className={cx(S.visibilityToggle, {
+                      [S.hidden]: item.table.visibility_type == null,
+                    })}
                     table={item.table}
                     onUpdate={() => reload?.(value)}
                   />
