@@ -87,6 +87,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         onSubmit={handleDatabaseSubmit}
         onEngineChange={handleEngineChange}
         onCancel={handleStepCancel}
+        showSampleDatabase={true}
       />
       {isEmailConfigured && (
         <SetupSection
