@@ -12,10 +12,7 @@ export function createPauses<Count extends number>(count: Count) {
 }
 
 export function createMockReadableStream(
-  textChunks:
-    | string[]
-    | Generator<string, void, unknown>
-    | AsyncGenerator<string, void, unknown>,
+  textChunks: string[] | AsyncGenerator<string, void, unknown>,
   options?: {
     disableAutoInsertNewLines: boolean;
   },
