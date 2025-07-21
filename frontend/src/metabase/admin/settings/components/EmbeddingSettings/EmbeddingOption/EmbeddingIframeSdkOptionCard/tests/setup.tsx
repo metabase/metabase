@@ -2,7 +2,10 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 export interface SetupOpts {
@@ -38,7 +41,11 @@ export function setup({
     setupEnterprisePlugins();
   }
 
-  setupPropertiesEndpoints(mockTokenFeatures);
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "token-features": mockTokenFeatures,
+    }),
+  );
 
   return {
     state,

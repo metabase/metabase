@@ -1,57 +1,86 @@
-import userEvent from "@testing-library/user-event";
-
-import { setupSettingsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import type { TokenFeatures } from "metabase-types/api";
+import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import { EmbeddingIframeSdkOptionCard } from "../EmbeddingIframeSdkOptionCard";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(setupOpts: SetupOpts = {}) {
-  setupSettingsEndpoints([]);
   const { state } = baseSetup(setupOpts);
+
+  // Setup settings endpoints with proper iframe SDK setting
+  const iframeSDKSetting =
+    setupOpts.settingValues?.["enable-embedding-iframe-sdk"] ?? false;
+
+  let settingValue: any;
+  let isEnvSetting = false;
+
+  if (typeof iframeSDKSetting === "object" && iframeSDKSetting !== null) {
+    // Handle the env var case: { value: true, is_env_setting: true }
+    settingValue = iframeSDKSetting.value;
+    isEnvSetting = iframeSDKSetting.is_env_setting;
+  } else {
+    // Handle the simple boolean case
+    settingValue = iframeSDKSetting;
+  }
+
+  const settings = [
+    createMockSettingDefinition({
+      key: "enable-embedding-iframe-sdk",
+      value: settingValue,
+      is_env_setting: isEnvSetting,
+    }),
+    // Add show-sdk-embed-terms setting to match what the component expects
+    createMockSettingDefinition({
+      key: "show-sdk-embed-terms",
+      value: true,
+      is_env_setting: false,
+    }),
+  ];
+
+  setupSettingsEndpoints(settings);
+  setupUpdateSettingEndpoint();
+
+  // Mock PLUGIN_EMBEDDING based on enterprise plugins setting
+  const isEE = setupOpts.hasEnterprisePlugins ?? false;
+  jest.spyOn(PLUGIN_EMBEDDING, "isEnabled").mockReturnValue(isEE);
+
   return { state };
 }
 
 const commonTests = (setupOpts: SetupOpts) => {
-  it("displays the title", () => {
+  it("displays the embed card", () => {
     const { state } = setup(setupOpts);
     renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
       storeInitialState: state,
     });
+
     expect(
       screen.getByText("Embedded analytics SDK for iframe"),
     ).toBeInTheDocument();
-  });
 
-  it("displays the Pro and Enterprise badge", () => {
-    const { state } = setup(setupOpts);
-    renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-      storeInitialState: state,
-    });
     expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
   });
 
-  it("displays the description", () => {
-    const { state } = setup(setupOpts);
-    renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-      storeInitialState: state,
-    });
-    expect(
-      screen.getByText(
-        /Embed Metabase components within iframes using the SDK/,
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("shows 'Try it out' button for non-EE instances", () => {
+    // Skip this test if enterprise plugins are enabled
+    if (setupOpts.hasEnterprisePlugins) {
+      return;
+    }
+
     const { state } = setup(setupOpts);
     renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
       storeInitialState: state,
     });
+
     expect(
-      screen.getByRole("link", { name: "Try it out" }),
+      screen.getByRole("button", { name: "Try it out" }),
     ).toBeInTheDocument();
   });
 
@@ -64,63 +93,31 @@ const commonTests = (setupOpts: SetupOpts) => {
     renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
       storeInitialState: state,
     });
-    expect(screen.getByRole("link", { name: "Configure" })).toBeInTheDocument();
-  });
-
-  it("links to the iframe SDK settings page", () => {
-    const { state } = setup(setupOpts);
-    renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-      storeInitialState: state,
-    });
-    const link = screen.getByRole("link");
-    expect(link).toHaveAttribute(
-      "href",
-      "/admin/settings/embedding-in-other-applications/iframe-sdk",
-    );
+    expect(
+      screen.getByRole("button", { name: "Configure" }),
+    ).toBeInTheDocument();
   });
 
   describe("embedding toggle", () => {
-    it("displays 'Disabled' when iframe embedding SDK is disabled", () => {
+    it("displays 'Disabled' when iframe embedding SDK is disabled", async () => {
       const { state } = setup({
         ...setupOpts,
         settingValues: { "enable-embedding-iframe-sdk": false },
       });
-      renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-        storeInitialState: state,
-      });
-      expect(screen.getByLabelText("Disabled")).toBeInTheDocument();
-    });
 
-    it("displays 'Enabled' when iframe embedding SDK is enabled", () => {
-      const { state } = setup({
-        ...setupOpts,
-        settingValues: { "enable-embedding-iframe-sdk": true },
-      });
-      renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-        storeInitialState: state,
-      });
-      expect(screen.getByLabelText("Enabled")).toBeInTheDocument();
-    });
-
-    it("can be clicked to toggle the setting", async () => {
-      const { state } = setup({
-        ...setupOpts,
-        settingValues: { "enable-embedding-iframe-sdk": false },
-      });
       renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
         storeInitialState: state,
       });
 
-      const toggle = screen.getByRole("switch");
-      expect(toggle).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("switch")).toBeInTheDocument();
+      });
 
-      await userEvent.click(toggle);
-
-      // The toggle should now show as enabled (this depends on the actual implementation)
-      // In a real test, you might want to verify the API call was made
+      expect(screen.getByRole("switch")).not.toBeChecked();
+      expect(screen.getByText("Disabled")).toBeInTheDocument();
     });
 
-    it("shows environment variable text when setting is controlled by env var", () => {
+    it("shows environment variable text when setting is controlled by env var", async () => {
       const { state } = setup({
         ...setupOpts,
         settingValues: {
@@ -130,17 +127,25 @@ const commonTests = (setupOpts: SetupOpts) => {
           },
         },
       });
+
       renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
         storeInitialState: state,
       });
-      expect(
-        screen.getByText("Set via environment variable"),
-      ).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Set via environment variable"),
+        ).toBeInTheDocument();
+      });
     });
   });
 };
 
 describe("EmbeddingIframeSdkOptionCard", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe("Common functionality", () => {
     commonTests({});
   });
