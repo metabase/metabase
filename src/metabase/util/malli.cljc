@@ -2,8 +2,10 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.malli.defn :as mu.defn]
+       ([metabase.config.core :as config]
+        [metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
+        [malli.generator :as mg]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
    [clojure.core :as core]
@@ -11,6 +13,7 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr])
   #?(:cljs (:require-macros [metabase.util.malli])))
@@ -97,7 +100,7 @@
                                                           (symbol multifn))
                                     :dispatch-value ~dispatch-value-symb}
               f#                   ~(if instrument?
-                                      (mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))
+                                      (mu.fn/instrumented-fn-form-with-schema error-context-symb (mu.fn/parse-fn-tail fn-tail))
                                       (mu.fn/deparameterized-fn-form (mu.fn/parse-fn-tail fn-tail)))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
@@ -142,3 +145,44 @@
         (recur ret (nnext kvs)))
       (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
     map-schema))
+
+(core/defn require-all-keys
+  "Ensure maps has no optional keys, maybe is required."
+  [schema]
+  (mc/walk
+   schema
+   (mc/schema-walker
+    (fn [schema]
+      (case (mc/type schema)
+        :map
+        (mc/-set-children schema
+                          (mapv (fn [[k p s]]
+                                  [k (dissoc p :optional) s]) (mc/children schema)))
+        :maybe
+        (first (mc/children schema))
+
+        schema)))))
+
+(core/defn snake-keyed-schema
+  "Ensure all maps has snake key schemas"
+  [schema]
+  (mc/walk
+   schema
+   (mc/schema-walker (fn [schema]
+                       (if (= :map (mc/type schema))
+                         (mc/-set-children schema
+                                           (mapv (fn [[k p s]]
+                                                   [(u/->snake_case_en k) p s]) (mc/children schema)))
+
+                         schema)))))
+
+#?(:clj
+   (defn generate-example
+     "Generate an example value for a schema. By default will include all optional keys."
+     [schema & {:keys [seed include-optional-keys?]
+                :or {include-optional-keys? true}
+                :as _opts}]
+     (let [seed   (or seed (when config/is-prod? 42))
+           schema (cond-> schema
+                    include-optional-keys? require-all-keys)]
+       (mg/generate schema {:seed seed}))))

@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.actions.api-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.actions.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -78,6 +80,7 @@
     :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}])
 
 (deftest list-actions-test
+  (search/reset-tracking!)
   (mt/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-actions-test-data-tables #{"users"}
@@ -105,7 +108,7 @@
                                     :model_id   card-id
                                     :kind       "row/create"
                                     :parameters [{:id "x" :type "number"}]}
-                          _        {:name                   "Archived example"
+                          archived {:name                   "Archived example"
                                     :type                   :query
                                     :model_id               card-id
                                     :dataset_query          (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
@@ -126,22 +129,22 @@
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
                 "Should not be able to list actions without read permission on the model"))
-          #_(testing "Can list all actions"
-              (let [response (mt/user-http-request :crowberto :get 200 "action")
-                    action-ids (into #{} (map :id) response)]
-                (is (set/subset? (into #{} (map :action-id) [action-1 action-2 action-3])
-                                 action-ids))
-                (doseq [action response
-                        :when (= (:type action) "query")]
-                  (testing "Should return a query action deserialized (#23201)"
-                    (is (malli= ExpectedGetQueryActionAPIResponse
-                                action))))
-                (testing "Does not have archived actions"
-                  (is (not (contains? action-ids (:id archived)))))
-                (testing "Does not return actions on models without permissions"
-                  (let [rasta-list (mt/user-http-request :rasta :get 200 "action")]
-                    (is (empty? (set/intersection (into #{} (map :action-id) [action-1 action-2 action-3])
-                                                  (into #{} (map :id) rasta-list)))))))))))))
+          (testing "Can list all actions"
+            (let [response (mt/user-http-request :crowberto :get 200 "action")
+                  action-ids (into #{} (map :id) response)]
+              (is (set/subset? (into #{} (map :action-id) [action-1 action-2 action-3])
+                               action-ids))
+              (doseq [action response
+                      :when (= (:type action) "query")]
+                (testing "Should return a query action deserialized (#23201)"
+                  (is (malli= ExpectedGetQueryActionAPIResponse
+                              action))))
+              (testing "Does not have archived actions"
+                (is (not (contains? action-ids (:id archived)))))
+              (testing "Does not return actions on models without permissions"
+                (let [rasta-list (mt/user-http-request :rasta :get 200 "action")]
+                  (is (empty? (set/intersection (into #{} (map :action-id) [action-1 action-2 action-3])
+                                                (into #{} (map :id) rasta-list)))))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
@@ -680,3 +683,212 @@
                     :errors {:user_id "This User_id does not exist."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                          {:parameters {"id" 1 "user_id" 99999}})))))))))
+
+;; action browsing support apis
+
+(deftest v2-database-test
+  (testing "GET /api/action/v2/database"
+    (mt/with-actions-enabled
+      (testing "Returns databases with table editing enabled"
+        (mt/with-temp [:model/Database {db-id :id} {:name        "Versace Mansion"
+                                                    :description "Luxury fashion database"
+                                                    :engine      "h2"
+                                                    :settings    {:database-enable-table-editing true}}
+                       :model/Table _ {:name "runway_table" :db_id db-id}]
+          (is (some #(= % {:id db-id :name "Versace Mansion" :description "Luxury fashion database"})
+                    (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))
+
+      (testing "Excludes databases without table editing enabled"
+        (mt/with-temp [:model/Database {db-id :id} {:name        "Prada Outlet"
+                                                    :description "Disabled fashion database"
+                                                    :engine      "h2"
+                                                    :settings    {:database-enable-table-editing false}}
+                       :model/Table _ {:name "disabled_table" :db_id db-id}]
+          (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database")))))))
+
+      (testing "Excludes databases without tables"
+        (mt/with-temp [:model/Database {db-id :id} {:name        "Gucci Warehouse"
+                                                    :description "Empty fashion database"
+                                                    :engine      "h2"
+                                                    :settings    {:database-enable-table-editing true}}]
+          (is (not (some #(= (:id %) db-id) (:databases (mt/user-http-request :crowberto :get 200 "action/v2/database"))))))))))
+
+(deftest v2-database-table-test
+  (testing "GET /api/action/v2/database/:database-id/table"
+    (mt/with-actions-enabled
+      (mt/with-temp [:model/Database {db-id-1 :id} {:name     "Chanel Atelier"
+                                                    :engine   "h2"
+                                                    :settings {:database-enable-table-editing true}}
+                     :model/Database {db-id-2 :id} {:name     "Armani Casa"
+                                                    :engine   "h2"
+                                                    :settings {:database-enable-table-editing true}}
+                     :model/Table {table-id-1 :id} {:name         "oak_dining_table"
+                                                    :display_name "Oak Dining Table"
+                                                    :description  "Elegant oak dining furniture"
+                                                    :schema       "public"
+                                                    :db_id        db-id-1}
+                     :model/Table {table-id-2 :id} {:name         "mahogany_coffee_table"
+                                                    :display_name "Mahogany Coffee Table"
+                                                    :description  "Luxurious mahogany coffee table"
+                                                    :schema       "public"
+                                                    :db_id        db-id-1}
+                     :model/Table {table-id-3 :id} {:name         "leather_sofa_table"
+                                                    :display_name "Leather Sofa Table"
+                                                    :description  "Premium leather side table"
+                                                    :schema       "public"
+                                                    :db_id        db-id-2}
+                     :model/Table _                {:name         "inactive_table"
+                                                    :display_name "Inactive Table"
+                                                    :description  "inactive"
+                                                    :schema       "public"
+                                                    :db_id        db-id-1
+                                                    :active       false}]
+
+        (testing "Returns only tables from the specified database, in alphabetical order"
+          (is (=? {:tables [{:id table-id-2 :name "mahogany_coffee_table" :display_name "Mahogany Coffee Table"
+                             :description "Luxurious mahogany coffee table" :schema "public"}
+                            {:id table-id-1 :name "oak_dining_table" :display_name "Oak Dining Table"
+                             :description "Elegant oak dining furniture" :schema "public"}]}
+                  (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id-1))))
+          (testing "Does not include tables from other databases"
+            (let [tables (:tables (mt/user-http-request :crowberto :get 200 (format "action/v2/database/%d/table" db-id-1)))]
+              (is (not (some #(= (:id %) table-id-3) tables))))))
+
+        (testing "Returns 400 when table editing disabled"
+          (t2/update! :model/Database db-id-1 {:settings {:database-enable-table-editing false}})
+          (is (= "Table editing is not enabled for this database"
+                 (mt/user-http-request :crowberto :get 400 (format "action/v2/database/%d/table" db-id-1)))))
+
+        (testing "Returns 404 for non-existent database"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "action/v2/database/99999/table"))))))))
+
+(deftest v2-model-test
+  (testing "GET /api/action/v2/model"
+    (mt/with-actions-enabled
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Elite Agency"}]
+        (mt/with-actions [{model-id-1 :id} {:type :model, :dataset_query (mt/mbql-query users)}
+                          {action-id-1 :action-id} {:name     "Cindy Crawford Pose"
+                                                    :type     :implicit
+                                                    :kind     "row/create"
+                                                    :archived false}
+                          _                        {:name     "Retired Supermodel"
+                                                    :type     :implicit
+                                                    :kind     "row/delete"
+                                                    :archived true}]
+          (mt/with-actions [{model-id-2 :id} {:type :model, :dataset_query (mt/mbql-query venues)}
+                            {action-id-2 :action-id} {:name     "Tyra Banks Strut"
+                                                      :type     :implicit
+                                                      :kind     "row/update"
+                                                      :archived false}]
+           ;; Update model metadata after creation, to work around limitations in with-actions
+            (t2/update! :model/Card model-id-1 {:name                "Gisele Bundchen"
+                                                :description         "Brazilian supermodel extraordinaire"
+                                                :collection_id       coll-id
+                                                :collection_position 1})
+            (t2/update! :model/Card model-id-2 {:name                "Heidi Klum"
+                                                :description         "German-American model and TV personality"
+                                                :collection_position 2})
+
+            (testing "Returns models that have actions"
+              (let [response (mt/user-http-request :crowberto :get 200 "action/v2/model")]
+                (is (=? {:models [{:id                  model-id-1
+                                   :name                "Gisele Bundchen"
+                                   :description         "Brazilian supermodel extraordinaire"
+                                   :collection_id       coll-id
+                                   :collection_position 1
+                                   :collection_name     "Elite Agency"}
+                                  {:id                  model-id-2
+                                   :name                "Heidi Klum"
+                                   :description         "German-American model and TV personality"
+                                   :collection_id       nil
+                                   :collection_position 2
+                                   :collection_name     nil}]}
+                        response))))
+
+            (testing "Does not return models with only archived actions"
+              (t2/update! :model/Action action-id-1 {:archived true})
+              (t2/update! :model/Action action-id-2 {:archived true})
+              (is (=? {:models []}
+                      (mt/user-http-request :crowberto :get 200 "action/v2/model"))))
+
+            (testing "Returns empty list when no models have actions"
+              (t2/delete! :model/Action action-id-1)
+              (t2/delete! :model/Action action-id-2)
+              (is (=? {:models []}
+                      (mt/user-http-request :crowberto :get 200 "action/v2/model"))))))))))
+
+(deftest v2-actions-test
+  (testing "GET /api/action/v2/"
+    (mt/with-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-actions-test-data-tables #{"users"}
+          (mt/with-actions [{model-id :id} {:type :model :dataset_query (mt/mbql-query users)}
+                            action-id-1 {:name            "Strike a Pose"
+                                         :description     "A dummy HTTP action"
+                                         :type            :http
+                                         :model_id        model-id
+                                         :template        {:method "GET"
+                                                           :url    "https://example.com/{{x}}"}
+                                         :parameters      [{:id "x" :type "text"}]
+                                         :response_handle ".body"
+                                         :error_handle    ".status >= 400"}
+                            action-id-2 {:name          "Walk the Catwalk"
+                                         :type          :query
+                                         :model_id      model-id
+                                         :dataset_query (mt/mbql-query venues)}
+                            _           {:name          "Retired from Runway"
+                                         :type          :query
+                                         :model_id      model-id
+                                         :dataset_query (mt/mbql-query users)
+                                         :archived      true}]
+            (testing "Requires either model-id or table-id parameter"
+              (is (= "Either model-id or table-id parameter is required"
+                     (mt/user-http-request :crowberto :get 400 "action/v2/"))))
+
+            (testing "Cannot specify both model-id and table-id"
+              (is (= "Cannot specify both model-id and table-id parameters"
+                     (mt/user-http-request :crowberto :get 400 (str "action/v2/?model-id=" model-id "&table-id=1")))))
+
+            (testing "Filters by model-id"
+              (mt/with-actions [{other-model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                                {action-id-4 :action-id} {:name        "Vogue Cover Shoot"
+                                                          :description "Photo shoot for fashion magazine"
+                                                          :type        :http
+                                                          :model_id    other-model-id
+                                                          :template    {:method "GET"
+                                                                        :url    "https://vogue.com"}}]
+                (is (=? {:actions [{:id (:action-id action-id-1), :name "Strike a Pose", :description "A dummy HTTP action"}
+                                   {:id (:action-id action-id-2), :name "Walk the Catwalk", :description nil}]}
+                        (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" model-id))))
+                (testing "Returns actions for other model"
+                  (is (=? {:actions [{:id          action-id-4
+                                      :name        "Vogue Cover Shoot"
+                                      :description "Photo shoot for fashion magazine"}]}
+                          (mt/user-http-request :crowberto :get 200 (str "action/v2/?model-id=" other-model-id)))))))
+
+            (testing "Returns 404 for non-existent model"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :get 404 "action/v2/?model-id=99999"))))
+
+            (testing "Supports table-id parameter"
+              (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing true}}
+                (mt/with-temp [:model/Table {table-id :id} {:name "dining_table" :db_id (mt/id)}
+                               :model/Table {other-table-id :id} {:name "coffee_table" :db_id (mt/id)}]
+                  (let [resp (mt/user-http-request :crowberto :get 200 (str "action/v2/?table-id=" table-id))]
+                    (testing "Returns table actions with id, name, and description"
+                      (is (=? {:actions [{:id neg-int? :name "Create" :description string?}
+                                         {:id neg-int? :name "Update" :description string?}
+                                         {:id neg-int? :name "Create or Update" :description string?}
+                                         {:id neg-int? :name "Delete" :description string?}]}
+                              resp)))
+                    (testing "Returns different action IDs for the different tables"
+                      (let [actions-1 (:actions resp)
+                            actions-2 (:actions (mt/user-http-request :crowberto :get 200 (str "action/v2/?table-id=" other-table-id)))]
+                        (is (seq actions-2))
+                        (is (empty? (set/intersection (into #{} (map :id) actions-1)
+                                                      (into #{} (map :id) actions-2))))))))))
+
+            (testing "Requires permission on model"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (str "action/v2/?model-id=" model-id)))))))))))
