@@ -59,7 +59,7 @@
           ;; this `category_id` -- it's an FK constraint violation.
           (mt/as-admin
             (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
-                                  (actions/perform-action-with-single-input-and-output :model.row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
+                                  (actions/perform-action! :model.row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
 
@@ -87,7 +87,7 @@
   Used to test error message when executing implicit action for SQL DBs."
   [& args]
   (try
-    (apply actions/perform-action-with-single-input-and-output args)
+    (apply actions/perform-action! args)
     (catch Exception e
       (ex-data e))))
 
@@ -275,7 +275,7 @@
       (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
           (let [db-id (mt/id)
-                created-user (actions/perform-action-with-single-input-and-output
+                created-user (actions/perform-action!
                               :table.row/create
                               {:database db-id
                                :table-id (mt/id :user)
@@ -296,7 +296,7 @@
                                   (field-id->name (mt/id :user :id))       (mt/malli=? int?)
                                   (field-id->name (mt/id :user :name))     "New Name"}
                        :table-id (mt/id :user)}
-                      (actions/perform-action-with-single-input-and-output
+                      (actions/perform-action!
                        :table.row/update
                        {:database db-id
                         :table-id (mt/id :user)
@@ -306,7 +306,7 @@
               (is (=? {:op       :deleted
                        :row      {(field-id->name (mt/id :user :id)) created-user-id}
                        :table-id (mt/id :user)}
-                      (actions/perform-action-with-single-input-and-output
+                      (actions/perform-action!
                        :table.row/delete
                        {:database db-id
                         :table-id (mt/id :user)
@@ -322,7 +322,7 @@
               user-name-col  (field-id->name (mt/id :user :name))
               user-group-id-col (field-id->name (mt/id :user :group-id))
               new-group      (fn []
-                               (-> (actions/perform-action-with-single-input-and-output
+                               (-> (actions/perform-action!
                                     :table.row/create
                                     {:database (mt/id)
                                      :table-id (mt/id :group)
@@ -332,7 +332,7 @@
                                    (get group-id-col)))
 
               new-user       (fn [group-id]
-                               (actions/perform-action-with-single-input-and-output
+                               (actions/perform-action!
                                 :table.row/create
                                 {:database (mt/id)
                                  :table-id (mt/id :user)
@@ -357,7 +357,7 @@
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"Rows have children"
-                   (actions/perform-action-with-single-input-and-output
+                   (actions/perform-action!
                     :table.row/delete
                     {:database (mt/id)
                      :table-id (mt/id :group)
@@ -366,7 +366,7 @@
               (testing "success if delete-children is enabled"
                 (is (=? {:op  :deleted
                          :row {group-id-col created-group-id}}
-                        (actions/perform-action-with-single-input-and-output
+                        (actions/perform-action!
                          :table.row/delete
                          {:database        (mt/id)
                           :table-id        (mt/id :group)
@@ -377,7 +377,7 @@
             (let [created-group-id (new-group)]
               (is (=? {:op  :deleted
                        :row {group-id-col created-group-id}}
-                      (actions/perform-action-with-single-input-and-output
+                      (actions/perform-action!
                        :table.row/delete
                        {:database (mt/id)
                         :table-id (mt/id :group)
@@ -389,7 +389,7 @@
       (actions.tu/with-actions-temp-db action-nullable
         (mt/with-actions-enabled
           (testing "creates new row with no populated columns"
-            (let [result (actions/perform-action-with-single-input-and-output
+            (let [result (actions/perform-action!
                           :table.row/create
                           {:table-id (mt/id :thought)
                            :row      {}})]
@@ -409,7 +409,7 @@
                 group-rank-col (field-id->name (mt/id :group :ranking))]
 
             (testing "creates new row when key doesn't exist"
-              (let [result (actions/perform-action-with-single-input-and-output
+              (let [result (actions/perform-action!
                             :table.row/create-or-update
                             {:database db-id
                              :table-id (mt/id :group)
@@ -425,7 +425,7 @@
 
                 (testing "then updates the same row when key exists"
                   (let [created-id (get-in result [:row group-id-col])
-                        update-result (actions/perform-action-with-single-input-and-output
+                        update-result (actions/perform-action!
                                        :table.row/create-or-update
                                        {:database db-id
                                         :table-id (mt/id :group)
@@ -450,7 +450,7 @@
                 group-rank-col (field-id->name (mt/id :group :ranking))]
             (testing "batch operations"
               (testing "mixed create and update operations"
-                (let [initial-group (actions/perform-action-with-single-input-and-output
+                (let [initial-group (actions/perform-action!
                                      :table.row/create
                                      {:database db-id
                                       :table-id (mt/id :group)
@@ -458,7 +458,7 @@
                                                  group-rank-col 300}})
                       initial-id (get-in initial-group [:row group-id-col])
 
-                      batch-result (actions/perform-action!
+                      batch-result (actions/perform-action-v2!
                                     :table.row/create-or-update
                                     {:unknown :legacy-action}
                                     [{:database db-id
@@ -501,7 +501,7 @@
                 group-name-col (field-id->name (mt/id :group :name))
                 group-rank-col (field-id->name (mt/id :group :ranking))]
             (testing "creates new row when key doesn't exist"
-              (let [result (actions/perform-action-with-single-input-and-output
+              (let [result (actions/perform-action!
                             :table.row/create-or-update
                             {:database db-id
                              :table-id (mt/id :group)
@@ -532,7 +532,7 @@
                                                                         (apply original-row-create!* args))))]
 
                     (mt/with-current-user (mt/user->id :crowberto)
-                      (actions/perform-action-with-single-input-and-output
+                      (actions/perform-action!
                        :table.row/create-or-update
                        {:database db-id
                         :table-id (mt/id :user)
@@ -551,7 +551,7 @@
               (let [error-thrown? (atom false)]
                 (try
                   (mt/with-current-user (mt/user->id :crowberto)
-                    (actions/perform-action-with-single-input-and-output
+                    (actions/perform-action!
                      :table.row/create-or-update
                      {:database db-id
                       :table-id (mt/id :user)

@@ -234,16 +234,16 @@
   (assert table-id "Id cannot be nil")
   (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
 
-(defn log-before-after
+(defn- log-before-after
   [level context before after]
   (log/logf level "%s %s => %s" context before after)
   after)
 
-(mu/defn perform-action!
-  "Perform an *implicit* `action`. Invoke this function for performing actions, e.g. in API endpoints;
-  implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
-  `action` being performed. [[action-arg-map-schema]] returns the specific spec used to validate `arg-map` for a given
-  `action`."
+;; TODO rename this to just perform-action! and rename the legacy entry point to clearly deprecate it.
+(mu/defn perform-action-v2!
+  "Perform an *implicit* `action`. This is the main entry point that handles validation, permissions, and more.
+  Implement [[perform-action!*]] to add support for a new driver/action combo.
+  The shape of `arg-map` depends on the `action` being performed. "
   [action
    scope
    arg-map-or-maps
@@ -261,8 +261,8 @@
                           (= "data-editing" (namespace action-kw))  :data-editing
                           :else                                     :ad-hoc-invocation))
           spec      (actions.args/action-arg-map-schema action-kw)
-          arg-maps  (log/log-before-after :trace "normalize map" arg-maps
-                                          (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps))
+          arg-maps  (log-before-after :trace "normalize map" arg-maps
+                                      (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps))
           errors   (for [arg-map arg-maps
                          :when (not (mr/validate spec arg-map))]
                      {:message (format "Invalid Action arg map for %s: %s" action-kw (me/humanize (mr/explain spec arg-map)))
@@ -324,12 +324,12 @@
             {:effects (:effects (:context result))
              :outputs (:outputs result)}))))))
 
-(mu/defn perform-action-with-single-input-and-output
-  "This is the Old School version of [[perform-action!], before we returned effects and used bulk chaining."
+(mu/defn perform-action!
+  "This is the Old School version of [[perform-action!], before we returned effects and added generic bulk application."
   [action arg-map & {:keys [scope] :as opts}]
   (try (let [scope             (or scope {:unknown :legacy-action})
-             {:keys [outputs]} (perform-action! action scope [arg-map] (dissoc opts :scope))]
-         (assert (= 1 (count outputs)) "The legacy action APIs do not support multiple outputs")
+             {:keys [outputs]} (perform-action-v2! action scope [arg-map] (dissoc opts :scope))]
+         (assert (= 1 (count outputs)) "The legacy action APIs do not support actions with multiple outputs")
          (first outputs))
        (catch ExceptionInfo e
          (if-let [{:keys [message data]} (first (::schema-errors (ex-data e)))]

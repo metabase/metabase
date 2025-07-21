@@ -175,8 +175,8 @@
                           (= implicit-action :model.row/update)
                           (assoc :update-row row-parameters))]
     (binding [qp.perms/*card-id* model-id]
-      (actions/perform-action-with-single-input-and-output implicit-action arg-map {:scope  {:model-id model-id}
-                                                                                    :policy :model-action}))))
+      (actions/perform-action! implicit-action arg-map {:scope                              {:model-id model-id}
+                                                        :policy :model-action}))))
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
@@ -211,7 +211,7 @@
   (let [request-parameters' (case action-kw
                               :table.row/update (u/remove-nils request-parameters)
                               request-parameters)]
-    (actions/perform-action-with-single-input-and-output
+    (actions/perform-action!
      action-kw
      {:table-id table-id :row request-parameters'}
      :policy :data-editing)))
