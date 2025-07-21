@@ -88,10 +88,8 @@ export function has24HourModeSetting() {
   return timeStyle === TIME_FORMAT_24_HOUR;
 }
 
-export function parseTime(value: moment.Moment | string) {
-  if (moment.isMoment(value)) {
-    return value;
-  } else if (typeof value === "string") {
+export function parseTime(value: string) {
+  if (typeof value === "string") {
     return moment(value, [
       "HH:mm:ss.sss[Z]",
       "HH:mm:SS.sss",
