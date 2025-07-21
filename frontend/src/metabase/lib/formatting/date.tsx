@@ -806,7 +806,7 @@ export function normalizeDateTimeRangeWithUnit(
   values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
-) {
+): [Dayjs, Dayjs, number] | [Dayjs, Dayjs] {
   const [a, b] = [values[0], values[1] ?? values[0]].map((d) =>
     deprecatedParseTimestamp(d, unit, options.local),
   );
@@ -1026,7 +1026,7 @@ function formatDateTimeWithFormats(
   timeFormat: string | null,
   options: OptionsType,
 ) {
-  const m = deprecatedParseTimestamp(
+  const m = parseTimestamp(
     value,
     options.column && options.column.unit,
     options.local,
@@ -1063,8 +1063,7 @@ export function formatDateTimeWithUnit(
     }
   }
 
-  // using parseTimestamp breaks date representation
-  const d = deprecatedParseTimestamp(value, unit, options.local);
+  const d = parseTimestamp(value, unit, options.local);
   if (!d.isValid()) {
     return String(value);
   }
