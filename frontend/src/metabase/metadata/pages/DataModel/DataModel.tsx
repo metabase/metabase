@@ -176,7 +176,6 @@ export const DataModel = ({ children, location, params }: Props) => {
                     <FieldSection
                       databaseId={databaseId}
                       field={field}
-                      isPreviewOpen={isPreviewOpen}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
