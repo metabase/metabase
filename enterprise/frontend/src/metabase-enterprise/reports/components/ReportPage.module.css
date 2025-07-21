@@ -51,6 +51,7 @@
     background-color: var(--mb-color-brand-light);
     box-shadow: 0 0 0 4px var(--mb-color-brand-light);
   }
+
   100% {
     background-color: transparent;
     box-shadow: none;

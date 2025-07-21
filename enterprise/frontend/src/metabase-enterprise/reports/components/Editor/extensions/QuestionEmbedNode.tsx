@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { NodeViewWrapper, NodeViewProps } from "@tiptap/react";
-import { useEffect, useState, useRef } from "react";
+import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import { useEffect, useRef, useState } from "react";
+import { t } from "ttag";
 
 import { useGetCardQuery } from "metabase/api";
 import { CardApi } from "metabase/services";
@@ -28,14 +29,15 @@ export const QuestionEmbedNode = Node.create<{
     return {
       questionId: {
         default: null,
-        parseHTML: element => parseInt(element.getAttribute("data-question-id") || "0"),
+        parseHTML: (element) =>
+          parseInt(element.getAttribute("data-question-id") || "0"),
       },
       questionName: {
         default: "",
       },
       customName: {
         default: null,
-        parseHTML: element => element.getAttribute("data-custom-name"),
+        parseHTML: (element) => element.getAttribute("data-custom-name"),
       },
       model: {
         default: "card",
@@ -64,7 +66,7 @@ export const QuestionEmbedNode = Node.create<{
         },
         this.options.HTMLAttributes,
       ),
-      node.attrs.customName 
+      node.attrs.customName
         ? `{{card:${node.attrs.questionId}:${node.attrs.customName}}}`
         : `{{card:${node.attrs.questionId}}}`,
     ];
@@ -78,7 +80,7 @@ export const QuestionEmbedNode = Node.create<{
   },
 
   addNodeView() {
-    return ({ node }) => {
+    return () => {
       const dom = document.createElement("div");
       dom.setAttribute("data-type", "question-embed");
       dom.className = styles.embedContainer;
@@ -94,7 +96,10 @@ export const QuestionEmbedNode = Node.create<{
   },
 });
 
-export const QuestionEmbedComponent = ({ node, updateAttributes }: NodeViewProps) => {
+export const QuestionEmbedComponent = ({
+  node,
+  updateAttributes,
+}: NodeViewProps) => {
   const { questionId, questionName, customName } = node.attrs;
   const { data: card, isLoading, error } = useGetCardQuery({ id: questionId });
   const [results, setResults] = useState<any>(null);
@@ -155,7 +160,7 @@ export const QuestionEmbedComponent = ({ node, updateAttributes }: NodeViewProps
     return (
       <NodeViewWrapper className={styles.embedWrapper}>
         <Box className={styles.errorContainer}>
-          <Text color="error">Failed to load question: {questionName}</Text>
+          <Text color="error">{t`Failed to load question: {questionName}`}</Text>
         </Box>
       </NodeViewWrapper>
     );
@@ -180,7 +185,7 @@ export const QuestionEmbedComponent = ({ node, updateAttributes }: NodeViewProps
                     fontSize: "1rem",
                     border: "1px solid var(--mb-color-border)",
                     padding: "0.25rem 0.5rem",
-                  }
+                  },
                 }}
               />
             ) : (

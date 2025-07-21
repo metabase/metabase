@@ -1,13 +1,18 @@
-import { useEffect, useState, useRef } from "react";
 import type { Editor } from "@tiptap/react";
-import { Popover } from "metabase/ui";
+import { useEffect, useRef, useState } from "react";
+
 import { useListRecentsQuery } from "metabase/api";
+import Search from "metabase/entities/search";
+import { getName } from "metabase/lib/name";
+import { useDispatch } from "metabase/lib/redux";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
-import Search from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
-import { getName } from "metabase/lib/name";
-import type { SearchModel, UnrestrictedLinkEntity, RecentItem } from "metabase-types/api";
+import { Popover } from "metabase/ui";
+import type {
+  RecentItem,
+  SearchModel,
+  UnrestrictedLinkEntity,
+} from "metabase-types/api";
 
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
@@ -15,39 +20,48 @@ interface QuestionMentionPluginProps {
   editor: Editor;
 }
 
-export const QuestionMentionPlugin = ({ editor }: QuestionMentionPluginProps) => {
+export const QuestionMentionPlugin = ({
+  editor,
+}: QuestionMentionPluginProps) => {
   const dispatch = useDispatch();
   const [showPopover, setShowPopover] = useState(false);
   const [query, setQuery] = useState("");
-  const [mentionRange, setMentionRange] = useState<{ from: number; to: number } | null>(null);
-  const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(null);
+  const [mentionRange, setMentionRange] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
+  const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const virtualRef = useRef<HTMLDivElement>(null);
 
-  const { data: recents = [], isLoading: isRecentsLoading } = useListRecentsQuery(
-    undefined,
-    { refetchOnMountOrArgChange: true }
-  );
+  const { data: recents = [], isLoading: isRecentsLoading } =
+    useListRecentsQuery(undefined, { refetchOnMountOrArgChange: true });
 
-  const filteredRecents = recents.filter(
-    (item: RecentItem) => item.model === "card" || item.model === "dataset"
-  ).slice(0, 5);
+  const filteredRecents = recents
+    .filter(
+      (item: RecentItem) => item.model === "card" || item.model === "dataset",
+    )
+    .slice(0, 5);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
 
     const updateHandler = () => {
       const { $from } = editor.state.selection;
       const text = $from.nodeBefore?.text || "";
-      
+
       // Check if we're typing after @
       if (text && text.endsWith("@")) {
         const from = $from.pos - 1;
         setMentionRange({ from, to: $from.pos });
-        
+
         // Get cursor position
         const coords = editor.view.coordsAtPos(from);
         setAnchorPos({ x: coords.left, y: coords.bottom });
-        
+
         setShowPopover(true);
         setQuery("");
       } else if (mentionRange && showPopover) {
@@ -55,9 +69,9 @@ export const QuestionMentionPlugin = ({ editor }: QuestionMentionPluginProps) =>
         const currentText = editor.state.doc.textBetween(
           mentionRange.from,
           Math.min(editor.state.doc.content.size, $from.pos),
-          ""
+          "",
         );
-        
+
         if (currentText.startsWith("@")) {
           setQuery(currentText.slice(1));
           setMentionRange({ from: mentionRange.from, to: $from.pos });
@@ -78,10 +92,12 @@ export const QuestionMentionPlugin = ({ editor }: QuestionMentionPluginProps) =>
   }, [editor, mentionRange, showPopover]);
 
   const handleSelect = (item: UnrestrictedLinkEntity) => {
-    if (!mentionRange) return;
+    if (!mentionRange) {
+      return;
+    }
 
     const wrappedItem = Search.wrapEntity(item, dispatch);
-    
+
     editor
       .chain()
       .focus()
@@ -111,17 +127,20 @@ export const QuestionMentionPlugin = ({ editor }: QuestionMentionPluginProps) =>
   // Position the virtual reference at cursor position
   useEffect(() => {
     if (virtualRef.current && anchorPos) {
-      virtualRef.current.style.position = 'fixed';
+      virtualRef.current.style.position = "fixed";
       virtualRef.current.style.left = `${anchorPos.x}px`;
       virtualRef.current.style.top = `${anchorPos.y}px`;
-      virtualRef.current.style.width = '1px';
-      virtualRef.current.style.height = '1px';
+      virtualRef.current.style.width = "1px";
+      virtualRef.current.style.height = "1px";
     }
   }, [anchorPos]);
 
   return (
     <>
-      <div ref={virtualRef} style={{ position: 'fixed', pointerEvents: 'none' }} />
+      <div
+        ref={virtualRef}
+        style={{ position: "fixed", pointerEvents: "none" }}
+      />
       <Popover
         opened={showPopover}
         position="bottom-start"
@@ -135,16 +154,16 @@ export const QuestionMentionPlugin = ({ editor }: QuestionMentionPluginProps) =>
         }}
       >
         <Popover.Target>
-          <div style={{ display: 'none' }} />
+          <div style={{ display: "none" }} />
         </Popover.Target>
-        
+
         <Popover.Dropdown
           style={{
-            position: 'fixed',
+            position: "fixed",
             left: anchorPos?.x ?? 0,
             top: anchorPos?.y ?? 0,
             maxHeight: 400,
-            overflow: 'auto'
+            overflow: "auto",
           }}
         >
           {query.length > 0 ? (
