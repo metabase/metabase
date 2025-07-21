@@ -112,3 +112,28 @@
           (Thread/sleep (long (or duration 500)))))
       (catch Throwable t
         (log/error t "Error processing event queue, stopping")))))
+
+(comment
+  (t2/count :model/Card)
+  (t2/count :model/ResultMetadataSyncEvent)
+  @event-processing-stats
+
+  (time (run! (fn [card]
+                (try
+                  (-> card
+                      (update :dataset_query (:out mi/transform-metabase-query))
+                      card.dependencies/update-dependencies-for-card!)
+                  (catch Exception e
+                    (if (re-find #"violates foreign key constraint" (ex-message e))
+                      (log/error e "Card references missing source")
+                      (throw e)))))
+              (t2/reducible-query {:select [:id :dataset_query]
+                                   :from [:report_card]
+                                   :where [:= :archived false]})))
+
+  (t2/delete! :model/Card->Table)
+  (t2/delete! :model/Card->Card)
+  (->> (t2/select-fn-vec :table_id :model/Card->Table)
+       frequencies
+       (sort-by (comp - val)))
+  -)
