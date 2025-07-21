@@ -168,7 +168,7 @@
   org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.21"}
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.1" :extension "pom"} ; JavaScript engine
-  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.1"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/polyglot             {:mvn/version "24.2.2"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.20.1"}             ; required by hickory
   org.liquibase/liquibase-core              ^:antq/exclude                      ; FIXME: no idea why it fails
   {:mvn/version "4.26.0"              ; migration management (Java lib)
