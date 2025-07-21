@@ -49,7 +49,6 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
-import type { DashboardId } from "metabase-types/api";
 
 import type {
   DrillThroughQuestionProps,
@@ -319,7 +318,6 @@ const SdkDashboardInner = ({
         ))
         .with("queryBuilder", () => (
           <DashboardQueryBuilder
-            targetDashboardId={dashboardId}
             onCreate={(question) => {
               setNewDashboardQuestionId(question.id);
               setRenderMode("dashboard");
@@ -366,7 +364,6 @@ SdkDashboard.NightModeButton = Dashboard.NightModeButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 
 type DashboardQueryBuilderProps = {
-  targetDashboardId: DashboardId;
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
   dataPickerProps: EditableDashboardOwnProps["dataPickerProps"];
@@ -376,7 +373,6 @@ type DashboardQueryBuilderProps = {
  * The sole reason this is extracted into a separate component is to access the dashboard context
  */
 function DashboardQueryBuilder({
-  targetDashboardId,
   onCreate,
   onNavigateBack,
   dataPickerProps,
@@ -396,7 +392,7 @@ function DashboardQueryBuilder({
   return (
     <SdkQuestionProvider
       questionId="new"
-      targetDashboardId={targetDashboardId}
+      targetDashboardId={dashboard.id}
       onSave={(question, { isNewQuestion, dashboardTabId }) => {
         if (isNewQuestion) {
           onCreate(question);
