@@ -4,7 +4,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
-import { MassTableVisibilityToggle } from "./MassTableVisibilityToggle";
+import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
 import type { FlatItem, TreePath } from "./types";
@@ -257,7 +257,7 @@ export function Results({
                 value?.databaseId !== undefined &&
                 hasTableChildren &&
                 !disabled && (
-                  <MassTableVisibilityToggle
+                  <BulkTableVisibilityToggle
                     className={S.massVisibilityToggle}
                     tables={children.flatMap((child) =>
                       child.type === "table" && child.table != null
@@ -273,7 +273,7 @@ export function Results({
                 value?.schemaName !== undefined &&
                 hasTableChildren &&
                 !disabled && (
-                  <MassTableVisibilityToggle
+                  <BulkTableVisibilityToggle
                     className={S.massVisibilityToggle}
                     tables={children.flatMap((child) =>
                       child.type === "table" && child.table != null

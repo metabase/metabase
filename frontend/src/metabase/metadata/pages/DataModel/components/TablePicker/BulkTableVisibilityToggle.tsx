@@ -13,7 +13,7 @@ interface Props {
   onUpdate: () => void;
 }
 
-export function MassTableVisibilityToggle({
+export function BulkTableVisibilityToggle({
   className,
   tables,
   onUpdate,
