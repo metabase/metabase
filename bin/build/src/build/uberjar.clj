@@ -23,9 +23,9 @@
   (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
 
 (defn- do-with-duration-ms [thunk f]
-  (let [start-time-ns (System/nanoTime)
-        result        (thunk)
-        elapsed-ms    (quot (- (System/nanoTime) start-time-ns) 1000000)]
+  (let [timer      (u/start-timer)
+        result     (thunk)
+        elapsed-ms (u/since-ms timer)]
     (f elapsed-ms)
     result))
 
