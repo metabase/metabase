@@ -4725,10 +4725,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Šis filtrs ir iestatīts kā atspējots iegultajā vadības panelī."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Lai vienmēr pieprasītu vērtību, vispirms apmeklējiet iestrādes iestatījumus,\n"
+msgstr ""
+"Lai vienmēr pieprasītu vērtību, vispirms apmeklējiet iestrādes iestatījumus,\n"
 "padariet šo filtru rediģējamu vai bloķētu, atkārtoti publicējiet\n"
 "paneli un pēc tam atgriezieties šajā lapā."
 
@@ -4740,10 +4742,12 @@ msgstr "Piezīme"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "padarot to bloķētu, pirms turpināšanas būs jāatjaunina\n"
+msgstr ""
+"padarot to bloķētu, pirms turpināšanas būs jāatjaunina\n"
 "iegulda kods, citādi iegulda būs\n"
 "pārtraukums."
 
@@ -4915,17 +4919,20 @@ msgid "Turn this into a model"
 msgstr "Pārvērtiet to par modeli"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "Ļauj atjaunināt kolonnu aprakstus un pielāgot metadatus, lai izveidotu lieliskus sākumpunktus izpētei."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "Parādieties augstāk meklēšanas rezultātos un esiet izcelts, kad citi lietotāji uzdod jaunus jautājumus, lai veicinātu atkārtotu izmantošanu."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Dzīvojiet kolekcijās, lai tās būtu nošķirtas no nekārtīgām datu bāzes shēmām."
 
@@ -6517,11 +6524,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Kolonnas nosaukums ar datumu vai datuma un laika vērtību."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Pēc izvēles. Noklusējums ir \"ISO\".\n"
+msgstr ""
+"Pēc izvēles. Noklusējums ir \"ISO\".\n"
 "— ISO: 1. nedēļa sākas pirmdienā pirms janvāra pirmās ceturtdienas.\n"
 " — ASV: 1. nedēļa sākas 1. janvārī. Visas pārējās nedēļas sākas svētdienā.\n"
 "— Piemērs: 1. nedēļa sākas 1. janvārī. Visas pārējās nedēļas sākas dienā, kas norādīta jūsu metabāzes lokalizācijas iestatījumos."
@@ -6615,9 +6624,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "Atgriež pašreizējo laikspiedolu (milisekundēs). Pašlaik {0} vietā {1}."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Konvertējiet datuma vai laika zīmoga kolonnas laika joslu.\n"
+msgstr ""
+"Konvertējiet datuma vai laika zīmoga kolonnas laika joslu.\n"
 "Mēs atbalstām tz datu bāzes laika joslu nosaukumus."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -10314,7 +10325,8 @@ msgstr "liegta piekļuve"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
 msgstr "{0} varēs izmantot tikai vaicājuma veidotāju vietnei {1}."
 
@@ -11745,9 +11757,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Sāciet darbu ar Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Tikai brīdinājums: kamēr mēs sagatavosim jūsu Metabāzi migrācijai, tā būs pieejama tikai lasīšanai līdz 30\n"
+msgstr ""
+"Tikai brīdinājums: kamēr mēs sagatavosim jūsu Metabāzi migrācijai, tā būs pieejama tikai lasīšanai līdz 30\n"
 "minūtēm."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12106,9 +12120,11 @@ msgid "Connect to Slack"
 msgstr "Savienojums ar Slack"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Ja jūsu komanda izmanto Slack, varat tur nosūtīt paneļa abonementus un\n"
+msgstr ""
+"Ja jūsu komanda izmanto Slack, varat tur nosūtīt paneļa abonementus un\n"
 "brīdinājumus."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:59
@@ -14268,7 +14284,8 @@ msgid "Conditional formatting"
 msgstr "Nosacījuma formatējums"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Varat pievienot kārtulas, lai šīs tabulas šūnas mainītu krāsu, ja tās atbilst noteiktiem nosacījumiem."
 
@@ -15441,7 +15458,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Sinhronizējiet dalību grupā ar savu SSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Lai to iespējotu, jums ir jāizveido kartējumi, lai norādītu metabāzei, kurai(-ām) grupai(-ām) jūsu lietotāji jāpievieno, pamatojoties uz SSO grupu, kurā viņi atrodas."
 
@@ -15506,9 +15524,11 @@ msgid "Refresh cache automatically"
 msgstr "Automātiski atsvaidziniet kešatmiņu"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Tiklīdz kešatmiņā saglabāto rezultātu derīguma termiņš beidzas, palaidiet un vēlreiz saglabājiet vaicājumu kešatmiņā, lai atjauninātu rezultātus un atsvaidzinātu\n"
+msgstr ""
+"Tiklīdz kešatmiņā saglabāto rezultātu derīguma termiņš beidzas, palaidiet un vēlreiz saglabājiet vaicājumu kešatmiņā, lai atjauninātu rezultātus un atsvaidzinātu\n"
 " kešatmiņu."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15835,7 +15855,8 @@ msgstr "Vai iegādājāties licenci, lai atbloķētu papildu funkcionalitāti? L
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "Jūsu licence vairs nav derīga. Ja jums ir jauna licence, lūdzu, ievadiet to tālāk, pretējā gadījumā sazinieties ar {0}"
 
@@ -16255,9 +16276,11 @@ msgid "Logo"
 msgstr "Logotips"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Lai iegūtu labākos rezultātus, izmantojiet SVG failu ar caurspīdīgu\n"
+msgstr ""
+"Lai iegūtu labākos rezultātus, izmantojiet SVG failu ar caurspīdīgu\n"
 "fonu."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:42
@@ -16610,12 +16633,14 @@ msgstr "Pievienojiet dalībniekus"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Visi lietotāji pieder grupai {0}, un tos nevar noņemt no tās. Atļauju iestatīšana šai grupai ir lielisks veids, kā pārliecināties, ko varēs redzēt jaunie metabāzes lietotāji."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "Šī ir īpaša grupa, kuras dalībnieki var redzēt visu metabāzes instancē un kuri var piekļūt un veikt izmaiņas administratora paneļa iestatījumiem, tostarp mainīt atļaujas! Tāpēc uzmanīgi pievienojiet cilvēkus šai grupai."
 
@@ -16671,7 +16696,8 @@ msgid "move the API keys to another group"
 msgstr "API atslēgas pārvietot uz citu grupu"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "Vai tu esi pārliecināts? Visi šīs grupas dalībnieki zaudēs visus atļauju iestatījumus, kas viņiem ir, pamatojoties uz šo grupu. Šo darbību nevar atsaukt."
 
@@ -19020,9 +19046,11 @@ msgstr "Ievietot {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Izmantojiet vietni {0} , lai pievienotu publiski redzamu iframe embed jūsu tīmekļa lapai vai emuāram\n"
+msgstr ""
+"Izmantojiet vietni {0} , lai pievienotu publiski redzamu iframe embed jūsu tīmekļa lapai vai emuāram\n"
 "postam."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -19227,10 +19255,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Šis filtrs ir iestatīts kā atspējots iegultajā jautājumā."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Lai vienmēr pieprasītu vērtību, vispirms apmeklējiet iestrādes iestatījumus,\n"
+msgstr ""
+"Lai vienmēr pieprasītu vērtību, vispirms apmeklējiet iestrādes iestatījumus,\n"
 "padariet šo filtru rediģējamu vai bloķētu, atkārtoti publicējiet\n"
 "jautājumu un pēc tam atgriezieties šajā lapā."
 
@@ -22414,9 +22444,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Tā SMTP servera adrese, kas apstrādā jūsu e-pastus."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Maksimālais saņēmēju skaits, summējot visus e-pasta ziņojumus, ko var nosūtīt sekundē.\n"
+msgstr ""
+"Maksimālais saņēmēju skaits, summējot visus e-pasta ziņojumus, ko var nosūtīt sekundē.\n"
 "                Ņemiet vērā, ka pēdējais e-pasta vēstule, kas nosūtīta pirms limita sasniegšanas, var to pārsniegt, ja tajā ir vairāki saņēmēji."
 
 #: metabase/channel/settings.clj:12
@@ -24305,7 +24337,8 @@ msgid "Cumulative count of rows"
 msgstr "Kopējais rindu skaits"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "Visu kolonnas vērtību summēta summa. izņemot kopējos ieņēmumus laika gaitā."
 
@@ -24354,7 +24387,8 @@ msgid "Sum of all the values of a column."
 msgstr "Visu kolonnas vērtību summa."
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Papildu rindu skaits. izņemot kopējo pārdošanas gadījumu skaitu laika gaitā."
 
@@ -24953,9 +24987,11 @@ msgid "Sync issue troubleshooting"
 msgstr "Sinhronizācijas problēmu novēršana"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "Norādītās reģistrēšanas konfigurācijas formāts ir nepareizs. Lūdzu, ievērojiet šādu JSON struktūru:\n"
+msgstr ""
+"Norādītās reģistrēšanas konfigurācijas formāts ir nepareizs. Lūdzu, ievērojiet šādu JSON struktūru:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -26051,9 +26087,11 @@ msgid "Content Management or Official Collections"
 msgstr "Satura pārvaldība vai oficiālās kolekcijas"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "Izmantojot appdb dzinēju pret postgresql, ignorējiet valodu, kas izmantota saknes veidošanai to_tsvector.\n"
+msgstr ""
+"Izmantojot appdb dzinēju pret postgresql, ignorējiet valodu, kas izmantota saknes veidošanai to_tsvector.\n"
 "  Vērtībai ir jābūt derīgai konfigurētai valodas opcijai jūsu datubāzē, piemēram, ''english'' vai ''simple''."
 
 #: metabase/search/settings.clj:24
@@ -27129,7 +27167,8 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "Vai mājaslapā rādīt rentgena ieteikumus. Tie tiks paslēpti arī tad, ja tiks piesprausts kāds informācijas panelis. Administratori to var paslēpt, lai novirzītu lietotājus uz labāku saturu nekā neapstrādāti dati"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
 msgstr "Rezultātā iegūtās transformācijas neatbilst cerībām. Paredzētais: {0}"
 
@@ -27332,9 +27371,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster atgrieza kļūdu."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Nevar iestatīt diska mapes sinhronizāciju.\n"
+msgstr ""
+"Nevar iestatīt diska mapes sinhronizāciju.\n"
 "Lūdzu, pārbaudiet, vai mape ir koplietota ar atbilstošu pakalpojuma konta e-pastu un koplietošanas atļaujām."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27669,9 +27710,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "SAML atribūts lietotāja e-pasta adresei"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Kad iespējojam SAML lietotāju nodrošināšanu, mēs automātiski izveidojam Metabāzes kontu, kad lietotāji, kuriem\n"
+msgstr ""
+"Kad iespējojam SAML lietotāju nodrošināšanu, mēs automātiski izveidojam Metabāzes kontu, kad lietotāji, kuriem\n"
 "nav konta, pierakstās ar SAML."
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27735,7 +27778,8 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "Grupas dalības uzmeklēšanas filtrs. Vietturi “{dn}” un “{uid}” tiks attiecīgi aizstāti ar lietotāja atšķirto vārdu un UID."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
 msgstr "Šis ir URL, uz kuru dodas jūsu lietotāji, lai pieteiktos jūsu identitātes nodrošinātājam. Atkarībā no tā, kuru IDP izmantojat, tas parasti izskatās šādi: \"https://your-org-name.example.com\" vai \"https://example.com/app/my_saml_app/abc123/sso/saml\"."
 
@@ -27744,9 +27788,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON satur SAML uz {0} grupas kartējumiem."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Kodēts sertifikāts identitātes nodrošinātājam. Atkarībā no jūsu IDP, iespējams, tas būs jālejupielādē,\n"
+msgstr ""
+"Kodēts sertifikāts identitātes nodrošinātājam. Atkarībā no jūsu IDP, iespējams, tas būs jālejupielādē,\n"
 "atveriet to teksta redaktorā, pēc tam kopējiet un ielīmējiet sertifikāta saturu šeit."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27754,9 +27800,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Aizstājvārds atslēgai, kas {0} jāizmanto SAML pieprasījumu parakstīšanai"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Šis ir unikāls IDP identifikators. Bieži tiek saukts par entītijas ID vai vienkārši “izdevējs”. Atkarībā no\n"
+msgstr ""
+"Šis ir unikāls IDP identifikators. Bieži tiek saukts par entītijas ID vai vienkārši “izdevējs”. Atkarībā no\n"
 "no jūsu IDP tas parasti izskatās apmēram šādi: \"http://www.example.com/141xkex604w0Q5PN724v\"."
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27768,9 +27816,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Nederīgs identitātes nodrošinātāja sertifikāts. Sertifikātam ir jābūt 64 bāzes kodētai virknei."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Kad mēs aktivizējam LDAP lietotāju nodrošināšanu, mēs automātiski izveidojam Metabāzes kontu LDAP pierakstīšanās laikā lietotājiem, kuriem\n"
+msgstr ""
+"Kad mēs aktivizējam LDAP lietotāju nodrošināšanu, mēs automātiski izveidojam Metabāzes kontu LDAP pierakstīšanās laikā lietotājiem, kuriem\n"
 "nav tāda konta."
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27782,9 +27832,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Atslēga JWT lietotāja grupu izgūšanai"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Šis ir URL, uz kuru jūsu lietotāji dodas, lai atteiktos no jūsu identitātes nodrošinātāja. Atkarībā no tā, kuru IDP izmantojat\n"
+msgstr ""
+"Šis ir URL, uz kuru jūsu lietotāji dodas, lai atteiktos no jūsu identitātes nodrošinātāja. Atkarībā no tā, kuru IDP izmantojat\n"
 ", tas parasti izskatās šādi: \"https://your-org-name.example.com\" vai \"https://example.com/app/my_saml_app/abc123/sso/slo\"."
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28828,4 +28880,1559 @@ msgstr "Lietotāju iegūšana pēc valsts"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 valstis pēc pārdošanas apjoma"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "Šim laukam vēl nav apraksta"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "Kur šis lauks tiks rādīts visā metabāzē"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "Lauka veids"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "Nepārraidīt"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "Atlasiet reklāmguvumu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "Filtrēšana šajā laukā"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "Ja šis lauks tiek izmantots filtrā, kas lietotājiem būtu jāizmanto, lai ievadītu vērtību, kuru viņi vēlas filtrēt?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "Kešatmiņā saglabātās lauku vērtības"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabāze var skenēt šī lauka vērtības, lai informācijas paneļos un jautājumos iespējotu izvēles rūtiņu filtrus."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "Atkārtoti skenējiet šo lauku"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "Atlasiet jebkuru tabulu, lai skatītu tās shēmu un pievienotu vai rediģētu metadatus."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "Oriģinālā shēma"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "Tabulas apraksta vēl nav"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "Pieprasāms"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "Kāpēc Slēpt?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "Tehniskie dati"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "Nesakarīgi/Cruft"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "Atrodi galdu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "Shēmas"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} Slēptā tabula"
+msgstr[1] "{0} Slēptā tabula"
+msgstr[2] "{0} Slēptās tabulas"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} Pieprasāmā tabula"
+msgstr[1] "{0} Pieprasāmā tabula"
+msgstr[2] "{0} Pieprasāmā tabula"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 tabulas"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "Parādīt visu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "Paslēpt visu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "Parādīt slēpšanu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "Datu tips"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "Papildus informācija"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "Google pierakstīšanās"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "Mēs iesakām {0}, skatiet tālāk sniegtos norādījumus:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "Pirmkārt, {0}, izmantojot metabāzes konfigurāciju. Kad tas ir izveidots, noklikšķiniet uz “${ 1 }”, lai to autorizētu."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "noklikšķiniet uz tālāk esošās pogas, lai izveidotu savu Slack lietotni"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "Instalējiet darbvietā"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. Aktivizējiet OAuth pilnvaru un izveidojiet jaunu atslābinātu kanālu"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "Sānjoslā noklikšķiniet uz \"{0}\", kopējiet \"{1}\" un ielīmējiet to šeit."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth un atļaujas"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "Bota lietotāja OAuth pilnvara"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "pret "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "% pret "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-periodu mainīgais vidējais)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}- rindas mainīgais vidējais)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} pārvietojas vidējais)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}iepriekšējā periodā)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2} periods ago)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}iepriekšējā vērtība)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} ({1}{2} rindas iepriekš)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}iepriekšējais {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3} atpakaļ)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "Iespējot paroles autentifikāciju"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "Lietotāju nodrošināšana"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "Kad lietotājs piesakās, izmantojot SAML, automātiski izveidojiet viņam Metabāzes kontu, ja viņam tāda nav."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML identitātes nodrošinātāja SSO URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML identitātes nodrošinātāja izsniedzējs"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "SAML identitātes nodrošinātāja sertifikāts"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "SAML lietojumprogrammas nosaukums"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "SAML atslēgu krātuves ceļš"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "SAML atslēgu krātuves parole"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "SAML atslēgu krātuves aizstājvārds"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "Sinhronizējiet dalību grupā"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "JWT autentifikācija"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "Kad lietotājs piesakās, izmantojot JWT, automātiski izveidojiet viņam Metabāzes kontu, ja viņam tāda nav."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "Kad lietotājs piesakās, izmantojot LDAP, automātiski izveidojiet viņam Metabāzes kontu, ja viņam tāda nav."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "Sinhronizācijas administratora grupa"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "Mākoņa iestatījumi"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "Licence un norēķini"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "Krāsu palete"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "Slēpt vai pielāgot Metabase produkta daļas, lai pielāgotu pieredzi jūsu zīmolam un vajadzībām."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "Lietojumprogrammas nosaukums"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "Rādīt saites un atsauces uz datubāzi Metabase {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "Palīdzības saite izvēlnē Iestatījumi"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "Vienkāršojiet savu shēmu, izmantojot modeļus"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "Izmaiņas saglabātas. Lūdzu, atsvaidziniet lapu, lai tās redzētu"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "Nezināms iestatījums {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "Trigeri"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "Skatīt trigerus"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "Varat pielāgot filtra vērtības katram abonementam ar maksas plāniem."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "Ja informācijas paneļa filtram ir noklusējuma vērtība, tā tiks lietota, kad tiks nosūtīts jūsu abonements."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "Šeit tiks parādīti vaicājuma rezultāti."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "Jūs rediģējat šo lapu"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "nezināma karte"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "Saglabāt kā noklusējuma skatu"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Lai iespējotu DB maršrutēšanu, jāizvēlas lietotāja atribūts"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "Iespējot interaktīvo iestrādi"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "Ja to izdarīsit, jūsu krāsas mainīsies uz mūsu noklusējuma krāsām. Šo darbību nevar atsaukt."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "Palīdzība saite pielāgotais galamērķis"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "Galvenā lapa"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "Kontrolējiet metabāzes dokumentācijas un metabāzes atsauču redzamību savā instancē. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "API atslēgu pārvaldība"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "Iegūstiet vienreizējo pierakstīšanos (SSO), izmantojot SAML, JWT vai LDAP, izmantojot Metabase Pro"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "Google pierakstīšanās"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "Vietnes nosaukums"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "E-pasta adrese palīdzības pieprasījumiem"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "Draudzīgi galdu un lauku nosaukumi"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Iespējot rentgena funkcijas"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "Iespēja veikt vaicājuma analīzi"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "Pieprasiet savu dāvanu"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "Ļaujiet cilvēkiem augšupielādēt datus kolekcijās"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "Brīdinājums: parauga datubāzē augšupielādētās datubāzes ir paredzētas tikai testēšanai un var pazust. Ja vēlaties, lai dati saglabātos, augšupielādējiet tos PostgreSQL vai MySQL datubāzē."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "Tīmekļa āķi brīdinājumiem"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "Rādīt kalendāru"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "Meklējiet jautājumu"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "Notiek ielāde"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "Ielādēt vairāk"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "Konkrēti cilnes ID"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "Aizpildiet atsevišķus laukus"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "Ielīmējiet savienojuma virkni"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "Meklēt datu bāzi…"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "Neko neatradu"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "Vai neredzat savu datu bāzi? Apskatiet mūsu {0} lapu, lai redzētu, vai tā ir pieejama pašmitināšanai."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "Kopienas vadītāji"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "Rādīt mazāk iespēju"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "Rādīt vairāk opciju"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "Beta"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Rediģēt kolonnu secību"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "Nosūtiet šo brīdinājumu tikai vienu reizi"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "Lai to skatītu, {0} jābūt savienotam ar vismaz vienu lauku."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + Enter)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + Enter)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "Vai esat gatavs sākt savu datu izpēti? Pievienojiet to zemāk."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "Nav gatavs? Izlaidiet un spēlējiet ar mūsu paraugu datu bāzi."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "Atbloķējiet piekļuvi apmaksātajām funkcijām pirms sākuma"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Veidojiet kartes vizualizācijas ar ģeotelpiskajiem datiem: Pin un Grid kartēm ir nepieciešamas garuma un platuma slejas, reģionu kartēm ir nepieciešama ASV reģionu nosaukumu kolonna."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "Gaidāmas {0} aizverošās iekavas"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "Gaidāmas {0} sākuma iekavas"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "Izteiksme ir tukša"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "Trūkst beigu pēdiņu"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "Problēmu novēršana"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "Saglabāts!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "Saglabāšana neizdevās."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "Kļūda:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "Tas nodrošina piekļuvi rīkiem, auditam un problēmu novēršanai"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "Rādīt tikai pārbaudītus rādītājus"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "Rādīt tikai pārbaudītus modeļus"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabāze piesaista šo vērtību jūsu izvēlētajam lietotāja atribūtam, lai veiktu vaicājumu apmaiņu izpildlaikā"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Piemēram, pro-lietotāji"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-pasts nav atrasts"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "Savienots ar {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Notiek savienojuma izveide ar Google izklājlapām..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "Savienots ar Google izklājlapām"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "Notiek failu importēšana..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "Pievienot jaunu"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "Vaicājumu validators"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "Lauks"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "ir neaktīvs"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "nav zināms"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "Nezināma datu atsauce"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "Pārvaldīt augšupielādes"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "Augšupielādētās tabulas"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "Lietotāju nodrošināšana, izmantojot SCIM"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "Paziņojiet administratoriem par jauniem SSO lietotājiem"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "Kad tas ir iespējots, administratori saņems e-pasta ziņojumu, kad lietotājs pirmo reizi izmanto vienreizējo pierakstīšanos."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "Izveidot jaunu API atslēgu"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "Formatēts"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "Neformatēts"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "Datu saglabāšana ar šarnīrveida novietojumu"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "Nevar apvienot šos jautājumus"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "Jautājuma pieteikšana"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "Alfabētiskā secībā"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "Gudrs"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Grāmatzīmju informācijas panelis"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Pievienot filtru"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Pievienot piezīmju grāmatiņas jautājumu"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Pievienojiet vietējo jautājumu"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Atcelt Rediģēt informācijas paneli"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Nosūtīt informācijas paneli uz miskasti"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Pārslēgt informācijas paneļa informāciju"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Rediģēt informācijas paneli"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Saglabāt informācijas paneli"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Pārslēgt īsinājumtaustiņu modāli"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Pārslēgt piezīmju grāmatiņu"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Grāmatzīmes jautājums"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Atkārtoti izgūt jautājuma datus"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "Atgriež norādītās kolonnas vidējo vērtību."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "Kolonna vai skaitlis, no kura iegūt mediānu."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "Pārvērš virkni par veselu skaitli."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "Virknes kolonna, kas jāpārvērš veselos skaitļos."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "Pārvērš ISO 8601 datuma virkni par datumu."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "Virkne, kas jāpārvērš par datumu."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Nederīgs kategorijas nosaukums: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "Nezināma metrika: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "Nezināms segments: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "Nezināms lauks: {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr " Vēsture"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "Izveidojiet modeļus, lai jūsu komandai būtu vieglāk izpētīt."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "Tā vietā, lai gala lietotāji izpētītu jūsu sarežģītos neapstrādātos datus, varat izveidot pielāgotus modeļus, kurus ir viegli atrast, saprast un izpētīt."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "Kurš rekvizīts norāda reģiona identifikatoru?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "Kurš rekvizīts norāda reģiona parādāmo nosaukumu?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "Datumi un laiki"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Kad kāds skata jautājumu, izmantojot datus no šīs datu bāzes, metabāze nosūtīs vaicājumus uz galamērķa datu bāzi, ko iestatījis personas lietotāja atribūts. Katrai galamērķa datubāzei jābūt identiskai shēmai."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Lietotāja atribūts, lai saskaņotu galamērķa datu bāzi"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "Aprakstu ģenerēšana"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "Izveidots apraksts. Noklikšķiniet, lai automātiski aizpildītu."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "Jautājumi ar nederīgām atsaucēm"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "Visas kolekcijas"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "Vaicājumu validēšana pašlaik ir atspējota. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "Lūdzu, iespējojiet vaicājumu analīzi šeit."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "Nav jautājumu, modeļu vai metriku ar nederīgām atsaucēm."
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "stundas"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 stundas"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 stundas"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 stundas"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 stundas"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "Iespējojiet modeļu noturību, lai jūsu modeļi (un vaicājumi, kas tos izmanto) tiktu ielādēti ātrāk."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "Lai saņemtu paziņojumu, kad kaut kas notiek, vai nosūtītu šo diagrammu pēc grafika, lūdziet savam administratoram iestatīt SMTP, Slack vai tīmekļa aizķeri."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr "Lielākajā daļā IDP jums katrs no tiem ir jāievieto ievades lodziņā ar nosaukumu \"Nosaukums\" atribūtu paziņojumu sadaļā."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "SAML identitātes nodrošinātāja URL"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "Tā nav derīga e-pasta adrese"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "Kontrolējiet brīdinājumu un abonementu saņēmēju redzamību."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "Tas nav derīgs porta numurs"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "Pielāgotas kartes"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "Ziņot par laika joslu"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "Datu bāzes noklusējuma vērtība"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "Lokalizācijas iespējas"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "Ļaujiet administratoriem izveidot publiski skatāmas saites (un iegultos iframe) jautājumiem un informācijas paneļiem."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "Koplietotie informācijas paneļi"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "Kopīgi jautājumi"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "Kopīgās darbības veidlapas"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "Mākslīgā intelekta funkcijas"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "Ieslēgtas mākslīgā intelekta funkcijas"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "Pirms AI funkciju aktivizēšanas ir jānodrošina API atslēga."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "EE OpenAI API atslēga"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "API atslēga, ko izmanto Enterprise AI funkcijām"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "LDAP autentifikācija"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "LDAP resursdators"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "LDAP ports"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "LDAP drošība"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "Pārbaudiet savas iekavas"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "Izcils Vārds"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "Parādiet to sākuma un pieteikšanās lapās"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "Rādīt saites un atsauces"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} — lauka iestatījumi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Tabulas iestatījumi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "Atrodiet shēmu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "Atkārtoti skenējiet šo tabulu"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "API atslēgas dzēšana"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "API atslēgas rediģēšana"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "API atslēgas reģenerēšana"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "Varat izveidot API atslēgu, lai API izsaukumus veiktu programmatiski."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "API atslēgas izveide"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "API atslēgu pārvaldība"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "Ļaujiet lietotājiem izmantot API atslēgas, lai autentificētu savus API izsaukumus."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "Saruna ar Metabase Cloud..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "Notiek šī gadījuma momentuzņēmuma uzņemšana..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "Notiek momentuzņēmuma augšupielāde mākonī..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "Migrācija uz Metabase Cloud ir atcelta ."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "Migrēšana uz Metabase Cloud…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "Kamēr mēs momentuzņēmuma režīmā uzņemsim jūsu Metabāzes datus, cilvēki varēs apskatīt jautājumus un paneļus, bet viņi nevarēs rediģēt vai izveidot neko jaunu. Tam vajadzētu aizņemt tikai līdz 30 minūtēm."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "Atcelt migrāciju"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "Vai atcelt migrāciju?"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "Mēs atcelsim migrācijas procesu. Pēc tam šī instance vairs nebūs tikai lasāma."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "Konfigurācijas rediģēšana"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "Ievadiet ar atstarpi atdalītas tīmekļa vietņu vai lietotņu, kurās vēlaties atļaut SDK iestrādi, izcelsmes vietas. Localhost tiek iekļauts automātiski."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "Nosūtīts!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "Ieslēgt statisko iestrādi"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "Mazliet no mums jums"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "Kā pateicību par šīs beta versijas izmēģināšanu mēs labprāt nosūtīsim jums kādu dāvanu, kamēr krājumi ir pieejami. Nospiediet pogu, lai sniegtu mums savu informāciju, un mēs nosūtīsim jums e-pastu ar norādījumiem."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "Saņemiet manu swag"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "Anonīmā izsekošana"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "Pielāgota mājas lapa"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "cron sintakse"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "Mūsu {0} ir virkne no 5 laukiem, kas atdalīti ar atstarpēm."
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Vietnes URL"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud nodrošina jūsu instances atjaunināšanu. Pašlaik jūs izmantojat versiju {0}. Paldies, ka esat klients!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "Notiek dzēšana…"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "Dzēšana neizdevās"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "To darot, jūsu informācijas paneļa abonementi var netikt rādīti pakalpojumā Slack, līdz tiks izveidots jauns savienojums."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "Vai tiešām vēlaties dzēst savu Slack App integrāciju?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Slack Bot lietotāja OAuth pilnvara"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "Diagnostikas informācija"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "Papildu informācija (noklikšķiniet, lai lejupielādētu)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "Rediģēt sēriju"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "Pievienojiet sēriju"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "Nezināms veids"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "Paslēpt lapu"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "Pievienot datus"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "Atbalstīta atzīme"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "Pievienojiet saites un formatējumu, izmantojot atzīmi"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "Pievienojiet vēl vienu"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "Lapa paslēpta no navigācijas sānu joslas"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "Varat to atvērt vēlāk, noklikšķinot uz zobrata ikonas ekrāna augšējā labajā stūrī."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "Pievienot datu bāzi"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "Tādējādi tiks izveidota tabula katram jūsu modelim īpašā shēmā. ${0} tos atsvaidzinās pēc grafika. Jautājumi un vaicājumi, kas izmanto jūsu modeļus, vaicās šajās tabulās."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "Pārlūkot"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "Augšupielādējiet CSV"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "Visiem vaicājumiem ir nepieciešama “datu bāze”."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[Nezināms lauks]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} ir viens no {1} {2} atlases"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} nav {1} atlases"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} ir vienāds ar {1} atlases"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} nav {1}"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} nav vienāds ar {1} izvēli"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} ir {1} atlases"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} ir viens no {1} {2} izvēlētajiem"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "Nestandarta savienojuma nosacījums. {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Nākamās {0} nedēļas"
+msgstr[1] "Nākamā {0} nedēļa"
+msgstr[2] "Nākamās {0} nedēļas"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Nākamās {0} minūtes"
+msgstr[1] "Nākamā {0} minūte"
+msgstr[2] "Nākamās {0} minūtes"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Nākamie {0} ceturkšņi"
+msgstr[1] "Nākamais {0} ceturksnis"
+msgstr[2] "Nākamie {0} ceturkšņi"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Nākamie {0} gadi"
+msgstr[1] "Nākamais {0} gads"
+msgstr[2] "Nākamie {0} gadi"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Nākamās {0} sekundes"
+msgstr[1] "Nākamā {0} sekunde"
+msgstr[2] "Nākamās {0} sekundes"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Nākamās {0} milisekundes"
+msgstr[1] "Nākamā {0} milisekunde"
+msgstr[2] "Nākamās {0} milisekundes"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Iepriekšējās {0} dienas"
+msgstr[1] "Iepriekšējā {0} diena"
+msgstr[2] "Iepriekšējās {0} dienas"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Nākamās {0} dienas"
+msgstr[1] "Nākamā {0} diena"
+msgstr[2] "Nākamās {0} dienas"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Nākamie {0} mēneši"
+msgstr[1] "Nākamais {0} mēnesis"
+msgstr[2] "Nākamie {0} mēneši"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Iepriekšējie {0} ceturkšņi"
+msgstr[1] "Iepriekšējais {0} ceturksnis"
+msgstr[2] "Iepriekšējie {0} ceturkšņi"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Nākamās {0} stundas"
+msgstr[1] "Nākamā {0} stunda"
+msgstr[2] "Nākamās {0} stundas"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Iepriekšējie {0} gadi"
+msgstr[1] "Iepriekšējais {0} gads"
+msgstr[2] "Iepriekšējie {0} gadi"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Iepriekšējie {0} mēneši"
+msgstr[1] "Iepriekšējais {0} mēnesis"
+msgstr[2] "Iepriekšējie {0} mēneši"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Iepriekšējās {0} milisekundes"
+msgstr[1] "Iepriekšējā {0} milisekunde"
+msgstr[2] "Iepriekšējās {0} milisekundes"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Iepriekšējās {0} stundas"
+msgstr[1] "Iepriekšējā {0} stunda"
+msgstr[2] "Iepriekšējās {0} stundas"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Iepriekšējās {0} sekundes"
+msgstr[1] "Iepriekšējā {0} sekunde"
+msgstr[2] "Iepriekšējās {0} sekundes"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Iepriekšējās {0} nedēļas"
+msgstr[1] "Iepriekšējā {0} nedēļa"
+msgstr[2] "Iepriekšējās {0} nedēļas"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Iepriekšējās {0} minūtes"
+msgstr[1] "Iepriekšējā {0} minūte"
+msgstr[2] "Iepriekšējās {0} minūtes"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Aizpildīšanas entītijas ID un iztukšošanas entītijas ID darbu izpildes biežums ms. Minimālā vērtība ir 1000, un jebkura vērtība, kas ir 0 vai mazāka, pilnībā atspējos darbu."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "Pielāgoto pārskatu kolekciju nevar arhivēt."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "Jūs nevarat arhivēt saknes kolekciju."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "Jūs nevarat atjaunināt metrikas creator_id."
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}, {1} un {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "Vai lietotājs ir atspējojis ievadlīnijas saiti galvenajā sānjoslā."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "Vai mēs vispār analizējam vai neanalizējam kādus vaicājumus."
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL parsēšana ir atspējota"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "Paredzētais: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "Vaicājuma procesora kļūda: draivera atgriezto kolonnu skaits neatbilst rezultātiem."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "Nezināms vaicājuma veids {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "Vaicājuma procesora kļūda: neatbilstošs kolonnu skaits vaicājumā un rezultātos."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "Nezinu, kā iegūt informāciju par lauku: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "Paredzētas {0} kolonnas, bet pirmajā rezultātu rindā ir {1} kolonnas."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "Faktiskais: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "Paredzētie {0} lauki, iegūti {1}"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"Iespējot lauka lietojuma analīzi vaicājumiem. Tas analizēs vaicājumos izmantotos laukus un saglabās tos\n"
+"    lietojumprogrammu datubāzē.\n"
+"\n"
+"    Izslēgt pēc noklusējuma, jo mums vēl nav pieejama lietotājam paredzēta funkcija, kas izmantotu šos datus."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "vērtībai ir jābūt derīgam veselam skaitlim, kas ir lielāks par nulli."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "vērtībai ir jābūt derīgam lauka semantiskajam tipam (atslēgvārdam vai virknei)."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "parametram ir jābūt kartei ar :id un :type taustiņiem"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "vērtībai ir jābūt negatīvam veselam skaitlim"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "vērtībai ir jābūt masīvam ar :field id-or-name un opciju karti"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "vērtībai ir jābūt derīgam lauka semantiskajam tipam."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "vērtībai ir jābūt skaitlim, kas ir lielāks par nulli."
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "Parameter_mapping ir jābūt kartei ar atslēgām :parameter_id un :target"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "vērtībai ir jābūt derīgam veselam skaitlim."
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "vērtībai ir jābūt derīgam lauka relācijas veidam (atslēgvārdam vai virknei)."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "vērtībai ir jābūt derīgam lauka relācijas veidam."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "vērtībai ir jābūt derīgam veselam skaitlim, kas ir lielāks par nulli vai vienāds ar to."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "Nederīga e-pasta adrese: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "Jūs nevarat izveidot jaunus abonementus domēnam {0}. Atļautie domēni ir: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "Vaicājuma atsauces apstiprināšana"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "Tabulas datu rediģēšana"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "Nevar atrast Google diska savienojumu, lūdzu, mēģiniet vēlreiz."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "Nevar atrast Google diska savienojumu."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "Problēma, sinhronizējot Google diska mapi. Lūdzu, mēģiniet vēlreiz."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "Google diska mapes sinhronizēšanas noildze. Lūdzu, mēģiniet vēlreiz."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO nav iespējots"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO nav konfigurēts"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"Kad mēs aktivizējam JWT lietotāju nodrošināšanu, mēs automātiski izveidojam Metabāzes kontu JWT pierakstīšanās brīdī lietotājiem, kuriem\n"
+"nav tāda konta."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "URL JWT balstītai pieteikšanās lapai. Nav obligāts, ja JWT SSO tiek izmantots tikai ar iebūvēto analītikas SDK."
 

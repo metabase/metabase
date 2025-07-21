@@ -4693,10 +4693,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "此篩選器在嵌入式資訊看板中設定為停用。"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "若要始終需要一個值，請先造訪嵌入設定，\n"
+msgstr ""
+"若要始終需要一個值，請先造訪嵌入設定，\n"
 "，使此篩選條件可編輯或鎖定，重新發表\n"
 "dashboard，然後再返回本頁。"
 
@@ -4708,10 +4710,12 @@ msgstr "注意"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "若要鎖定，必須先更新\n"
+msgstr ""
+"若要鎖定，必須先更新\n"
 "嵌入程式碼，否則嵌入程式會\n"
 "斷。"
 
@@ -4881,19 +4885,23 @@ msgid "Turn this into a model"
 msgstr "把它變成模型"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "可以更新欄位描述並定制元數據，創建探索的絕佳起點。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "在搜尋結果中顯示得更高，當其他使用者開始新問題時被突出顯示，以推動重新使用。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "住在集合中，以使它們與雜亂的資料庫分開\n"
+msgstr ""
+"住在集合中，以使它們與雜亂的資料庫分開\n"
 "模式。"
 
 #: frontend/src/metabase/query_builder/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx:107
@@ -6478,11 +6486,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "包含您的日期或日期時間值的列的名稱。"
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "選修的。預設值為“ISO”。\n"
+msgstr ""
+"選修的。預設值為“ISO”。\n"
 "- ISO：第 1 週從 1 月第一個星期四之前的星期一開始。\n"
 "- 美國：第 1 週從 1 月 1 日開始。其他所有周從週日開始。\n"
 "- 實例：第 1 週從 1 月 1 日開始。所有其他週從您在 Metabase 本地化設定中定義的日期開始。"
@@ -6576,9 +6586,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "返回當前時間戳（以<b>毫秒</b>為單位）。目前在 {1} 中的 {0}。"
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "轉換日期或時間戳列的時區。\n"
+msgstr ""
+"轉換日期或時間戳列的時區。\n"
 "我們支援 tz 資料庫時區名稱。"
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -10239,7 +10251,8 @@ msgstr "拒絕存取"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
 msgstr "{0} 將只能使用查詢 {1} 的建構器。"
 
@@ -11668,7 +11681,8 @@ msgid "Get started with Metabase Cloud"
 msgstr "開始使用 Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
 msgstr "請注意：在我們準備遷移期間，您的 Metabase 將處於唯讀狀態長達 30 分鐘。"
 
@@ -12028,7 +12042,8 @@ msgid "Connect to Slack"
 msgstr "連接到 Slack"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
 msgstr "如果您的團隊使用 Slack，您可以在那裡發送資訊看板訂閱和警報"
 
@@ -14169,7 +14184,8 @@ msgid "Conditional formatting"
 msgstr "條件格式"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "您可以新增規則來使這個表單中的原子資料改變顏色，如果他們滿足主要條件。"
 
@@ -15338,9 +15354,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "將組成員身份與您的 SSO 同步"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "您需要建立映射以告訴Metabase根據SSO\n"
+msgstr ""
+"您需要建立映射以告訴Metabase根據SSO\n"
 "使用者應該被加進哪些群組以啟用此功能。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:254
@@ -15404,7 +15422,8 @@ msgid "Refresh cache automatically"
 msgstr "自動刷新快取"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
 msgstr "當快取結果過期時，再次執行並快取查詢，以更新結果並重新整理快取。"
 
@@ -15732,7 +15751,8 @@ msgstr "購買了許可證以解鎖高級功能？請在下方輸入。"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "您的許可證已經無效。如果您有新的許可證，請在下方輸入，否則請聯絡{0}。"
 
@@ -16152,7 +16172,8 @@ msgid "Logo"
 msgstr "商標"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
 msgstr "為獲得最佳效果，請使用具有透明背景的 SVG 檔案。"
 
@@ -16504,12 +16525,14 @@ msgstr "新增成員"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "所有屬於這個{0}群組的使用者，且無法從這個群組中被移除。為這個群組設定許可權限是一個確保您知道Metabase新使用者將會能夠看到什麼的好辦法。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "這是一個特殊的群組，其成員可以檢視Metabase實例中的所有內容，可以存取和更改管理面板中的設定，包括更改權限！ 因此，小心地將人員新增到該群組。"
 
@@ -16563,7 +16586,8 @@ msgid "move the API keys to another group"
 msgstr "將 API 金鑰移至另一個群組"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "確定嗎？該組所有成員都將遺失該群組下的權限設定。此操作不可逆。"
 
@@ -18900,7 +18924,8 @@ msgstr "嵌入 {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
 msgstr "使用 {0} 將公開可見的 iframe 嵌入程式碼加入您的網頁或部落格文章。"
 
@@ -19028,7 +19053,8 @@ msgstr "{0} 在查詢範本建立一個變數名稱為\"variable_name\"。可以
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp/TagEditorHelp.tsx:281
 msgid "Giving a variable the \"Field Filter\" type allows you to link questions to dashboard filter widgets or use more types of filter widgets on your SQL question. A Field Filter variable inserts SQL similar to that generated by the GUI query builder when adding filters on existing columns."
-msgstr "設定過濾篩選變數來連結到展示板上的相關 SQL 提問(查詢)的篩選元件。\n"
+msgstr ""
+"設定過濾篩選變數來連結到展示板上的相關 SQL 提問(查詢)的篩選元件。\n"
 "當加入欲篩選欄位時，欄位篩選變數會插入一段 SQL 語法到 GUI 查詢建構器所產生的查詢語句"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp/TagEditorHelp.tsx:284
@@ -19103,7 +19129,8 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "此篩選器在嵌入問題中設定為停用。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
 msgstr "始終需要一個值，請先訪問嵌入設置， 使該篩選器可編輯或鎖定，重新發布提問，然後返回此頁面。"
@@ -22274,9 +22301,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "處理電子郵件的伺服器地址。"
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "每秒可傳送的所有電子郵件收件者總數上限。\n"
+msgstr ""
+"每秒可傳送的所有電子郵件收件者總數上限。\n"
 "                注意：如果最後一封郵件在達到上限前已有多個收件者，則其收件者數量可能超過上限。"
 
 #: metabase/channel/settings.clj:12
@@ -24159,9 +24188,11 @@ msgid "Cumulative count of rows"
 msgstr "累積行數"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "列的所有值的總和。\n"
+msgstr ""
+"列的所有值的總和。\n"
 "e.x.總收入。"
 
 #: metabase/lib/schema/aggregation.cljc:173
@@ -24209,9 +24240,11 @@ msgid "Sum of all the values of a column."
 msgstr "一個欄位所有數值的總和。"
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "所有行的加總計數。\n"
+msgstr ""
+"所有行的加總計數。\n"
 "例如：隨著時間推移的銷售總數。"
 
 #: metabase/lib/schema/aggregation.cljc:212
@@ -24749,9 +24782,11 @@ msgid "Sync issue troubleshooting"
 msgstr "同步問題故障排除"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "提供的日誌配置格式不正確。請遵循以下 JSON 結構：\n"
+msgstr ""
+"提供的日誌配置格式不正確。請遵循以下 JSON 結構：\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25839,9 +25874,11 @@ msgid "Content Management or Official Collections"
 msgstr "內容管理或官方收藏"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "當針對 postgresql 使用 appdb 引擎時，覆寫 to_tsvector 中用於詞幹擷取的語言。\n"
+msgstr ""
+"當針對 postgresql 使用 appdb 引擎時，覆寫 to_tsvector 中用於詞幹擷取的語言。\n"
 "  值必須是資料庫中配置的有效語言選項，例如“英語”或“簡單”"
 
 #: metabase/search/settings.clj:24
@@ -26915,9 +26952,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "是否在首頁上顯示綜覽資料(x-ray)建議。 如果固定了任何資訊看板，它們也將被隱藏。 系統管理員可能會將其隱藏起來，來讓使用者獲得比原始資料更好的內容"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "結果轉換不符合預期。\n"
+msgstr ""
+"結果轉換不符合預期。\n"
 "預期：{0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27119,9 +27158,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster 回傳錯誤。"
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "無法設定驅動器資料夾同步。\n"
+msgstr ""
+"無法設定驅動器資料夾同步。\n"
 "請檢查該資料夾是否與正確的服務帳戶電子郵件和共用權限共用。"
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27456,9 +27497,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "使用者電子郵件的SAML屬性"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "當我們啟用 SAML 使用者配置時，我們會在 SAML 登入時自動為\n"
+msgstr ""
+"當我們啟用 SAML 使用者配置時，我們會在 SAML 登入時自動為\n"
 "沒有 Metabase 帳戶的使用者建立 Metabase 帳戶。"
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27522,7 +27565,8 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "群組成員查找過濾器。佔位符“{dn}”和“{uid}”將分別替換為使用者的專有名稱和 UID。"
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
 msgstr "這是您的使用者登入您的身分提供者的 URL。取決於您所在的 IdP 使用，這通常看起來像 `https://your-org-name.example.com` 或 `https://example.com/app/my_saml_app/abc123/sso/saml"
 
@@ -27531,9 +27575,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "包含 SAML 到 {0} 組映射的 JSON。"
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "身分提供者的編碼憑證。根據您的 IdP，您可能需要下載此文件，\n"
+msgstr ""
+"身分提供者的編碼憑證。根據您的 IdP，您可能需要下載此文件，\n"
 "在文字編輯器中開啟它，然後在此處複製並貼上證書的內容。"
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27541,9 +27587,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "{0} 用於簽署 SAML 請求的密鑰別名"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "這是 IdP 的唯一識別碼。通常被稱為實體 ID 或簡稱為\"'Issuer'\"。取決於\n"
+msgstr ""
+"這是 IdP 的唯一識別碼。通常被稱為實體 ID 或簡稱為\"'Issuer'\"。取決於\n"
 "您的 IdP，這通常看起來像 `http://www.example.com/141xkex604w0Q5PN724v`。"
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27555,9 +27603,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "無效的身份提供者證書。證書應為以64為基數的字串。"
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "當我們啟用 LDAP 使用者配置功能時，我們會在 LDAP 登入時自動為\n"
+msgstr ""
+"當我們啟用 LDAP 使用者配置功能時，我們會在 LDAP 登入時自動為\n"
 "沒有 Metabase 帳戶的使用者建立 Metabase 帳戶。"
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27569,9 +27619,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "擷取 JWT 使用者群組的密鑰"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "這是您的使用者退出身分提供者的 URL。根據您\n"
+msgstr ""
+"這是您的使用者退出身分提供者的 URL。根據您\n"
 "使用的 IdP，這通常看起來像 `https://your-org-name.example.com` 或 `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28615,4 +28667,1519 @@ msgstr "按國家/地區獲取的使用者"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "銷售額前10國家"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "暫無篩選欄位敘述"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "這些欄位將在哪裡顯示？"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "欄位類型"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "不要轉換"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "選擇一個轉換"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "欄位過濾"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "當在篩選器中使用此欄位時，使用者應該用什麼形式輸入他們想要過濾的值?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "快取欄位值"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabase 會掃描該欄位，來啟用資訊看板和提問的多選框篩選。"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "重新掃描該欄位"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "選擇任意資料表來顯示它的綱要並且新增或編輯後設資料"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "原始模式"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "暫無資料表敘述"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "可查詢"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "隱藏原因"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "日誌資料"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "不相關"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "搜尋資料表"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "資料庫綱要"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0}隱藏的資料表"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0}可查詢的資料表"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 個表格"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "取消隱藏全部"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "隱藏全部"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "取消隱藏"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "資料型態"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "附加訊息"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "Google登入"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "我們推薦您{0}，請參閱以下說明："
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "首先，{0} 使用 Metabase 配置。創建完成後，點擊“${1}”進行授權。"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "點擊下方按鈕以建立您的 Slack 應用程式"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "安裝到工作區"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. 激活OAuth令牌並創建新的Slack通道"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "在側邊欄中點擊 \"{0}\"，複製 \"{1}\" 並粘貼到此處。"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth 和權限"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "機器人用戶 OAuth Token"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "vs "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "百分比 vs "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0}（{1}{2}-週期移動平均值）"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0}（{1}{2}-行移動平均值）"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} 移動平均)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0}（{1}上一期）"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0}（{1}{2} 個週期前）"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0}（{1}之前的值）"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0}（上 {1}{2} 行）"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0}（{1}上一個 {2}）"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0}（{1}{2} {3} 前）"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "啟用密碼驗證"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "使用者配置"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "當使用者透過 SAML 登入時，如果他們沒有元資料庫帳戶，則會自動為其建立一個元資料庫帳戶。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML 身份提供者 SSO URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML 身份提供者簽發者"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "SAML 身份提供者證書"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "SAML 應用程式名稱"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "SAML 密鑰庫路徑"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "SAML 密鑰庫密碼"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "SAML 密鑰庫別名"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "同步群組成員"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "JWT 認證"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "當使用者透過 JWT 登入時，如果他們沒有元資料庫帳戶，則會自動為其建立元資料庫帳戶。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "當使用者透過 LDAP 登入時，如果他們沒有 Metabase 帳戶，則會自動為其建立帳戶。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "同步管理員群組"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "Cloud 設置"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "許可與計費"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "顏色範圍"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "隱藏或自訂 Metabase 產品的各個部分，以便根據您的品牌和需求客製化體驗"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "應用程式名稱"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "顯示Metabase {0} 的連結和引用"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "設定」功能表中的說明連結"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "使用模型簡化您的架構"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "更改已儲存。請刷新頁面查看它們"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "未知設定{0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "觸發器"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "檢視觸發器"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "您可以用付費方案自訂每個訂閱的篩選值。"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "如果儀表板過濾器具有預設值，則在您發送訂閱時將使用該預設值。"
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "查詢結果將顯示在這裡。"
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "您正在編輯這個頁面"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "未知地圖"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "作為預設視圖"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "您必須選擇使用者屬性才能啟用資料庫路由"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "啟用互動式嵌入"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "如果確認，你的顏色將會重置為預設顏色，此操作不可撤銷。"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "幫助連結自訂目的地"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "登入頁面"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "在您的實例中控制 Metabase 文件連結和 Metabase 參考資料的可見性。 {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "管理 API Key"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "通過 SAML、JWT 或 LDAP 獲得 Metabase Pro 的單點登錄 (SSO)"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "Google 登入"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "網站名稱"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "客服信箱"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "方便理解的資料表和欄位名稱"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "啟用 X-Ray 功能"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "啟用查詢分析"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "領取你的贈品"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "允許人們上傳數據到集合"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "警告：上傳到範例資料庫僅供測試使用，可能會消失。如果您希望數據保留下來，應上傳到PostgreSQL或MySQL資料庫。"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "用於警報的 Webhooks"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "顯示日曆"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "搜尋提問"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "載入中"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "載入更多"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "特定選項卡 ID"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "填寫各個欄位"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "貼上連線字串"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "搜索資料庫..."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "沒有找到任何結果"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "沒有看到您的資料庫？查看我們的 {0} 頁面，了解它是否可用於自託管。"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "社區驅動程式"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "顯示更少的選項"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "顯示更多選項"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "Beta"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "編輯列順序"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "僅發送一次此警報"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "要查看這個，{0} 必須至少連接到一個欄位。"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "（command + enter）"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "（Ctrl + enter）"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "準備好開始探索您的數據了嗎？將其添加到下面。"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "還沒好？跳過並遊玩我們的示例資料庫。"
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "在開始之前解鎖對付費功能的存取權限"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "使用地理空間資料建立地圖視覺化：Pin 和 Grid 地圖需要經度和緯度列，區域地圖需要美國區域名稱列。"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "需要 {0} 個閉合括號"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "需要 {0} 個起始括號"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "表達式為空"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "缺少閉合引號"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "錯誤排查"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "已儲存！"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "儲存失敗"
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "錯誤："
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "這將授予對工具、審核和故障排除的訪問權限"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "僅顯示經過驗證的指標"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "僅顯示經過驗證的模型"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase 將此值對應到您選擇的使用者屬性以在執行時間交換查詢"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "例如專業用戶"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "未找到電子郵件"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "由 {0}連接"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google 試算表正在連接..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "已連接到 Google 表格"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "正在導入檔案..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "新增"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "查詢驗證器"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "欄位"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "處於非活動狀態"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "未知"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "未知資料參考"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "管理上傳"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "上傳的表格"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "透過 SCIM 進行使用者配置"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "通知管理員有新的SSO使用者"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "啟用後，管理員將在使用者首次使用SSO時收到一封電子郵件。"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "建立新的 API 金鑰"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "格式化"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "未格式化"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "保持資料樞紐分析"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "無法合併這些問題"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "正在使用的提問"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "按字母順序"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "智能"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "書籤儀表板"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "新增篩選器"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "新增筆記本問題"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "新增原生問題"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "取消 編輯儀表板"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "將任務板發送至垃圾箱"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "切換儀表板資訊"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "編輯儀表板"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "儲存儀表板"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "切換快捷方式模式"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "切換筆記本"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "書籤問題"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "重新取得問題數據"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "回傳指定欄的中位數。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "要獲取其中值的列或數字。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "將字串轉換為整數。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "要轉換為整數的字串列。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "將 ISO 8601 日期字串轉換為日期。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "要轉換為日期的字串。"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "無效的維度名稱： {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "未知指標：{0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "未知數集：{0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "未知欄位：{0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr "歷史"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "建立模型以方便您的團隊探索。"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "您可以創建自定義模型來簡化查找、理解和探索過程，而不是讓最終用戶瀏覽複雜的原始數據。"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "哪個屬性指定了區域的標識符？"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "哪個屬性指定了區域的顯示名稱？"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "日期和時間"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "當有人使用該資料庫中的資料查看問題時，Metabase 會將查詢傳送到由該人的使用者屬性設定的目標資料庫。每個目標資料庫必須具有相同的模式。"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "與目標資料庫相符的使用者屬性"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "生成描述"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "已生成描述。點選自動填充。"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "參考無效的提問"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "所有集合"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "查詢驗證目前已停用。 {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "請在此處啟用查詢分析。"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "沒有提問、模型或指標包含無效參考"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "2 小时"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 小时"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 小时"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 小时"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 小时"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "啟用模型持久性以使模型（以及使用它們的查詢）加載得更快。"
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "為了在發生某些事情時收到通知，或按計劃發送此圖表，請讓您的管理員設定 SMTP、Slack 或 webhook。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr "在大多數IdP中，您需要將這些放在標記為「名稱」的輸入框中屬性語句部分。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "SAML 身份提供者 URL"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "這不是有效的電子郵件地址"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "控制警報和訂閱收件者的可見性。"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "不是有效的埠"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "自訂地圖"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "報表時區"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "資料庫預設"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "本地化選項"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "使管理員能夠為問題和儀表板創建可公開查看的連結（和可嵌入的 iframe）。"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "已共享資訊看板"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "已共享提問"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "共享動作表單"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "AI 功能"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "啟用 AI 功能"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "您必須先提供 API 金鑰，然後才能啟用 AI 功能。"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "EE OpenAI API 金鑰"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "用於企業 AI 功能的 API 金鑰"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "LDAP身份驗證"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "LDAP主機"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "LDAP埠"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "LDAP安全性"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "檢查括號"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "專有名字"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "在首頁和登入頁面顯示這個"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "顯示連結和參考文獻"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} - 欄位設定"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "表設定"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "搜尋資料庫綱要"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "刷新表格"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "刪除 API 金鑰"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "編輯 API 金鑰"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "重新產生 API 金鑰"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "您可以建立 API 金鑰以透過程式設計方式進行 API 呼叫。"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "建立 API 金鑰"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "管理 API 金鑰"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "允許使用者使用 API 金鑰來驗證其 API 呼叫。"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "與 Metabase Cloud 交談..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "拍攝此實例的快照..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "正在將快照上傳至 Cloud..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "遷移到 Metabase Cloud 已被取消。"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "遷移到 Metabase Cloud…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "當我們對您的 Metabase 資料進行快照時，人們將能夠查看問題和儀表板，但他們將無法編輯或建立任何新內容。最多只需 30 分鐘"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "取消遷移"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "取消遷移？"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "我們將取消遷移過程。之後，該實例將不再是唯讀的。"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "編輯配置"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "輸入您想允許 SDK 嵌入的網站或應用程式的來源，並以空格分隔。Localhost 已自動包含在內。"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "已發送"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "啟用靜態嵌入"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "我們給您的一點東西"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "感謝您試用此測試版，我們想送您一些贈品（送完為止）。點擊按鈕提供您的資料，我們將會寄送電子郵件給您，內含相關指示。"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "領取我的贈品"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "匿名追蹤"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "自訂首頁"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "cron 語法"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "我們的 {0} 是由空格分隔的 5 個欄位組成的字串"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "網站網址"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "元資料庫雲端保持您的實例更新。您當前使用的是版本 {0}。感謝您成為我們的客戶！"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "刪除中..."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "刪除失敗"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "執行此操作可能會阻止您的資訊看板訂閱在 Slack 中顯示，直到建立新連接。"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "您確定要刪除您的 Slack 應用程式整合嗎？"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Slack 機器人用戶 OAuth 令牌"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "診斷訊息"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "高階詳細資訊<b>(</b>點選下載)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "編輯系列"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "添加系列"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "未知類型"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "隱藏頁面"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "新增數據"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "支持Markdown"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "通過 Markdown 添加連結和格式"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "添加另一個"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "頁面已從導覽側邊欄中隱藏"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "稍後可以隨時點擊螢幕右上角的齒輪圖示來存取。"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "新增資料庫"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "這將為專用模式中的每個模型建立一個表。 ${ 0 } 將按計劃刷新它們。使用模型的問題和查詢將查詢這些表。"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "瀏覽"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "上傳 CSV"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "所有查詢都需要`database`。"
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[未知欄位]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} 位於 {1}"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} 不是 {1} 選擇"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} 等於 {1} 選擇"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} 不是 {1}"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} 不等於 {1} 選擇"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} 是 {1} 選擇"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} 是 {1} {2} 個選取項目之一"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "非標準的連接條件。{0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "接下來的 {0} 週"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "接下來 {0} 分鐘"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "接下來的 {0} 個季度"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "未來 {0} 年"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "接下來 {0} 秒"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "接下來 {0} 毫秒"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "前 {0} 天"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "接下來的 {0} 天"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "接下來的 {0} 個月"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "前 {0} 個季度"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "接下來的 {0} 小時"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "前 {0} 年"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "前 {0} 個月"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "前 {0} 毫秒"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "之前 {0} 小時"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "前 {0} 秒"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "前 {0} 週"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "前 {0} 分鐘"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "執行回填實體 ID 和排出實體 ID 作業的頻率（毫秒）。最小值為 1000，任何等於或低於 0 的值都會完全停用該作業。"
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "您無法封存自訂報告集合。"
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "您無法歸檔根集合。"
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "您不能更新指標的建立者標識(creator_id)"
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}、{1}和{2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "使用者是否已關閉主要側邊欄中的新手上路連結。"
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "我們是否分析任何查詢"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL 解析已停用"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "預期： {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "查詢處理器錯誤：驅動程式返回的欄位與結果不匹配。"
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "未知查詢類別 {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "查詢處理器錯誤：查詢和結果中的欄位數不匹配。"
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "不知道如何獲取有關欄位：{0}的訊息"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "預期有{0}欄位，但結果集所見是{1}欄位。"
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "實際： {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "預期 {0} 個欄位，取得 {1} 個"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"啟用查詢的欄位使用情況分析。這將分析查詢中使用的欄位並將其儲存在\n"
+"    應用程式資料庫中。\n"
+"\n"
+"    預設關閉，因為我們還沒有使用此資料的面向使用者的功能。"
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "值必須是個有效的大於0的整數。"
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "value 必須是有效的字段語義類型（關鍵字或字串）。"
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "參數必須是包含 :id 和 :type 鍵的映射"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "值必須是負整數"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "數值必須是包含:field id-or-name和選項映射的數組"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "值必須是有效的欄位語義類型。"
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "值必須是一個大於0的數字"
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "參數映射必須是包含 :parameter_id 和 :target 鍵的映射"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "值必須是個有效的整數。"
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "值必須是有效的字段關係類型（關鍵字或字串）。"
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "值必須是有效的欄位關係類型。"
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "值必須是一個大於等於0的有效整數"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "無效的電子郵件地址：{0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "您不能為域 {0} 建立新訂閱。允許的域是：{1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "查詢參考驗證"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "編輯表數據"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "無法找到 Google Drive 連接，請重試。"
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "無法找到 Google Drive 連線。"
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "同步 Google Drive 資料夾時出現問題，請重試.."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "同步 Google Drive 資料夾逾時，請重試。"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO 尚未啟用"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO 尚未配置"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"當我們啟用 JWT 使用者配置時，我們會在 JWT 登入時自動為\n"
+"沒有 Metabase 帳戶的使用者建立 Metabase 帳戶。"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "基於 JWT 的登入頁面 URL。如果僅將 JWT SSO 與嵌入式分析 SDK 搭配使用，則為選填。"
 

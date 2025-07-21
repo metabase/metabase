@@ -4693,10 +4693,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "このフィルタは埋め込みダッシュボードでは無効に設定されています。"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
+msgstr ""
+"常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
 "このフィルタを編集可能にするかロックして\n"
 "ダッシュボードを再公開してから、このページに戻ってください。"
 
@@ -4708,10 +4710,12 @@ msgstr "ノート"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "ロックされている場合は\n"
+msgstr ""
+"ロックされている場合は\n"
 "そうでないと、埋め込みが壊れてしまいます。\n"
 "が壊れてしまいます。"
 
@@ -4881,21 +4885,27 @@ msgid "Turn this into a model"
 msgstr "これをモデル化する"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "カラムの説明を更新したり、メタデータをカスタマイズしたりすることで\n"
+msgstr ""
+"カラムの説明を更新したり、メタデータをカスタマイズしたりすることで\n"
 "探索のための素晴らしい出発点となります。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "検索結果で上位に表示されたり、他のユーザーが新しい質問を始めたときに\n"
+msgstr ""
+"検索結果で上位に表示されたり、他のユーザーが新しい質問を始めたときに\n"
 "他のユーザーが新しい質問を始めたときにハイライトされ、再利用を促進します。"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "厄介なデータベースのスキーマとは別に、コレクションとして保管することができます。\n"
+msgstr ""
+"厄介なデータベースのスキーマとは別に、コレクションとして保管することができます。\n"
 "スキーマから切り離すことができます。"
 
 #: frontend/src/metabase/query_builder/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx:107
@@ -6480,11 +6490,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "日付またはdatetimeの値を持つカラムの名前です。"
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "オプション。デフォルトは `\"ISO\"` です。\n"
+msgstr ""
+"オプション。デフォルトは `\"ISO\"` です。\n"
 "- ISO: 第 1 週は 1 月の最初の木曜日の前の月曜日に始まります。\n"
 "- US: 第 1 週は 1 月 1 日に始まります。他のすべての週は日曜日に始まります。\n"
 "- インスタンス: 第 1 週は 1 月 1 日に始まります。他のすべての週は、Metabase ローカリゼーション設定で定義された日に始まります。"
@@ -6578,9 +6590,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "現在のタイムスタンプ(ミリ秒単位)を返します。現在は{1}の中の{0}です。"
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "日付またはタイムスタンプ列のタイムゾーンを変換します。\n"
+msgstr ""
+"日付またはタイムスタンプ列のタイムゾーンを変換します。\n"
 "tz データベースのタイムゾーン名をサポートしています。"
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -9314,7 +9328,8 @@ msgstr "曜日の値は1から7の間でなければなりません"
 
 #: frontend/src/metabase/lib/cron.ts:12
 msgid "Day-of-week values must be SUN, MON, TUE, WED, THU, FRI, SAT OR between 1 and 7, - * ? / L #"
-msgstr "曜日の値は、SUN、MON、TUE、WED、THU、FRI、SAT、1から7、- * ? \n"
+msgstr ""
+"曜日の値は、SUN、MON、TUE、WED、THU、FRI、SAT、1から7、- * ? \n"
 " / L # のいずれかでなければなりません"
 
 #: frontend/src/metabase/lib/cron.ts:13
@@ -9525,13 +9540,15 @@ msgstr[0] "最低{0}文字"
 #, javascript-format
 msgid "{0} lower case letter"
 msgid_plural "{0} lower case letters"
-msgstr[0] "{0}個の小文字\n"
+msgstr[0] ""
+"{0}個の小文字\n"
 "{0}個の小文字"
 
 #: frontend/src/metabase/lib/settings.ts:35
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
-msgstr[0] "{0}個の大文字\n"
+msgstr[0] ""
+"{0}個の大文字\n"
 "{0}個の大文字"
 
 #: frontend/src/metabase/lib/settings.ts:44
@@ -9543,7 +9560,8 @@ msgstr[0] "{0}個の数"
 #: frontend/src/metabase/lib/settings.ts:49
 msgid "{0} special character"
 msgid_plural "{0} special characters"
-msgstr[0] "{0}個の特殊文字\n"
+msgstr[0] ""
+"{0}個の特殊文字\n"
 "{0}個の特殊文字"
 
 #: frontend/src/metabase/lib/settings.ts:256
@@ -10245,9 +10263,11 @@ msgstr "拒否されたアクセス"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0}は{1}のクエリビルダのみを使用することができます。\n"
+msgstr ""
+"{0}は{1}のクエリビルダのみを使用することができます。\n"
 "ビルダーしか使えません"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -11675,9 +11695,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Metabase Cloudを始める"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "注意: メタベースは移行準備の間、最大30分間読み取り専用になります。\n"
+msgstr ""
+"注意: メタベースは移行準備の間、最大30分間読み取り専用になります。\n"
 "メタベースが読み取り専用になります。"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12036,9 +12058,11 @@ msgid "Connect to Slack"
 msgstr "Slackに接続する"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "チームがSlackを使用している場合、ダッシュボードのサブスクリプションと\n"
+msgstr ""
+"チームがSlackを使用している場合、ダッシュボードのサブスクリプションと\n"
 "アラートを送信できます。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:59
@@ -13437,7 +13461,8 @@ msgstr[0] "{0}メトリクス"
 #, javascript-format
 msgid "{0} breakout"
 msgid_plural "{0} breakouts"
-msgstr[0] "ブレークアウト\n"
+msgstr[0] ""
+"ブレークアウト\n"
 "ブレークアウト"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription.tsx:71
@@ -14179,7 +14204,8 @@ msgid "Conditional formatting"
 msgstr "条件付書式"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "条件にあったテーブルのセルの色を変更するためのルールを追加することができます"
 
@@ -15348,7 +15374,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "SSOとグループメンバー情報を同期する"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "これを有効にするためには、ユーザが所属するSSOグループに基づきどのグループに追加されるべきなのかをMetabaseに伝えるためのマッピングを作る必要があります。"
 
@@ -15413,9 +15440,11 @@ msgid "Refresh cache automatically"
 msgstr "キャッシュの自動更新"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "キャッシュされた結果が期限切れになり次第、結果を更新するために再度クエリを実行してキャッシュし、\n"
+msgstr ""
+"キャッシュされた結果が期限切れになり次第、結果を更新するために再度クエリを実行してキャッシュし、\n"
 "キャッシュをリフレッシュする。"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15742,9 +15771,11 @@ msgstr "高度な機能を解除するためにライセンスを購入しまし
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "あなたのライセンスはもう有効ではありません。新しいライセンスをお持ちの場合は、以下に入力してください。\n"
+msgstr ""
+"あなたのライセンスはもう有効ではありません。新しいライセンスをお持ちの場合は、以下に入力してください。\n"
 "それ以外の場合は、{0}までご連絡ください。"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:62
@@ -16163,9 +16194,11 @@ msgid "Logo"
 msgstr "ロゴ"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "最良の結果を得るには、背景が透明なSVGファイルを使用してください。\n"
+msgstr ""
+"最良の結果を得るには、背景が透明なSVGファイルを使用してください。\n"
 "背景を使用する。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:42
@@ -16516,12 +16549,14 @@ msgstr "メンバーを追加する"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "全てのユーザーは{0}グループに属しており、そのグループから削除することはできません。 このグループの権限を設定することで、新しいMetabaseユーザーの閲覧可能範囲を確認することができます。"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "これはメンバーがMetabaseインスタンス内の全データを参照できるだけでなく、権限の変更などを含む管理者パネルの設定ができる特別なグループです。このグループにメンバーを追加する場合は、十分にご注意ください。"
 
@@ -16575,9 +16610,11 @@ msgid "move the API keys to another group"
 msgstr "APIキーを別のグループに移動する"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "このグループに属するすべてのメンバーは、グループに基づいて設定されている全ての権限設定を失います。\n"
+msgstr ""
+"このグループに属するすべてのメンバーは、グループに基づいて設定されている全ての権限設定を失います。\n"
 "この変更は取り消せません。実行してよろしいですか?"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:111
@@ -18913,9 +18950,11 @@ msgstr "{0}を埋め込む"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "{0}を使用して、ウェブページやブログ記事に一般公開可能なiframe埋め込みを追加します\n"
+msgstr ""
+"{0}を使用して、ウェブページやブログ記事に一般公開可能なiframe埋め込みを追加します\n"
 "投稿してください。"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -19116,10 +19155,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "このフィルターは埋め込み質問では無効化されています。"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
+msgstr ""
+"常に値を要求するには、まず埋め込み設定にアクセスしてください、\n"
 "このフィルタを編集可能にするかロックします。\n"
 "を再公開し、このページに戻ってください。"
 
@@ -22289,9 +22330,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "メール管理をするSMTPサーバーのアドレス"
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "1秒間に送信できる受信者の最大数。\n"
+msgstr ""
+"1秒間に送信できる受信者の最大数。\n"
 "                複数の受信者がいる場合、上限に達する前に送信された最後のメールが上限を超える可能性があることに注意してください。"
 
 #: metabase/channel/settings.clj:12
@@ -24174,7 +24217,8 @@ msgid "Cumulative count of rows"
 msgstr "行の累積カウント"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "カラム値の累積和。(例)時間経過に対する累積売上額。"
 
@@ -24223,7 +24267,8 @@ msgid "Sum of all the values of a column."
 msgstr "列の全値の合計"
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "行数の累積カウント。(例)時間経過に対する累積売上回数。"
 
@@ -24684,7 +24729,8 @@ msgstr[0] "ミリ秒"
 #: metabase/lib/temporal_bucket.cljc:33
 msgid "Default period"
 msgid_plural "Default periods"
-msgstr[0] "デフォルトの期間\n"
+msgstr[0] ""
+"デフォルトの期間\n"
 "デフォルトの期間"
 
 #: metabase/lib/temporal_bucket.cljc:119
@@ -24763,9 +24809,11 @@ msgid "Sync issue troubleshooting"
 msgstr "同期の問題のトラブルシューティング"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "指定されたログ設定の形式が正しくありません。次のJSON構造に従ってください:\n"
+msgstr ""
+"指定されたログ設定の形式が正しくありません。次のJSON構造に従ってください:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25853,9 +25901,11 @@ msgid "Content Management or Official Collections"
 msgstr "コンテンツ管理または公式コレクション"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "postgresql に対して appdb エンジンを使用する場合、to_tsvector のステミングに使用する言語をオーバーライドします。\n"
+msgstr ""
+"postgresql に対して appdb エンジンを使用する場合、to_tsvector のステミングに使用する言語をオーバーライドします。\n"
 "  値は、データベースで有効な構成済みの言語オプション (「english」や「simple」など) である必要があります。"
 
 #: metabase/search/settings.clj:24
@@ -26929,9 +26979,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "ホーム画面にオススメのX-Rayを表示するか否か。何らかのダッシュボードがピン留めされている場合には自動的に隠されます。生データよりも良いコンテンツにユーザを導きたい場合、管理者はこの機能をOFFにするケースがあります。"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "結果として生じる変換は、期待に準拠していません。\n"
+msgstr ""
+"結果として生じる変換は、期待に準拠していません。\n"
 "予想：{0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27133,9 +27185,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster がエラーを返しました。"
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "ドライブ フォルダーの同期を設定できません。\n"
+msgstr ""
+"ドライブ フォルダーの同期を設定できません。\n"
 "フォルダーが適切なサービス アカウントのメールと共有権限で共有されていることを確認してください。"
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27470,7 +27524,8 @@ msgid "SAML attribute for the user''s email address"
 msgstr "ユーザのメールアドレスのSAML属性"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
 msgstr "SAMLユーザープロビジョニングを有効にした場合、Metabaseアカウントを持たないユーザーがSAMLサインインするとアカウントは自動的に作成されます。"
 
@@ -27535,9 +27590,11 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "グループメンバー検索フィルターです。プレースホルダーの'{dn}'と'{uid}'は、それぞれユーザーの識別名とUIDに置き換えられます。"
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "これは、ユーザーがIDプロバイダにログインするためのURLです。どのIdPを使用しているかにもよりますが\n"
+msgstr ""
+"これは、ユーザーがIDプロバイダにログインするためのURLです。どのIdPを使用しているかにもよりますが\n"
 "を使用しているかによって異なりますが、通常は `https://your-org-name.example.com` または `https://example.com/app/my_saml_app/abc123/sso/saml` のようになります。"
 
 #: metabase_enterprise/sso/settings.clj:152
@@ -27545,9 +27602,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "SAML から {0} グループへのマッピングを含む JSON。"
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "ID プロバイダーのエンコードされた証明書。IdP によっては、これをダウンロードして\n"
+msgstr ""
+"ID プロバイダーのエンコードされた証明書。IdP によっては、これをダウンロードして\n"
 "テキスト エディターで開き、証明書の内容をコピーしてここに貼り付ける必要がある場合があります。"
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27555,9 +27614,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "{0} が SAML 要求の署名に使用する鍵のエイリアス。"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "IdPの一意な識別子である。しばしばEntity IDまたは単に''Issuer''と呼ばれる。\n"
+msgstr ""
+"IdPの一意な識別子である。しばしばEntity IDまたは単に''Issuer''と呼ばれる。\n"
 "あなたのIdPによるが、これは通常`http://www.example.com/141xkex604w0Q5PN724v`のように見える。"
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27569,7 +27630,8 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "無効な ID プロバイダ証明書です。証明書はbase-64にエンコードされた文字列でなければなりません。"
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
 msgstr "LDAPユーザープロビジョニングを有効にした場合、Metabaseアカウントを持たないユーザーがLDAPサインインするとアカウントは自動的に作成されます。"
 
@@ -27582,9 +27644,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "JWT ユーザーのグループを取得するためのキー"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "これは、ユーザーが ID プロバイダからログアウトするための URL です。\n"
+msgstr ""
+"これは、ユーザーが ID プロバイダからログアウトするための URL です。\n"
 "どのIdPを使用しているかにもよりますが、通常は `https://your-org-name.example.com` または `https://example.com/app/my_saml_app/abc123/sso/slo` のようになります。"
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28628,4 +28692,1517 @@ msgstr "国ごとのユーザー獲得"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "売上トップ10の国"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "このフィールドには説明がまだありません"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "Metabase上でフィールドが表示される箇所"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "フィールドタイプ"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "キャストしない"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "コンバージョンの選択"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "このフィールドでフィルターを設定する"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "このフィールドでフィルターを利用する場合、利用するフィルター処理はどれですか?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "キャッシュしたフィールド値"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabaseはダッシュボードまたは質問のチェックボックスを有効化するため、このフィールドの値をスキャンします。"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "このフィールドを再スキャンする"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "テーブルを選択し、スキーマを見てメタデータを追加・編集する。"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "オリジナルスキーマ"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "テーブルの説明はまだありません"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "利用可能"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "非表示にする理由を選択してください"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "テクニカルデータ"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "無関係/不正データ"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "テーブルを探す"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "スキーマ"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} 非表示のテーブル"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} 件の利用可能なテーブル"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 テーブル"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "すべてを再表示"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "すべてを隠す"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "再表示"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "データタイプ"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "付加情報"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "Googleサインイン"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "{0}をお勧めします。以下の説明をご覧ください:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "最初に、Metabaseの設定を使用して{0}します。作成したら 「${ 1 }」 をクリックしてそれを承認してください。"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "下のボタンをクリックして、Slackアプリを作成します"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "ワークスペースへのインストール"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2.OAuth Tokenを有効化し、slackチャンネルを新規に作成する"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "サイドバーの\"{0}\"をクリックし、\"{1}\"をコピーしてここに貼り付けます。"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuthと権限"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "ボットユーザーのOAuthトークン"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "対 "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "対 "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-期間移動平均)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-行移動平均)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} 移動平均)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}前期)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2}期間前)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}前の値)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0}（上の{1}{2}行）"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}前の{2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3}前)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "パスワード認証を有効にする"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "ユーザーのプロビジョニング"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "ユーザが SAML 経由でログインしたときに、Metabase アカウントがなければ自動的に作成する。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML認証情報プロバイダのSSO URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML Identity Provider 発行者"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "SAML認証情報プロバイダ証明書"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "SAMLアプリケーション名"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "SAMLキーストアパス"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "SAMLキーストアパスワード"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "SAMLキーストアエイリアス"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "グループメンバーを同期する"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "JWT認証"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "ユーザがJWT経由でログインしたとき、そのユーザがMetabaseアカウントを持っていなければ、自動的にMetabaseアカウントを作成する。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "ユーザーがLDAP経由でログインしたときに、メタベースのアカウントを持っていなければ自動的に作成します。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "管理者グループを同期する"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "クラウド設定"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "ライセンスと課金"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "カラーパレット"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "Metabase製品の一部を非表示にしたり、カスタマイズすることで、お客様のブランドやニーズに合わせた体験を提供します。"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "アプリケーション名"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "メタベース{0}へのリンクとリファレンスを表示する。"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "設定メニューのヘルプリンク"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "モデルでスキーマをシンプルに"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "変更が保存されました。ページを更新してください。"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "不明な設定{0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "トリガー"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "トリガーを表示する"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "有料プランでは、各サブスクリプションのフィルター値をカスタマイズすることができます。"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "ダッシュボードフィルタにデフォルト値がある場合は、購読が送信されたときに適用されます。"
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "クエリの結果がここに表示されます。"
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "このページを編集中です"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "不明なマップ"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "デフォルトビューとして保存する"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "DBルーティングを有効にするにはユーザー属性を選択する必要があります"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "インタラクティブ埋め込みを有効にする"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "これを行うと、色がデフォルトの色に変わります。このアクションは元に戻せません。"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "ヘルプリンクのカスタム宛先"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "ランディングページ"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "インスタンス内のMetabaseドキュメントやMetabaseリファレンスへのリンクの可視性を制御します。{0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "API キーを管理する"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "Metabase ProでSAML、JWT、またはLDAP経由でシングルサインオン(SSO)を取得する"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "Googleサインイン"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "サイト名"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "ヘルプリクエストのメールアドレス"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "わかりやすいテーブル名とフィールド名"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "X-Ray機能を有効にする"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "クエリ分析を有効にする"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "賞品を受け取る"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "コレクションにデータをアップロードできるようにする"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "警告: サンプル データベースへのアップロードはテストのみを目的としており、削除される可能性があります。 データを保持したい場合は、PostgreSQL または MySQL データベースにアップロードする必要があります。"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "アラート用ウェブフック"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "カレンダーを表示する"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "質問を検索する"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "ロード中"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "もっと読み込む"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "特定のタブID"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "個々のフィールドに入力します"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "接続文字列を貼り付けます"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "データベースの検索"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "何も見つかりませんでした"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "データベースが見当たりませんか? {0} のページでセルフホスティングが可能かどうかを確認してください。"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "コミュニティドライバー"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "表示する項目を減らす"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "その他のオプションを表示する"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "ベータ"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "列の順序を編集"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "このアラートを1回だけ送信する"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "これを表示するには、{0}が少なくとも1つのフィールドに接続されている必要があります。"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + enter)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + enter)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "データの探索を始める準備はできていますか?下に追加してください。"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "準備ができていない?スキップして、サンプルデータベースで遊んでみてください。"
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "開始前に有料機能へのアクセスをロック解除"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "地理空間データを使用してマップの視覚化を構築します。ピン マップとグリッド マップには経度と緯度の列が必要であり、地域マップには米国の地域名の列が必要です。"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "{0}の閉じた括弧を期待する"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "{0}の開口部の括弧を期待する"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "式が空です"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "引用が閉じられていません"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "トラブルシューティング"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "保存されました!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "保存に失敗しました"
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "エラー:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "「ツール」「監査」「トラブルシューティング」へのアクセス権を付与します。"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "検証済みのメトリクスのみを表示"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "検証済みモデルのみ表示"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase はこの値を選択したユーザー属性にマッピングし、実行時にクエリを交換します。"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "例：プロユーザー"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "メールアドレスが見つかりません"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "{0}で接続"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google スプレッドシートに接続しています..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "Google スプレッドシートに接続"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "ファイルをインポートしています..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "新規追加"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "クエリー・バリデーター"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "フィールド"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "は非アクティブ"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "不明"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "不明なデータの参照"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "アップロードの管理"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "アップロードされたテーブル"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "SCIMによるユーザープロビジョニング"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "管理者に新しいSSOユーザを通知する"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "有効にされた場合、ユーザが初めてシングルサインオンを利用したときに管理者がメールを受け取ることになります。"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "API キーを作成する"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "フォーマット"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "アンフォーマット"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "データの回転を維持する"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "これらの質問を組み合わせることができません"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "質問を適用中"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "アルファベット順"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "スマート"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "ブックマークダッシュボード"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "フィルターを追加"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "ノートブックの質問を追加"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "ネイティブの質問を追加"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "ダッシュボードの編集をキャンセル"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "タスクボードをゴミ箱に送る"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "ダッシュボード情報を切り替える"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "ダッシュボードを編集"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "ダッシュボードを保存"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "ショートカットモーダルを切り替える"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "ノートブックを切り替える"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "ブックマークの質問"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "質問データを再取得"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "指定されたカラムの中央値を返します。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "中央値を取得するカラムや数値。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "文字列を整数に変換します。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "整数に変換する文字列列。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "ISO 8601 日付文字列を日付に変換します。"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "日付に変換する文字列。"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "無効なディメンション名: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "不明なメトリック：{0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "不明なセグメント：{0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "不明なフィールド：{0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr " 履歴"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "チームが探索しやすいようにモデルを作成します。"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "エンドユーザーが複雑な生データを読み解く代わりに、見つけやすく、理解しやすく、探索しやすいカスタムモデルを作成することができます。"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "地域の識別子を指定するプロパティはどれですか?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "地域の表示名を指定するプロパティはどれですか?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "日付と時間"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "このデータベースのデータを使用して誰かが質問を閲覧すると、Metabase はクエリを、その人のユーザー属性によって設定された宛先データベースに送信します。各宛先データベースは同一のスキーマを持っている必要があります。"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "宛先データベースに一致するユーザー属性"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "説明文の作成"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "説明が生成されます。クリックすると自動入力されます。"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "無効な参照を含む質問"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "すべてのコレクション"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "クエリ検証は現在無効になっています。 {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "ここでクエリ分析を有効にしてください。"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "無効なリファレンスを含む質問、モデル、メトリクスを使用しない"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "2時間"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3時間"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6時間"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12時間"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24時間"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "モデルの永続性を有効にすると、モデル（およびそれを使用するクエリ）のロードが速くなります。"
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "何かが発生したときに通知を受け取ったり、このチャートをスケジュールに従って送信したりするには、管理者に SMTP、Slack、または Webhook を設定するように依頼してください。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr "ほとんどのIdPでは、属性ステートメントセクションの「名前」というラベルの付いた入力ボックスにこれらをそれぞれ入力する必要があります。"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "SAML認証情報プロバイダのURL"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "有効なメールアドレスではありません"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "アラートとサブスクリプションの受信者の可視性を制御します。"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "無効なポート番号です"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "カスタムマップ"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "タイムゾーン"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "データベースのデフォルト"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "ローカライゼーションオプション"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "管理者が質問とダッシュボードの公開リンク(および埋め込み可能なiframe)を作成できるようにします。"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "公開されたダッシュボード"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "公開された質問"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "公開されたアクションフォーム"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "AI機能"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "AI機能が有効"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "AI機能を有効にするには、APIキーを入力する必要があります。"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "EE OpenAI APIキー"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "エンタープライズAI機能で使用するAPIキー"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "LDAP認証"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "LDAPホスト"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "LDAPポート"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "LDAPセキュリティ"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "かっこを確認する"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "識別名"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "ホームページとログインページに表示する"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "リンクと参考文献を表示する"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} - フィールド設定"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "テーブルセッティング"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "スキーマを見つける"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "このテーブルを再スキャンする"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "APIキーを削除"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "APIキーを編集する"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "APIキーを再生成"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "APIキーを作成することで、プログラムでAPIコールを行うことができます。"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "APIキーの作成"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "APIキーの管理"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "ユーザーがAPIキーを使ってAPIコールを認証できるようにする。"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "Metabase Cloud と話す..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "このインスタンスのスナップショットを撮ってみると...。"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "スナップショットをクラウドにアップロード..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "Metabase Cloud への移行は中止されました。"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "Metabase Cloud への移行..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "メタベースのデータをスナップショットしている間、質問やダッシュボードを見ることはできますが、編集や新規作成はできません。所要時間は30分程度です。"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "移住のキャンセル"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "移籍を取りやめる？"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "移行プロセスをキャンセルします。その後、このインスタンスは読み取り専用ではなくなります。"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "設定を編集する"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "SDKの埋め込みを許可するウェブサイトまたはアプリのオリジンをスペースで区切って入力します。Localhostは自動的に含まれます。"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "送信しました!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "静的埋め込みを有効にする"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "私たちからあなたへ"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "このベータ版をお試しいただいたお礼として、在庫がある限り、素敵なグッズをお送りさせていただきます。ボタンをクリックして詳細をお知らせください。"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "スワッグ"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "匿名のトラッキング"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "カスタムホームページ"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "cron構文"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "{0}はスペースで区切られた5つのフィールドからなる文字列である。"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "サイトURL"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloudはあなたのインスタンスを最新の状態に保ちます。現在のバージョンは{0}です。ご利用いただきありがとうございます。"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "削除中..."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "削除に失敗しました．"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "これにより、新しい接続が設定されるまで、ダッシュボードのサブスクリプションがSlackに表示されなくなる場合があります。"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "Slack Appの統合を削除してよろしいですか?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Slackのボットユーザー用OAuthトークン"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "診断情報"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "詳細はこちら(クリックでダウンロード)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "系列の編集"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "系列の追加"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "不明なタイプ"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "ページを隠す"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "データを追加"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "Markdown対応"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "マークダウンによるリンクと書式の追加"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "追加"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "ナビゲーション・サイドバーから隠されたページ"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "画面右上の歯車アイコンをクリックして、いつでもアクセスできます。"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "データベースを追加"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "これは、各モデルのテーブルを専用のスキーマに作成します。${ 0 } はそれらをスケジュールでリフレッシュします。モデルを使用する質問やクエリはこれらのテーブルにクエリを行います。"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "ブラウズ"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "CSVをアップロード"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "すべてのクエリには `database` が必要である。"
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[フィールド不明］"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} は {1}にある。"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} は {1} 個の選択ではありません"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} は {1} 個の選択に等しい"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} は {1} の上にあります。"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} は {1} の選択と等しくありません"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} は {1} 個の選択です"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0}は{1} {2}のいずれか選択"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "非標準の結合条件。{0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "次の {0} 週間"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "次の {0} 分"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "次の {0} 四半期"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "今後 {0} 年"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "次の {0} 秒"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "次の {0} ミリ秒"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "過去 {0} 日"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "次の {0} 日"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "今後 {0} か月"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "前の {0} 四半期"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "次の {0} 時間"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "過去 {0} 年"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "過去 {0} か月"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "前の {0} ミリ秒"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "過去 {0} 時間"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "前の {0} 秒"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "過去 {0} 週間"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "過去 {0} 分"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "バックフィル エンティティ ID ジョブとドレイン エンティティ ID ジョブを実行する頻度（ミリ秒）。最小値は 1000 で、0 以下の値にするとジョブが完全に無効になります。"
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "カスタム レポート コレクションをアーカイブすることはできません。"
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "ルートコレクションはアーカイブできません。"
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "メトリックの creator_id を更新することはできません。"
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}、{1}、{2}となります。"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "ユーザーがメインサイドバーからオンボーディングリンクを解除したかどうか。"
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "クエリを分析するかどうか"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL 構文解析が無効"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "予定: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "クエリプロセッサエラー: ドライバーから返された列の数が結果と一致しません。"
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "不明なクエリタイプ{0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "クエリプロセッサエラー：クエリと結果における列数が一致していません"
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "フィールドに関する情報を取得する方法がわからない：{0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "{0}列の結果が期待されますが、結果の最初の行は{1}列有しています。"
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "結果: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "{0} のフィールドのうち {1} を取得しました"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"クエリのフィールド使用状況分析を有効にします。これにより、クエリで使用されるフィールドが分析され、\n"
+"    アプリケーション データベースに保存されます。\n"
+"\n"
+"    このデータを使用するユーザー向け機能はまだないため、デフォルトではオフになっています。"
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "値はゼロより大きい有効な整数でなければなりません"
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "の値は、有効なフィールド・セマンティック・タイプ(キーワードまたは文字列)でなければなりません。"
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "パラメータは、:idキーと :typeキーを持つマップである必要があります"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "値は負の整数でなければならない。"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "value は :field id or-name とオプションマップを含む配列でなければなりません。"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "の値は、有効なフィールドセマンティックタイプでなければなりません。"
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "値はゼロより大きい数値でなければなりません"
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "parameter_mappingは、：parameter_idキーと：targetキーを持つマップである必要があります"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "値は有効な整数でなければなりません"
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "の値は、有効なフィールド・リレーション・タイプ(キーワードまたは文字列)でなければなりません。"
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "の値は、有効なフィールド・リレーション・タイプでなければなりません。"
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "値は0以上の有効な整数でなければなりません。"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "メールアドレスが無効です。{0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "ドメイン{0}に対して新しいサブスクリプションを作成することはできません。許可されるドメインは{1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "クエリ参照検証"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "テーブルデータの編集"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "Google ドライブ接続が見つかりません。もう一度お試しください。"
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "Google ドライブ接続が見つかりません。"
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "Google ドライブ フォルダの同期中に問題が発生しました。もう一度お試しください。"
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "Google ドライブ フォルダの同期がタイムアウトしました。もう一度お試しください。"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSOが有効になっていない"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSOが設定されていない"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr "JWTユーザープロビジョニングを有効にした場合、Metabaseアカウントを持たないユーザーがJWTサインインするとアカウントは自動的に作成されます。"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "JWTベースのログインページのURL。組み込みアナリティクスSDKでのみJWT SSOを使用する場合はオプション。"
 

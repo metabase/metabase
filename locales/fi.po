@@ -4709,7 +4709,8 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Tämä suodin on disabloitu upotetussa kojelaudassa."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
 msgstr "Pakollista arvoa vaatiaksesi, aseta tämä suodin muokattavaksi tai lukituksi upotusasetuksissa, uudelleenjulkaise kojelauta ja palaa tälle sivulle."
@@ -4722,7 +4723,8 @@ msgstr "Muistio"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
 msgstr "Lukitseminen vaatii upotuskoodin päivittämisen ennen jatkamista, muuten upotus ei enää toimi."
@@ -4894,17 +4896,20 @@ msgid "Turn this into a model"
 msgstr "Muuta tämä malliksi"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "Päivitä sarakkeiden kuvaukset ja mukauta metatietoja luodaksesi loistavia lähtöpisteitä tutkimukselle."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "Näy korkeammalla hakutuloksissa ja korostu, kun muut käyttäjät aloittavat uusia kysymyksiä edistääkseen uudelleenkäyttöä."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Asu kokoelmissa pitääksesi ne erillään sotkuisista tietokantakaavioista."
 
@@ -6493,11 +6498,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Sarakkeen nimi, jossa on päivämäärä- tai aikaleimasi arvo."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Valinnainen. Oletusasetus on \"ISO\".\n"
+msgstr ""
+"Valinnainen. Oletusasetus on \"ISO\".\n"
 "- ISO: Viikko 1 alkaa maanantaina ennen tammikuun ensimmäistä torstaita.\n"
 "- USA: Viikko 1 alkaa 1. tammikuuta. Kaikki muut viikot alkavat sunnuntaina.\n"
 "- Esiintymä: Viikko 1 alkaa tammikuun 1. päivänä. Kaikki muut viikot alkavat metatietokannan lokalisointiasetuksissa määritellystä päivästä."
@@ -6591,9 +6598,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "Palauttaa nykyisen aikaleiman (millisekunteina). Tällä hetkellä {0} {1}."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Muunna päivämäärän tai aikaleimasarakkeen aikavyöhyke.\n"
+msgstr ""
+"Muunna päivämäärän tai aikaleimasarakkeen aikavyöhyke.\n"
 "Tuemme tz-tietokannan aikavyöhykkeiden nimiä."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -10272,7 +10281,8 @@ msgstr "pääsy estetty"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
 msgstr "{0} voi käyttää vain kyselytyökalua kohteelle {1}."
 
@@ -11702,9 +11712,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Aloita Metabase Cloudin käyttö"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Vain varoituksena: Metabase on lukukiellossa enintään 30 minuuttia\n"
+msgstr ""
+"Vain varoituksena: Metabase on lukukiellossa enintään 30 minuuttia\n"
 ", kun valmistelemme sitä siirtoa varten."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12063,9 +12075,11 @@ msgid "Connect to Slack"
 msgstr "Yhdistä Slackiin"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Jos tiimisi käyttää Slackia, voit lähettää kojelautatilauksia ja\n"
+msgstr ""
+"Jos tiimisi käyttää Slackia, voit lähettää kojelautatilauksia ja\n"
 "hälytyksiä sinne"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:59
@@ -12405,13 +12419,18 @@ msgstr "Valmis"
 
 #: frontend/src/metabase/admin/tools/components/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:78
 msgid "in"
-msgstr "The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n\n"
+msgstr ""
+"The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n"
+"\n"
 "1. \"In\" as a preposition indicating location: \"sisällä\"\n"
-"Example: The cat is in the house. - Kissa on talossa.\n\n"
+"Example: The cat is in the house. - Kissa on talossa.\n"
+"\n"
 "2. \"In\" as a preposition indicating time: \"aikana\"\n"
-"Example: I will see you in the evening. - Näen sinut illalla.\n\n"
+"Example: I will see you in the evening. - Näen sinut illalla.\n"
+"\n"
 "3. \"In\" as an adverb indicating inclusion: \"mukana\"\n"
-"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n\n"
+"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n"
+"\n"
 "Please provide more context if you need a more specific translation."
 
 #: frontend/src/metabase/admin/tools/components/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:90
@@ -14222,7 +14241,8 @@ msgid "Conditional formatting"
 msgstr "Ehdollinen muotoilu"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Voit lisätä sääntöjä, jotta tämän taulun solut vaihtavat väriä, jos ne täyttävät tietyt ehdot."
 
@@ -15393,9 +15413,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Synkronoi ryhmäjäsenyys SSO:si kanssa"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "Tämän onnistumiseksi luo mäppäyksiä kertoaksesi Metabaselle, mihin ryhmiin käyttäjät tulisi\n"
+msgstr ""
+"Tämän onnistumiseksi luo mäppäyksiä kertoaksesi Metabaselle, mihin ryhmiin käyttäjät tulisi\n"
 "lisätä sen SSO-ryhmän perusteella, johon he kuuluvat."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:254
@@ -15459,9 +15481,11 @@ msgid "Refresh cache automatically"
 msgstr "Päivitä välimuisti automaattisesti"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Kun välimuistiin tallennetut tulokset vanhenevat, suorita kysely uudelleen ja aseta se välimuistiin päivittääksesi tulokset ja päivittääksesi\n"
+msgstr ""
+"Kun välimuistiin tallennetut tulokset vanhenevat, suorita kysely uudelleen ja aseta se välimuistiin päivittääksesi tulokset ja päivittääksesi\n"
 "välimuistin."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15788,7 +15812,8 @@ msgstr "Ostitko lisenssin edistyneiden toimintojen avaamiseksi? Syötä se alla 
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "Sinun ajokorttisi ei ole enää voimassa. Jos sinulla on uusi ajokortti, syötä se alla olevaan kenttään. Muussa tapauksessa ota yhteyttä numeroon {0}."
 
@@ -16208,9 +16233,11 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "Saat parhaan tuloksen käyttämällä SVG-tiedostoa, jonka tausta on läpinäkyvä\n"
+msgstr ""
+"Saat parhaan tuloksen käyttämällä SVG-tiedostoa, jonka tausta on läpinäkyvä\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:42
@@ -16562,14 +16589,17 @@ msgstr "Lisää jäseniä"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Kaikki käyttäjät kuuluvat ryhmään {0}, eikä heitä voi poistaa siitä. Tämän ryhmän käyttöoikeuksien asettaminen on hyvä tapa varmistaa, mitä uudet Metabase -käyttäjät voivat nähdä."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Tämä on erityinen ryhmä, jonka jäsenet voivat nähdä kaiken Metabasessa ja jotka voivat käyttää ja muuttaa asetuksia hallintapaneelissa, mukaan lukien käyttöoikeuksien muuttaminen! \n"
+msgstr ""
+"Tämä on erityinen ryhmä, jonka jäsenet voivat nähdä kaiken Metabasessa ja jotka voivat käyttää ja muuttaa asetuksia hallintapaneelissa, mukaan lukien käyttöoikeuksien muuttaminen! \n"
 "Lisää siis ihmisiä tähän ryhmään huolella."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:173
@@ -16623,9 +16653,11 @@ msgid "move the API keys to another group"
 msgstr "Vaihda API-avain toiseen ryhmään"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Oletko varma? Kaikki tämän ryhmän jäsenet menettävät kaikki tähän ryhmään perustuvat käyttöoikeusasetukset.\n"
+msgstr ""
+"Oletko varma? Kaikki tämän ryhmän jäsenet menettävät kaikki tähän ryhmään perustuvat käyttöoikeusasetukset.\n"
 "Tätä ei voi kumota."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:111
@@ -18967,7 +18999,8 @@ msgstr "Upotettu {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
 msgstr "Käytä {0} lisätäksesi julkisesti näkyvä iframe-upotus verkkosivullesi tai blogiisi."
 
@@ -19171,10 +19204,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Tämä suodatin on poistettu käytöstä upotetussa kysymyksessä."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Jos vaadit pakollisen arvon, siirry ensin upotusasetuksiin,\n"
+msgstr ""
+"Jos vaadit pakollisen arvon, siirry ensin upotusasetuksiin,\n"
 "muuta tämä suodatin muokattavaksi tai lukituksi, julkaise\n"
 "kysymys uudelleen ja palaa tälle sivulle."
 
@@ -21266,13 +21301,18 @@ msgstr "{0} muokannut {1}"
 #: frontend/src/metabase/timelines/common/components/ModalHeader/ModalHeader.tsx:48
 msgctxt "Refers to: 'Events' in a collection"
 msgid "in"
-msgstr "The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n\n"
+msgstr ""
+"The word \"in\" can have multiple translations in Finnish depending on its context. Here are a few possible translations:\n"
+"\n"
 "1. \"In\" as a preposition indicating location: \"sisällä\"\n"
-"Example: The cat is in the house. - Kissa on talossa.\n\n"
+"Example: The cat is in the house. - Kissa on talossa.\n"
+"\n"
 "2. \"In\" as a preposition indicating time: \"aikana\"\n"
-"Example: I will see you in the evening. - Näen sinut illalla.\n\n"
+"Example: I will see you in the evening. - Näen sinut illalla.\n"
+"\n"
 "3. \"In\" as an adverb indicating inclusion: \"mukana\"\n"
-"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n\n"
+"Example: She brought her dog in. - Hän toi koiransa mukanaan.\n"
+"\n"
 "Please provide more context if you need a more specific translation."
 
 #: enterprise/frontend/src/embedding-sdk/components/private/InteractiveQuestion/components/Breakout/BreakoutDropdown/BreakoutDropdown.tsx:40
@@ -22358,9 +22398,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Sähköpostiasi käsittelevän SMTP-palvelimen osoite."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Lähetettävien vastaanottajien enimmäismäärä yhteissähköposteilla per sekunti.\n"
+msgstr ""
+"Lähetettävien vastaanottajien enimmäismäärä yhteissähköposteilla per sekunti.\n"
 " Huomaa, että ennen rajan saavuttamista lähetetty viimeinen sähköposti voi ylittää sen, jos sillä on useita vastaanottajia."
 
 #: metabase/channel/settings.clj:12
@@ -24246,7 +24288,8 @@ msgid "Cumulative count of rows"
 msgstr "Kumulatiivinen rivien määrä"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "Sarakkeen kaikkien arvojen summattu summa.\\ne.x. kokonaistulot ajan mittaan."
 
@@ -24295,7 +24338,8 @@ msgid "Sum of all the values of a column."
 msgstr "Sarakkeen kaikkien arvojen summa."
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Rivien lukumäärän summaus, esim. myynnin kokonaismäärä ajan kuluessa."
 
@@ -24864,9 +24908,11 @@ msgid "Sync issue troubleshooting"
 msgstr "Synkronointiongelmien vianmääritys"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "Annetun lokitiedoston muoto on virheellinen. Noudata seuraavaa JSON-rakennetta:\n"
+msgstr ""
+"Annetun lokitiedoston muoto on virheellinen. Noudata seuraavaa JSON-rakennetta:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25958,9 +26004,11 @@ msgid "Content Management or Official Collections"
 msgstr "Sisällönhallinta tai viralliset kokoelmat"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "Kun käytät appdb-moottoria postgresql:ää vastaan, korvaa to_tsvector-muuttujassa käytetty kieli.\n"
+msgstr ""
+"Kun käytät appdb-moottoria postgresql:ää vastaan, korvaa to_tsvector-muuttujassa käytetty kieli.\n"
 "  Arvon on oltava tietokannassasi määritetty kelvollinen kielivaihtoehto, kuten ''english'' tai ''simple''."
 
 #: metabase/search/settings.clj:24
@@ -27035,7 +27083,8 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "Näytetäänkö läpivalaisuehdotukset etusivulla vai ei. Ne piilotetaan myös, jos kojelaudat kiinnitetään. Järjestelmänvalvojat saattavat piilottaa tämän ohjatakseen käyttäjiä parempaan sisältöön kuin raakadata"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
 msgstr "Tuloksena olevat muunnokset eivät vastaa odotuksia."
 
@@ -27238,9 +27287,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster palautti virheen."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Aseman kansion synkronointia ei voi määrittää.\n"
+msgstr ""
+"Aseman kansion synkronointia ei voi määrittää.\n"
 "Tarkista, että kansio on jaettu oikealla palvelutilin sähköpostilla ja jakamisoikeuksilla."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27575,9 +27626,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "SAML-attribuutti käyttäjän sähköpostiosoitteelle"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Kun otamme käyttöön SAML-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin SAML-kirjautumiseen käyttäjille, joilla\n"
+msgstr ""
+"Kun otamme käyttöön SAML-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin SAML-kirjautumiseen käyttäjille, joilla\n"
 "ei ole sellaista."
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27641,7 +27694,8 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "Ryhmän jäsenyyden hakusuodin. Paikkamerkit '{dn}' ja '{uid}' korvataan käyttäjän Distinguished Name ja UID -tiedoilla."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
 msgstr "Tämä on URL-osoite, johon käyttäjäsi menevät kirjautuakseen sisään identiteetintarjoajaasi. Riippuen siitä, mikä IDP on käytössäsi tämä näyttää yleensä tältä 'https://your-org-name.example.com tai https://example.com/app/my_saml_app/abc123/sso/saml'"
 
@@ -27650,9 +27704,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON-tiedosto, joka sisältää SAML-ryhmävastaavuudet kohteeseen {0}."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Koodattu varmenne identiteetin tarjoajalle. IdP:stä riippuen saatat joutua lataamaan tämän,\n"
+msgstr ""
+"Koodattu varmenne identiteetin tarjoajalle. IdP:stä riippuen saatat joutua lataamaan tämän,\n"
 "avaamaan sen tekstieditorissa ja kopioimaan ja liittämään varmenteen sisältö tähän."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27660,9 +27716,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Aliakseksi avaimelle, jota {0} tulisi käyttää SAML-pyyntöjen allekirjoittamiseen."
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Tämä on IdP:n yksilöllinen tunniste. Kutsutaan usein nimellä Entity ID tai yksinkertaisesti \"myöntäjä\". Riippuen\n"
+msgstr ""
+"Tämä on IdP:n yksilöllinen tunniste. Kutsutaan usein nimellä Entity ID tai yksinkertaisesti \"myöntäjä\". Riippuen\n"
 "IDP:stäsi, tämä näyttää yleensä tältä \"http://www.example.com/141xkex604w0Q5PN724v\"."
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27674,9 +27732,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Virheellinen tunnistepalvelimen varmenne. Varmenne tulisi olla base-64 koodattu merkkijono."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Kun otamme käyttöön LDAP-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin LDAP-kirjautumiseen käyttäjille, joilla\n"
+msgstr ""
+"Kun otamme käyttöön LDAP-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin LDAP-kirjautumiseen käyttäjille, joilla\n"
 "ei ole sellaista."
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27688,9 +27748,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Avain JWT-käyttäjien ryhmien hakemiseen"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Tämä on URL-osoite, johon käyttäjät kirjautuvat ulos identiteetintarjoajaltasi. Riippuen siitä, mitä IDP:tä käytät\n"
+msgstr ""
+"Tämä on URL-osoite, johon käyttäjät kirjautuvat ulos identiteetintarjoajaltasi. Riippuen siitä, mitä IDP:tä käytät\n"
 ", tämä näyttää yleensä tältä \"https://your-org-name.example.com\" tai \"https://example.com/app/my_saml_app/abc123/sso/slo\"."
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28734,4 +28796,1539 @@ msgstr "Käyttäjien hankinta maittain"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 maata myynnin perusteella"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "Kentän kuvaus puuttuu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "missä tämä kenttä näkyy kaikkialla Metabasessa"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "Kentän tyyppi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "Älä muunna"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "Valitse muunnos"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "Kenttä suotimena"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "Kun tätä kenttää käytetään suotimena, mitä käyttäjän on syytä antaa hakuarvoksi?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "Kenttäarvot cachessa"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabase voi listata kentän arvot sallitakseen valintaruutujen käytön dashboardeissa ja kysymyksissä."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "Tarkista kenttä"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "Valitse taulu nähdäksesi skeeman ja muokataksesi metadataa."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "Alkuperäinen skeema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "Taulun kuvaus puuttuu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "Kyseltävä"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "Miksi piilottaa?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "Tekninen data"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "Epäoleellinen"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "Etsi taulu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "Mallit"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} piilotettu taulu"
+msgstr[1] "{0} piilotettua taulua"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} kyseltävä taulu"
+msgstr[1] "{0} kyseltävää"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 Pöydät"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "Näytä kaikki"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "Piilota kaikki"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "Näytä"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "Datatyyppi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "Lisätieto"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "Google kirjatutuminen"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "Suosittelemme sinulle {0}, katso ohjeet alla:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "Ensinnäkin, {0} käyttäen Metabase-konfiguraatiota. Kun se on luotu, napsauta ”${ 1 }” hyväksyäksesi sen."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "Klikkaa alla olevaa painiketta luodaksesi Slack-sovelluksesi."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "Asenna työtilaan"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. Aktivoi OAuth-token ja luo uusi Slack-kanava"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "Klikkaa \"{0}\" sivupalkissa, kopioi \"{1}\" ja liitä se tänne."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth ja käyttöoikeudet"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "Botin käyttäjän OAuth-tokeni"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "vs "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "% vs. "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-ajanjakson liukuva keskiarvo)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-rivin liukuva keskiarvo)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} liukuva keskiarvo)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}edellinen kausi)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2} aikoja sitten)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}edellinen arvo)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} ({1}{2} rivit edellä)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}edellinen {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3} sitten)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "Käytä salasanatodennusta"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "Käyttäjien käyttöönotto"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "Kun käyttäjä kirjautuu sisään SAMLin kautta, luo hänelle automaattisesti Metabase-tili, jos hänellä ei ole sellaista."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML-identiteetin tarjoajan SSO-URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML-identiteetin tarjoajan lähettäjä"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "SAML-identiteetin tarjoajan sertifikaatti"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "SAML-sovelluksen nimi"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "SAML-avaintietovaraston polku"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "SAML-avainvaraston salasana"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "SAML-avainvaraston alias"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "Synkkaa ryhmäjäsenyydet"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "JWT-todennus"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "Kun käyttäjä kirjautuu sisään JWT:n kautta, luo hänelle automaattisesti Metabase-tili, jos hänellä ei ole sellaista."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "Kun käyttäjä kirjautuu sisään LDAP:n kautta, luo hänelle automaattisesti Metabase-tili, jos hänellä ei ole sellaista."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "Synkronoi järjestelmänvalvoja-ryhmä"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "Pilviasetukset"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "Lisenssi ja laskutus"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "Väripaletti"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "Mukauta tai piilota Metabase-tuotteen osia brändisi ja tarpeidesi mukaan"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "Sovelluksen nimi"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "Näytä linkit ja viittaukset Metabaseen {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "Ohje-linkki Asetukset-valikossa"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "Yksinkertaista skeemasi malleilla"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "Muutokset tallennettu. Päivitä sivu nähdäksesi ne"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "Tuntematon asetus {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "Liipaisimet"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "Näytä triggerit"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "Voit mukauttaa suodatinarvoja jokaiselle tilaukselle maksullisilla suunnitelmilla."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "Jos Dashboard-suotimella on oletusarvo, sitä käytetään, kun tilauksesi lähetetään.."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "Kyselyn tulokset näkyvät täällä."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "Olet muokkaamassa tätä sivua"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "tuntematon kartta"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "Tallenna oletusnäkymänä"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Sinun on valittava käyttäjän määrite ottaaksesi käyttöön DB-reitityksen"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "Ota interaktiivinen upottaminen käyttöön"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "Jos teet tämän, värisi muuttuvat oletusväreiksemme. Tätä toimintoa ei voi peruuttaa."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "Ohjelinkki mukautettuun kohteeseen"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "Aloitussivu"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "Hallitse Metabase dokmentaation linkkien näkyvyyttä ja Metabase viittauksia omassa instanssissasi. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "Hallinnoi API-avaimia"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "Hanki yhden kirjautumisen (SSO) avulla SAML, JWT tai LDAP Metabase Pron kanssa."
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "Google-kirjautuminen"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "Sivun nimi"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "Sähköpostiosoite tukipyyntöihin"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "Taulukkojen ja kenttien nimet"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Ota röntgenominaisuudet käyttöön"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "Ota kyselyanalyysi käyttöön"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "Lunasta lahjasi"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "Salli ihmisten ladata tietoja Kokoelmiin."
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "Varoitus: lataukset Näyte tietokantaan ovat vain testausta varten ja saattavat kadota. Jos haluat, että tietosi säilyvät, sinun tulisi ladata ne PostgreSQL- tai MySQL-tietokantaan."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "Hälytysten webhook"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "Näytä kalenteri"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "Hae kysymystä"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "Ladataan"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "Lataa lisää"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "Välilehtien tunnukset"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "Täytä yksittäiset kentät"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "Liitä yhteysmerkkijono"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "Etsi tietokantaa…"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "Mitään ei löytynyt"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "Et näe tietokantaasi? Tarkista {0} -sivultamme, onko se saatavilla itseisännöintiä varten."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "Yhteisön ajurit"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "Näytä vähemmän vaihtoehtoja"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "Näytä enemmän vaihtoehtoja"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "Beta"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Muokkaa sarakkeiden järjestystä"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "Lähetä tämä ilmoitus vain kerran"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "{0} on oltava yhdistetty vähintään yhteen kenttään."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + Enter)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + Enter)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "Oletko valmis aloittamaan datan tutkimisen? Lisää se alle."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "Etkö ole valmis? Ohita ja leiki esimerkkidatamme kanssa."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "Avaa pääsy maksullisiin ominaisuuksiin ennen aloittamista"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Luo karttavisualisointeja paikkatiedon avulla: Pin- ja Grid-kartat edellyttävät pituus- ja leveysastesarakkeita, aluekartat vaativat Yhdysvaltain alueiden nimisarakkeen."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "Odotetaan {0} sulkevaa sulkua"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "Odotetaan {0} aloitussulkua"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "Ilmaus on tyhjä"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "Loppulainaukset puuttuvat"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "Vianmääritys"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "Tallennettu!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "Tallentaminen epäonnistui."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "Virhe:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "Tämä myöntää pääsyn Työkaluihin, Tarkastukseen ja Vianmääritykseen."
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "Näytä vain vahvistettu metriikka"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "Näytä vain tarkistetut mallit"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metakanta yhdistää tämän arvon valitsemaasi käyttäjämääritteeseen kyselyjen vaihtamiseksi suorituksen aikana"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Esim pro-käyttäjät"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "Sähköpostia ei löydy"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "Yhdistetty {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google Sheetsiin yhdistetään..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "Yhdistetty Google Sheetsiin"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "Tuodaan tiedostoja..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "Lisää Uusi"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "Kyselyn tarkistaja"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "Kenttä"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "on passiivinen"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "on tuntematon"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "Tuntematon dataviittaus"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "Hallinnoi latauksia"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "Ladatut taulut"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "Käyttäjien hallinta SCIM:n kautta"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "Ilmoita ylläpitäjille uusista SSO-käyttäjistä"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "Kun tämä on käytössä, järjestelmänvalvojat saavat sähköpostin, kun käyttäjä käyttää Single-Sign-On:a ensimmäisen kerran."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "Luo uusi API-avain"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "Muotoiltu"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "Muotoilematon"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "Pidä tiedot pivotoituna"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "Ei mahdollista yhdistää näitä kysymyksiä."
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "Kysymyksen lisääminen"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "Aakkosellinen"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "Fiksu"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Kirjanmerkkien hallintapaneeli"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Lisää suodatin"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Lisää muistikirjan kysymys"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Lisää alkuperäinen kysymys"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Peruuta Muokkaa hallintapaneelia"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Lähetä ohjauspaneeli roskakoriin"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Vaihda kojelaudan tiedot"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Muokkaa hallintapaneelia"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Tallenna hallintapaneeli"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Vaihda Pikanäppäimet Modaali"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Muistikirja päälle/pois"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Kirjanmerkki kysymys"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Hae kysymystiedot uudelleen"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "Palauttaa määritetyn sarakkeen mediaaniarvon."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "Sarake tai numero, jonka mediaani saadaan."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "Muuntaa merkkijonon kokonaisluvuksi."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "Merkkijonosarake, joka muunnetaan kokonaisluvuiksi."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "Muuntaa ISO 8601 -päivämäärämerkkijonon päivämääräksi."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "Merkkijono, joka muunnetaan päivämääräksi."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Virheellinen ulottuvuuden nimi: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "Tuntematon mittayksikkö: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "Tuntematon osa: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "Tuntematon kenttä: {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr " Historia"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "Luo malleja, jotta tiimisi voi helpommin tutkia."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "Sen sijaan, että loppukäyttäjien täytyisi käydä läpi monimutkaisia raakadatan, voit luoda räätälöityjä malleja, jotka ovat helppoja löytää, ymmärtää ja tutkia."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "Mikä ominaisuus määrittää alueen tunnisteen?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "Mikä ominaisuus määrittää alueen näytettävän nimen?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "Päivämäärät ja kellonajat"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Kun joku tarkastelee kysymystä tämän tietokannan tietojen avulla, Metabase lähettää kyselyt kohdetietokantaan, joka on asetettu henkilön käyttäjämääritteellä. Jokaisella kohdetietokannalla on oltava identtinen skeema."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Käyttäjämäärite vastaamaan kohdetietokantaa"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "Kuvausten luominen"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "Kuvaus generoitu. Täytä automaattisesti napsauttamalla."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "Kysymykset, joissa on virheellisiä viittauksia"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "Kaikki kokoelmat"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "Kyselyn validointi on tällä hetkellä poissa käytöstä. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "Ota kyselyanalyysi käyttöön tästä."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "Ei kysymyksiä, malleja tai mittareita, joissa on virheellisiä viittauksia"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "2 tuntia"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 tuntia"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 tuntia"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 tuntia"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 tuntia"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "Ota mallien pysyvyys käyttöön, jotta mallisi (ja niitä käyttävät kyselyt) latautuvat nopeammin."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "Pyydä järjestelmänvalvojaa määrittämään SMTP, Slackin tai webhook, jos haluat saada ilmoituksen, kun jotain tapahtuu, tai lähettää tämän kaavion aikataulun mukaisesti."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr "Useimmissa IdP-palveluissa sinun täytyy laittaa jokainen näistä omalle syöttökentälle, joka on nimetty \"Nimi\" attribuuttilauseiden osiossa."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "SAML-identiteetin tarjoajan URL"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "Tuo ei ole kelvollinen sähköpostiosoite"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "Hallitse hälytysten ja tilausten vastaanottajien näkyvyyttä."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "Tuo ei ole kelvollinen porttinumero"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "Kustomoitu kartta"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "Raporttien aikavyöhyke"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "Oletustietokanta"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "Lokalisointivaihtoehdot"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "Mahdollista ylläpitäjille julkisesti nähtävien linkkien (ja upotettavien iframejen) luominen Kysymyksille ja Työpöydille."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "Jaetut kojelaudat"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "Jaetut kysymykset"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "Jaetut toimintalomakkeet"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "Tekoälyn ominaisuudet"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "Tekoälyominaisuudet käytössä"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "Sinun on annettava API-avain, ennen kuin tekoälyominaisuudet voidaan ottaa käyttöön."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "EE OpenAI API-avain"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "Enterprise AI -ominaisuuksiin käytettävä API-avain"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "LDAP tunnistautuminen"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "LDAP host"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "LDAP portti"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "LDAP turvallisuus"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "Tarkista sulkumerkit"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "Erinomainen nimi"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "Näytä tämä koti- ja kirjautumissivuilla."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "Näytä linkit ja viittaukset"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0}–kentän asetukset"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Taulukon asetukset"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "Etsi skeema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "Tarkista taulu"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "Poista API-avain"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "Muokkaa API-avainta"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "Luo API-avain uudelleen"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "Voit luoda API-avaimen tehdäksesi API-kutsuja ohjelmallisesti."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "Luo API-avain"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "Hallinnoi API-avaimia"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "Salli API-avainten käyttö API-kutsujen autentikointiin"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "Juttelee Metabase Cloudin kanssa..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "Otetaan tilannekuva tästä instanssista..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "Ladataan tilannekuvaa pilveen..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "Metabase Cloudiin siirto on peruttu."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "Siirtyminen Metabase Cloudiin…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "Metabase-tietojesi tilannekuvan ottamisen aikana ihmiset voivat tarkastella kysymyksiä ja kojelautoja, mutta he eivät voi muokata tai luoda mitään uutta. Sen pitäisi kestää enintään 30 minuuttia."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "Peruuta siirto"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "Peruutetaanko siirto?"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "Peruutamme siirtoprosessin. Tämän jälkeen tämä instanssi ei ole enää 'vain luku'-tilassa."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP stands for Simple Mail Transfer Protocol."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "Muokkaa asetusta"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "Anna niiden sivustojen tai sovellusten sijainnit, joissa haluat sallia SDK:n upotuksen, erotettuna välilyönnillä. Localhost sisältyy automaattisesti."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "Lähetetty!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "Ota staattinen upotus käyttöön"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "Jotain pientä meiltä sinulle"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "Kiitokseksi, että kokeilit tätä betaa, lähetämme sinulle mielellämme lahjan niin kauan kuin tavaraa riittää. Napsauta painiketta antaaksesi meille tietosi, niin lähetämme sinulle sähköpostin, jossa on ohjeet."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "Lunastan lahjani"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "Anonyymi seuranta"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "Mukautettu kotisivu"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "cron-syntaksi"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "Meidän {0} on merkkijono, jossa on 5 välilyönneillä erotettua kenttää."
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Sivuston URL-osoite"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud pitää ilmentymäsi ajan tasalla. Käytät tällä hetkellä versiota {0}. Kiitos, että olet asiakas!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "Sorry, I cannot provide a translation without a sentence to work with. Please provide a sentence in English that you would like me to translate into Finnish."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "Poistaminen epäonnistui"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "Tämän tekeminen saattaa estää kojetaulun tilaukset näkymästä Slackissa, kunnes uusi yhteys on luotu."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "Oletko varma, että haluat poistaa Slack-sovelluksen integroinnin?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Slack Botin käyttäjän OAuth-tunnus"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "Diagnostiset tiedot"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "Lisätiedot (klikkaa ladataksesi)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "Muokkaa sarjaa"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "Lisää sarja"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "Tuntematon tyyppi"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "Piilota sivu"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "Lisää tietoja"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "Markdown tuettu"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "Lisää linkkejä ja muotoilua markdownilla"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "Lisää toinen"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "Sivu piilotettu navigoinnin sivupalkista"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "Pääset siihen myöhemmin milloin tahansa napsauttamalla ruudun oikeassa yläkulmassa olevaa hammasratas-kuvaketta."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "Lisää tietokanta"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "Tämä luo taulukon kullekin mallillesi omaan schemaan. ${ 0 } päivittää ne aikataulun mukaan. Kysymykset ja kyselyt, jotka käyttävät mallejasi, tekevät kyselyjä näistä tauluista."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "Selaa"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "Lataa CSV palvelimelle"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "`tietokanta` vaaditaan kaikille kyselyille."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "I'm sorry, but I cannot translate a sentence without knowing what it is. Could you please provide the sentence you would like me to translate into Finnish?"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "I'm sorry, but you haven't provided a sentence for translation. Could you please provide a sentence in English that you would like me to translate into Finnish?"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} on osoitteessa {1}"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} ei ole {1} valintoja"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} on yhtä suuri kuin {1} valintaa"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} ei ole {1}"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} ei ole yhtä suuri kuin {1} valintaa"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} on {1} valintoja"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} on yksi {1} {2} valinnoista"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "Epätyypillinen liittymisehto. {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Seuraava {0} viikko"
+msgstr[1] "Seuraavat {0} viikkoa"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Seuraava {0} minuutti"
+msgstr[1] "Seuraavat {0} minuuttia"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Seuraava {0} neljännes"
+msgstr[1] "Seuraavat {0} neljännekset"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Seuraava {0} vuosi"
+msgstr[1] "Seuraavat {0} vuotta"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Seuraava {0} sekunti"
+msgstr[1] "Seuraavat {0} sekuntia"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Seuraava {0} millisekunti"
+msgstr[1] "Seuraava {0} millisekuntia"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Edellinen {0} päivä"
+msgstr[1] "Edelliset {0} päivää"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Seuraava {0} päivä"
+msgstr[1] "Seuraavat {0} päivää"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Seuraava {0} kuukausi"
+msgstr[1] "Seuraavat {0} kuukautta"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Edellinen {0} vuosineljännes"
+msgstr[1] "Edelliset {0} neljännekset"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Seuraava {0} tunti"
+msgstr[1] "Seuraavat {0} tuntia"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Edellinen {0} vuosi"
+msgstr[1] "Edelliset {0} vuotta"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Edellinen {0} kuukausi"
+msgstr[1] "Edelliset {0} kuukautta"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Edellinen {0} millisekunti"
+msgstr[1] "Edelliset {0} millisekuntia"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Edellinen {0} tunti"
+msgstr[1] "Edelliset {0} tuntia"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Edellinen {0} sekunti"
+msgstr[1] "Edelliset {0} sekuntia"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Edellinen {0} viikko"
+msgstr[1] "Edelliset {0} viikkoa"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Edellinen {0} minuutti"
+msgstr[1] "Edelliset {0} minuuttia"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Jälkitäytön entiteettitunnusten ja tyhjennysyksiköiden ids -töiden suorittamisen taajuus ms. Vähimmäisarvo on 1000, ja mikä tahansa arvo, joka on 0 tai sitä pienempi, poistaa työn kokonaan käytöstä."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "Et voi arkistoida Custom Reports -kokoelmaa."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "Et voi arkistoida juurikokoelmaa."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "Et voi päivittää metriikan \"luoja_id\":tä"
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}, {1}, ja {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "Onko käyttäjä hylännyt pääsivupalkin sisäänpääsylinkin."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "Analysoidaanko kyselyitä lainkaan vai ei."
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL-jäsentely on pois päältä"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "Odottaa: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "Kyselyprosessorin virhe: palautettujen sarakkeiden määrä ei vastaa tuloksia."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "Tuntematon kyselytyyppi {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "Kyselyprosessorin virhe: kyselyssä ja tuloksissa on eri määrä sarakkeita."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "En tiedä, miten saada tietoa kentästä: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "Odottamassa {0} saraketta, mutta tulosten ensimmäisellä rivillä on {1} saraketta."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "Translation: Todellinen: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "Odottamattomat {0} kenttää, saatiin {1}"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"Ota käyttöön kyselyiden kenttäkäyttöanalyysi. Tämä analysoi kyselyissä käytetyt kentät ja tallentaa ne\n"
+"    -sovellustietokantaan.\n"
+"\n"
+"    Poista oletusarvoisesti käytöstä, koska meillä ei ole vielä ollut käyttäjälle suunnattua ominaisuutta, joka käyttää näitä tietoja."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "arvon on oltava kelvollinen kokonaisluku, joka on suurempi kuin nolla."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "arvon on oltava kelvollinen kentän semanttinen tyyppi (avainsana tai merkkijono)."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "parametrin on oltava kartta, jossa on :id- ja :type-avaimet"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "arvon on oltava negatiivinen kokonaisluku"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "arvon on oltava taulukko, jossa on :kenttä id-tai-nimi ja vaihtoehtojen kartta"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "arvon on oltava kelvollinen kentän semanttinen tyyppi."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "arvon on oltava suurempi kuin nolla."
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "parameter_mapping tulee olla kartta, jossa on :parameter_id ja :target avaimet."
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "arvon on oltava kelvollinen kokonaisluku."
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "arvon on oltava kelvollinen kenttäsuhteen tyyppi (avainsana tai merkkijono)."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "arvon on oltava kelvollinen kenttäsuhteen tyyppi."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "arvon on oltava kelvollinen kokonaisluku, joka on suurempi tai yhtä suuri kuin nolla."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "Virheellinen sähköpostiosoite: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "Et voi luoda uusia tilauksia verkkotunnukseen {0}. Sallitut verkkotunnukset ovat: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "Kyselyn viitteen validointi"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "Taulukon tietojen muokkaaminen"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "Google Drive -yhteyttä ei löydy, yritä uudelleen."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "Google Drive -yhteyttä ei löydy."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "Ongelma Google Drive -kansion synkronoinnissa, yritä uudelleen."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "Google Drive -kansion synkronoinnin aikakatkaisu, yritä uudelleen."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO ei ole käytössä"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO on määrittämättä"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"Kun otamme käyttöön JWT-käyttäjien provisioinnin, luomme automaattisesti Metabase tilin JWT-kirjautumiseen käyttäjille, joilla\n"
+"ei ole sellaista."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "JWT-pohjaisen kirjautumissivun URL-osoite. Valinnainen, jos käytetään JWT SSO:ta vain sulautetun analytiikka-SDK:n kanssa."
 

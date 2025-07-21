@@ -4709,10 +4709,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Dette filter er indstillet til deaktiveret i et integreret dashboard."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "For altid at kræve en værdi skal du først besøge indlejringsindstillinger,\n"
+msgstr ""
+"For altid at kræve en værdi skal du først besøge indlejringsindstillinger,\n"
 "gør dette filter redigerbart eller låst, genudgiv\n"
 "dashboard, og vend derefter tilbage til denne side."
 
@@ -4724,10 +4726,12 @@ msgstr "Bemærk"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "at gøre det låst, vil kræve opdatering af\n"
+msgstr ""
+"at gøre det låst, vil kræve opdatering af\n"
 "indlejringskode, før du fortsætter, ellers vil indlejringen\n"
 "pause."
 
@@ -4898,21 +4902,27 @@ msgid "Turn this into a model"
 msgstr "Gør dette til en model"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Lad dig opdatere kolonnebeskrivelser og tilpasse metadata til oprettelse\n"
+msgstr ""
+"Lad dig opdatere kolonnebeskrivelser og tilpasse metadata til oprettelse\n"
 "gode udgangspunkter for udforskning."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "Vis højere op i søgeresultaterne og bliv fremhævet, når andre\n"
+msgstr ""
+"Vis højere op i søgeresultaterne og bliv fremhævet, når andre\n"
 "brugere starter nye spørgsmål for at fremme genbrug."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "Bliv i samlinger for at holde dem adskilt fra rodet database\n"
+msgstr ""
+"Bliv i samlinger for at holde dem adskilt fra rodet database\n"
 "skemaer."
 
 #: frontend/src/metabase/query_builder/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx:107
@@ -6500,11 +6510,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Navnet på kolonnen med din dato eller datetime-værdi."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Valgfri. Standard er `\"ISO\"`.\n"
+msgstr ""
+"Valgfri. Standard er `\"ISO\"`.\n"
 "- ISO: Uge 1 starter mandagen før den første torsdag i januar.\n"
 "- USA: Uge 1 starter den 1. januar. Alle andre uger starter søndag.\n"
 "- Eksempel: Uge 1 starter den 1. januar. Alle andre uger starter på den dag, der er defineret i dine Metabase-lokaliseringsindstillinger."
@@ -6598,9 +6610,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "Returnerer det aktuelle tidsstempel (i millisekunder). I øjeblikket {0} i {1}."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Konverter tidszone for en dato- eller tidsstempelkolonne.\n"
+msgstr ""
+"Konverter tidszone for en dato- eller tidsstempelkolonne.\n"
 "Vi understøtter tz database tidszonenavne."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -7495,7 +7509,8 @@ msgstr "X-API-KEY"
 
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx:154
 msgid "API Key Value"
-msgstr "\n"
+msgstr ""
+"\n"
 "API Key Value"
 
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx:170
@@ -10280,9 +10295,11 @@ msgstr "nægtet adgang til"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} vil kun kunne bruge forespørgslen\n"
+msgstr ""
+"{0} vil kun kunne bruge forespørgslen\n"
 "builder til {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -11711,9 +11728,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Kom i gang med Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Bare en advarsel: Din metabase vil være skrivebeskyttet i op til 30\n"
+msgstr ""
+"Bare en advarsel: Din metabase vil være skrivebeskyttet i op til 30\n"
 "minutter, mens vi gør den klar til migrering."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12072,7 +12091,8 @@ msgid "Connect to Slack"
 msgstr "Forbind til Slack"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
 msgstr "Hvis dit team bruger Slack, kan du sende dashboard-abonnementer og advarsler dertil"
 
@@ -14223,9 +14243,11 @@ msgid "Conditional formatting"
 msgstr "Betinget formatering"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Du kan tilføje regler for at få cellerne i denne tabel til at skifte farve, hvis\n"
+msgstr ""
+"Du kan tilføje regler for at få cellerne i denne tabel til at skifte farve, hvis\n"
 "de opfylder visse betingelser."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -15395,7 +15417,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Synkroniser gruppemedlemskab med din SSO"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "For at aktivere dette skal du oprette kortlægninger for at fortælle Metabase, hvilke grupper dine brugere skal føjes til baseret på den SSO-gruppe, de er i."
 
@@ -15460,9 +15483,11 @@ msgid "Refresh cache automatically"
 msgstr "Opdater cachen automatisk"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Så snart cachelagrede resultater udløber, skal du køre og cachelagre forespørgslen igen for at opdatere resultaterne og opdatere\n"
+msgstr ""
+"Så snart cachelagrede resultater udløber, skal du køre og cachelagre forespørgslen igen for at opdatere resultaterne og opdatere\n"
 "cachen."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15789,7 +15814,8 @@ msgstr "Købt en licens til at låse op for avanceret funktionalitet? Indtast de
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "Din licens er ikke længere gyldig. Hvis du har en ny licens, indtast den venligst herunder, ellers kontakt {0}"
 
@@ -16209,7 +16235,8 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
 msgstr "For de bedste resultater skal du bruge en SVG-fil med en gennemsigtig baggrund."
 
@@ -16562,15 +16589,19 @@ msgstr "Tilføj medlemmer"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Alle brugere tilhører gruppen {0} og kan ikke fjernes fra den. Indstilling af tilladelser for denne gruppe er en fantastisk måde at\n"
+msgstr ""
+"Alle brugere tilhører gruppen {0} og kan ikke fjernes fra den. Indstilling af tilladelser for denne gruppe er en fantastisk måde at\n"
 "sørg for, at du ved, hvad nye Metabase-brugere vil kunne se."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Dette er en speciel gruppe, hvis medlemmer kan se alt i Metabase-forekomsten, og som kan få adgang til og foretage ændringer i\n"
+msgstr ""
+"Dette er en speciel gruppe, hvis medlemmer kan se alt i Metabase-forekomsten, og som kan få adgang til og foretage ændringer i\n"
 "indstillinger i Admin Panel, inklusive ændring af tilladelser! Så føj folk til denne gruppe med omhu."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:173
@@ -16624,9 +16655,11 @@ msgid "move the API keys to another group"
 msgstr "flytte API-nøglerne til en anden gruppe"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Er du sikker? Alle medlemmer af denne gruppe vil miste eventuelle tilladelsesindstillinger, de har baseret på denne gruppe.\n"
+msgstr ""
+"Er du sikker? Alle medlemmer af denne gruppe vil miste eventuelle tilladelsesindstillinger, de har baseret på denne gruppe.\n"
 "Dette kan ikke fortrydes."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:111
@@ -18968,9 +19001,11 @@ msgstr "Integrer {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Brug {0} til at tilføje en offentligt synlig iframe-indlejring til din webside eller blog \n"
+msgstr ""
+"Brug {0} til at tilføje en offentligt synlig iframe-indlejring til din webside eller blog \n"
 "post."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -19173,10 +19208,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Dette filter er sat til deaktiveret i et indlejret spørgsmål."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "For altid at kræve en værdi skal du først besøge indlejringsindstillinger,\n"
+msgstr ""
+"For altid at kræve en værdi skal du først besøge indlejringsindstillinger,\n"
 "gør dette filter redigerbart eller låst, genudgiv\n"
 "spørgsmål, så vend tilbage til denne side."
 
@@ -22353,9 +22390,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Adressen på den SMTP-server, der håndterer dine e-mails."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Det maksimale antal modtagere, opsummeret på tværs af e-mails, der kan sendes pr. sekund.\n"
+msgstr ""
+"Det maksimale antal modtagere, opsummeret på tværs af e-mails, der kan sendes pr. sekund.\n"
 " Bemærk, at den sidste e-mail, der sendes, før grænsen er nået, kan overskride den, hvis den har flere modtagere."
 
 #: metabase/channel/settings.clj:12
@@ -24241,9 +24280,11 @@ msgid "Cumulative count of rows"
 msgstr "Samlet antal rækker"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Additiv sum af alle værdierne i en kolonne.\n"
+msgstr ""
+"Additiv sum af alle værdierne i en kolonne.\n"
 "f.eks. samlet omsætning over tid."
 
 #: metabase/lib/schema/aggregation.cljc:173
@@ -24291,9 +24332,11 @@ msgid "Sum of all the values of a column."
 msgstr "Summen af alle værdierne i en kolonne."
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Additiv optælling af antallet af rækker.\n"
+msgstr ""
+"Additiv optælling af antallet af rækker.\n"
 "f.eks. samlet antal salg over tid."
 
 #: metabase/lib/schema/aggregation.cljc:212
@@ -24861,9 +24904,11 @@ msgid "Sync issue troubleshooting"
 msgstr "Fejlfinding af synkroniseringsproblemer"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "Formatet for den angivne logkonfiguration er forkert. Følg venligst følgende JSON-struktur:\n"
+msgstr ""
+"Formatet for den angivne logkonfiguration er forkert. Følg venligst følgende JSON-struktur:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25955,9 +26000,11 @@ msgid "Content Management or Official Collections"
 msgstr "Content Management eller officielle samlinger"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "Når du bruger appdb-motoren mod postgresql, skal du tilsidesætte det sprog, der bruges til stemming, i to_tsvector.\n"
+msgstr ""
+"Når du bruger appdb-motoren mod postgresql, skal du tilsidesætte det sprog, der bruges til stemming, i to_tsvector.\n"
 "  Værdien skal være en gyldig konfigureret sprogindstilling i din database, f.eks. ''engelsk'' eller ''simple''"
 
 #: metabase/search/settings.clj:24
@@ -27032,9 +27079,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "Hvorvidt røntgenforslag skal vises på hjemmesiden eller ej. De vil også blive skjult, hvis nogen dashboards er fastgjort. Administratorer kan skjule dette for at lede brugerne til bedre indhold end rådata"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "De resulterende transformationer er ikke i overensstemmelse med forventningerne.\n"
+msgstr ""
+"De resulterende transformationer er ikke i overensstemmelse med forventningerne.\n"
 "Forventet: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27236,9 +27285,11 @@ msgid "Harbormaster returned an error."
 msgstr "Havnemesteren returnerede en fejl."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Kan ikke konfigurere synkronisering af drevmappe.\n"
+msgstr ""
+"Kan ikke konfigurere synkronisering af drevmappe.\n"
 "Kontroller venligst, at mappen er delt med den korrekte servicekonto-e-mail og delingstilladelser."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27573,9 +27624,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "SAML-attribut for brugerens e-mailadresse"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "Når vi aktiverer SAML-brugerklargøring, opretter vi automatisk en Metabase-konto på SAML-login for brugere, der\n"
+msgstr ""
+"Når vi aktiverer SAML-brugerklargøring, opretter vi automatisk en Metabase-konto på SAML-login for brugere, der\n"
 "har ikke en."
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27639,9 +27692,11 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "Opslagsfilter for gruppemedlemskab. Pladsholderne '{dn}' og '{uid}' vil blive erstattet af brugerens distinguished Name og UID, henholdsvis."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Dette er den URL, hvor dine brugere logger ind på din identitetsudbyder. Afhængigt af hvilken IdP du bruger\n"
+msgstr ""
+"Dette er den URL, hvor dine brugere logger ind på din identitetsudbyder. Afhængigt af hvilken IdP du bruger\n"
 ", ser dette normalt ud som `https://your-org-name.example.com` eller `https://example.com/app/my_saml_app/abc123/sso/saml`."
 
 #: metabase_enterprise/sso/settings.clj:152
@@ -27649,9 +27704,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON, der indeholder SAML til {0} gruppetilknytninger."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Kodet certifikat for identitetsudbyderen. Afhængigt af din IdP, skal du muligvis downloade dette,\n"
+msgstr ""
+"Kodet certifikat for identitetsudbyderen. Afhængigt af din IdP, skal du muligvis downloade dette,\n"
 "åbne det i en teksteditor, og derefter kopiere og indsætte certifikatets indhold her."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27659,9 +27716,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Alias for nøglen, som {0} skal bruge til at signere SAML-anmodninger"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Dette er en unik identifikator for IdP. Ofte omtalt som enheds-id eller blot ''udsteder''. Afhængigt af\n"
+msgstr ""
+"Dette er en unik identifikator for IdP. Ofte omtalt som enheds-id eller blot ''udsteder''. Afhængigt af\n"
 "af din IdP, ser dette normalt ud som \"http://www.example.com/141xkex604w0Q5PN724v\""
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27673,9 +27732,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Ugyldigt identitetsudbydercertifikat. Certifikatet skal være en base-64-kodet streng."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "Når vi aktiverer LDAP-brugerklargøring, opretter vi automatisk en Metabase-konto på LDAP-login for brugere, som\n"
+msgstr ""
+"Når vi aktiverer LDAP-brugerklargøring, opretter vi automatisk en Metabase-konto på LDAP-login for brugere, som\n"
 "har ikke en."
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27687,9 +27748,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Nøgle til at hente JWT-brugerens grupper"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Dette er den URL, hvor dine brugere går for at logge ud af din identitetsudbyder. Afhængigt af hvilket IdP du\n"
+msgstr ""
+"Dette er den URL, hvor dine brugere går for at logge ud af din identitetsudbyder. Afhængigt af hvilket IdP du\n"
 "bruger, ser dette normalt ud som `https://dit-org-navn.eksempel.com` eller `https://eksempel.com/app/min_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28733,4 +28796,1541 @@ msgstr "Brugerhvervelse efter land"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "Top 10 lande efter salg"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "Ingen beskrivelse for dette felt endnu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "Hvor dette felt vil blive vist i Metabase"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "Felttype"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "Brug ikke cast"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "Vælg en konvertering"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "Filter på dette felt"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "Når dette felt bruges i et filter, hvad skal folk så bruge til at indtaste den værdi, de vil filtrere efter?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "Cachelagrede feltværdier"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabase kan scanne værdierne for dette felt for at aktivere afkrydsningsfeltfiltre i dashboards og spørgsmål."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "Scan dette felt igen"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "Vælg en tabel for at se dens skema og tilføje eller redigere metadata."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "Orginalt schema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "Ingen tabel beskrivelse endnu"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "Søgbart"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "Hvorfor skjule?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "Tenisk data"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "Irrelevant/Overflødigt"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "Find tabel"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "Skema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} skjult tabel"
+msgstr[1] "{0} skjulte tabeller"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} søgbar tabel"
+msgstr[1] "{0} søgbare tabeller"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 tabeller"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "Vis alle"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "Gem alt"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "Vis frem"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "Datatype"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "Yderligere Info"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "Google-login"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "Vi anbefaler, at du {0}, se instruktionerne nedenfor:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "Først {0} ved hjælp af Metabase-konfigurationen. Når den er oprettet, skal du klikke på “${ 1 }” for at godkende den."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "Mangler tilladelse til at slette tabel i skema {0}"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "Installer til arbejdsområdet"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. Aktiver OAuth-tokenet og opret en ny slack-kanal"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "Klik på \"{0}\" i sidebjælken, kopier \"{1}\" og indsæt det her."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth og tilladelser"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "Botbruger OAuth-token"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "mod "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "% mod "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-periode glidende gennemsnit)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-rækker glidende gennemsnit)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} glidende gennemsnit)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}forrige periode)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2} perioder siden)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}tidligere værdi)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} ({1}{2} rækker ovenfor)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}tidligere {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3} siden)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "Aktiver adgangskodegodkendelse"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "Brugerprovisionering"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "Når en bruger logger på via SAML, oprettes en Metabase-konto automatisk, hvis de ikke har en konto."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML Identity Provider SSO URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML-identitetsudbyderudsteder"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "SAML-identitetsudbydercertifikat"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "SAML-applikationsnavn"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "SAML-nøglelagersti"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "SAML Keystore-adgangskode"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "SAML-nøglelager-alias"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "Synkroniser gruppemedlemskaber"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "JWT-godkendelse"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "Når en bruger logger ind via JWT, oprettes en Metabase-konto automatisk, hvis de ikke har en konto."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "Når en bruger logger på via LDAP, oprettes en Metabase-konto automatisk, hvis de ikke har en konto."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "Synkroniseringsadministratorgruppe"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "Cloud-indstillinger"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "Licens og fakturering"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "Farvepalet"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "Skjul eller tilpas dele af Metabase-produktet for at skræddersy oplevelsen til dit brand og dine behov"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "Ansøgningsnavn"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "Vis links og referencer til Metabase {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "Hjælpelink i menuen Indstillinger"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "Forenkle dit skema med modeller"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "Ændringer gemt. Opdater siden for at se dem"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "Ukendt indstilling {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "Udløsere"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "Se triggere"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "Du kan vælge dine filter værdier for alle abonnementer med en betalt plan."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "Hvis et dashboardfilter har en standardværdi, anvendes det, når dit abonnement sendes."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "Forespørgselsresultater vises her."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "Du er ved at redigere denne side"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "ukendt kort"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "Gem som standardvisning"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Du skal vælge en brugerattribut for at aktivere DB-routing"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "Aktiver interaktiv indlejring"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "Hvis du gør dette, vil dine farver blive sat til srandard farver. Dette kan ikke omgøres."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "Hjælp til at linke tilpasset destination"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "Landingsside"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "Styr synligheden af links til Metabase-dokumentation og Metabase-referencer i din instans. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "Administrer API-nøgler"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "Få single-log on (SSO) via SAML, JWT eller LDAP med Metabase Pro"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "Google-login"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "Side navn"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "E-mailadresse for anmodninger om hjælp"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "Venlige tabel- og marknavne"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Aktiver røntgenfunktioner"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "Aktiver forespørgselsanalyse"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "Gør krav på din swag"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "Tillad folk at uploade data til samlinger"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "Advarsel: uploads til prøvedatabasen er kun til test og kan forsvinde. Hvis du vil have dine data til at blive ved, bør du uploade til en PostgreSQL- eller MySQL-database."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "Webhooks notifikationer"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "Vis kalender"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "Søg efter et spørgsmål"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "Indlæser"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "Indlæs mere"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "Specifikke fane-id'er"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "Udfyld de enkelte felter"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "Indsæt en forbindelsesstreng"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "Søg efter en database"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "fandt ikke noget"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "Kan du ikke se din database? Tjek vores {0}-side for at se, om den er tilgængelig til selvhosting."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "Community-drivere"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "Vis færre muligheder"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "Vis flere muligheder"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "Beta"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Rediger kolonnerækkefølge"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "Send kun denne advarsel én gang"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "For at se dette skal {0} være forbundet til mindst ét felt."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + Enter)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + Enter)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "Er du klar til at begynde at udforske dine data? Tilføj det nedenfor."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "Ikke klar? Spring over og leg rundt med vores prøvedatabase."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "Lås op for adgangen til dine betalte funktioner, før du starter"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Byg kortvisualiseringer med geospatiale data: Pin- og gitterkort kræver længde- og breddegradskolonner, Regionskort kræver en kolonne med amerikanske regionsnavne."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "Forventer {0} afsluttende parenteser"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "Forventer {0} åbningsparenteser"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "Udtrykket er tomt"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "Mangler afsluttende citater"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "Fejlfinding"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "Gemt!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "Gem mislykkedes."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "Fejl:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "Dette giver adgang til værktøjer, revision og fejlfinding"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "Vis kun bekræftede metrics"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "Vis kun verificerede modeller"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase knytter denne værdi til din valgte brugerattribut for at udveksle forespørgsler under kørsel"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Fx pro-brugere"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-mail ikke fundet"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "Forbundet af {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google Sheets opretter forbindelse..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "Forbundet til Google Sheets"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "Importerer filer..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "Tilføj nyt"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "Forespørgselsvalidator"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "Mark"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "er inaktiv"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "er ukendt"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "Ukendt data reference"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "Administrer uploads"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "Uploadede tabeller"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "Tilvejebringelse af brugere via SCIM"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "Giv administratorer besked om nye SSO-brugere"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "Når det er aktiveret, vil administratorer modtage en e-mail, første gang en bruger bruger Single Sign-On."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "Opret en ny API-nøgle"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "Formatteret"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "Uformateret"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "Behold data pivoteret"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "Kan ikke kombinere disse spørgsmål"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "Anvender spørgsmål"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "Alfabetisk"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "Smart"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Bogmærke Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Tilføj filter"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Tilføj notesbogsspørgsmål"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Tilføj indfødte spørgsmål"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Annuller Rediger Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Send betjeningspanelet til papirkurven"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Skift Dashboard Info"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Rediger Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Gem Dashboard"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Skift genveje modal"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Skift Notesbog"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Bogmærke spørgsmål"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Hent spørgsmålsdata igen"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "Returnerer medianværdien af den angivne kolonne."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "Kolonnen eller tallet for at få medianen af."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "Konverterer en streng til et heltal."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "Strengkolonnen, der skal konverteres til heltal."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "Konverterer en ISO 8601-datostreng til en dato."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "Strengen, der skal konverteres til en dato."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Ugyldigt dimensionsnavn: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "Ukendt metric: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "Ukendt segment: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "Ukendt felt: {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr " Historik"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "Opret modeller for at gøre det nemmere for dit team at udforske."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "I stedet for at få dine slutbrugere til at gennemsøge dine komplekse rådata, kan du oprette tilpassede modeller, der er nemme at finde, forstå og udforske."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "Hvilken egenskab angiver regionens identifikator?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "Hvilken egenskab angiver regionens visningsnavn?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "Datoer og tider"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Når nogen ser et spørgsmål ved hjælp af data fra denne database, sender Metabase forespørgslerne til en destinationsdatabase indstillet af personens brugerattribut. Hver destinationsdatabase skal have et identisk skema."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Brugerattribut til at matche destinationsdatabase"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "Generer beskrivelser"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "Beskrivelse genereret. Klik for at udfylde automatisk."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "Spørgsmål med ugyldige referencer"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "Alle samlinger"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "Forespørgselsvalidering er i øjeblikket deaktiveret. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "Aktiver venligst forespørgselsanalyse her."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "Ingen spørgsmål, modeller eller metrics med ugyldige referencer"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "2 timer"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 timer"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 timer"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 timer"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 timer"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "Aktivér modelpersistens for at få dine modeller (og de forespørgsler, der bruger dem) til at loade hurtigere."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "For at få besked, når der sker noget, eller for at sende dette diagram efter en tidsplan, skal du bede din administrator om at konfigurere SMTP, Slack eller en webhook."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr ""
+"I de fleste IdP'er skal du placere hver af disse i en inputboks mærket\n"
+"\"Navn\" i attributerklæringssektionen."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "URL til SAML-identitetsudbyder"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "Det er ikke en gyldig e-mailadresse"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "Styr synligheden af ​​underretninger og abonnementsmodtagere."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "Det er ikke et gyldigt portnummer"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "Brugerdefineret kort"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "Rapportér tidszone"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "Database standard"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "Lokaliseringsmuligheder"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "Giv administratorer mulighed for at oprette offentligt synlige links (og indlejrbare iframes) til spørgsmål og dashboards."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "Delte Dashboards"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "Delte spørgsmål"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "Delte handlingsformularer"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "AI funktioner"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "AI-funktioner aktiveret"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "Du skal angive en API-nøgle, før AI-funktioner kan aktiveres."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "EE OpenAI API nøgle"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "API-nøgle brugt til Enterprise AI-funktioner"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "LDAP-godkendelse"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "LDAP-vært"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "LDAP-port"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "LDAP-sikkerhed"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "Tjek dine parenteser"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "Fornemt Navn"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "Vis dette på hjemme- og login-siderne"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "Vis links og referencer"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} - felt indstillinger"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Tabelindstillinger"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "Find skema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "Scan denne tabel igen"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "Slet API-nøgle"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "Rediger API-nøgle"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "Gendan API-nøgle"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "Du kan oprette en API-nøgle til at foretage API-kald programmatisk."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "Opret API-nøgle"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "Administrer API-nøgler"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "Tillad brugere at bruge API-nøglerne til at godkende deres API-kald."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "At tale med Metabase Cloud..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "At tage et snapshot af denne instans..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "Upload af snapshot til skyen..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "Migrering til Metabase Cloud er blevet aflyst."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "Migrering til Metabase Cloud…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "Mens vi tager et øjebliksbillede af dine Metabase-data, vil folk kunne se spørgsmål og dashboards, men de vil ikke kunne redigere eller oprette noget nyt. Det bør kun tage op til 30 minutter"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "Annuller migration"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "Annullere migration?"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "Vi annullerer migreringsprocessen. Derefter vil denne instans ikke længere være skrivebeskyttet."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "Rediger konfiguration"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "Indtast oprindelsen for de websteder eller apps, hvor du vil tillade SDK-indlejring, adskilt af et mellemrum. Localhost er automatisk inkluderet."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "Sendt!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "Aktiver statisk indlejring"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "Noget fra os til dig"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "Som tak for at prøve denne betaversion, vil vi meget gerne sende dig noget swag, så længe lager haves. Klik på knappen for at give os dine oplysninger, og vi sender dig en e-mail med instruktioner."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "Hent mit swag"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "Anonym sporing"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "Brugerdefineret hjemmeside"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "cron syntaks"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "Vores {0} er en streng med 5 felter adskilt af mellemrum"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Webstedets URL"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud holder din instans opdateret. Du er i øjeblikket på version {0}. Tak fordi du er kunde!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "Sletter"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "Sletning mislykkedes"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "Hvis du gør dette, kan det forhindre dine dashboard-abonnementer i at blive vist i Slack, indtil en ny forbindelse er oprettet."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "Er du sikker på, at du vil slette din Slack App-integration?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Slack Bot-bruger OAuth-token"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "Diagnostisk info"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "Avancerede detaljer (klik for at downloade)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "Rediger serie"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "Tilføj serie"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "Ukendt type"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "Skjul side"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "Tilføj data"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "Markdown supporteret"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "Tilføj links og formattering med markdown"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "Tilføj en mere"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "Side skjult fra navigationssidepanelet"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "Få adgang til den senere når som helst ved at klikke på tandhjulsikonet øverst til højre på skærmen."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "Tilføj database"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "Dette vil oprette en tabel for hver af dine modeller i et dedikeret skema. ${ 0 } opdaterer dem efter en tidsplan. Spørgsmål og forespørgsler, der bruger dine modeller, vil søge i disse tabeller."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "Gennemse"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "Upload CSV"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "database er påkrævet for alle forespørgsler."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[Ukendt felt]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} er på {1}"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} er ikke {1} valg"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} er lig med {1} valg"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} er ikke {1}"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} er ikke lig med {1} valg"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} er {1} valg"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} er et af {1} {2} udvalg"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "Ikke-standard sammenføjningstilstand. {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Næste {0} uge"
+msgstr[1] "Næste {0} uger"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Næste {0} minut"
+msgstr[1] "Næste {0} minutter"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Næste {0} kvartal"
+msgstr[1] "Næste {0} kvartaler"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Næste {0} år"
+msgstr[1] "Næste {0} år"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Næste {0} sekund"
+msgstr[1] "Næste {0} sekunder"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Næste {0} millisekund"
+msgstr[1] "Næste {0} millisekunder"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Forrige {0} dag"
+msgstr[1] "Forrige {0} dage"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Næste {0} dag"
+msgstr[1] "Næste {0} dage"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Næste {0} måned"
+msgstr[1] "Næste {0} måneder"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Forrige {0} kvartal"
+msgstr[1] "Tidligere {0} kvartaler"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Næste {0} time"
+msgstr[1] "Næste {0} timer"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Forrige {0} år"
+msgstr[1] "Tidligere {0} år"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Forrige {0} måned"
+msgstr[1] "Tidligere {0} måneder"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Forrige {0} millisekund"
+msgstr[1] "Forrige {0} millisekunder"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Forrige {0} time"
+msgstr[1] "Tidligere {0} timer"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Forrige {0} sekund"
+msgstr[1] "Forrige {0} sekunder"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Forrige {0} uge"
+msgstr[1] "Forrige {0} uger"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Forrige {0} minut"
+msgstr[1] "Forrige {0} minutter"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Hyppighed for at køre opfyldningsentitets-id'er og drænenheds-id'er i ms. Minimumværdien er 1000, og enhver værdi ved eller under 0 vil deaktivere jobbet helt."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "Du kan ikke arkivere den tilpassede rapportsamling."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "Du kan ikke arkivere Root Collection."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "Du kan ikke opdatere creator_id for en metric."
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}, {1} og {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "Om brugeren har afvist onboarding-linket fra hovedsidepanelet."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "Om vi overhovedet analyserer nogen forespørgsler eller ej"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL-parsing er deaktiveret"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "Forventet: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "Forespørgselsprocessorfejl: antallet af kolonner returneret af driveren matcher ikke resultaterne."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "Ukendt forespørgselstype {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "Forespørgselsprocessorfejl: uoverensstemmende antal kolonner i forespørgsel og resultater."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "Ved ikke, hvordan man får oplysninger om felt: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "Forventede {0} kolonner, men første række af resultater har {1} kolonner."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "Faktisk: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "Forventede {0} felter, fik {1}"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"Aktiver analyse af feltbrug for forespørgsler. Dette vil analysere de felter, der bruges i forespørgsler og gemme dem i\n"
+"    applikationsdatabasen.\n"
+"\n"
+"    Sluk som standard, da vi endnu ikke har haft en brugervendt funktion, der bruger disse data."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "værdi skal være et gyldigt heltal større end nul."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "værdi skal være en gyldig feltsemantisk type (søgeord eller streng)."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "parameter skal være et kort med :id og :type nøgler"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "værdi skal være et negativt heltal"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "værdi skal et array med :felt id-eller-navn og et valgkort"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "værdi skal være en gyldig feltsemantisk type."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "værdien skal være et tal større end nul."
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "parameter_mapping skal være et kort med :parameter_id og :target nøgler"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "værdi skal være et gyldigt heltal."
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "værdi skal være en gyldig feltrelationstype (søgeord eller streng)."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "værdi skal være en gyldig feltrelationstype."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "værdi skal være et gyldigt heltal større end eller lig med nul."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "Ugyldig e-mailadresse: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "Du kan ikke oprette nye abonnementer for domænet {0}. Tilladte domæner er: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "Validering af forespørgselsreferencer"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "Redigering af tabeldata"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "Kan ikke finde forbindelsen til Google Drev. Prøv venligst igen."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "Kan ikke finde google drev-forbindelse."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "Problemer med at synkronisere Google Drev-mappe, prøv venligst igen.."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "Timeout for synkronisering af Google Drev-mappe. Prøv venligst igen."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO er ikke sat til"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO er ikke configueret"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"Når vi aktiverer JWT-brugerklargøring, opretter vi automatisk en Metabase-konto på JWT-login for brugere, der\n"
+"har ikke en."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "URL til JWT-baseret login-side. Valgfrit, hvis du kun bruger JWT SSO med det indlejrede analytics SDK."
 

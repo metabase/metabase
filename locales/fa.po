@@ -4709,10 +4709,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "این فیلتر در داشبورد تعبیه شده روی غیرفعال تنظیم شده است."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
+msgstr ""
+"برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
 "این فیلتر را قابل ویرایش یا قفل کنید، داشبورد\n"
 "را دوباره منتشر کنید، سپس به این صفحه بازگردید."
 
@@ -4724,10 +4726,12 @@ msgstr "یادداشت"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "قفل کردن آن، نیاز به به‌روزرسانی کد جاسازی\n"
+msgstr ""
+"قفل کردن آن، نیاز به به‌روزرسانی کد جاسازی\n"
 "قبل از ادامه دارد، در غیر این صورت جاسازی\n"
 "شکسته خواهد شد."
 
@@ -4898,17 +4902,20 @@ msgid "Turn this into a model"
 msgstr "تبدیل به مدل"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "به شما امکان می‌دهد توضیحات ستون‌ها را به‌روزرسانی کرده و متادیتا را برای ایجاد نقاط شروع عالی برای کاوش سفارشی کنید."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "در نتایج جستجو بالاتر نشان داده شود و زمانی که کاربران دیگر سؤالات جدیدی را شروع می‌کنند، برای ترویج استفاده مجدد برجسته شود."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "در مجموعه‌ها قرار می‌گیرند تا آن‌ها را از طرح‌های پایگاه داده نامرتب جدا نگه دارند."
 
@@ -6497,11 +6504,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "نام ستونی با مقدار تاریخ یا datetime شما."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "اختیاری. پیش‌فرض «ISO» است.\n"
+msgstr ""
+"اختیاری. پیش‌فرض «ISO» است.\n"
 "- ISO: هفته 1 از دوشنبه قبل از اولین پنجشنبه ژانویه شروع می شود.\n"
 "- ایالات متحده: هفته 1 از 1 ژانویه شروع می شود. همه هفته های دیگر از یکشنبه شروع می شود.\n"
 "- مثال: هفته 1 از 1 ژانویه شروع می شود. همه هفته های دیگر از روزی که در تنظیمات محلی سازی Metabase شما تعریف شده است شروع می شود."
@@ -6595,9 +6604,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "مُهر زمانی فعلی (بر حسب میلی ثانیه) را برمی‌گرداند. در حال حاضر {0} در {1}."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "تبدیل منطقه زمانی یک ستون تاریخ یا مهر زمانی.\n"
+msgstr ""
+"تبدیل منطقه زمانی یک ستون تاریخ یا مهر زمانی.\n"
 "ما از نام منطقه زمانی پایگاه داده tz پشتیبانی می کنیم."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -10276,9 +10287,11 @@ msgstr "عدم دسترسی به / امکان سترسی به .... وجود ند
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} فقط می تواند از پرس و جوی\n"
+msgstr ""
+"{0} فقط می تواند از پرس و جوی\n"
 "برای {1}استفاده کند."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -11707,9 +11720,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "با Metabase Cloud شروع کنید"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "فقط یک سر بالا: Metabase شما تا 30\n"
+msgstr ""
+"فقط یک سر بالا: Metabase شما تا 30\n"
 "دقیقه فقط خواندنی خواهد بود در حالی که ما آن را برای مهاجرت آماده می کنیم."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12068,9 +12083,11 @@ msgid "Connect to Slack"
 msgstr "به Slack متصل شوید"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "اگر تیم شما از Slack استفاده می‌کند، می‌توانید اشتراک داشبورد و هشدارهای\n"
+msgstr ""
+"اگر تیم شما از Slack استفاده می‌کند، می‌توانید اشتراک داشبورد و هشدارهای\n"
 "را در آنجا ارسال کنید."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:59
@@ -14220,9 +14237,11 @@ msgid "Conditional formatting"
 msgstr "قالب بندی مشروط"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "شما می توانید قوانین را برای ایجاد سلول ها در این جدول تغییر رنگ اگر\n"
+msgstr ""
+"شما می توانید قوانین را برای ایجاد سلول ها در این جدول تغییر رنگ اگر\n"
 "آنها شرایط خاصی را برآورده می کنند."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -15392,7 +15411,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "همگام‌سازی عضویت گروه با SSO شما"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "برای فعال کردن این مورد، نیاز به ایجاد نگاشت‌ها خواهید داشت تا به Metabase بگویید کدام گروه (ها) باید کاربران شما بر اساس گروه SSO که در آن هستند اضافه شوند."
 
@@ -15457,9 +15477,11 @@ msgid "Refresh cache automatically"
 msgstr "حافظه پنهان را به طور خودکار بازخوانی کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "به محض اینکه نتایج ذخیره شده در حافظه پنهان منقضی شد، برای به روز رسانی نتایج و بازخوانی\n"
+msgstr ""
+"به محض اینکه نتایج ذخیره شده در حافظه پنهان منقضی شد، برای به روز رسانی نتایج و بازخوانی\n"
 "کش، دوباره کوئری را اجرا و کش کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15786,9 +15808,11 @@ msgstr "مجوزی برای باز کردن قابلیت‌های پیشرفته
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "مجوز شما دیگر معتبر نیست. اگر مجوز جدیدی دارید، لطفاً\n"
+msgstr ""
+"مجوز شما دیگر معتبر نیست. اگر مجوز جدیدی دارید، لطفاً\n"
 "آن را در زیر وارد کنید، در غیر این صورت لطفاً با {0} تماس بگیرید"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:62
@@ -16207,9 +16231,11 @@ msgid "Logo"
 msgstr "لوگو"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "برای بهترین نتیجه، از یک فایل SVG با پس زمینه شفاف\n"
+msgstr ""
+"برای بهترین نتیجه، از یک فایل SVG با پس زمینه شفاف\n"
 "استفاده کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:42
@@ -16561,15 +16587,19 @@ msgstr "اعضا را اضافه کنید"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "تمام کاربران متعلق به گروه {0} هستند و نمی توانند از آن حذف شوند. تنظیم مجوز برای این گروه راهی عالی برای\n"
+msgstr ""
+"تمام کاربران متعلق به گروه {0} هستند و نمی توانند از آن حذف شوند. تنظیم مجوز برای این گروه راهی عالی برای\n"
 "مطمئن شوید که می دانید چه کاربران جدید Metabase قادر خواهند بود ببینند."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "این یک گروه خاص است که اعضا میتوانند همه چیز را در نمونه متاباز ببینند و چه کسی میتواند به آن دسترسی پیدا کند و تغییر دهد\n"
+msgstr ""
+"این یک گروه خاص است که اعضا میتوانند همه چیز را در نمونه متاباز ببینند و چه کسی میتواند به آن دسترسی پیدا کند و تغییر دهد\n"
 "تنظیمات در پنل مدیریت، از جمله تغییر مجوز! بنابراین، افراد را به این گروه اضافه کنید."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:173
@@ -16623,9 +16653,11 @@ msgid "move the API keys to another group"
 msgstr "کلیدهای API را به گروه دیگری منتقل کنید"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "شما مطمئن هستید؟ همه اعضای این گروه هر تنظیمات مجوزی که براساس این گروه قرار دارند را از دست خواهند داد.\n"
+msgstr ""
+"شما مطمئن هستید؟ همه اعضای این گروه هر تنظیمات مجوزی که براساس این گروه قرار دارند را از دست خواهند داد.\n"
 "این نمیتواند لغو شود"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:111
@@ -18967,9 +18999,11 @@ msgstr "جاسازی {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "از {0} برای افزودن یک iframe قابل مشاهده برای عموم به صفحه وب یا پست وبلاگ\n"
+msgstr ""
+"از {0} برای افزودن یک iframe قابل مشاهده برای عموم به صفحه وب یا پست وبلاگ\n"
 "خود استفاده کنید."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -19172,10 +19206,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "این فیلتر در یک سؤال تعبیه شده روی غیرفعال تنظیم شده است."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
+msgstr ""
+"برای اینکه همیشه به یک مقدار نیاز داشته باشید، ابتدا از تنظیمات جاسازی بازدید کنید،\n"
 "این فیلتر را قابل ویرایش یا قفل کنید، سوال\n"
 "را دوباره منتشر کنید، سپس به این صفحه بازگردید."
 
@@ -22352,9 +22388,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "آدرس سرور SMTP که ایمیل های شما را مدیریت می کند."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "حداکثر تعداد گیرنده‌هایی که در ایمیل‌ها خلاصه می‌شود، که می‌توان در هر ثانیه ارسال کرد.\n"
+msgstr ""
+"حداکثر تعداد گیرنده‌هایی که در ایمیل‌ها خلاصه می‌شود، که می‌توان در هر ثانیه ارسال کرد.\n"
 "                توجه داشته باشید که ایمیل نهایی ارسال شده قبل از رسیدن به حد مجاز، اگر چندین گیرنده داشته باشد، می تواند از آن فراتر رود."
 
 #: metabase/channel/settings.clj:12
@@ -24240,9 +24278,11 @@ msgid "Cumulative count of rows"
 msgstr "تعداد تجمعی ردیف"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "مجموع جمعی از تمام مقادیر یک ستون.\n"
+msgstr ""
+"مجموع جمعی از تمام مقادیر یک ستون.\n"
 "به عنوان مثال، درآمد کل در طول زمان."
 
 #: metabase/lib/schema/aggregation.cljc:173
@@ -24290,9 +24330,11 @@ msgid "Sum of all the values of a column."
 msgstr "مجموع تمام مقادیر یک ستون."
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "مجموع جمعی تعداد سطرها.\n"
+msgstr ""
+"مجموع جمعی تعداد سطرها.\n"
 "به عنوان مثال، تعداد کل فروش در طول زمان."
 
 #: metabase/lib/schema/aggregation.cljc:212
@@ -24860,9 +24902,11 @@ msgid "Sync issue troubleshooting"
 msgstr "عیب‌یابی مشکل همگام‌سازی"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "قالب پیکربندی ثبت وقایع ارائه شده نادرست است. لطفاً ساختار JSON زیر را دنبال کنید:\n"
+msgstr ""
+"قالب پیکربندی ثبت وقایع ارائه شده نادرست است. لطفاً ساختار JSON زیر را دنبال کنید:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25954,9 +25998,11 @@ msgid "Content Management or Official Collections"
 msgstr "مدیریت محتوا یا مجموعه های رسمی"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "هنگام استفاده از موتور appdb در برابر postgresql، زبانی که برای ریشه‌یابی در to_tsvector استفاده می‌شود را لغو کنید.\n"
+msgstr ""
+"هنگام استفاده از موتور appdb در برابر postgresql، زبانی که برای ریشه‌یابی در to_tsvector استفاده می‌شود را لغو کنید.\n"
 "  مقدار باید یک گزینه زبان پیکربندی شده معتبر در پایگاه داده شما مانند ''english'' یا ''simple'' باشد."
 
 #: metabase/search/settings.clj:24
@@ -27031,9 +27077,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "نمایش یا نبودن پیشنهادات اشعه ایکس در صفحه اصلی. در صورت پین کردن هر داشبورد نیز مخفی خواهند شد. ممکن است مدیر سایت این امر را هدایت کند تا کاربران به محتوای بهتر از داده های خام هدایت کنند"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "تحولات حاصل با انتظارات مطابقت ندارد.\n"
+msgstr ""
+"تحولات حاصل با انتظارات مطابقت ندارد.\n"
 "مورد انتظار: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27235,9 +27283,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster خطایی را برگرداند."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "تنظیم همگام سازی پوشه درایو ممکن نیست.\n"
+msgstr ""
+"تنظیم همگام سازی پوشه درایو ممکن نیست.\n"
 "لطفاً بررسی کنید که پوشه با ایمیل حساب سرویس مناسب و مجوزهای اشتراک گذاری به اشتراک گذاشته شده باشد."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27572,9 +27622,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "صفت SAML برای نشانی ایمیل کاربر"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "وقتی تامین کاربر SAML را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود SAML برای کاربرانی که\n"
+msgstr ""
+"وقتی تامین کاربر SAML را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود SAML برای کاربرانی که\n"
 "ندارند ایجاد می کنیم."
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27638,9 +27690,11 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "فیلتر جستجوی عضویت گروه. جای‌پوش‌های '{dn}' و '{uid}' به ترتیب با نام متمایز و UID کاربر جایگزین خواهند شد."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "این آدرسی است که کاربران شما برای ورود به ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
+msgstr ""
+"این آدرسی است که کاربران شما برای ورود به ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
 "استفاده می کنید، این معمولاً شبیه «https://your-org-name.example.com» یا «https://example.com/app/my_saml_app/abc123/sso/saml» است."
 
 #: metabase_enterprise/sso/settings.clj:152
@@ -27648,9 +27702,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON حاوی نگاشت های گروه SAML به {0} ."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "گواهی رمزگذاری شده برای ارائه دهنده هویت. بسته به IdP خود، ممکن است لازم باشد این را دانلود کنید،\n"
+msgstr ""
+"گواهی رمزگذاری شده برای ارائه دهنده هویت. بسته به IdP خود، ممکن است لازم باشد این را دانلود کنید،\n"
 "آن را در یک ویرایشگر متن باز کنید، سپس محتوای گواهی را در اینجا کپی و جایگذاری کنید."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27658,9 +27714,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "نام مستعار برای کلیدی که {0} باید برای امضای درخواست های SAML استفاده کند"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "این یک شناسه منحصر به فرد برای IdP است. اغلب به عنوان شناسه نهاد یا به سادگی \"صادر کننده\" نامیده می شود. بسته به\n"
+msgstr ""
+"این یک شناسه منحصر به فرد برای IdP است. اغلب به عنوان شناسه نهاد یا به سادگی \"صادر کننده\" نامیده می شود. بسته به\n"
 "به IdP شما، معمولا چیزی شبیه به «http://www.example.com/141xkex604w0Q5PN724v» به نظر می رسد"
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27672,9 +27730,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "گواهی ارائه دهنده هویت نامعتبر است. گواهی باید یک رشته رمزگذاری شده با base-64 باشد."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "هنگامی که تامین کاربر LDAP را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود به سیستم LDAP برای کاربرانی که\n"
+msgstr ""
+"هنگامی که تامین کاربر LDAP را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود به سیستم LDAP برای کاربرانی که\n"
 "ندارند ایجاد می کنیم."
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27686,9 +27746,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "کلید بازیابی گروه های کاربر JWT"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "این نشانی اینترنتی است که کاربران شما برای خروج از ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
+msgstr ""
+"این نشانی اینترنتی است که کاربران شما برای خروج از ارائه دهنده هویت شما به آنجا می روند. بسته به اینکه از کدام IdP\n"
 "استفاده می کنید، این معمولاً شبیه «https://your-org-name.example.com» یا «https://example.com/app/my_saml_app/abc123/sso/slo» است."
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28732,4 +28794,1539 @@ msgstr "کسب کاربر توسط کشور"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 کشور برتر با فروش"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "هنوز برای این قیلد توضیحی نوشته نشده است"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "این فیلد در سراسر متابیس، در چه مکانی ظاهر می گردد"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "نوع فیلد"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "تبدیل نکن"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "یک تبدیل را انتخاب کنید"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "فیلتر کردن این فیلد"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "هنگامی که این فیلد در یک فیلتر استفاده می شود، افراد برای وارد کردن مقدار مورد نظر شان برای فیلتر کردن، از چه چیز هایی باید استفاده کنند؟"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "مقادیر فیلد ذخیره شده"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "متابیس می تواند مقادیر این فیلد را فعال کند تا فیلترهای چک باکس را در داشبورد و سوالات فعال کند."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "دوباره این فیلد را اسکن کن"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "جدولی را برای مشاهد شِما و یا ویرایش متادیتا انتخاب نمایید."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "طرح اصلی"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "هیچ توضیحی در جدول وجود ندارد"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "قابل پرس و جو"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "چرا پنهان شدی؟"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "داده های فنی"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "بی ربط "
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "یک جدول را پیدا کنید"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "طرح ها"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} جدول پنهان"
+msgstr[1] "{0} جدول پنهان"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} جدول پرس و جو"
+msgstr[1] "{0} جدول پرس و جو"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 جدول"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "نمایش همه"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "مخفی کردن همه"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "نمایش"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "نوع داده"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "اطلاعات اضافی"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "ورود با گوگل"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "ما به شما توصیه می کنیم {0}، دستورالعمل های زیر را ببینید:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "ابتدا، {0} با استفاده از پیکربندی Metabase. پس از ایجاد، روی \"${ 1 }\" کلیک کنید تا آن را مجاز کنید."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "برای ایجاد Slack App خود روی دکمه زیر کلیک کنید"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "نصب به فضای کاری"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "۲. نشانه OAuth را فعال کرده و یک کانال جدید Slack ایجاد کنید"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "در نوار کناری روی \"{0}\" کلیک کنید، \"{1}\" را کپی کنید و اینجا بچسبانید."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth و دسترسی‌ها"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "نشان OAuth کاربر ربات"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "در مقابل "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "% در مقابل "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-میانگین متحرک دوره)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-سطری میانگین متحرک)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} میانگین متحرک)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}دوره قبل)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2} دوره های قبل)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}مقدار قبلی)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} ({1}{2} ردیف های بالا)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}قبلی {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3} پیش)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "احراز هویت با رمز عبور را فعال کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "تامین کاربر"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "هنگامی که کاربر از طریق SAML وارد می شود، اگر یک حساب Metabase ندارد، به طور خودکار برای او حساب ایجاد کنید."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "URL SSO ارائه‌دهنده هویت SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "انتشاردهنده ارائه‌دهنده هویت SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "گواهینامه ارائه‌دهنده هویت SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "نام برنامه SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "مسیر فروشگاه کلید SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "رمز عبور فروشگاه کلید SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "نام مستعار فروشگاه کلید SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "همگام سازی اعضای گروه"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "تأیید هویت JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "هنگامی که کاربر از طریق JWT وارد سیستم می شود، در صورت نداشتن یک حساب Metabase به طور خودکار برای او ایجاد کنید."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "هنگامی که کاربر از طریق LDAP وارد می شود، در صورت نداشتن یک حساب Metabase به طور خودکار برای او ایجاد کنید."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "گروه مدیران را هماهنگ کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "تنظیمات ابری"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "مجوز و صورتحساب"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "پالت رنگ"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "قطعاتی از محصول Metabase را پنهان یا سفارشی کنید تا تجربه را با برند و نیازهای شما تطبیق دهید"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "نام برنامه"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "نمایش پیوندها و مراجع به Metabase {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "پیوند راهنما در منوی تنظیمات"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "طرح خود را با مدل‌ها ساده کنید"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "تغییرات ذخیره شد. لطفا برای دیدن آنها صفحه را رفرش کنید"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "تنظیم ناشناخته {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "ماشه ها"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "نمایش محرکها"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "می‌توانید مقادیر فیلتربرای هر اشتراک با طرح‌های پرداخت شده سفارشی کنید."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "اگر یک فیلتر داشبورد دارای مقدار پیش‌فرض باشد، هنگامی که اشتراک شما ارسال می‌شود، اعمال خواهد شد."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "نتایج پرس و جو در اینجا ظاهر می شود."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "شما در حال ویرایش این صفحه هستید"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "نقشه ناشناخته"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "نمایش به صورت پیش فرض ذخیره شود"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "برای فعال کردن مسیریابی DB باید یک ویژگی کاربر انتخاب کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "تعبیه تعاملی را فعال کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "اگر این کار را انجام دهید، رنگ های شما به رنگ های پیش فرض ما تغییر می کند. این عمل قابل واگرد نیست."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "پیوند راهنما مقصد سفارشی"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "صفحه فرود"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "نمایان بودن پیوندها به اسناد Metabase و مراجع Metabase را در نمونه خود کنترل کنید. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "کلیدهای API را مدیریت کنید"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "با Metabase Pro از طریق SAML، JWT، یا LDAP یک علامت (SSO) دریافت کنید"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "ورود با گوگل"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "نام پایگاه"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "آدرس ایمیل برای درخواست کمک"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "جدول دوستانه و نام های میدان"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "ویژگی های X-Ray را فعال کنید"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "فعال کردن تجزیه و تحلیل پرس و جو"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "حق خود را مطالبه کنید"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "به افراد اجازه دهید داده ها را در مجموعه ها آپلود کنند"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "هشدار: آپلودها در پایگاه داده نمونه فقط برای آزمایش هستند و ممکن است ناپدید شوند. اگر می‌خواهید داده‌های شما ثابت بماند، باید در پایگاه داده PostgreSQL یا MySQL آپلود کنید."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "وب‌قلاب‌ها برای هشدارها"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "نمایش تقویم"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "جستجو برای یک سوال"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "بارگذاری"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "بارگذاری بیشتر"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "شناسه برگه های خاص"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "فیلدهای فردی را پر کنید"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "رشته اتصال را بچسبانید"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "جستجو برای یک پایگاه داده…"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "چیزی پیدا نشد"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "پایگاه داده خود را نمی بینید؟ به صفحه {0} ما مراجعه کنید تا ببینید آیا برای میزبانی خود موجود است."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "رانندگان جامعه"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "نمایش گزینه های کمتر"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "نمایش گزینه های بیشتر"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "بتا"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "ترتیب ستون را ویرایش کنید"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "فقط یک بار این هشدار را ارسال کنید"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "برای مشاهده این، {0} باید به حداقل یک فیلد متصل باشد."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + اینتر)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + اینتر)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "آیا آماده‌اید تا داده‌های خود را بررسی کنید؟ آن‌ها را در زیر اضافه کنید."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "آماده نیستید؟ این مرحله را رد کنید و با بانک اطلاعاتی نمونه ما بازی کنید."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "قبل از شروع، قفل دسترسی به ویژگی‌های پولی خود را باز کنید"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "ایجاد تجسم نقشه با داده‌های مکانی: نقشه‌های پین و گرید به ستون‌های طول و عرض جغرافیایی نیاز دارند، نقشه‌های منطقه به ستون نام‌های منطقه ایالات متحده نیاز دارند."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "منتظر {0} پرانتز بسته هستیم"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "منتظر {0} پرانتز باز هستیم"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "عبارت خالی است"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "علامت های نقل قول بسته بندی شده وجود ندارد"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "عیب‌یابی"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "ذخیره شد!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "ذخیره سازی ناموفق بود."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "خطا:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "این دسترسی به ابزارها، ممیزی و عیب‌یابی را فراهم می‌کند"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "فقط معیارهای تأیید شده را نشان دهید"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "فقط مدل های تایید شده را نشان دهید"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase این مقدار را به ویژگی کاربر انتخابی شما برای جابجایی پرس و جوها در زمان اجرا نگاشت می کند"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "به عنوان مثال طرفدار کاربران"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "ایمیل پیدا نشد"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "متصل شده توسط {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google Sheets در حال اتصال..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "به Google Sheets متصل شد"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "در حال وارد کردن فایل ها..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "افزودن جدید"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "Query Validator"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "فیلد"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "غیر فعال است"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "ناشناخته است"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "مرجع داده ناشناخته"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "مدیریت آپلودها"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "جداول آپلود شده"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "تامین کاربر از طریق SCIM"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "مدیران را از کاربران جدید SSO مطلع کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "وقتی فعال شود، مدیران اولین باری که کاربری از ورود یکپارچه استفاده می‌کند، ایمیل دریافت خواهند کرد."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "یک کلید API جدید ایجاد کنید"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "قالب بندی شده است"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "فرمت نشده"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "داده ها را به صورت محوری نگه دارید"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "قادر به ترکیب این سوالات نیست"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "درخواست سوال"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "الفبایی"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "هوشمند"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "داشبورد نشانک"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "افزودن فیلتر"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "اضافه کردن سوال نوت بوک"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "اضافه کردن سوال بومی"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "لغو ویرایش داشبورد"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "ارسال تاشبورد به سطل زباله"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "اطلاعات داشبورد را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "ویرایش داشبورد"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "ذخیره داشبورد"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "کلیدهای میانبر را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "نوت بوک را تغییر دهید"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "سوال نشانک"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "بازیابی داده های سوال"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "مقدار میانه ستون مشخص شده را برمی‌گرداند."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "ستون یا عددی که میانه آن محاسبه می‌شود."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "یک رشته را به عدد صحیح تبدیل می کند."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "ستون رشته برای تبدیل به اعداد صحیح."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "یک رشته تاریخ ISO 8601 را به تاریخ تبدیل می کند."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "رشته تبدیل به تاریخ."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "نام بعد نامعتبر: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "متریک ناشناخته: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "بخش ناشناخته: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "میدان ناشناخته: {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr "تاریخچه␣"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "ایجاد مدل‌ها باعث می‌شود تیم شما بتواند راحت‌تر کاوش کند."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "به جای اینکه کاربران نهایی شما از میان داده‌های خام پیچیده عبور کنند، می‌توانید مدل‌های سفارشی ایجاد کنید که به راحتی پیدا شوند، درک شوند و مورد کاوش قرار گیرند."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "کدام ویژگی شناسه منطقه را مشخص می کند؟"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "کدام ویژگی نام نمایشی منطقه را مشخص می کند؟"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "تاریخ و زمان"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "هنگامی که شخصی با استفاده از داده‌های این پایگاه داده سؤالی را مشاهده می‌کند، Metabase پرسش‌ها را به پایگاه داده مقصد که توسط ویژگی کاربر آن شخص تنظیم شده است ارسال می‌کند. هر پایگاه داده مقصد باید یک طرح یکسان داشته باشد."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "ویژگی کاربر برای مطابقت با پایگاه داده مقصد"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "تولید توضیحات"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "توضیحات ایجاد شد. برای تکمیل خودکار کلیک کنید."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "سوالات با مراجع نامعتبر"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "همه مجموعه ها"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "اعتبار پرس و جو در حال حاضر غیرفعال است. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "لطفاً تجزیه و تحلیل پرس و جو را در اینجا فعال کنید."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "هیچ سؤال، مدل یا معیاری با مراجع نامعتبر وجود ندارد"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "۲ ساعت"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "۳ ساعت"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "۶ ساعت"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "۱۲ ساعت"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "۲۴ ساعت"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "ماندگاری مدل را فعال کنید تا مدل‌های شما (و جستارهایی که از آنها استفاده می‌کنند) سریع‌تر بارگیری شوند."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "برای مطلع شدن از زمانی که اتفاقی می افتد، یا برای ارسال این نمودار بر اساس یک برنامه، از سرپرست خود بخواهید SMTP، Slack یا webhook را راه اندازی کند."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr "در اکثر IdPها، لازم است هر یک از این مقادیر را در یک باکس ورودی با نام \"Name\" در بخش بیانیه‌های خصوصیت قرار دهید."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "نشانی وب ارائه‌دهنده هویت SAML"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "این یک آدرس ایمیل معتبر نیست"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "قابلیت مشاهده هشدارها و دریافت کنندگان اشتراک را کنترل کنید."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "این یک شماره پورت معتبر نیست"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "نقشه های سفارشی"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "گزارش منطقه زمانی"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "پایگاه داده پیش فرض"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "گزینه‌های محلی‌سازی"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "مدیران را فعال کنید تا پیوندهای قابل مشاهده برای عموم (و فریم های قابل جانمایی) برای پرسش ها و داشبورد ایجاد کنند."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "داشبورد به اشتراک گذاشته شده"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "سوالات مشترک"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "فرم‌های اقدام مشترک"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "ویژگی های هوش مصنوعی"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "ویژگی های هوش مصنوعی فعال شده است"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "قبل از اینکه ویژگی‌های هوش مصنوعی فعال شوند، باید یک کلید API ارائه دهید."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "کلید EE OpenAI API"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "کلید API مورد استفاده برای ویژگی های هوش مصنوعی Enterprise"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "تأیید هویت LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "میزبان LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "پورت LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "امنیت LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "پرانتزهای خود را بررسی کنید"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "نام متمایز"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "این را در صفحات اصلی و ورود نشان دهید"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "نمایش پیوندها و مراجع"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} - تنظیمات فیلد"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "تنظیمات جدول"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "یک طرح را پیدا کنید"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "دوباره این جدول را اسکن کنید"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "کلید API را حذف کنید"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "ویرایش کلید API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "بازسازی کلید API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "می توانید یک کلید API برای برقراری تماس های API به صورت برنامه ای ایجاد کنید."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "کلید API ایجاد کنید"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "کلیدهای API را مدیریت کنید"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "به کاربران اجازه دهید از کلیدهای API برای احراز هویت تماس های API خود استفاده کنند."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "صحبت با متابیس کلود..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "گرفتن یک عکس از این نمونه ..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "در حال آپلود عکس فوری در فضای ابری..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "مهاجرت به ابر پایگاه داده لغو شده است."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "در حال مهاجرت به Metabase Cloud…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "در حالی که از داده‌های Metabase شما عکس می‌گیریم، افراد می‌توانند سؤالات و داشبوردها را مشاهده کنند، اما نمی‌توانند چیز جدیدی را ویرایش یا ایجاد کنند. فقط باید 30 دقیقه طول بکشد"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "لغو مهاجرت"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "مهاجرت لغو شود؟"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "ما روند مهاجرت را لغو خواهیم کرد. پس از آن، این نمونه دیگر فقط خواندنی نخواهد بود."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "ویرایش پیکربندی"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "مبدأ وب‌سایت‌ها یا برنامه‌هایی را که می‌خواهید در آن‌ها اجازه تعبیه SDK را بدهید، با فاصله از یکدیگر وارد کنید. Localhost به طور خودکار گنجانده شده است."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "ارسال شد!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "جاسازی استاتیک را فعال کنید"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "یک چیز کوچک از ما برای شما"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "به عنوان تشکر از شما برای آزمایش این بتا، مایلیم تا زمانی که ذخایر ما تمام می شود، مقداری پیشنهاد برای شما ارسال کنیم. روی دکمه کلیک کنید تا جزئیات خود را به ما بدهید و ما یک ایمیل با دستورالعمل برای شما ارسال خواهیم کرد."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "سوابم را بگیر"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "پیگیری ناشناس"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "صفحه اصلی سفارشی"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "نحو کرون"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "{0} ما رشته ای از 5 فیلد است که با فاصله از هم جدا شده اند"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "آدرس سایت"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud نمونه شما را به‌روز نگه می‌دارد. شما در حال حاضر در نسخه {0} هستید. از اینکه مشتری ما هستید متشکریم!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "در حال حذف…"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "حذف شکست خورد"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "این کار ممکن است باعث شود اشتراک‌های داشبورد شما تا زمانی که ارتباط جدیدی برقرار نشود در Slack ظاهر نشوند."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "آیا مطمئن هستید که می‌خواهید یکپارچه‌سازی برنامه Slack خود را حذف کنید؟"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "توکن OAuth کاربر ربات Slack"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "اطلاعات تشخیصی"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "جزئیات پیشرفته (برای دانلود کلیک کنید)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "ویرایش سریال‌ها"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "افزودن سریال‌ها"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "نوع ناشناخته"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "پنهان کردن صفحه"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "داده ها را اضافه کنید"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "پشتیبانی از Markdown"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "افزودن لینک‌ها و قالب‌بندی از طریق markdown"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "دیگری اضافه کنید"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "صفحه از نوار کناری پیمایش پنهان شد"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "بعداً در هر زمان با کلیک کردن روی نماد چرخ‌دنده در سمت راست بالای صفحه به آن دسترسی پیدا کنید."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "اضافه کردن پایگاه داده"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "این یک جدول برای هر یک از مدل های شما در یک طرح اختصاصی ایجاد می کند. ${ 0 } آنها را بر اساس یک برنامه بازخوانی می کند. سوالات و پرس و جوهایی که از مدل های شما استفاده می کنند، این جداول را پرس و جو می کنند."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "مرور کنید"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "CSV را آپلود کنید"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "`database` برای همه پرس و جوها الزامی است."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[میدان ناشناخته]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} در {1}است"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} انتخاب های {1} نیست"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} برابر است با انتخاب های {1}"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} {1}نیست"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} برابر با انتخاب های {1} نیست"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} انتخاب های {1} است"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} یکی از انتخاب های {1} {2} است"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "شرایط اتصال غیر استاندارد {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "هفته آینده {0}"
+msgstr[1] "{0} هفته های بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "{0} دقیقه بعد"
+msgstr[1] "{0} دقیقه بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "سه ماهه {0} بعدی"
+msgstr[1] "چهارمین {0} بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "{0} سال آینده"
+msgstr[1] "{0} سال آینده"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "بعد {0} ثانیه"
+msgstr[1] "{0} ثانیه بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "بعدی {0} میلی ثانیه"
+msgstr[1] "بعدی {0} میلی ثانیه"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "{0} روز قبل"
+msgstr[1] "{0} روز گذشته"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "{0} روز بعد"
+msgstr[1] "{0} روز آینده"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "{0} ماه بعد"
+msgstr[1] "{0} ماه های بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "سه ماهه قبلی {0}"
+msgstr[1] "{0} سه ماهه قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "{0} ساعت بعد"
+msgstr[1] "{0} ساعت بعدی"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "{0} سال قبل"
+msgstr[1] "{0} سال های قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "{0} ماه قبل"
+msgstr[1] "{0} ماه های قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "قبلی {0} میلی ثانیه"
+msgstr[1] "قبلی {0} میلی ثانیه"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "{0} ساعت قبلی"
+msgstr[1] "{0} ساعت قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "قبلی {0} ثانیه"
+msgstr[1] "{0} ثانیه قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "{0} هفته قبل"
+msgstr[1] "{0} هفته های قبلی"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "{0} دقیقه قبلی"
+msgstr[1] "{0} دقیقه قبلی"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "فرکانس اجرای شناسه‌های موجودیت پس‌پر و تخلیه کار شناسه موجودیت در ms. حداقل مقدار 1000 است و هر مقداری در 0 یا کمتر از آن کار را به طور کامل غیرفعال می کند."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "شما نمی توانید مجموعه گزارش های سفارشی را بایگانی کنید."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "شما نمی توانید مجموعه ریشه را بایگانی کنید."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "شما نمی توانید creator_id یک Metric را به روز کنید."
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}، {1}و {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "آیا کاربر پیوند ورود را از نوار کناری اصلی رد کرده است یا خیر."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "آیا ما اصلاً سؤالاتی را تجزیه و تحلیل می کنیم یا نه"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "تجزیه SQL غیرفعال است"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "توقع :  {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "خطای پردازنده پرس و جو: تعداد ستون هایی که توسط راننده برگشته است با نتایج مطابقت ندارد."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "نوع پرس و جو ناشناخته {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "خطای پردازنده پرس و جو: تعداد ستونها در پرس و جو و نتایج ناسازگار است."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "نمی دانید چگونه می توانید اطلاعات مربوط به زمینه را بدست آورید: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "ستون {0} پیش بینی شده است ، اما ردیف اول از اعاده مجدد ستون های {1} دارد."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "واقعی: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "توقع {0} فیلد , بدست امدن {1}"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"تجزیه و تحلیل استفاده از فیلد را برای پرس و جوها فعال کنید. با این کار فیلدهای مورد استفاده در پرس و جوها تجزیه و تحلیل شده و آنها در پایگاه داده برنامه\n"
+"    ذخیره می شود.\n"
+"\n"
+"    به‌طور پیش‌فرض غیرفعال شود، زیرا هنوز یک ویژگی روبه‌روی کاربر که از این داده‌ها استفاده کند، نداشته‌ایم."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "مقدار آن باید عدد صحیح و‌ بزرگتر از صفر باشد."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "مقدار باید یک نوع معنایی فیلد معتبر باشد (کلمه کلیدی یا رشته)."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "پارامتر باید نقشه ای با کلیدهای :id و :type باشد"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "مقدار باید یک عدد صحیح منفی باشد"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "مقدار باید آرایه ای با شناسه یا نام فیلد و نقشه گزینه ها باشد"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "مقدار باید یک نوع معنایی فیلد معتبر باشد."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "مقدار باید عددی بزرگتر از صفر باشد"
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "parameter_mapping باید نقشه ای با کلیدهای :parameter_id و :target باشد"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "مقدار باید یک عدد صحیح معتبر باشد"
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "مقدار باید یک نوع رابطه فیلد معتبر باشد (کلمه کلیدی یا رشته)."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "مقدار باید یک نوع رابطه فیلد معتبر باشد."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "مقدار باید یک عدد صحیح معتبر بزرگتر از یا برابر با صفر باشد."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "آدرس ایمیل نامعتبر: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "شما نمی توانید اشتراک های جدیدی برای دامنه {0}ایجاد کنید. دامنه های مجاز عبارتند از: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "اعتبار سنجی مرجع پرس و جو"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "ویرایش داده های جدول"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "اتصال google drive پیدا نشد، لطفاً دوباره امتحان کنید."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "اتصال google drive پیدا نشد."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "مشکل در همگام سازی پوشه google drive، لطفا دوباره امتحان کنید.."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "مهلت زمانی برای همگام‌سازی پوشه google drive، لطفاً دوباره امتحان کنید."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO فعال نشده است"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO پیکربندی نشده است"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"هنگامی که تأمین کاربر JWT را فعال می کنیم، به طور خودکار یک حساب Metabase در ورود به JWT برای کاربرانی که\n"
+"ندارند ایجاد می کنیم."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "URL برای صفحه ورود به سیستم مبتنی بر JWT. در صورت استفاده از JWT SSO فقط با SDK تجزیه و تحلیل تعبیه شده، اختیاری است."
 

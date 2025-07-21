@@ -4302,7 +4302,7 @@ msgstr "התראה כאשר זה יורד מתחת למטרה"
 #, javascript-format
 msgid "{0} other"
 msgid_plural "{0} others"
-msgstr[0] ""
+msgstr[0] "{0} אחר"
 msgstr[1] "{0} אחרים"
 msgstr[2] "{0} אחרים"
 msgstr[3] "{0} אחרים"
@@ -4741,10 +4741,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "מסנן זה מוגדר כבלתי זמין בלוח מחוונים מוטבע."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "כדי לדרוש תמיד ערך, בקר תחילה בהגדרות ההטמעה,\n"
+msgstr ""
+"כדי לדרוש תמיד ערך, בקר תחילה בהגדרות ההטמעה,\n"
 "הפוך את המסנן הזה לניתן לעריכה או לנעול, פרסם מחדש את לוח המחוונים\n"
 "ואז חזור לדף זה."
 
@@ -4756,10 +4758,12 @@ msgstr "הערה"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "הפיכתו לנעול ידרוש עדכון של קוד ההטמעה\n"
+msgstr ""
+"הפיכתו לנעול ידרוש עדכון של קוד ההטמעה\n"
 "לפני שתמשיך, אחרת ההטמעה תישבר\n"
 "."
 
@@ -4932,21 +4936,27 @@ msgid "Turn this into a model"
 msgstr "הפוך את זה למודל"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "מאפשר לך לעדכן את תיאורי העמודות ולהתאים אישית מטא נתונים כדי ליצור\n"
+msgstr ""
+"מאפשר לך לעדכן את תיאורי העמודות ולהתאים אישית מטא נתונים כדי ליצור\n"
 " נקודות התחלה נהדרות לחקירה."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "הופיע גבוה יותר בתוצאות החיפוש והודגש כאשר אחרים\n"
+msgstr ""
+"הופיע גבוה יותר בתוצאות החיפוש והודגש כאשר אחרים\n"
 " משתמשים מתחילים שאלות חדשות לקידום שימוש חוזר."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "לחיות באוספים כדי לשמור עליהם נפרדים ממסד נתונים מבולגן\n"
+msgstr ""
+"לחיות באוספים כדי לשמור עליהם נפרדים ממסד נתונים מבולגן\n"
 " סכמות."
 
 #: frontend/src/metabase/query_builder/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx:107
@@ -6540,11 +6550,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "שם העמודה עם התאריך או ערך ה- DateTime שלך."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "אופציונלי. ברירת המחדל היא `\"ISO\"`.\n"
+msgstr ""
+"אופציונלי. ברירת המחדל היא `\"ISO\"`.\n"
 "- ISO: שבוע 1 מתחיל ביום שני לפני יום חמישי הראשון של ינואר.\n"
 "- ארה\"ב: שבוע 1 מתחיל ב-1 בינואר. כל שאר השבועות מתחילים ביום ראשון.\n"
 "- דוגמה: שבוע 1 מתחיל ב-1 בינואר. כל שאר השבועות מתחילים ביום שהוגדר בהגדרות הלוקליזציה של Metabase."
@@ -6638,9 +6650,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "מחזיר את חותמת הזמן הנוכחית (באלפיות השנייה). כרגע {0} ב {1}."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "המרת אזור זמן של עמודת תאריך או חותמת זמן.\n"
+msgstr ""
+"המרת אזור זמן של עמודת תאריך או חותמת זמן.\n"
 "אנו תומכים בשמות אזורי זמן של מסד הנתונים של tz."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -10355,9 +10369,11 @@ msgstr "גישה נשללה ל-"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} יוכל להשתמש רק בבונה השאילתה\n"
+msgstr ""
+"{0} יוכל להשתמש רק בבונה השאילתה\n"
 "עבור {1}."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -11788,9 +11804,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "התחל עם Metabase Cloud"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "רק הערה: Metabase שלך יהיה לקריאה בלבד למשך עד 30\n"
+msgstr ""
+"רק הערה: Metabase שלך יהיה לקריאה בלבד למשך עד 30\n"
 "דקות בזמן שאנו מכינים אותו להגירה."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12149,7 +12167,8 @@ msgid "Connect to Slack"
 msgstr "התחבר ל-Slack"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
 msgstr ""
 
@@ -14320,9 +14339,11 @@ msgid "Conditional formatting"
 msgstr "עיצוב מותנה"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "אתה יכול להוסיף כללים כדי להפוך את התאים בטבלה זו לשנות צבע אם\n"
+msgstr ""
+"אתה יכול להוסיף כללים כדי להפוך את התאים בטבלה זו לשנות צבע אם\n"
 " הם עומדים בתנאים מסוימים."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -15496,9 +15517,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "סנכרן חברות קבוצתית ב- SSO שלך"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "כדי לאפשר זאת, תצטרך ליצור מיפויים כדי לספר למטאבז אילו קבוצות (ים) המשתמשים שלך צריכים\n"
+msgstr ""
+"כדי לאפשר זאת, תצטרך ליצור מיפויים כדי לספר למטאבז אילו קבוצות (ים) המשתמשים שלך צריכים\n"
 " להתווסף על סמך קבוצת SSO שהם נמצאים בהם."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:254
@@ -15562,9 +15585,11 @@ msgid "Refresh cache automatically"
 msgstr "רענן את המטמון באופן אוטומטי"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "ברגע שתוקפם של התוצאות המאוחסנות במטמון, הפעל ושמור את השאילתה שוב במטמון כדי לעדכן את התוצאות ולרענן\n"
+msgstr ""
+"ברגע שתוקפם של התוצאות המאוחסנות במטמון, הפעל ושמור את השאילתה שוב במטמון כדי לעדכן את התוצאות ולרענן\n"
 "את המטמון."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15891,9 +15916,11 @@ msgstr "קנית רישיון לפתיחת פונקציונליות מתקדמת
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "הרישיון שלך כבר לא תקף. אם יש לך רישיון חדש, בבקשה\n"
+msgstr ""
+"הרישיון שלך כבר לא תקף. אם יש לך רישיון חדש, בבקשה\n"
 " הזן אותו למטה, אחרת אנא צור קשר עם {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:62
@@ -16312,9 +16339,11 @@ msgid "Logo"
 msgstr "סֵמֶל"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "לקבלת התוצאות הטובות ביותר, השתמש בקובץ SVG עם רקע שקוף של\n"
+msgstr ""
+"לקבלת התוצאות הטובות ביותר, השתמש בקובץ SVG עם רקע שקוף של\n"
 "."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:42
@@ -16668,13 +16697,16 @@ msgstr "הוסף חברים"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "כל המשתמשים שייכים לקבוצה {0} ולא ניתן להסיר אותה ממנה. הגדרת הרשאות לקבוצה זו היא דרך נהדרת לעשות זאת\n"
+msgstr ""
+"כל המשתמשים שייכים לקבוצה {0} ולא ניתן להסיר אותה ממנה. הגדרת הרשאות לקבוצה זו היא דרך נהדרת לעשות זאת\n"
 "וודא שאתה יודע מה משתמשים חדשים של Metabase יוכלו לראות."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "זו קבוצה מיוחדת שחבריה יכולים לראות הכל ב Metabase, והיא יכולה לגשת ולערוך שינויים בהגדרות בלוח הניהול, כולל שינוי הרשאות! לכן, הוסף אנשים לקבוצה זו בזהירות."
 
@@ -16731,9 +16763,11 @@ msgid "move the API keys to another group"
 msgstr "להעביר את מפתחות ה-API לקבוצה אחרת"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "האם אתה בטוח? כל חברי הקבוצה הזו יאבדו את כל הגדרות ההרשאות שיש להם המבוססות על קבוצה זו. \n"
+msgstr ""
+"האם אתה בטוח? כל חברי הקבוצה הזו יאבדו את כל הגדרות ההרשאות שיש להם המבוססות על קבוצה זו. \n"
 "אי אפשר לבטל תהליך זה."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:111
@@ -19087,9 +19121,11 @@ msgstr "הטמע {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "השתמש ב- {0} כדי להוסיף הטמעת iframe גלויה לציבור לדף האינטרנט או הבלוג\n"
+msgstr ""
+"השתמש ב- {0} כדי להוסיף הטמעת iframe גלויה לציבור לדף האינטרנט או הבלוג\n"
 "לפוסט שלך."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -19296,10 +19332,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "מסנן זה מוגדר כבלתי זמין בשאלה מוטבעת."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "כדי לדרוש תמיד ערך, בקר תחילה בהגדרות ההטמעה,\n"
+msgstr ""
+"כדי לדרוש תמיד ערך, בקר תחילה בהגדרות ההטמעה,\n"
 "הפוך את המסנן הזה לניתן לעריכה או לנעול, פרסם מחדש את השאלה\n"
 "ואז חזור לדף זה."
 
@@ -22490,9 +22528,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "הכתובת של שרת SMTP המטפל בדוא\"ל שלך."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "המספר המרבי של נמענים, המסוכם על פני הודעות דוא\"ל, שניתן לשלוח בשנייה.\n"
+msgstr ""
+"המספר המרבי של נמענים, המסוכם על פני הודעות דוא\"ל, שניתן לשלוח בשנייה.\n"
 "                שימו לב שהאימייל הסופי שנשלח לפני הגעה למגבלה מסוגל לחרוג ממנו, אם יש לו מספר נמענים."
 
 #: metabase/channel/settings.clj:12
@@ -24384,9 +24424,11 @@ msgid "Cumulative count of rows"
 msgstr "ספירת שורות מצטברת"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "ספירת תוספת של מספר העמודות.\n"
+msgstr ""
+"ספירת תוספת של מספר העמודות.\n"
 " ע.ע. מספר המכירות הכולל לאורך זמן."
 
 #: metabase/lib/schema/aggregation.cljc:173
@@ -24434,9 +24476,11 @@ msgid "Sum of all the values of a column."
 msgstr "סכום של כל ערכי העמודה."
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "ספירת תוספת של מספר השורות.\n"
+msgstr ""
+"ספירת תוספת של מספר השורות.\n"
 " ע.ע. מספר המכירות הכולל לאורך זמן."
 
 #: metabase/lib/schema/aggregation.cljc:212
@@ -24479,13 +24523,13 @@ msgstr "טבלה {0}"
 msgid "Unexpected source table ID {0}"
 msgstr "מזהה טבלת מקור בלתי צפוי {0}"
 
-#: metabase/lib/temporal_bucket.cljc:251
+#: metabase/lib/temporal_bucket.cljc:172
 msgid "starting {0} second from now"
 msgid_plural "starting {0} seconds from now"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "החל מ- {0} שניה מעכשיו"
+msgstr[1] "החל {0} שניות מעכשיו"
+msgstr[2] "החל {0} שניות מעכשיו"
+msgstr[3] "החל {0} שניות מעכשיו"
 
 #: metabase/lib/temporal_bucket.cljc:253
 msgid "starting {0} minute ago"
@@ -24815,13 +24859,13 @@ msgstr "ימים קודמים {0} או היום"
 msgid "Previous {0} quarters"
 msgstr "רבעונים קודמים {0}"
 
-#: metabase/lib/temporal_bucket.cljc:260
+#: metabase/lib/temporal_bucket.cljc:181
 msgid "starting {0} day from now"
 msgid_plural "starting {0} days from now"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "החל {0} יום מהיום"
+msgstr[1] "החל {0} ימים מהיום"
+msgstr[2] "החל {0} ימים מהיום"
+msgstr[3] "החל {0} ימים מהיום"
 
 #: metabase/lib/temporal_bucket.cljc:271
 msgid "starting {0} year ago"
@@ -24911,13 +24955,13 @@ msgstr "השנייה הקודמת"
 msgid "Next {0} seconds"
 msgstr "השניות הבאות {0}"
 
-#: metabase/lib/temporal_bucket.cljc:248
+#: metabase/lib/temporal_bucket.cljc:169
 msgid "starting {0} millisecond from now"
 msgid_plural "starting {0} milliseconds from now"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "החל מ- {0} אלפיות השנייה מעכשיו"
+msgstr[1] "החל מ- {0} מילישניות מעכשיו"
+msgstr[2] "החל מ- {0} מילישניות מעכשיו"
+msgstr[3] "החל מ- {0} מילישניות מעכשיו"
 
 #: metabase/lib/temporal_bucket.cljc:164
 msgid "Next {0} days"
@@ -25064,9 +25108,11 @@ msgid "Sync issue troubleshooting"
 msgstr "פתרון בעיות סינכרון"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "הפורמט של תצורת הרישום שסופקה שגוי. אנא עקוב אחר מבנה ה-JSON הבא:\n"
+msgstr ""
+"הפורמט של תצורת הרישום שסופקה שגוי. אנא עקוב אחר מבנה ה-JSON הבא:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -26166,9 +26212,11 @@ msgid "Content Management or Official Collections"
 msgstr "ניהול תוכן או אוספים רשמיים"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "בעת שימוש במנוע appdb מול postgresql, יש לעקוף את השפה המשמשת להגדרת STEMMING ב-to_tsvector.\n"
+msgstr ""
+"בעת שימוש במנוע appdb מול postgresql, יש לעקוף את השפה המשמשת להגדרת STEMMING ב-to_tsvector.\n"
 "  הערך חייב להיות אפשרות שפה תקפה שתצורתה נקבעה במסד הנתונים שלך, כגון ''english'' או ''simple''"
 
 #: metabase/search/settings.clj:24
@@ -27245,9 +27293,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "בין אם להציג הצעות רנטגן בדף הבית או לא. הם גם יוסתרו אם ישודקו לוחות מחוונים כלשהם. מנהלים עשויים להסתיר זאת כדי להפנות משתמשים לתוכן טוב יותר מאשר נתונים גולמיים"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "הטרנספורמציות שהתקבלו אינן תואמות את הציפיות.\n"
+msgstr ""
+"הטרנספורמציות שהתקבלו אינן תואמות את הציפיות.\n"
 " צפוי: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27449,9 +27499,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster החזיר שגיאה."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "לא ניתן להגדיר את סנכרון תיקיית הכונן.\n"
+msgstr ""
+"לא ניתן להגדיר את סנכרון תיקיית הכונן.\n"
 "אנא בדוק שהתיקיה משותפת עם כתובת הדוא\"ל המתאימה של חשבון השירות והרשאות השיתוף."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27786,9 +27838,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "תכונה של SAML לכתובת הדוא\"ל של המשתמש"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "כאשר אנו מפעילים הקצאת משתמש SAML, אנו יוצרים אוטומטית חשבון Metabase בכניסה ל-SAML עבור משתמשים ש\n"
+msgstr ""
+"כאשר אנו מפעילים הקצאת משתמש SAML, אנו יוצרים אוטומטית חשבון Metabase בכניסה ל-SAML עבור משתמשים ש\n"
 "אין להם."
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27852,9 +27906,11 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "פילטר בדיקת חברות קבוצתית. מצייני המקום '{dn}' ו- '{uid}' יוחלפו בשם המובחן של המשתמש ו- UID, בהתאמה."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "זוהי כתובת האתר שאליה המשתמשים שלך הולכים כדי להיכנס לספק הזהות שלך. תלוי באיזה IdP אתה משתמש\n"
+msgstr ""
+"זוהי כתובת האתר שאליה המשתמשים שלך הולכים כדי להיכנס לספק הזהות שלך. תלוי באיזה IdP אתה משתמש\n"
 ", זה בדרך כלל נראה כמו `https://your-org-name.example.com` או `https://example.com/app/my_saml_app/abc123/sso/saml`"
 
 #: metabase_enterprise/sso/settings.clj:152
@@ -27862,9 +27918,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON המכיל SAML ל- {0} מיפוי קבוצתי."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "אישור מקודד עבור ספק הזהות. בהתאם ל-IDP שלך, ייתכן שיהיה עליך להוריד את זה,\n"
+msgstr ""
+"אישור מקודד עבור ספק הזהות. בהתאם ל-IDP שלך, ייתכן שיהיה עליך להוריד את זה,\n"
 "לפתוח אותו בעורך טקסט, ואז להעתיק ולהדביק את תוכן האישור כאן."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27872,9 +27930,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "כינוי עבור המפתח בו {0} צריך להשתמש בחתימת בקשות SAML"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "זהו מזהה ייחודי עבור IdP. מכונה לעתים קרובות מזהה ישות או פשוט ''מנפיק''. בהתאם\n"
+msgstr ""
+"זהו מזהה ייחודי עבור IdP. מכונה לעתים קרובות מזהה ישות או פשוט ''מנפיק''. בהתאם\n"
 "ל-IDP שלך, זה בדרך כלל נראה משהו כמו `http://www.example.com/141xkex604w0Q5PN724v`"
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27886,9 +27946,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "תעודת ספק זהות לא חוקית. תעודה צריכה להיות מחרוזת מקודדת בסיס -64."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "כאשר אנו מפעילים הקצאת משתמש LDAP, אנו יוצרים אוטומטית חשבון Metabase בכניסה ל-LDAP עבור משתמשים ש\n"
+msgstr ""
+"כאשר אנו מפעילים הקצאת משתמש LDAP, אנו יוצרים אוטומטית חשבון Metabase בכניסה ל-LDAP עבור משתמשים ש\n"
 "אין להם."
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27900,9 +27962,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "מפתח לאחזור הקבוצות של משתמש JWT"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "זוהי כתובת האתר שאליה המשתמשים שלך הולכים להתנתק מספק הזהות שלך. תלוי באיזה IdP אתה משתמש\n"
+msgstr ""
+"זוהי כתובת האתר שאליה המשתמשים שלך הולכים להתנתק מספק הזהות שלך. תלוי באיזה IdP אתה משתמש\n"
 ", זה בדרך כלל נראה כמו `https://your-org-name.example.com` או `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28946,4 +29010,1581 @@ msgstr "רכישת משתמשים לפי מדינה"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 המדינות המובילות לפי מכירות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "אין תאור לשדה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "איפה השדה יוצג במערכת"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "סוג שדה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "אל תלהק"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "בחר המרה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "מסנן על פי שדה זה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "מה להציג למשתמשים אחרים בשימוש בשדה זה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "ערכי שדות מטמון"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabase יכול לסרוק את הערכים עבור שדה זה כדי לאפשר תיבת בחירה בלוחות תצוגה או שאילתאות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "סרוק מחדש את השדה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "שחר כל טבלה כדי לראות את הסכימה שלה ולהוסיף או לערוך מידע"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "סכימה מקורית"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "לטבלה זו עדיין אין תיאור"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "ניתן ליצור שאילתה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "מדוע להסתיר?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "נתונים טכניים"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "לא רלוונטי / נגרס"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "בחר טבלה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "סכמות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} טבלה נסתרת"
+msgstr[1] "{0} טבלאות נסתרות"
+msgstr[2] "{0} טבלאות נסתרות"
+msgstr[3] "{0} טבלאות נסתרות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} טבלה שעליה ניתן לבצע שאילתה"
+msgstr[1] "{0} טבלאות שעליהן ניתן לבצע שאילתות"
+msgstr[2] "{0} טבלאות שעליהן ניתן לבצע שאילתות"
+msgstr[3] "{0} טבלאות שעליהן ניתן לבצע שאילתות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 שולחנות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "הסרת את כולם"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "להסתיר הכל"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "לא הסתדר"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "סוג נתונים"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "מידע נוסף"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "כניסה עם חשבון GOOGLE"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "אנו ממליצים לך {0}, עיין בהוראות להלן:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "ראשית, {0} באמצעות תצורת Metabase. לאחר שנוצר, לחץ על \"$ {1}\" כדי לאשר זאת."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "לחץ על הכפתור למטה כדי ליצור את אפליקציית Slack שלך"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "התקן לסביבת עבודה"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. הפעל את אסימון OAuth וצור ערוץ Slack חדש"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "לחץ על \"{0}\" בסרגל הצד, העתק את \"{1}\" והדבק אותו כאן."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "Oauth והרשאות"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "אסימון OAuth של Bot משתמש"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "לעומת "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "% לעומת "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-ממוצע נע לתקופה)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-ממוצע נע בשורה)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} ממוצע נע)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}תקופה קודמת)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} (לפני{1}{2} לפני תקופות)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}ערך קודם)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} ({1}{2} שורות למעלה)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}הקודם {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} (לפני{1}{2} {3} )"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "אפשר אימות סיסמא"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "הקצאת משתמש"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "כאשר משתמש מתחבר באמצעות SAML, צור חשבון Metabase עבורו באופן אוטומטי אם אין לו."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "ספקית זהות SAML SSO URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "מנפיק ספקי זהות SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "תעודת ספקי זהות SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "שם יישום SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "נתיב חנות המפתח של SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "סיסמת SAML KeyStore"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "כינוי SAML KeyStore"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "סנכרן חברות קבוצתיות"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "אימות JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "כאשר משתמש מתחבר דרך JWT, צור חשבון Metabase עבורו באופן אוטומטי אם אין לו."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "כאשר משתמש מתחבר דרך LDAP, צור עבורו חשבון Metabase באופן אוטומטי אם אין לו."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "קבוצת מנהלי סנכרון"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "הגדרות ענן"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "רישיון וחיוב"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "פלטת צבעים"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "הסתר או התאם אישית חלקים של מוצר Metabase כדי להתאים את החוויה למותג ולצרכים שלך"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "שם אפליקציה"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "הצג קישורים והפניות ל- Metabase {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "קישור עזרה בתפריט ההגדרות"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "פשט את הסכימה שלך עם דגמים"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "השינויים נשמרו. אנא רענן את הדף כדי לראות אותם"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "הגדרה לא ידועה {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "מפעילים"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "צפה טריגרים"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "אתה יכול להתאים אישית ערכי פילטר עבור כל מנוי עם תוכניות בתשלום."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "אם למסנן לוח מחוונים יש ערך ברירת מחדל, הוא יוחל כאשר המנוי שלך יישלח."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "תוצאות שאילתות יופיעו כאן."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "אתה עורך דף זה"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "מפה לא ידועה"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "שמור כתצוגת ברירת מחדל"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "עליך לבחור תכונת משתמש כדי לאפשר ניתוב DB"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "אפשר הטמעה אינטראקטיבית"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "אם תעשה זאת, הצבעים שלך ישתנו לצבעי ברירת המחדל שלנו. לא ניתן לבטל פעולה זו."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "עזרה בקישור יעד מותאם אישית"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "דף נחיתה"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "שלוט בנראות של קישורים לתיעוד Metabase והפניות ל- Metabase במופע שלך. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "נהל מפתחות API"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "קבל סימן יחיד ב (SSO) דרך SAML, JWT או LDAP עם Metabase Pro"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "כניסה של גוגל"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "שם אתר"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "דוא\"ל לשאלות"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "שמות שולחן ושדות ידידותיים"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "אפשר תכונות רנטגן"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "אפשר ניתוח שאילתות"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "תבע את הסוואג שלך"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "אפשר לאנשים להעלות נתונים לאוספים"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "אזהרה: העלאות למסד הנתונים לדוגמא מיועדות לבדיקה בלבד ועלולה להיעלם. אם אתה רוצה שהנתונים שלך יסתובבו, עליך להעלות למסד נתונים של PostgreSQL או MySQL."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "Webhooks עבור התראות"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "הצג לוח שנה"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "חפש שאלה"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "טוען"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "לטעון יותר"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "מזהי כרטיסיות ספציפיים"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "מלא שדות בודדים"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "הדבק מחרוזת חיבור"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "חפש מסד נתונים ..."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "לא מצאתי כלום"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "לא רואים את מסד הנתונים שלך? עיין בדף {0} שלנו כדי לראות אם הוא זמין לארח עצמי."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "נהגים קהילתיים"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "הראה פחות אפשרויות"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "הצג אפשרויות נוספות"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "בטא"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "ערוך את סדר העמודות"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "שלח התראה זו פעם אחת בלבד"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "כדי להציג זאת, {0} חייב להיות מחובר לפחות לשדה אחד."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + Enter)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + Enter)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "האם אתה מוכן להתחיל לחקור את הנתונים שלך? הוסף אותו למטה."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "לא מוכן? דלג ושיחק עם מסד הנתונים לדוגמא שלנו."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "בטל את הנעילה של גישה לתכונות בתשלום שלך לפני שתתחיל"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "בנו הדמיות מפות עם נתונים גיאו-מרחביים: מפות סיכה ורשת דורשות עמודות קווי אורך ורוחב, מפות אזור דורשות עמודת שמות אזורים בארה\"ב."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "מצפה {0} סוגריים סגורים"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "מצפה {0} פתיחת סוגריים"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "הביטוי ריק"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "חסר הצעות מחיר לסגירה"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "פתרון תקלות"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "שמור!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "השמירה נכשלה."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "שְׁגִיאָה:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "זה מעניק גישה לכלים, ביקורת ופתרון בעיות"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "הצג רק מדדים מאומתים"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "הצג דגמים מאומתים בלבד"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase ממפה ערך זה לתכונת המשתמש שבחרת כדי להחליף שאילתות בזמן ריצה"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "למשל פרו-משתמשים"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "אימייל לא נמצא"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "מחובר על ידי {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google Sheets מתחבר..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "מחובר ל-Google Sheets"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "מייבא קבצים..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "הוסף חדש"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "מאמת שאילתות"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "שדה"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "אינו פעיל"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "אינו ידוע"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "הפניה לא ידועה לנתונים"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "נהל העלאות"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "טבלאות שהועלו"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "הקצאת משתמשים באמצעות SCIM"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "הודע למנהלים על משתמשי SSO חדשים"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "כאשר הם מופעלים, מנהלי מערכת יקבלו דוא\"ל בפעם הראשונה שמשתמש משתמש בהתייחסות יחידה."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "צור מפתח API חדש"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "מעוצב"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "לא מעוצב"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "שמור את הנתונים בציר"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "לא ניתן לשלב שאלות אלה"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "החלת שאלה"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "אָלֶף בֵּיתִי"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "לִכאוֹב"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "לוח המחוונים לסימניות"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "הוסף מסנן"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "הוסף שאלת מחברת"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "הוסף שאלה מקורית"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "בטל עריכת לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "שלח לוח שליטה לאשפה"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "החלף את פרטי לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "ערוך את לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "שמור את לוח המחוונים"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "החלף קיצורי דרך"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "החלף מחברת"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "סימניה שאלה"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "אחזר את נתוני השאלה"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "מחזיר את הערך החציוני של העמודה שצוינה."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "העמודה או המספר כדי לקבל את החציון של."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "ממירה מחרוזת למספר שלם."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "עמודת המחרוזת להמרה למספרים שלמים."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "ממירה מחרוזת תאריך ISO 8601 לתאריך."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "המחרוזת להמרה לתאריך."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "שם מאפיין לא חוקי: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "מדד לא ידוע: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "קטע לא ידוע: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "שדה לא ידוע: {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr "היסטוריית"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "צור דגמים כדי להקל על הצוות שלך לחקור."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "במקום שהמשתמשים בקצה שלך ישתדבו בנתונים הגולמיים המורכבים שלך, אתה יכול ליצור דגמים מותאמים אישית שקל למצוא, להבין ולחקור."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "איזה נכס מציין את מזהה האזור?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "איזה נכס מציין את שם התצוגה של האזור?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "תאריכים ושעות"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "כאשר מישהו צופה בשאלה באמצעות נתונים ממסד נתונים זה, Metabase ישלח את השאילתות למסד נתונים יעד שנקבע על ידי תכונת המשתמש של האדם. לכל מסד נתונים יעד חייב להיות סכימה זהה."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "תכונת משתמש כדי להתאים את מסד הנתונים של יעד"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "יצירת תיאורים"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "תיאור נוצר. לחץ למילוי אוטומטי."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "שאלות עם הפניות לא חוקיות"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "כל האוספים"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "אימות שאילתה מושבת כעת. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "אנא הפעל כאן ניתוח שאילתות."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "אין שאלות, מודלים או מדדים עם הפניות לא חוקיות"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "שעתיים"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 שעות"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 שעות"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 שעות"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 שעות"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "אפשר התמדה של מודל כדי לגרום למודלים שלך (ולשאילתות המשתמשות בהם) להיטען מהר יותר."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "כדי לקבל התראה כשמשהו קורה, או לשלוח את התרשים הזה לפי לוח זמנים, בקש ממנהל המערכת שלך להגדיר SMTP, Slack או webhook."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr ""
+"ברוב ה- IDP, תצטרך להכניס כל אחד מאלה בתיבת קלט שכותרתו\n"
+" 'שם' בסעיף הצהרות התכונה."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "כתובת URL של ספק זהות SAML"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "זוהי לא כתובת דוא\"ל תקינה"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "שלוט בנראות של התראות ונמעני מנויים."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "זה לא מספר יציאה תקף"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "מפות בהתאמה אישית"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "דווח על אזור זמן"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "ערכי ברירת מחדל"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "אפשרויות לוקליזציה"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "אפשר מנהלים ליצור קישורים הניתנים לצפייה בציבור (ולהטמיע iframes) לשאלות ולוחות מחוונים."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "לוח מחוונים משותף"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "שאלות משותפות"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "טפסי פעולה משותפים"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "תכונות AI"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "תכונות AI מופעלות"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "עליך לספק מפתח API לפני שניתן יהיה להפעיל תכונות AI."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "מפתח API של EE OpenAI"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "מפתח API המשמש לתכונות AI Enterprise"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "אימות LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "מארח LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "יציאת LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "אבטחת LDAP"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "בדוק את הסוגריים שלך"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "שם מזהה ייחודי"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "הראה זאת בדפי הבית והכניסה"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "הצג קישורים והפניות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} - ערך שדות"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "הגדרות טבלה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "מצא סכמה"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "סרוק מחדש את הטבלה"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "מחק מפתח API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "ערוך מפתח API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "צור מחדש מפתח API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "אתה יכול ליצור מפתח API כדי לבצע קריאות API באופן פרוגרמטי."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "צור מפתח API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "נהל מפתחות API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "אפשר למשתמשים להשתמש במפתחות ה-API כדי לאמת את קריאות ה-API שלהם."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "מדבר עם Metabase Cloud..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "מצלם תמונת מצב של המקרה הזה..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "מעלה את תמונת המצב לענן..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "ההגירה ל- Metabase Cloud בוטלה."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "מעבר ל- Metabase Cloud…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "בזמן שאנו מצלמים את נתוני Metabase שלך, אנשים יוכלו לצפות בשאלות ובמרכזי שליטה, אך הם לא יוכלו לערוך או ליצור שום דבר חדש. זה אמור לקחת רק עד 30 דקות"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "בטל את ההגירה"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "לבטל את ההגירה?"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "אנו נבטל את תהליך ההגירה. לאחר מכן, מופע זה לא יהיה יותר לקריאה בלבד."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "ערוך תצורה"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "הזן את מקורות האתרים או האפליקציות שבהם תרצה לאפשר הטמעת SDK, מופרדים ברווח. Localhost נכלל אוטומטית."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "נשלח!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "אפשר הטמעה סטטית"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "משהו קטן מאיתנו אליכם"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "כתודה על שניסית את הבטא הזו, נשמח לשלוח לך קצת סוואג, עד גמר המלאי שלנו. לחץ על הכפתור כדי לתת לנו את הפרטים שלך ואנו נשלח לך אימייל עם הוראות."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "קבל את הסוואג שלי"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "מעקב אנונימי"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "דף בית מותאם אישית"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "תחביר cron"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "{0} שלנו היא מחרוזת של 5 שדות מופרדים ברווחים"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "כתובת אתר"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "ענן Metabase שומר על המופע שלך עדכני. אתה כרגע בגרסה {0}. תודה על היותך לקוח!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "מחיקה ..."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "המחיקה נכשלה"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "פעולה זו עשויה למנוע את המנויים של לוח המחוונים שלך להופיע ב- Slack עד להגדרת חיבור חדש."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "האם אתה בטוח שאתה רוצה למחוק את שילוב האפליקציות Slack שלך?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "אסימון Oauth של משתמש סלאק"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "מידע אבחוני"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "פרטים מתקדמים (לחץ כדי להוריד)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "ערוך סדרה"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "הוסף סדרה"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "סוג לא ידוע"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "הסתר דף"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "הוסף נתונים"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "נתמך Markdown"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "הוסף קישורים ועיצוב באמצעות Markdown"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "הוסף עוד אחד"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "הדף מוסתר מסרגל הצד של הניווט"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "גש אליו מאוחר יותר בכל עת על ידי לחיצה על סמל גלגל השיניים בפינה השמאלית העליונה של המסך."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "הוסף בסיס נתונים"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "פעולה זו תיצור טבלה עבור כל אחד מהדגמים שלך בסכימה ייעודית. ${ 0 } ירענן אותם בלוח זמנים. שאלות ושאילתות המשתמשות במודלים שלך יבצעו שאילתות בטבלאות אלו."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "לְדַפדֵף"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "העלה CSV"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "\"מסד נתונים\" נדרש לכל השאלות."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[שדה לא ידוע]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} נמצא ב- {1}"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} אינן בחירות {1}"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} שווה לבחירות {1}"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} אינו {1}"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} אינו שווה לבחירות {1}"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} הוא {1} בחירות"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} הוא אחד מהבחירות של {1} {2}"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "מצב הצטרפות לא סטנדרטי. {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "בשבוע הבא {0}"
+msgstr[1] "{0} השבועות הבאים"
+msgstr[2] "{0} השבועות הבאים"
+msgstr[3] "{0} השבועות הבאים"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "הדקה הבאה של {0}"
+msgstr[1] "{0} דקות הבאות"
+msgstr[2] "{0} דקות הבאות"
+msgstr[3] "{0} דקות הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "הרבעון הבא של {0}"
+msgstr[1] "הרבעונים הבאים של {0}"
+msgstr[2] "הרבעונים הבאים של {0}"
+msgstr[3] "הרבעונים הבאים של {0}"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "בשנה הבאה {0}"
+msgstr[1] "{0} השנים הבאות"
+msgstr[2] "{0} השנים הבאות"
+msgstr[3] "{0} השנים הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "השנייה {0} הבאה"
+msgstr[1] "{0} השניות הבאות"
+msgstr[2] "{0} השניות הבאות"
+msgstr[3] "{0} השניות הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "הבא {0} אלפית השנייה"
+msgstr[1] "הבא {0} אלפיות השנייה"
+msgstr[2] "הבא {0} אלפיות השנייה"
+msgstr[3] "הבא {0} אלפיות השנייה"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "{0} היום הקודם"
+msgstr[1] "{0} ימים קודמים"
+msgstr[2] "{0} ימים קודמים"
+msgstr[3] "{0} ימים קודמים"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "{0} היום הבא"
+msgstr[1] "{0} הימים הבאים"
+msgstr[2] "{0} הימים הבאים"
+msgstr[3] "{0} הימים הבאים"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "החודש הבא של {0}"
+msgstr[1] "{0} החודשים הבאים"
+msgstr[2] "{0} החודשים הבאים"
+msgstr[3] "{0} החודשים הבאים"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "רבעון {0} הקודם"
+msgstr[1] "{0} רבעונים קודמים"
+msgstr[2] "{0} רבעונים קודמים"
+msgstr[3] "{0} רבעונים קודמים"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "השעה הבאה של {0}"
+msgstr[1] "{0} השעות הבאות"
+msgstr[2] "{0} השעות הבאות"
+msgstr[3] "{0} השעות הבאות"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "{0} שנה קודמת"
+msgstr[1] "{0} שנים קודמות"
+msgstr[2] "{0} שנים קודמות"
+msgstr[3] "{0} שנים קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "{0} חודש קודם"
+msgstr[1] "{0} חודשים קודמים"
+msgstr[2] "{0} חודשים קודמים"
+msgstr[3] "{0} חודשים קודמים"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "הקודם {0} אלפיות השנייה"
+msgstr[1] "{0} מילי-שניות קודמות"
+msgstr[2] "{0} מילי-שניות קודמות"
+msgstr[3] "{0} מילי-שניות קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "{0} השעה הקודמת"
+msgstr[1] "{0} שעות קודמות"
+msgstr[2] "{0} שעות קודמות"
+msgstr[3] "{0} שעות קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "{0} השניה הקודמת"
+msgstr[1] "{0} שניות קודמות"
+msgstr[2] "{0} שניות קודמות"
+msgstr[3] "{0} שניות קודמות"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "השבוע {0} הקודם"
+msgstr[1] "{0} השבועות הקודמים"
+msgstr[2] "{0} השבועות הקודמים"
+msgstr[3] "{0} השבועות הקודמים"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "דקה {0} קודמת"
+msgstr[1] "{0} דקות קודמות"
+msgstr[2] "{0} דקות קודמות"
+msgstr[3] "{0} דקות קודמות"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "תדירות להרצת זיהויי ישות מילוי חוזר ומשרות זיהוי ישות ניקוז ב-ms. הערך המינימלי הוא 1000, וכל ערך ב-0 או מתחת ל-0 ישבית את העבודה לחלוטין."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "אינך יכול לארכיב את אוסף הדוחות המותאמים אישית."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "אינך יכול לארכיב את אוסף השורשים."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "אינך יכול לעדכן את היוצר של מדד."
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}, {1} ו- {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "האם המשתמש דחה את קישור ההצטרפות מהסרגל הצדדי הראשי."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "בין אם ננתח שאילתות כלשהן או לא"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "ניתוח SQL מושבת"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "צפוי: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "שגיאת מעבד שאילתה: מספר העמודות שהוחזרו על ידי מנהל ההתקן אינו תואם לתוצאות."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "סוג שאילתה לא ידוע {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "שגיאת מעבד שאילתה: מספר לא תואם של עמודות בשאילתה ותוצאות."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "אל תדע איך לקבל מידע על שדה: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "צפוי {0} עמודות, אך לשורה ראשונה של Resuls יש עמודות {1}."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "ממש: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "שדות צפויים {0}, קיבלו {1}"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"אפשר ניתוח שימוש בשדה עבור שאילתות. פעולה זו תנתח את השדות המשמשים בשאילתות ויאחסן אותם במסד הנתונים של היישום\n"
+"    .\n"
+"\n"
+"    כבה כברירת מחדל מכיוון שעדיין לא הייתה לנו תכונה הפונה למשתמש שמשתמשת בנתונים האלה."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "הערך חייב להיות מספר שלם תקף גדול מאפס."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "הערך חייב להיות סוג סמנטי שדה תקף (מילת מפתח או מחרוזת)."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "הפרמטר חייב להיות מפה עם: ID ו-: סוג מקשים"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "הערך חייב להיות מספר שלם שלילי"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "ערך חייב מערך עם: מזהה שדה או שם ומפת אפשרויות"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "ערך חייב להיות סוג סמנטי שדה תקף."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "הערך חייב להיות מספר גדול מאפס."
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "parameter_mapping חייב להיות מפה עם: parameter_id ו-: מפתחות יעד"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "הערך חייב להיות מספר שלם תקף."
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "הערך חייב להיות סוג יחסי שדה תקף (מילת מפתח או מחרוזת)."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "הערך חייב להיות סוג יחסי שדה תקף."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "הערך חייב להיות מספר שלם תקף גדול או שווה לאפס."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "כתובת דוא\"ל לא חוקית: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "אינך יכול ליצור מנויים חדשים לדומיין {0}. דומיינים המותרים הם: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "אימות הפניה לשאילתה"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "עריכת נתוני טבלה"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "לא מצליח למצוא חיבור ל-Google Drive, אנא נסה שוב."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "לא מצליח למצוא חיבור ל-Google Drive."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "בעיה בסנכרון תיקיית Google Drive, אנא נסה שוב.."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "פסק זמן לסנכרון תיקיית Google Drive, אנא נסה שוב."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO לא הופעל"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO לא הוגדר"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"כאשר אנו מפעילים הקצאת משתמש JWT, אנו יוצרים אוטומטית חשבון Metabase בכניסה ל-JWT עבור משתמשים ש\n"
+"אין להם."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "כתובת אתר לדף התחברות מבוסס JWT. אופציונלי אם משתמשים ב-JWT SSO רק עם ה-SDK לניתוח מוטבע."
 

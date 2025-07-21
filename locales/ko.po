@@ -4693,10 +4693,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "이 필터는 임베디드 대시보드에서 비활성화로 설정되어 있습니다."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "항상 값을 요구하려면 먼저 임베딩 설정(\n"
+msgstr ""
+"항상 값을 요구하려면 먼저 임베딩 설정(\n"
 ")으로 이동하여 이 필터를 편집 가능 또는 잠그고\n"
 "대시보드를 다시 게시한 다음 이 페이지로 돌아오세요."
 
@@ -4708,10 +4710,12 @@ msgstr "메모"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "잠긴 상태로 만들려면 계속 진행하기 전에\n"
+msgstr ""
+"잠긴 상태로 만들려면 계속 진행하기 전에\n"
 "임베딩 코드를 업데이트해야 하며, 그렇지 않으면 임베딩이\n"
 "중단됩니다."
 
@@ -4881,21 +4885,27 @@ msgid "Turn this into a model"
 msgstr "이것을 모델로 삼아라"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "열 설명을 업데이트하고 메타데이터를 사용자 지정하여 생성할 수 있습니다.\n"
+msgstr ""
+"열 설명을 업데이트하고 메타데이터를 사용자 지정하여 생성할 수 있습니다.\n"
 "탐험을 위한 훌륭한 출발점."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "검색 결과에서 상위에 표시되고 다른 경우 강조 표시됩니다.\n"
+msgstr ""
+"검색 결과에서 상위에 표시되고 다른 경우 강조 표시됩니다.\n"
 "사용자는 재사용을 촉진하기 위해 새로운 질문을 시작합니다."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "지저분한 데이터베이스와 분리하여 컬렉션에 보관\n"
+msgstr ""
+"지저분한 데이터베이스와 분리하여 컬렉션에 보관\n"
 "스키마."
 
 #: frontend/src/metabase/query_builder/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx:107
@@ -6480,11 +6490,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "날짜 또는 날짜/시간 값이 있는 열의 이름입니다."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "선택 사항. 기본값은 `\"ISO\"`입니다.\n"
+msgstr ""
+"선택 사항. 기본값은 `\"ISO\"`입니다.\n"
 "- ISO: 1주차는 1월 첫 번째 목요일 전 월요일에 시작합니다.\n"
 "- 미국: 1주차는 1월 1일에 시작합니다. 다른 모든 주는 일요일에 시작합니다.\n"
 "- 인스턴스: 1주차는 1월 1일에 시작합니다. 다른 모든 주는 Metabase 현지화 설정에 정의된 요일에 시작합니다."
@@ -6578,9 +6590,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "현재 타임스탬프(밀리초)를 반환합니다. 현재 {1}에서 {0}입니다."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "날짜 또는 타임스탬프 열의 시간대를 변환합니다.\n"
+msgstr ""
+"날짜 또는 타임스탬프 열의 시간대를 변환합니다.\n"
 "tz 데이터베이스 시간대 이름을 지원합니다."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -8423,7 +8437,8 @@ msgstr[0] "{0} 항목이 휴지통으로 이동되었습니다."
 #: frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx:112
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
-msgstr[0] "{0} 아이템이 선택되었습니다.\n"
+msgstr[0] ""
+"{0} 아이템이 선택되었습니다.\n"
 "복수형: {0} 아이템들이 선택되었습니다."
 
 #: enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration/ContentTranslationConfiguration.tsx:84
@@ -10242,9 +10257,11 @@ msgstr "접속이 거부되었습니다."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0}은/는\n"
+msgstr ""
+"{0}은/는\n"
 "{1}에 대한 쿼리 빌더만 사용할 수 있습니다."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -11672,9 +11689,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "메타베이스 클라우드 시작하기"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "참고: 마이그레이션을 준비하는 동안 메타베이스는 최대 30분 동안 읽기 전용으로 설정됩니다(\n"
+msgstr ""
+"참고: 마이그레이션을 준비하는 동안 메타베이스는 최대 30분 동안 읽기 전용으로 설정됩니다(\n"
 ")."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12033,9 +12052,11 @@ msgid "Connect to Slack"
 msgstr "Slack에 연결"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "팀에서 Slack을 사용하는 경우 대시보드 구독 및\n"
+msgstr ""
+"팀에서 Slack을 사용하는 경우 대시보드 구독 및\n"
 "알림을 보낼 수 있습니다."
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:59
@@ -13587,7 +13608,8 @@ msgstr "{0} 로 검색하거나 ID를 입력하세요"
 #: metabase/lib/temporal_bucket.cljc:39 metabase/warehouse_schema/table.clj:34
 msgid "Week"
 msgid_plural "Weeks"
-msgstr[0] "주\n"
+msgstr[0] ""
+"주\n"
 "복수형 : 주"
 
 #: frontend/src/metabase/querying/filters/components/RelativeDateShortcutPicker/utils.ts:41
@@ -13595,7 +13617,8 @@ msgstr[0] "주\n"
 #: metabase/lib/temporal_bucket.cljc:42 metabase/warehouse_schema/table.clj:37
 msgid "Year"
 msgid_plural "Years"
-msgstr[0] "년\n"
+msgstr[0] ""
+"년\n"
 "복수 : 년"
 
 #: frontend/src/metabase/querying/filters/components/RelativeDateShortcutPicker/utils.ts:47
@@ -14177,9 +14200,11 @@ msgid "Conditional formatting"
 msgstr "조건부 서식"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "다음과 같은 경우 이 테이블의 셀 색상을 변경하는 규칙을 추가할 수 있습니다.\n"
+msgstr ""
+"다음과 같은 경우 이 테이블의 셀 색상을 변경하는 규칙을 추가할 수 있습니다.\n"
 "그들은 특정 조건을 충족합니다."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:36
@@ -15347,9 +15372,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "그룹 구성원을 SSO와 동기화"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "이를 활성화하려면 사용자가 어떤 그룹을 사용해야 하는지 Metabase에 알려주는 매핑을 생성해야 합니다.\n"
+msgstr ""
+"이를 활성화하려면 사용자가 어떤 그룹을 사용해야 하는지 Metabase에 알려주는 매핑을 생성해야 합니다.\n"
 "속해 있는 SSO 그룹에 따라 추가됩니다."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:254
@@ -15413,9 +15440,11 @@ msgid "Refresh cache automatically"
 msgstr "캐시 자동 새로 고침"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "캐시된 결과가 만료되는 즉시 쿼리를 다시 실행하고 캐시하여 결과를 업데이트하고\n"
+msgstr ""
+"캐시된 결과가 만료되는 즉시 쿼리를 다시 실행하고 캐시하여 결과를 업데이트하고\n"
 "캐시를 새로 고칩니다."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15742,7 +15771,8 @@ msgstr "고급 기능의 잠금을 해제하기 위해 라이센스를 구입하
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "귀하의 라이센스는 더 이상 유효하지 않습니다. 새 라이센스가 있는 경우 아래에 입력하십시오. 그렇지 않으면 {0}에 문의하십시오."
 
@@ -16162,9 +16192,11 @@ msgid "Logo"
 msgstr "심벌 마크"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "최상의 결과를 얻으려면 배경이 투명한 SVG 파일(\n"
+msgstr ""
+"최상의 결과를 얻으려면 배경이 투명한 SVG 파일(\n"
 ")을 사용하세요."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:42
@@ -16515,12 +16547,14 @@ msgstr "구성원 추가"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "모든 사용자는 {0} 그룹에 속하며, 해당 그룹에서 삭제할 수 없습니다. 이 그룹의 권한을 설정해 새로운 Metabase 사용자의 열람 가능 범위를 확인할 수 있습니다."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "이 특수한 그룹에 속한 멤버는 Metabase 인스턴스 내 모든 것을 볼 수 있을 뿐만 아니라, 관리자 패널에 접근해 권한 변경을 포함한 설정 변경을 할 수 있습니다! 이 그룹에 구성원을 추가할 때는 유의해주세요."
 
@@ -16574,7 +16608,8 @@ msgid "move the API keys to another group"
 msgstr "API 키를 다른 그룹으로 이동"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "정말인가요? 이 그룹의 모든 구성원들은 그룹과 관련된 모든 권한 세팅을 잃게 됩니다. 이 작업은 돌이킬 수 없습니다."
 
@@ -18911,9 +18946,11 @@ msgstr "퍼가기 {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "{0} 을 사용하여 웹 페이지 또는 블로그\n"
+msgstr ""
+"{0} 을 사용하여 웹 페이지 또는 블로그\n"
 "게시물에 공개적으로 표시되는 iframe 임베드를 추가합니다."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -19114,10 +19151,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "이 필터는 임베드된 질문에서 비활성화로 설정되어 있습니다."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "항상 값을 요구하려면 먼저 임베딩 설정(\n"
+msgstr ""
+"항상 값을 요구하려면 먼저 임베딩 설정(\n"
 ")으로 이동하여 이 필터를 편집 가능 또는 잠그고\n"
 "질문을 다시 게시한 다음 이 페이지로 돌아와야 합니다."
 
@@ -22287,9 +22326,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "이메일을 처리하는 SMTP 서버의 주소입니다."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "초당 전송할 수 있는 최대 수신자 수(이메일 전체 합산)입니다.\n"
+msgstr ""
+"초당 전송할 수 있는 최대 수신자 수(이메일 전체 합산)입니다.\n"
 "                수신자가 여러 명인 경우 한도에 도달하기 전에 마지막으로 보낸 이메일이 한도를 초과할 수 있습니다."
 
 #: metabase/channel/settings.clj:12
@@ -24172,9 +24213,11 @@ msgid "Cumulative count of rows"
 msgstr "열의 누적 개수"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "열의 모든 값에 대한 추가 합계입니다.\n"
+msgstr ""
+"열의 모든 값에 대한 추가 합계입니다.\n"
 "e.x. 시간 경과에 따른 총 수익."
 
 #: metabase/lib/schema/aggregation.cljc:173
@@ -24222,9 +24265,11 @@ msgid "Sum of all the values of a column."
 msgstr "컬럼 내 모든 값의 합계"
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "행 수의 추가 개수입니다.\n"
+msgstr ""
+"행 수의 추가 개수입니다.\n"
 "e.x. 시간 경과에 따른 총 판매 수입니다."
 
 #: metabase/lib/schema/aggregation.cljc:212
@@ -24612,7 +24657,8 @@ msgstr "다음 {0} 주 또는 이번 주"
 #: metabase/lib/temporal_bucket.cljc:48 metabase/warehouse_schema/table.clj:43
 msgid "Week of year"
 msgid_plural "Weeks of year"
-msgstr[0] "연중 주\n"
+msgstr[0] ""
+"연중 주\n"
 "복수형 : 주"
 
 #: metabase/lib/temporal_bucket.cljc:185
@@ -24763,9 +24809,11 @@ msgid "Sync issue troubleshooting"
 msgstr "동기화 문제 해결"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "제공된 로깅 구성의 형식이 잘못되었습니다. 다음 JSON 구조를 따르세요.\n"
+msgstr ""
+"제공된 로깅 구성의 형식이 잘못되었습니다. 다음 JSON 구조를 따르세요.\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25853,9 +25901,11 @@ msgid "Content Management or Official Collections"
 msgstr "콘텐츠 관리 또는 공식 컬렉션"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "postgresql에 대해 appdb 엔진을 사용하는 경우 to_tsvector에서 스테밍에 사용되는 언어를 재정의합니다.\n"
+msgstr ""
+"postgresql에 대해 appdb 엔진을 사용하는 경우 to_tsvector에서 스테밍에 사용되는 언어를 재정의합니다.\n"
 "  값은 ''english'' 또는 ''simple''과 같이 데이터베이스에 구성된 유효한 언어 옵션이어야 합니다."
 
 #: metabase/search/settings.clj:24
@@ -26929,9 +26979,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "홈페이지에 엑스레이 제안을 표시할지 여부입니다. 대시보드가 ​​고정된 경우에도 숨겨집니다. 관리자는 원시 데이터보다 더 나은 콘텐츠로 사용자를 안내하기 위해 이것을 숨길 수 있습니다."
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "결과 변환이 예상과 일치하지 않습니다.\n"
+msgstr ""
+"결과 변환이 예상과 일치하지 않습니다.\n"
 "예상: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27133,9 +27185,11 @@ msgid "Harbormaster returned an error."
 msgstr "항구 관리자가 오류를 반환했습니다."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "드라이브 폴더 동기화를 설정할 수 없습니다.\n"
+msgstr ""
+"드라이브 폴더 동기화를 설정할 수 없습니다.\n"
 "폴더가 적절한 서비스 계정 이메일과 공유 권한으로 공유되었는지 확인하세요."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27470,9 +27524,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "사용자 이메일 주소의 SAML 속성"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "SAML 사용자 프로비저닝을 활성화하면\n"
+msgstr ""
+"SAML 사용자 프로비저닝을 활성화하면\n"
 "계정이 없는 사용자를 위해 SAML 로그인 시 메타베이스 계정이 자동으로 생성됩니다."
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27536,9 +27592,11 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "그룹 구성원 조회 필터. 자리 표시자 '{dn}' 및 '{uid}'는 각각 사용자의 고유 이름 및 UID로 대체됩니다."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "사용자가 ID 공급업체에 로그인하기 위해 이동하는 URL입니다.\n"
+msgstr ""
+"사용자가 ID 공급업체에 로그인하기 위해 이동하는 URL입니다.\n"
 "사용 중인 IdP에 따라 일반적으로 `https://your-org-name.example.com` 또는 `https://example.com/app/my_saml_app/abc123/sso/saml`와 같이 표시됩니다."
 
 #: metabase_enterprise/sso/settings.clj:152
@@ -27546,9 +27604,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "SAML과 {0} 그룹 매핑을 포함하는 JSON입니다."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "ID 공급자에 대한 인코딩된 인증서입니다. IdP에 따라 이것을 다운로드하고,\n"
+msgstr ""
+"ID 공급자에 대한 인코딩된 인증서입니다. IdP에 따라 이것을 다운로드하고,\n"
 "텍스트 편집기에서 연 다음, 인증서의 내용을 여기에 복사하여 붙여넣어야 할 수도 있습니다."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27556,9 +27616,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "{0} 이 SAML 요청에 서명할 때 사용해야 하는 키의 별칭"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "이것은 IdP의 고유 식별자입니다. 종종 엔티티 ID 또는 간단히 ''발급자''라고도 합니다. IdP에 따라\n"
+msgstr ""
+"이것은 IdP의 고유 식별자입니다. 종종 엔티티 ID 또는 간단히 ''발급자''라고도 합니다. IdP에 따라\n"
 "는 일반적으로 `http://www.example.com/141xkex604w0Q5PN724v`와 비슷합니다."
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27570,9 +27632,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "잘못된 ID 공급자 인증서입니다. 인증서는 base-64로 인코딩된 문자열이어야 합니다."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "LDAP 사용자 프로비저닝을 활성화하면\n"
+msgstr ""
+"LDAP 사용자 프로비저닝을 활성화하면\n"
 "계정이 없는 사용자를 위해 LDAP 로그인 시 자동으로 메타베이스 계정을 생성합니다."
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27584,9 +27648,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "JWT 사용자 그룹을 검색하는 키"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "이것은 사용자가 귀하의 ID 공급자에서 로그아웃하는 URL입니다.\n"
+msgstr ""
+"이것은 사용자가 귀하의 ID 공급자에서 로그아웃하는 URL입니다.\n"
 "사용하는 IdP에 따라 일반적으로 `https://your-org-name.example.com` 또는 `https://example.com/app/my_saml_app/abc123/sso/slo`처럼 보입니다."
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28630,4 +28696,1521 @@ msgstr "국가별 사용자 획득"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "매출 상위 10개국"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "이 필드에 대한 상세설명이 아직 없습니다"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "이 필드가 Metabase를 통해 표시될 곳"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "필드 유형"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "전송하지 않음"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "전환 선택"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "이 필드에 대한 필터 적용"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "이 필드가 필터에서 사용될 때, 사용자들이 필터를 적용하려는 값을 입력하기 위해 무엇을 사용해야 하는지요?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "캐시 된 필드 값"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabase가 대시보드나 질문목록의 체크박스 필터들을 활성화 하기 위해 이 필드의 값들을 스캔할 수 있습니다."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "이 필드를 다시 스캔 합니다."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "스키마를 보고 메타데이타를 추가하고 수정하려면 테이블을 선택하세요."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "원래 스키마"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "테이블 설명이 아직 없습니다"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "쿼리 가능"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "왜 표시하지 않으려 하나요?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "기술적 데이터"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "관련성 없음/중요하지 않음"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "테이블 찾기"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "스키마"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} 숨겨진 테이블"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} 쿼리 가능한 테이블"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 테이블"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "그들 모두"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "모두 숨기기"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "그 시절"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "데이터 타입"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "추가 정보"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "구글 로그인"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "{0}을(를) 권장합니다. 아래 지침을 참조하세요."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "먼저 Metabase 구성을 사용하는 {0}입니다. 생성되면 “${ 1 }”을 클릭하여 승인합니다."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "Slack 앱을 만들려면 아래 버튼을 클릭하세요."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "작업 공간에 설치"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. OAuth 토큰 활성화 및 새 슬랙 채널 생성"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "사이드바에서 \"{0}\"을(를) 클릭하고 \"{1}\"을(를) 복사하여 여기에 붙여넣습니다."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth 및 권한"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "봇 사용자 OAuth 토큰"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "vs "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "대 "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-기간 이동 평균)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-행 이동 평균)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} 이동 평균)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}이전 기간)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2} 기간 전)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}이전 값)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} (위의{1}{2} 행)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}이전 {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3} 전)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "암호 인증 활성화"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "사용자 프로비저닝"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "사용자가 SAML을 통해 로그인할 때 메타베이스 계정이 없는 경우 자동으로 계정을 생성합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML ID 공급자 SSO URL"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML ID 공급자 발급자"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "SAML ID 공급자 인증서"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "SAML 애플리케이션 이름"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "SAML 키 저장소 경로"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "SAML 키 저장소 암호"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "SAML 키 저장소 별칭"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "그룹 멤버쉽 동기화"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "JWT 인증"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "사용자가 JWT를 통해 로그인할 때 메타베이스 계정이 없는 경우 자동으로 계정을 생성합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "사용자가 LDAP를 통해 로그인할 때 메타베이스 계정이 없는 경우 자동으로 계정을 생성합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "동기화 관리자 그룹"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "클라우드 셋팅"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "라이센스 및 청구"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "색상 팔레트"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "메타베이스 제품의 일부를 숨기거나 사용자 지정하여 브랜드와 요구 사항에 맞게 환경을 맞춤화합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "애플리케이션 이름"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "메타베이스에 대한 링크 및 참조 표시 {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "설정 메뉴의 도움말 링크"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "모델로 스키마 단순화"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "변경 사항이 저장되었습니다. 확인하려면 페이지를 새로고침하세요."
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "알 수 없는 설정 {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "트리거"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "트리거 보기"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "유료 요금제로 각 구독에 대한 필터 값을 사용자 지정할 수 있습니다."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "대시보드 필터에 기본값이 있는 경우 구독이 전송될 때 적용됩니다."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "쿼리 결과가 여기에 표시됩니다."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "이 페이지를 편집하고 있습니다"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "알려지지 않은 지도"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "기본 뷰로 저장하기"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "DB 라우팅을 활성화하려면 사용자 속성을 선택해야 합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "인터랙티브 임베딩 사용"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "이렇게 하면 색상이 기본 색상으로 변경됩니다. 이 작업은 취소할 수 없습니다."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "사용자 지정 대상 링크 도움말"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "방문 페이지"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "인스턴스에서 메타베이스 문서 및 메타베이스 참조에 대한 링크의 표시 여부를 제어하세요. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "API 키 관리"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "Metabase Pro로 SAML, JWT 또는 LDAP 통한 싱글사인온(SSO) 사용"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "구글 로그인"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "사이트 이름"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "지원요청을 위한 이메일 주소"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "친숙한 테이블 및 필드 이름"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "X-Ray 기능 활성화"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "쿼리 분석 사용"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "스웩을 획득하세요"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "사람들이 컬렉션에 데이터를 업로드하도록 허용"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "경고: 샘플 데이터베이스에 업로드한 데이터는 테스트용으로만 사용되며 사라질 수 있습니다. 데이터를 계속 유지하려면 PostgreSQL 또는 MySQL 데이터베이스에 업로드해야 합니다."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "알림용 웹훅"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "달력 보이기"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "질문 검색"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "불러오는 중"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "더 불러오기"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "특정 탭 ID"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "개별 필드 작성"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "연결 문자열 붙여넣기"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "데이터베이스 검색…"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "아무것도 찾지 못했습니다"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "데이터베이스가 보이지 않습니까? 자체 호스팅이 가능한지 알아보려면 {0} 페이지를 확인하세요."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "커뮤니티 드라이버"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "옵션 간략히 보기"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "옵션 더보기"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "베타"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "열 순서 편집"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "이 알림은 한 번만 보내세요"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "이를 보려면 {0}이(가) 하나 이상의 필드에 연결되어 있어야 합니다."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + 엔터)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(컨트롤 + 엔터)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "데이터 탐색을 시작할 준비가 되셨습니까? 아래에 추가하십시오."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "준비되지 않았나요? 건너뛰고 샘플 데이터베이스를 가지고 놀아보세요."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "시작하기 전에 유료 기능에 대한 액세스 권한을 잠금 해제하세요."
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "지리공간 데이터를 사용하여 지도 시각화를 구축합니다. 핀 및 그리드 지도에는 경도와 위도 열이 필요하고, 지역 지도에는 미국 지역 이름 열이 필요합니다."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "닫는 괄호 {0}개 예상"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "여는 괄호 {0} 예상"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "표현이 비어있습니다"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "닫는 따옴표 누락"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "문제 해결"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "저장되었습니다!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "저장이 실패했습니다."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "에러:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "이렇게 하면 도구, 감사 및 문제 해결에 대한 액세스 권한이 부여됩니다."
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "확인된 지표만 표시"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "확인된 모델만 표시"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "메타베이스는 이 값을 선택한 사용자 속성에 매핑하여 런타임에 쿼리를 교환합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "예를 들어 프로 사용자"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "이메일을 찾을 수 없습니다"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "{0}로 연결됨"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google 시트 연결..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "Google 시트에 연결됨"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "파일을 가져오는 중..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "새로 추가"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "쿼리 유효성 검사기"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "필드"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "비활성 상태입니다."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "알 수 없음"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "알 수 없는 데이터 참조"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "업로드 관리"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "업로드된 테이블"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "SCIM을 통한 사용자 프로비저닝"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "새 SSO 사용자의 관리자에게 알림"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "활성화되면 관리자는 사용자가 Single Sign-On을 처음 사용할 때 이메일을 받게 됩니다."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "새 API 키 만들기"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "형식"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "포맷되지 않음"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "데이터 피벗 유지"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "다음 질문을 결합할 수 없습니다."
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "질문 적용"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "알파벳순"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "똑똑한"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "북마크 대시보드"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "필터 추가"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "노트북 질문 추가"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "네이티브 질문 추가"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "편집 취소 대시보드"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "작업 게시판을 휴지통으로 보내기"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "대시보드 정보 전환"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "대시보드 편집"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "대시보드 저장"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "바로가기 모달 전환"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "노트북 토글"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "북마크 질문"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "질문 데이터 다시 가져오기"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "지정된 열의 중앙값을 반환합니다."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "중앙값을 구할 열 또는 숫자입니다."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "문자열을 정수로 변환합니다."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "정수로 변환할 문자열 열입니다."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "ISO 8601 날짜 문자열을 날짜로 변환합니다."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "날짜로 변환할 문자열입니다."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "잘못된 차원 이름: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "알 수 없는 측정항목: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "알 수 없는 세그먼트: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "알 수 없는 필드: {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr " 기록"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "팀이 더 쉽게 탐색할 수 있도록 모델을 만듭니다."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "최종 사용자가 복잡한 원시 데이터를 헤매게 하는 대신 쉽게 찾고, 이해하고, 탐색할 수 있는 사용자 지정 모델을 만들 수 있습니다."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "지역의 식별자를 정의하는 속성은 무엇입니까?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "지역의 표시 이름을 지정하는 속성은 무엇입니까?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "날짜 및 시간"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "누군가 이 데이터베이스의 데이터를 사용하여 질문을 열람하면, Metabase는 해당 사용자의 사용자 속성에 설정된 대상 데이터베이스로 쿼리를 전송합니다. 각 대상 데이터베이스는 동일한 스키마를 가져야 합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "대상 데이터베이스와 일치하는 사용자 속성"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "설명 생성"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "설명이 생성되었습니다. 클릭하여 자동 입력합니다."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "잘못된 참조가 있는 질문"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "모든 컬렉션"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "쿼리 유효성 검사는 현재 비활성화되어 있습니다. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "여기에서 쿼리 분석을 사용 설정하세요."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "잘못된 참조가 있는 질문, 모델 또는 지표가 없습니다."
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "2시간"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 시간"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 시간"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 시간"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 시간"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "모델 지속성을 사용하도록 설정하면 모델(및 모델을 사용하는 쿼리)을 더 빠르게 로드할 수 있습니다."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "무슨 일이 발생했는지 알림을 받거나 이 차트를 일정에 따라 보내려면 관리자에게 SMTP, Slack 또는 웹훅을 설정하도록 요청하세요."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr ""
+"대부분의 IdP에서는 이들 각각을 레이블이 지정된 입력 상자에 넣어야 합니다.\n"
+"속성 설명 섹션의 \"이름\"."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "SAML ID 제공자 URL"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "유효한 이메일 주소가 아닙니다."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "알림 및 구독 수신자의 공개 여부를 제어하세요."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "유효한 포트 번호가 아닙니다"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "커스텀 지도"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "리포트 시간대"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "데이터베이스 기본"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "현지화 옵션"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "관리자가 질문 및 대시보드에 대해 공개적으로 볼 수 있는 링크(및 삽입 가능한 iframe)를 만들 수 있습니다."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "공유 된 대시보드"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "공유 된 질문"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "공동 작업 양식"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "AI 기능"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "AI 기능 사용"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "AI 기능을 사용하려면 먼저 API 키를 제공해야 합니다."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "EE OpenAI API 키"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "엔터프라이즈 AI 기능에 사용되는 API 키"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "LDAP 인증"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "LDAP 호스트"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "LDAP 포트"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "LDAP 보안"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "괄호를 확인하십시오"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "식별명"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "홈 및 로그인 페이지에 표시"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "링크 및 참조 표시"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} - 필드 설정"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "테이블 세팅"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "스키마 찾기"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "이 테이블 재스캔"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "API 키 삭제"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "API 키 편집"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "API 키 다시 생성"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "API 키를 생성하여 프로그래밍 방식으로 API 호출을 수행할 수 있습니다."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "API 키 생성"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "API 키 관리"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "사용자가 API 키를 사용하여 API 호출을 인증할 수 있도록 허용합니다."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "메타베이스 클라우드와 대화하기..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "이 인스턴스의 스냅샷 찍기..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "클라우드에 스냅샷 업로드하기..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "메타베이스 클라우드로의 마이그레이션이 취소되었습니다."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "메타베이스 클라우드로 마이그레이션…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "메타베이스 데이터를 스냅샷하는 동안에는 사람들이 질문과 대시보드를 볼 수는 있지만 편집하거나 새로운 것을 만들 수는 없습니다. 최대 30분 정도만 소요됩니다."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "마이그레이션 취소"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "마이그레이션을 취소하시겠습니까?"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "마이그레이션 프로세스를 취소합니다. 그 후에는 이 인스턴스는 더 이상 읽기 전용이 아닙니다."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "구성 편집"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "SDK 임베딩을 허용할 웹사이트 또는 앱의 출처를 공백으로 구분하여 입력합니다. 로컬 호스트가 자동으로 포함됩니다."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "보냈습니다!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "정적 임베딩 활성화"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "저희가 여러분께 드리는 작은 선물"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "베타 버전을 사용해 주신 것에 대한 감사의 의미로 소진 시까지 기념품을 보내드리고자 합니다. 버튼을 클릭하여 세부 정보를 알려주시면 안내 이메일을 보내드리겠습니다."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "내 스웨그 얻기"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "익명 추적"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "사용자 지정 홈페이지"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "크론 구문"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "{0} 은 공백으로 구분된 5개의 필드로 구성된 문자열입니다."
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "사이트 URL"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud는 인스턴스를 최신 상태로 유지합니다. 현재 버전은 {0}입니다. 고객이 되어 주셔서 감사합니다!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "삭제 중…"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "삭제 실패"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "이렇게 하면 새 연결이 설정될 때까지 대시보드 구독이 Slack에 표시되지 않을 수 있습니다."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "Slack 앱 통합을 삭제하시겠습니까?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Slack Bot 사용자 OAuth 토큰"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "진단 정보"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "고급 세부 정보(다운로드하려면 클릭)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "시리즈 편집"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "시리즈 추가"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "알 수 없는 유형"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "페이지 숨기기"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "데이터 추가"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "마크다운 지원"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "마크다운을 통해 링크 및 서식 추가"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "다른 항목 추가"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "탐색 사이드바에서 숨겨진 페이지"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "나중에 언제든지 화면 오른쪽 상단의 톱니바퀴 아이콘을 클릭하여 액세스할 수 있습니다."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "데이터베이스 추가"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "이렇게 하면 전용 스키마에 각 모델에 대한 테이블이 생성됩니다.{ 0 } 은 일정에 따라 테이블을 새로 고칩니다. 모델을 사용하는 질문 및 쿼리는 이러한 테이블을 쿼리합니다."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "찾아보기"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "CSV 업로드"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "모든 쿼리에는 `데이터베이스`가 필요합니다."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[알 수 없는 필드]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} {1}"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} 이 아닌 {1} 선택"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} 는 {1} 선택"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} 는 {1}"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} 는 {1} 선택 항목과 같지 않습니다."
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} 는 {1} 선택"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} 는 {1} {2} 선택 항목 중 하나입니다."
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "비표준 조인 조건. {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "다음 {0} 주"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "다음 {0} 분"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "다음 {0} 분기"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "다음 {0} 년"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "다음 {0} 초"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "다음 {0} 밀리초"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "이전 {0} 일"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "다음 {0} 일"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "다음 {0} 개월"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "이전 {0} 분기"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "다음 {0} 시간"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "이전 {0} 년"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "이전 {0} 개월"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "이전 {0} 밀리초"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "이전 {0} 시간"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "이전 {0} 초"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "이전 {0} 주"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "이전 {0} 분"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "백필 엔티티 ID 및 드레이닝 엔티티 ID 작업을 실행하는 빈도(ms)입니다. 최소값은 1000이고, 0 이하의 값은 작업을 완전히 비활성화합니다."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "사용자 지정 보고서 컬렉션은 보관할 수 없습니다."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "루트 컬렉션을 보관할 수 없습니다."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "메트릭의 creator_id를 업데이트할 수 없습니다."
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}, {1}, 그리고 {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "사용자가 메인 사이드바에서 온보딩 링크를 해제했는지 여부입니다."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "쿼리를 전혀 분석하지 않는지 여부"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL 구문 분석이 비활성화됨"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "예상: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "쿼리 프로세서 오류: 드라이버에서 반환한 열 수가 결과와 일치하지 않습니다."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "알 수 없는 쿼리 유형 {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "쿼리 프로세서 오류: 쿼리와 결과의 열 수가 일치하지 않습니다."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "필드에 대한 정보를 얻는 방법을 모릅니다: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "{0} 열이 필요하지만 결과의 첫 번째 행에 {1} 열이 있습니다."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "실제: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "예상 {0} 필드, {1} 가져오기"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"쿼리에 대한 필드 사용 분석을 활성화합니다. 이렇게 하면 쿼리에서 사용된 필드가 분석되어\n"
+"    애플리케이션 데이터베이스에 저장됩니다.\n"
+"\n"
+"    아직 이 데이터를 사용하는 사용자 지향 기능이 없으므로 기본적으로 해제합니다."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "값은 0보다 큰 유효한 정수여야 합니다."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "값은 유효한 필드 시맨틱 유형(키워드 또는 문자열)이어야 합니다."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "매개변수는 :id 및 :type 키가 있는 맵이어야 합니다."
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "값은 음의 정수여야 합니다."
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "값은 :field id-or-name 및 옵션 맵이 있는 배열이어야 합니다"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "값은 유효한 필드 시맨틱 유형이어야 합니다."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "값은 0보다 큰 숫자여야 합니다."
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "parameter_mapping은 :parameter_id 및 :target 키가 있는 맵이어야 합니다."
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "값은 유효한 정수여야 합니다."
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "값은 유효한 필드 관계 유형(키워드 또는 문자열)이어야 합니다."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "값은 유효한 필드 관계 유형이어야 합니다."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "값은 0보다 크거나 같은 유효한 정수여야 합니다."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "잘못된 이메일 주소: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "도메인 {0}에 대한 새 구독을 생성할 수 없습니다. 허용된 도메인: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "쿼리 참조 유효성 검사"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "테이블 데이터 편집"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "Google 드라이브 연결을 찾을 수 없습니다. 다시 시도하세요."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "Google 드라이브 연결을 찾을 수 없습니다."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "Google 드라이브 폴더를 동기화하는 중에 문제가 발생했습니다. 다시 시도해 주세요."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "Google 드라이브 폴더 동기화 중 시간이 초과되었습니다. 다시 시도하세요."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO가 활성화되지 않았습니다."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO가 구성되지 않았습니다."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"JWT 사용자 프로비저닝을 활성화하면 메타베이스 계정이 없는 사용자(\n"
+")를 위해 JWT 로그인 시 자동으로 메타베이스 계정이 생성됩니다."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "JWT 기반 로그인 페이지의 URL입니다. 임베디드 애널리틱스 SDK와 함께 JWT SSO만 사용하는 경우 선택 사항입니다."
 

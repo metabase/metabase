@@ -4709,10 +4709,12 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Bu filtre, gömülü bir gösterge tablosunda devre dışı olarak ayarlanmıştır."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
-msgstr "Her zaman bir değer gerektirmek için önce yerleştirme ayarlarını ziyaret edin,\n"
+msgstr ""
+"Her zaman bir değer gerektirmek için önce yerleştirme ayarlarını ziyaret edin,\n"
 "bu filtreyi düzenlenebilir veya kilitli hale getirin,\n"
 "panosunu yeniden yayınlayın ve ardından bu sayfaya geri dönün."
 
@@ -4724,10 +4726,12 @@ msgstr "Not"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
-msgstr "kilitli hale getirmek, devam etmeden önce\n"
+msgstr ""
+"kilitli hale getirmek, devam etmeden önce\n"
 "gömme kodunun güncellenmesini gerektirecektir, aksi takdirde gömme\n"
 "kırılacaktır."
 
@@ -4898,21 +4902,27 @@ msgid "Turn this into a model"
 msgstr "Bunu bir modele dönüştürün"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
-msgstr "Sütun açıklamalarını güncellemenize ve meta verileri oluşturmak için özelleştirmenize izin verin\n"
+msgstr ""
+"Sütun açıklamalarını güncellemenize ve meta verileri oluşturmak için özelleştirmenize izin verin\n"
 "keşif için harika başlangıç noktaları."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
-msgstr "Arama sonuçlarında daha üst sıralarda görünün ve diğer\n"
+msgstr ""
+"Arama sonuçlarında daha üst sıralarda görünün ve diğer\n"
 "kullanıcılar yeniden kullanımı teşvik etmek için yeni sorular başlatır."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
-msgstr "Dağınık veritabanından ayrı tutmak için koleksiyonlarda yaşayın\n"
+msgstr ""
+"Dağınık veritabanından ayrı tutmak için koleksiyonlarda yaşayın\n"
 "şemalar."
 
 #: frontend/src/metabase/query_builder/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx:107
@@ -6500,11 +6510,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Tarih veya tarih saat değeri içeren sütunun adı."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "İsteğe bağlı. Varsayılan `\"ISO\"`dur.\n"
+msgstr ""
+"İsteğe bağlı. Varsayılan `\"ISO\"`dur.\n"
 "- ISO: 1. Hafta Ocak ayının ilk Perşembesinden önceki Pazartesi günü başlar.\n"
 "- ABD: 1. Hafta 1 Ocak'ta başlar. Diğer tüm haftalar Pazar günü başlar.\n"
 "- Örnek: 1. Hafta 1 Ocak'ta başlar. Diğer tüm haftalar Metabase yerelleştirme ayarlarınızda tanımlanan günde başlar."
@@ -6598,9 +6610,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "Geçerli zaman damgasını (milisaniye cinsinden) döndürür. Şu anda {0} içinde {1}."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Bir tarih veya zaman damgası sütununun saat dilimini dönüştürün.\n"
+msgstr ""
+"Bir tarih veya zaman damgası sütununun saat dilimini dönüştürün.\n"
 "tz veritabanı saat dilimi adlarını destekliyoruz."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -10279,9 +10293,11 @@ msgstr "erişim reddedildi"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} sadece {1} için sorgu oluşturucuyu \n"
+msgstr ""
+"{0} sadece {1} için sorgu oluşturucuyu \n"
 "kullanabilecek."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
@@ -11710,9 +11726,11 @@ msgid "Get started with Metabase Cloud"
 msgstr "Metabase Cloud ile çalışmaya başlayın"
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
-msgstr "Sadece bir uyarı: Metatabanınız, biz onu geçiş için hazırlarken 30\n"
+msgstr ""
+"Sadece bir uyarı: Metatabanınız, biz onu geçiş için hazırlarken 30\n"
 "dakikaya kadar salt okunur olacaktır."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:44
@@ -12071,9 +12089,11 @@ msgid "Connect to Slack"
 msgstr "Slack'e bağlanın"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Ekibiniz Slack kullanıyorsa, gösterge tablosu aboneliklerini ve\n"
+msgstr ""
+"Ekibiniz Slack kullanıyorsa, gösterge tablosu aboneliklerini ve\n"
 "uyarılarını buradan gönderebilirsiniz"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:59
@@ -14223,7 +14243,8 @@ msgid "Conditional formatting"
 msgstr "Koşullu biçimlendirme"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Bu tablodaki hücreleri rengini değiştirmek için kurallar ekleyebilirsiniz, belirli koşulları yerine getirirlerse."
 
@@ -15394,9 +15415,11 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Grup üyeliğini SSO'nuzla senkronize edin"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
-msgstr "Bunu etkinleştirmek için, Metabase'e kullanıcılarınızın hangi grup (lar) ı kullanması gerektiğini söyleyen eşlemeler oluşturmanız gerekir\n"
+msgstr ""
+"Bunu etkinleştirmek için, Metabase'e kullanıcılarınızın hangi grup (lar) ı kullanması gerektiğini söyleyen eşlemeler oluşturmanız gerekir\n"
 "içinde bulundukları SSO grubuna göre eklenecek."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:254
@@ -15460,9 +15483,11 @@ msgid "Refresh cache automatically"
 msgstr "Önbelleği otomatik olarak yenileme"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Önbelleğe alınan sonuçların süresi dolar dolmaz, sonuçları güncellemek ve\n"
+msgstr ""
+"Önbelleğe alınan sonuçların süresi dolar dolmaz, sonuçları güncellemek ve\n"
 "önbelleği yenilemek için sorguyu tekrar çalıştırın ve önbelleğe alın."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15789,9 +15814,11 @@ msgstr "Gelişmiş işlevlerin kilidini açmak için bir lisans mı satın aldı
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
-msgstr "Ehliyetiniz artık geçerli değil. Yeni ehliyetiniz varsa lütfen\n"
+msgstr ""
+"Ehliyetiniz artık geçerli değil. Yeni ehliyetiniz varsa lütfen\n"
 "aşağıya girin, aksi takdirde lütfen {0} ile iletişime geçin"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:62
@@ -16210,9 +16237,11 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
-msgstr "En iyi sonuçları elde etmek için şeffaf\n"
+msgstr ""
+"En iyi sonuçları elde etmek için şeffaf\n"
 "arka planlı bir SVG dosyası kullanın."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:42
@@ -16564,12 +16593,14 @@ msgstr "Üye ekle"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
 msgstr "Tüm kullanıcılar {0} grubuna ait ve bundan kaldırılamaz.Bu grup için izinler ayarlamak yeni Metabase kullanıcılarının görebileceği şeylerden emin olmanın harika bir yoldur."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
 msgstr "Bu, üyeleri Metabase'de her şeyi görebilen ve izinleri de dahil olmak üzere Yönetici Paneli'ndeki ayarlara erişebilen ve bunlarda değişiklik yapabilen özel bir gruptur! Bu yüzden insanları bu gruba özenle ekleyin."
 
@@ -16624,7 +16655,8 @@ msgid "move the API keys to another group"
 msgstr "API anahtarlarını başka bir gruba taşıma"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
 msgstr "Emin misiniz? Bu grubun tüm üyeleri bu gruba dayalı tüm izin ayarlarını kaybedeceklerdir. Bu geri alınamaz."
 
@@ -18967,9 +18999,11 @@ msgstr "Embed {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Web sayfanıza veya blog\n"
+msgstr ""
+"Web sayfanıza veya blog\n"
 "gönderinize herkes tarafından görülebilen bir iframe eklemek için {0} adresini kullanın."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -19172,10 +19206,12 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Bu filtre gömülü bir soruda devre dışı olarak ayarlanmıştır."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
-msgstr "Her zaman bir değer gerektirmek için önce gömme ayarlarını ziyaret edin,\n"
+msgstr ""
+"Her zaman bir değer gerektirmek için önce gömme ayarlarını ziyaret edin,\n"
 "bu filtreyi düzenlenebilir veya kilitli hale getirin,\n"
 "sorusunu yeniden yayınlayın ve ardından bu sayfaya geri dönün."
 
@@ -22352,9 +22388,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "E-postalarınızı işleyen SMTP sunucusunun adresi."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Saniyede gönderilebilecek, tüm e-postaların toplamı olan maksimum alıcı sayısı.\n"
+msgstr ""
+"Saniyede gönderilebilecek, tüm e-postaların toplamı olan maksimum alıcı sayısı.\n"
 "                Sınıra ulaşmadan önce gönderilen son e-postanın birden fazla alıcıya sahip olması durumunda sınırı aşabileceğini unutmayın."
 
 #: metabase/channel/settings.clj:12
@@ -24240,9 +24278,11 @@ msgid "Cumulative count of rows"
 msgstr "Kümülatif satır sayısı"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
-msgstr "Bir sütunun tüm değerlerinin toplamsal toplamı.\n"
+msgstr ""
+"Bir sütunun tüm değerlerinin toplamsal toplamı.\n"
 "örn; zaman içindeki toplam gelir."
 
 #: metabase/lib/schema/aggregation.cljc:173
@@ -24290,9 +24330,11 @@ msgid "Sum of all the values of a column."
 msgstr "Bir sütunun tüm değerlerinin toplamı."
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
-msgstr "Satır sayısının toplam sayımı.\n"
+msgstr ""
+"Satır sayısının toplam sayımı.\n"
 "örn; zaman içindeki toplam satış sayısı."
 
 #: metabase/lib/schema/aggregation.cljc:212
@@ -24860,9 +24902,11 @@ msgid "Sync issue troubleshooting"
 msgstr "Senkronizasyon sorunu giderme"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "Sağlanan günlük yapılandırmasının biçimi yanlış. Lütfen aşağıdaki JSON yapısını izleyin:\n"
+msgstr ""
+"Sağlanan günlük yapılandırmasının biçimi yanlış. Lütfen aşağıdaki JSON yapısını izleyin:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25954,9 +25998,11 @@ msgid "Content Management or Official Collections"
 msgstr "İçerik Yönetimi veya Resmi Koleksiyonlar"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "Postgresql'e karşı appdb motorunu kullanırken, to_tsvector'de köklendirme için kullanılan dili geçersiz kılın.\n"
+msgstr ""
+"Postgresql'e karşı appdb motorunu kullanırken, to_tsvector'de köklendirme için kullanılan dili geçersiz kılın.\n"
 "  Değer, veritabanınızda ''english'' veya ''simple'' gibi geçerli bir yapılandırılmış dil seçeneği olmalıdır."
 
 #: metabase/search/settings.clj:24
@@ -27031,9 +27077,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "Ana sayfada röntgen önerilerinin gösterilip gösterilmeyeceği. Herhangi bir gösterge panosu sabitlenirse de gizlenirler. Yöneticiler, kullanıcıları ham verilerden daha iyi içeriğe yönlendirmek için bunu gizleyebilir"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Ortaya çıkan dönüşümler beklentilere uygun değil.\n"
+msgstr ""
+"Ortaya çıkan dönüşümler beklentilere uygun değil.\n"
 "Beklenen: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27235,9 +27283,11 @@ msgid "Harbormaster returned an error."
 msgstr "Liman Müdürü bir hata döndürdü."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Sürücü klasörü senkronizasyonu ayarlanamadı.\n"
+msgstr ""
+"Sürücü klasörü senkronizasyonu ayarlanamadı.\n"
 "Lütfen klasörün doğru hizmet hesabı e-postası ve paylaşım izinleriyle paylaşıldığını kontrol edin."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27572,9 +27622,11 @@ msgid "SAML attribute for the user''s email address"
 msgstr "Kullanıcının e-posta adresi için SAML özelliği"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
-msgstr "SAML kullanıcı sağlamayı etkinleştirdiğimizde,\n"
+msgstr ""
+"SAML kullanıcı sağlamayı etkinleştirdiğimizde,\n"
 "adresinde hesabı olmayan kullanıcılar için SAML oturum açma sırasında otomatik olarak bir Metabase hesabı oluştururuz."
 
 #: metabase_enterprise/sso/settings.clj:138
@@ -27638,9 +27690,11 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "Grup üyeliği arama filtresi. '{dn}' ve '{uid}' yer tutucuları sırasıyla kullanıcının Ayırt Edici Adı ve UID'si ile değiştirilecektir."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
-msgstr "Bu, kullanıcılarınızın kimlik sağlayıcınızda oturum açmak için gittikleri URL'dir. Hangi IdP'yi\n"
+msgstr ""
+"Bu, kullanıcılarınızın kimlik sağlayıcınızda oturum açmak için gittikleri URL'dir. Hangi IdP'yi\n"
 "kullandığınıza bağlı olarak, bu genellikle `https://your-org-name.example.com` veya `https://example.com/app/my_saml_app/abc123/sso/saml` gibi görünür"
 
 #: metabase_enterprise/sso/settings.clj:152
@@ -27648,9 +27702,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "SAML ile {0} grup eşlemelerini içeren JSON."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Kimlik sağlayıcısı için kodlanmış sertifika. Kimlik sağlayıcınıza bağlı olarak, bunu indirmeniz gerekebilir,\n"
+msgstr ""
+"Kimlik sağlayıcısı için kodlanmış sertifika. Kimlik sağlayıcınıza bağlı olarak, bunu indirmeniz gerekebilir,\n"
 "bir metin düzenleyicide açın, sonra sertifikanın içeriğini buraya kopyalayıp yapıştırın."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27658,9 +27714,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "SAML isteklerini imzalamak için {0} adresinin kullanması gereken anahtarın takma adı"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Bu, IdP için benzersiz bir tanımlayıcıdır. Genellikle Entity ID veya basitçe ''Issuer'' olarak adlandırılır. IdP'nize\n"
+msgstr ""
+"Bu, IdP için benzersiz bir tanımlayıcıdır. Genellikle Entity ID veya basitçe ''Issuer'' olarak adlandırılır. IdP'nize\n"
 "bağlı olarak, bu genellikle `http://www.example.com/141xkex604w0Q5PN724v` gibi bir şeye benzer"
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27672,9 +27730,11 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Geçersiz kimlik sağlayıcı sertifikası. Sertifika, temel 64 kodlu bir dize olmalıdır."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
-msgstr "LDAP kullanıcı sağlamayı etkinleştirdiğimizde,\n"
+msgstr ""
+"LDAP kullanıcı sağlamayı etkinleştirdiğimizde,\n"
 "adresinde hesabı olmayan kullanıcılar için LDAP oturum açma sırasında otomatik olarak bir Metabase hesabı oluştururuz."
 
 #: metabase_enterprise/sso/settings.clj:96
@@ -27686,9 +27746,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "JWT kullanıcı gruplarını alma anahtarı"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Bu, kullanıcılarınızın kimlik sağlayıcınızdan çıkış yapmak için gittikleri URL'dir. Hangi IdP'yi\n"
+msgstr ""
+"Bu, kullanıcılarınızın kimlik sağlayıcınızdan çıkış yapmak için gittikleri URL'dir. Hangi IdP'yi\n"
 "kullandığınıza bağlı olarak, bu genellikle `https://your-org-name.example.com` veya `https://example.com/app/my_saml_app/abc123/sso/slo` gibi görünür"
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28732,4 +28794,1541 @@ msgstr "Ülkeye göre kullanıcı edinme"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "satışa göre en iyi 10 ülke"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "Bu alan için henüz açıklama yok"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "Bu alanın Metabase de nerede görüneceği"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "Alan Tipi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "Yayınlamayın"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "Bir dönüşüm seçin"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "Bu alanda filtreleme"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "Bu alan filtrede kullanıldığında, insanların filtrelemek istedikleri değeri girmek için ne kullanmaları gerekir?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "Önbelleğe alınmış alan değerleri"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabase, kontrol paneli filtrelerinde ve sorgularda onay kutu filtrelerini etkinleştirmek için bu alanın değerlerini tarayabilir."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "Bu alanı yeniden tara"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "Şemasını görmek ve meta verileri eklemek veya düzenlemek için herhangi bir tablo seçin."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "Orijinal şema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "Henüz tablo açıklaması yok"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "Sorgulanabilir"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "Neden Gizledin?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "Teknik Veri"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "Alakasız"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "Tablo bul"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "Şemalar"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} Gizli Tablo"
+msgstr[1] "{0} Gizli Tablolar"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} Sorgulanabilir Tablo"
+msgstr[1] "{0} Sorgulanabilir Tablo"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 Tablolar"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "Hepsini göster"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "Hepsini gizle"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "Göster"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "Veri Tipi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "Ek Bilgi"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "Google Oturum Açma"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "Size {0} öneririz, aşağıdaki talimatlara bakın:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "İlk olarak, {0} Metabase yapılandırmasını kullanarak yapın. Oluşturulduktan sonra yetkilendirmek için “${ 1 }” tıklayın."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "Slack Uygulamanızı oluşturmak için aşağıdaki butona tıklayın"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "Çalışma alanına yükle"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. OAuth Jetonunu etkinleştirin ve yeni bir slack kanalı oluşturun"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "Kenar çubuğundaki \"{0}\" üzerine tıklayın, “{1}”yi kopyalayın ve buraya yapıştırın."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth ve İzinler"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "Bot Kullanıcısı OAuth Simgesi"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "vs "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "% vs "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-dönem hareketli ortalama)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-sıralı hareketli ortalama)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} hareketli ortalama)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}önceki dönem)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2} periods ago)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}önceki değer)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} ({1}{2} yukarıdaki satırlar)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}önceki {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3} ago)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "Parola Doğrulamayı Etkinleştir"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "Kullanıcı Sağlama"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "Bir kullanıcı SAML aracılığıyla oturum açtığında, hesabı yoksa kullanıcı için otomatik olarak bir Metabase hesabı oluşturun."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "SAML Kimlik Sağlayıcı SSO URL'si"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "SAML Identity Provider Verici"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "SAML Kimlik Sağlayıcı Sertifikası"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "SAML Uygulama Adı"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "SAML Anahtar Deposu Yolu"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "SAML Anahtar Deposu Şifresi"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "SAML Anahtar Deposu Takma Adı"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "Grup üyeliklerini senkronize et"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "JWT Kimlik Doğrulaması"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "Bir kullanıcı JWT ile oturum açtığında, eğer yoksa otomatik olarak bir Metabase hesabı oluşturun."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "Bir kullanıcı LDAP üzerinden oturum açtığında, eğer yoksa otomatik olarak bir Metabase hesabı oluşturun."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "Yönetici grubunu senkronize et"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "Bulut Ayarları"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "Lisans ve Faturalama"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "Renk paleti"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "Deneyimi markanıza ve ihtiyaçlarınıza göre uyarlamak için Metabase ürününün parçalarını gizleyin veya özelleştirin"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "Uygulama Adı"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "Metabase için bağlantıları ve referansları göster {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "Ayarlar menüsündeki Yardım Bağlantısı"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "Modeller ile şemanızı basitleştirin"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "Değişiklikler kaydedildi. Değişiklikleri görmek için lütfen sayfayı yenileyin"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "Bilinmeyen ayar {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "Tetikleyici"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "Tetikleyicileri izle"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "Ödenen planlarla her abonelik için filtre değerlerini özelleştirebilirsiniz."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "Kontrol paneli filtresinin varsayılan bir değeri varsa, aboneliğiniz gönderildiğinde bu değer uygulanır."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "Sorgu sonuçları burada görünecektir."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "Bu sayfayı düzenliyorsunuz"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "bilinmeyen harita"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "Varsayılan görünüm olarak kaydet"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "DB yönlendirmeyi etkinleştirmek için bir kullanıcı niteliği seçmelisiniz"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "Etkileşimli yerleştirmeyi etkinleştirin"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "Bunu yaparsanız, renkleriniz varsayılan renklerimize değişecektir. Bu işlem geri alınamaz."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "Yardım bağlantısı özel hedefi"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "Açılış sayfası"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "Örneğinizdeki Metabase belgelerine ve Metabase referanslarına bağlantıların görünürlüğünü kontrol edin. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "API anahtarlarını yönetme"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "Metabase Pro ile SAML, JWT veya LDAP üzerinden çoklu oturum açma (SSO) elde edin"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "Google Oturum Açma"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "Site adı"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "Yardım İstekleri için E-posta Adresi"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "Benzer Tablo ve Alan İsimleri"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "X-Ray Özelliklerini Etkinleştir"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "Sorgu analizini etkinleştirin"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "Ganimetinizi talep edin"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "İnsanların Koleksiyonlara veri yüklemesine izin verin"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "Uyarı: Örnek Veritabanına yapılan yüklemeler yalnızca test amaçlıdır ve kaybolabilir. Verilerinizin kalıcı olmasını istiyorsanız, bir PostgreSQL veya MySQL veritabanına yüklemelisiniz."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "Uyarılar için Web Kancaları"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "Takvimi göster"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "Soru ara"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "Yükleniyor"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "Daha fazla yükle"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "Belirli sekme kimlikleri"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "Tek tek alanları doldurun"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "Bir bağlantı dizesi yapıştırma"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "Bir veritabanı arayın…"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "hiçbir şey bulunamadı"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "Veritabanınızı görmüyor musunuz? Kendi kendine barındırma için uygun olup olmadığını görmek için {0} sayfamıza göz atın."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "Topluluk Sürücüleri"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "Daha az seçenek göster"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "Daha fazla seçenek göster"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "Beta"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Sütun sırasını düzenle"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "Bu uyarıyı yalnızca bir kez gönder"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "Bunu görüntülemek için, {0} en az bir alana bağlı olmalıdır."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + enter)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + enter)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "Verilerinizi keşfetmeye başlamaya hazır mısınız? Aşağıya ekleyin."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "Hazır değil mi? Bu adımı atlayıp, Örnek Veritabanımızı kurcalayabilirsiniz."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "Başlamadan önce ücretli özelliklerinize erişimin kilidini açın"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Coğrafi verilerle harita görselleştirmeleri oluşturun: Pin ve Grid haritaları için boylam ve enlem sütunları, Bölge haritaları için ABD bölge adları sütunu gerekir."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "{0} kapanış parantezleri bekleniyor"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "{0} açılış parantezi bekleniyor"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "İfade boş"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "Kapanış teklifleri eksik"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "Sorun Giderme"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "Kaydedildi!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "Kaydedilemedi."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "Hata:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "Bu, Araçlar, Denetim ve Sorun Giderme'ye erişim izni verir"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "Yalnızca doğrulanmış ölçümleri göster"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "Yalnızca doğrulanmış modelleri göster"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase bu değeri, çalışma zamanında sorguları değiştirmek için seçtiğiniz kullanıcı niteliğine eşler"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Örn. profesyonel kullanıcılar"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-posta bulunamadı"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "{0}tarafından bağlandı"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Google E-Tablolar bağlanıyor..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "Google E-Tablolar'a bağlandı"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "Dosyalar içe aktarılıyor..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "Yeni Ekle"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "Sorgu Doğrulayıcı"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "Alan"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "etkin değil"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "bilinmiyor"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "Bilinmeyen veri referansı"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "Yüklemeleri Yönet"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "Yüklenen Tablolar"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "SCIM aracılığıyla Kullanıcı Sağlama"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "Yeni kullanıcıları yöneticilerei bildir."
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "Etkinleştirildiğinde, yöneticiler bir kullanıcı Tek Oturum Açma'yı ilk kez kullandığında bir e-posta alır."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "Yeni bir API Anahtarı oluşturun"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "Biçimlendirilmiş"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "Biçimlendirilmemiş"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "Verileri pivotlu tutun"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "Bu soruları birleştirmek mümkün değil"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "Soruyu Uygula"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "Alfabetik"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "Akıllı"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Yer İşareti Panosu"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Filtre Ekle"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Not Defteri Sorusu Ekle"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Yerel Soru Ekle"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Düzenleme Panosunu İptal Et"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Panoyu çöp kutusuna gönder"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Gösterge Paneli Bilgilerini Değiştir"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Panoyu Düzenle"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Pano'yu Kaydet"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Kısayollar Modalini Aç/Kapat"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Not Defterini Aç/Kapat"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Soruyu Yer İşaretine Ekle"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Soru verilerini yeniden getir"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "Belirtilen sütunun medyan değerini döndürür."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "Ortanca değeri alınacak sütun veya sayı."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "Bir dizgeyi tam sayıya dönüştürür."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "Tam sayılara dönüştürülecek dize sütunu."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "ISO 8601 tarih dizesini tarihe dönüştürür."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "Tarihe dönüştürülecek dize."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Geçersiz boyut adı: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "Bilinmeyen Metrik: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "Bilinmeyen Segment: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "Bilinmeyen Alan: {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr "Tarihçe"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "Ekibinizin keşfetmesini kolaylaştırmak için modeller oluşturun."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "Son kullanıcılarınızın karmaşık ham verileriniz arasında gezinmesini sağlamak yerine, bulması, anlaması ve keşfetmesi kolay özel modeller oluşturabilirsiniz."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "Bölgenin kimliğini hangi özellik belirler?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "Hangi özellik bölgenin görünen adını belirtir?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "Tarihler ve Saatler"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Birisi bu veritabanından veri kullanarak bir soruyu görüntülediğinde, Metabase sorguları kişinin kullanıcı özniteliği tarafından belirlenen bir hedef veritabanına gönderecektir. Her hedef veritabanının aynı şeması olmalıdır."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Hedef veritabanıyla eşleşen kullanıcı niteliği"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "Açıklama oluşturma"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "Açıklama oluşturuldu. Otomatik doldurmak için tıklayın."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "Geçersiz referanslı sorular"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "Tüm Koleksiyonlar"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "Sorgu Doğrulama şu anda devre dışıdır. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "Lütfen sorgu analizini buradan etkinleştirin."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "Geçersiz referanslara sahip soru, model veya ölçüm yok"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "2 saat"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 saat"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 saat"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 saat"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 saat"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "Modellerinizin (ve bunları kullanan sorguların) daha hızlı yüklenmesini sağlamak için model kalıcılığını etkinleştirin."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "Bir şey olduğunda bildirim almak veya bu grafiği zamanlanmış bir şekilde göndermek için Yöneticinizden SMTP, Slack veya bir webhook ayarlamasını isteyin."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr ""
+"Çoğu IdP'de, bunların her birini etiketli bir giriş kutusuna koymanız gerekir.\n"
+"Öznitelik ifadeleri bölümünde \"Ad\"."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "SAML Kimlik Sağlayıcı URL'si"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "Bu geçerli bir e-posta adresi değil"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "Uyarıların ve abonelik alıcılarının görünürlüğünü kontrol edin."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "Bu geçerli bir bağlantı numarası değil"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "Özel Haritalar"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr "Raporlama Saat Dilimi"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "Varsayılan Veritabanı"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "Yerelleştirme seçenekleri"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "Yöneticilerin Sorular ve Gösterge Tabloları için herkese açık olarak görüntülenebilen bağlantılar (ve gömülebilir iframe'ler) oluşturmasına izin verin."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "Paylaşılan Panolar"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "Paylaşılan Sorular"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "Paylaşılan Eylem Formları"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "Yapay Zeka Özellikleri"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "Yapay zeka özellikleri etkin"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "Yapay zeka özelliklerinin etkinleştirilebilmesi için bir API anahtarı sağlamanız gerekir."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "EE OpenAI API Anahtarı"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "Kurumsal Yapay Zeka özellikleri için kullanılan API anahtarı"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "LDAP Kimlik Doğrulaması"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "LDAP Ana Bilgisayarı"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "LDAP Bağlantı Noktası"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "LDAP Güvenliği"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "Parantezlerinizi kontrol edin"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "Ayırt edici adı"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "Bunu ana ve giriş sayfalarında göster"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "Bağlantıları ve referansları göster"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} –Alan Ayarları"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Masa düzenlemeleri"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "Şema bul"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "Bu tabloyu yeniden tara"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "API Anahtarını Sil"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "API Anahtarını Düzenle"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "API Anahtarını Yeniden Oluştur"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "API çağrılarını programatik olarak yapmak için bir API anahtarı oluşturabilirsiniz."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "API Anahtarı Oluştur"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "API Anahtarlarını Yönetme"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "Kullanıcıların API çağrılarını doğrulamak için API anahtarlarını kullanmalarına izin verin."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "Metabase Cloud ile konuşmak..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "Bu örneğin anlık görüntüsünü alarak..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "Anlık görüntünün buluta yüklenmesi..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "Metabase Cloud'a geçiş iptal edildi."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "Metabase Cloud'a geçiş…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "Biz Metabase verilerinizin anlık görüntüsünü alırken, insanlar soruları ve panoları görüntüleyebilecek, ancak yeni bir şey düzenleyemeyecek veya oluşturamayacaklar. Yalnızca 30 dakika kadar sürer"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "Göçü iptal et"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "Göçü iptal mi edelim?"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "Taşıma işlemini iptal edeceğiz. Bundan sonra, bu örnek artık salt okunur olmayacaktır."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "SMTP"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "Yapılandırmayı Düzenle"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "SDK yerleştirmeye izin vermek istediğiniz web sitelerinin veya uygulamaların kökenlerini bir boşlukla ayırarak girin. Localhost otomatik olarak dahil edilir."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "Gönderildi!"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "Statik katıştırmayı etkinleştir"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "Bizden size küçük bir şey"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "Bu betayı denediğiniz için bir teşekkür olarak, stoklarımız tükenene kadar size biraz hediye göndermek isteriz. Bize bilgilerinizi vermek için düğmeye tıklayın, size talimatları içeren bir e-posta göndereceğiz."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "Eşyalarımı al"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "Anonim İzleme"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "Özel Ana Sayfa"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "cron sözdizimi"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "{0} adresimiz boşluklarla ayrılmış 5 alandan oluşan bir dizedir"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Site URL'si"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud, örneğinizi güncel tutar. Şu anda {0} sürümündesiniz. Müşterimiz olduğunuz için teşekkürler!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "Siliniyor…"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "Silinmedi"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "Bunu yapmak, yeni bir bağlantı kurulana kadar pano aboneliklerinizin Slack'te görünmesini engelleyebilir."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "Slack App entegrasyonunuzu silmek istediğinizden emin misiniz?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Slack Bot Kullanıcısı OAuth Simgesi"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "Teşhis Bilgisi"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "Gelişmiş Ayrıntılar (indirmek için tıklayın)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "Seriyi düzenle"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "Seri ekle"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "Bilinmeyen tür"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "Sayfayı gizle"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "Veri Ekle"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "Markdown destekleniyor"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "Bağlantılar ve biçimlendirmeyi markdown aracılığıyla ekleyin"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "Bir tane daha ekle"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "Navigasyon kenar çubuğundan gizlenen sayfa"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "Daha sonra ekranın sağ üst köşesindeki dişli simgesine tıklayarak istediğiniz zaman erişin."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "Veritabanı ekle"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "Bu, özel bir şemada modellerinizin her biri için bir tablo oluşturacaktır. ${ 0 } bunları bir zamanlamaya göre yenileyecektir. Modellerinizi kullanan sorular ve sorgular bu tabloları sorgulayacaktır."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "Gözat"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "CSV'yi yükle"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "`veritabanı` tüm sorgular için gereklidir."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[Bilinmeyen Alan]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} {1}adresinde"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} {1} seçimleri değildir"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} {1} seçimlerine eşittir"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} {1}değildir"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} {1} seçimlerine eşit değildir"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} {1} seçimleridir"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} {1} {2} seçimlerinden biridir"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "Standart dışı birleştirme koşulu. {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "Sonraki {0} hafta"
+msgstr[1] "Sonraki {0} hafta"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "Sonraki {0} dakika"
+msgstr[1] "Sonraki {0} dakika"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "Sonraki {0} çeyrek"
+msgstr[1] "Sonraki {0} çeyrek"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "Sonraki {0} yıl"
+msgstr[1] "Önümüzdeki {0} yıl"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Sonraki {0} saniye"
+msgstr[1] "Sonraki {0} saniye"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Sonraki {0} milisaniye"
+msgstr[1] "Sonraki {0} milisaniye"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "Önceki {0} gün"
+msgstr[1] "Önceki {0} gün"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "Sonraki {0} gün"
+msgstr[1] "Önümüzdeki {0} gün"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "Sonraki {0} ay"
+msgstr[1] "Sonraki {0} ay"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "Önceki {0} çeyrek"
+msgstr[1] "Önceki {0} çeyrekler"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "Sonraki {0} saat"
+msgstr[1] "Sonraki {0} saat"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "Önceki {0} yıl"
+msgstr[1] "Önceki {0} yıl"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Önceki {0} ay"
+msgstr[1] "Önceki {0} aylar"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Önceki {0} milisaniye"
+msgstr[1] "Önceki {0} milisaniye"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Önceki {0} saat"
+msgstr[1] "Önceki {0} saat"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Önceki {0} saniye"
+msgstr[1] "Önceki {0} saniye"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Önceki {0} hafta"
+msgstr[1] "Önceki {0} hafta"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Önceki {0} dakika"
+msgstr[1] "Önceki {0} dakika"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Geri doldurma varlık kimlikleri ve boşaltma varlık kimlikleri işlerini ms cinsinden çalıştırma sıklığı. Minimum değer 1000'dir ve 0 veya altındaki herhangi bir değer işi tamamen devre dışı bırakacaktır."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "Özel Raporlar Koleksiyonunu arşivleyemezsiniz."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "Kök Koleksiyonunu arşivleyemezsiniz."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "Bri metriğin creator_id'sini güncelleyemezsiniz."
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}, {1}, ve {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "Kullanıcının ana kenar çubuğundan onboarding bağlantısını reddedip reddetmediği."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "Herhangi bir sorguyu analiz edip etmediğimiz"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL Ayrıştırma devre dışı"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "{0} beklendi"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "Sorgu işlemci hatası: sürücü tarafından döndürülen sütun sayısı sonuçlarla eşleşmiyor."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "Bilinmeyen sorgu türü {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "Sorgu işlemcisi hatası: sorgudaki ve sonuçlardaki eşleşmeyen sütun sayısı."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "Alan {0} hakkında nasıl bilgi alınacağı bilinmiyor"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "Beklenen {0} sütun, ancak ilk sonuç satırında {1} sütun var."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "Güncel: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "{0} alan beklendi, {1} erişildi"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"Sorgular için alan kullanım analizini etkinleştir. Bu, sorgularda kullanılan alanları analiz edecek ve bunları\n"
+"    uygulama veritabanında depolayacaktır.\n"
+"\n"
+"    Henüz bu verileri kullanan kullanıcıya yönelik bir özelliğimiz olmadığından varsayılan olarak kapatın."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "değer, sıfırdan büyük geçerli bir tamsayı olmalıdır."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "değer, geçerli bir alan semantik türü (anahtar sözcük veya dize) olmalıdır."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "parametre :id ve :type anahtarları içeren bir harita olmalıdır"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "değeri negatif bir tamsayı olmalıdır"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "değeri, :field id-or-name ve bir seçenekler haritası içeren bir dizi olmalıdır"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "değer, geçerli bir alan anlamsal türü olmalıdır."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "değer sıfırdan büyük bir sayı olmalıdır."
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "parameter_mapping :parameter_id ve :target anahtarları içeren bir harita olmalıdır"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "değer geçerli bir tamsayı olmalıdır."
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "değer, geçerli bir alan ilişkisi türü (anahtar kelime veya dize) olmalıdır."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "değer, geçerli bir alan ilişkisi türü olmalıdır."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "değer sıfıra eşit ya da sıfırdan büyük geçerli bir tam sayı olmalıdır."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "Geçersiz e-posta adresi: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "{0} alanı için yeni abonelikler oluşturamazsınız. İzin verilen alanlar: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "Sorgu Referans Doğrulaması"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "Tablo Verilerini Düzenleme"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "Google Drive bağlantısı bulunamadı, lütfen tekrar deneyin."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "Google Drive bağlantısı bulunamadı."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "Google Drive klasörü senkronize edilirken sorun oluştu, lütfen tekrar deneyin."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "Google Drive klasörü senkronize edilirken zaman aşımı oluştu, lütfen tekrar deneyin."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO etkinleştirilmedi"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO yapılandırılmadı"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr ""
+"JWT kullanıcı sağlamayı etkinleştirdiğimizde,\n"
+"adresinde hesabı olmayan kullanıcılar için JWT oturum açma sırasında otomatik olarak bir Metabase hesabı oluştururuz."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "JWT tabanlı oturum açma sayfası için URL. JWT SSO'yu yalnızca gömülü analitik SDK ile kullanıyorsanız isteğe bağlıdır."
 

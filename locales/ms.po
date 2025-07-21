@@ -395,7 +395,8 @@ msgstr "Tutup"
 #, javascript-format
 msgid "and {0} other"
 msgid_plural "and {0} others"
-msgstr[0] "dan {0} yang lain\n"
+msgstr[0] ""
+"dan {0} yang lain\n"
 "Jamak: dan {0} yang lain"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx:29
@@ -426,7 +427,8 @@ msgstr "{0} pilihan"
 #, javascript-format
 msgid "and {0} more filter"
 msgid_plural "and {0} more filters"
-msgstr[0] "dan {0} penapis lagi\n"
+msgstr[0] ""
+"dan {0} penapis lagi\n"
 "Jamak: dan {0} penapis lagi"
 
 #: frontend/src/metabase/notifications/PulsesListSidebar.jsx:311
@@ -503,7 +505,8 @@ msgstr "Metrik ini akan dihapuskan daripada mana-mana papan pemuka atau denyutan
 #: frontend/src/metabase/questions/containers/ArchiveQuestionModal.jsx:59
 msgid "It will also be removed from the filter that uses it to populate values."
 msgid_plural "It will also be removed from the {0} filters that use it to populate values."
-msgstr[0] "Ia juga akan dikeluarkan dari penapis yang menggunakannya untuk mengisi nilai.\n"
+msgstr[0] ""
+"Ia juga akan dikeluarkan dari penapis yang menggunakannya untuk mengisi nilai.\n"
 "Jamak: Ia juga akan dikeluarkan dari penapis {0} yang menggunakannya untuk mengisi nilai."
 
 #: frontend/src/metabase/actions/containers/ActionCreator/InlineDataReference.tsx:41
@@ -1701,20 +1704,23 @@ msgstr "Skema"
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:110
 msgid "Error deleting table"
 msgid_plural "Error deleting tables"
-msgstr[0] "Ralat: Ralat memadam jadual\n"
+msgstr[0] ""
+"Ralat: Ralat memadam jadual\n"
 "Jamak: Ralat memadam jadual"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:118
 msgid "1 table deleted"
 msgid_plural "{0} tables deleted"
-msgstr[0] "1 jadual dipadamkan\n"
+msgstr[0] ""
+"1 jadual dipadamkan\n"
 "Jamak: {0} jadual dipadamkan"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:133
 #, javascript-format
 msgid "Selected {0} table"
 msgid_plural "Selected {0} tables"
-msgstr[0] "Pilih {0} jadual\n"
+msgstr[0] ""
+"Pilih {0} jadual\n"
 "Jamak: Pilih {0} jadual"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:50
@@ -2525,7 +2531,8 @@ msgstr "Satu model"
 #, javascript-format
 msgid "{0} item has been permanently deleted."
 msgid_plural "{0} items have been permanently deleted."
-msgstr[0] "Item {0} telah dipadamkan secara kekal.\n"
+msgstr[0] ""
+"Item {0} telah dipadamkan secara kekal.\n"
 "Jamak: {0} item telah dipadamkan secara kekal."
 
 #: frontend/src/metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner.tsx:66
@@ -2566,7 +2573,8 @@ msgstr "Ini tidak boleh dibatalkan"
 #: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx:121
 msgid "Delete item permanently?"
 msgid_plural "Delete {0} items permanently?"
-msgstr[0] "Padam item secara kekal?\n"
+msgstr[0] ""
+"Padam item secara kekal?\n"
 "Jamak: Padam {0} item secara kekal?"
 
 #: frontend/src/metabase/collections/components/CollectionCopyEntityModal.tsx:23
@@ -3953,20 +3961,23 @@ msgstr "Jam 24 jam"
 #, javascript-format
 msgid "{0} hour"
 msgid_plural "{0} hours"
-msgstr[0] "{0} jam\n"
+msgstr[0] ""
+"{0} jam\n"
 "Jamak: {0} jam"
 
 #: frontend/src/metabase/lib/formatting/time.ts:26
 msgid "{0} minute"
 msgid_plural "{0} minutes"
-msgstr[0] "{0} minit \n"
+msgstr[0] ""
+"{0} minit \n"
 "Jamak: {0} minit"
 
 #: frontend/src/metabase/lib/formatting/time.ts:30
 #, javascript-format
 msgid "{0} second"
 msgid_plural "{0} seconds"
-msgstr[0] "{0} saat \n"
+msgstr[0] ""
+"{0} saat \n"
 "Jamak: {0} saat"
 
 #: frontend/src/metabase/common/components/AccordionList/AccordionListCell.tsx:314
@@ -4704,7 +4715,8 @@ msgid "This filter is set to disabled in an embedded dashboard."
 msgstr "Penapis ini ditetapkan kepada dinyahaktifkan dalam papan pemuka tersemat."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:277
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "dashboard, then return to this page."
 msgstr "Untuk sentiasa memerlukan nilai, lawati tetapan penyertaan terlebih dahulu, jadikan penapis ini boleh disunting atau dikunci, terbitkan semula papan pemuka, kemudian kembali ke halaman ini."
@@ -4717,7 +4729,8 @@ msgstr "Nota"
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:283
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:71
-msgid "making it locked, will require updating the\n"
+msgid ""
+"making it locked, will require updating the\n"
 "embedding code before proceeding, otherwise the embed will\n"
 "break."
 msgstr "menjadikannya terkunci, akan memerlukan kemas kini kod penyematan sebelum meneruskan, jika tidak, penyematan akan rosak."
@@ -4815,7 +4828,8 @@ msgstr "Tetapkan semula penapis kepada keadaan lalai"
 #, javascript-format
 msgid "{0} selection"
 msgid_plural "{0} selections"
-msgstr[0] "Pemilihan {0}\n"
+msgstr[0] ""
+"Pemilihan {0}\n"
 "Jamak: Pemilihan {0}"
 
 #: frontend/src/metabase/parameters/utils/mapping-options.ts:60
@@ -4889,17 +4903,20 @@ msgid "Turn this into a model"
 msgstr "Ubah ini menjadi model"
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:43
-msgid "Let you update column descriptions and customize metadata to create\n"
+msgid ""
+"Let you update column descriptions and customize metadata to create\n"
 "great starting points for exploration."
 msgstr "Membolehkan anda mengemas kini penerangan lajur dan menyesuaikan metadata untuk mencipta titik permulaan yang hebat untuk penerokaan."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:47
-msgid "Show up higher in search results and get highlighted when other\n"
+msgid ""
+"Show up higher in search results and get highlighted when other\n"
 "users start new questions to promote reuse."
 msgstr "Muncul lebih tinggi dalam hasil carian dan disorot apabila pengguna lain memulakan soalan baru untuk menggalakkan penggunaan semula."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.tsx:51
-msgid "Live in collections to keep them separate from messy database\n"
+msgid ""
+"Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Tinggal dalam koleksi untuk menyimpannya berasingan daripada skema pangkalan data yang bersepah."
 
@@ -4937,7 +4954,8 @@ msgstr "Muat turun"
 #, javascript-format
 msgid "{0} active filter"
 msgid_plural "{0} active filters"
-msgstr[0] "{0} penapis aktif\n"
+msgstr[0] ""
+"{0} penapis aktif\n"
 "Jamak: {0} penapis aktif"
 
 #: frontend/src/metabase/query_builder/components/ResponsiveParametersList.tsx:67
@@ -5129,7 +5147,8 @@ msgstr "Tarikh penciptaan"
 #, javascript-format
 msgid "{0} result"
 msgid_plural "{0} results"
-msgstr[0] "{0} hasil\n"
+msgstr[0] ""
+"{0} hasil\n"
 "Jamak: {0} hasil"
 
 #: frontend/src/metabase/setup/components/CloudMigrationHelp/CloudMigrationHelp.tsx:20
@@ -6487,11 +6506,13 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Nama lajur dengan nilai tarikh atau tarikhmasa anda."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1038
-msgid "Optional. The default is `\"ISO\"`.\n"
+msgid ""
+"Optional. The default is `\"ISO\"`.\n"
 "- ISO: Week 1 starts on the Monday before the first Thursday of January.\n"
 "- US: Week 1 starts on Jan 1. All other weeks start on Sunday.\n"
 "- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings."
-msgstr "Pilihan. Lalai ialah `\"ISO\"`.\n"
+msgstr ""
+"Pilihan. Lalai ialah `\"ISO\"`.\n"
 "- ISO: Minggu 1 bermula pada hari Isnin sebelum Khamis pertama bulan Januari.\n"
 "- AS: Minggu 1 bermula pada 1 Jan. Semua minggu lain bermula pada hari Ahad.\n"
 "- Contoh: Minggu 1 bermula pada 1 Jan. Semua minggu lain bermula pada hari yang ditentukan dalam tetapan penyetempatan Metabase anda."
@@ -6585,9 +6606,11 @@ msgid "Returns the current timestamp (in milliseconds). Currently {0} in {1}."
 msgstr "Mengembalikan cap waktu semasa (dalam milisaat). Kini {0} di {1}."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1232
-msgid "Convert timezone of a date or timestamp column.\n"
+msgid ""
+"Convert timezone of a date or timestamp column.\n"
 "We support tz database time zone names."
-msgstr "Tukar zon waktu lajur tarikh atau cap masa.\n"
+msgstr ""
+"Tukar zon waktu lajur tarikh atau cap masa.\n"
 "Kami menyokong nama zon waktu pangkalan data tz."
 
 #: frontend/src/metabase-lib/v1/expressions/config.ts:1242
@@ -7058,7 +7081,8 @@ msgstr "Data"
 #, javascript-format
 msgid "{0} distinct value"
 msgid_plural "{0} distinct values"
-msgstr[0] "{0} nilai berbeza\n"
+msgstr[0] ""
+"{0} nilai berbeza\n"
 "Jamak: {0} nilai berbeza"
 
 #: frontend/src/metabase/common/components/MetadataInfo/ColumnFingerprintInfo/GlobalFingerprint.jsx:58
@@ -8431,7 +8455,8 @@ msgstr[0] "{0} item telah dialihkan ke tong sampah."
 #: frontend/src/metabase/collections/components/CollectionBulkActions/CollectionBulkActions.tsx:112
 msgid "{0} item selected"
 msgid_plural "{0} items selected"
-msgstr[0] "{0} item dipilih\n"
+msgstr[0] ""
+"{0} item dipilih\n"
 "Jamak: {0} item dipilih"
 
 #: enterprise/frontend/src/metabase-enterprise/content_translation/components/ContentTranslationConfiguration/ContentTranslationConfiguration.tsx:84
@@ -8639,7 +8664,8 @@ msgstr "Ini mungkin memberi kesan kepada model dan soalan yang menggunakan jadua
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:41
 msgid "Also send all models and questions based on this table to the trash"
 msgid_plural "Also send all models and questions based on these tables to the trash"
-msgstr[0] "Juga hantar semua model dan soalan yang berdasarkan jadual ini ke dalam tong sampah\n"
+msgstr[0] ""
+"Juga hantar semua model dan soalan yang berdasarkan jadual ini ke dalam tong sampah\n"
 "Jamak: Juga hantar semua model dan soalan yang berdasarkan jadual-jadual ini ke dalam tong sampah"
 
 #: enterprise/frontend/src/metabase-enterprise/sharing/components/MutableParametersSection.tsx:71
@@ -8740,28 +8766,32 @@ msgstr "Ada yang tidak kena semasa melaksanakan tindakan"
 #, javascript-format
 msgid "Delete {0} saved question"
 msgid_plural "Delete {0} saved questions"
-msgstr[0] "Padamkan {0} soalan yang disimpan\n"
+msgstr[0] ""
+"Padamkan {0} soalan yang disimpan\n"
 "Jamak: Padamkan {0} soalan yang disimpan"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx:52
 #, javascript-format
 msgid "Delete {0} model"
 msgid_plural "Delete {0} models"
-msgstr[0] "Padamkan {0} model\n"
+msgstr[0] ""
+"Padamkan {0} model\n"
 "Jamak: Padamkan {0} model"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx:64
 #, javascript-format
 msgid "Delete {0} metric"
 msgid_plural "Delete {0} metrics"
-msgstr[0] "Padamkan {0} metrik\n"
+msgstr[0] ""
+"Padamkan {0} metrik\n"
 "Jamak: Padamkan {0} metrik"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx:76
 #, javascript-format
 msgid "Delete {0} segment"
 msgid_plural "Delete {0} segments"
-msgstr[0] "Padamkan {0} segmen\n"
+msgstr[0] ""
+"Padamkan {0} segmen\n"
 "Jamak: Padamkan {0} segmen"
 
 #: frontend/src/metabase/admin/permissions/components/ApplicationPermissionsHelp/ApplicationPermissionsHelp.tsx:11
@@ -9522,7 +9552,8 @@ msgstr[0] "emel"
 #, javascript-format
 msgid "{0} Slack channel"
 msgid_plural "{0} Slack channels"
-msgstr[0] "0} saluran Slack\n"
+msgstr[0] ""
+"0} saluran Slack\n"
 "Jamak: {0} saluran Slack"
 
 #: frontend/src/metabase/lib/pulse.ts:324
@@ -9544,20 +9575,23 @@ msgstr[0] "{0} huruf kecil"
 #: frontend/src/metabase/lib/settings.ts:35
 msgid "{0} upper case letter"
 msgid_plural "{0} upper case letters"
-msgstr[0] "{0} huruf besar\n"
+msgstr[0] ""
+"{0} huruf besar\n"
 "Jamak: {0} huruf besar"
 
 #: frontend/src/metabase/lib/settings.ts:44
 #, javascript-format
 msgid "{0} number"
 msgid_plural "{0} numbers"
-msgstr[0] "{0} nombor\n"
+msgstr[0] ""
+"{0} nombor\n"
 "Jamak: {0} nombor"
 
 #: frontend/src/metabase/lib/settings.ts:49
 msgid "{0} special character"
 msgid_plural "{0} special characters"
-msgstr[0] "{0} karakter khas\n"
+msgstr[0] ""
+"{0} karakter khas\n"
 "Jamak: {0} karakter khas"
 
 #: frontend/src/metabase/lib/settings.ts:256
@@ -10243,7 +10277,8 @@ msgstr "Lihat semua keizinan koleksi"
 #, javascript-format
 msgid "{0} table"
 msgid_plural "{0} tables"
-msgstr[0] "{0} jadual\n"
+msgstr[0] ""
+"{0} jadual\n"
 "Jamak: {0} jadual"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:51
@@ -10260,7 +10295,8 @@ msgstr "ditolak akses kepada"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 #, javascript-format
-msgid "{0} will only be able to use the query\n"
+msgid ""
+"{0} will only be able to use the query\n"
 "builder for {1}."
 msgstr "{0} hanya akan dapat menggunakan pembina query untuk {1}."
 
@@ -11511,7 +11547,8 @@ msgstr "Kebenaran untuk "
 #, javascript-format
 msgid "{0} person"
 msgid_plural "{0} people"
-msgstr[0] "{0} orang\n"
+msgstr[0] ""
+"{0} orang\n"
 "Jamak: {0} orang"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:429
@@ -11690,7 +11727,8 @@ msgid "Get started with Metabase Cloud"
 msgstr "Mulakan dengan Cloud Metabase "
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationStart.tsx:42
-msgid "Just a heads up: your Metabase will be read-only for up to 30\n"
+msgid ""
+"Just a heads up: your Metabase will be read-only for up to 30\n"
 "minutes while we prep it for migration."
 msgstr "Hanya pemberitahuan: Metabase anda akan berada dalam mod baca-sahaja sehingga 30 minit semasa kami menyiapkannya untuk migrasi."
 
@@ -12050,9 +12088,11 @@ msgid "Connect to Slack"
 msgstr "Sambung ke Slack"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:50
-msgid "If your team uses Slack, you can send dashboard subscriptions and\n"
+msgid ""
+"If your team uses Slack, you can send dashboard subscriptions and\n"
 "alerts there"
-msgstr "Jika pasukan anda menggunakan Slack, anda boleh menghantar langganan papan pemuka dan\n"
+msgstr ""
+"Jika pasukan anda menggunakan Slack, anda boleh menghantar langganan papan pemuka dan\n"
 "makluman ke sana"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/NotificationSettingsPage.tsx:59
@@ -12780,7 +12820,8 @@ msgstr "Mod malam"
 #, javascript-format
 msgid "The {0} parameter requires a default value but none was provided."
 msgid_plural "The {0} parameters require default values but none were provided."
-msgstr[0] "Parameter {0} memerlukan nilai lalai tetapi tiada yang diberikan.\n"
+msgstr[0] ""
+"Parameter {0} memerlukan nilai lalai tetapi tiada yang diberikan.\n"
 "Jamak: Parameter {0} memerlukan nilai lalai tetapi tiada yang diberikan."
 
 #: frontend/src/metabase/embedding/components/PublicLinkPopover/PublicLinkPopover.tsx:74
@@ -13446,7 +13487,8 @@ msgstr "Tarikh tidak sah"
 #: metabase/xrays/automagic_dashboards/core.clj:210
 msgid "{0} metric"
 msgid_plural "{0} metrics"
-msgstr[0] "metrik {0}\n"
+msgstr[0] ""
+"metrik {0}\n"
 "Jamak: metrik {0}"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription.tsx:53
@@ -13987,7 +14029,8 @@ msgstr "Era Mesozoik"
 #, javascript-format
 msgid "{0} event"
 msgid_plural "{0} events"
-msgstr[0] "{0} acara\n"
+msgstr[0] ""
+"{0} acara\n"
 "Jamak: {0} acara"
 
 #: frontend/src/metabase/timelines/collections/components/TimelineCard/TimelineCard.tsx:73
@@ -14121,7 +14164,8 @@ msgstr "Julat warna"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleEditor.tsx:130
 msgid "When a cell in this column…"
 msgid_plural "When any cell in these columns…"
-msgstr[0] "Apabila sel dalam lajur ini…\n"
+msgstr[0] ""
+"Apabila sel dalam lajur ini…\n"
 "Jamak: Apabila mana-mana sel dalam lajur ini…"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleEditor.tsx:157
@@ -14196,7 +14240,8 @@ msgid "Conditional formatting"
 msgstr "Pemformatan bersyarat"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting/RuleListing.tsx:25
-msgid "You can add rules to make the cells in this table change color if\n"
+msgid ""
+"You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
 msgstr "Anda boleh menambah peraturan untuk menukar warna sel dalam jadual ini jika mereka memenuhi syarat tertentu."
 
@@ -15056,7 +15101,8 @@ msgstr "Tiada hasil. Kami mempunyai {0} data {1} untuk dipaparkan dan itu tidak 
 #: frontend/src/metabase/visualizations/lib/errors.js:18
 msgid "point"
 msgid_plural "points"
-msgstr[0] "titik\n"
+msgstr[0] ""
+"titik\n"
 "Jamak: titik-titik"
 
 #: frontend/src/metabase/visualizations/lib/errors.js:30
@@ -15366,7 +15412,8 @@ msgid "Synchronize group membership with your SSO"
 msgstr "Selaraskan keahlian kumpulan dengan SSO anda"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx:238
-msgid "To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
+msgid ""
+"To enable this, you'll need to create mappings to tell Metabase which group(s) your users should\n"
 "be added to based on the SSO group they're in."
 msgstr "Untuk mengaktifkan ini, anda perlu membuat pemetaan untuk memberitahu Metabase kumpulan mana yang pengguna anda perlu ditambahkan berdasarkan kumpulan SSO mereka."
 
@@ -15431,9 +15478,11 @@ msgid "Refresh cache automatically"
 msgstr "Muat semula cache secara automatik"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/PreemptiveCachingSwitch.tsx:20
-msgid "As soon as cached results expire, run and cache the query again to update the results and refresh\n"
+msgid ""
+"As soon as cached results expire, run and cache the query again to update the results and refresh\n"
 "the cache."
-msgstr "Sebaik sahaja keputusan cache tamat tempoh, jalankan dan cache pertanyaan sekali lagi untuk mengemas kini keputusan dan muat semula\n"
+msgstr ""
+"Sebaik sahaja keputusan cache tamat tempoh, jalankan dan cache pertanyaan sekali lagi untuk mengemas kini keputusan dan muat semula\n"
 "cache."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:51
@@ -15760,7 +15809,8 @@ msgstr "Membeli lesen untuk membuka fungsi lanjutan? Sila masukkan di bawah."
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:46
 #, javascript-format
-msgid "Your license isn’t valid anymore. If you have a new license, please\n"
+msgid ""
+"Your license isn’t valid anymore. If you have a new license, please\n"
 "enter it below, otherwise please contact {0}"
 msgstr "Lesen anda tidak sah lagi. Jika anda mempunyai lesen baru, sila masukkan di bawah, jika tidak, sila hubungi {0}"
 
@@ -16180,7 +16230,8 @@ msgid "Logo"
 msgstr "Logo"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx:39
-msgid "For best results, use an SVG file with a transparent\n"
+msgid ""
+"For best results, use an SVG file with a transparent\n"
 "background."
 msgstr "Untuk hasil terbaik, gunakan fail SVG dengan latar belakang lutsinar."
 
@@ -16524,7 +16575,8 @@ msgstr "Gagal mengalih keluar pengguna daripada kumpulan"
 #, javascript-format
 msgid "{0} member"
 msgid_plural "{0} members"
-msgstr[0] "{0} ahli\n"
+msgstr[0] ""
+"{0} ahli\n"
 "Jamak: {0} ahli"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:131
@@ -16533,15 +16585,19 @@ msgstr "Tambah ahli"
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:156
 #, javascript-format
-msgid "All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
+msgid ""
+"All users belong to the {0} group and can't be removed from it. Setting permissions for this group is a great way to\n"
 "make sure you know what new Metabase users will be able to see."
-msgstr "Semua pengguna tergolong dalam kumpulan {0} dan tidak boleh dialih keluar daripadanya. Tetapan akses untuk kumpulan ini ialah cara yang bagus untuk\n"
+msgstr ""
+"Semua pengguna tergolong dalam kumpulan {0} dan tidak boleh dialih keluar daripadanya. Tetapan akses untuk kumpulan ini ialah cara yang bagus untuk\n"
 "memastikan anda tahu apa yang pengguna Metabase baharu akan dapat lihat."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:169
-msgid "This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
+msgid ""
+"This is a special group whose members can see everything in the Metabase instance, and who can access and make changes to the\n"
 "settings in the Admin Panel, including changing permissions! So, add people to this group with care."
-msgstr "Ini ialah kumpulan khas yang ahlinya boleh melihat segala-galanya dalam Metabase, dan boleh mengakses dan membuat perubahan pada\n"
+msgstr ""
+"Ini ialah kumpulan khas yang ahlinya boleh melihat segala-galanya dalam Metabase, dan boleh mengakses dan membuat perubahan pada\n"
 "tetapan dalam Panel Pentadbir, termasuk menukar kebenaran akses! Jadi, tambahkan orang ke kumpulan ini dengan berhati-hati."
 
 #: frontend/src/metabase/admin/people/components/GroupDetail.tsx:173
@@ -16562,7 +16618,8 @@ msgstr "Sebuah kumpulan hanya sebaik ahlinya."
 #, javascript-format
 msgid "{0} other group"
 msgid_plural "{0} other groups"
-msgstr[0] "{0} kumpulan lain\n"
+msgstr[0] ""
+"{0} kumpulan lain\n"
 "Plural: {0} kumpulan-kumpulan lain"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx:54
@@ -16595,9 +16652,11 @@ msgid "move the API keys to another group"
 msgstr "pindahkan kunci API ke kumpulan lain"
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:106
-msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
+msgid ""
+"Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Adakah anda pasti? Semua ahli kumpulan ini akan kehilangan sebarang tetapan kebenaran akses yang mereka miliki berdasarkan kumpulan ini.\n"
+msgstr ""
+"Adakah anda pasti? Semua ahli kumpulan ini akan kehilangan sebarang tetapan kebenaran akses yang mereka miliki berdasarkan kumpulan ini.\n"
 "Ini tidak boleh dikembalikan semula."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx:111
@@ -16654,7 +16713,8 @@ msgstr "Log Masuk Terakhir"
 #, javascript-format
 msgid "{0} person found"
 msgid_plural "{0} people found"
-msgstr[0] "{0} orang ditemui\n"
+msgstr[0] ""
+"{0} orang ditemui\n"
 "Jamak: {0} orang ditemui"
 
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx:246
@@ -17828,7 +17888,8 @@ msgstr "Tiada jenis khas"
 #, javascript-format
 msgid "{0} column"
 msgid_plural "{0} columns"
-msgstr[0] "Lajur {0}\n"
+msgstr[0] ""
+"Lajur {0}\n"
 "Jamak: lajur {0}"
 
 #: frontend/src/metabase/common/components/MoveQuestionsIntoDashboardsModal/MoveQuestionsIntoDashboardsInfoModal.tsx:17
@@ -18100,7 +18161,8 @@ msgstr "Cth. Butiran untuk {{Column Name}}"
 #, javascript-format
 msgid "{0} updates {1} filter"
 msgid_plural "{0} updates {1} filters"
-msgstr[0] "{0} mengemaskini {1} penapis\n"
+msgstr[0] ""
+"{0} mengemaskini {1} penapis\n"
 "Jamak: {0} mengemaskini {1} penapis"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/TableClickBehaviorView/Column.tsx:72
@@ -18936,9 +18998,11 @@ msgstr "Sematkan {0}"
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:35
 #, javascript-format
-msgid "Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
+msgid ""
+"Use {0} to add a publicly-visible iframe embed to your web page or blog\n"
 "post."
-msgstr "Gunakan {0} untuk menambah benam iframe yang boleh dilihat secara terbuka pada halaman web atau blog\n"
+msgstr ""
+"Gunakan {0} untuk menambah benam iframe yang boleh dilihat secara terbuka pada halaman web atau blog\n"
 "siaran anda."
 
 #: frontend/src/metabase/public/components/EmbedModal/SelectEmbedTypePane/PublicEmbedCard.tsx:37
@@ -18996,7 +19060,8 @@ msgstr "Carta lain"
 #, javascript-format
 msgid "{0} model"
 msgid_plural "{0} models"
-msgstr[0] "{0} model\n"
+msgstr[0] ""
+"{0} model\n"
 "Jamak: {0} model"
 
 #: frontend/src/metabase/query_builder/components/dataref/DatabaseSchemasPane.tsx:81
@@ -19140,7 +19205,8 @@ msgid "This filter is set to disabled in an embedded question."
 msgstr "Penapis ini ditetapkan untuk dinyahaktifkan dalam soalan yang disematkan."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParamParts/DefaultRequiredValueControl.tsx:65
-msgid "To always require a value, first visit embedding settings,\n"
+msgid ""
+"To always require a value, first visit embedding settings,\n"
 "make this filter editable or locked, re-publish the\n"
 "question, then return to this page."
 msgstr "Untuk sentiasa memerlukan nilai, lawati tetapan penyematan terlebih dahulu, jadikan penapis ini boleh disunting atau dikunci, terbitkan semula soalan tersebut, kemudian kembali ke halaman ini."
@@ -19282,14 +19348,16 @@ msgstr "Purata"
 #: frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts:22
 msgid "record"
 msgid_plural "records"
-msgstr[0] "rekod\n"
+msgstr[0] ""
+"rekod\n"
 "Jamak: rekod-rekod"
 
 #: frontend/src/metabase/querying/drills/utils/underlying-records-drill.ts:24
 #, javascript-format
 msgid "See this {0}{1}"
 msgid_plural "See these {0}"
-msgstr[0] "Lihat {0}{1}\n"
+msgstr[0] ""
+"Lihat {0}{1}\n"
 "Jamak: Lihat {0}"
 
 #: frontend/src/metabase/querying/notebook/components/BreakoutStep/BreakoutStep.tsx:74
@@ -20365,7 +20433,8 @@ msgstr[0] "Fungsi {0} mengharapkan sekurang-kurangnya {1} hujah"
 #, javascript-format
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
-msgstr[0] "Fungsi {0} menjangkakan {1} argumen\n"
+msgstr[0] ""
+"Fungsi {0} menjangkakan {1} argumen\n"
 "Jamak: Fungsi {0} menjangkakan {1} argumen"
 
 #: frontend/src/metabase-lib/v1/expressions/diagnostics/syntax/check-bad-tokens.ts:14
@@ -21659,7 +21728,8 @@ msgstr "berdasarkan"
 msgctxt "{0} is the number of fields"
 msgid "{0} field"
 msgid_plural "{0} fields"
-msgstr[0] "medan {0}\n"
+msgstr[0] ""
+"medan {0}\n"
 "Jamak: medan{0}"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/components/ToggleFullList.tsx:28
@@ -21857,7 +21927,8 @@ msgstr "Tidak dapat menyahsulitkan app db dengan MB_ENCRYPTION_SECRET_KEY"
 
 #: metabase/app_db/liquibase.clj:242
 msgid "Database has migration lock; cannot run migrations."
-msgstr "\n"
+msgstr ""
+"\n"
 "Pangkalan data mempunyai kunci migrasi; tidak boleh menjalankan migrasi."
 
 #: metabase/app_db/liquibase.clj:244
@@ -22047,13 +22118,15 @@ msgstr "Tiada konfigurasi cache untuk dibatalkan."
 #: metabase/cache/api.clj:179
 msgid "Cleared a cached result."
 msgid_plural "Cleared {0} cached results."
-msgstr[0] "Telah membersihkan hasil cache.\n"
+msgstr[0] ""
+"Telah membersihkan hasil cache.\n"
 "Jamak: Telah membersihkan {0} hasil cache."
 
 #: metabase/cache/api.clj:182
 msgid "Invalidated cache configuration."
 msgid_plural "Invalidated {0} cache configurations."
-msgstr[0] "Konfigurasi cache yang tidak sah.\n"
+msgstr[0] ""
+"Konfigurasi cache yang tidak sah.\n"
 "Jamak: Konfigurasi cache {0} tidak sah."
 
 #: metabase/cache/api.clj:178
@@ -22318,9 +22391,11 @@ msgid "The address of the SMTP server that handles your emails."
 msgstr "Alamat pelayan SMTP yang mengendalikan e-mel anda."
 
 #: metabase/channel/settings.clj:283
-msgid "The maximum number of recipients, summed across emails, that can be sent per second.\n"
+msgid ""
+"The maximum number of recipients, summed across emails, that can be sent per second.\n"
 "                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients."
-msgstr "Bilangan maksimum penerima, dijumlahkan merentasi e-mel, yang boleh dihantar sesaat.\n"
+msgstr ""
+"Bilangan maksimum penerima, dijumlahkan merentasi e-mel, yang boleh dihantar sesaat.\n"
 "                Ambil perhatian bahawa e-mel akhir yang dihantar sebelum mencapai had boleh melebihinya, jika ia mempunyai berbilang penerima."
 
 #: metabase/channel/settings.clj:12
@@ -23053,7 +23128,8 @@ msgstr "Tidak dapat membuat rekod baru."
 #: metabase/driver/postgres/actions.clj:40
 msgid "exists"
 msgid_plural "exist"
-msgstr[0] "wujud\n"
+msgstr[0] ""
+"wujud\n"
 "Jamak: wujud"
 
 #: metabase/driver/h2/actions.clj:71 metabase/driver/mysql/actions.clj:57
@@ -23775,7 +23851,8 @@ msgstr "Bin setiap 10 darjah"
 #: metabase/lib/binning.cljc:128
 msgid "{0} bin"
 msgid_plural "{0} bins"
-msgstr[0] "{0} tong\n"
+msgstr[0] ""
+"{0} tong\n"
 "Jamak: {0} tong"
 
 #: metabase/lib/binning.cljc:114
@@ -24205,7 +24282,8 @@ msgid "Cumulative count of rows"
 msgstr "Kiraan terkumpul baris"
 
 #: metabase/lib/schema/aggregation.cljc:191
-msgid "Additive sum of all the values of a column.\n"
+msgid ""
+"Additive sum of all the values of a column.\n"
 "e.x. total revenue over time."
 msgstr "umlah tambah semua nilai dalam lajur. cth. jumlah hasil dari masa ke masa."
 
@@ -24254,7 +24332,8 @@ msgid "Sum of all the values of a column."
 msgstr "Jumlah semua nilai dalam lajur."
 
 #: metabase/lib/schema/aggregation.cljc:198
-msgid "Additive count of the number of rows.\n"
+msgid ""
+"Additive count of the number of rows.\n"
 "e.x. total number of sales over time."
 msgstr "Kiraan tambahan bilangan baris. cth. jumlah jualan dari masa ke masa."
 
@@ -24715,7 +24794,8 @@ msgstr[0] "milisaat"
 #: metabase/lib/temporal_bucket.cljc:33
 msgid "Default period"
 msgid_plural "Default periods"
-msgstr[0] "Tempoh lalai\n"
+msgstr[0] ""
+"Tempoh lalai\n"
 "Jamak: Tempoh-tempoh lalai"
 
 #: metabase/lib/temporal_bucket.cljc:119
@@ -24794,9 +24874,11 @@ msgid "Sync issue troubleshooting"
 msgstr "Penyelesaian masalah penyegerakan"
 
 #: metabase/logger/api.clj:210
-msgid "The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
+msgid ""
+"The format of the provided logging configuration is incorrect. Please follow the following JSON structure:\n"
 "{0}"
-msgstr "Format konfigurasi pengelogan yang disediakan adalah salah. Sila ikut struktur JSON berikut:\n"
+msgstr ""
+"Format konfigurasi pengelogan yang disediakan adalah salah. Sila ikut struktur JSON berikut:\n"
 "{0}"
 
 #: metabase/login_history/models/login_history.clj:79
@@ -25587,7 +25669,8 @@ msgstr "Bilangan maksimum baris untuk dikembalikan khusus pada pertanyaan jenis 
 
 #: metabase/query_processor/setup.clj:26
 msgid "Invalid query: missing or invalid query type (:lib/type or :type)"
-msgstr "Query tidak sah: jenis query (:lib/type atau\n"
+msgstr ""
+"Query tidak sah: jenis query (:lib/type atau\n"
 ":jenis) hilang atau tidak sah"
 
 #: metabase/query_processor/setup.clj:102
@@ -25665,7 +25748,8 @@ msgstr "tetapkan penapis auto guna kepada {0}"
 #: metabase/revisions/impl/dashboard.clj:158
 msgid "added a tab"
 msgid_plural "added {0} tabs"
-msgstr[0] "menambah tab\n"
+msgstr[0] ""
+"menambah tab\n"
 "Jamak: menambah {0} tab"
 
 #: metabase/revisions/impl/dashboard.clj:145
@@ -25683,7 +25767,8 @@ msgstr "menambah beberapa siri ke kad {0}"
 #: metabase/revisions/impl/dashboard.clj:143
 msgid "removed a card"
 msgid_plural "removed {0} cards"
-msgstr[0] "mengeluarkan kad\n"
+msgstr[0] ""
+"mengeluarkan kad\n"
 "Jamak: mengeluarkan {0} kad"
 
 #: metabase/revisions/impl/dashboard.clj:144
@@ -25693,7 +25778,8 @@ msgstr "menyusun semula kad-kad"
 #: metabase/revisions/impl/dashboard.clj:162
 msgid "removed a tab"
 msgid_plural "removed {0} tabs"
-msgstr[0] "menyingkirkan tab\n"
+msgstr[0] ""
+"menyingkirkan tab\n"
 "Jamak: menyingkirkan {0} tab"
 
 #: metabase/revisions/impl/dashboard.clj:126
@@ -25711,7 +25797,8 @@ msgstr "mengubah suai tab"
 #: metabase/revisions/impl/dashboard.clj:140
 msgid "added a card"
 msgid_plural "added {0} cards"
-msgstr[0] "menambah kad\n"
+msgstr[0] ""
+"menambah kad\n"
 "Jamak: menambah {0} kad"
 
 #: metabase/revisions/impl/dashboard.clj:127
@@ -25889,9 +25976,11 @@ msgid "Content Management or Official Collections"
 msgstr "Pengurusan Kandungan atau Koleksi Rasmi"
 
 #: metabase/search/settings.clj:33
-msgid "When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
+msgid ""
+"When using the appdb engine against postgresql, override the language used for stemming in to_tsvector.\n"
 "  Value must be a valid configured langauge option in your database such as ''english'' or ''simple''"
-msgstr "Apabila menggunakan enjin appdb terhadap postgresql, gantikan bahasa yang digunakan untuk berpunca dalam to_tsvector.\n"
+msgstr ""
+"Apabila menggunakan enjin appdb terhadap postgresql, gantikan bahasa yang digunakan untuk berpunca dalam to_tsvector.\n"
 "  Nilai mestilah pilihan bahasa yang dikonfigurasikan yang sah dalam pangkalan data anda seperti ''english'' atau ''simple''"
 
 #: metabase/search/settings.clj:24
@@ -26800,7 +26889,8 @@ msgstr "\"{0}\""
 #: metabase/xrays/automagic_dashboards/core.clj:224
 msgid "{0} field"
 msgid_plural "{0} fields"
-msgstr[0] "medan {0}\n"
+msgstr[0] ""
+"medan {0}\n"
 "Jamak: medan{0}"
 
 #: metabase/xrays/automagic_dashboards/core.clj:196
@@ -26966,9 +27056,11 @@ msgid "Whether or not to display x-ray suggestions on the homepage. They will al
 msgstr "Sama ada untuk memaparkan cadangan x-ray pada halaman utama. Ia juga akan disembunyikan jika ada papan pemuka yang disematkan. Pentadbir mungkin menyembunyikan ini untuk mengarahkan pengguna ke kandungan yang lebih baik daripada data mentah"
 
 #: metabase/xrays/transforms/core.clj:186
-msgid "Resulting transforms do not conform to expectations.\n"
+msgid ""
+"Resulting transforms do not conform to expectations.\n"
 "Expected: {0}"
-msgstr "Transformasi yang dihasilkan tidak mematuhi jangkaan.\n"
+msgstr ""
+"Transformasi yang dihasilkan tidak mematuhi jangkaan.\n"
 "Dijangkakan: {0}"
 
 #: metabase_enterprise/advanced_config/api/logs.clj:40
@@ -27170,9 +27262,11 @@ msgid "Harbormaster returned an error."
 msgstr "Harbormaster mengembalikan ralat."
 
 #: metabase_enterprise/gsheets/api.clj:252
-msgid "Unable to setup drive folder sync.\n"
+msgid ""
+"Unable to setup drive folder sync.\n"
 "Please check that the folder is shared with the proper service account email and sharing permissions."
-msgstr "Tidak dapat menyediakan penyegerakan folder pemacu.\n"
+msgstr ""
+"Tidak dapat menyediakan penyegerakan folder pemacu.\n"
 "Sila semak sama ada folder itu dikongsi dengan e-mel akaun perkhidmatan yang betul dan kebenaran perkongsian."
 
 #: metabase_enterprise/gsheets/api.clj:233
@@ -27507,7 +27601,8 @@ msgid "SAML attribute for the user''s email address"
 msgstr "Atribut SAML untuk alamat e-mel pengguna"
 
 #: metabase_enterprise/sso/settings.clj:26
-msgid "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
+msgid ""
+"When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who\n"
 "don''t have one."
 msgstr "Apabila kami mengaktifkan peruntukan pengguna SAML, kami membuat akaun Metabase secara automatik pada log masuk SAML untuk pengguna yang tidak mempunyai akaun"
 
@@ -27572,7 +27667,8 @@ msgid "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will 
 msgstr "Penapis carian keahlian kumpulan. Tempat letak '{dn}' dan '{uid}' akan digantikan dengan Nama Terhormat dan UID pengguna, masing-masing."
 
 #: metabase_enterprise/sso/settings.clj:53
-msgid "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`"
 msgstr "Ini adalah URL di mana pengguna anda pergi untuk log masuk ke pembekal identiti anda. Bergantung kepada IdP yang anda gunakan, biasanya URL ini kelihatan seperti https://your-org-name.example.com atau https://example.com/app/my_saml_app/abc123/sso/saml"
 
@@ -27581,9 +27677,11 @@ msgid "JSON containing SAML to {0} group mappings."
 msgstr "JSON yang mengandungi pemetaan kumpulan SAML ke {0}."
 
 #: metabase_enterprise/sso/settings.clj:70
-msgid "Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
+msgid ""
+"Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,\n"
 "open it in a text editor, then copy and paste the certificate''s contents here."
-msgstr "Sijil yang dikodkan untuk pembekal identiti. Bergantung pada IdP anda, anda mungkin perlu memuat turun ini,\n"
+msgstr ""
+"Sijil yang dikodkan untuk pembekal identiti. Bergantung pada IdP anda, anda mungkin perlu memuat turun ini,\n"
 "bukanya dalam editor teks, kemudian salin dan tampal kandungan sijil di sini."
 
 #: metabase_enterprise/sso/settings.clj:110
@@ -27591,9 +27689,11 @@ msgid "Alias for the key that {0} should use for signing SAML requests"
 msgstr "Alias untuk kunci yang {0} harus gunakan untuk menandatangani permintaan SAML"
 
 #: metabase_enterprise/sso/settings.clj:82
-msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
+msgid ""
+"This is a unique identifier for the IdP. Often referred to as Entity ID or simply ''Issuer''. Depending\n"
 "on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`"
-msgstr "Ini ialah pengecam unik untuk IdP. Selalunya dirujuk sebagai ID Entiti atau hanya ''Pengeluar''. Bergantung\n"
+msgstr ""
+"Ini ialah pengecam unik untuk IdP. Selalunya dirujuk sebagai ID Entiti atau hanya ''Pengeluar''. Bergantung\n"
 "pada IdP anda, ini biasanya kelihatan seperti `http://www.example.com/141xkex604w0Q5PN724v`"
 
 #: metabase_enterprise/sso/settings.clj:256
@@ -27605,7 +27705,8 @@ msgid "Invalid identity provider certificate. Certificate should be a base-64 en
 msgstr "Sijil penyedia identiti tidak sah. Sijil harus berupa rentetan yang dikodkan base-64."
 
 #: metabase_enterprise/sso/settings.clj:46
-msgid "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
+msgid ""
+"When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who\n"
 "don''t have one."
 msgstr "Apabila kami mengaktifkan penyediaan pengguna LDAP, kami secara automatik mencipta akaun Metabase pada log masuk LDAP untuk pengguna yang tidak memilikinya."
 
@@ -27618,9 +27719,11 @@ msgid "Key to retrieve the JWT user''s groups"
 msgstr "Kunci untuk mendapatkan semula kumpulan pengguna JWT"
 
 #: metabase_enterprise/sso/settings.clj:197
-msgid "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
+msgid ""
+"This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re\n"
 "using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`"
-msgstr "Ini ialah URL tempat pengguna anda pergi untuk log keluar daripada pembekal identiti anda. Bergantung pada IdP yang anda sedang\n"
+msgstr ""
+"Ini ialah URL tempat pengguna anda pergi untuk log keluar daripada pembekal identiti anda. Bergantung pada IdP yang anda sedang\n"
 "gunakan, ini biasanya kelihatan seperti `https://your-org-name.example.com` atau `https://example.com/app/my_saml_app/abc123/sso/slo`"
 
 #: metabase_enterprise/sso/settings.clj:164
@@ -28664,4 +28767,1517 @@ msgstr "Pengambilan pengguna mengikut negara"
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr "10 negara teratas mengikut jualan"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:124
+msgid "No description for this field yet"
+msgstr "Tiada penerangan untuk medan ini lagi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:145
+msgid "Where this field will appear throughout Metabase"
+msgstr "Di mana medan ini akan muncul di seluruh Metabase"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:167
+msgid "Field Type"
+msgstr "Jenis Medan"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:231
+msgid "Don't cast"
+msgstr "Jangan tuang"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:248
+msgid "Select a conversion"
+msgstr "Pilih penukaran"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:277
+msgid "Filtering on this field"
+msgstr "Tapisan pada medan ini"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:278
+msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
+msgstr "Apabila medan ini digunakan dalam tapisan, apakah yang harus digunakan oleh pengguna untuk memasukkan nilai yang ingin mereka tapis?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:322
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:91
+msgid "Cached field values"
+msgstr "Nilai medan dicache"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:323
+msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
+msgstr "Metabase boleh mengimbas nilai untuk medan ini bagi membolehkan tapisan kotak semak dalam papan pemuka dan soalan."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/FieldGeneralSettings/FieldGeneralSettings.tsx:328
+msgid "Re-scan this field"
+msgstr "Mengimbas semula medan ini"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
+msgid "Select any table to see its schema and add or edit metadata."
+msgstr "Pilih mana-mana jadual untuk melihat skemanya dan menambah atau menyunting metadata."
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:39
+msgid "Original schema"
+msgstr "Skema asal"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:180
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:189
+msgid "No table description yet"
+msgstr "Tiada penerangan jadual lagi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:242
+msgid "Queryable"
+msgstr "Boleh diquery"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:257
+msgid "Why Hide?"
+msgstr "Mengapa Sembunyi?"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:262
+msgid "Technical Data"
+msgstr "Data Teknikal"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTable/MetadataTable.tsx:268
+msgid "Irrelevant/Cruft"
+msgstr "Tidak Relevan"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:182
+msgid "Find a table"
+msgstr "Cari jadual"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:200
+msgid "Schemas"
+msgstr "Skema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:223
+#, javascript-format
+msgid "{0} Hidden Table"
+msgid_plural "{0} Hidden Tables"
+msgstr[0] "{0} Jadual Tesembunyi"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:228
+msgid "{0} Queryable Table"
+msgid_plural "{0} Queryable Tables"
+msgstr[0] "{0} Jadual Boleh Diquery"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:254
+msgid "0 Tables"
+msgstr "0 Jadual"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Unhide all"
+msgstr "Tidak sembunyikan semua"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:353
+msgid "Hide all"
+msgstr "Sembunyikan semua"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableList/MetadataTableList.tsx:355
+msgid "Unhide"
+msgstr "Tidak sembunyikan"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:35
+msgid "Data Type"
+msgstr "Jenis Data"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSchema/MetadataTableSchema.tsx:36
+msgid "Additional Info"
+msgstr "Maklumat Tambahan"
+
+#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:28
+msgid "Google Sign-In"
+msgstr "Daftar Masuk Google"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:55
+#, javascript-format
+msgid "We recommend you {0}, see the instructions below:"
+msgstr "Kami mengesyorkan anda {0}, lihat arahan di bawah:"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:103
+#, javascript-format
+msgid "First, {0} using the Metabase configuration. Once created, click “${ 1 }” to authorize it."
+msgstr "Pertama, {0} menggunakan konfigurasi Metabase. Setelah selesai, klik “${1}” untuk membenarkannya."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:104
+msgid "click the button below to create your Slack App"
+msgstr "klik butang di bawah untuk membuat Aplikasi Slack anda"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:106
+msgid "Install to workspace"
+msgstr "Pasang ke ruang kerja"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:121
+msgid "2. Activate the OAuth Token and create a new slack channel"
+msgstr "2. Aktifkan Token OAuth dan cipta saluran Slack baru"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:124
+#, javascript-format
+msgid "Click on \"{0}\" in the sidebar, copy the “{1}” and paste it here."
+msgstr "Klik pada \"{0}\" di bar sisi, salin \"{1}\" dan tampalkannya di sini."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:125
+msgid "OAuth and Permissions"
+msgstr "OAuth dan Kebenaran"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackSetup/SlackSetup.tsx:127
+msgid "Bot User OAuth Token"
+msgstr "Token OAuth Pengguna Bot"
+
+#: frontend/src/metabase-lib/moving-average.ts:87
+#: frontend/src/metabase-lib/offset.ts:32
+msgid "vs "
+msgstr "lawan "
+
+#: frontend/src/metabase-lib/moving-average.ts:115
+#: frontend/src/metabase-lib/offset.ts:52
+msgid "% vs "
+msgstr "% lawan "
+
+#: frontend/src/metabase-lib/moving-average.ts:144
+#: frontend/src/metabase-lib/moving-average.ts:156
+#, javascript-format
+msgid "{0} ({1}{2}-period moving average)"
+msgstr "{0} ({1}{2}-purata bergerak tempoh)"
+
+#: frontend/src/metabase-lib/moving-average.ts:150
+#, javascript-format
+msgid "{0} ({1}{2}-row moving average)"
+msgstr "{0} ({1}{2}-baris purata bergerak)"
+
+#: frontend/src/metabase-lib/moving-average.ts:162
+#, javascript-format
+msgid "{0} ({1}{2}-{3} moving average)"
+msgstr "{0} ({1}{2}-{3} purata bergerak)"
+
+#: frontend/src/metabase-lib/offset.ts:83
+#: frontend/src/metabase-lib/offset.ts:99
+#, javascript-format
+msgid "{0} ({1}previous period)"
+msgstr "{0} ({1}tempoh sebelumnya)"
+
+#: frontend/src/metabase-lib/offset.ts:84
+#: frontend/src/metabase-lib/offset.ts:100
+#, javascript-format
+msgid "{0} ({1}{2} periods ago)"
+msgstr "{0} ({1}{2} tempoh yang lalu)"
+
+#: frontend/src/metabase-lib/offset.ts:91
+msgid "{0} ({1}previous value)"
+msgstr "{0} ({1}nilai sebelumnya)"
+
+#: frontend/src/metabase-lib/offset.ts:92
+#, javascript-format
+msgid "{0} ({1}{2} rows above)"
+msgstr "{0} ({1}{2} baris di atas)"
+
+#: frontend/src/metabase-lib/offset.ts:110
+#, javascript-format
+msgid "{0} ({1}previous {2})"
+msgstr "{0} ({1}sebelum {2})"
+
+#: frontend/src/metabase-lib/offset.ts:111
+msgid "{0} ({1}{2} {3} ago)"
+msgstr "{0} ({1}{2} {3} yang lalu)"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:59
+msgid "Enable Password Authentication"
+msgstr "Aktifkan Pengesahan Kata Laluan"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:185
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:291
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:13
+msgid "User Provisioning"
+msgstr "Penyediaan Pengguna"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:94
+msgid "When a user logs in via SAML, create a Metabase account for them automatically if they don't have one."
+msgstr "Apabila pengguna log masuk melalui SAML, cipta akaun Metabase untuk mereka secara automatik jika mereka tidak mempunyai akaun."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
+msgid "SAML Identity Provider SSO URL"
+msgstr "URL SSO Penyedia Identiti SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:186
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:106
+msgid "SAML Identity Provider Issuer"
+msgstr "Pengeluar Penyedia Identiti SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:177
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:113
+msgid "SAML Identity Provider Certificate"
+msgstr "Sijil Penyedia Identiti SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:182
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:119
+msgid "SAML Application Name"
+msgstr "Nama Aplikasi SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:124
+msgid "SAML Keystore Path"
+msgstr "Laluan Keystore SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:201
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:129
+msgid "SAML Keystore Password"
+msgstr "Kata Laluan Keystore SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
+msgid "SAML Keystore Alias"
+msgstr "Alias Keystore SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:155
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:223
+msgid "Synchronize group memberships"
+msgstr "Menyelaraskan keahlian kumpulan"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
+msgid "JWT Authentication"
+msgstr "Pengesahan JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+msgid "When a user logs in via JWT, create a Metabase account for them automatically if they don't have one."
+msgstr "Apabila pengguna log masuk melalui JWT, cipta akaun Metabase untuk mereka secara automatik jika mereka tidak mempunyai akaun."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:293
+msgid "When a user logs in via LDAP, create a Metabase account for them automatically if they don't have one."
+msgstr "Apabila pengguna log masuk melalui LDAP, cipta akaun Metabase untuk mereka secara automatik jika mereka tidak mempunyai satu."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:304
+msgid "Sync Administrator group"
+msgstr "Selaraskan kumpulan Pentadbir"
+
+#: enterprise/frontend/src/metabase-enterprise/hosting/index.js:21
+msgid "Cloud Settings"
+msgstr "Tetapan Cloud"
+
+#: enterprise/frontend/src/metabase-enterprise/license/index.js:13
+msgid "License and Billing"
+msgstr "Lesen dan pengagihan"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:89
+msgid "Color Palette"
+msgstr "Palet Warna"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:150
+msgid "Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs"
+msgstr "Sembunyikan atau sesuaikan bahagian produk Metabase untuk menyesuaikan pengalaman dengan jenama dan keperluan anda"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:156
+msgid "Application Name"
+msgstr "Nama Aplikasi"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:168
+#, javascript-format
+msgid "Show links and references to Metabase {0}"
+msgstr "Tunjukkan pautan dan rujukan kepada Metabase {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/index.js:176
+msgid "Help Link in the Settings menu"
+msgstr "Pautan Bantuandalam menu Tetapan"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:70
+msgid "Simplify your schema with Models"
+msgstr "Permudahkan skema anda dengan Model"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:139
+msgid "Changes saved. Please refresh the page to see them"
+msgstr "Perubahan disimpan. Sila muat semula halaman untuk melihatnya"
+
+#: frontend/src/metabase/admin/settings/app/components/SettingsEditor/SettingsEditor.jsx:160
+#, javascript-format
+msgid "Unknown setting {0}"
+msgstr "Tetapan tidak diketahui {0}"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
+msgid "Triggers"
+msgstr "Pencetus"
+
+#: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
+msgid "View triggers"
+msgstr "Lihat pencetus"
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:32
+msgid "You can customize filter values for each subscription with paid plans."
+msgstr "Anda boleh menyesuaikan nilai penapis untuk setiap langganan dengan pelan berbayar."
+
+#: frontend/src/metabase/notifications/AddEditSidebar/DefaultParametersSection.jsx:37
+msgid "If a dashboard filter has a default value, it’ll be applied when your subscription is sent."
+msgstr "Jika penapis papan pemuka mempunyai nilai lalai, ia akan digunakan apabila langganan anda dihantar."
+
+#: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:125
+msgid "Query results will appear here."
+msgstr "Hasil pertanyaan akan dipaparkan di sini."
+
+#: frontend/src/metabase/reference/components/EditHeader.jsx:21
+msgid "You are editing this page"
+msgstr "Anda sedang menyunting halaman ini"
+
+#: frontend/src/metabase/visualizations/components/ChoroplethMap.jsx:198
+msgid "unknown map"
+msgstr "peta tidak diketahui"
+
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:257
+msgid "Save as default view"
+msgstr "Simpan sebagai paparan lalai"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/utils.ts:49
+msgid "You must choose a user attribute to enable DB routing"
+msgstr "Anda mesti memilih atribut pengguna untuk mendayakan penghalaan DB"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettings.tsx:85
+msgid "Enable Interactive embedding"
+msgstr "Dayakan pembenaman Interaktif"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorResetModal/ColorResetModal.tsx:34
+msgid "If you do this, your colors will change to our default colors. This action can’t be undone."
+msgstr "Sekiranya anda melakukan ini, warna anda akan berubah kepada warna asal kami. Tindakan ini tidak boleh dikembalikan."
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/HelpLinkSettings/HelpLinkSettings.tsx:84
+msgid "Help link custom destination"
+msgstr "Pautan bantuan khusus destinasi"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LandingPageWidget/LandingPageWidget.tsx:50
+msgid "Landing Page"
+msgstr "Halaman Pendaratan"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleDescription.tsx:7
+#, javascript-format
+msgid "Control the visibility of links to Metabase documentation and Metabase references in your instance. {0}"
+msgstr "Kawal keterlihatan pautan ke dokumentasi Metabase dan rujukan Metabase dalam contoh anda. {0}"
+
+#: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:240
+msgid "Manage API keys"
+msgstr "Uruskunci API"
+
+#: frontend/src/metabase/admin/people/components/NudgeToPro.tsx:18
+msgid "Get single-sign on (SSO) via SAML, JWT, or LDAP with Metabase Pro"
+msgstr "Dapatkan single-sign on (SSO) melalui SAML, JWT, atau LDAP dengan Metabase Pro"
+
+#: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:17
+msgid "Google Sign-in"
+msgstr "Log Masuk Google"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:25
+msgid "Site Name"
+msgstr "Nama Laman"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:39
+msgid "Email Address for Help Requests"
+msgstr "Alamat e-mel untuk permintaan bantuan"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:47
+msgid "Friendly Table and Field Names"
+msgstr "Nama jadual dan medan yang mesra"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:60
+msgid "Enable X-Ray Features"
+msgstr "Dayakan Ciri X-Ray"
+
+#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx:67
+msgid "Enable query analysis"
+msgstr "Dayakan analisis pertanyaan"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagButton.tsx:38
+msgid "Claim your swag"
+msgstr "Tuntut swag anda"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:166
+msgid "Allow people to upload data to Collections"
+msgstr "Benarkan orang memuat naik data ke Koleksi"
+
+#: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx:292
+msgid "Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database."
+msgstr "Amaran: muat naik ke Pangkalan Data Contoh hanya untuk ujian dan mungkin hilang. Jika anda mahu data anda kekal, anda perlu memuat naik ke pangkalan data PostgreSQL atau MySQL."
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:50
+msgid "Webhooks for Alerts"
+msgstr "Webhooks untuk Makluman"
+
+#: frontend/src/metabase/core/components/DateInput/DateInput.tsx:131
+msgid "Show calendar"
+msgstr "Paparkan kalendar"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:106
+msgid "Search for a question"
+msgstr "Cari soalan"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Loading"
+msgstr "Memuatkan"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.tsx:139
+msgid "Load more"
+msgstr "Muat lebih banyak"
+
+#: frontend/src/metabase/dashboard/components/DashboardInfoSidebar/DashboardEntityIdCard/DashboardEntityIdCard.tsx:41
+msgid "Specific tab IDs"
+msgstr "ID tab tertentu"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Fill out individual fields"
+msgstr "Isi setiap medan"
+
+#: frontend/src/metabase/databases/components/DatabaseConnectionSectionField/DatabaseConnectionSectionField.tsx:25
+msgid "Paste a connection string"
+msgstr "Tampal rentetan sambungan"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:143
+msgid "Search for a database…"
+msgstr "Cari pangkalan data…"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:250
+msgid "Didn’t find anything"
+msgstr "Tidak jumpa apa-apa"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:252
+#, javascript-format
+msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
+msgstr "Tidak nampak pangkalan data anda? Semak halaman {0} kami untuk melihat jika ia tersedia untuk self-hosting."
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:254
+msgid "Community Drivers"
+msgstr "Pemacu Komuniti"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show fewer options"
+msgstr "Tunjukkan pilihan yang lebih sedikit"
+
+#: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:281
+msgid "Show more options"
+msgstr "Tunjukkan lebih banyak pilihan"
+
+#: frontend/src/metabase/home/components/EmbedHomepage/SDKContent.tsx:28
+msgid "Beta"
+msgstr "Beta"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:93
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:96
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:90
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderSidesheet.tsx:97
+msgid "Edit column order"
+msgstr "Edit susunan lajur"
+
+#: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:348
+msgid "Only send this alert once"
+msgstr "Hantar makluman ini sekali sahaja"
+
+#: frontend/src/metabase/parameters/components/ParameterLinkedFilters/use-filter-fields.ts:45
+#, javascript-format
+msgid "To view this, {0} must be connected to at least one field."
+msgstr "Untuk melihat ini, {0} mesti disambungkan kepada sekurang-kurangnya satu medan."
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(⌘ + enter)"
+msgstr "(⌘ + masukkan)"
+
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/NativeQueryEditorSidebar/NativeQueryEditorSidebar.tsx:82
+msgid "(Ctrl + enter)"
+msgstr "(Ctrl + enter)"
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:77
+msgid "Are you ready to start exploring your data? Add it below."
+msgstr "Adakah anda bersedia untuk mula meneroka data anda? Tambahnya di bawah."
+
+#: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:78
+msgid "Not ready? Skip and play around with our Sample Database."
+msgstr "Tidak bersedia? Langkau dan main-main dengan Pangkalan Data Contoh kami."
+
+#: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenStep.tsx:56
+msgid "Unlock access to your paid features before starting"
+msgstr "Buka akses kepada ciri berbayar anda sebelum memulakan"
+
+#: frontend/src/metabase/visualizations/components/EmptyVizState/utils.ts:72
+msgid "Build map visualizations with geospatial data: Pin and Grid maps require longitude and latitude columns, Region maps require a US region names column."
+msgstr "Bina visualisasi peta dengan data geospatial: Peta Pin dan Grid memerlukan lajur longitud dan latitud, Peta wilayah memerlukan lajur nama wilayah AS."
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:13
+#, javascript-format
+msgid "Expecting {0} closing parentheses"
+msgstr "Mengharapkan {0} kurungan penutup"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/check-matching-parenthesis.ts:19
+#, javascript-format
+msgid "Expecting {0} opening parentheses"
+msgstr "Mengharapkan {0} kurungan pembuka"
+
+#: frontend/src/metabase-lib/v1/expressions/diagnostics/diagnostics.ts:97
+msgid "Expression is empty"
+msgstr "Ungkapan kosong"
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/lexifier.ts:103
+msgid "Missing closing quotes"
+msgstr "Kekurangan tanda titik penutup"
+
+#: frontend/src/metabase/admin/app/reducers.ts:56
+#: frontend/src/metabase/admin/routes.jsx:121
+msgid "Troubleshooting"
+msgstr "Penyelesaian Masalah"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:10
+msgid "Saved!"
+msgstr "Disimpan!"
+
+#: frontend/src/metabase/components/ButtonWithStatus/ButtonWithStatus.jsx:11
+msgid "Saving failed."
+msgstr "Simpanan gagal."
+
+#: frontend/src/metabase/components/SaveStatus/SaveStatus.jsx:43
+msgid "Error:"
+msgstr "Ralat:"
+
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:138
+msgid "This grants access to Tools, Audit, and Troubleshooting"
+msgstr "Ini memberi akses kepada Alat, Audit, dan Penyelesaian Masalah"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/metrics.tsx:57
+msgid "Show verified metrics only"
+msgstr "Tunjukkan metrik yang disahkan sahaja"
+
+#: enterprise/frontend/src/metabase-enterprise/content_verification/models.tsx:56
+msgid "Show verified models only"
+msgstr "Tunjukkan hanya model yang disahkan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:24
+msgid "Metabase maps this value to your chosen user attribute to swap queries at runtime"
+msgstr "Metabase memetakan nilai ini kepada atribut pengguna pilihan anda untuk menukar pertanyaan pada masa jalan"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/index.tsx:25
+msgid "E.g. pro-users"
+msgstr "Cth pro-pengguna"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:57
+msgid "Email not found"
+msgstr "E-mel tidak ditemui"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveConnectionModal.tsx:308
+#, javascript-format
+msgid "Connected by {0}"
+msgstr "Disambungkan oleh {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:38
+msgid "Google Sheets connecting..."
+msgstr "Helaian Google menyambung..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx:47
+msgid "Connected to Google Sheets"
+msgstr "Disambungkan ke Helaian Google"
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:33
+msgid "Importing files..."
+msgstr "Mengimport fail..."
+
+#: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveSidebarMenuItem.tsx:58
+msgid "Add New"
+msgstr "Tambah Baru"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/index.tsx:22
+msgid "Query Validator"
+msgstr "Pengesah Pertanyaan"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:8
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:13
+msgid "Field"
+msgstr "Medan"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:10
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:20
+msgid "is inactive"
+msgstr "tidak aktif"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:15
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:25
+msgid "is unknown"
+msgstr "tidak diketahui"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/utils.ts:53
+msgid "Unknown data reference"
+msgstr "Rujukan data tidak diketahui"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:140
+msgid "Manage Uploads"
+msgstr "Urus Muat Naik"
+
+#: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:142
+msgid "Uploaded Tables"
+msgstr "Jadual yang Dimuat Naik"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:38
+msgid "User Provisioning via SCIM"
+msgstr "Peruntukan Pengguna melalui SCIM"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:48
+msgid "Notify admins of new SSO users"
+msgstr "Beritahu pentadbir mengenai pengguna SSO baru"
+
+#: enterprise/frontend/src/metabase-enterprise/user_provisioning/index.ts:49
+msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
+msgstr "Apabila diaktifkan, pentadbir akan menerima emel kali pertama pengguna menggunakan Log Masuk Tunggal."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx:42
+msgid "Create a new API Key"
+msgstr "Cipta Kunci API baharu"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:106
+msgid "Formatted"
+msgstr "Diformat"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:107
+msgid "Unformatted"
+msgstr "Tidak diformat"
+
+#: frontend/src/metabase/common/components/ExportSettingsWidget/ExportSettingsWidget.tsx:123
+msgid "Keep data pivoted"
+msgstr "Pastikan data dipangsi"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:146
+msgid "Unable to combine these questions"
+msgstr "Tidak dapat menggabungkan soalan-soalan ini"
+
+#: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx:170
+msgid "Applying Question"
+msgstr "Memohon Soalan"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:65
+msgid "Alphabetical"
+msgstr "Abjad"
+
+#: frontend/src/metabase/metadata/components/FieldOrderSidesheet/FieldOrderPicker.tsx:67
+msgid "Smart"
+msgstr "Bijak"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:5
+msgid "Bookmark Dashboard"
+msgstr "Papan Pemuka Penanda Halaman"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:11
+msgid "Add Filter"
+msgstr "Tambah Penapis"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:17
+msgid "Add Notebook Question"
+msgstr "Tambah Soalan Notebook"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:23
+msgid "Add Native Question"
+msgstr "Tambah Soalan Asli"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:29
+msgid "Cancel Edit Dashboard"
+msgstr "Batal Edit Papan Pemuka"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:35
+msgid "Send tashboard to trash"
+msgstr "Hantar papan tulis ke tong sampah"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:41
+msgid "Toggle Dashboard Info"
+msgstr "Togol Maklumat Papan Pemuka"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:47
+msgid "Edit Dashboard"
+msgstr "Edit Papan Pemuka"
+
+#: frontend/src/metabase/palette/shortcuts/dashboard.ts:53
+msgid "Save Dashboard"
+msgstr "Simpan Papan Pemuka"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts:56
+msgid "Toggle Shortcuts Modal"
+msgstr "Togol Modal Pintasan"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:5
+msgid "Toggle Notebook"
+msgstr "Togol Buku Nota"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:20
+msgid "Bookmark Question"
+msgstr "Soalan Penanda Buku"
+
+#: frontend/src/metabase/palette/shortcuts/question.ts:30
+msgid "Refetch question data"
+msgstr "Ambil semula data soalan"
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:266
+msgid "Returns the median value of the specified column."
+msgstr "Mengembalikan nilai median bagi lajur yang ditentukan."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:270
+msgid "The column or number to get the median of."
+msgstr "Lajur atau nombor untuk mendapatkan median."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:312
+msgid "Converts a string to an integer."
+msgstr "Menukar rentetan kepada integer."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:316
+msgid "The string column to convert to integers."
+msgstr "Lajur rentetan untuk ditukar kepada integer."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:338
+msgid "Converts an ISO 8601 date string to a date."
+msgstr "Menukar rentetan tarikh ISO 8601 kepada tarikh."
+
+#: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:342
+msgid "The string to convert to a date."
+msgstr "Rentetan untuk ditukar kepada tarikh."
+
+#: frontend/src/metabase-lib/v1/expressions/pratt/compiler.ts:134
+#, javascript-format
+msgid "Invalid dimension name: {0}"
+msgstr "Nama dimensi tidak sah: {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:39
+msgid "Unknown Metric: {0}"
+msgstr "Metrik Tidak Diketahui : {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:46
+#, javascript-format
+msgid "Unknown Segment: {0}"
+msgstr "Segmen Tidak Diketahui : {0}"
+
+#: frontend/src/metabase-lib/v1/expressions/resolver.ts:54
+msgid "Unknown Field: {0}"
+msgstr "Medan Tidak Diketahui : {0}"
+
+#: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:42
+msgid " History"
+msgstr "Sejarah"
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:29
+msgid "Create models to make it easier for your team to explore."
+msgstr "Buat model untuk memudahkan pasukan anda meneroka."
+
+#: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:44
+msgid "Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore."
+msgstr "Daripada membiarkan pengguna akhir anda menelusuri data asli yang kompleks, anda boleh mencipta model tersuai yang mudah dicari, difahami dan diterokai."
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+msgid "Which property specifies the region’s identifier?"
+msgstr "Ciri manakah menentukan pengenal pasti kawasan?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:418
+msgid "Which property specifies the region’s display name?"
+msgstr "Ciri manakan menentukan nama paparan kawasan?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.jsx:12
+msgid "Dates and Times"
+msgstr "Tarikh dan Masa"
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:97
+msgid "When someone views a question using data from this database, Metabase will send the queries to a destination database set by the person's user attribute. Each destination database must have an identical schema."
+msgstr "Apabila seseorang melihat soalan menggunakan data daripada pangkalan data ini, Metabase akan menghantar pertanyaan ke pangkalan data destinasi yang ditetapkan oleh atribut pengguna orang itu. Setiap pangkalan data destinasi mesti mempunyai skema yang sama."
+
+#: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx:135
+msgid "User attribute to match destination database"
+msgstr "Atribut pengguna untuk memadankan pangkalan data destinasi"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:56
+msgid "Generating descriptions"
+msgstr "Menjana deskripsi"
+
+#: enterprise/frontend/src/metabase-enterprise/llm_autodescription/LLMSuggestQuestionInfo.tsx:57
+msgid "Description generated. Click to auto-fill."
+msgstr "Huraian dihasilkan. Klik untuk isi automatik."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:132
+msgid "Questions with invalid references"
+msgstr "Soalan dengan rujukan tidak sah"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:149
+msgid "All Collections"
+msgstr "Semua Koleksi"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:191
+#, javascript-format
+msgid "Query Validation is currently disabled. {0}"
+msgstr "Pengesahan Pertanyaan dilumpuhkan pada masa ini. {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:199
+msgid "Please enable query analysis here."
+msgstr "Sila dayakan analisis pertanyaan di sini."
+
+#: enterprise/frontend/src/metabase-enterprise/troubleshooting/components/QueryValidator.tsx:212
+msgid "No questions, models, or metrics with invalid references"
+msgstr "Tiada soalan, model atau metrik dengan rujukan yang tidak sah"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:29
+msgid "2 hours"
+msgstr "2 jam"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:33
+msgid "3 hours"
+msgstr "3 jam"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:37
+msgid "6 hours"
+msgstr "6 jam"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:41
+msgid "12 hours"
+msgstr "12 jam"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:45
+msgid "24 hours"
+msgstr "24 jam"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:119
+msgid "Enable model persistence to make your models (and the queries that use them) load faster."
+msgstr "Aktifkan kekekalan model untuk membuat model anda (dan query yang menggunakannya) dimuat lebih cepat."
+
+#: frontend/src/metabase/notifications/modals/ChannelSetupModal.tsx:51
+msgid "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook."
+msgstr "Untuk mendapatkan pemberitahuan apabila sesuatu berlaku atau menghantar carta ini mengikut jadual, minta Pentadbir anda menyediakan SMTP, Slack atau webhook."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:137
+msgid ""
+"In most IdPs, you'll need to put each of these in an input box labeled\n"
+"\"Name\" in the attribute statements section."
+msgstr "Dalam kebanyakan IdP, anda perlu meletakkan setiap atribut ini dalam kotak input yang dilabel \"Nama\" di bahagian kenyataan atribut."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:171
+msgid "SAML Identity Provider URL"
+msgstr "URL Penyedia Identiti SAML"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:100
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:109
+msgid "That's not a valid email address"
+msgstr "Itu bukan alamat emel yang sah"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:114
+msgid "Control the visibility of alerts and subscriptions recipients."
+msgstr "Kawal keterlihatan amaran dan penerima langganan."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:144
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:49
+msgid "That's not a valid port number"
+msgstr "Itu bukan nombor port yang sah"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:221
+msgid "Custom Maps"
+msgstr "Peta tersuai"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:249
+msgid "Report Timezone"
+msgstr " Zon Waktu Laporan"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:252
+msgid "Database Default"
+msgstr "Tetapan Asas Pangkalan Data"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:281
+msgid "Localization options"
+msgstr "Pilihan penempatan"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:303
+msgid "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards."
+msgstr "Membolehkan pentadbir mencipta pautan yang boleh dilihat secara umum (dan iframe yang boleh ditanam) untuk Soalan dan Papan Pemuka."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:308
+msgid "Shared Dashboards"
+msgstr "Papan Pemuka Dikongsi"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:315
+msgid "Shared Questions"
+msgstr "Soalan Dikongsi"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:322
+msgid "Shared Action Forms"
+msgstr "Borang Tindakan Berkongsi"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:360
+msgid "AI Features"
+msgstr "Ciri-ciri AI"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:367
+msgid "AI features enabled"
+msgstr "Ciri-ciri AI diaktifkan"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:371
+msgid "You must supply an API key before AI features can be enabled."
+msgstr "Anda mesti memberikan kunci API sebelum ciri-ciri AI boleh diaktifkan."
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:378
+msgid "EE OpenAI API Key"
+msgstr "Kunci API EE OpenAI"
+
+#: frontend/src/metabase/admin/settings/selectors/selectors.js:379
+msgid "API key used for Enterprise AI features"
+msgstr "Kunci API yang digunakan untuk ciri-ciri AI Enterprise"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:31
+msgid "LDAP Authentication"
+msgstr "Pengesahan Protokol Akses Direktori Ringan"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:38
+msgid "LDAP Host"
+msgstr "Hos Protokol Akses Direktori Ringan"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:46
+msgid "LDAP Port"
+msgstr "Pelabuhan Protokol Akses Direktori Ringan"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:53
+msgid "LDAP Security"
+msgstr "Keselamatan Protokol Akses Direktori Ringan"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
+msgid "Check your parentheses"
+msgstr "Semak tanda kurungan anda"
+
+#: frontend/src/metabase/plugins/builtin/auth/ldap.js:108
+msgid "Distinguished Name"
+msgstr "Nama Terhormat"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/LighthouseToggleWidget/LighthouseToggleWidget.tsx:21
+msgid "Show this on the home and login pages"
+msgstr "Tunjukkan ini pada halaman utama dan log masuk"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/MetabaseLinksToggleWidget/MetabaseLinksToggleWidget.tsx:24
+msgid "Show links and references"
+msgstr "Tunjukkan pautan dan rujukan"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataFieldSettings/MetadataFieldSettings.tsx:202
+#, javascript-format
+msgid "{0} – Field Settings"
+msgstr "{0} - Tetapan Medan"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:99
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataHeader/MetadataHeader.tsx:107
+msgid "Table settings"
+msgstr "Tetapan jadual"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataSchemaList/MetadataSchemaList.tsx:89
+msgid "Find a schema"
+msgstr "Cari skema"
+
+#: frontend/src/metabase/admin/datamodel/metadata/components/MetadataTableSettings/MetadataTableSettings.tsx:97
+msgid "Re-scan this table"
+msgstr "Imbas semula jadual ini"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:29
+#: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx:41
+msgid "Delete API Key"
+msgstr "Padam Kunci API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:134
+msgid "Edit API Key"
+msgstr "Sunting Kunci API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx:172
+msgid "Regenerate API Key"
+msgstr "Jana Semula Kunci API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:37
+msgid "You can create an API key to make API calls programatically."
+msgstr "Anda boleh mencipta kunci API untuk membuat panggilan API secara programatik."
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:40
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:178
+msgid "Create API Key"
+msgstr "Buat Kunci API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:170
+msgid "Manage API Keys"
+msgstr "Urus Kunci API"
+
+#: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx:172
+msgid "Allow users to use the API keys to authenticate their API calls."
+msgstr "Benarkan pengguna menggunakan kunci API untuk mengesahkan panggilan API mereka."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:30
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:31
+msgid "Talking to Metabase Cloud..."
+msgstr "Sedang berhubung dengan Metabase Cloud..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:32
+msgid "Taking a snapshot of this instance..."
+msgstr "Mengambil snapshot bagi contoh ini..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:33
+msgid "Uploading the snapshot to the cloud..."
+msgstr "Memuat naik snapshot ke cloud..."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:55
+msgid "Migration to Metabase Cloud has been canceled."
+msgstr "Peralihan ke Cloud Metabase telah dibatalkan."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:79
+msgid "Migrating to Metabase Cloud…"
+msgstr "Beralih ke Cloud Metabase…"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:83
+msgid "While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes"
+msgstr "Semasa kami mengambil snapshot data Metabase anda, orang ramai akan dapat melihat soalan dan papan pemuka, tetapi mereka tidak akan dapat menyunting atau membuat apa-apa yang baru. Ia sepatutnya hanya mengambil masa sehingga 30 minit."
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:101
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:127
+msgid "Cancel migration"
+msgstr "Batalkan migrasi"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:118
+msgid "Cancel migration?"
+msgstr "Batalkan migrasi?"
+
+#: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationInProgress.tsx:121
+msgid "We will cancel the migration process. After that, this instance will no longer be read-only."
+msgstr "Kami akan membatalkan proses migrasi. Selepas itu, contoh ini tidak lagi dalam mod baca sahaja."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:13
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:33
+msgid "SMTP"
+msgstr "Protokol Pindahan Mel Mudah"
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionCard.tsx:26
+msgid "Edit Configuration"
+msgstr "Sunting konfigurasi"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx:70
+msgid "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included."
+msgstr "Masukkan asal untuk tapak web atau apl yang anda mahu benarkan pembenaman SDK, dipisahkan oleh ruang. Localhost disertakan secara automatik."
+
+#: frontend/src/metabase/admin/settings/components/Email/SMTPConnectionForm.tsx:38
+msgid "Sent!"
+msgstr "Dihantar"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/StaticEmbeddingSettings.tsx:52
+msgid "Enable Static embedding"
+msgstr "Dayakan pembenaman Statik"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:19
+msgid "A little something from us to you"
+msgstr "Sedikit perkara daripada kami untuk anda"
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:21
+msgid "As a thank-you for trying out this beta we’d love to send you some swag, while our supplies last. Click the button to give us your details and we’ll send you an email with instructions."
+msgstr "Sebagai ucapan terima kasih kerana mencuba beta ini, kami ingin menghantar beberapa barang swag kepada anda, sementara bekalan kami masih ada. Klik butang untuk memberi kami butiran anda dan kami akan menghantar e-mel kepada anda dengan arahan."
+
+#: frontend/src/metabase/admin/settings/components/Swag/SwagModal.tsx:34
+msgid "Get my swag"
+msgstr "Dapatkan barang curian saya"
+
+#: frontend/src/metabase/admin/settings/components/widgets/AnonymousTrackingInput.tsx:34
+msgid "Anonymous Tracking"
+msgstr "Penjejakan Tanpa Nama"
+
+#: frontend/src/metabase/admin/settings/components/widgets/CustomHomepageDashboardSetting.tsx:69
+msgid "Custom Homepage"
+msgstr "Halaman Utama Kustom"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:95
+msgid "cron syntax"
+msgstr "sintaks cron"
+
+#: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:98
+#, javascript-format
+msgid "Our {0} is a string of 5 fields separated by spaces"
+msgstr "{0} kami adalah rentetan 5 medan yang dipisahkan oleh ruang"
+
+#: frontend/src/metabase/admin/settings/components/widgets/SiteUrlWidget.tsx:41
+msgid "Site Url"
+msgstr "Url Tapak"
+
+#: frontend/src/metabase/admin/settings/components/widgets/VersionUpdateNotice/VersionUpdateNotice.tsx:41
+#, javascript-format
+msgid "Metabase Cloud keeps your instance up-to-date. You're currently on version {0}. Thanks for being a customer!"
+msgstr "Metabase Cloud memastikan contoh anda sentiasa terkini. Anda kini menggunakan versi {0}. Terima kasih kerana menjadi pelanggan!"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:33
+msgid "Deleting…"
+msgstr "Memadam…"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:34
+msgid "Deleting failed"
+msgstr "Gagal memadam"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:41
+msgid "Doing this may stop your dashboard subscriptions from appearing in Slack until a new connection is set up."
+msgstr "Melakukan ini mungkin menghentikan langganan papan pemuka anda daripada muncul di Slack sehingga sambungan baru disediakan."
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:42
+msgid "Are you sure you want to delete your Slack App integration?"
+msgstr "Adakah anda pasti mahu memadam integrasi Aplikasi Slack anda?"
+
+#: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:49
+msgid "Slack Bot User OAuth Token"
+msgstr "Token OAuth Pengguna Bot Slack"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:145
+msgid "Diagnostic Info"
+msgstr "Maklumat Diagnostik"
+
+#: frontend/src/metabase/admin/tasks/components/Help/Help.tsx:150
+msgid "Advanced Details (click to download)"
+msgstr "Butiran Lanjut (klik untuk memuat turun)"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Edit series"
+msgstr "Ubah siri"
+
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/AddSeriesButton/AddSeriesButton.tsx:28
+msgid "Add series"
+msgstr "Tambah siri"
+
+#: frontend/src/metabase/models/components/ModelActions/ModelSchemaDetails/ModelSchemaDetails.tsx:40
+msgid "Unknown type"
+msgstr "Jenis tidak diketahui"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:197
+msgid "Hide page"
+msgstr "Sembunyikan halaman"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:88
+msgid "Add Data"
+msgstr "Tambah Data"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:92
+msgid "Markdown supported"
+msgstr "Markdown disokong"
+
+#: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx:93
+msgid "Add links and formatting via markdown"
+msgstr "Tambah pautan ddan format melalui markdown"
+
+#: frontend/src/metabase/admin/settings/notifications/NotificationSettings.tsx:57
+msgctxt "Short for 'Add another Webhook'"
+msgid "Add another"
+msgstr "Tambah satu lagi"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:8
+msgctxt "Notification that shows after the user hides the page"
+msgid "Page hidden from the navigation sidebar"
+msgstr "Halaman tersembunyi daripada bar sisi navigasi"
+
+#: frontend/src/metabase/home/components/Onboarding/OnboardingDismissedToast.tsx:11
+msgctxt "Refers to the Onboarding page that has been hidden from the navigation sidebar"
+msgid "Access it later anytime by clicking the gear icon at the top right of the screen."
+msgstr "Aksesnya kemudian pada bila-bila masa dengan mengklik ikon gear di bahagian atas sebelah kanan skrin."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/AddDatabase/AddDatabase.tsx:21
+msgctxt "Text for a button that lets you add a new database"
+msgid "Add database"
+msgstr "Tambah pangkalan data"
+
+#: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx:122
+#, javascript-format
+msgctxt "{0} is either \"Metabase\" or the customized name of the application."
+msgid "This will create a table for each of your models in a dedicated schema. ${ 0 } will refresh them on a schedule. Questions and queries that use your models will query these tables."
+msgstr "Ini akan mencipta jadual untuk setiap model anda dalam skema khusus. ${0} akan menyegarkannya mengikut jadual. Soalan dan query yang menggunakan model anda akan menyoal jadual-jadual ini."
+
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/BrowseNavSection.tsx:40
+msgctxt "A verb, shown in the sidebar"
+msgid "Browse"
+msgstr "Melayari"
+
+#: frontend/src/metabase/nav/containers/MainNavbar/SidebarItems/DwhUpload/DwhUpload.tsx:101
+msgctxt "button label for uploading a CSV data file"
+msgid "Upload CSV"
+msgstr "Muat naik CSV"
+
+#: metabase/api/dataset.clj:205
+msgid "`database` is required for all queries."
+msgstr "`pangkalan data` diperlukan untuk semua query."
+
+#: metabase/lib/field.cljc:303
+msgid "[Unknown Field]"
+msgstr "[Medan Tidak Diketahui]"
+
+#: metabase/lib/filter.cljc:360 metabase/lib/filter.cljc:364
+msgid "{0}"
+msgstr "{0}"
+
+#: metabase/lib/filter.cljc:95
+msgid "{0} is at {1}"
+msgstr "{0} berada di {1}"
+
+#: metabase/lib/filter.cljc:196
+msgid "{0} is not {1} selections"
+msgstr "{0} bukan pilihan {1}"
+
+#: metabase/lib/filter.cljc:184
+msgid "{0} is equal to {1} selections"
+msgstr "{0} adalah sama dengan {1} pilihan"
+
+#: metabase/lib/filter.cljc:178 metabase/lib/filter.cljc:181
+msgid "{0} is not {1}"
+msgstr "{0} bukan {1}"
+
+#: metabase/lib/filter.cljc:187
+msgid "{0} is not equal to {1} selections"
+msgstr "{0} tidak sama dengan pilihan {1}"
+
+#: metabase/lib/filter.cljc:193
+msgid "{0} is {1} selections"
+msgstr "{0} adalah {1} pilihan"
+
+#: metabase/lib/filter.cljc:109 metabase/lib/filter.cljc:130
+msgid "{0} is one of {1} {2} selections"
+msgstr "{0} ialah salah satu daripada {1} {2} pilihan"
+
+#: metabase/lib/join.cljc:1065
+msgid "Non-standard join condition. {0}"
+msgstr "Syarat gabungan bukan standard. {0}"
+
+#: metabase/lib/temporal_bucket.cljc:123
+msgid "Next {0} week"
+msgid_plural "Next {0} weeks"
+msgstr[0] "{0} minggu seterusnya"
+
+#: metabase/lib/temporal_bucket.cljc:105
+msgid "Next {0} minute"
+msgid_plural "Next {0} minutes"
+msgstr[0] "{0} minit seterusnya"
+
+#: metabase/lib/temporal_bucket.cljc:135
+msgid "Next {0} quarter"
+msgid_plural "Next {0} quarters"
+msgstr[0] "{0} suku seterusnya"
+
+#: metabase/lib/temporal_bucket.cljc:141
+msgid "Next {0} year"
+msgid_plural "Next {0} years"
+msgstr[0] "{0} tahun seterusnya"
+
+#: metabase/lib/temporal_bucket.cljc:99
+msgid "Next {0} second"
+msgid_plural "Next {0} seconds"
+msgstr[0] "Seterusnya {0} saat"
+
+#: metabase/lib/temporal_bucket.cljc:93
+msgid "Next {0} millisecond"
+msgid_plural "Next {0} milliseconds"
+msgstr[0] "Seterusnya {0} milisaat"
+
+#: metabase/lib/temporal_bucket.cljc:115
+msgid "Previous {0} day"
+msgid_plural "Previous {0} days"
+msgstr[0] "{0} hari sebelumnya"
+
+#: metabase/lib/temporal_bucket.cljc:117
+msgid "Next {0} day"
+msgid_plural "Next {0} days"
+msgstr[0] "{0} hari seterusnya"
+
+#: metabase/lib/temporal_bucket.cljc:129
+msgid "Next {0} month"
+msgid_plural "Next {0} months"
+msgstr[0] "{0} bulan seterusnya"
+
+#: metabase/lib/temporal_bucket.cljc:133
+msgid "Previous {0} quarter"
+msgid_plural "Previous {0} quarters"
+msgstr[0] "{0} suku sebelumnya"
+
+#: metabase/lib/temporal_bucket.cljc:111
+msgid "Next {0} hour"
+msgid_plural "Next {0} hours"
+msgstr[0] "{0} jam seterusnya"
+
+#: metabase/lib/temporal_bucket.cljc:139
+msgid "Previous {0} year"
+msgid_plural "Previous {0} years"
+msgstr[0] "{0} tahun sebelumnya"
+
+#: metabase/lib/temporal_bucket.cljc:127
+msgid "Previous {0} month"
+msgid_plural "Previous {0} months"
+msgstr[0] "Sebelumnya {0} bulan"
+
+#: metabase/lib/temporal_bucket.cljc:91
+msgid "Previous {0} millisecond"
+msgid_plural "Previous {0} milliseconds"
+msgstr[0] "Sebelumnya {0} milisaat"
+
+#: metabase/lib/temporal_bucket.cljc:109
+msgid "Previous {0} hour"
+msgid_plural "Previous {0} hours"
+msgstr[0] "Sebelumnya {0} jam"
+
+#: metabase/lib/temporal_bucket.cljc:97
+msgid "Previous {0} second"
+msgid_plural "Previous {0} seconds"
+msgstr[0] "Sebelumnya {0} saat"
+
+#: metabase/lib/temporal_bucket.cljc:121
+msgid "Previous {0} week"
+msgid_plural "Previous {0} weeks"
+msgstr[0] "Sebelumnya {0} minggu"
+
+#: metabase/lib/temporal_bucket.cljc:103
+msgid "Previous {0} minute"
+msgid_plural "Previous {0} minutes"
+msgstr[0] "Sebelumnya {0} minit"
+
+#: metabase/lib_be/task/backfill_entity_ids.clj:29
+msgid "Frequency for running backfill entity ids and drain entity ids jobs in ms.  Minimum value is 1000, and any value at or below 0 will disable the job entirely."
+msgstr "Kekerapan untuk menjalankan id entiti isian semula dan kerja id entiti longkang dalam ms. Nilai minimum ialah 1000, dan sebarang nilai pada atau di bawah 0 akan melumpuhkan kerja sepenuhnya."
+
+#: metabase/models/collection.clj:995
+msgid "You cannot archive the Custom Reports Collection."
+msgstr "Anda tidak boleh mengarkibkan Koleksi Laporan Khas."
+
+#: metabase/models/collection.clj:992
+msgid "You cannot archive the Root Collection."
+msgstr "Anda tidak boleh mengarkibkan Koleksi Root."
+
+#: metabase/models/legacy_metric.clj:45
+msgid "You cannot update the creator_id of a Metric."
+msgstr "Anda tidak boleh mengemas kini creator_id bagi satu Metrik."
+
+#: metabase/models/params/shared.cljc:139
+msgid "{0}, {1}, and {2}"
+msgstr "{0}, {1}, dan {2}"
+
+#: metabase/models/user.clj:460
+msgid "Whether the user has dismissed the onboarding link from the main sidebar."
+msgstr "Sama ada pengguna telah menolak pautan onboarding dari bar sisi utama."
+
+#: metabase/public_settings.clj:1016
+msgid "Whether or not we analyze any queries at all"
+msgstr "Sama ada kita menganalisis sebarang query atau tidak"
+
+#: metabase/public_settings.clj:1009
+msgid "SQL Parsing is disabled"
+msgstr "SQL Parsing dinyahaktifkan"
+
+#: metabase/query_processor/middleware/annotate.clj:445
+msgid "Expected: {0}"
+msgstr "Dijangka: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:75
+msgid "Query processor error: number of columns returned by driver does not match results."
+msgstr "Ralat pemproses pertanyaan: bilangan lajur yang dikembalikan oleh pemacu tidak sepadan dengan hasilnya."
+
+#: metabase/query_processor/middleware/annotate.clj:60
+msgid "Unknown query type {0}"
+msgstr "Jenis pertanyaan tidak diketahui {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:441
+msgid "Query processor error: mismatched number of columns in query and results."
+msgstr "Ralat pemproses pertanyaan: bilangan lajur dalam querydan hasil tidak sepadan."
+
+#: metabase/query_processor/middleware/annotate.clj:377
+msgid "Don''t know how to get information about Field: {0}"
+msgstr "Tidak tahu cara mendapatkan maklumat tentang Medan: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:77
+msgid "Expected {0} columns, but first row of resuls has {1} columns."
+msgstr "Dijangka {0} lajur, tetapi baris pertama hasil mempunyai {1} lajur."
+
+#: metabase/query_processor/middleware/annotate.clj:447
+msgid "Actual: {0}"
+msgstr "Dijangka: {0}"
+
+#: metabase/query_processor/middleware/annotate.clj:443
+msgid "Expected {0} fields, got {1}"
+msgstr "Dijangka {0} medan, dapat {1}"
+
+#: metabase/query_processor/middleware/process_userland_query.clj:41
+msgid ""
+"Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the\n"
+"    application database.\n"
+"\n"
+"    Turn off by default since we haven''t had an user-facing feature that uses this data yet."
+msgstr ""
+"Dayakan analisis penggunaan medan untuk pertanyaan. Ini akan menganalisis medan yang digunakan dalam pertanyaan dan menyimpannya dalam pangkalan data aplikasi\n"
+"    .\n"
+"\n"
+"    Matikan secara lalai kerana kami belum mempunyai ciri menghadap pengguna yang menggunakan data ini lagi."
+
+#: metabase/util/malli/schema.clj:260
+msgid "value must be a valid integer greater than zero."
+msgstr "nilai mestilah integer sah lebih besar daripada sifar."
+
+#: metabase/util/malli/schema.clj:178
+msgid "value must be a valid field semantic type (keyword or string)."
+msgstr "nilai mesti jenis semantik medan yang sah (kata kunci atau rentetan)."
+
+#: metabase/util/malli/schema.clj:378
+msgid "parameter must be a map with :id and :type keys"
+msgstr "parameter mesti menjadi peta dengan :id dan :jenis kunci"
+
+#: metabase/util/malli/schema.clj:114
+msgid "value must be a negative integer"
+msgstr "nilai mesti integer negatif"
+
+#: metabase/util/malli/schema.clj:202
+msgid "value must an array with :field id-or-name and an options map"
+msgstr "nilai mesti array dengan :medan id-atau-nama dan peta pilihan"
+
+#: metabase/util/malli/schema.clj:144
+msgid "value must be a valid field semantic type."
+msgstr "nilai mesti jenis semantik medan yang sah."
+
+#: metabase/util/malli/schema.clj:126
+msgid "value must be a number greater than zero."
+msgstr "nilai mesti nombor yang lebih besar daripada sifar."
+
+#: metabase/util/malli/schema.clj:386
+msgid "parameter_mapping must be a map with :parameter_id and :target keys"
+msgstr "memetakan_parameter mesti menjadi peta dengan :id_parameter dan :sasaran kunci"
+
+#: metabase/util/malli/schema.clj:251
+msgid "value must be a valid integer."
+msgstr "nilai mestilah integer yang sah."
+
+#: metabase/util/malli/schema.clj:184
+msgid "value must be a valid field relation type (keyword or string)."
+msgstr "nilai mesti jenis hubungan medan yang sah (kata kunci atau rentetan)."
+
+#: metabase/util/malli/schema.clj:150
+msgid "value must be a valid field relation type."
+msgstr "nilai mesti jenis hubungan medan yang sah."
+
+#: metabase/util/malli/schema.clj:269
+msgid "value must be a valid integer greater than or equal to zero."
+msgstr "nilai mestilah integer sah lebih besar atau sama dengan sifar."
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:41
+msgid "Invalid email address: {0}"
+msgstr "Alamat e-mel tidak sah: {0}"
+
+#: metabase_enterprise/advanced_config/models/pulse_channel.clj:43
+msgid "You cannot create new subscriptions for the domain {0}. Allowed domains are: {1}"
+msgstr "Anda tidak boleh membuat langganan baru untuk domain {0}. Domain yang dibenarkan adalah: {1}"
+
+#: metabase_enterprise/api/routes.clj:39
+msgid "Query Reference Validation"
+msgstr "Pengesahan Rujukan Query"
+
+#: metabase_enterprise/api/routes.clj:37
+msgid "Editing Table Data"
+msgstr "Mengedit Data Jadual"
+
+#: metabase_enterprise/gsheets/api.clj:269
+msgid "Unable to find google drive connection, please try again."
+msgstr "Tidak dapat mencari sambungan pemacu google, sila cuba lagi."
+
+#: metabase_enterprise/gsheets/api.clj:309
+msgid "Unable to find google drive connection."
+msgstr "Tidak dapat mencari sambungan pemacu google."
+
+#: metabase_enterprise/gsheets/api.clj:296
+msgid "Problem syncing google drive folder, please try again.."
+msgstr "Masalah menyegerakkan folder pemacu google, sila cuba lagi.."
+
+#: metabase_enterprise/gsheets/api.clj:288
+msgid "Timeout syncing google drive folder, please try again."
+msgstr "Tamat masa menyegerakkan folder pemacu google, sila cuba lagi."
+
+#: metabase_enterprise/sso/integrations/jwt.clj:120
+msgid "JWT SSO has not been enabled"
+msgstr "JWT SSO belum didayakan"
+
+#: metabase_enterprise/sso/integrations/jwt.clj:115
+msgid "JWT SSO has not been configured"
+msgstr "JWT SSO belum dikonfigurasikan"
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:39
+msgid ""
+"When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who\n"
+"don''t have one."
+msgstr "Apabila kami mengaktifkan penyediaan pengguna JWT, kami secara automatik mencipta akaun Metabase pada log masuk JWT untuk pengguna yang tidak memilikinya."
+
+#: metabase_enterprise/sso/integrations/sso_settings.clj:208
+msgid "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK."
+msgstr "URL untuk halaman log masuk berasaskan JWT. Pilihan jika menggunakan JWT SSO hanya dengan SDK analitis terbenam."
 
