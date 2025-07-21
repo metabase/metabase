@@ -28,6 +28,14 @@ export function EmbeddingIframeSdkOptionCard() {
             py="xs"
             uppercase
           >{t`Pro and Enterprise`}</Badge>
+
+          <Badge
+            color="gray"
+            fz="sm"
+            px="sm"
+            py="xs"
+            uppercase
+          >{t`Beta`}</Badge>
         </Flex>
       }
       description={t`Embed Metabase components within iframes using the SDK. Provides similar functionality to the React SDK but uses iframes for easier integration across different frameworks. Supports SSO via JWT with iframe-specific settings and configurations.`}
