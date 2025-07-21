@@ -38,14 +38,10 @@
   action-arg-map-schema
   normalize-action-arg-map]
  [metabase.actions.error
-  children-exist
   incorrect-value-type
   violate-foreign-key-constraint
   violate-not-null-constraint
   violate-unique-constraint]
- [metabase.actions.foreign-keys
-  count-descendants
-  delete-recursively]
  [metabase.actions.execution
   execute-action!
   execute-dashcard!

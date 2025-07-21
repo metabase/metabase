@@ -66,9 +66,6 @@
  actions/cached-database-via-table-id
  actions/cached-table
  actions/cached-value
- actions/count-descendants
- actions/children-exist
- actions/delete-recursively
  actions/incorrect-value-type
  actions/perform-action!*
  actions/violate-foreign-key-constraint
