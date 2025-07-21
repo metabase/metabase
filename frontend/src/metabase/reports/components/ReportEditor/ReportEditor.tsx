@@ -123,12 +123,20 @@ const VisualizationNode = ({ node }: { node: any }) => {
       >
         <Text
           size="sm"
-          color="dimmed"
           style={{ marginBottom: "0.5rem", fontWeight: "bold", textAlign: "center" }}
         >
-          {node.attrs.name} (Dashboard)
+          <a
+            href={`/dashboard/${node.attrs.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'none', color: 'inherit' }}
+            onMouseEnter={(e) => {(e.target as HTMLElement).style.textDecoration = 'underline'}}
+            onMouseLeave={(e) => {(e.target as HTMLElement).style.textDecoration = 'none'}}
+          >
+            {node.attrs.name} (Dashboard)
+          </a>
         </Text>
-        <Text size="sm" color="dimmed" style={{ textAlign: "center" }}>
+        <Text size="sm" style={{ textAlign: "center" }}>
           Dashboard visualizations not supported yet
         </Text>
       </Box>
@@ -153,10 +161,20 @@ const VisualizationNode = ({ node }: { node: any }) => {
       >
         <Text
           size="sm"
-          color="dimmed"
           style={{ marginBottom: "1rem", fontWeight: "bold" }}
         >
-          {node.attrs.name} ({node.attrs.model})
+          <a
+            href={node.attrs.model === 'card' ? `/question/${node.attrs.id}` :
+                  node.attrs.model === 'table' ? `/browse/table/${node.attrs.id}` :
+                  `/browse/${node.attrs.model}/${node.attrs.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'none', color: 'inherit' }}
+            onMouseEnter={(e) => {(e.target as HTMLElement).style.textDecoration = 'underline'}}
+            onMouseLeave={(e) => {(e.target as HTMLElement).style.textDecoration = 'none'}}
+          >
+            {node.attrs.name} ({node.attrs.model})
+          </a>
         </Text>
         <Box style={{ height: "400px", width: "100%" }}>
           <EmotionCacheProvider>
@@ -193,12 +211,22 @@ const VisualizationNode = ({ node }: { node: any }) => {
     >
       <Text
         size="sm"
-        color="dimmed"
         style={{ marginBottom: "0.5rem", fontWeight: "bold", textAlign: "center" }}
       >
-        {node.attrs.name} ({node.attrs.model})
+        <a
+          href={node.attrs.model === 'card' ? `/question/${node.attrs.id}` :
+                node.attrs.model === 'table' ? `/browse/table/${node.attrs.id}` :
+                `/browse/${node.attrs.model}/${node.attrs.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: 'none', color: 'inherit' }}
+          onMouseEnter={(e) => {(e.target as HTMLElement).style.textDecoration = 'underline'}}
+          onMouseLeave={(e) => {(e.target as HTMLElement).style.textDecoration = 'none'}}
+        >
+          {node.attrs.name} ({node.attrs.model})
+        </a>
       </Text>
-      <Text size="sm" color="dimmed" style={{ textAlign: "center" }}>
+      <Text size="sm" style={{ textAlign: "center" }}>
         {error ? `Error: ${error}` : "Run the report to see this visualization"}
       </Text>
     </Box>
