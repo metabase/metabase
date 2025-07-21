@@ -1,0 +1,29 @@
+@keyframes expand {
+  50% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes shrink {
+  50% {
+    transform: scale(0.8);
+  }
+}
+
+.Icon {
+  animation-duration: 0.3s;
+  animation-timing-function: linear;
+  animation-play-state: paused;
+}
+
+.Animate {
+  animation-play-state: running;
+}
+
+.Bookmarked {
+  animation-name: expand;
+}
+
+.Not_Bookmarked {
+  animation-name: shrink;
+}

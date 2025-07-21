@@ -1,10 +1,18 @@
-import type { HTMLAttributes, Ref } from "react";
-import { forwardRef, useCallback, useState } from "react";
+import cx from "classnames";
+import {
+  type HTMLAttributes,
+  type Ref,
+  forwardRef,
+  useCallback,
+  useState,
+} from "react";
 import { t } from "ttag";
 
-import { Tooltip } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
-import { BookmarkButton, BookmarkIcon } from "./BookmarkToggle.styled";
+import { ToolbarButton } from "../ToolbarButton";
+
+import Styles from "./BookmarkToggle.module.css";
 
 export interface BookmarkToggleProps extends HTMLAttributes<HTMLButtonElement> {
   isBookmarked: boolean;
@@ -19,11 +27,10 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     onCreateBookmark,
     onDeleteBookmark,
     tooltipPlacement,
-    ...props
   }: BookmarkToggleProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [animate, setAnimate] = useState(false);
 
   const handleClick = useCallback(() => {
     if (isBookmarked) {
@@ -31,33 +38,30 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     } else {
       onCreateBookmark();
     }
-
-    setIsAnimating(true);
+    setAnimate(true);
   }, [isBookmarked, onCreateBookmark, onDeleteBookmark]);
-
-  const handleAnimationEnd = useCallback(() => {
-    setIsAnimating(false);
-  }, []);
 
   const iconName = isBookmarked ? "bookmark_filled" : "bookmark";
   const label = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   return (
-    <Tooltip label={label} position={tooltipPlacement}>
-      <BookmarkButton
-        {...props}
-        aria-label={label}
-        ref={ref}
-        onClick={handleClick}
-      >
-        <BookmarkIcon
-          name={iconName}
-          isBookmarked={isBookmarked}
-          isAnimating={isAnimating}
-          onAnimationEnd={handleAnimationEnd}
-        />
-      </BookmarkButton>
-    </Tooltip>
+    <ToolbarButton
+      aria-label={label}
+      ref={ref}
+      onClick={handleClick}
+      tooltipLabel={label}
+      tooltipPosition={tooltipPlacement}
+    >
+      <Icon
+        name={iconName}
+        c={isBookmarked ? "brand" : "inherit"}
+        className={cx(Styles.Icon, {
+          [Styles.Bookmarked]: isBookmarked,
+          [Styles.Not_Bookmarked]: !isBookmarked,
+          [Styles.Animate]: animate,
+        })}
+      />
+    </ToolbarButton>
   );
 });
 
