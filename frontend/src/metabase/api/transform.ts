@@ -41,6 +41,18 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), tag("transform")]),
     }),
+    executeTransform: builder.mutation<Transform, TransformId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/transform/${id}/execute`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          tag("table"),
+          tag("field"),
+          tag("field-values"),
+        ]),
+    }),
     deleteTransform: builder.mutation<Transform, TransformId>({
       query: (id) => ({
         method: "DELETE",
@@ -56,5 +68,6 @@ export const {
   useListTransformsQuery,
   useGetTransformQuery,
   useCreateTransformMutation,
+  useExecuteTransformMutation,
   useDeleteTransformMutation,
 } = transformApi;

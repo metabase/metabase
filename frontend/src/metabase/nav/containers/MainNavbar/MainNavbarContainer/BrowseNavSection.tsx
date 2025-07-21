@@ -33,6 +33,7 @@ export const BrowseNavSection = ({
   const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
   const BROWSE_METRICS_URL = "/browse/metrics";
+  const BROWSE_TRANSFORMS_URL = "/browse/transforms";
 
   const [expandBrowse = true, setExpandBrowse] = useUserSetting(
     "expand-browse-in-nav",
@@ -121,6 +122,18 @@ export const BrowseNavSection = ({
             aria-label={t`Browse metrics`}
           >
             {t`Metrics`}
+          </PaddedSidebarLink>
+        )}
+
+        {!isEmbeddingIframe && (
+          <PaddedSidebarLink
+            icon="function"
+            url={BROWSE_TRANSFORMS_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_TRANSFORMS_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse transforms`}
+          >
+            {t`Transforms`}
           </PaddedSidebarLink>
         )}
       </Collapse>

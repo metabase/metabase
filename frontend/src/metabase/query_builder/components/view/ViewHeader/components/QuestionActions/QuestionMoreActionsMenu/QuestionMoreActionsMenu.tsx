@@ -156,7 +156,7 @@ export const QuestionMoreActionsMenu = ({
     hasDataPermissions && (
       <Menu.Item
         key="transform"
-        leftSection={<Icon name="clone" />}
+        leftSection={<Icon name="function" />}
         data-testid={TRANSFORM_TESTID}
         onClick={() => onOpenModal(MODAL_TYPES.NEW_TRANSFORM)}
       >
