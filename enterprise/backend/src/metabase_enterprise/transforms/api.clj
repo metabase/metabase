@@ -1,10 +1,12 @@
 (ns metabase-enterprise.transforms.api
   (:require
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -98,6 +100,9 @@
   (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
         db (get-in source [:query :database])
         {driver :engine} (t2/select-one :model/Database db)]
+    (when (not= (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db)
+                :query-builder-and-native)
+      (api/throw-403))
     (transforms.execute/execute
      {:db db
       :driver driver

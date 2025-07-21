@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.execute
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]))
@@ -13,7 +14,7 @@
         (driver/execute-write-query! driver query)))))
 
 (defn execute [{:keys [db driver sql output-table overwrite?]}]
-  (let [output-table (keyword (or output-table (str "transform_" (random-uuid))))
+  (let [output-table (keyword (or output-table (str "transform_" (str/replace (random-uuid) \- \_))))
         query (driver/compile-transform driver {:sql sql :output-table output-table :overwrite? overwrite?})]
     (when overwrite?
       (execute-query driver db (driver/drop-transform driver output-table)))

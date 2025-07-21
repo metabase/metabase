@@ -1837,6 +1837,7 @@
    :uses #{api
            driver
            models
+           permissions
            query-processor
            util}}
 
