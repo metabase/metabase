@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
@@ -21,7 +22,6 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getSetting } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
@@ -92,7 +92,9 @@ const DashCardLoadingView = ({
   expectedDuration,
   display,
 }: LoadingViewProps & { display?: CardDisplayType }) => {
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const { url, showMetabaseLinks } = useLearnUrl(
+    "metabase-basics/administration/administration-and-operation/making-dashboards-faster",
+  );
   const getPreamble = () => {
     if (isSlow === "usually-fast") {
       return t`This usually loads immediately, but is currently taking longer.`;
@@ -146,7 +148,7 @@ const DashCardLoadingView = ({
                       size="compact-md"
                       rightSection={<Icon name="external" />}
                       component="a"
-                      href="https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster"
+                      href={url}
                       target="_blank"
                       rel="noreferrer"
                     >
