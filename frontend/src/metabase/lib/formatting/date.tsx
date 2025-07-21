@@ -9,6 +9,8 @@ import { parseTimestamp as deprecatedParseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
+import { parseTimestamp } from "../time-dayjs";
+
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -759,7 +761,7 @@ export function formatDateTimeForParameter(
   value: string,
   unit: DatetimeUnit | null,
 ) {
-  const m = deprecatedParseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -781,7 +783,7 @@ export function formatDateToRangeForParameter(
   value: string,
   unit: DatetimeUnit | null,
 ) {
-  const m = deprecatedParseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
