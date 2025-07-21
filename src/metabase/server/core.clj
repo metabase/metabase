@@ -27,3 +27,4 @@
   Respond]
  [metabase.server.routes
   make-routes])
+
