@@ -3908,7 +3908,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to update"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1 "name" "Birds"}}))))
               (testing "Extra parameter should fail gracefully"
@@ -3935,7 +3935,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to delete"
-                (is (= {:rows-deleted [1]}
+                (is (= {:rows-deleted 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
               (testing "Extra parameter should fail gracefully"
@@ -4154,7 +4154,7 @@
                 (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
@@ -4184,7 +4184,7 @@
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                        (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
