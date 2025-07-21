@@ -14,10 +14,7 @@
   [[:map [:dashboard-id ms/PositiveInt]]
    [:map [:dashcard-id ms/PositiveInt]]
    [:map [:card-id ms/PositiveInt]]
-  ;; We represent legacy-actions, which get called against a model, distinctly.
-  ;; Treated the same as card-id, mostly.
-  ;; Might end up always assigning the key according to the card type, or always use card-id, but either way we would
-  ;; then need some way to tell legacy-action invocations apart.
+   ;; We represent legacy-actions, which get called against a model, distinctly. Treated the same as card-id, mostly.
    [:map [:model-id ms/PositiveInt]]
    [:map [:table-id ms/PositiveInt]]
    [:map [:webhook-id ms/PositiveInt]]
