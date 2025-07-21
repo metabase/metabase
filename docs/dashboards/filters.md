@@ -9,30 +9,11 @@ redirect_from:
 
 ![Dashboard Filters](./images/filters.png)
 
-Instead of creating duplicate dashboards to show different cuts of the same data, you can add filter or parameter widgets to let people change variables for cards on a dashboard.
+Instead of creating duplicate dashboards to show different cuts of the same data (like a different dashboard for each quarter), you can add filter or parameter widgets to let people change _what_ data is displayed (filter the data), or _how_ its displayed (parameterize the data).
 
-## Adding a filter or parameter widget to a dashboard, heading, or card
+## Filter and parameter widgets
 
-![Add a Filter](./images/add-filter.png)
-
-1. Click the **pencil icon** to enter dashboard editing mode.
-2. You can add a filter or parameter widget to:
-    
-    - **The whole dashboard**. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
-    - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
-    - **Question cards**. Can only be connected to cards on the current tab.
-   
-   Go to where you want to add a filter and click the **filter icon**.
-3. Select a [filter type](#filter-and-parameter-types).
-4. [Connect your filter or parameter widget to dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards) to one or more dashboard cards. Only dashboard-level widgets can be connected to cards on multiple tabs.
-5. [Configure your filter](#editing-a-filter)
-6. **Save** your changes.
-
-Metabase will display the filter only if the filter is connected to a card on the current dashboard tab.
-
-## Filter and parameter types
-
-The type of filter or parameter widget you choose determines how the widget works, including which fields you'll be able to filter your cards by.
+There are two basic types of widgets you can add. The type of filter or parameter widget you choose determines how the widget works, including which fields you'll can connect to the widget.
 
 ### Filter widgets
 
@@ -50,6 +31,38 @@ The type of filter or parameter widget you choose determines how the widget work
  **Parameters** determine _how_ to show the data. The time grouping parameter, for example, changes the granularity of time-based visualizations (like showing data by month instead of by day) without removing any data points.
 
 - [Time grouping](#time-grouping-parameter)
+
+## Adding a filter or parameter widget
+
+![Add a Filter](./images/add-filter.png)
+
+1. Click the **pencil icon** to enter dashboard editing mode.
+2. You can add a filter or parameter widget to:
+    
+    - **The whole dashboard**. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
+    - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
+    - **Question cards**. Can only be connected to cards on the current tab.
+   
+   Go to where you want to add a filter and click the **filter icon**.
+3. Select a [filter type](#filter-and-parameter-types).
+4. [Connect your filter or parameter widget to dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards) to one or more dashboard cards. Only dashboard-level widgets can be connected to cards on multiple tabs.
+5. [Configure your filter](#editing-a-filter).
+6. **Save** your changes.
+
+Metabase will display the filter only if the filter is connected to a card on the current dashboard tab.
+
+### When to add a widget to a heading or card
+
+These are just rules of thumb to keep the user experience predictable. Do whatever works for your use case.
+
+By default, you should add widgets to the dashboard itself.
+
+If, however, your dashboard grows larger, and it doesn't make sense to break the dashboard up into multiple dashboards, you can add widgets to headings and cards so people can filter in place as they scroll through sections. In these cases, you should scope the effects of a heading widget to the section immediately below. Filters on cards should generally only update the card itself.
+
+If you want tab-specific widgets, you could either:
+
+- Add them to the dashboard itself, but only connect the widget to cards on a specific tab.
+- Use a heading filter.
 
 ## Date picker filters
 
@@ -218,8 +231,8 @@ A list of all of the possible values in a column. People can use checkboxes to s
 
 If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
 
-- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
-- SQL model: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- Table or model built with the query builder: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
+- Model built with a SQL query: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 #### Search box
 
