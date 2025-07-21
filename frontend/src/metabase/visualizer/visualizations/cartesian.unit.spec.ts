@@ -135,7 +135,7 @@ describe("cartesian", () => {
         ).toBe("graph.dimensions");
       });
 
-      it("should return undefined for a non-date column when chart only has a time dimension", () => {
+      it("should return graph.dimensions for a non-date column even if a chart only has a time dimension", () => {
         const settings = {
           "graph.metrics": [metricColumn.name],
           "graph.dimensions": [timeDimensionColumn.name],
@@ -160,7 +160,7 @@ describe("cartesian", () => {
             newDataset.data.cols,
             categoryDimensionColumn,
           ),
-        ).toBeUndefined();
+        ).toBe("graph.dimensions");
       });
 
       it("should return 'graph.dimensions' for a date column when chart has a time dimension and a category dimension", () => {
@@ -219,7 +219,7 @@ describe("cartesian", () => {
         ).toBe("graph.dimensions");
       });
 
-      it("should return undefined for a category dimension when chart doesn't have the same dimension", () => {
+      it("should return graph.dimensions for a category dimension even if a chart doesn't have the same dimension", () => {
         const settings = {
           "graph.metrics": [metricColumn.name],
           "graph.dimensions": [categoryDimensionColumn.name],
@@ -241,7 +241,7 @@ describe("cartesian", () => {
             newDataset.data.cols,
             otherCategoryDimensionColumn,
           ),
-        ).toBeUndefined();
+        ).toBe("graph.dimensions");
       });
 
       it("should return 'graph.dimensions' for a category dimension when chart has a time dimension and the same category dimension", () => {
@@ -297,7 +297,7 @@ describe("cartesian", () => {
             newDataset.data.cols,
             otherCategoryDimensionColumn,
           ),
-        ).toBeUndefined();
+        ).toBe("graph.dimensions");
       });
 
       it("should return 'graph.dimensions' for a new time dimension when every data source has a time dimension", () => {
@@ -325,7 +325,7 @@ describe("cartesian", () => {
         ).toBe("graph.dimensions");
       });
 
-      it("should return undefined for a new time dimension when not every data source has a time dimension", () => {
+      it("should return graph.dimensions for a new time dimension even if not every data source has a time dimension", () => {
         const settings = {
           "graph.metrics": [metricColumn.name],
           "graph.dimensions": [categoryDimensionColumn.name],
@@ -350,7 +350,7 @@ describe("cartesian", () => {
             newDataset.data.cols,
             dateColumn,
           ),
-        ).toBeUndefined();
+        ).toBe("graph.dimensions");
       });
 
       it("should return 'graph.dimensions' for a new category dimension when it's present in every data source", () => {
@@ -378,7 +378,7 @@ describe("cartesian", () => {
         ).toBe("graph.dimensions");
       });
 
-      it("should return undefined for a new category dimension when it's not present in every data source", () => {
+      it("should return graph.dimensions for a new category dimension even if it's not present in every data source", () => {
         const settings = {
           "graph.metrics": [metricColumn.name],
           "graph.dimensions": [timeDimensionColumn.name],
@@ -403,10 +403,10 @@ describe("cartesian", () => {
             newDataset.data.cols,
             sameCategoryDimensionColumn,
           ),
-        ).toBeUndefined();
+        ).toBe("graph.dimensions");
       });
 
-      it("should return undefined for a new category dimension when there are several metrics selected", () => {
+      it("should return graph.dimensions for a new category dimension when there are several metrics selected", () => {
         const settings = {
           "graph.metrics": [metricColumn.name, otherMetricColumn.name],
           "graph.dimensions": [timeDimensionColumn.name],
@@ -435,7 +435,7 @@ describe("cartesian", () => {
             baseDataset.data.cols,
             sameCategoryDimensionColumn,
           ),
-        ).toBeUndefined();
+        ).toBe("graph.dimensions");
       });
 
       it("should return 'graph.dimensions' for a compatible date dimension when there are several metrics selected", () => {
