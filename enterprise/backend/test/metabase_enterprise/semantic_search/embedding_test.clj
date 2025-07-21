@@ -10,18 +10,18 @@
   (testing "get-provider returns correct provider based on setting"
     (mt/with-temporary-setting-values [ee-embedding-provider "ollama"]
       (is (instance? metabase_enterprise.semantic_search.embedding.OllamaProvider
-                     (embedding/get-provider))))
+                     (embedding/get-provider-impl))))
 
     (mt/with-temporary-setting-values [ee-embedding-provider "openai"]
       (is (instance? metabase_enterprise.semantic_search.embedding.OpenAIProvider
-                     (embedding/get-provider)))))
+                     (embedding/get-provider-impl)))))
 
   (testing "get-provider throws on unknown provider"
     (mt/with-temporary-setting-values [ee-embedding-provider "unknown"]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Unknown embedding provider: :unknown"
-           (embedding/get-provider))))))
+           (embedding/get-provider-impl))))))
 
 (deftest test-model-dimensions-with-settings
   (testing "model-dimensions uses provider defaults when override is nil"

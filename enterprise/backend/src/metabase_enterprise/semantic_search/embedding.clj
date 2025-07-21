@@ -83,161 +83,140 @@
       (conj batches current-batch)
       batches)))
 
-(defn- default-model-for-provider
+(def default-model-for-provider
   "Get the default model for a given provider."
-  [provider-key]
-  (case provider-key
-    :openai "text-embedding-3-small"
-    :ollama "mxbai-embed-large"
-    nil))
+  {"openai" "text-embedding-3-small"
+   "ollama" "mxbai-embed-large"})
 
-(defn- get-model
-  "Get the model to use for the current provider, either the default or an override from settings."
-  []
-  (let [provider-key (semantic-settings/ee-embedding-provider)
-        override-model (semantic-settings/ee-embedding-model)]
-    (if-not (str/blank? override-model)
-      override-model
-      (default-model-for-provider provider-key))))
+;;;; Provider SPI
 
-(p/defprotocol+ EmbeddingProvider
-  "Protocol for embedding providers."
-  (-get-embedding [provider text]
-    "Generate an embedding vector for the given text.")
-  (-get-embeddings-batch [provider texts]
-    "Generate embedding vectors for multiple texts in a single API call.
-     Returns a vector of embeddings in the same order as the input texts.")
-  (-pull-model [provider]
-    "Pull/download the embedding model if needed (no-op for cloud providers).")
-  (-model-dimensions [provider model]
-    "Return the number of dimensions for this provider's embeddings given a model name."))
+(defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
 
-(p/defrecord+ OllamaProvider []
-  EmbeddingProvider
-  (-get-embedding [_ text]
+(defmulti get-embedding
+  "Returns a single embedding vector for the given text"
+  {:arglists '([embedding-model text])} dispatch-provider)
+
+(defmulti get-embeddings-batch
+  "Returns a sequential collection of embedding vectors, in the same order as the input texts."
+  {:arglists '([embedding-model texts])} dispatch-provider)
+
+(defmulti pull-model
+  "If a model needs to be downloaded (which is the case for ollama), downloads it."
+  {:arglists '([embedding-model])} dispatch-provider)
+
+;;;; Ollama impl
+
+(defn- ollama-get-embedding [model-name text]
+  (try
+    (log/debug "Generating Ollama embedding for text of length:" (count text))
+    (-> (http/post "http://localhost:11434/api/embeddings"
+                   {:headers {"Content-Type" "application/json"}
+                    :body    (json/encode {:model model-name
+                                           :prompt text})})
+        :body
+        (json/decode true)
+        :embedding)
+    (catch Exception e
+      (log/error e "Failed to generate Ollama embedding for text of length:" (count text))
+      (throw e))))
+
+(defn- ollama-get-embeddings-batch [model-name texts]
+  ;; Ollama doesn't have a native batch API, so we fall back to individual calls
+  ;; No special batching needed for Ollama - just process all texts
+  (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
+  (mapv #(ollama-get-embedding model-name %) texts))
+
+(defn- ollama-pull-model [model-name]
+  (try
+    (log/debug "Pulling embedding model from Ollama...")
+    (http/post "http://localhost:11434/api/pull"
+               {:headers {"Content-Type" "application/json"}
+                :body    (json/encode {:model model-name})})
+    (catch Exception e
+      (log/error e "Failed to pull embedding model")
+      (throw e))))
+
+(defmethod get-embedding        "ollama" [{:keys [model-name]} text] (ollama-get-embedding model-name text))
+(defmethod get-embeddings-batch "ollama" [{:keys [model-name]} text] (ollama-get-embeddings-batch model-name text))
+(defmethod pull-model           "ollama" [{:keys [model-name]}]      (ollama-pull-model model-name))
+
+;;;; OpenAI impl
+
+(defn- openai-get-embeddings-batch [model-name texts]
+  (let [api-key (semantic-settings/openai-api-key)
+        endpoint "https://api.openai.com/v1/embeddings"]
+    (when-not api-key
+      (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
     (try
-      (log/debug "Generating Ollama embedding for text of length:" (count text))
-      (-> (http/post "http://localhost:11434/api/embeddings"
-                     {:headers {"Content-Type" "application/json"}
-                      :body    (json/encode {:model (get-model)
-                                             :prompt text})})
+      (log/debug "Generating" (count texts) "OpenAI embeddings in batch")
+      (-> (http/post endpoint
+                     {:headers {"Content-Type" "application/json"
+                                "Authorization" (str "Bearer " api-key)}
+                      :body    (json/encode {:model model-name
+                                             :input texts})})
           :body
           (json/decode true)
-          :embedding)
+          :data
+          (->> (map :embedding)
+               vec))
       (catch Exception e
-        (log/error e "Failed to generate Ollama embedding for text of length:" (count text))
-        (throw e))))
+        (log/error e "Failed to generate OpenAI embeddings for batch of" (count texts) "texts"
+                   "with token count:" (count-tokens-batch texts))
+        (throw e)))))
 
-  (-get-embeddings-batch [this texts]
-    ;; Ollama doesn't have a native batch API, so we fall back to individual calls
-    ;; No special batching needed for Ollama - just process all texts
-    (log/debug "Generating" (count texts) "Ollama embeddings (using individual calls)")
-    (mapv #(-get-embedding this %) texts))
+(defn- openai-get-embedding [model-name text]
+  (try
+    (log/debug "Generating OpenAI embedding for text of length:" (count text))
+    (first (openai-get-embeddings-batch model-name text))
+    (catch Exception e
+      (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
+      (throw e))))
 
-  (-pull-model [_]
-    (try
-      (log/debug "Pulling embedding model from Ollama...")
-      (http/post "http://localhost:11434/api/pull"
-                 {:headers {"Content-Type" "application/json"}
-                  :body    (json/encode {:model (get-model)})})
-      (catch Exception e
-        (log/error e "Failed to pull embedding model")
-        (throw e))))
+(defmethod get-embedding        "openai" [{:keys [model-name]} text] (openai-get-embedding model-name text))
+(defmethod get-embeddings-batch "openai" [{:keys [model-name]} text] (openai-get-embeddings-batch model-name text))
+(defmethod pull-model           "openai" [_] (log/info "OpenAI provider does not require pulling a model"))
 
-  (-model-dimensions [_ model]
-    (get ollama-supported-models model)))
+;;;; Global embedding model
 
-(defrecord OpenAIProvider []
-  EmbeddingProvider
-  (-get-embedding [this text]
-    (try
-      (log/debug "Generating OpenAI embedding for text of length:" (count text))
-      (first (-get-embeddings-batch this [text]))
-      (catch Exception e
-        (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
-        (throw e))))
+(def ^:dynamic ^:redef *active-model*
+  "The model being used by the current semantic search engine."
+  nil)
 
-  (-get-embeddings-batch [_ texts]
-    (let [api-key (semantic-settings/openai-api-key)
-          model (get-model)
-          endpoint "https://api.openai.com/v1/embeddings"]
-      (when-not api-key
-        (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
-      (try
-        (log/debug "Generating" (count texts) "OpenAI embeddings in batch")
-        (-> (http/post endpoint
-                       {:headers {"Content-Type" "application/json"
-                                  "Authorization" (str "Bearer " api-key)}
-                        :body    (json/encode {:model model
-                                               :input texts})})
-            :body
-            (json/decode true)
-            :data
-            (->> (map :embedding)
-                 vec))
-        (catch Exception e
-          (log/error e "Failed to generate OpenAI embeddings for batch of" (count texts) "texts"
-                     "with token count:" (count-tokens-batch texts))
-          (throw e)))))
+(defn get-active-model []
+  "Returns *active-model* if defined.
 
-  (-pull-model [_]
-    (log/info "OpenAI provider does not require pulling a model"))
+  Otherwise get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
 
-  (-model-dimensions [_ model]
-    (get openai-supported-models model)))
+  Requires the model dimensions are defined in ollama-supported-models or openai-supported-models (throws if not)."
+  (or *active-model*
+      (let [provider (semantic-settings/ee-embedding-provider)
+            models (case provider
+                     "ollama" ollama-supported-models
+                     "openai" openai-supported-models
+                     (throw (ex-info "Not a supported provider" {:provider provider})))
+            model-name (or (semantic-settings/ee-embedding-model) (default-model-for-provider provider))
+            vector-dimensions (or (get models model-name)
+                                  (throw (ex-info "Not a supported model" {:provider provider, :model-name model-name})))]
+        {:provider provider
+         :model-name model-name
+         :vector-dimensions vector-dimensions})))
 
-(def ^:private providers
-  "Registry of available embedding providers."
-  {:ollama (->OllamaProvider)
-   :openai (->OpenAIProvider)})
-
-(defn get-provider
-  "Get the configured embedding provider according to the ee-embedding-provider setting"
-  []
-  (let [provider-key (keyword (semantic-settings/ee-embedding-provider))]
-    (if-let [provider (get providers provider-key)]
-      provider
-      (throw (ex-info (str "Unknown embedding provider: " provider-key)
-                      {:provider provider-key
-                       :available-providers (keys providers)})))))
-
-(defn get-embedding
-  "Generate a single embedding using the configured provider. Prefer using `process-embeddings-streaming` for bulk index population."
-  [text]
-  (-get-embedding (get-provider) text))
-
-(defn pull-model
-  "Pull/download the model using the configured provider."
-  []
-  (-pull-model (get-provider)))
-
-(defn model-dimensions
-  "Get the number of dimensions for the configured provider and model."
-  ([]
-   (let [provider (get-provider)
-         model (get-model)]
-     (-model-dimensions provider model)))
-  ([model]
-   (-model-dimensions (get-provider) model)))
-
-;; TODO: dedupe embedding fetching for identical values
 (defn process-embeddings-streaming
   "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
   [texts embeddings] for each batch."
-  [texts process-fn]
+  [embedding-model texts process-fn]
   (when (seq texts)
-    (let [provider (get-provider)]
-      (if (instance? OpenAIProvider provider)
+    (let [{:keys [model-name provider]} embedding-model]
+      (if (= "openai" provider)
         ;; For OpenAI, use token-aware batching and stream processing
         (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)]
           (run! (fn [batch-texts]
-                  (let [embeddings (-get-embeddings-batch provider batch-texts)]
+                  (let [embeddings (openai-get-embeddings-batch model-name batch-texts)]
                     (process-fn batch-texts embeddings)))
                 batches))
         ;; For other providers, process all at once (existing behavior)
-        (let [embeddings (-get-embeddings-batch provider texts)]
+        (let [embeddings (get-embeddings-batch provider texts)]
           (process-fn texts embeddings))))))
-
 (comment
   ;; Configuration:
   ;; MB_EE_EMBEDDING_PROVIDER:  "openai" or "ollama" (default)
@@ -246,7 +225,8 @@
   ;;   - Ollama default: "mxbai-embed-large"
   ;; MB_EE_OPENAI_API_KEY your OpenAI API key
 
-  (pull-model)
-  (get-embedding "hello")
-  (model-dimensions)
-  (get-model))
+  (def embedding-model (get-active-model))
+
+  embedding-model
+  (pull-model embedding-model)
+  (get-embedding embedding-model "hello"))

@@ -9,8 +9,8 @@
   (deferred-tru "The embedding provider to use (:openai or :ollama)")
   :encryption :no
   :visibility :settings-manager
-  :default :ollama
-  :type :keyword
+  :default "ollama"
+  :type :string
   :export? false
   :doc "This feature is experimental.")
 
