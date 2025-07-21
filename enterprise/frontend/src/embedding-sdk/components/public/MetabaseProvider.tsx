@@ -31,10 +31,7 @@ import { MetabotProvider } from "metabase-enterprise/metabot/context";
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
 import { SdkContextProvider } from "../private/SdkContext";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-import {
-  FullPagePortalContainer,
-  PortalContainer,
-} from "../private/SdkPortalContainer";
+import { PortalContainer } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
 import "metabase/css/index.module.css";
@@ -156,7 +153,6 @@ export const MetabaseProviderInternal = ({
               allowConsoleLog={allowConsoleLog}
             />
             <PortalContainer />
-            <FullPagePortalContainer />
           </Box>
         </SdkThemeProvider>
       </EmotionCacheProvider>

@@ -37,7 +37,9 @@ describe("ActionCreator > Query Actions", () => {
       await setup();
       await userEvent.click(getIcon("reference"));
 
-      expect(screen.getAllByText("Data Reference")).toHaveLength(2);
+      await waitFor(() =>
+        expect(screen.getAllByText("Data Reference")).toHaveLength(2),
+      );
       expect(
         within(screen.getByTestId("sidebar-content")).getByText("Database"),
       ).toBeInTheDocument();

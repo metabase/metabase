@@ -19,6 +19,10 @@ import {
 } from "./setup";
 
 describe("nav > containers > MainNavbar", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe("homepage link", () => {
     it("should render", async () => {
       await setup();
@@ -68,6 +72,22 @@ describe("nav > containers > MainNavbar", () => {
       expect(onboardingLink).toHaveAttribute("href", "/getting-started");
     });
 
+    it("should not render if the instance is inside embedding iframe", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        isEmbeddingIframe: true,
+      });
+      const section = screen.queryByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      const onboardingLink = screen.queryByRole("link", {
+        name: /How to use Metabase/i,
+      });
+
+      expect(section).not.toBeInTheDocument();
+      expect(onboardingLink).not.toBeInTheDocument();
+    });
+
     it.each(["admin", "non-admin"])("should render for %s", async (user) => {
       await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
       const section = screen.getByRole("tab", {
@@ -101,13 +121,6 @@ describe("nav > containers > MainNavbar", () => {
         name: /How to use Metabase/i,
       });
       expect(link).toHaveAttribute("aria-selected", "true");
-    });
-  });
-
-  describe("DWH Upload CSV", () => {
-    it("should not render 'upload CSV' button", () => {
-      setup({ user: createMockUser({ is_superuser: true }) });
-      expect(screen.queryByTestId("dwh-upload-csv")).not.toBeInTheDocument();
     });
   });
 
@@ -347,42 +360,31 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("add database button", () => {
-    it("should render for admins if they haven't added a database yet", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        withAdditionalDatabase: false,
-      });
+  describe("Personal Collections", () => {
+    it("non-admin should see not other users personal collections", async () => {
+      await setup({});
 
-      const sidebar = screen.getByTestId("main-navbar-root");
-      expect(within(sidebar).getByText("Add database")).toBeInTheDocument();
-      expect(within(sidebar).getByTestId("add-database-link")).toHaveAttribute(
-        "href",
-        "/admin/databases/create",
-      );
-    });
-
-    it("should not render for admins if they previously added a database", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        withAdditionalDatabase: true,
-      });
-
-      const sidebar = screen.getByTestId("main-navbar-root");
       expect(
-        within(sidebar).queryByText("Add database"),
+        screen.queryByText(/Other users' personal collections/i),
       ).not.toBeInTheDocument();
     });
 
-    it("should not render for regular users", async () => {
+    it("admin should see other users personal collections if there other users", async () => {
       await setup({
-        user: createMockUser({ is_superuser: false }),
-        withAdditionalDatabase: false,
+        user: createMockUser({ is_superuser: true }),
       });
-
-      const sidebar = screen.getByTestId("main-navbar-root");
       expect(
-        within(sidebar).queryByText("Add database"),
+        await screen.findByText(/Other users' personal collections/i),
+      ).toBeInTheDocument();
+    });
+
+    it("admin not should see other users personal collections if there no other users", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        activeUsersCount: 1,
+      });
+      expect(
+        screen.queryByText(/Other users' personal collections/i),
       ).not.toBeInTheDocument();
     });
   });

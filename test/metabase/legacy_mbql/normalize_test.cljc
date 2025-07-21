@@ -60,6 +60,9 @@
    {[:field 2 {"temporal-unit" "day"}]
     [:field 2 {:temporal-unit :day}]
 
+    [:field 2 {"inherited-temporal-unit" "day"}]
+    [:field 2 {:inherited-temporal-unit :day}]
+
     [:field 2 {"binning" {"strategy" "default"}}]
     [:field 2 {:binning {:strategy :default}}]}
 
@@ -613,7 +616,7 @@
              :fields      [[:expression "abc" {:base-type :type/Number}]]}}}
 
    "expressions can be a literal :value"
-   {{:query {:expressions {"abc" [:value 123 {"base_type" "type/Integer"}]}
+   {{:query {:expressions {"abc" [:value 123 {"base-type" "type/Integer"}]}
              :fields      [[:expression "abc" {"base-type" "type/Integer"}]]}}
     {:query {:expressions {"abc" [:value 123 {:base_type :type/Integer}]}
              :fields      [[:expression "abc" {:base-type :type/Integer}]]}}}))
@@ -1672,3 +1675,16 @@
                                               :keyword-name                    ident2
                                               (keyword "keyword/with-slash")   ident3
                                               (keyword "namespaced" "keyword") ident4}}}))))))
+
+(t/deftest ^:parallel normalize-datetime-test
+  (t/is (= [:datetime ""]
+           (mbql.normalize/normalize-tokens [:datetime ""])))
+  (t/testing "if we add other options, they are preserved (and don't break anything)"
+    (t/is (= [:datetime "" {:x "x"}]
+             (mbql.normalize/normalize-tokens [:datetime "" {"x" "x"}]))))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens [:datetime "" {:mode :iso}])))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens [:datetime "" {:mode "iso"}])))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens ["datetime" "" {"mode" "iso"}]))))

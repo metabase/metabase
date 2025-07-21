@@ -1,14 +1,12 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
 
 (def ^:private max-rows-in-limited-downloads 10000)
@@ -30,23 +28,23 @@
   [{database-id :database}]
   (perms/native-download-permission-for-user api/*current-user-id* database-id))
 
+(defn- any-native-stage?
+  "Returns true if any stage of this query is native."
+  [query]
+  (boolean (lib.util.match/match-one query
+             (m :guard (every-pred map? :native))
+             true)))
+
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]
-  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)
-        table-perms (if native?
-                      ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
-                      ;; download perms
-                      #{(perms/native-download-permission-for-user api/*current-user-id* db-id)}
-                      (set (map (fn table-perms-lookup [table-id]
-                                  (perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
-                                table-ids)))
-        card-perms  (set
-                     ;; If we have any card references in the query, check perms recursively
-                     (map (fn card-perms-lookup [card-id]
-                            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
-                              (current-user-download-perms-level query)))
-                          card-ids))
-        perms       (set/union table-perms card-perms)]
+  (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
+        perms (if (or native? (any-native-stage? query))
+                ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
+                ;; download perms
+                #{(perms/native-download-permission-for-user api/*current-user-id* db-id)}
+                (set (map (fn table-perms-lookup [table-id]
+                            (perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
+                          table-ids)))]
      ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
     (or (perms :no)
         (perms :ten-thousand-rows)

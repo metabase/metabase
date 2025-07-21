@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import Button from "metabase/common/components/Button";
 import QuestionResultLoader from "metabase/common/components/QuestionResultLoader";
 import CS from "metabase/css/core/index.css";
@@ -87,7 +88,10 @@ export const NotebookStepPreview = ({ step, onClose }) => {
 };
 
 export const VisualizationPreview = ({ rawSeries, result, error }) => {
-  const err = getErrorMessage(error || result?.error);
+  const errorPayload = error || result?.error;
+  const err = errorPayload
+    ? getErrorMessage(errorPayload, t`Could not fetch preview`)
+    : null;
 
   return (
     <Visualization
@@ -106,20 +110,4 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
 function getPreviewHeightForResult(result) {
   const rowCount = result ? result.data.rows.length : 1;
   return rowCount * 36 + 36 + 2;
-}
-
-function getErrorMessage(err) {
-  if (!err) {
-    return null;
-  }
-
-  if (typeof err === "string") {
-    return err;
-  }
-
-  if (typeof err.message === "string") {
-    return err.message;
-  }
-
-  return t`Could not fetch preview`;
 }

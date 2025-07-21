@@ -432,7 +432,6 @@ export const useDataGridInstance = <TData, TValue>({
 
   // Setup cell selection functionality
   const selection = useCellSelection({
-    gridRef,
     table,
     isEnabled: enableSelection,
     scrollTo,

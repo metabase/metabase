@@ -16,10 +16,12 @@ frontend_ci: &frontend_ci
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/frontend.yml"
 
-frontend_sources: &frontend_sources
-  - *shared_sources
-  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
-  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+frontend_embedding_sdk_ci: &frontend_embedding_sdk_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/*embedding-sdk*.yml"
+
+frontend_configs: &frontend_configs
   - "yarn.lock"
   - "**/tsconfig*.json"
   - "package.json"
@@ -32,8 +34,15 @@ frontend_sources: &frontend_sources
   - "webpack.static-viz.config.js"
   - ".nvmrc"
 
+frontend_sources: &frontend_sources
+  - *shared_sources
+  - *frontend_configs
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+
 frontend_embedding_sdk_sources:
-  - *frontend_sources
+  - *frontend_configs
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
 
 frontend_specs: &frontend_specs
   - *shared_specs
@@ -105,25 +114,27 @@ e2e_ci: &e2e_ci
   - ".github/actions/prepare-uberjar-artifact/**"
   - ".github/actions/e2e-prepare-containers/**"
   - ".github/actions/prepare-cypress/**"
-  - ".github/actions/run-snowplow-micro/**"
   - ".github/workflows/e2e-*"
 
 e2e_specs: &e2e_specs
-  - "**/*.cy.*.js"
-  - "**/*.cy.*.ts"
+  - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
 e2e_cross_version: &e2e_cross_version
   - ".github/workflows/e2e-cross-version.yml"
   - "e2e/test/scenarios/cross-version/**"
 
+e2e_embedding_sdk:
+  - *frontend_embedding_sdk_ci
+  - *sources
+  - "e2e/component/**/*.cy.*.{js,ts}"
+
 e2e_embedding_sdk_compatibility:
   - *default
-  - *e2e_ci
+  - *frontend_embedding_sdk_ci
   - *frontend_sources
   - "e2e/embedding-sdk-host-apps/**"
   - "e2e/runner/embedding-sdk/**"
-  - "e2e/runner/test-host-app/**/*.cy.*.js"
-  - "e2e/runner/test-host-app/**/*.cy.*.ts"
+  - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
 e2e_all:
   - *default
@@ -137,9 +148,12 @@ snowplow:
   - "snowplow/**"
 
 documentation:
-  - ".typedoc/**"
   - "docs/**"
   - "**/*.md"
+
+embedding_documentation:
+  - ".typedoc/**"
+  - "docs/embedding/**"
 
 yaml:
   - "**/*.yml"

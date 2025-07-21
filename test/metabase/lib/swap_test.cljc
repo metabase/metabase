@@ -179,12 +179,14 @@
           [brk1 brk2]   (lib/breakouts base 0)
           after         (lib/swap-clauses before 0 brk1 brk2)
           cols-after    (lib/visible-columns after)
-          days-after    (assoc days
-                               :lib/source-column-alias  "CREATED_AT"
-                               :lib/desired-column-alias "CREATED_AT")
-          months-after  (assoc months
-                               :lib/source-column-alias  "CREATED_AT_2"
-                               :lib/desired-column-alias "CREATED_AT_2")]
+          days-after    (-> (assoc days
+                                   :lib/source-column-alias  "CREATED_AT"
+                                   :lib/desired-column-alias "CREATED_AT")
+                            (dissoc :lib/deduplicated-name))
+          months-after  (-> (assoc months
+                                   :lib/source-column-alias  "CREATED_AT_2"
+                                   :lib/desired-column-alias "CREATED_AT_2")
+                            (dissoc :lib/deduplicated-name))]
       (testing "\nthe columns have swapped places and their names have changed"
         (is (=? [days-after months-after {:name "days-ago"}]
                 cols-after)))

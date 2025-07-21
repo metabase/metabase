@@ -138,7 +138,7 @@
     [:name      :string]
     [:base_type :keyword]
     [:semantic_type {:optional true} [:maybe :keyword]]]
-   ::analyze.schema/no-kebab-case-keys])
+   ::analyze.schema/qp-results-cased-map])
 
 (mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
   "Classifer that infers the semantic type of a `field` based on its name and base type."

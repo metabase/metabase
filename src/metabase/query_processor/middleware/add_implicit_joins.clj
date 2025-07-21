@@ -10,7 +10,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -74,23 +73,23 @@
       (for [{:keys [fk-field-id fk-field-name fk-join-alias]} fk-field-infos
             :let [fk-field (lib.metadata.protocols/field (qp.store/metadata-provider) fk-field-id)]
             :when fk-field
-            :let [{pk-id :fk-target-field-id, fk-ident :ident} fk-field]
+            :let [{pk-id :fk-target-field-id} fk-field]
             :when pk-id]
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
               alias-for-join           (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
-          (-> (m/assoc-some {:source-table  source-table
-                             :alias         alias-for-join
-                             :ident         (lib/implicit-join-clause-ident fk-ident)
-                             :fields        :none
-                             :strategy      :left-join
-                             :condition     [:= [:field
-                                                 (or fk-field-name fk-field-id)
-                                                 (m/assoc-some nil
-                                                               :base-type (when fk-field-name (:base-type fk-field))
-                                                               :join-alias fk-join-alias)]
-                                             [:field pk-id {:join-alias alias-for-join}]]
-                             :fk-field-id   fk-field-id}
+          (-> (m/assoc-some {:source-table        source-table
+                             :qp/is-implicit-join true
+                             :alias               alias-for-join
+                             :fields              :none
+                             :strategy            :left-join
+                             :condition           [:= [:field
+                                                       (or fk-field-name fk-field-id)
+                                                       (m/assoc-some nil
+                                                                     :base-type (when fk-field-name (:base-type fk-field))
+                                                                     :join-alias fk-join-alias)]
+                                                   [:field pk-id {:join-alias alias-for-join}]]
+                             :fk-field-id         fk-field-id}
                             :fk-field-name fk-field-name
                             :fk-join-alias fk-join-alias)
               (vary-meta assoc ::needs [:field fk-field-id nil])))))))

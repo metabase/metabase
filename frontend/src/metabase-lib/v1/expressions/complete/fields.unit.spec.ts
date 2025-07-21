@@ -14,7 +14,8 @@ import {
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 
-import { sharedMetadata } from "../test/shared";
+import { columnsForExpressionMode } from "../mode";
+import { queryWithAggregation, sharedMetadata } from "../test/shared";
 
 import { complete } from "./__support__";
 import { suggestFields } from "./fields";
@@ -62,11 +63,17 @@ describe("suggestFields", () => {
         },
       },
     });
-
+    const stageIndex = 0;
+    const expressionIndex = 0;
     const source = suggestFields({
       query,
-      stageIndex: 0,
-      expressionIndex: 0,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+        expressionIndex,
+      }),
     });
 
     return function (doc: string) {
@@ -77,10 +84,12 @@ describe("suggestFields", () => {
   const RESULTS = {
     from: 0,
     to: 3,
+    filter: false,
     options: [
       {
         label: "[Email]",
         displayLabel: "Email",
+        displayLabelWithTable: "Table Email",
         matches: [[0, 2]],
         type: "field",
         icon: "list",
@@ -89,6 +98,7 @@ describe("suggestFields", () => {
       {
         label: "[Seats]",
         displayLabel: "Seats",
+        displayLabelWithTable: "Table Seats",
         matches: [[1, 2]],
         type: "field",
         icon: "int",
@@ -105,6 +115,7 @@ describe("suggestFields", () => {
       {
         label: "[Email]",
         displayLabel: "Email",
+        displayLabelWithTable: "Table Email",
         type: "field",
         icon: "list",
         column: expect.any(Object),
@@ -112,6 +123,7 @@ describe("suggestFields", () => {
       {
         label: "[Name]",
         displayLabel: "Name",
+        displayLabelWithTable: "Table Name",
         type: "field",
         icon: "list",
         column: expect.any(Object),
@@ -119,6 +131,7 @@ describe("suggestFields", () => {
       {
         label: "[Seats]",
         displayLabel: "Seats",
+        displayLabelWithTable: "Table Seats",
         type: "field",
         icon: "int",
         column: expect.any(Object),
@@ -175,10 +188,16 @@ describe("suggestFields", () => {
   });
 
   it("should suggest foreign fields", () => {
+    const query = createQuery();
+    const stageIndex = -1;
     const source = suggestFields({
-      query: createQuery(),
-      stageIndex: -1,
-      expressionIndex: undefined,
+      query,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
     });
 
     const result = complete(source, "[Use|");
@@ -186,44 +205,14 @@ describe("suggestFields", () => {
     expect(result).toEqual({
       from: 0,
       to: 4,
+      filter: false,
       options: [
         {
           type: "field",
           label: "[User ID]",
           displayLabel: "User ID",
+          displayLabelWithTable: "Orders User ID",
           icon: "connections",
-          column: expect.any(Object),
-          matches: [[0, 2]],
-        },
-        {
-          type: "field",
-          label: "[User → Address]",
-          displayLabel: "User → Address",
-          icon: "string",
-          column: expect.any(Object),
-          matches: [[0, 2]],
-        },
-        {
-          type: "field",
-          label: "[User → City]",
-          displayLabel: "User → City",
-          icon: "location",
-          column: expect.any(Object),
-          matches: [[0, 2]],
-        },
-        {
-          type: "field",
-          label: "[User → Email]",
-          displayLabel: "User → Email",
-          icon: "string",
-          column: expect.any(Object),
-          matches: [[0, 2]],
-        },
-        {
-          type: "field",
-          label: "[User → ID]",
-          displayLabel: "User → ID",
-          icon: "label",
           column: expect.any(Object),
           matches: [[0, 2]],
         },
@@ -231,6 +220,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Latitude]",
           displayLabel: "User → Latitude",
+          displayLabelWithTable: "People Latitude",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -239,7 +229,44 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Longitude]",
           displayLabel: "User → Longitude",
+          displayLabelWithTable: "People Longitude",
           icon: "location",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Address]",
+          displayLabel: "User → Address",
+          displayLabelWithTable: "People Address",
+          icon: "string",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → City]",
+          displayLabel: "User → City",
+          displayLabelWithTable: "People City",
+          icon: "location",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → Email]",
+          displayLabel: "User → Email",
+          displayLabelWithTable: "People Email",
+          icon: "string",
+          column: expect.any(Object),
+          matches: [[0, 2]],
+        },
+        {
+          type: "field",
+          label: "[User → ID]",
+          displayLabel: "User → ID",
+          displayLabelWithTable: "People ID",
+          icon: "label",
           column: expect.any(Object),
           matches: [[0, 2]],
         },
@@ -247,6 +274,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Name]",
           displayLabel: "User → Name",
+          displayLabelWithTable: "People Name",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -255,6 +283,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Password]",
           displayLabel: "User → Password",
+          displayLabelWithTable: "People Password",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -263,6 +292,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Source]",
           displayLabel: "User → Source",
+          displayLabelWithTable: "People Source",
           icon: "string",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -271,6 +301,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → State]",
           displayLabel: "User → State",
+          displayLabelWithTable: "People State",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -279,6 +310,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Zip]",
           displayLabel: "User → Zip",
+          displayLabelWithTable: "People Zip",
           icon: "location",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -287,6 +319,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Birth Date]",
           displayLabel: "User → Birth Date",
+          displayLabelWithTable: "People Birth Date",
           icon: "calendar",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -295,6 +328,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[User → Created At]",
           displayLabel: "User → Created At",
+          displayLabelWithTable: "People Created At",
           icon: "calendar",
           column: expect.any(Object),
           matches: [[0, 2]],
@@ -327,11 +361,15 @@ describe("suggestFields", () => {
       metadata: sharedMetadata,
       query: queryWithJoins,
     });
-
+    const stageIndex = -1;
     const source = suggestFields({
       query,
-      stageIndex: -1,
-      expressionIndex: undefined,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "expression",
+      }),
     });
 
     complete(source, "Foo|");
@@ -341,11 +379,13 @@ describe("suggestFields", () => {
     expect(result).toEqual({
       from: 0,
       to: 3,
+      filter: false,
       options: expect.any(Array),
     });
 
     expect(result?.options[0]).toEqual({
       displayLabel: "Foo → Body",
+      displayLabelWithTable: "Reviews Body",
       label: "[Foo → Body]",
       type: "field",
       icon: "string",
@@ -354,6 +394,7 @@ describe("suggestFields", () => {
     });
     expect(result?.options[1]).toEqual({
       displayLabel: "Foo → ID",
+      displayLabelWithTable: "Reviews ID",
       label: "[Foo → ID]",
       type: "field",
       icon: "label",
@@ -384,18 +425,24 @@ describe("suggestFields", () => {
     const source = suggestFields({
       query,
       stageIndex: stageIndexAfterNesting,
-      expressionIndex: undefined,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex: stageIndexAfterNesting,
+        expressionMode: "expression",
+      }),
     });
 
     const result = complete(source, "T|");
     expect(result).toEqual({
       from: 0,
       to: 1,
+      filter: false,
       options: [
         {
           type: "field",
           label: "[Total]",
           displayLabel: "Total",
+          displayLabelWithTable: "Orders Total",
           icon: "int",
           column: expect.any(Object),
           matches: [
@@ -407,6 +454,7 @@ describe("suggestFields", () => {
           type: "field",
           label: "[Count]",
           displayLabel: "Count",
+          displayLabelWithTable: "Count",
           icon: "int",
           column: expect.any(Object),
           matches: [[4, 4]],
@@ -414,4 +462,71 @@ describe("suggestFields", () => {
       ],
     });
   });
+
+  it.each(["expression", "filter"] as const)(
+    "should not suggest aggregations when expressionMode = %s",
+    async (expressionMode) => {
+      const query = queryWithAggregation;
+      const stageIndex = -1;
+
+      const source = suggestFields({
+        query,
+        stageIndex,
+        availableColumns: columnsForExpressionMode({
+          query,
+          stageIndex,
+          expressionMode,
+        }),
+      });
+
+      const result = await complete(source, "[Bar aggregat|]");
+      const aggregations = result?.options.filter(
+        (option) => option.displayLabel === "Bar Aggregation",
+      );
+      expect(aggregations).toHaveLength(0);
+    },
+  );
+
+  it("should suggest aggregations when expressionMode = aggregation", async () => {
+    const query = queryWithAggregation;
+    const stageIndex = -1;
+    const source = suggestFields({
+      query,
+      stageIndex,
+      availableColumns: columnsForExpressionMode({
+        query,
+        stageIndex,
+        expressionMode: "aggregation",
+      }),
+    });
+
+    const result = await complete(source, "[Bar aggregat|]");
+    const aggregations = result?.options.filter(
+      (option) => option.displayLabel === "Bar Aggregation",
+    );
+    expect(aggregations).toHaveLength(1);
+  });
+
+  it.each(["expression", "filter", "aggregation"] as const)(
+    "should suggest aggregations when expressionMode = %s in later stages",
+    async (expressionMode) => {
+      const query = Lib.appendStage(queryWithAggregation);
+      const stageIndex = -1;
+      const source = suggestFields({
+        query,
+        stageIndex,
+        availableColumns: columnsForExpressionMode({
+          query,
+          stageIndex,
+          expressionMode,
+        }),
+      });
+
+      const result = await complete(source, "[Bar aggregat|]");
+      const aggregations = result?.options.filter(
+        (option) => option.displayLabel === "Bar Aggregation",
+      );
+      expect(aggregations).toHaveLength(1);
+    },
+  );
 });

@@ -5,9 +5,9 @@ import _ from "underscore";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { isTrashedCollection } from "metabase/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
-import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import Modal from "metabase/common/components/Modal";
 import { BulkMoveModal } from "metabase/common/components/MoveModal";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";

@@ -103,6 +103,7 @@
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (analytics/shutdown!)
+  (notification/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))

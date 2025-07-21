@@ -71,7 +71,7 @@ describe("scenarios > auth > signin > SSO", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       // Disable password log-in
       cy.request("PUT", "api/setting/enable-password-login", {
         value: false,

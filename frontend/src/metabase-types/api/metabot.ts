@@ -51,7 +51,9 @@ export type MetabotHistoryEntry =
   | MetabotHistoryToolEntry
   | MetabotHistoryMessageEntry;
 
-export type MetabotHistory = any;
+export type MetabotHistory = any[];
+
+export type MetabotStateContext = Record<string, any>;
 
 export type MetabotMessageReaction = {
   type: "metabot.reaction/message";
@@ -102,6 +104,8 @@ export type MetabotChartConfig = {
     description?: string;
     timestamp: string;
   }>;
+  query?: DatasetQuery;
+  display_type?: CardDisplayType;
 };
 
 export type MetabotCardInfo = {
@@ -134,9 +138,10 @@ export type MetabotEntityInfo =
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  history: MetabotHistory[];
+  history: MetabotHistory;
+  state: MetabotStateContext;
   conversation_id: string; // uuid
-  state: any;
+  metabot_id?: string;
 };
 
 export type MetabotAgentResponse = {
@@ -184,36 +189,7 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
-/* Metabot v3 - Type Guards */
-
-export const isMetabotMessageReaction = (
-  reaction: MetabotReaction,
-): reaction is MetabotMessageReaction => {
-  return reaction.type === "metabot.reaction/message";
-};
-
-export const isMetabotToolMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryToolEntry => {
-  return (
-    message.role === "assistant" && message.assistant_response_type === "tools"
-  );
-};
-
-export const isMetabotHistoryMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryMessageEntry => {
-  return (
-    message.role === "assistant" &&
-    message.assistant_response_type === "message"
-  );
-};
-
-export const isMetabotMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryMessageEntry => {
-  return message.role === "assistant";
-};
+/* Metabot v3 - Entity Types */
 
 export type MetabotId = number;
 export type MetabotName = string;

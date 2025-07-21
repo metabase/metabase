@@ -146,6 +146,7 @@ export const CollectionMenu = ({
               <Indicator
                 disabled={hasSeenAll}
                 size={6}
+                offset={6}
                 data-testid="menu-indicator-root"
               >
                 <ActionIcon size={32} variant="viewHeader">

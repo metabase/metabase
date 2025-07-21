@@ -31,7 +31,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -88,7 +88,8 @@
                  :actions/custom
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
-                 #_:index-info]]
+                 #_:index-info
+                 :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -487,6 +488,11 @@
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:convert_from expr (h2x/literal "UTF8")]))
+
+(defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:convert_from expr (h2x/literal "UTF8")]))
 
 (defn- extract [unit expr]
@@ -1007,6 +1013,19 @@
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
+
+(defmethod sql-jdbc.execute/execute-prepared-statement! :postgres
+  [driver stmt]
+  (let [orig-method (get-method sql-jdbc.execute/execute-prepared-statement! :sql-jdbc)]
+    (try
+      (orig-method driver stmt)
+      (catch Throwable e
+        (if (re-find #"No value specified for parameter" (ex-message e))
+          (throw (ex-info (tru "It looks like you have a ''?'' in your code which Postgres''s JDBC driver interprets as a parameter. You might need to escape it like ''??''.")
+                          {:driver driver
+                           :sql    (str stmt)
+                           :type   driver-api/qp.error-type.invalid-query}))
+          (throw e))))))
 
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]

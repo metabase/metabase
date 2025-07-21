@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { DashboardPickerValueItem } from "metabase/common/components/DashboardPicker";
-import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
-import { useDashboardQuery } from "metabase/common/hooks";
-import { Flex } from "metabase/ui";
+import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
+import {
+  DashboardPickerModal,
+  type DashboardPickerValueItem,
+} from "metabase/common/components/Pickers/DashboardPicker";
+import { Flex, Group, Icon } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 import { DashboardPickerButton } from "./DashboardSelector.styled";
@@ -19,16 +22,38 @@ export const DashboardSelector = ({
   value,
 }: DashboardSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: dashboard, isLoading } = useDashboardQuery({ id: value });
+  const {
+    data: dashboard,
+    isLoading,
+    error,
+  } = useGetDashboardQuery(
+    value
+      ? {
+          id: value,
+          ignore_error: true, // don't throw up an error page if the user can't access the dashboard
+        }
+      : skipToken,
+  );
 
   if (isLoading) {
     return (
       <Flex>
-        <DashboardPickerButton>{t`Loading...`}</DashboardPickerButton>
+        <DashboardPickerButton disabled>{t`Loading...`}</DashboardPickerButton>
       </Flex>
     );
   }
 
+  if (error) {
+    return (
+      <Group bg="bg-light" p="1rem">
+        <Icon name="warning" />
+        {t`Error loading dashboard.`}
+        {"  "}
+        {getErrorMessage(error)}
+      </Group>
+    );
+  }
+  ``;
   return (
     <Flex>
       <DashboardPickerButton onClick={() => setIsOpen(true)}>

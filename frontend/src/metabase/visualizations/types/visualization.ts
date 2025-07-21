@@ -70,6 +70,11 @@ export interface VisualizationTheme {
         fontSize: number;
       };
     };
+    splitLine: {
+      lineStyle: {
+        color: string;
+      };
+    };
   };
   pie: {
     borderColor: string;

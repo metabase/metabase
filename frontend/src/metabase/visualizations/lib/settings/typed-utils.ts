@@ -1,5 +1,8 @@
 import { getIn } from "icepick";
+import _ from "underscore";
 
+import { getVisualization } from "metabase/visualizations";
+import type { VisualizationSettingDefinition } from "metabase/visualizations/types";
 import type {
   Card,
   TableColumnOrderSetting,
@@ -61,15 +64,31 @@ const mergeTableColumns = (
   ];
 };
 
+export const isSettingHiddenOnDashboards = (
+  vizSettingDefinition: VisualizationSettingDefinition<unknown, unknown>,
+) => {
+  // strict check as by default all settings are visible on dashboards
+  return vizSettingDefinition.dashboard === false;
+};
+
 export function extendCardWithDashcardSettings(
   card: Card | VirtualCard,
   dashcardSettings?: VisualizationSettings,
 ): Card | VirtualCard {
+  // Legacy broken behavior: When editing dashcard viz settings, we save both the edited setting and any settings with
+  // persistDefault: true. This leads to saving data settings like graph.dimensions/graph.metrics even when they can't be edited in dashboards.
+  const visualization = getVisualization(card.display);
+  const settings = visualization?.settings ?? {};
+
+  const settingsToOmit = Object.keys(settings).filter((key) => {
+    return isSettingHiddenOnDashboards(settings[key] ?? {});
+  });
+
   return {
     ...card,
     visualization_settings: mergeSettings(
       card?.visualization_settings,
-      dashcardSettings,
+      _.omit(dashcardSettings, settingsToOmit),
     ),
   };
 }

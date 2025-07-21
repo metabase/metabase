@@ -1,9 +1,9 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
-import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
+import { activateToken } from "./e2e-token-helpers";
 import {
   enableSamlAuth,
   mockAuthProviderAndJwtSignIn,
@@ -140,9 +140,9 @@ export function prepareSdkIframeEmbedTest({
   cy.signInAsAdmin();
 
   if (withTokenFeatures) {
-    setTokenFeatures("all");
+    activateToken("bleeding-edge");
   } else {
-    setTokenFeatures("none");
+    activateToken("starter");
   }
 
   cy.request("PUT", "/api/setting/enable-embedding-interactive", {

@@ -225,7 +225,7 @@
                 :stages   [{:lib/type     :mbql.stage/mbql
                             :source-table 1
                             :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                            [:field {:lib/uuid string?
+                                            [:field {:lib/uuid (str (random-uuid))
                                                      :effective-type :type/Integer} 1]]]
                             :breakout     [[:aggregation
                                             {:display-name   "Revenue"
@@ -1233,3 +1233,74 @@
     "2020-10-20T10:20:00"
     "2020-10-20T10:20:00Z"
     "10:20:00"))
+
+(deftest ^:parallel round-trip-joins-metadata-test
+  (testing "when converting a join, preserve metadata correctly"
+    (let [legacy {:database (meta/id)
+                  :type     :query
+                  :query    {:source-table (meta/id :categories)
+                             :fields       [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                             :joins        [{:alias           "CATEGORIES__via__CATEGORY_ID"
+                                             :ident           (u/generate-nano-id)
+                                             :source-table    (meta/id :venues)
+                                             :condition       [:=
+                                                               [:field (meta/id :venues :category-id) nil]
+                                                               [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
+                                             :strategy        :left-join
+                                             :fk-field-id     (meta/id :venues :category-id)
+                                             :source-metadata [{:name "ID", :display_name "ID", :base_type :type/Integer}]}]}}]
+      (testing "legacy => MBQL 5"
+        (is (=? {:stages [{:joins [{:lib/type           :mbql/join
+                                    :stages             [{:lib/stage-metadata {:lib/type :metadata/results
+                                                                               :columns  [{:lib/type     :metadata/column
+                                                                                           :name         "ID"
+                                                                                           :display-name "ID"}]}}]
+                                    :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
+                                    :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
+                (-> legacy lib.convert/->pMBQL))))
+      (testing "legacy => MBQL 5 => legacy"
+        (is (=? {:query {:joins [{:alias           "CATEGORIES__via__CATEGORY_ID"
+                                  :source-metadata [{:lib/type     (symbol "nil #_\"key is not present.\"")
+                                                     :name         "ID"
+                                                     :display_name "ID"
+                                                     :base_type    :type/Integer}]}]}}
+                (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL))))
+      (testing "legacy => MBQL 5 => legacy => MBQL 5"
+        (is (=? {:stages [{:joins [{:lib/type           :mbql/join
+                                    :stages             [{:lib/stage-metadata {:lib/type :metadata/results
+                                                                               :columns  [{:lib/type     :metadata/column
+                                                                                           :name         "ID"
+                                                                                           :display-name "ID"}]}}]
+                                    :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
+                                    :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
+                (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL lib.convert/->pMBQL)))))))
+
+(deftest ^:parallel ->pMBQL-datetime-test
+  (is (=? [:datetime {:mode :unix-seconds
+                      :lib/uuid string?} 10]
+          (lib.convert/->pMBQL [:datetime 10 {:mode :unix-seconds}])))
+  (is (=? [:datetime {:mode :iso
+                      :lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime "" {:mode :iso}])))
+  (is (=? [:datetime {:lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime "" {}])))
+  (is (=? [:datetime {:lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime ""]))))
+
+(deftest ^:parallel ->legacy-MBQL-test
+  (is (= [:datetime 10 {:mode :unix-seconds}]
+         (lib.convert/->legacy-MBQL [:datetime {:mode :unix-seconds, :lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} 10])))
+  (is (= [:datetime ""]
+         (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} ""])))
+  (is (= [:datetime "" {:mode :iso}]
+         (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9" :mode :iso} ""]))))
+
+(deftest ^:parallel round-trip-aggregation-reference-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        sum   (->> (lib/aggregable-columns query nil)
+                   (m/find-first (comp #{"sum"} :name)))
+        query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
+        legacy-query (lib.convert/->legacy-MBQL query)]
+    (is (= legacy-query
+           (-> legacy-query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
