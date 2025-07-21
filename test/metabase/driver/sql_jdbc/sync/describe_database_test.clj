@@ -288,30 +288,30 @@
        (fn [^Connection conn]
          (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
            (testing "we will retry syncing a table once if there is an exception on the first attempt"
-             (let [call-count (atom 0)]
+             (let [select-probes (atom 0)]
                (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
                              (fn [_driver _conn _sql]
-                               (let [n (swap! call-count inc)]
-                                 (if (< n 2)
-                                   (throw (ex-info "Mock statement closed error" {}))
-                                   nil)))]
-                 (is (true? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))))
+                               (let [n (swap! select-probes inc)]
+                                 (when (< n 2)
+                                   (throw (ex-info "Mock statement closed error" {})))))]
+                 (is (true? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
+                 (is (= 2 @select-probes)))))
            (testing "we won't retry syncing a table more than once if there is more than one exception"
-             (let [call-count (atom 0)]
+             (let [select-probes (atom 0)]
                (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
                              (fn [_driver _conn _sql]
-                               (let [n (swap! call-count inc)]
-                                 (if (< n 3)
-                                   (throw (ex-info "Mock statement closed error" {}))
-                                   nil)))]
-                 (is (false? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))))
+                               (let [n (swap! select-probes inc)]
+                                 (when (< n 3)
+                                   (throw (ex-info "Mock statement closed error" {})))))]
+                 (is (false? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
+                 (is (= 2 @select-probes)))))
            (testing "we won't retry syncing a table if probe query was canceled"
-             (let [call-count (atom 0)]
+             (let [select-probes (atom 0)]
                (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
                              (fn [_driver _conn _sql]
-                               (let [n (swap! call-count inc)]
-                                 (if (< n 3)
-                                   (throw (ex-info "Mock query canceled error" {}))
-                                   nil)))
+                               (let [n (swap! select-probes inc)]
+                                 (when (< n 3)
+                                   (throw (ex-info "Mock query canceled error" {})))))
                              driver/query-canceled? (constantly true)]
-                 (is (true? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))))))))))
+                 (is (true? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name)))
+                 (is (= 1 @select-probes)))))))))))
