@@ -112,7 +112,8 @@ export function parseTimestamp(
       result = dayjs.utc(value); // fallback to default parsing
     }
   } else if (typeof value === "number") {
-    result = dayjs.utc(value.toString());
+    // use strict parsing to bypass small numbers like 1
+    result = dayjs.utc(value, "", true);
   } else {
     result = dayjs.utc(value);
   }
