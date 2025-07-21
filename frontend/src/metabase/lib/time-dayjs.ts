@@ -27,8 +27,31 @@ export function getDaylightSavingsChangeTolerance(unit: string) {
     : 0;
 }
 
+// dayjs doesn't parse standalone day names, so we map them to weekday numbers (0=Sunday)
+const DAY_NAME_TO_NUMBER: Record<string, number> = {
+  sun: 0,
+  sunday: 0,
+  mon: 1,
+  monday: 1,
+  tue: 2,
+  tuesday: 2,
+  wed: 3,
+  wednesday: 3,
+  thu: 4,
+  thursday: 4,
+  fri: 5,
+  friday: 5,
+  sat: 6,
+  saturday: 6,
+};
+
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
+    const dayNumber = DAY_NAME_TO_NUMBER[value.toLowerCase()];
+    if (dayNumber !== undefined) {
+      return dayjs().day(dayNumber).startOf("day");
+    }
+
     const day = dayjs(value, "ddd").startOf("day");
     return day.isValid() ? day : dayjs(value).startOf("day");
   },
