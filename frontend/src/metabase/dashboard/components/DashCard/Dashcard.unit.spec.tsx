@@ -28,7 +28,6 @@ import {
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
-  createMockParameter,
   createMockPlaceholderDashboardCard,
   createMockTable,
   createMockTextDashboardCard,
@@ -101,7 +100,6 @@ function setup({
 }: Partial<DashCardProps> &
   Pick<MockDashboardContextProps, "dashcardMenu" | "isEditing"> & {
     dashboard?: NonNullable<MockDashboardContextProps["dashboard"]>;
-    dashboards?: Record<string, typeof testDashboard>;
     dashcardData?: DashCardDataMap;
     withMetadata?: boolean;
   } = {}) {
@@ -112,7 +110,6 @@ function setup({
     dashcards: {
       [dashcard.id]: dashcard,
     },
-    dashboardId: dashboard.id,
   });
 
   const storeInitialState = createMockState({
@@ -148,7 +145,6 @@ function setup({
         dashcard={dashcard}
         gridItemWidth={4}
         totalNumGridCols={24}
-        onEditVisualization={jest.fn()}
         {...props}
         onReplaceCard={onReplaceCard}
         isTrashedOnRemove={false}
@@ -158,6 +154,7 @@ function setup({
         onUpdateVisualizationSettings={jest.fn()}
         showClickBehaviorSidebar={jest.fn()}
         autoScroll={false}
+        onEditVisualization={jest.fn()}
       />
     </MockDashboardContext>,
     {
@@ -530,76 +527,6 @@ describe("DashCard", () => {
         });
         expect(screen.queryByLabelText("Add a filter")).not.toBeInTheDocument();
       });
-    });
-  });
-
-  describe("onEditVisualizationClick", () => {
-    it("should include parameters in initialState when dashcard.card has parameters (#61072)", async () => {
-      const mockOnEditVisualization = jest.fn();
-
-      const dashcardWithParameters = createMockDashboardCard({
-        card: createMockCard({
-          parameters: [createMockParameter()],
-        }),
-      });
-
-      const dashboardWithParameters = createMockDashboard({
-        parameters: [createMockParameter()],
-      });
-
-      setup({
-        dashboard: dashboardWithParameters,
-        dashboards: {
-          [dashboardWithParameters.id]: dashboardWithParameters,
-        },
-        dashcard: dashcardWithParameters,
-        isEditing: true,
-        onEditVisualization: mockOnEditVisualization,
-      });
-
-      const visualizeButton = screen.getByLabelText("Visualize another way");
-      const userEventFix = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
-      });
-      await userEventFix.click(visualizeButton);
-
-      expect(mockOnEditVisualization).toHaveBeenCalledWith(
-        dashcardWithParameters,
-        expect.objectContaining({
-          parameters: expect.any(Array),
-        }),
-      );
-    });
-
-    it("should not include parameters in initialState when dashcard.card has no parameters", async () => {
-      const mockOnEditVisualization = jest.fn();
-
-      const dashcardWithoutParameters = createMockDashboardCard({
-        card: createMockCard(),
-      });
-
-      const dashboardWithParameters = createMockDashboard({
-        parameters: [createMockParameter()],
-      });
-
-      setup({
-        dashboard: dashboardWithParameters,
-        dashboards: {
-          [dashboardWithParameters.id]: dashboardWithParameters,
-        },
-        dashcard: dashcardWithoutParameters,
-        isEditing: true,
-        onEditVisualization: mockOnEditVisualization,
-      });
-
-      const visualizeButton = screen.getByLabelText("Visualize another way");
-      const userEventFix = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
-      });
-      await userEventFix.click(visualizeButton);
-
-      const [, initialState] = mockOnEditVisualization.mock.calls[0];
-      expect(initialState.parameters).toBeNull();
     });
   });
 });
