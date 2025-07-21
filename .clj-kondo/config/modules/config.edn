@@ -1830,10 +1830,10 @@
            settings
            util}}
 
-  enterprise/transform
+  enterprise/transforms
   {:team "Querying"
-   :api  #{metabase-enterprise.transform.api
-           metabase-enterprise.transform.init}
+   :api  #{metabase-enterprise.transforms.api
+           metabase-enterprise.transforms.init}
    :uses #{}}
 
   enterprise/upload-management
