@@ -11,4 +11,4 @@
                                                         io.netty/netty-common
                                                         io.netty/netty-buffer]}
   io.netty/netty-common                  {:mvn/version "4.2.2.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.2.1.Final"}}}
+  io.netty/netty-buffer                  {:mvn/version "4.2.3.Final"}}}
