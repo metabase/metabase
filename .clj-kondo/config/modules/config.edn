@@ -1834,7 +1834,9 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.init}
-   :uses #{}}
+   :uses #{api
+           query-processor
+           util}}
 
   enterprise/upload-management
   {:team "Admin Webapp"

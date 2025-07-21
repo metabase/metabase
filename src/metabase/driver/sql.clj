@@ -41,7 +41,8 @@
                  :expressions/text
                  :expressions/today
                  :distinct-where
-                 :database-routing]]
+                 :database-routing
+                 :transforms/basic]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
