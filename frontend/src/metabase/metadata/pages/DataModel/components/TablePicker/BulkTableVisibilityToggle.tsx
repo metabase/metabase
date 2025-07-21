@@ -2,38 +2,45 @@ import type { MouseEvent } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useUpdateTableMutation } from "metabase/api";
+import { useUpdateTableListMutation } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Loader, Tooltip } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
 interface Props {
   className?: string;
-  table: Table;
+  tables: Table[];
   onUpdate: () => void;
 }
 
-export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
-  const [updateTable, { isLoading }] = useUpdateTableMutation();
+export function BulkTableVisibilityToggle({
+  className,
+  tables,
+  onUpdate,
+}: Props) {
+  const [updateTables, { isLoading }] = useUpdateTableListMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const isHidden = table.visibility_type != null;
+  const areAllHidden = tables.every((table) => table.visibility_type != null);
   const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
-    const { error } = await updateTable({
-      id: table.id,
+    const ids = tables
+      .filter((table) => table.visibility_type == null)
+      .map((table) => table.id);
+    const { error } = await updateTables({
+      ids,
       visibility_type: "hidden",
     });
 
     onUpdateRef.current();
 
     if (error) {
-      sendErrorToast(t`Failed to hide ${table.display_name}`);
+      sendErrorToast(t`Failed to hide tables`);
     } else {
-      sendSuccessToast(t`Hid ${table.display_name}`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
+      sendSuccessToast(t`Tables hidden`, async () => {
+        const { error } = await updateTables({
+          ids,
           visibility_type: null,
         });
 
@@ -44,19 +51,20 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   };
 
   const unhide = async () => {
-    const { error } = await updateTable({
-      id: table.id,
+    const ids = tables.map((table) => table.id);
+    const { error } = await updateTables({
+      ids,
       visibility_type: null,
     });
 
     onUpdateRef.current();
 
     if (error) {
-      sendErrorToast(t`Failed to unhide ${table.display_name}`);
+      sendErrorToast(t`Failed to unhide`);
     } else {
-      sendSuccessToast(t`Unhid ${table.display_name}`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
+      sendSuccessToast(t`Tables unhidden`, async () => {
+        const { error } = await updateTables({
+          ids,
           visibility_type: "hidden",
         });
 
@@ -69,7 +77,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
-    if (isHidden) {
+    if (areAllHidden) {
       unhide();
     } else {
       hide();
@@ -85,16 +93,15 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   }
 
   return (
-    <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
+    <Tooltip label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}>
       <ActionIcon
-        aria-label={isHidden ? t`Unhide table` : t`Hide table`}
-        c={table.visibility_type != null ? "text-secondary" : undefined}
+        aria-label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}
         className={className}
         disabled={isLoading}
         variant="transparent"
         onClick={handleClick}
       >
-        <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
+        <Icon name={areAllHidden ? "eye_crossed_out" : "eye"} />
       </ActionIcon>
     </Tooltip>
   );
