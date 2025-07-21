@@ -341,26 +341,10 @@
         (when-let [action-ids (seq (keep :action_id dashcards))]
           (->> (select-actions nil :id [:in action-ids])
                map-assoc-database-enable-actions
-               (m/index-by :id)))
-        table-ids
-        (->> dashcards
-             (keep (comp :table_id :table_action :visualization_settings))
-             distinct)
-        table-by-id
-        (when (seq table-ids)
-          (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
-        fields-by-id
-        (when (seq table-ids)
-          (->> (t2/select :model/Field :table_id [:in table-ids])
-               (group-by :table_id)))]
+               (m/index-by :id)))]
     (for [dashcard dashcards
           :let [action-id (:action_id dashcard)
-                action
-                (or (get actions-by-id action-id)
-                    ;; Create a (fictitious) saved action that calls the given table action.
-                    (when-some [{:keys [table_id kind]} (:table_action (:visualization_settings dashcard))]
-                      (when-some [table (get table-by-id table_id)]
-                        (table-primitive-action table (get fields-by-id table_id []) (keyword kind)))))]]
+                action    (or (get actions-by-id action-id))]]
       (m/assoc-some dashcard :action action))))
 
 (defn dashcard->action
