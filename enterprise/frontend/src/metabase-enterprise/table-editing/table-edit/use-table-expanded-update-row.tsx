@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { Dataset, DatasetColumn, RowValues } from "metabase-types/api";
+import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 
 import {
   type RowCellsWithPkValue,
@@ -13,7 +13,7 @@ import { useActionFormDescription } from "./use-table-action-form-description";
 import type { TableRowUpdateHandler } from "./use-table-crud";
 
 type UseTableExpandedUpdateRowProps = {
-  dataset?: Dataset;
+  datasetData?: DatasetData;
   scope: TableEditingActionScope;
   handleRowUpdate: TableRowUpdateHandler;
 };
@@ -24,7 +24,7 @@ export type ExpandedRow = {
 };
 
 export function useTableExpandedUpdateRow({
-  dataset,
+  datasetData,
   scope,
   handleRowUpdate,
 }: UseTableExpandedUpdateRowProps) {
@@ -32,11 +32,11 @@ export function useTableExpandedUpdateRow({
 
   const handleExpandRow = useCallback(
     (rowIndex: number) => {
-      if (!dataset) {
+      if (!datasetData) {
         return;
       }
 
-      const { rows, cols } = dataset.data;
+      const { rows, cols } = datasetData;
       const { input, params } = getRowInputAndParamsFromRow(
         cols,
         rows[rowIndex],
@@ -44,7 +44,7 @@ export function useTableExpandedUpdateRow({
 
       setExpandedRow({ input, params });
     },
-    [dataset],
+    [datasetData],
   );
 
   const closeExpandedRow = useCallback(() => {

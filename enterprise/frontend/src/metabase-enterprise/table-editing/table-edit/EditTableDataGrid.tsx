@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import {
   DataGrid,
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
+import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
 import type { DescribeActionFormResponse } from "../api/types";
@@ -12,6 +13,7 @@ import type { DescribeActionFormResponse } from "../api/types";
 import S from "./EditTableDataGrid.module.css";
 import { useEditDataDridColumnOptions } from "./use-edit-datagrid-column-options";
 import type { TableDataGetColumnSortDirection } from "./use-edit-table-data";
+import { useTableEditingCell } from "./use-table-editing-cell";
 
 type EditTableDataGridProps = {
   data: DatasetData;
@@ -29,6 +31,10 @@ export const EditTableDataGrid = ({
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
+  const { handleSelectEditingCell } = useTableEditingCell({
+    data,
+  });
+
   const columnsOptions = useEditDataDridColumnOptions({
     cols,
     getColumnSortDirection,
@@ -38,9 +44,24 @@ export const EditTableDataGrid = ({
   const rowIdColumnOptions: RowIdColumnOptions = useMemo(
     () => ({
       variant: "expandButton",
-      onRowExpandClick,
     }),
-    [onRowExpandClick],
+    [],
+  );
+
+  const handleBodyCellClick = useCallback(
+    (
+      _event: React.MouseEvent<HTMLDivElement>,
+      rowIndex: number,
+      columnId: string,
+    ) => {
+      if (columnId === ROW_ID_COLUMN_ID) {
+        onRowExpandClick(rowIndex);
+        return;
+      }
+
+      handleSelectEditingCell(rowIndex, columnId);
+    },
+    [onRowExpandClick, handleSelectEditingCell],
   );
 
   const tableProps = useDataGridInstance({
@@ -71,5 +92,11 @@ export const EditTableDataGrid = ({
     [],
   );
 
-  return <DataGrid {...tableProps} {...stylingProps} />;
+  return (
+    <DataGrid
+      onBodyCellClick={handleBodyCellClick}
+      {...tableProps}
+      {...stylingProps}
+    />
+  );
 };

@@ -32,6 +32,7 @@ interface TableActionFormModalProps {
   opened: boolean;
   description?: DescribeActionFormResponse;
   isLoading: boolean;
+  initialValues?: RowCellsWithPkValue;
   onClose: () => void;
   onSubmit: (data: RowCellsWithPkValue) => Promise<boolean>;
 }
@@ -42,6 +43,7 @@ export function TableActionFormModal({
   opened,
   description,
   isLoading,
+  initialValues,
   onClose,
   onSubmit,
 }: TableActionFormModalProps) {
@@ -78,7 +80,7 @@ export function TableActionFormModal({
     handleSubmit,
     validateForm: revalidateForm,
   } = useFormik({
-    initialValues: {} as RowCellsWithPkValue,
+    initialValues: initialValues ?? {},
     onSubmit: handleFormikSubmit,
     validate: validateForm,
     validateOnMount: true,
@@ -87,10 +89,10 @@ export function TableActionFormModal({
   // Reset form when modal is opened
   useEffect(() => {
     if (opened) {
-      resetForm();
+      resetForm({ values: initialValues });
       revalidateForm();
     }
-  }, [opened, resetForm, revalidateForm]);
+  }, [opened, resetForm, revalidateForm, initialValues]);
 
   return (
     <Modal.Root opened={opened} onClose={onClose}>
@@ -120,7 +122,8 @@ export function TableActionFormModal({
                     key={parameter.id}
                     parameter={parameter}
                   >
-                    <CreateRowFormInput
+                    <ModalFormInput
+                      initialValue={initialValues?.[parameter.id]}
                       parameter={parameter}
                       onChange={setFieldValue}
                     />
@@ -147,15 +150,17 @@ export function TableActionFormModal({
   );
 }
 
-type CreateRowFormInputProps = {
+type ModalFormInputProps = {
+  initialValue?: RowValue;
   parameter: TableActionFormParameter;
   onChange: (field: string, value: RowValue) => void;
 };
 
-export function CreateRowFormInput({
+export function ModalFormInput({
+  initialValue,
   parameter,
   onChange,
-}: CreateRowFormInputProps) {
+}: ModalFormInputProps) {
   const handleChange = useCallback(
     (value: RowValue) => {
       onChange(parameter.id, value);
@@ -164,6 +169,10 @@ export function CreateRowFormInput({
   );
 
   return (
-    <ModalParameterActionInput parameter={parameter} onChange={handleChange} />
+    <ModalParameterActionInput
+      initialValue={initialValue?.toString()}
+      parameter={parameter}
+      onChange={handleChange}
+    />
   );
 }

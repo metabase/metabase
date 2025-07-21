@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { useGetDatabaseQuery } from "metabase/api";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { Box, Flex, Stack, Text } from "metabase/ui";
+import { extractRemappedColumns } from "metabase/visualizations";
 
 import type { TableEditingActionScope } from "../api/types";
 import { TableHeader } from "../common/TableHeader";
@@ -45,7 +46,7 @@ export const EditTableDataContainer = ({
 
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
   const {
-    data: dataset,
+    data: rawDataset,
     isLoading,
     isFetching,
     tableQuestion,
@@ -58,6 +59,12 @@ export const EditTableDataContainer = ({
     databaseId,
     location,
   });
+
+  const datasetData = useMemo(() => {
+    return rawDataset?.data
+      ? extractRemappedColumns(rawDataset.data)
+      : undefined;
+  }, [rawDataset]);
 
   const stateUpdateStrategy =
     useTableEditingStateAdHocQueryUpdateStrategy(tableQuery);
@@ -76,7 +83,7 @@ export const EditTableDataContainer = ({
   const { isInserting, isUpdating, handleRowCreate, handleRowUpdate } =
     useTableCRUD({
       scope,
-      datasetData: dataset?.data,
+      datasetData,
       stateUpdateStrategy,
     });
 
@@ -100,7 +107,7 @@ export const EditTableDataContainer = ({
     handleExpandedRowUpdate,
     closeExpandedRow,
     formDescription: updateFormDescription,
-  } = useTableExpandedUpdateRow({ scope, dataset, handleRowUpdate });
+  } = useTableExpandedUpdateRow({ scope, datasetData, handleRowUpdate });
 
   if (database && !isDatabaseTableEditingEnabled(database)) {
     return (
@@ -138,10 +145,10 @@ export const EditTableDataContainer = ({
       />
       <Box pos="relative" className={S.gridWrapper}>
         <EditTableDataOverlay {...loadingOverlayProps} />
-        {dataset && (
+        {datasetData && (
           <EditTableDataGrid
             updateFormDescription={updateFormDescription}
-            data={dataset.data}
+            data={datasetData}
             getColumnSortDirection={getColumnSortDirection}
             onColumnSort={handleChangeColumnSort}
             onRowExpandClick={handleExpandRow}
@@ -149,10 +156,10 @@ export const EditTableDataContainer = ({
         )}
       </Box>
 
-      {dataset && (
+      {rawDataset && (
         <Flex className={S.gridFooter}>
           <Text fw="bold" size="md" c="inherit" component="span">
-            {getRowCountMessage(dataset)}
+            {getRowCountMessage(rawDataset)}
           </Text>
         </Flex>
       )}
@@ -171,6 +178,7 @@ export const EditTableDataContainer = ({
         title={t`Update a record`}
         submitButtonText={t`Save`}
         opened={!!expandedRow}
+        initialValues={expandedRow?.params}
         description={updateFormDescription}
         onClose={closeExpandedRow}
         onSubmit={handleExpandedRowUpdate}
