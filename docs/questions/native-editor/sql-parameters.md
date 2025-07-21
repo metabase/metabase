@@ -11,7 +11,7 @@ redirect_from:
 
 You can create SQL templates by adding parameters (a.k.a. variables) to your SQL queries in the [Native/SQL editor](./writing-sql.md).
 
-These variables create filter widgets that people can use to change the variables' values in the query.
+These variables create widgets that people can use to change the variables' values in the query.
 
 You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
@@ -25,7 +25,7 @@ Variable types include:
 - **[Basic variables](./basic-sql-parameters.md)**: text, number, and date variables. You'll almost always want to use field filters instead of these basic variables, as field filters create "smart" filter widgets, but Metabase provides these basic variables for situations where you can't use field filters.
 - **[Time grouping parameters](./time-grouping-parameters.md)**: allows people to change how the results are grouped by a date column: by month, week, day, etc.
 
-You can include multiple variables in a single query, and Metabase will add multiple filter widgets to the question. When you have multiple filter widgets, you can click on a filter widget and drag it around to rearrange the order.
+You can include multiple variables in a single query, and Metabase will add multiple widgets to the question. To rearrange the order of the widgets, enter edit mode and click on any widget and drag it around.
 
 ## When to use a field filter variable vs a basic variable
 
@@ -84,9 +84,53 @@ You can only map a field filter to a database field. See [field filter limitatio
    - [Dropdown list](../../dashboards/filters.md#dropdown-list). A dropdown list shows all available values for the field in a selectable list.
    - [Search box](../../dashboards/filters.md#search-box). A search box allows people to type to search for specific values.
    - [Input box](../../dashboards/filters.md#plain-input-box). An input box provides a simple text field for entering values.
-4. Optionally, set a **Default filter widget value**.
+4. If the filter is mapped to a field in an aliased table, you'll need to [specify the table and field alias](#specifying-the-table-and-field-alias).
+5. Optionally, set a **Default filter widget value**.
 
 Check out [filter widgets](./filter-widgets.md).
+
+### Specifying the table and field alias
+
+If you map a filter to a field from an aliased table, you'll need to tell Metabase about that alias, or the filter won't work. 
+
+For example, let's say you want to map a field filter to the `category` field from the `products` table, but in your query you use the alias `p` for the `products` table, like so:
+
+```sql
+{% raw %}
+SELECT
+  *
+FROM
+  products AS p
+WHERE
+  {{category_filter}}
+{% endraw %}
+```
+
+If you map to the `category` field from the products table, you'll also need to fill out the **Table and field alias** input to let Metabase know about the alias. In this case, you input `p.category`.
+
+Setting this **Table and field alias** is only required if your query uses an alias to refer to a table that contains the field you want to map the filter to.
+
+Here's another example, this time with a CTE
+
+```sql
+{% raw %}
+WITH
+  expensive_products AS (
+    SELECT
+      *
+    FROM
+      products
+    WHERE
+      price > 50
+  )
+SELECT
+  *
+FROM
+  expensive_products
+WHERE
+  {{category_filter}}
+{% endraw %}
+```
 
 ## Field filter limitations
 
@@ -94,7 +138,6 @@ Field filters:
 
 - [Must be connected to database fields included in the query](#field-filters-must-be-connected-to-database-fields-included-in-the-query)
 - [Are only compatible with certain types](#field-filters-are-only-compatible-with-certain-types)
-- [Don't work with table aliases](#field-filters-dont-work-with-table-aliases)
 
 ### Field Filters must be connected to database fields included in the query
 
@@ -140,16 +183,6 @@ WHERE
 The field can also be a date or timestamp, even when the field is set to "No semantic type" in the [Table Metadata](../../data-modeling/metadata-editing.md).
 
 If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the field type for that column. See [metadata editing](../../data-modeling/metadata-editing.md).
-
-### Field Filters don't work with table aliases
-
-You won't be able to select values from field filters in queries that use table aliases for joins or CTEs.
-
-The reason is that field filters generate SQL based on the mapped field; Metabase doesn't parse the SQL, so it can't tell what an alias refers to. You have three options for workarounds, depending on the complexity of your query.
-
-- Use full table names.
-- Replace CTEs with subqueries.
-- Create a view in your database, and use the view as the basis of your query.
 
 ## Field filters in BigQuery and Oracle
 
