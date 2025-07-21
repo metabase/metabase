@@ -44,7 +44,7 @@ export const DataModel = ({ children, location, params }: Props) => {
     (database) => database.id === databaseId,
   );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
-  const [isPreviewOpen, { close: closePreview, open: openPreview }] =
+  const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
@@ -184,7 +184,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                       parent={parentField}
                       table={table}
                       onFieldValuesClick={openFieldValuesModal}
-                      onPreviewClick={openPreview}
+                      onPreviewClick={togglePreview}
                     />
                   </Box>
                 )}
