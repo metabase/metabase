@@ -46,4 +46,3 @@
   :export? false
   :visibility :internal
   :description "Maximum number of texts per batch for embedding.")
-
