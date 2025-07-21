@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -36,9 +35,7 @@ export function StaticEmbeddingSettings() {
           </Box>
         )}
       </SettingsSection>
-      <ErrorBoundary>
-        <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
-      </ErrorBoundary>
+      <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
     </SettingsPageWrapper>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
@@ -114,83 +115,88 @@ export const ContentTranslationConfiguration = () => {
   );
 
   return (
-    <SettingsSection
-      title={t`Translate user-generated content and data assets`}
-      data-testid={"content-translation-configuration"}
-    >
-      <Stack gap="sm">
-        <DescriptionText>{t`Upload a translation dictionary to translate user-generated strings like dashboard names and data assets like table and column names.`}</DescriptionText>
-        <DescriptionText>{t`The dictionary must be a CSV with these columns:`}</DescriptionText>
-        <List ms="sm" c="text-medium">
-          <List.Item c="inherit">{t`Locale Code`}</List.Item>
-          <List.Item c="inherit">{t`String`}</List.Item>
-          <List.Item c="inherit">{t`Translation`}</List.Item>
-        </List>
-        <DescriptionText>{t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.`}</DescriptionText>
-        <DescriptionText>{t`Uploading a new dictionary will replace the existing dictionary.`}</DescriptionText>
-        <Markdown
-          components={{
-            em: ({ children }: { children: ReactNode }) => (
-              <ExternalLink href={availableLocalesDocsUrl}>
-                {children}
-              </ExternalLink>
-            ),
-          }}
-        >
-          {t`See a list of *supported locales*.`}
-        </Markdown>
-      </Stack>
-      <Group>
-        <Button
-          onClick={triggerDownload}
-          leftSection={
-            showDownloadingIndicator ? null : <Icon name="download" c="brand" />
-          }
-          miw="calc(50% - 0.5rem)"
-          style={{ flexGrow: 1 }}
-          disabled={isDownloadInProgress}
-        >
-          {showDownloadingIndicator ? (
-            <Loader size="sm" />
-          ) : (
-            t`Download translation dictionary`
-          )}
-        </Button>
-        <FormProvider
-          // We're only using Formik to make the appearance of the submit button
-          // depend on the form's status. We're not using Formik's other features
-          // here.
-          initialValues={{}}
-          onSubmit={() => {}}
-        >
-          <UploadForm setErrorMessages={setUploadErrorMessages} />
-        </FormProvider>
-      </Group>
-      {downloadErrorMessage && (
-        <Text role="alert" c="danger">
-          {downloadErrorMessage}
-        </Text>
-      )}
-      {!!uploadErrorMessages.length && (
-        <Stack gap="xs">
-          <Text role="alert" c="error">
-            {ngettext(
-              msgid`We couldn't upload the file due to this error:`,
-              `We couldn't upload the file due to these errors:`,
-              uploadErrorMessages.length,
-            )}
-          </Text>
-          <List withPadding>
-            {uploadErrorMessages.map((errorMessage) => (
-              <List.Item key={errorMessage} role="alert" c="danger">
-                {errorMessage}
-              </List.Item>
-            ))}
+    <ErrorBoundary>
+      <SettingsSection
+        title={t`Translate embedded dashboards and questions`}
+        data-testid={"content-translation-configuration"}
+      >
+        <Stack gap="sm">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+          <DescriptionText>{t`Upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).`}</DescriptionText>
+          <DescriptionText>{t`The dictionary must be a CSV with these columns:`}</DescriptionText>
+          <List ms="sm" c="text-medium">
+            <List.Item c="inherit">{t`Locale Code`}</List.Item>
+            <List.Item c="inherit">{t`String`}</List.Item>
+            <List.Item c="inherit">{t`Translation`}</List.Item>
           </List>
+          <DescriptionText>{t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.`}</DescriptionText>
+          <DescriptionText>{t`Uploading a new dictionary will replace the existing dictionary.`}</DescriptionText>
+          <Markdown
+            components={{
+              em: ({ children }: { children: ReactNode }) => (
+                <ExternalLink href={availableLocalesDocsUrl}>
+                  {children}
+                </ExternalLink>
+              ),
+            }}
+          >
+            {t`See a list of *supported locales*.`}
+          </Markdown>
         </Stack>
-      )}
-      {/* </Stack> */}
-    </SettingsSection>
+        <Group>
+          <Button
+            onClick={triggerDownload}
+            leftSection={
+              showDownloadingIndicator ? null : (
+                <Icon name="download" c="brand" />
+              )
+            }
+            miw="calc(50% - 0.5rem)"
+            style={{ flexGrow: 1 }}
+            disabled={isDownloadInProgress}
+          >
+            {showDownloadingIndicator ? (
+              <Loader size="sm" />
+            ) : (
+              t`Download translation dictionary`
+            )}
+          </Button>
+          <FormProvider
+            // We're only using Formik to make the appearance of the submit button
+            // depend on the form's status. We're not using Formik's other features
+            // here.
+            initialValues={{}}
+            onSubmit={() => {}}
+          >
+            <UploadForm setErrorMessages={setUploadErrorMessages} />
+          </FormProvider>
+        </Group>
+        {downloadErrorMessage && (
+          <Text role="alert" c="danger">
+            {downloadErrorMessage}
+          </Text>
+        )}
+        {!!uploadErrorMessages.length && (
+          <Stack gap="xs">
+            <Text role="alert" c="error">
+              {ngettext(
+                msgid`We couldn't upload the file due to this error:`,
+                `We couldn't upload the file due to these errors:`,
+                uploadErrorMessages.length,
+              )}
+            </Text>
+            <List withPadding>
+              {uploadErrorMessages.map((errorMessage) => (
+                <List.Item key={errorMessage} role="alert" c="danger">
+                  {errorMessage}
+                </List.Item>
+              ))}
+            </List>
+          </Stack>
+        )}
+        {/* </Stack> */}
+      </SettingsSection>
+    </ErrorBoundary>
   );
 };
 
