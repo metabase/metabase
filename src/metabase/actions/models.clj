@@ -333,45 +333,6 @@
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))
 
-(defn table-primitive-action
-  "Return an action map for a table edit action for the primitive action.
-  Such an action is only valid if data editing is enabled for the database."
-  [table fields action-kw]
-  (let [field-param? (case action-kw
-                       :table.row/create #(not (:database_is_auto_increment %))
-                       :table.row/delete #(= :type/PK (:semantic_type %))
-                       (constantly true))
-        field-params (->> fields
-                          (filter field-param?)
-                          (sort-by :position))]
-    {:database_id (:database_id table)
-     :name        (name action-kw)
-     :kind        (u/qualified-name action-kw)
-     :table_id    (:id table)
-     :id          (encoded-action-id action-kw (:id table))
-     ;; true for all databases with data_editing_enabled
-     ;; it is expected this fn will not be called if this is not the case
-     :database_enabled_actions true
-     :visualization_settings
-     {:name        ""
-      :type        "button"
-      :description ""
-      :fields      (u/for-map [field field-params
-                               :let [field-name (:name field)]]
-                     [field-name {:id field-name, :hidden false}])}
-     :parameters
-     (->> (for [field field-params
-                :let [field-name (:name field)]]
-            {:id                field-name
-             :display-name      (:display_name field)
-             :type              (:base_type field)
-             :target            [:variable [:template-tag field-name]]
-             :slug              field-name
-             :required          (or (= :type/PK (:semantic_type field))
-                                    (:database_required field))
-             :is-auto-increment (:database_is_auto_increment field)})
-          vec)}))
-
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/DashboardCard :dashcard/action]
   "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to
   the\n `database-enable-actions` setting for the action's database."
