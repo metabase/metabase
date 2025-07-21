@@ -9,6 +9,7 @@ import {
 
 import { Editor } from "./Editor";
 import styles from "./ReportPage.module.css";
+import { generatePdfFromMarkdown } from "./utils/pdfGenerator";
 
 export const ReportPage = () => {
   const [editorInstance, setEditorInstance] = useState<any>(null);
@@ -227,6 +228,63 @@ export const ReportPage = () => {
     }
   }, [editorInstance, isDownloading, processCardsForDownload]);
 
+  const handleDownloadPdf = useCallback(async () => {
+    if (!editorInstance || isDownloading) {
+      return;
+    }
+
+    setIsDownloading(true);
+    setDownloadProgress("🚀 Starting PDF generation...");
+
+    try {
+      // Get the markdown content from the editor
+      const markdown = editorInstance.storage.markdown?.getMarkdown();
+      if (!markdown) {
+        // eslint-disable-next-line no-console
+        console.error("No markdown content available");
+        return;
+      }
+
+      // Process embedded cards to convert them to PNG images
+      const processedMarkdown = await processCardsForDownload(markdown);
+
+      setDownloadProgress("📄 Generating PDF...");
+
+      // Generate PDF from markdown
+      const pdfBlob = await generatePdfFromMarkdown(processedMarkdown);
+
+      setDownloadProgress("💾 Downloading PDF...");
+
+      // Create and download the file
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `report-${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(link);
+
+      setDownloadProgress("🎊 PDF download complete!");
+      link.click();
+
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Brief delay to show completion message
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress("");
+      }, 1500);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to download PDF:", error);
+      setDownloadProgress("😞 PDF generation failed...");
+
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress("");
+      }, 2000);
+    }
+  }, [editorInstance, isDownloading, processCardsForDownload]);
+
   return (
     <Box className={styles.reportPage}>
       <Box className={styles.mainContent}>
@@ -260,6 +318,24 @@ export const ReportPage = () => {
             {isDownloading
               ? downloadProgress || t`Preparing download...`
               : t`Download Markdown`}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={handleDownloadPdf}
+            fullWidth
+            disabled={isDownloading}
+            leftSection={
+              isDownloading ? (
+                <Loader size="xs" color="currentColor" />
+              ) : (
+                <Icon name="document" />
+              )
+            }
+          >
+            {isDownloading
+              ? downloadProgress || t`Preparing PDF...`
+              : t`Download PDF`}
           </Button>
 
           <Box>
