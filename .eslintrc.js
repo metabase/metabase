@@ -206,7 +206,7 @@ module.exports = {
         "**/tests/*",
         "release/**/*",
         "rspack.main.config.js",
-        "rspack.embedding-sdk.config.js",
+        "rspack.embedding-sdk-package.config.js",
         "rspack.embedding-sdk-bundle.config.js",
       ],
       rules: {
@@ -333,6 +333,12 @@ module.exports = {
         "import/order": "off",
         "import/no-unresolved": "off",
         "no-color-literals": "off",
+      },
+    },
+    {
+      files: ["frontend/build/**/*.js"],
+      rules: {
+        "import/no-commonjs": "off",
       },
     },
   ],

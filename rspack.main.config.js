@@ -9,6 +9,13 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
+const {
+  IS_DEV_MODE,
+  LICENSE_TEXT,
+} = require("./frontend/build/shared/constants");
+const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
+
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -26,14 +33,8 @@ const E2E_PATH = __dirname + "/e2e";
 
 const PORT = process.env.PORT || 8080;
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
-const devMode = WEBPACK_BUNDLE !== "production";
+const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
-
-// Babel:
-const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
-  plugins: ["@emotion"],
-};
 
 const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 
@@ -53,7 +54,7 @@ const SWC_LOADER = {
         tsx: true,
       },
       experimental: {
-        plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
+        plugins: [["@swc/plugin-emotion", { sourceMap: isDevMode }]],
       },
     },
 
@@ -63,17 +64,6 @@ const SWC_LOADER = {
       targets: ["defaults"],
     },
   },
-};
-
-const CSS_CONFIG = {
-  modules: {
-    auto: (filename) =>
-      !filename.includes("node_modules") && !filename.includes("vendor.css"),
-    localIdentName: devMode
-      ? "[name]__[local]___[hash:base64:5]"
-      : "[hash:base64:5]",
-  },
-  importLoaders: 1,
 };
 
 class OnScriptError {
@@ -96,7 +86,7 @@ class OnScriptError {
 
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
-  mode: devMode ? "development" : "production",
+  mode: isDevMode ? "development" : "production",
   context: SRC_PATH,
 
   // output a bundle for the app JS and a bundle for styles
@@ -125,7 +115,7 @@ const config = {
     filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "xxhash64",
-    clean: !devMode,
+    clean: !isDevMode,
   },
 
   module: {
@@ -205,8 +195,8 @@ const config = {
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
-      cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
+      "metabase-dev": `${SRC_PATH}/dev${isDevMode ? "" : "-noop"}.js`,
+      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       e2e: E2E_PATH,
       style: SRC_PATH + "/css/core/index",
@@ -268,8 +258,8 @@ const config = {
   plugins: [
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
-      filename: devMode ? "[name].css" : "[name].[contenthash].css",
-      chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
+      filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
+      chunkFilename: isDevMode ? "[id].css" : "[id].[contenthash].css",
 
       // We use CSS modules to scope styles, so this is safe to ignore according to the docs:
       // https://webpack.js.org/plugins/mini-css-extract-plugin/#remove-order-warnings
@@ -302,8 +292,7 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin({
-      banner:
-        "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
+      banner: LICENSE_TEXT,
     }),
     new NodePolyfillPlugin(), // for crypto, among others
     new rspack.EnvironmentPlugin({
@@ -369,7 +358,7 @@ if (shouldEnableHotRefresh) {
   );
 }
 
-if (devMode) {
+if (isDevMode) {
   if (!config.output || !config.resolve || !config.plugins) {
     throw new Error("webpack config is missing configuration");
   }

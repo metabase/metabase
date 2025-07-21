@@ -1,11 +1,11 @@
-import { defineGlobalReact } from "embedding-sdk/sdk-wrapper/lib/private/define-global-react";
+import { defineGlobalDependencies } from "embedding-sdk/sdk-wrapper/lib/private/define-global-dependencies";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 // Enable SDK mode as we are in the SDK bundle
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
-defineGlobalReact();
+defineGlobalDependencies();
 
 export * from "./sdk-wrapper/components/public/CollectionBrowser";
 export * from "./sdk-wrapper/components/public/CreateQuestion";

@@ -5,12 +5,29 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
-const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const mainConfig = require("./rspack.main.config");
 const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");
+const {
+  TypescriptConvertErrorsToWarnings,
+} = require("./frontend/build/embedding-sdk/rspack/typescript-convert-errors-to-warnings");
+const {
+  LICENSE_TEXT,
+  IS_DEV_MODE,
+} = require("./frontend/build/shared/constants");
+const {
+  OPTIMIZATION_CONFIG,
+} = require("./frontend/build/embedding-sdk/rspack/shared");
+const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
+const {
+  EXTERNAL_DEPENDENCIES,
+} = require("./frontend/build/embedding-sdk/constants/external-dependencies");
+const {
+  CopyJsFromTmpDirectoryPlugin,
+} = require("./frontend/build/shared/rspack/copy-js-from-tmp-directory-plugin");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
@@ -20,12 +37,6 @@ const OUT_FILE_NAME = "embedding-sdk.js";
 
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
-
-const skipDTS = process.env.SKIP_DTS === "true";
-
-// default WEBPACK_BUNDLE to development
-const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
-const isDevMode = WEBPACK_BUNDLE !== "production";
 
 const sdkPackageTemplateJson = fs.readFileSync(
   path.resolve(
@@ -39,35 +50,7 @@ const sdkPackageTemplateJson = fs.readFileSync(
 const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
 const EMBEDDING_SDK_VERSION = sdkPackageTemplateJsonContent.version;
 
-// TODO: Reuse babel and css configs from rspack.config.js
-// Babel:
-const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
-};
-
-const CSS_CONFIG = {
-  modules: {
-    auto: (filename) =>
-      !filename.includes("node_modules") && !filename.includes("vendor.css"),
-    localIdentName: isDevMode
-      ? "[name]__[local]___[hash:base64:5]"
-      : "[hash:base64:5]",
-  },
-  importLoaders: 1,
-};
-
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
-
-// https://github.com/TypeStrong/fork-ts-checker-webpack-plugin/issues/232#issuecomment-1322651312
-class TypescriptConvertErrorsToWarnings {
-  apply(compiler) {
-    const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
-
-    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", (issues) =>
-      issues.map((issue) => ({ ...issue, severity: "warning" })),
-    );
-  }
-}
 
 const config = {
   ...mainConfig,
@@ -86,19 +69,25 @@ const config = {
     filename: OUT_FILE_NAME,
     library: {
       type: "umd",
-      // eslint-disable-next-line no-literal-metabase-strings -- build config
       name: "MetabaseEmbeddingSDK",
     },
   },
 
-  devtool: false,
+  devtool: IS_DEV_MODE ? mainConfig.devtool : false,
 
   module: {
     rules: [
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [
+          {
+            loader: "babel-loader",
+            options: {
+              cacheDirectory: BABEL_CONFIG.cacheDirectory,
+            },
+          },
+        ],
       },
       {
         test: /\.(svg|png)$/,
@@ -144,33 +133,16 @@ const config = {
     ],
   },
 
-  // Prevent these dependencies from being included in the JavaScript bundle.
-  externals: {
-    react: "React",
-    "react-dom": "ReactDOM",
-    "react-dom/client": "ReactDOMClient",
-    "react-dom/server": "ReactDOMServer",
-    "react/jsx-runtime": "ReactJSXRuntime",
-  },
+  externals: EXTERNAL_DEPENDENCIES,
 
-  optimization: {
-    // The default `moduleIds: 'named'` setting breaks Cypress tests when `development` mode is enabled,
-    // so we use a different value instead
-    moduleIds: isDevMode ? "natural" : undefined,
-
-    minimize: !isDevMode,
-    minimizer: mainConfig.optimization.minimizer,
-
-    splitChunks: false,
-  },
+  optimization: OPTIMIZATION_CONFIG,
 
   plugins: [
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,
     }),
     new rspack.BannerPlugin({
-      banner:
-        "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
+      banner: LICENSE_TEXT,
     }),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
@@ -192,43 +164,19 @@ const config = {
     new rspack.DefinePlugin({
       "process.env.BUILD_TIME": JSON.stringify(new Date().toISOString()),
     }),
-    !skipDTS &&
-      new ForkTsCheckerWebpackPlugin({
-        async: isDevMode,
-        typescript: {
-          configFile: resolve(__dirname, "./tsconfig.sdk.json"),
-          mode: "write-dts",
-          memoryLimit: 4096,
-        },
-      }),
-    // we don't want to fail the build on type errors, we have a dedicated type check step for that
     new TypescriptConvertErrorsToWarnings(),
     shouldAnalyzeBundles &&
       new BundleAnalyzerPlugin({
         analyzerMode: "static",
         reportFilename: BUILD_PATH + "/dist/report.html",
       }),
-    {
-      name: "copy-embedding-sdk-bundle-js-to-app-path",
-      apply(compiler) {
-        compiler.hooks.afterEmit.tap(
-          "copy-embedding-sdk-bundle-js-to-app-path",
-          () => {
-            const tempPath = path.join(TMP_BUILD_PATH, OUT_FILE_NAME);
-            const appPath = path.join(BUILD_PATH, "app/", OUT_FILE_NAME);
-
-            // copy embedding-sdk.js from the temp directory to the resources directory
-            fs.mkdirSync(path.dirname(appPath), { recursive: true });
-            fs.copyFileSync(tempPath, appPath);
-
-            if (!isDevMode) {
-              // cleanup the temp directory to prevent bloat.
-              fs.rmSync(TMP_BUILD_PATH, { recursive: true });
-            }
-          },
-        );
-      },
-    },
+    CopyJsFromTmpDirectoryPlugin({
+      fileName: OUT_FILE_NAME,
+      tmpPath: TMP_BUILD_PATH,
+      outputPath: path.join(BUILD_PATH, "app/"),
+      copySourceMap: true,
+      cleanupInDevMode: false,
+    }),
   ].filter(Boolean),
 };
 
