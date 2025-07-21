@@ -696,55 +696,82 @@ const ReportEditor = () => {
     setQueryBuilderEntity(null);
   }, []);
 
-  const handleQueryBuilderVisualize = useCallback(async (newQuestion: Question) => {
+    const handleQueryBuilderVisualize = useCallback(async (newQuestion: Question) => {
     // This will be called when user hits "Visualize" in the Query Builder
     // Save the new question and replace it in the document
     try {
-      // Save the question via API
-      const savedQuestion = await dispatch(Questions.actions.create(newQuestion.card()));
+      if (!queryBuilderEntity || !editor) return;
+
+      // Create a new card with auto-generated name
+      const originalName = queryBuilderEntity.name;
+      const modifiedName = `${originalName} (Modified)`;
+
+      const cardToSave = {
+        ...newQuestion.card(),
+        name: modifiedName,
+        // Remove the original ID so it creates a new question
+        id: undefined,
+      };
+
+            // Save the question via API using the proper pattern
+      const action = await dispatch(Questions.actions.create(cardToSave));
+      const savedQuestion = Questions.HACK_getObjectFromAction(action);
+
+      if (!savedQuestion?.id) {
+        throw new Error('Failed to save question - no ID returned');
+      }
 
       // Find and replace the old visualization node in the editor
-      if (editor && savedQuestion?.id) {
-        const doc = editor.state.doc;
-        let foundNodePos = null;
-        let foundNode = null;
+      const doc = editor.state.doc;
+      let foundNodePos = null;
+      let foundNode = null;
 
-                // Find the node with matching ID
-        doc.descendants((node: any, pos: number) => {
-          if (node.type.name === 'metabaseVisualization' && queryBuilderEntity && node.attrs.id === queryBuilderEntity.id) {
-            foundNodePos = pos;
-            foundNode = node;
-            return false; // Stop iteration
+      // Find the node with matching ID
+      doc.descendants((node: any, pos: number) => {
+        if (node.type.name === 'metabaseVisualization' && node.attrs.id == queryBuilderEntity.id) {
+          foundNodePos = pos;
+          foundNode = node;
+          return false; // Stop iteration
+        }
+      });
+
+      if (foundNodePos !== null && foundNode) {
+        // Replace the node with updated attributes
+        const tr = editor.state.tr.setNodeMarkup(foundNodePos, null, {
+          ...(foundNode as any).attrs,
+          id: savedQuestion.id,
+          name: modifiedName,
+        });
+
+        editor.view.dispatch(tr);
+
+        // Update Redux state - replace the old entity with the new one
+        const entities: any[] = [];
+        const currentEntities = resultsWithStatus.map(r => r.entity);
+
+        // Replace the old entity with the new one
+        currentEntities.forEach(entity => {
+          if (entity.id == queryBuilderEntity.id) {
+            entities.push({
+              id: savedQuestion.id,
+              name: modifiedName,
+              type: 'card',
+              model: 'card' as const,
+            });
+          } else {
+            entities.push(entity);
           }
         });
 
-        if (foundNodePos !== null && foundNode) {
-          // Replace the node with updated attributes
-          const tr = editor.state.tr.setNodeMarkup(foundNodePos, null, {
-            ...(foundNode as any).attrs,
-            id: savedQuestion.id,
-            name: newQuestion.displayName() || savedQuestion.name,
-          });
-
-          editor.view.dispatch(tr);
-
-          // Update Redux state with the new entity
-          const newEntity = {
-            id: savedQuestion.id,
-            name: newQuestion.displayName() || savedQuestion.name,
-            type: savedQuestion.type || 'card',
-            model: 'card' as const,
-          };
-
-          dispatch(updateEntities([newEntity]));
-        }
+        dispatch(updateEntities(entities));
       }
 
       handleCloseQueryBuilder();
     } catch (error) {
       console.error('Error saving question:', error);
+      // TODO: Show user-friendly error message
     }
-  }, [handleCloseQueryBuilder, editor, dispatch, queryBuilderEntity]);
+  }, [handleCloseQueryBuilder, editor, dispatch, queryBuilderEntity, resultsWithStatus]);
 
   // Set up global handlers for the TipTap node views
   useEffect(() => {
