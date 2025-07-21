@@ -6,7 +6,11 @@ title: Time grouping parameter
 
 You can add a parameter to SQL questions to change how results are grouped by time: by day, week, month, and so on.
 
-To make this work, you'll need to add parameters in both the `SELECT` and `GROUP BY` clauses.
+To add a time grouping parameter, you'll need:
+
+- An aggregation (like `COUNT`).
+- A parameter in the `SELECT` clause
+- That same parameter in the `GROUP BY` clause.
 
 ## Time grouping parameter example
 
@@ -28,31 +32,23 @@ Like in all SQL groupings, you must include the parameter in both the `SELECT` a
 
 ```sql
 SELECT
-  COUNT(*) AS "Orders",
-  {{mb.time_grouping("Time grouping", "created_at")}} AS "Created At",
-  {{mb.time_grouping("Trial ends at", "trial_ends_at")}} AS "Trial ends at"
+  COUNT(*) AS "Count",
+  {{created_at_param}} AS "Created at",
+  {{trial_ends_at}} AS "Trial ends at"
 FROM
   accounts
 GROUP BY
-  {{mb.time_grouping("Time grouping", "created_at")}},
-  {{mb.time_grouping("Trial ends at", "trial_ends_at")}}
+  {{created_at_param}},
+  {{trial_ends_at}}
 ```
-
-## Time grouping parameter syntax
-
-To include a time grouping parameter, include an `mb.time_grouping` function call:
-
-```sql
-{% raw %}{{mb.time_grouping(name, column)}}{% endraw %}
-```
-
-- `mb.time_grouping` is the function that handles the time grouping. It takes two arguments: `name` and `column`.
-- `name` is what you want to call the parameter. The name can be anything, but it must be wrapped in either single or double quote marks. E.g., `"Unit"` or `'Time Grouping'`. By default, this name will change the label on the widget. You can also set a different label for the widget in the variables sidebar.
-- `column` is the name of the column you want to group by. The column name must be wrapped in either single or double quote marks, e.g., `"created_at"` (`created_at` without the quotes won't work).
 
 Like with all parameters, you can set a default value (e.g., "month"). With time grouping parameters, you're limited to the options for the [time grouping parameter](../../dashboards/filters.md#time-grouping-parameter).
 
 If people don't set a value for the parameter, Metabase won't group to a date part (like day or week). It will just group by untruncated dates.
+
+## Handling aliases
+
+Just like with field filters, if you alias a table, then map a time grouping parameter to a field in that aliased table, you'll need to [tell Metabase about the table and field alias](./sql-parameters.md#specifying-the-table-and-field-alias).
 
 ## Connecting to a dashboard filter
 
