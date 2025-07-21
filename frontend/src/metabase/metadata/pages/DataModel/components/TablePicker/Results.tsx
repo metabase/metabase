@@ -1,8 +1,11 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
+
+import { getUrl } from "../../utils";
 
 import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
@@ -184,34 +187,41 @@ export function Results({
 
           return (
             <Flex
+              component={Link}
               key={key}
               aria-selected={isActive}
               align="center"
               justify="space-between"
               gap="sm"
-              ref={virtual.measureElement}
+              // ref={virtual.measureElement}
               className={cx(S.item, S[type], {
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
               })}
               data-index={index}
               data-open={isExpanded}
-              tabIndex={
-                disabled
-                  ? -1
-                  : selectedIndex === undefined || type === "table"
-                    ? 0
-                    : undefined
-              }
+              tabIndex={disabled ? -1 : undefined}
               style={{
                 top: start,
                 marginLeft: level * INDENT_OFFSET,
                 pointerEvents: disabled ? "none" : undefined,
               }}
+              to={getUrl({
+                databaseId: value?.databaseId,
+                schemaName:
+                  type === "schema" || type === "table"
+                    ? value?.schemaName
+                    : undefined,
+                tableId: type === "table" ? value?.tableId : undefined,
+                fieldId: undefined,
+              })}
               data-testid="tree-item"
               data-type={type}
               onKeyDown={handleKeyDown}
-              onClick={() => handleItemSelect()}
+              onClick={(event) => {
+                event.preventDefault();
+                handleItemSelect();
+              }}
               onFocus={() => onSelectedIndexChange?.(index)}
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
