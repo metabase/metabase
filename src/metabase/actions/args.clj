@@ -153,14 +153,13 @@
   ::table.common)
 
 (defmethod normalize-action-arg-map :table.row/common
-  [_action-kw {:keys [database table-id row delete-children] row-arg :arg :as _arg-map}]
+  [_action-kw {:keys [database table-id row] row-arg :arg :as _arg-map}]
   (when (seq row-arg)
     (log/warn ":arg is deprecated, use :row instead"))
   ;; TODO it would be nice to use cached-database-via-table-id here, but need to solve circular dependency.
-  (cond-> {:database (or database (when table-id (t2/select-one-fn :db_id :model/Table table-id)))
-           :table-id table-id
-           :row      (update-keys (or row row-arg) u/qualified-name)}
-    delete-children (assoc :delete-children delete-children)))
+  {:database (or database (when table-id (t2/select-one-fn :db_id :model/Table table-id)))
+   :table-id table-id
+   :row      (update-keys (or row row-arg) u/qualified-name)})
 
 ;;;; `:table.row/create-or-update` -- similar to common but with additional :key field
 

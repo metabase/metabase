@@ -262,12 +262,6 @@
   [context diffs]
   (update context :effects (fnil into []) (map #(vector :effect/row.modified %) diffs)))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- subsume-effects
-  "Update the calling context with the effects produced by nested calls."
-  [parent-context child-results]
-  (update parent-context :effects (fnil into []) (mapcat (comp :effects :context)) child-results))
-
 (defn- result-schema [output-schema]
   [:map {:closed true}
    [:context :map]
@@ -623,101 +617,9 @@
 ;;;; Foreign Key Cascade Deletion
 
 (declare check-consistent-row-keys)
-(defn- build-pk-filter-clause-hsql
-  "Build an efficient filter clause for matching rows by foreign key.
-  Uses IN clause for single FK, OR of AND clauses for composite FK."
-  [pk-rows]
-  (check-consistent-row-keys pk-rows)
-  (let [pk-cols (keys (first pk-rows))]
-    (if (= 1 (count pk-cols))
-      [:in (-> pk-cols first keyword) (set (mapcat vals pk-rows))]
-      (into [:or]
-            (map (fn [pk-row]
-                   (into [:and]
-                         (for [[pk val] pk-row]
-                           [:= (keyword pk) val])))
-                 pk-rows)))))
-
-(defn- delete-rows-by-pk!
-  "Delete rows from a table by their primary key values"
-  [database-id table-id pk-rows]
-  (when (seq pk-rows)
-    (let [database    (driver-api/cached-database database-id)
-          driver      (:engine database)
-          delete-hsql (-> {:delete-from (keyword (:name (driver-api/cached-table database-id table-id)))
-                           :where       (build-pk-filter-clause-hsql pk-rows)}
-                          (prepare-query driver :table.row/delete))
-          sql-args    (sql.qp/format-honeysql driver delete-hsql)]
-      (with-jdbc-transaction [conn database-id]
-        (with-auto-parse-sql-exception driver database :table.row/delete
-          (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))))))
-
-(defn- build-fk-filter-clause-hsql
-  "Build an efficient filter clause for matching rows by foreign key.
-  Uses IN clause for single FK, OR of AND clauses for composite FK."
-  [fk parent-rows]
-  (if (= 1 (count fk))
-    (let [[fk-col pk-col] (first fk)
-          parent-values (map #(get % pk-col) parent-rows)]
-      [:in (keyword fk-col) parent-values])
-    (into [:or]
-          (for [parent parent-rows]
-            (into [:and]
-                  (for [[fk-col pk-col] fk]
-                    [:= (keyword fk-col) (get parent pk-col)]))))))
-
-(defn- lookup-children-in-db
-  "Find child rows that reference the given parent rows via FK relationships"
-  [relationship parent-rows database-id]
-  (let [{:keys [table-id table-ref fk pk]} relationship]
-    (when (seq parent-rows)
-      (let [driver       (driver.u/database->driver database-id)
-            where-clause (build-fk-filter-clause-hsql fk parent-rows)
-            query        {:select (map keyword pk)
-                          :from   [table-ref]
-                          :where  where-clause
-                          :limit  1000}] ; Safety limit
-        (with-jdbc-transaction [conn database-id]
-          [table-id
-           (query-rows-correct-name driver conn table-id query)])))))
 
 (defn- table->ref [{:keys [schema name]}]
   (if schema (keyword schema name) (keyword name)))
-
-(defn- metadata-lookup
-  [table-id]
-  (driver-api/cached-value
-   [::table-fk-relationship table-id]
-   (fn []
-     (let [table-fields   (t2/select [:model/Field :id :name :semantic_type] :table_id table-id :active true)
-           table-pks      (filter #(isa? (:semantic_type %) :type/PK) table-fields)
-           pk-names       (map :name table-pks)
-           fk-fields      (when-let [pk-ids (seq (map :id table-pks))]
-                            (t2/select :model/Field :fk_target_field_id [:in pk-ids] :active true))
-           ;; Pre-fetch table names to avoid repeated queries
-           table-ids      (distinct (map :table_id fk-fields))
-           table-id->ref  (when (seq table-ids)
-                            (t2/select-pk->fn table->ref :model/Table :id [:in table-ids] :active true))
-           field-id->name (u/index-by :id table-fields)]
-       (for [{:keys [name table_id fk_target_field_id]} fk-fields]
-         {:table-id   table_id
-          :table-ref  (get table-id->ref table_id)
-          :fk         {name (get-in field-id->name [fk_target_field_id :name])}
-          :pk         pk-names})))))
-
-(defn- delete-row-with-children!
-  "Delete rows and all their descendants via FK relationships"
-  [database-id table-id row]
-  (let [children-fn (fn [relationship parent-rows]
-                      (lookup-children-in-db relationship parent-rows database-id))
-        delete-fn   (fn [queue]
-                      (doseq [[table-id rows] queue]
-                        (log/debugf "Cascade deleting %d rows of table %d" (count rows) table-id)
-                        (let [rows-deleted (delete-rows-by-pk! database-id table-id rows)]
-                          (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
-        table-pks   (keys (table-id->pk-field-name->id database-id table-id))
-        row-pk      (select-keys row table-pks)]
-    (driver-api/delete-recursively table-id [row-pk] metadata-lookup children-fn delete-fn :max-queries 50)))
 
 ;;;; `:table.row/delete`
 
@@ -761,66 +663,27 @@
                                           (format "%s × %d" (pr-str row) repeat-count))))
                     {:status-code 400, :repeated-rows repeats}))))
 
-(defn check-rows-have-no-children
-  "Check to make sure that none of the `rows` have any children"
-  [database-id table-id rows]
-  (let [children-fn    (fn [relationship parent-rows]
-                         (lookup-children-in-db relationship parent-rows database-id))
-        table-pks      (keys (table-id->pk-field-name->id database-id table-id))
-        row-pks        (map #(select-keys % table-pks) rows)
-        children-count (:counts (driver-api/count-descendants table-id row-pks metadata-lookup children-fn :max-queries 50))]
-    (when-not (empty? (filter pos-int? (set (vals children-count))))
-      (throw (ex-info (tru "Rows have children")
-                      {:status-code    400
-                       :errors         {:type           driver-api/children-exist
-                                        :children-count children-count}})))))
-
-(defn- row-delete!*-with-children
-  [action database query]
-  (let [table-id             (get-in query [:query :source-table])
-        database-id          (:id database)
-        driver               (:engine database)
-        {:keys [from where]} (mbql-query->raw-hsql driver query)]
-    (with-jdbc-transaction [conn database-id]
-      (let [row-before (->> (prepare-query {:select [:*] :from from :where where} driver action)
-                            (query-rows-correct-name driver conn table-id)
-                            first)]
-        (when-not row-before
-          (throw (ex-info (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                          {:status-code 400})))
-        (let [table-id->deleted-children (delete-row-with-children! database-id table-id row-before)]
-          {:table-id         table-id
-           :db-id            database-id
-           :before           row-before
-           :after            nil
-           :deleted-children table-id->deleted-children})))))
-
 (mu/defn- table-row-delete!
   [_action context inputs :- [:sequential ::table-row-input]]
-  (when (< 1 (count (distinct (keep :delete-children inputs))))
-    (throw (ex-info (tru "Cannot mix values of :delete-children, behavior would be ambiguous") {:status-code 400})))
-  (let [delete-children?  (some :delete-children inputs)
-        table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database (driver-api/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
         [errors results]  (batch-execution-by-table-id!
                            {:inputs       inputs
                             :row-action   :model.row/delete
-                            :row-fn       (if delete-children? row-delete!*-with-children row-delete!*)
-                            :validate-fn   (fn [database table-id rows]
-                                             (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
-                                               (check-consistent-row-keys rows)
-                                               (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
-                                               (check-unique-rows rows)
-                                               (when-not delete-children?
-                                                 (check-rows-have-no-children (:id database) table-id rows))))
-                            :input-fn      (fn [{db-id :id} table-id row]
-                                             {:database db-id
-                                              :type     :query
-                                              :query    {:source-table table-id
-                                                         :filter       (row->mbql-filter-clause
-                                                                        (table-id->pk-field-name->id db-id table-id) row)}})})]
+                            :row-fn       row-delete!*
+                            :validate-fn  (fn [database table-id rows]
+                                            (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                                              (check-consistent-row-keys rows)
+                                              (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
+                                              (check-unique-rows rows)))
+                            :input-fn     (fn [{db-id :id} table-id row]
+                                            {:database db-id
+                                             :type     :query
+                                             :query    {:source-table table-id
+                                                        :filter       (row->mbql-filter-clause
+                                                                       (table-id->pk-field-name->id db-id table-id) row)}})})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) deleting rows.")
                       {:status-code 400

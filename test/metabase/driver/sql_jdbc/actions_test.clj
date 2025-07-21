@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang ExceptionInfo)))
 
 (mu/defn- cast-values :- ::actions.args/row
   [driver        :- :keyword
@@ -344,8 +345,17 @@
                                    mt/rows
                                    first
                                    first))]
+          (testing "group without user can be deleted"
+            (let [created-group-id (new-group)]
+              (is (=? {:op  :deleted
+                       :row {group-id-col created-group-id}}
+                      (actions/perform-action!
+                       :table.row/delete
+                       {:database (mt/id)
+                        :table-id (mt/id :group)
+                        :row      {group-id-col created-group-id}})))))
 
-          (testing "group with user requires delete-children"
+          (testing "group with user fails due to FK constraint"
             (let [created-group-id (new-group)]
               ;; create 2 users
               (new-user created-group-id)
@@ -354,34 +364,15 @@
               (testing "sanity check that we have the users"
                 (is (= 2 (users-of-group created-group-id))))
 
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"Rows have children"
-                   (actions/perform-action!
-                    :table.row/delete
-                    {:database (mt/id)
-                     :table-id (mt/id :group)
-                     :row      {group-id-col created-group-id}})))
-
-              (testing "success if delete-children is enabled"
-                (is (=? {:op  :deleted
-                         :row {group-id-col created-group-id}}
-                        (actions/perform-action!
-                         :table.row/delete
-                         {:database        (mt/id)
-                          :table-id        (mt/id :group)
-                          :row             {group-id-col created-group-id}
-                          :delete-children true}))))))
-
-          (testing "group without user can be deleted without delete-children option"
-            (let [created-group-id (new-group)]
-              (is (=? {:op  :deleted
-                       :row {group-id-col created-group-id}}
-                      (actions/perform-action!
-                       :table.row/delete
-                       {:database (mt/id)
-                        :table-id (mt/id :group)
-                        :row      {group-id-col created-group-id}}))))))))))
+              (testing "we fail if there are children without cascade-on-delete behavior"
+                (is (thrown-with-msg?
+                     ExceptionInfo
+                     #"Error\(s\) deleting rows"
+                     (actions/perform-action!
+                      :table.row/delete
+                      {:database (mt/id)
+                       :table-id (mt/id :group)
+                       :row      {group-id-col created-group-id}})))))))))))
 
 (deftest create-all-nil-test
   (testing "table.row/create with no optional fields provided"
