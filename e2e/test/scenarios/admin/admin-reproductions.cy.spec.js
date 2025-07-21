@@ -199,6 +199,8 @@ describe("(metabase#46714)", () => {
     cy.wait("@queryTableMetadata");
     cy.findByTestId("entity-picker-modal").should("not.exist");
 
+    cy.findByTestId("segment-editor").findByText("Orders").should("exist");
+
     cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")
       .click();
