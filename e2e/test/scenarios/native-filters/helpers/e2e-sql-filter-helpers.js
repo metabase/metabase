@@ -110,3 +110,7 @@ export function getRunQueryButton() {
 export function getSaveQueryButton() {
   return cy.findByRole("button", { name: "Save" });
 }
+
+export function setFieldAlias(alias) {
+  cy.findByTestId("field-alias-input").clear().type(alias).blur();
+}

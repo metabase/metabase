@@ -12,8 +12,6 @@ import {
   Title,
 } from "metabase/ui";
 
-import Styles from "./BrowseCard.module.css";
-
 const sizeOptions = {
   md: {
     height: "4rem",
@@ -59,7 +57,7 @@ export const BrowseCard = ({
       p="1.5rem"
       classNames={{
         root: cx(
-          Styles.HoverBrandLight,
+          CS.bgBrandLighterHover,
           CS.hoverParent,
           CS.hoverDisplay,
           CS.textBrandHover,
