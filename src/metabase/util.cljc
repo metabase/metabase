@@ -1084,7 +1084,7 @@
    (defn since-ms
      "Return how many milliseconds have elapsed since the given timer was started."
      [timer]
-     (quot (- (System/nanoTime) timer) 1000000)))
+     (/ (- (System/nanoTime) timer) 1e6)))
 
 #?(:clj
    (defn since-ms-wall-clock
