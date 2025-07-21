@@ -23,7 +23,6 @@
             [_app {:name "Test Data App"
                    :slug "test-data-app"
                    :description "A test data app for serialization"}]
-            ;; Extract and store
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))
                   data-apps  (filter #(= "DataApp" (-> % :serdes/meta last :model)) extraction)
                   data-app   (first data-apps)]
@@ -32,14 +31,12 @@
                        :released_definition [{:config          (mt/malli=? :map)
                                               :creator_id      "crowberto@metabase.com",
                                               :release         [{:app_id     (:entity_id data-app)
-                                                                 :creator_id "crowberto@metabase.com",
-                                                                 :retracted false}],
+                                                                 :creator_id "crowberto@metabase.com"}],
                                               :revision_number 1}]}
                       data-app))
               (storage/store! (seq extraction) dump-dir)))
 
           (ts/with-db dest-db
-            ;; Load from dump
             (serdes/with-cache
               (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
 
@@ -122,8 +119,7 @@
                        :released_definition [{:config          (mt/malli=? :map)
                                               :creator_id      "crowberto@metabase.com"
                                               :release         [{:app_id     (:entity_id data-app)
-                                                                 :creator_id "crowberto@metabase.com"
-                                                                 :retracted false}]
+                                                                 :creator_id "crowberto@metabase.com"}]
                                               :revision_number 2}]}
                       data-app))
               (storage/store! (seq extraction) dump-dir))))

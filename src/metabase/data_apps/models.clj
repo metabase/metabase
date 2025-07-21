@@ -1,9 +1,7 @@
 (ns metabase.data-apps.models
   (:require
-   [clojure.set :as set]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -34,8 +32,7 @@
 (def ^:private simple-slug-regex #"^[0-9a-zA-Z_-]+$")
 
 (t2/deftransforms :model/DataApp
-  {:status mi/transform-keyword
-   #_(mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))
+  {:status (mi/transform-validator mi/transform-keyword  (fn [v] (mi/assert-enum data-app-statuses (keyword v))))
    :slug   (mi/transform-validator mi/transform-identity (partial mi/assert-regex simple-slug-regex))})
 
 ;; TODO: revisit permissions model
@@ -116,7 +113,7 @@
 (declare released-definition)
 
 (defmethod serdes/make-spec "DataAppRelease" [_model-name _opts]
-  {:copy      [:retracted]
+  {:copy      []
    :skip      []
    :transform {:created_at        (serdes/date)
                :updated_at        (serdes/date)
