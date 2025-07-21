@@ -44,6 +44,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
     cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+    cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
@@ -518,30 +519,164 @@ describe("scenarios > admin > datamodel", () => {
         });
       });
 
-      // TODO: https://linear.app/metabase/issue/SEM-299
-      it.skip("should allow hiding and restoring all tables in a schema", () => {
+      it("should allow hiding and restoring all tables in a single-schema database", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("4 Queryable Tables").should("be.visible");
-        cy.findByLabelText("Hide all").click();
+
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+        ]);
+        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
+
+        TablePicker.getDatabase("Sample Database")
+          .button("Hide all tables")
+          .click();
         cy.wait("@updateTables");
 
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("8 Hidden Tables").should("be.visible");
-        cy.findByLabelText("Unhide all").click();
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+          "Orders",
+          "People",
+          "Products",
+          "Reviews",
+        ]);
+        verifyToastAndUndo("Tables hidden");
         cy.wait("@updateTables");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("8 Queryable Tables").should("be.visible");
+
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+        ]);
+        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
+
+        TablePicker.getDatabase("Sample Database")
+          .button("Hide all tables")
+          .click();
+        cy.wait("@updateTables");
+        verifyAndCloseToast("Tables hidden");
+
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+          "Orders",
+          "People",
+          "Products",
+          "Reviews",
+        ]);
+
+        TablePicker.getDatabase("Sample Database")
+          .button("Unhide all tables")
+          .click();
+        cy.wait("@updateTables");
+        verifyAndCloseToast("Tables unhidden");
+
+        verifyTablesVisible([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+          "Orders",
+          "People",
+          "Products",
+          "Reviews",
+        ]);
       });
+
+      it(
+        "should allow hiding and restoring all tables in a single-schema database",
+        { tags: ["@external"] },
+        () => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          H.DataModel.visit();
+
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres12")
+            .button("Hide all tables")
+            .should("not.exist");
+          TablePicker.getSchema("Domestic")
+            .button("Hide all tables")
+            .should("not.exist");
+          TablePicker.getSchema("Wild")
+            .button("Hide all tables")
+            .should("not.exist");
+
+          TablePicker.getSchema("Wild").click();
+          TablePicker.getDatabase("Writable Postgres12")
+            .button("Hide all tables")
+            .should("not.exist");
+          TablePicker.getSchema("Domestic")
+            .button("Hide all tables")
+            .should("not.exist");
+          verifyTablesVisible(["Animals", "Birds"]);
+
+          TablePicker.getSchema("Wild")
+            .button("Hide all tables")
+            .should("exist")
+            .click();
+          cy.wait("@updateTables");
+          verifyTablesHidden(["Animals", "Birds"]);
+
+          verifyToastAndUndo("Tables hidden");
+          cy.wait("@updateTables");
+          verifyTablesVisible(["Animals", "Birds"]);
+        },
+      );
+
+      it(
+        "should update the table picker state when toggling visibility of not currently selected branch",
+        { tags: ["@external"] },
+        () => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          H.DataModel.visit();
+
+          TablePicker.getDatabase("Sample Database").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getSchema("Wild").click();
+          TablePicker.getTable("Animals").click();
+
+          TablePicker.getTable("Accounts")
+            .button("Unhide table")
+            .should("exist")
+            .click();
+          cy.wait("@updateTable");
+          verifyTablesVisible(["Accounts"]);
+
+          TablePicker.getDatabase("Sample Database")
+            .button("Hide all tables")
+            .should("exist")
+            .click();
+          cy.wait("@updateTables");
+          verifyTablesHidden([
+            "Accounts",
+            "Analytic Events",
+            "Feedback",
+            "Invoices",
+            "Orders",
+            "People",
+            "Products",
+            "Reviews",
+          ]);
+        },
+      );
 
       it("hidden table should not show up in various places in UI", () => {
         cy.signInAsAdmin();
@@ -3619,4 +3754,16 @@ function verifyToastAndUndo(message: string) {
   H.undoToast().button("Undo").click();
   H.undoToast().should("contain.text", "Change undone");
   H.undoToast().icon("close").click();
+}
+
+function verifyTablesVisible(tables: string[]) {
+  for (const table of tables) {
+    TablePicker.getTable(table).button("Hide table").should("exist");
+  }
+}
+
+function verifyTablesHidden(tables: string[]) {
+  for (const table of tables) {
+    TablePicker.getTable(table).button("Unhide table").should("be.visible");
+  }
 }
