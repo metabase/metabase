@@ -1835,6 +1835,7 @@
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.init}
    :uses #{api
+           models
            query-processor
            util}}
 
