@@ -8,6 +8,7 @@
   position: absolute;
   border-radius: 8px;
   cursor: pointer;
+  padding-right: var(--mantine-spacing-sm);
   left: var(--mantine-spacing-xl);
   right: var(--mantine-spacing-xl);
 
@@ -31,7 +32,6 @@
 
   &.table {
     padding-left: var(--mantine-spacing-md);
-    padding-right: var(--mantine-spacing-sm);
   }
 }
 
