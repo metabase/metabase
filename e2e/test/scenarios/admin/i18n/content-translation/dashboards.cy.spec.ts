@@ -3,26 +3,15 @@ import {
   NORMAL_USER_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type {
-  DashboardDetails,
-  StructuredQuestionDetails,
-} from "e2e/support/helpers";
+import type { DashboardDetails } from "e2e/support/helpers";
 import type { DictionaryArray } from "metabase/i18n/types";
 
-import { germanFieldNames, germanFieldValues } from "./constants";
+import { frenchNames, germanFieldNames, germanFieldValues } from "./constants";
 import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
-
-const questionDetails: StructuredQuestionDetails = {
-  name: "Products question",
-  query: {
-    "source-table": PRODUCTS_ID,
-    limit: 30,
-  },
-};
 
 describe("scenarios > content translation > static embedding > dashboards", () => {
   describe("filters and field values", () => {
@@ -40,6 +29,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         uploadTranslationDictionaryViaAPI([
           ...germanFieldNames,
           ...germanFieldValues,
+          ...frenchNames,
         ]);
         H.snapshot("with-translations");
       });
@@ -47,6 +37,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       beforeEach(() => {
         cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
         cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+        cy.intercept("GET", "/api/embed/dashboard/**/search/*").as(
+          "searchQuery",
+        );
         H.restore("with-translations" as any);
       });
 
@@ -61,19 +54,22 @@ describe("scenarios > content translation > static embedding > dashboards", () =
               sectionId: "string",
               isMultiSelect,
             };
-
-            const dashboardDetails: DashboardDetails = {
-              parameters: [productCategoryFilter],
-              enable_embedding: true,
-              embedding_params: {
-                [productCategoryFilter.slug]: "enabled",
-              },
-            };
-
             cy.signInAsAdmin();
             H.createQuestionAndDashboard({
-              questionDetails,
-              dashboardDetails,
+              questionDetails: {
+                name: "Products question",
+                query: {
+                  "source-table": PRODUCTS_ID,
+                  limit: 30,
+                },
+              },
+              dashboardDetails: {
+                parameters: [productCategoryFilter],
+                enable_embedding: true,
+                embedding_params: {
+                  [productCategoryFilter.slug]: "enabled",
+                },
+              },
             }).then(({ body: { id, card_id, dashboard_id } }) => {
               cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
                 dashcards: [
@@ -111,7 +107,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
               cy.wait("@cardQuery");
 
               cy.log("Before filtering, multiple categories are shown");
-              cy.findByTestId("table-body").within(() => {
+              H.tableInteractiveBody().within(() => {
                 cy.findAllByText(/Dingsbums/).should(
                   "have.length.greaterThan",
                   2,
@@ -140,7 +136,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
                 }
                 cy.findByText(/Füge einen Filter hinzu/).click();
               });
-              cy.findByTestId("table-body").within(() => {
+              H.tableInteractiveBody().within(() => {
                 cy.findAllByText(/Dingsbums/).should(
                   "have.length.greaterThan",
                   2,
@@ -160,6 +156,124 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           });
         },
       );
+
+      it("translates MultiAutocomplete values and options", () => {
+        const nameFilter = {
+          name: "Multi",
+          slug: "multi",
+          id: "52b05b6d",
+          type: "string/=",
+          sectionId: "string",
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "People question",
+            query: {
+              "source-table": PEOPLE_ID,
+              limit: 30,
+              filter: [
+                "contains",
+                [
+                  "field",
+                  PEOPLE.NAME,
+                  {
+                    "base-type": "type/Text",
+                  },
+                ],
+                "Fran",
+                {
+                  "case-sensitive": false,
+                },
+              ],
+            },
+          },
+          dashboardDetails: {
+            parameters: [nameFilter],
+            enable_embedding: true,
+            embedding_params: {
+              [nameFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 20,
+                parameter_mappings: [
+                  {
+                    parameter_id: nameFilter.id,
+                    card_id,
+                    target: ["dimension", ["field", PEOPLE.NAME, null]],
+                  },
+                ],
+              },
+            ],
+          });
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              additionalHashOptions: {
+                locale: "fr",
+              },
+            },
+          );
+          cy.wait("@cardQuery");
+
+          H.tableInteractiveBody().within(() => {
+            // all rows should be visible initially
+            cy.findAllByRole("row").should("have.length.greaterThan", 2);
+            cy.findByText(/Glacia Froskeon/).should("exist");
+            cy.findByText(/Hammera Francite/).should("exist");
+            cy.findByText(/Francesca Gleason/).should("not.exist");
+            cy.findByText(/Francesca Hammes/).should("not.exist");
+          });
+
+          H.filterWidget().findByText("Multi").click();
+          // Search matches against untranslated text, hence "Fran" matching these names
+          cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
+          cy.wait("@searchQuery");
+          cy.findByTestId("parameter-value-dropdown").within(() => {
+            cy.findByText(/Glacia Froskeon/).click();
+            cy.button(/Ajouter un filtre/).click();
+          });
+
+          H.tableInteractiveBody().within(() => {
+            // only the row matching the selection
+            cy.findAllByRole("row").should("have.length", 1);
+            cy.findByText(/Glacia Froskeon/).should("exist");
+            cy.findByText(/Hammera Francite/).should("not.exist");
+            cy.findByText(/Francesca Gleason/).should("not.exist");
+            cy.findByText(/Francesca Hammes/).should("not.exist");
+          });
+
+          cy.findByTestId("parameter-widget").click();
+          // Search matches against untranslated text, hence "Fran" matching these names
+          cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
+          cy.findByText(/Hammera Francite/).click();
+          cy.findByTestId("parameter-value-dropdown")
+            .button(/Mettre à jour le filtre/)
+            .click();
+
+          H.tableInteractiveBody().within(() => {
+            // only the two rows matching the selection
+            cy.findAllByRole("row").should("have.length", 2);
+            cy.findByText(/Glacia Froskeon/).should("exist");
+            cy.findByText(/Hammera Francite/).should("exist");
+            cy.findByText(/Francesca Gleason/).should("not.exist");
+            cy.findByText(/Francesca Hammes/).should("not.exist");
+          });
+        });
+      });
     });
   });
 
