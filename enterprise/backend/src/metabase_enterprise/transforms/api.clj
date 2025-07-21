@@ -64,26 +64,25 @@
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]}
    _query-params
-   {:keys [name source target] :as _body} :- [:map
-                                              [:name :string]
-                                              [:source ::transform-source]
-                                              [:target ::transform-target]]]
+   body :- [:map
+            [:name {:optional true} :string]
+            [:source {:optional true} ::transform-source]
+            [:target {:optional true} ::transform-target]]]
   (log/info "put transform" id)
-  (t2/update! :model/Transform id {:name name
-                                   :source source
-                                   :target target}))
+  (t2/update! :model/Transform id (select-keys body [:name :source :target]))
+  (t2/select-one :model/Transform id))
 
 (defn- delete-target-table! [id]
-  (let [{:keys [_name _source target]} (t2/select-one :model/Transform id)
-        {:keys [database table]} target
-        {driver :engine} (t2/select-one :model/Database database)]
+  (let [{:keys [database table]} (t2/select-one-fn :target :model/Transform id)
+        driver (t2/select-one-fn :engine :model/Database database)]
     (driver/drop-table! driver database table)))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]}]
   (log/info "delete transform" id)
   (delete-target-table! id)
-  (t2/delete! :model/Transform id))
+  (t2/delete! :model/Transform id)
+  nil)
 
 (api.macros/defendpoint :delete "/:id/table"
   [{:keys [id]}]
