@@ -122,14 +122,14 @@
   (log/info "Populating index with" (count documents) "documents")
   (when (seq documents)
     (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
-          texts (mapv :searchable_text documents)
+          texts (mapv :searchable_text filtered-documents)
           embeddings (embedding/get-embeddings-batch texts)]
       (batch-update!
        (fn [db-records]
          (-> (sql.helpers/insert-into *index-table-name*)
              (sql.helpers/values db-records)
              sql-format-quoted))
-       documents
+       filtered-documents
        embeddings))))
 
 (defn- db-records->update-set
@@ -153,7 +153,7 @@
   (log/info "Populating index with" (count documents) "documents")
   (when (seq documents)
     (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
-          texts (mapv :searchable_text documents)
+          texts (mapv :searchable_text filtered-documents)
           embeddings (embedding/get-embeddings-batch texts)]
       (batch-update!
        (fn [db-records]
@@ -163,7 +163,7 @@
           (sql.helpers/on-conflict :model :model_id)
           (sql.helpers/do-update-set (db-records->update-set db-records))
           sql-format-quoted))
-       documents
+       filtered-documents
        embeddings))))
 
 (defn- drop-index-table-sql
