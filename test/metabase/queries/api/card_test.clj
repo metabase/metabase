@@ -2957,6 +2957,7 @@
                                            "card"
                                            (assoc (card-with-name-and-query "card-name" query)
                                                   :type :model))]
+              (assert (some? metadata))
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (=? {:result_metadata [{:display_name "EDITED DISPLAY"}
                                          {:display_name "EDITED DISPLAY"}]}

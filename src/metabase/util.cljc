@@ -12,6 +12,7 @@
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]
+             [puget.printer]
              [ring.util.codec :as codec])
        :cljs-dev ([clojure.pprint :as pprint]))
    [camel-snake-kebab.internals.macros :as csk.macros]
@@ -688,6 +689,13 @@
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
+
+(def ^{:arglists '([x])} cprint-to-str
+  "Like [[pprint-to-str]], but prints to color if color printing is enabled."
+  #?(:clj (if u.format/colorize?
+            puget.printer/cprint-str
+            pprint-to-str)
+     :cljs pprint-to-str))
 
 (def ^:dynamic *profile-level*
   "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
