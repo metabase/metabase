@@ -43,8 +43,8 @@
   :feature :semantic-search
   [searchable-documents _opts]
   (semantic.db/init-db!)
-  (semantic.index/create-index-table! {:force-reset? true})
-  (semantic.index/populate-index! (into [] searchable-documents)))
+  (semantic.index/create-index-table! {:force-reset? false})
+  (semantic.index/upsert-index! (into [] searchable-documents)))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
@@ -52,8 +52,8 @@
   [searchable-documents _opts]
   ;; TODO:implement reindexing without dropping the table
   (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (semantic.index/create-index-table! {:force-reset? true})
-  (semantic.index/populate-index! (into [] searchable-documents)))
+  (semantic.index/create-index-table! {:force-reset? false})
+  (semantic.index/upsert-index! (into [] searchable-documents)))
 
 ;; TODO: implement
 (defenterprise reset-tracking!
