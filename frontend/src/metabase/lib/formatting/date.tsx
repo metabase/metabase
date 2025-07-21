@@ -1,7 +1,7 @@
 import cx from "classnames";
 import dayjs, { type Dayjs } from "dayjs";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+// eslint-disable-next-line no-restricted-imports
+import type { unitOfTime } from "moment-timezone";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -62,10 +62,10 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
 
 const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
 
-type DateVal = string | number | Moment;
+type DateVal = string | number;
 
 interface DateRangeFormatSpec {
-  same: null | moment.unitOfTime.StartOf;
+  same: null | unitOfTime.StartOf;
   format: [string] | [string, string];
   removedYearFormat?: [string] | [string, string];
   removedDayFormat?: [string] | [string, string];
@@ -855,7 +855,7 @@ export function formatDateTimeRangeWithUnit(
     return String(start);
   }
 
-  const formatDate = (date: Moment, formatStr: string) => {
+  const formatDate = (date: Dayjs, formatStr: string) => {
     // month format is configurable, so we need to insert it after lookup
     return date.format(
       formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat),
@@ -934,10 +934,10 @@ export function formatDateTimeRangeWithUnit(
 }
 
 interface formatDateStringParameters {
-  start: Moment;
+  start: Dayjs;
   startFormat: string;
-  formatDate: (date: Moment, format: string) => string;
-  end?: Moment;
+  formatDate: (date: Dayjs, format: string) => string;
+  end?: Dayjs;
   endFormat?: string | undefined;
   dashPad?: string;
 }
@@ -980,7 +980,7 @@ export function formatRange(
   }
 }
 
-function formatWeek(m: Moment, options: OptionsType = {}) {
+function formatWeek(m: Dayjs, options: OptionsType = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
@@ -1019,18 +1019,16 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
 }
 
 function formatDateTimeWithFormats(
-  value: number | string | Date | Moment | Dayjs,
+  value: number | string | Date | Dayjs,
   dateFormat: string,
   timeFormat: string | null,
   options: OptionsType,
 ) {
-  const m = moment.isMoment(value)
-    ? value
-    : deprecatedParseTimestamp(
-        value,
-        options.column && options.column.unit,
-        options.local,
-      );
+  const m = deprecatedParseTimestamp(
+    value,
+    options.column && options.column.unit,
+    options.local,
+  );
   if (!m.isValid()) {
     return String(value);
   }
