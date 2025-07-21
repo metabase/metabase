@@ -108,6 +108,32 @@
     true (value-expr :type/DateTime "2023-03-08T04:33:45")
     true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
 
+(deftest ^:parallel case-schema-type-compatibility-ignore-invalid-test
+  (binding [expression/*suppress-expression-type-check?* true]
+    (are [a b] (true?
+                (mr/validate :mbql.clause/case
+                            [:case
+                              {:lib/uuid (str (random-uuid))}
+                              [[true a]
+                              [true b]]]))
+      10 "A"
+      10.5 "B"
+      true "A"
+      true 10
+      true 10.5
+      10 (value-expr :type/Date "2023-03-08")
+      10 (value-expr :type/DateTime "2023-03-08T04:33:45")
+      10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+      10.5 (value-expr :type/Date "2023-03-08")
+      10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
+      10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+      "A" (value-expr :type/Date "2023-03-08")
+      "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
+      "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+      true (value-expr :type/Date "2023-03-08")
+      true (value-expr :type/DateTime "2023-03-08T04:33:45")
+      true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z"))))
+
 (deftest ^:parallel case-type-of-test
   (testing "type-of logic for :case expressions"
     ;; In QP and MLv2: `expression/type-of-method :case`
@@ -226,6 +252,31 @@
     true (value-expr :type/Date "2023-03-08")
     true (value-expr :type/DateTime "2023-03-08T04:33:45")
     true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
+
+(deftest ^:parallel coalesce-schema-type-compatibility-ingore-invalid-test
+  (binding [expression/*suppress-expression-type-check?* true]
+    (are [a b] (true?
+                (mr/validate :mbql.clause/coalesce
+                            [:coalesce
+                              {:lib/uuid (str (random-uuid))}
+                              a b]))
+      10 "A"
+      10.5 "B"
+      true "A"
+      true 10
+      true 10.5
+      10 (value-expr :type/Date "2023-03-08")
+      10 (value-expr :type/DateTime "2023-03-08T04:33:45")
+      10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+      10.5 (value-expr :type/Date "2023-03-08")
+      10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
+      10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+      "A" (value-expr :type/Date "2023-03-08")
+      "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
+      "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+      true (value-expr :type/Date "2023-03-08")
+      true (value-expr :type/DateTime "2023-03-08T04:33:45")
+      true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z"))))
 
 (deftest ^:parallel coalesce-test
   (is (mr/validate
