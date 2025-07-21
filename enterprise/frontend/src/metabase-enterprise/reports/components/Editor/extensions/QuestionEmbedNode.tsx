@@ -24,6 +24,7 @@ export const QuestionEmbedNode = Node.create<{
   group: "block",
   atom: true,
   draggable: true,
+  selectable: true,
 
   addAttributes() {
     return {
@@ -99,6 +100,7 @@ export const QuestionEmbedNode = Node.create<{
 export const QuestionEmbedComponent = ({
   node,
   updateAttributes,
+  selected,
 }: NodeViewProps) => {
   const { questionId, questionName, customName } = node.attrs;
   const { data: card, isLoading, error } = useGetCardQuery({ id: questionId });
@@ -168,7 +170,9 @@ export const QuestionEmbedComponent = ({
 
   return (
     <NodeViewWrapper className={styles.embedWrapper}>
-      <Box className={styles.questionEmbed}>
+      <Box
+        className={`${styles.questionEmbed} ${selected ? styles.selected : ""}`}
+      >
         {card && (
           <Box className={styles.questionHeader}>
             {isEditingTitle ? (

@@ -10,6 +10,24 @@
 .questionEmbed {
   border: 2px solid var(--mb-color-border);
   margin: 1rem 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.questionEmbed.selected {
+  border-color: var(--mb-color-brand);
+  outline: none;
+}
+
+.questionEmbed * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .questionHeader {
