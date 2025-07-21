@@ -1,2 +1,16 @@
-// eslint-disable-next-line i18next/no-literal-string
-export const ReportPage = () => <div>ReportPage</div>;
+import { Box, Paper } from "metabase/ui";
+
+import { Editor } from "./Editor";
+import styles from "./ReportPage.module.css";
+
+export const ReportPage = () => {
+  return (
+    <Box className={styles.editorWrapper}>
+      <Box className={styles.editorContainer}>
+        <Paper shadow="sm" className={styles.editorPaper}>
+          <Editor />
+        </Paper>
+      </Box>
+    </Box>
+  );
+};

@@ -1,0 +1,110 @@
+.editor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editorContent {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.editorContent :global(.ProseMirror) {
+  padding: 4rem;
+  min-height: 100%;
+  outline: none;
+}
+
+.editorContent :global(.ProseMirror h1) {
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin: 1.5rem 0 1rem;
+  line-height: 1.2;
+}
+
+.editorContent :global(.ProseMirror h2) {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 1.5rem 0 1rem;
+  line-height: 1.3;
+}
+
+.editorContent :global(.ProseMirror h3) {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1.2rem 0 0.8rem;
+  line-height: 1.4;
+}
+
+.editorContent :global(.ProseMirror p) {
+  margin: 0.75rem 0;
+  line-height: 1.75;
+  font-size: 1rem;
+}
+
+.editorContent :global(.ProseMirror ul) {
+  margin: 0.75rem 0;
+  padding-left: 2rem;
+  list-style-type: disc;
+}
+
+.editorContent :global(.ProseMirror ol) {
+  margin: 0.75rem 0;
+  padding-left: 2rem;
+  list-style-type: decimal;
+}
+
+.editorContent :global(.ProseMirror li) {
+  margin: 0.25rem 0;
+  line-height: 1.75;
+  display: list-item;
+}
+
+.editorContent :global(.ProseMirror ul ul) {
+  list-style-type: circle;
+}
+
+.editorContent :global(.ProseMirror ul ul ul) {
+  list-style-type: square;
+}
+
+.editorContent :global(.ProseMirror code) {
+  background-color: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.875em;
+}
+
+.editorContent :global(.ProseMirror pre) {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.editorContent :global(.ProseMirror pre code) {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.editorContent :global(.ProseMirror blockquote) {
+  border-left: 3px solid #4a5568;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #718096;
+  font-style: italic;
+}
+
+.editorContent :global(.ProseMirror hr) {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 2rem 0;
+}
+
+.editorContent :global(.ProseMirror:focus) {
+  outline: none;
+}
