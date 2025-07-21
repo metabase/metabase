@@ -18,12 +18,13 @@ import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { Box, Button, Flex, Group, Modal, Paper, Stack, Text, TextInput, useMantineTheme } from "metabase/ui";
 import { Icon, ThemeProvider } from "metabase/ui";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal/VisualizerModal";
 import type Question from "metabase-lib/v1/Question";
-import type { VisualizerVizDefinition } from "metabase-types/api";
+import type { VisualizationSettings, VisualizerVizDefinition } from "metabase-types/api";
 
-import { runReport, runReportEntity, updateEntities } from "../../store/reportSlice";
+import { runReport, updateEntities } from "../../store/reportSlice";
 import {
   getIsReportRunning,
   getReportCanRun,
@@ -122,18 +123,18 @@ const QueryBuilderModal = ({ entity, isOpen, onClose, onVisualize }: {
 };
 
 // Wrapper component that provides Mantine theme and Redux context
-const VisualizationNodeWithProviders = ({ node, store, onOpenQueryBuilder, onOpenVisualizer }: { node: any; store: any; onOpenQueryBuilder?: (entityAttrs: any) => void; onOpenVisualizer?: (entityAttrs: any) => void }) => {
+const VisualizationNodeWithProviders = ({ node, store, onOpenQueryBuilder, onOpenVisualizer, onOpenChartSettings }: { node: any; store: any; onOpenQueryBuilder?: (entityAttrs: any) => void; onOpenVisualizer?: (entityAttrs: any) => void; onOpenChartSettings?: (entityAttrs: any) => void }) => {
   return (
     <MetabaseReduxProvider store={store}>
       <ThemeProvider>
-        <VisualizationNode node={node} onOpenQueryBuilder={onOpenQueryBuilder} onOpenVisualizer={onOpenVisualizer} />
+        <VisualizationNode node={node} onOpenQueryBuilder={onOpenQueryBuilder} onOpenVisualizer={onOpenVisualizer} onOpenChartSettings={onOpenChartSettings} />
       </ThemeProvider>
     </MetabaseReduxProvider>
   );
 };
 
 // React component for the visualization node
-const VisualizationNode = ({ node, onOpenQueryBuilder, onOpenVisualizer }: { node: any; onOpenQueryBuilder?: (entityAttrs: any) => void; onOpenVisualizer?: (entityAttrs: any) => void }) => {
+const VisualizationNode = ({ node, onOpenQueryBuilder, onOpenVisualizer, onOpenChartSettings }: { node: any; onOpenQueryBuilder?: (entityAttrs: any) => void; onOpenVisualizer?: (entityAttrs: any) => void; onOpenChartSettings?: (entityAttrs: any) => void }) => {
   console.log('VisualizationNode component rendering with node:', node);
 
   const entityId = node.attrs.id;
@@ -281,6 +282,17 @@ const VisualizationNode = ({ node, onOpenQueryBuilder, onOpenVisualizer }: { nod
               >
                 <Icon name="lineandbar" size={12} style={{ marginRight: '4px' }} />
                 Edit Visualization
+              </Button>
+              <Button
+                size="xs"
+                variant="subtle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenChartSettings?.(node.attrs);
+                }}
+              >
+                <Icon name="palette" size={12} style={{ marginRight: '4px' }} />
+                Chart Settings
               </Button>
             </Group>
           )}
@@ -432,6 +444,10 @@ const createMetabaseVisualizationExtension = (store: any) => {
               onOpenVisualizer: () => {
                 // Access the handler from the global scope
                 (window as any).reportEditorHandlers?.openVisualizer?.(node.attrs);
+              },
+              onOpenChartSettings: () => {
+                // Access the handler from the global scope
+                (window as any).reportEditorHandlers?.openChartSettings?.(node.attrs);
               }
             }));
             console.log("React component rendered successfully");
@@ -475,6 +491,10 @@ const createMetabaseVisualizationExtension = (store: any) => {
               onOpenVisualizer: () => {
                 // Access the handler from the global scope or store
                 (window as any).reportEditorHandlers?.openVisualizer?.(updatedNode.attrs);
+              },
+              onOpenChartSettings: () => {
+                // Access the handler from the global scope or store
+                (window as any).reportEditorHandlers?.openChartSettings?.(updatedNode.attrs);
               }
             }));
           } catch (error) {
@@ -511,6 +531,9 @@ const ReportEditor = () => {
   const [isQueryBuilderOpen, setIsQueryBuilderOpen] = useState(false);
   const [visualizerEntity, setVisualizerEntity] = useState<any>(null);
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
+  const [chartSettingsEntity, setChartSettingsEntity] = useState<any>(null);
+  const [isChartSettingsOpen, setIsChartSettingsOpen] = useState(false);
+  const [chartSettings, setChartSettings] = useState<VisualizationSettings | null>(null);
 
   // Redux state and dispatch
   const dispatch = useDispatch();
@@ -729,6 +752,22 @@ const ReportEditor = () => {
     setVisualizerEntity(null);
   }, []);
 
+  const handleOpenChartSettings = useCallback((entityAttrs: any) => {
+    setChartSettingsEntity(entityAttrs);
+    setIsChartSettingsOpen(true);
+    setChartSettings(null); // Reset settings when opening
+  }, []);
+
+  const handleCloseChartSettings = useCallback(() => {
+    setIsChartSettingsOpen(false);
+    setChartSettingsEntity(null);
+    setChartSettings(null);
+  }, []);
+
+  const handleChartSettingsChange = useCallback((settings: VisualizationSettings) => {
+    setChartSettings(settings);
+  }, []);
+
     const handleQueryBuilderVisualize = useCallback(async (newQuestion: Question) => {
     // This will be called when user hits "Visualize" in the Query Builder
     // Save the new question and replace it in the document
@@ -806,9 +845,9 @@ const ReportEditor = () => {
     }
   }, [handleCloseQueryBuilder, editor, dispatch, queryBuilderEntity, resultsWithStatus]);
 
-  const handleVisualizerSave = useCallback(async (visualization: VisualizerVizDefinition) => {
+    const handleVisualizerSave = useCallback(async (visualization: VisualizerVizDefinition) => {
     // This will be called when user hits "Save" in the Visualizer Modal
-    // Update the card's visualization settings
+    // Create a new card with the updated visualization settings (same pattern as edit query)
     try {
       if (!visualizerEntity || !editor) return;
 
@@ -820,33 +859,73 @@ const ReportEditor = () => {
 
       const card = await cardResponse.json();
 
-      // Update the card with new visualization settings
-      const updatedCard = {
+      // Create a new card with auto-generated name (same pattern as edit query)
+      const originalName = visualizerEntity.name;
+      const modifiedName = `${originalName} (Modified)`;
+
+      const cardToSave = {
         ...card,
+        name: modifiedName,
         display: visualization.display,
         visualization_settings: {
           ...card.visualization_settings,
           ...visualization.settings,
-        }
+        },
+        // Remove the original ID so it creates a new question
+        id: undefined,
       };
 
-      // Save the updated card
-      const updateResponse = await fetch(`/api/card/${visualizerEntity.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedCard),
-      });
+      // Save the question via API using the proper pattern (same as edit query)
+      const action = await dispatch(Questions.actions.create(cardToSave));
+      const savedQuestion = Questions.HACK_getObjectFromAction(action);
 
-      if (!updateResponse.ok) {
-        throw new Error(`Failed to update card: ${updateResponse.statusText}`);
+      if (!savedQuestion?.id) {
+        throw new Error('Failed to save question - no ID returned');
       }
 
-            // Update the visualization display immediately by triggering a re-run of this specific entity
-      const entity = resultsWithStatus.find(r => r.entity.id == visualizerEntity.id)?.entity;
-      if (entity) {
-        dispatch(runReportEntity(entity));
+      // Find and replace the old visualization node in the editor (same pattern as edit query)
+      const doc = editor.state.doc;
+      let foundNodePos = null;
+      let foundNode = null;
+
+      // Find the node with matching ID
+      doc.descendants((node: any, pos: number) => {
+        if (node.type.name === 'metabaseVisualization' && node.attrs.id == visualizerEntity.id) {
+          foundNodePos = pos;
+          foundNode = node;
+          return false; // Stop iteration
+        }
+      });
+
+      if (foundNodePos !== null && foundNode) {
+        // Replace the node with updated attributes
+        const tr = editor.state.tr.setNodeMarkup(foundNodePos, null, {
+          ...(foundNode as any).attrs,
+          id: savedQuestion.id,
+          name: modifiedName,
+        });
+
+        editor.view.dispatch(tr);
+
+        // Update Redux state - replace the old entity with the new one
+        const entities: any[] = [];
+        const currentEntities = resultsWithStatus.map(r => r.entity);
+
+        // Replace the old entity with the new one
+        currentEntities.forEach(entity => {
+          if (entity.id == visualizerEntity.id) {
+            entities.push({
+              id: savedQuestion.id,
+              name: modifiedName,
+              type: 'card',
+              model: 'card' as const,
+            });
+          } else {
+            entities.push(entity);
+          }
+        });
+
+        dispatch(updateEntities(entities));
       }
 
       handleCloseVisualizer();
@@ -856,17 +935,107 @@ const ReportEditor = () => {
     }
   }, [handleCloseVisualizer, editor, dispatch, visualizerEntity, resultsWithStatus]);
 
+    const handleChartSettingsSave = useCallback(async () => {
+    // This will be called when user hits "Save" in the Chart Settings Modal
+    // Create a new card with the updated chart settings (same pattern as other saves)
+    try {
+      if (!chartSettingsEntity || !editor || !chartSettings) return;
+
+      // Get the current card from the API
+      const cardResponse = await fetch(`/api/card/${chartSettingsEntity.id}`);
+      if (!cardResponse.ok) {
+        throw new Error(`Failed to fetch card: ${cardResponse.statusText}`);
+      }
+
+      const card = await cardResponse.json();
+
+      // Create a new card with auto-generated name
+      const originalName = chartSettingsEntity.name;
+      const modifiedName = `${originalName} (Modified)`;
+
+      const cardToSave = {
+        ...card,
+        name: modifiedName,
+        visualization_settings: {
+          ...card.visualization_settings,
+          ...chartSettings,
+        },
+        // Remove the original ID so it creates a new question
+        id: undefined,
+      };
+
+      // Save the question via API using the proper pattern
+      const action = await dispatch(Questions.actions.create(cardToSave));
+      const savedQuestion = Questions.HACK_getObjectFromAction(action);
+
+      if (!savedQuestion?.id) {
+        throw new Error('Failed to save question - no ID returned');
+      }
+
+      // Find and replace the old visualization node in the editor
+      const doc = editor.state.doc;
+      let foundNodePos = null;
+      let foundNode = null;
+
+      // Find the node with matching ID
+      doc.descendants((node: any, pos: number) => {
+        if (node.type.name === 'metabaseVisualization' && node.attrs.id == chartSettingsEntity.id) {
+          foundNodePos = pos;
+          foundNode = node;
+          return false; // Stop iteration
+        }
+      });
+
+      if (foundNodePos !== null && foundNode) {
+        // Replace the node with updated attributes
+        const tr = editor.state.tr.setNodeMarkup(foundNodePos, null, {
+          ...(foundNode as any).attrs,
+          id: savedQuestion.id,
+          name: modifiedName,
+        });
+
+        editor.view.dispatch(tr);
+
+        // Update Redux state - replace the old entity with the new one
+        const entities: any[] = [];
+        const currentEntities = resultsWithStatus.map(r => r.entity);
+
+        // Replace the old entity with the new one
+        currentEntities.forEach(entity => {
+          if (entity.id == chartSettingsEntity.id) {
+            entities.push({
+              id: savedQuestion.id,
+              name: modifiedName,
+              type: 'card',
+              model: 'card' as const,
+            });
+          } else {
+            entities.push(entity);
+          }
+        });
+
+        dispatch(updateEntities(entities));
+      }
+
+      handleCloseChartSettings();
+    } catch (error) {
+      console.error('Error saving chart settings:', error);
+      // TODO: Show user-friendly error message
+    }
+  }, [handleCloseChartSettings, editor, dispatch, chartSettingsEntity, chartSettings, resultsWithStatus]);
+
   // Set up global handlers for the TipTap node views
   useEffect(() => {
     (window as any).reportEditorHandlers = {
       openQueryBuilder: handleOpenQueryBuilder,
       openVisualizer: handleOpenVisualizer,
+      openChartSettings: handleOpenChartSettings,
     };
 
     return () => {
       delete (window as any).reportEditorHandlers;
     };
-  }, [handleOpenQueryBuilder, handleOpenVisualizer]);
+  }, [handleOpenQueryBuilder, handleOpenVisualizer, handleOpenChartSettings]);
 
   // Resize handling
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1161,6 +1330,39 @@ const ReportEditor = () => {
           saveLabel={t`Save`}
           allowSaveWhenPristine
         />
+      )}
+
+      {/* Chart Settings modal */}
+      {chartSettingsEntity && (
+        <Modal
+          opened={isChartSettingsOpen}
+          onClose={handleCloseChartSettings}
+          size="lg"
+          withCloseButton={true}
+          title={`Chart Settings: ${chartSettingsEntity.name}`}
+        >
+                    <QuestionChartSettings
+            series={(() => {
+              // Get the entity data for this card
+              const entityData = resultsWithStatus.find(r => r.entity.id == chartSettingsEntity.id)?.result?.data;
+              return entityData || [];
+            })()}
+            onChange={handleChartSettingsChange}
+            className="p-4"
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px', borderTop: '1px solid #e5e5e5' }}>
+            <Button variant="default" onClick={handleCloseChartSettings} style={{ marginRight: '8px' }}>
+              Cancel
+            </Button>
+            <Button
+              variant="filled"
+              onClick={handleChartSettingsSave}
+              disabled={!chartSettings}
+            >
+              Save
+            </Button>
+          </div>
+        </Modal>
       )}
     </Box>
   );
