@@ -7,8 +7,8 @@
 
 (mr/def ::transform-source
   [:map
-   [:type [:= "query"]
-    :query [:map [:database :int]]]])
+   [:type [:= "query"]]
+   [:query [:map [:database :int]]]])
 
 (mr/def ::transform-target
   [:map
@@ -36,7 +36,10 @@
 (api.macros/defendpoint :post "/"
   [_route-params
    _query-params
-   {:keys [_name _source _target] :as _body}]
+   {:keys [_name _source _target] :as _body} :- [:map
+                                                 [:name :string]
+                                                 [:source ::transform-source]
+                                                 [:target ::transform-target]]]
   _body)
 
 (def ^{:arglists '([request respond raise])} routes
