@@ -1068,6 +1068,12 @@
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
        (subs s 0 (.-read result)))))
 
+;; The next two helpers exist to squelch the anti-pattern of using `System/currentTimeMillis` for computing durations.
+;; Unlike its better known sibling, `System/nanoTime` avoids a costly system call to fetch the wall clock time,
+;; instead using a relative counter which is unaffected by system clock corrections, and guaranteed to be increasing.
+;;
+;; Our linter won't force you to use these helpers, but they're convenient if you're thinking in milliseconds.
+
 #?(:clj
    (defn start-timer
      "Start and return a timer. Treat the \"timer\" as an opaque object, the implementation may change."
@@ -1079,6 +1085,14 @@
      "Return how many milliseconds have elapsed since the given timer was started."
      [timer]
      (/ (- (System/nanoTime) timer) 1e6)))
+
+#?(:clj
+   (defn since-ms-wall-clock
+     "Return how many milliseconds have elapsed since the given system millisecond time.
+     For cases where you can't use u/start-timer, e.g., external time sources or process boundaries."
+     [start-ms]
+     #_{:clj-kondo/ignore [:metabase/discourage-millis-duration]}
+     (- (System/currentTimeMillis) start-ms)))
 
 (defn group-by
   "(group-by first                  [[1 3]   [1 4]   [2 5]])   => {1 [[1 3] [1 4]], 2 [[2 5]]}
