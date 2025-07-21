@@ -11,9 +11,11 @@
 }
 
 .editorContent :global(.ProseMirror) {
-  padding: 0 6rem 4rem 6rem;
+  padding: 2rem 0 4rem 0;
   min-height: 100%;
   outline: none;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .editorContent :global(.ProseMirror h1) {
