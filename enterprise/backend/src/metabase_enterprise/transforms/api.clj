@@ -96,7 +96,7 @@
     (transforms.execute/execute
      {:db db
       :driver driver
-      :sql (first (qp.compile/compile-with-inline-parameters source))
+      :sql (:query (qp.compile/compile-with-inline-parameters source))
       :output-table (:table target)
       :overwrite? true})))
 
