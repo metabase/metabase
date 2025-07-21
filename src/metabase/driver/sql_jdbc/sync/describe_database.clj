@@ -86,7 +86,7 @@
        (pr-str table-name)))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
-  [driver ^Connection outer-conn table-schema table-name & retry?]
+  [driver ^Connection outer-conn table-schema table-name & {:keys [retry?]}]
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)
@@ -122,8 +122,8 @@
           (try (when-not (.getAutoCommit conn)
                  (.rollback conn))
                (catch Throwable _))
-          (if (and (not allow?) (not (first retry?)))
-            (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name true)
+          (if (and (not allow?) (not retry?))
+            (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name :retry? true)
             allow?))))))
 
 (defn- jdbc-get-tables

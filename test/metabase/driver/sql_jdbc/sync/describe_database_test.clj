@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
@@ -273,3 +274,44 @@
                   all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
+
+(deftest retry-have-select-privilege-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
+                                                                 (get-method sql-jdbc.sync/have-select-privilege? %))]
+                                             :-features [:table-privileges]})
+    (let [driver driver/*driver*]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       (mt/db)
+       nil
+       (fn [^Connection conn]
+         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+           (testing "we will retry syncing a table once if there is an exception on the first attempt"
+             (let [call-count (atom 0)]
+               (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                             (fn [_driver _conn _sql]
+                               (let [n (swap! call-count inc)]
+                                 (if (< n 2)
+                                   (throw (ex-info "Mock statement closed error" {}))
+                                   nil)))]
+                 (is (true? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))))
+           (testing "we won't retry syncing a table more than once if there is more than one exception"
+             (let [call-count (atom 0)]
+               (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                             (fn [_driver _conn _sql]
+                               (let [n (swap! call-count inc)]
+                                 (if (< n 3)
+                                   (throw (ex-info "Mock statement closed error" {}))
+                                   nil)))]
+                 (is (false? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))))
+           (testing "we won't retry syncing a table if probe query was canceled"
+             (let [call-count (atom 0)]
+               (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                             (fn [_driver _conn _sql]
+                               (let [n (swap! call-count inc)]
+                                 (if (< n 3)
+                                   (throw (ex-info "Mock query canceled error" {}))
+                                   nil)))
+                             driver/query-canceled? (constantly true)]
+                 (is (true? (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))))))))))
