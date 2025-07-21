@@ -33,11 +33,6 @@ const createMockRenderingContext = (
           fontSize: 12,
         },
       },
-      splitLine: {
-        lineStyle: {
-          color: "#E0E0E0",
-        },
-      },
     },
     pie: {
       borderColor: "#FFFFFF",
