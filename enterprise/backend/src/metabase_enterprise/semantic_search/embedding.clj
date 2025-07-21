@@ -193,10 +193,10 @@
             models (case provider
                      "ollama" ollama-supported-models
                      "openai" openai-supported-models
-                     (throw (ex-info "Not a supported provider" {:provider provider})))
+                     (throw (ex-info (format "Unknown embedding provider: %s" provider) {:provider provider})))
             model-name (or (semantic-settings/ee-embedding-model) (default-model-for-provider provider))
             vector-dimensions (or (get models model-name)
-                                  (throw (ex-info "Not a supported model" {:provider provider, :model-name model-name})))]
+                                  (throw (ex-info (format "Not a supported model: %s" model-name) {:provider provider, :model-name model-name})))]
         {:provider provider
          :model-name model-name
          :vector-dimensions vector-dimensions})))
