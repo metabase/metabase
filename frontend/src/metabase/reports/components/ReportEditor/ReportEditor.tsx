@@ -1,24 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
+import { Node } from "@tiptap/core";
+import { EditorContent, useEditor } from "@tiptap/react";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Node } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
+import { skipToken } from "@reduxjs/toolkit/query";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { t } from "ttag";
 
-import { Box, Button, Group, Paper, Stack, Text, useMantineTheme, Flex, TextInput } from "metabase/ui";
-import { Icon } from "metabase/ui";
 import { useSearchQuery } from "metabase/api";
-import { skipToken } from "@reduxjs/toolkit/query";
-import Visualization from "metabase/visualizations/components/Visualization";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { MantineProvider } from "@mantine/core";
-import { ThemeProvider } from "metabase/ui";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import Questions from "metabase/entities/questions";
+import SavedQuestionLoader from "metabase/common/components/SavedQuestionLoader";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { useContext } from "react";
-import { MetabaseReduxContext } from "metabase/lib/redux";
+import { Notebook } from "metabase/querying/notebook/components/Notebook/Notebook";
+import { getSetting } from "metabase/selectors/settings";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { Box, Button, Flex, Group, Modal, Paper, Stack, Text, TextInput, useMantineTheme } from "metabase/ui";
+import { Icon, ThemeProvider } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import type Question from "metabase-lib/v1/Question";
 
 import { updateEntities, runReport } from "../../store/reportSlice";
 import {
@@ -41,19 +42,98 @@ import {
   StyledEditorContent,
 } from "./ReportEditor.styled";
 
+// Query Builder Modal Component using SavedQuestionLoader
+const QueryBuilderModal = ({ entity, isOpen, onClose, onVisualize }: {
+  entity: any;
+  isOpen: boolean;
+  onClose: () => void;
+  onVisualize: (question: Question) => Promise<void>;
+}) => {
+  const reportTimezone = useSelector((state: any) => getSetting(state, "report-timezone-long"));
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+
+  return (
+    <Modal
+      opened={isOpen}
+      onClose={onClose}
+      size="95%"
+      title={`Edit Query: ${entity.name}`}
+      styles={{
+        content: {
+          maxWidth: '95vw',
+          maxHeight: '90vh',
+          overflow: 'hidden'
+        },
+        body: {
+          height: '80vh',
+          padding: 0
+        }
+      }}
+    >
+      {entity.model === 'card' ? (
+        <SavedQuestionLoader questionId={parseInt(entity.id)}>
+          {({ question, loading, error }: { question: Question | null; loading: boolean; error: any }) => {
+            if (loading) {
+              return (
+                <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <Text>Loading question...</Text>
+                </Box>
+              );
+            }
+
+            if (error || !question) {
+              return (
+                <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <Text color="red">Error loading question: {error?.toString()}</Text>
+                </Box>
+              );
+            }
+
+            return (
+              <Box style={{ height: '100%', overflow: 'auto' }}>
+                <Notebook
+                  question={currentQuestion || question}
+                  isDirty={true}
+                  isRunnable={true}
+                  isResultDirty={true}
+                  reportTimezone={reportTimezone || "UTC"}
+                  updateQuestion={async (updatedQuestion: Question) => {
+                    setCurrentQuestion(updatedQuestion);
+                    return Promise.resolve();
+                  }}
+                  runQuestionQuery={async () => {
+                    // Use the current question state if available, fallback to original
+                    const questionToSave = currentQuestion || question;
+                    await onVisualize(questionToSave);
+                  }}
+                  hasVisualizeButton={true}
+                />
+              </Box>
+            );
+          }}
+        </SavedQuestionLoader>
+      ) : (
+        <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          <Text>Query editing is only supported for questions/cards.</Text>
+        </Box>
+      )}
+    </Modal>
+  );
+};
+
 // Wrapper component that provides Mantine theme and Redux context
-const VisualizationNodeWithProviders = ({ node, store }: { node: any; store: any }) => {
+const VisualizationNodeWithProviders = ({ node, store, onOpenQueryBuilder }: { node: any; store: any; onOpenQueryBuilder?: (entityAttrs: any) => void }) => {
   return (
     <MetabaseReduxProvider store={store}>
       <ThemeProvider>
-        <VisualizationNode node={node} />
+        <VisualizationNode node={node} onOpenQueryBuilder={onOpenQueryBuilder} />
       </ThemeProvider>
     </MetabaseReduxProvider>
   );
 };
 
 // React component for the visualization node
-const VisualizationNode = ({ node }: { node: any }) => {
+const VisualizationNode = ({ node, onOpenQueryBuilder }: { node: any; onOpenQueryBuilder?: (entityAttrs: any) => void }) => {
   console.log('VisualizationNode component rendering with node:', node);
 
   const entityId = node.attrs.id;
@@ -148,7 +228,7 @@ const VisualizationNode = ({ node }: { node: any }) => {
     console.log('Rendering visualization with entityData:', entityData);
 
     return (
-      <Box
+            <Box
         style={{
           border: "2px solid #34a853",
           borderRadius: "8px",
@@ -157,25 +237,41 @@ const VisualizationNode = ({ node }: { node: any }) => {
           padding: "1rem",
           minHeight: "300px",
           height: "460px", // 400px + 2rem padding
+          position: "relative",
         }}
       >
-        <Text
-          size="sm"
-          style={{ marginBottom: "1rem", fontWeight: "bold" }}
-        >
-          <a
-            href={node.attrs.model === 'card' ? `/question/${node.attrs.id}` :
-                  node.attrs.model === 'table' ? `/browse/table/${node.attrs.id}` :
-                  `/browse/${node.attrs.model}/${node.attrs.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: 'none', color: 'inherit' }}
-            onMouseEnter={(e) => {(e.target as HTMLElement).style.textDecoration = 'underline'}}
-            onMouseLeave={(e) => {(e.target as HTMLElement).style.textDecoration = 'none'}}
+        <Group style={{ justifyContent: "space-between", marginBottom: "1rem", alignItems: "flex-start" }}>
+          <Text
+            size="sm"
+            style={{ fontWeight: "bold", flex: 1 }}
           >
-            {node.attrs.name} ({node.attrs.model})
-          </a>
-        </Text>
+            <a
+              href={node.attrs.model === 'card' ? `/question/${node.attrs.id}` :
+                    node.attrs.model === 'table' ? `/browse/table/${node.attrs.id}` :
+                    `/browse/${node.attrs.model}/${node.attrs.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none', color: 'inherit' }}
+              onMouseEnter={(e) => {(e.target as HTMLElement).style.textDecoration = 'underline'}}
+              onMouseLeave={(e) => {(e.target as HTMLElement).style.textDecoration = 'none'}}
+            >
+              {node.attrs.name} ({node.attrs.model})
+            </a>
+          </Text>
+          {node.attrs.model === 'card' && (
+            <Button
+              size="xs"
+              variant="subtle"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenQueryBuilder?.(node.attrs);
+              }}
+            >
+              <Icon name="pencil" size={12} style={{ marginRight: '4px' }} />
+              Edit Query
+            </Button>
+          )}
+        </Group>
         <Box style={{ height: "400px", width: "100%" }}>
           <EmotionCacheProvider>
             <Visualization
@@ -313,7 +409,14 @@ const createMetabaseVisualizationExtension = (store: any) => {
 
         const renderComponent = () => {
           try {
-            root.render(React.createElement(VisualizationNodeWithProviders, { node, store }));
+            root.render(React.createElement(VisualizationNodeWithProviders, {
+              node,
+              store,
+              onOpenQueryBuilder: () => {
+                // Access the handler from the global scope
+                (window as any).reportEditorHandlers?.openQueryBuilder?.(node.attrs);
+              }
+            }));
             console.log("React component rendered successfully");
           } catch (error) {
             console.error("Error rendering React component:", error);
@@ -345,7 +448,14 @@ const createMetabaseVisualizationExtension = (store: any) => {
             }
                       // Re-render with updated node
           try {
-            root.render(React.createElement(VisualizationNodeWithProviders, { node: updatedNode, store }));
+            root.render(React.createElement(VisualizationNodeWithProviders, {
+              node: updatedNode,
+              store,
+              onOpenQueryBuilder: () => {
+                // Access the handler from the global scope or store
+                (window as any).reportEditorHandlers?.openQueryBuilder?.(updatedNode.attrs);
+              }
+            }));
           } catch (error) {
             console.error("Error updating React component:", error);
           }
@@ -376,6 +486,8 @@ const ReportEditor = () => {
   const [selectedEntity, setSelectedEntity] = useState<any>(null);
   const [selectedResult, setSelectedResult] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [queryBuilderEntity, setQueryBuilderEntity] = useState<any>(null);
+  const [isQueryBuilderOpen, setIsQueryBuilderOpen] = useState(false);
 
   // Redux state and dispatch
   const dispatch = useDispatch();
@@ -391,10 +503,7 @@ const ReportEditor = () => {
   const store = (window as any).Metabase?.store;
 
   const { data: searchResults } = useSearchQuery(
-    searchQuery.length >= 2 ? { q: searchQuery } : skipToken,
-    {
-      enabled: searchQuery.length >= 2,
-    }
+    searchQuery.length >= 2 ? { q: searchQuery } : skipToken
   );
 
   const editor = useEditor({
@@ -521,6 +630,8 @@ const ReportEditor = () => {
     }
   }, [editor, extractEntitiesFromDocument]);
 
+
+
   const handleSave = useCallback(() => {
     if (editor) {
       const content = editor.getHTML();
@@ -574,6 +685,77 @@ const ReportEditor = () => {
     setSelectedEntity(null);
     setSelectedResult(null);
   }, []);
+
+  const handleOpenQueryBuilder = useCallback((entityAttrs: any) => {
+    setQueryBuilderEntity(entityAttrs);
+    setIsQueryBuilderOpen(true);
+  }, []);
+
+  const handleCloseQueryBuilder = useCallback(() => {
+    setIsQueryBuilderOpen(false);
+    setQueryBuilderEntity(null);
+  }, []);
+
+  const handleQueryBuilderVisualize = useCallback(async (newQuestion: Question) => {
+    // This will be called when user hits "Visualize" in the Query Builder
+    // Save the new question and replace it in the document
+    try {
+      // Save the question via API
+      const savedQuestion = await dispatch(Questions.actions.create(newQuestion.card()));
+
+      // Find and replace the old visualization node in the editor
+      if (editor && savedQuestion?.id) {
+        const doc = editor.state.doc;
+        let foundNodePos = null;
+        let foundNode = null;
+
+                // Find the node with matching ID
+        doc.descendants((node: any, pos: number) => {
+          if (node.type.name === 'metabaseVisualization' && queryBuilderEntity && node.attrs.id === queryBuilderEntity.id) {
+            foundNodePos = pos;
+            foundNode = node;
+            return false; // Stop iteration
+          }
+        });
+
+        if (foundNodePos !== null && foundNode) {
+          // Replace the node with updated attributes
+          const tr = editor.state.tr.setNodeMarkup(foundNodePos, null, {
+            ...(foundNode as any).attrs,
+            id: savedQuestion.id,
+            name: newQuestion.displayName() || savedQuestion.name,
+          });
+
+          editor.view.dispatch(tr);
+
+          // Update Redux state with the new entity
+          const newEntity = {
+            id: savedQuestion.id,
+            name: newQuestion.displayName() || savedQuestion.name,
+            type: savedQuestion.type || 'card',
+            model: 'card' as const,
+          };
+
+          dispatch(updateEntities([newEntity]));
+        }
+      }
+
+      handleCloseQueryBuilder();
+    } catch (error) {
+      console.error('Error saving question:', error);
+    }
+  }, [handleCloseQueryBuilder, editor, dispatch, queryBuilderEntity]);
+
+  // Set up global handlers for the TipTap node views
+  useEffect(() => {
+    (window as any).reportEditorHandlers = {
+      openQueryBuilder: handleOpenQueryBuilder,
+    };
+
+    return () => {
+      delete (window as any).reportEditorHandlers;
+    };
+  }, [handleOpenQueryBuilder]);
 
   // Resize handling
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -848,6 +1030,16 @@ const ReportEditor = () => {
         entity={selectedEntity}
         result={selectedResult}
       />
+
+            {/* Query Builder modal */}
+      {queryBuilderEntity && (
+        <QueryBuilderModal
+          entity={queryBuilderEntity}
+          isOpen={isQueryBuilderOpen}
+          onClose={handleCloseQueryBuilder}
+          onVisualize={handleQueryBuilderVisualize}
+        />
+      )}
     </Box>
   );
 };
