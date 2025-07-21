@@ -1,6 +1,8 @@
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 
 import {
+  type DescribeActionFormRequest,
+  type DescribeActionFormResponse,
   TableActionId,
   type TableDeleteRowsRequest,
   type TableDeleteRowsResponse,
@@ -75,6 +77,16 @@ export const tableEditingApi = EnterpriseApi.injectEndpoints({
         },
       }),
     }),
+    describeActionForm: builder.mutation<
+      DescribeActionFormResponse,
+      DescribeActionFormRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/action/v2/tmp-modal`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -84,4 +96,5 @@ export const {
   useDeleteTableRowsMutation,
   useTableUndoMutation,
   useTableRedoMutation,
+  useDescribeActionFormMutation,
 } = tableEditingApi;

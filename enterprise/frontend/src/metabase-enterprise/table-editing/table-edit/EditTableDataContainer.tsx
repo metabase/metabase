@@ -10,6 +10,7 @@ import type { TableEditingActionScope } from "../api/types";
 import { TableHeader } from "../common/TableHeader";
 import { getRowCountMessage } from "../common/getRowCountMessage";
 import { useCloseNavbarOnMount } from "../common/use-close-navbar-on-mount";
+import { TableActionFormModal } from "../modals/TableActionFormModal";
 import { isDatabaseTableEditingEnabled } from "../settings";
 
 import S from "./EditTableDataContainer.module.css";
@@ -18,7 +19,9 @@ import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { useEditTableData } from "./use-edit-table-data";
 import { useEditTableLoadingOverlay } from "./use-edit-table-loading-overlay";
-import { useEditingTableRowSelection } from "./use-table-row-selection";
+import { useTableCreateRow } from "./use-table-create-row";
+import { useTableCRUD } from "./use-table-crud";
+import { useTableExpandedUpdateRow } from "./use-table-expanded-update-row";
 import { useTableEditingStateAdHocQueryUpdateStrategy } from "./use-table-state-adhoc-query-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -39,7 +42,6 @@ export const EditTableDataContainer = ({
 
   const databaseId = parseInt(dbIdParam, 10);
   const tableId = parseInt(tableIdParam, 10);
-  const { rowSelection, setRowSelection } = useEditingTableRowSelection();
 
   const { data: database } = useGetDatabaseQuery({ id: databaseId });
   const {
@@ -60,16 +62,23 @@ export const EditTableDataContainer = ({
   const stateUpdateStrategy =
     useTableEditingStateAdHocQueryUpdateStrategy(tableQuery);
 
-  const actionScope = useMemo<TableEditingActionScope>(
+  const scope = useMemo<TableEditingActionScope>(
     () => ({ "table-id": tableId }),
     [tableId],
   );
 
   const { undo, redo, isUndoLoading, isRedoLoading } = useTableEditingUndoRedo({
     tableId,
-    scope: actionScope,
+    scope,
     stateUpdateStrategy,
   });
+
+  const { isInserting, isUpdating, handleRowCreate, handleRowUpdate } =
+    useTableCRUD({
+      scope,
+      datasetData: dataset?.data,
+      stateUpdateStrategy,
+    });
 
   const loadingOverlayProps = useEditTableLoadingOverlay({
     isDatasetLoading: isLoading,
@@ -78,8 +87,22 @@ export const EditTableDataContainer = ({
     isRedoLoading,
   });
 
-  // eslint-disable-next-line no-constant-condition
-  if (database && !isDatabaseTableEditingEnabled(database) && false) {
+  const {
+    isCreateRowModalOpen,
+    openCreateRowModal,
+    closeCreateRowModal,
+    formDescription: createFromDescription,
+  } = useTableCreateRow({ scope });
+
+  const {
+    expandedRow,
+    handleExpandRow,
+    handleExpandedRowUpdate,
+    closeExpandedRow,
+    formDescription: updateFormDescription,
+  } = useTableExpandedUpdateRow({ scope, dataset, handleRowUpdate });
+
+  if (database && !isDatabaseTableEditingEnabled(database)) {
     return (
       <Stack
         gap={0}
@@ -111,18 +134,17 @@ export const EditTableDataContainer = ({
         isRedoLoading={isRedoLoading}
         onUndo={undo}
         onRedo={redo}
+        onCreate={openCreateRowModal}
       />
       <Box pos="relative" className={S.gridWrapper}>
         <EditTableDataOverlay {...loadingOverlayProps} />
         {dataset && (
           <EditTableDataGrid
+            updateFormDescription={updateFormDescription}
             data={dataset.data}
             getColumnSortDirection={getColumnSortDirection}
             onColumnSort={handleChangeColumnSort}
-            onRowExpandClick={() => {}}
-            rowSelection={rowSelection}
-            onRowSelectionChange={setRowSelection}
-            hasRowSelection
+            onRowExpandClick={handleExpandRow}
           />
         )}
       </Box>
@@ -134,6 +156,26 @@ export const EditTableDataContainer = ({
           </Text>
         </Flex>
       )}
+
+      <TableActionFormModal
+        title={t`Create a new record`}
+        submitButtonText={t`Create`}
+        opened={isCreateRowModalOpen}
+        description={createFromDescription}
+        onClose={closeCreateRowModal}
+        onSubmit={handleRowCreate}
+        isLoading={isInserting}
+      />
+
+      <TableActionFormModal
+        title={t`Update a record`}
+        submitButtonText={t`Save`}
+        opened={!!expandedRow}
+        description={updateFormDescription}
+        onClose={closeExpandedRow}
+        onSubmit={handleExpandedRowUpdate}
+        isLoading={isUpdating}
+      />
     </Stack>
   );
 };

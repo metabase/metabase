@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { ActionIcon, Flex, Icon, Stack } from "metabase/ui";
+import { ActionIcon, Button, Flex, Icon, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { TableHeader } from "../common/TableHeader";
@@ -20,6 +20,7 @@ interface EditTableDataHeaderProps {
   onQuestionChange: (newQuestion: Question) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onCreate: () => void;
 }
 
 export const EditTableDataHeader = ({
@@ -31,6 +32,7 @@ export const EditTableDataHeader = ({
   onQuestionChange,
   onUndo,
   onRedo,
+  onCreate,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -57,6 +59,13 @@ export const EditTableDataHeader = ({
             onQuestionChange={onQuestionChange}
           />
         )}
+
+        <Button
+          leftSection={<Icon name="add" />}
+          variant="filled"
+          onClick={onCreate}
+          disabled={shouldDisableActions}
+        >{t`New record`}</Button>
 
         <Flex gap="xs">
           {/*
