@@ -606,6 +606,9 @@
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
+;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
+;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
+;;; function. We should move it all here or move it all there. Weird to split it up between two places.
 (defn- pre-update [{id :id :as card} changes]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
@@ -772,7 +775,7 @@
             (not verified-result-metadata?)
             (contains? (t2/changes card) :type))
         (card.metadata/populate-result-metadata changes))
-      (u/update-some :result_metadata #(lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column] %))))
+      (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]

@@ -1,6 +1,7 @@
 (ns metabase.queries.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
+   [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -243,4 +244,4 @@ saved later when it is ready."
            (log/debug "Attempting to infer result metadata for Card")
            (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
        ;; now normalize the result metadata as needed so it passes the output schema check
-       (u/update-some :result_metadata #(lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column] %)))))
+       (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))

@@ -1379,7 +1379,8 @@
     ;; name is allowed to be empty in some databases like SQL Server.
     [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
     [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
-    [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]]
+    [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+    [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
    [:fn
     {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
     (complement :lib/type)]

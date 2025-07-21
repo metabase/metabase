@@ -508,4 +508,4 @@
                                                                 :base_type      :type/Integer
                                                                 :description    "The date and time an order was submitted."
                                                                 :display_name   "Created At: Quarter"
-                                                                :effective_type "type/DateTime"}])))))
+                                                                :effective_type :type/DateTime}])))))

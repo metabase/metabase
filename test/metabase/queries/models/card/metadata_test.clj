@@ -38,7 +38,7 @@
                                   :id                        61327
                                   :lib/desired-column-alias  "ID"
                                   :position                  0
-                                  :visibility_type           "normal"
+                                  :visibility_type           :normal
                                   :display_name              "EDITED DISPLAY"
                                   :base_type                 :type/BigInteger}]}
               (card.metadata/populate-result-metadata card))))))
