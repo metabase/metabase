@@ -2,10 +2,10 @@ import type { Editor } from "@tiptap/react";
 
 import {
   ActionIcon,
+  Box,
   Divider,
   Group,
   Icon,
-  Paper,
   Stack,
   Tooltip,
 } from "metabase/ui";
@@ -32,7 +32,7 @@ export const EditorToolbar = ({ editor }: EditorToolbarProps) => {
     editor.chain().focus().setHorizontalRule().run();
 
   return (
-    <Paper p="sm" className={styles.toolbar}>
+    <Box p="sm" className={styles.toolbar}>
       <div className={styles.toolbarContent}>
         <Stack spacing="xs">
           <Group spacing="xs">
@@ -143,6 +143,6 @@ export const EditorToolbar = ({ editor }: EditorToolbarProps) => {
           </Group>
         </Stack>
       </div>
-    </Paper>
+    </Box>
   );
 };
