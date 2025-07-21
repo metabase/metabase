@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -147,10 +148,8 @@ const DashCardLoadingView = ({
                       variant="subtle"
                       size="compact-md"
                       rightSection={<Icon name="external" />}
-                      component="a"
+                      component={ExternalLink}
                       href={url}
-                      target="_blank"
-                      rel="noreferrer"
                     >
                       {t`Making dashboards faster`}
                     </Button>
