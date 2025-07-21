@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { useGetCardQuery } from "metabase/api";
 import { CardApi } from "metabase/services";
-import { Box, Loader, Text, TextInput } from "metabase/ui";
+import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import styles from "./QuestionEmbedNode.module.css";
@@ -101,6 +101,8 @@ export const QuestionEmbedComponent = ({
   node,
   updateAttributes,
   selected,
+  editor,
+  getPos,
 }: NodeViewProps) => {
   const { questionId, questionName, customName } = node.attrs;
   const { data: card, isLoading, error } = useGetCardQuery({ id: questionId });
@@ -147,6 +149,21 @@ export const QuestionEmbedComponent = ({
     }
   };
 
+  const handleReplaceQuestion = () => {
+    // Get the position of this node in the editor
+    const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
+
+    if (typeof pos === "number") {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: pos, to: pos + node.nodeSize })
+        .deleteSelection()
+        .insertContent("@")
+        .run();
+    }
+  };
+
   if (isLoading) {
     return (
       <NodeViewWrapper className={styles.embedWrapper}>
@@ -175,37 +192,87 @@ export const QuestionEmbedComponent = ({
       >
         {card && (
           <Box className={styles.questionHeader}>
-            {isEditingTitle ? (
-              <TextInput
-                ref={titleInputRef}
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                onBlur={handleTitleSave}
-                onKeyDown={handleTitleKeyDown}
-                size="md"
-                styles={{
-                  input: {
-                    fontWeight: 700,
-                    fontSize: "1rem",
-                    border: "1px solid var(--mb-color-border)",
-                    padding: "0.25rem 0.5rem",
-                  },
-                }}
-              />
-            ) : (
-              <Text
-                size="md"
-                color="text-dark"
-                weight={700}
-                onClick={() => {
-                  setEditedTitle(displayName);
-                  setIsEditingTitle(true);
-                }}
-                style={{ cursor: "pointer" }}
-              >
-                {displayName}
-              </Text>
-            )}
+            <Box
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.5rem",
+              }}
+            >
+              {isEditingTitle ? (
+                <TextInput
+                  ref={titleInputRef}
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onBlur={handleTitleSave}
+                  onKeyDown={handleTitleKeyDown}
+                  size="md"
+                  style={{ flex: 1 }}
+                  styles={{
+                    input: {
+                      fontWeight: 700,
+                      fontSize: "1rem",
+                      border: "1px solid transparent",
+                      padding: 0,
+                      height: "auto",
+                      minHeight: "auto",
+                      lineHeight: 1.55,
+                      backgroundColor: "transparent",
+                      "&:focus": {
+                        border: "1px solid var(--mb-color-border)",
+                        backgroundColor: "var(--mb-color-bg-white)",
+                        padding: "0 0.25rem",
+                      },
+                    },
+                  }}
+                />
+              ) : (
+                <Text
+                  size="md"
+                  color="text-dark"
+                  weight={700}
+                  onClick={() => {
+                    setEditedTitle(displayName);
+                    setIsEditingTitle(true);
+                  }}
+                  style={{ cursor: "pointer", flex: 1 }}
+                >
+                  {displayName}
+                </Text>
+              )}
+              {!isEditingTitle && (
+                <Menu withinPortal position="bottom-end">
+                  <Menu.Target>
+                    <Box
+                      component="button"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "0.25rem",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "4px",
+                      }}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
+                      <Icon
+                        name="ellipsis"
+                        size={16}
+                        color="var(--mb-color-text-medium)"
+                      />
+                    </Box>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item onClick={handleReplaceQuestion}>
+                      {t`Replace question`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+            </Box>
           </Box>
         )}
         {results && card ? (
