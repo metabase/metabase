@@ -84,6 +84,11 @@ class OnScriptError {
   }
 }
 
+const resolveEnterprisePathOrNoop = (path) =>
+  process.env.MB_EDITION === "ee"
+    ? ENTERPRISE_SRC_PATH + path
+    : SRC_PATH + "/lib/noop";
+
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
   mode: isDevMode ? "development" : "production",
@@ -203,24 +208,14 @@ const config = {
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/plugins"
-          : SRC_PATH + "/lib/noop",
-      "ee-overrides":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/overrides"
-          : SRC_PATH + "/lib/noop",
+      "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
+      "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
       "embedding-sdk": SDK_SRC_PATH,
-      "sdk-iframe-embedding-ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins"
-          : SRC_PATH + "/lib/noop",
-      "sdk-ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
-          : SRC_PATH + "/lib/noop",
+      "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
+        "/sdk-iframe-embedding-plugins",
+      ),
+      "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
   },

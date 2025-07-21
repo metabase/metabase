@@ -47,6 +47,7 @@ module.exports = {
     ],
     curly: [1, "all"],
     eqeqeq: [1, "smart"],
+    "import/no-duplicates": ["warn", { considerQueryString: true }],
     "import/no-default-export": 2,
     "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
