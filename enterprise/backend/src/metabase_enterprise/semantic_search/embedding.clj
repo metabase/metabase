@@ -166,7 +166,7 @@
       (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)
             batch-results (mapv (fn [batch-texts]
                                   (try
-                                    (log/debug "Generating" (count batch-texts) "OpenAI embeddings in batch")
+                                    (log/info "Generating" (count batch-texts) "OpenAI embeddings in batch")
                                     (-> (http/post endpoint
                                                    {:headers {"Content-Type" "application/json"
                                                               "Authorization" (str "Bearer " api-key)}
@@ -181,8 +181,8 @@
                                                  "with token count:" (count-tokens-batch batch-texts))
                                       (throw e))))
                                 batches)]
-        (log/debug "Processed" (count texts) "texts in" (count batches) "batches"
-                   "with token counts:" (mapv count-tokens-batch batches))
+        (log/info "Processed" (count texts) "texts in" (count batches) "batches"
+                  "with token counts:" (mapv count-tokens-batch batches))
         ;; Flatten the batch results to get a single vector of embeddings
         (vec (mapcat identity batch-results)))))
 
