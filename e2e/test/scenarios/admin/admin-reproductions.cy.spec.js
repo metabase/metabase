@@ -184,6 +184,7 @@ describe("(metabase#45042)", () => {
 
 describe("(metabase#46714)", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/table/*/query_metadata").as("queryTableMetadata");
     H.restore();
     cy.signInAsAdmin();
 
@@ -195,6 +196,7 @@ describe("(metabase#46714)", () => {
       cy.findByText("Orders").click();
     });
 
+    cy.wait("@queryTableMetadata");
     cy.findByTestId("entity-picker-modal").should("not.exist");
 
     cy.findByTestId("segment-editor")
