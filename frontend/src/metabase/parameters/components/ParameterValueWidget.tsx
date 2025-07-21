@@ -13,7 +13,6 @@ import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   isBooleanParameter,
   isDateParameter,
@@ -26,7 +25,10 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, ParameterId } from "metabase-types/api";
 
-import { ParameterDropdownWidget } from "./ParameterDropdownWidget";
+import {
+  ParameterDropdownWidget,
+  isTextWidget,
+} from "./ParameterDropdownWidget";
 import { WidgetStatus } from "./WidgetStatus";
 
 export type ParameterValueWidgetProps = {
@@ -346,11 +348,6 @@ function hasNoPopover(parameter: UiParameter) {
     return false;
   }
   return isTextWidget(parameter);
-}
-
-function isTextWidget(parameter: UiParameter) {
-  const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
 }
 
 function wrapArray<T>(value: T | T[]): T[] {

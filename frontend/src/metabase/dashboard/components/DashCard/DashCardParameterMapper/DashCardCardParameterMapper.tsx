@@ -157,15 +157,11 @@ export function DashCardCardParameterMapper({
           );
         }}
       </Transition>
-      {target && isParameterVariableTarget(target) && (
+      {target && isParameterVariableTarget(target) && isAction && (
         <span className={S.Warning}>
           {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
-            ? isAction
-              ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-              : t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-            : isAction
-              ? t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-              : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
+            ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+            : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </span>
       )}
     </Flex>

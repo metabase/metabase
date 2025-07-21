@@ -204,7 +204,7 @@ describe("scenarios > question > native", () => {
         );
         setVariableTypeAndField();
         H.rightSidebar()
-          .findByLabelText("Filter widget label")
+          .findByLabelText("Parameter widget label")
           .type(" updated")
           .blur();
         H.filterWidget().should("have.text", "Unit updated");
@@ -354,7 +354,7 @@ describe("scenarios > question > native", () => {
         H.rightSidebar().should("contain", "Variables and parameters");
 
         H.rightSidebar()
-          .findByText("Default filter widget value")
+          .findByText("Default parameter widget value")
           .next()
           .should("contain", "Year");
         H.rightSidebar().findByText("Time grouping options").next().click();

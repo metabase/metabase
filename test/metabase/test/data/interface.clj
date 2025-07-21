@@ -623,6 +623,12 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defmulti make-alias
+  "Makes an alias for a given column"
+  {:arglists '([driver alias])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Helper Functions for Creating New Definitions                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
