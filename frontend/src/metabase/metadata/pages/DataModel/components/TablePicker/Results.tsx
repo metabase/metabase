@@ -72,7 +72,7 @@ export function Results({
     // but only when the user is not currently typing in the search input
     if (document.activeElement?.tagName !== "INPUT") {
       document
-        .querySelector<HTMLDivElement>(`[data-index='${selectedIndex}']`)
+        .querySelector<HTMLAnchorElement>(`[data-index='${selectedIndex}']`)
         ?.focus();
     }
   }, [selectedIndex]);
@@ -117,12 +117,12 @@ export function Results({
           };
 
           function itemByIndex(index: number) {
-            return ref.current?.querySelector<HTMLDivElement>(
+            return ref.current?.querySelector<HTMLAnchorElement>(
               `[data-index='${index}']`,
             );
           }
 
-          const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+          const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
             if (typeof selectedIndex === "number") {
               // If there is a selected index externally
               // don't handle the key events
@@ -187,7 +187,7 @@ export function Results({
               })}
               data-index={index}
               data-open={isExpanded}
-              tabIndex={disabled ? -1 : undefined}
+              tabIndex={disabled ? -1 : 0}
               style={{
                 top: start,
                 marginLeft: level * INDENT_OFFSET,
