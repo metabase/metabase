@@ -36,7 +36,8 @@
     :target {:type "table"
              :database 1
              :schema "transforms"
-             :table "gadget_products"}}])
+             :table "gadget_products"}}]
+  -)
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
@@ -106,7 +107,8 @@
      {:db db
       :driver driver
       :sql (compile-source source)
-      :output-table (:table target)
+      :output-table (cond->> (:table target)
+                      (:schema target) (str (:schema target) "."))
       :overwrite? true})))
 
 (def ^{:arglists '([request respond raise])} routes
