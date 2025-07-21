@@ -10,9 +10,8 @@
 
 (defonce ^:private ^Thread card-metadata-sync-thread
   (doto (Thread. ^Runnable card.metadata-sync-event/process-events-loop "card-metadata-sync-thread")
-    (.setDaemon true)))
-
-(.start card-metadata-sync-thread)
+    (.setDaemon true)
+    .start))
 
 (comment
   (.isAlive card-metadata-sync-thread)

@@ -93,6 +93,10 @@
           (delete-events! (map :id events))
           (- (System/currentTimeMillis) start))))))
 
+(def ^:private event-processing-stats
+  (atom {:count 0
+         :max-duration 0
+         :total-duration 0}))
 (defn process-events-loop
   "Process card metadata synchronization events in an infinite loop."
   []
@@ -100,6 +104,11 @@
     (try
       (while true
         (let [duration (process-events event-batch-size)]
+          (when duration
+            (swap! event-processing-stats #(-> %
+                                               (update :count inc)
+                                               (update :max-duration max duration)
+                                               (update :total-duration + duration))))
           (Thread/sleep (long (or duration 500)))))
       (catch Throwable t
         (log/error t "Error processing event queue, stopping")))))
