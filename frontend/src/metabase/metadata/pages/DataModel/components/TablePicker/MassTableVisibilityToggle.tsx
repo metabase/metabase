@@ -21,9 +21,7 @@ export function MassTableVisibilityToggle({
   const [updateTables, { isLoading }] = useUpdateTableListMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-  const areAllHidden = tables.every(
-    (table) => table.visibility_type === "hidden",
-  );
+  const areAllHidden = tables.every((table) => table.visibility_type != null);
   const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
