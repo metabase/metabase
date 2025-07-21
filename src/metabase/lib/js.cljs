@@ -821,10 +821,12 @@
   "Get a translated description of a temporal bucketing interval.
 
   > **Code health:** Healthy"
-  [n unit]
-  (let [n    (if (string? n) (keyword n) n)
-        unit (if (string? unit) (keyword unit) unit)]
-    (lib.core/describe-temporal-interval n unit)))
+  ([n unit]
+   (describe-temporal-interval n unit {}))
+  ([n unit opts]
+   (let [n    (if (string? n) (keyword n) n)
+         unit (if (string? unit) (keyword unit) unit)]
+     (lib.core/describe-temporal-interval n unit (js->clj opts :keywordize-keys true)))))
 
 (defn ^:export describe-relative-datetime
   "Get a translated description of a relative datetime interval.
@@ -1916,15 +1918,6 @@
   > **Code health:** Healthy"
   [database-id metadata inner-query]
   (lib.core/native-query (metadataProvider database-id metadata) inner-query))
-
-(defn ^:export validate-native-query
-  "Validates the syntax of a native query.
-
-  *Native* in this sense means a pMBQL query where the first stage is `:mbql.stage/native`.
-
-  > **Code health:** Healthy"
-  [a-native-query]
-  (to-array (lib.core/validate-native-query a-native-query)))
 
 (defn ^:export with-native-query
   "Update the raw native query. The first stage of `a-query` must already be a native stage.
