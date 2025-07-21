@@ -50,6 +50,14 @@
      [[:constraint unique-constraint-name]
       [:unique [:composite :model :model_id]]]]))
 
+(defn sql-format-quoted
+  "Call [[sql/format]] with {:quoted true}.
+
+  Ensures identifiers are quoted since the nano-ids used in temp table names when testing (and various other places)
+  might contain uppercase chars or hyphens which need to be quoted."
+  [honey-sql & {:as opts}]
+  (sql/format honey-sql (merge opts {:quoted true})))
+
 (defn- format-embedding
   "Formats the embedding vector for SQL insertion."
   [embedding]
@@ -105,7 +113,7 @@
                               +
                               ids)
                    (array-map model))
-       (log/trace "semantic search deleted" <> "total documents with model type" model)))))
+       (log/trace "semantic search deleted" (get <> model) "total documents with model type" model)))))
 
 (defn populate-index!
   "Inserts a set of documents into the index table. Throws when trying to insert
@@ -119,7 +127,7 @@
        (fn [db-records]
          (-> (sql.helpers/insert-into *index-table-name*)
              (sql.helpers/values db-records)
-             sql/format))
+             sql-format-quoted))
        documents
        embeddings))))
 
@@ -152,13 +160,14 @@
           (sql.helpers/values db-records)
           (sql.helpers/on-conflict :model :model_id)
           (sql.helpers/do-update-set (db-records->update-set db-records))
-          sql/format))
+          sql-format-quoted))
        documents
        embeddings))))
 
 (defn- drop-index-table-sql
   []
-  (sql/format (sql.helpers/drop-table :if-exists *index-table-name*)))
+  (-> (sql.helpers/drop-table :if-exists *index-table-name*)
+      sql-format-quoted))
 
 (defn drop-index-table!
   "Drop the index table if it exists."
@@ -178,7 +187,13 @@
          tx
          (-> (sql.helpers/create-table *index-table-name*)
              (sql.helpers/with-columns (index-table-schema vector-dimensions))
-             sql/format))))
+             sql-format-quoted))
+        (jdbc/execute!
+         tx
+         (-> (sql.helpers/create-index
+              (keyword (str "embedding_hnsw_index_" (nano-id/nano-id)))
+              [*index-table-name* :using-hnsw [:raw "embedding vector_cosine_ops"]])
+             sql-format-quoted))))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {:cause e})))))
 
@@ -269,7 +284,7 @@
             xform       (comp (map unqualify-keys)
                               (map decode-metadata)
                               (map legacy-input-with-score))
-            reducible   (jdbc/plan @db/data-source (sql/format query))]
+            reducible   (jdbc/plan @db/data-source (sql-format-quoted query))]
         (-> (transduce xform conj [] reducible)
             filter-read-permitted)))))
 
@@ -283,7 +298,7 @@
          (sql.helpers/where [:and
                              [:= :model model]
                              [:in :model_id batch-ids]])
-         sql/format))
+         sql-format-quoted))
    model-ids))
 
 (comment
