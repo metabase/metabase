@@ -9,7 +9,7 @@ summary: Text, number, and date variables let you plug basic values into your SQ
 
 To add a basic variable to a SQL query, enclose the variable in double braces: `{% raw %}{{variable_name}}{% endraw %}`.
 
-This example defines a **Text** variable called `category`:
+This example defines a **Text** variable called `category_filter` (but you can call the variable whatever you want):
 
 ```sql
 {% raw %}
@@ -18,11 +18,11 @@ SELECT
 FROM
   products
 WHERE
-  category = {{category}}
+  category = {{category_filter}}
 {% endraw %}
 ```
 
-These basic variables (that just allow basic string/number interpolation) have a different syntax than field filters.
+These basic variables (that just allow basic string/number interpolation) have a different syntax than [field filters](./sql-parameters.md).
 
 Here's the [field filter](./sql-parameters.md#field-filter-variables) syntax:
 
@@ -66,5 +66,6 @@ If you're writing a native MongoDB query, your query would look more like this, 
 - **Text**: a plain input box
 - **Number**: a plain input box
 - **Date**: a simple date picker
+- **Boolean**: a this or that picker.
 
 If you want a more expressive filter widget, like a dynamic date picker, you should use a [field filter variable](./sql-parameters.md#field-filter-variables).
