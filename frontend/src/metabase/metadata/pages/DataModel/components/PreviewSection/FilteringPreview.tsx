@@ -43,7 +43,15 @@ const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
 
 function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
   const metadata = createMockMetadata({
-    tables: table ? [table] : [],
+    tables: table
+      ? [
+          {
+            ...table,
+            // FilterPickerBody crashes if table is not visible, so we pretend it is
+            visibility_type: null,
+          },
+        ]
+      : [],
   });
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
 
