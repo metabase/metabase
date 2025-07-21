@@ -173,8 +173,6 @@
          (map str)
          distinct)))
 
-
-
 (defn run-scan
   "Main entry point for regex scanning"
   [{:keys [options arguments]}]
