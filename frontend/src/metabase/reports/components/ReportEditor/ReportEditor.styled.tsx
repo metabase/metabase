@@ -54,6 +54,12 @@ export const EditorContainer = styled.div`
     color: #666;
   }
 
+  .ProseMirror hr {
+    border: 1px solid #e0e0e0;
+    margin: 1em 0;
+    border-top: none;
+  }
+
   .ProseMirror code {
     background-color: #f5f5f5;
     padding: 0.2em 0.4em;

@@ -70,7 +70,8 @@ const VisualizationNode = ({ node }: { node: any }) => {
           backgroundColor: "#f8f9fa",
           margin: "1rem 0",
           padding: "1rem",
-          minHeight: "200px",
+          minHeight: "300px",
+          height: "460px", // 400px + 2rem padding
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -90,7 +91,11 @@ const VisualizationNode = ({ node }: { node: any }) => {
           backgroundColor: "#fef7f0",
           margin: "1rem 0",
           padding: "1rem",
-          minHeight: "200px",
+          minHeight: "300px",
+          height: "460px", // 400px + 2rem padding
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <Text color="red">Error: {error}</Text>
@@ -108,17 +113,22 @@ const VisualizationNode = ({ node }: { node: any }) => {
           backgroundColor: "#f8f9fa",
           margin: "1rem 0",
           padding: "1rem",
-          minHeight: "100px",
+          minHeight: "300px",
+          height: "460px", // 400px + 2rem padding
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
         }}
       >
         <Text
           size="sm"
           color="dimmed"
-          style={{ marginBottom: "0.5rem", fontWeight: "bold" }}
+          style={{ marginBottom: "0.5rem", fontWeight: "bold", textAlign: "center" }}
         >
           {node.attrs.name} (Dashboard)
         </Text>
-        <Text size="sm" color="dimmed">
+        <Text size="sm" color="dimmed" style={{ textAlign: "center" }}>
           Dashboard visualizations not supported yet
         </Text>
       </Box>
@@ -138,6 +148,7 @@ const VisualizationNode = ({ node }: { node: any }) => {
           margin: "1rem 0",
           padding: "1rem",
           minHeight: "300px",
+          height: "460px", // 400px + 2rem padding
         }}
       >
         <Text
@@ -172,7 +183,8 @@ const VisualizationNode = ({ node }: { node: any }) => {
         backgroundColor: "#fff8e1",
         margin: "1rem 0",
         padding: "1rem",
-        minHeight: "200px",
+        minHeight: "300px",
+        height: "460px", // 400px + 2rem padding
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
