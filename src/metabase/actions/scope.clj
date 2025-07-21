@@ -13,9 +13,7 @@
   (condp #(contains? %2 %1) scope
     :dashcard-id  :dashcard
     :dashboard-id :dashboard
-    :card-id      :card
     :model-id     :model
-    :webhook-id   :webhook
     :table-id     :table
     :unknown))
 
@@ -24,20 +22,14 @@
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
-    (let [{:keys [card_id dashboard_id]} (t2/select-one [:model/DashboardCard :card_id :dashboard_id]
-                                                        (:dashcard-id scope))]
-      (merge {:dashboard-id (or dashboard_id missing-id)}
-             (when card_id {:card-id card_id})
-             scope))))
+    (let [{:keys [dashboard_id]} (t2/select-one [:model/DashboardCard :dashboard_id] (:dashcard-id scope))]
+      (merge {:dashboard-id (or dashboard_id missing-id)} scope))))
 
 (defn- hydrate-from-card [scope card-id]
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
     (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id)
-          ;; TODO Enable check for-real once we've updated all the tests that rely on row-data
-          ;;      (only for an editable do we want to treat the )
-          source-table #_(when (and (= :model (:type card)) (= :table-editable (:display card))))
-          (-> card :dataset_query :query :source-table)
+          source-table (-> card :dataset_query :query :source-table)
           table-id     (when (pos-int? source-table)
                          source-table)]
       (merge {:table-id      table-id
@@ -51,11 +43,6 @@
 
     (:dashboard-id scope)
     (update :collection-id #(or % (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard-id scope)) missing-id))
-
-    (:webhook-id scope)
-    (update :table-id #(or % (t2/select-one-fn :table_id [:table_webhook_token :table_id] (:webhook-id scope)) missing-id))
-
-    (:card-id scope) (hydrate-from-card (:card-id scope))
 
     (:model-id scope) (hydrate-from-card (:model-id scope))
 
@@ -77,13 +64,8 @@
   [scope :- ::types/scope.raw]
   (cond-> (update scope :type #(or % (scope-type scope)))
     (:table-id scope)     (dissoc :database-id)
-    (:card-id scope)      (-> (dissoc :table-id)
-                              (dissoc :collection-id)
-                              (dissoc :database-id))
     (:model-id scope)     (-> (dissoc :table-id)
                               (dissoc :collection-id)
                               (dissoc :database-id))
     (:dashboard-id scope) (dissoc :collection-id)
-    (:dashcard-id scope)  (-> (dissoc :card-id)
-                              (dissoc :dashboard-id))
-    (:webhook-id scope)   (dissoc :table-id)))
+    (:dashcard-id scope)  (dissoc :dashboard-id)))
