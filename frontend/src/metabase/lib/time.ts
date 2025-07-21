@@ -88,19 +88,6 @@ export function has24HourModeSetting() {
   return timeStyle === TIME_FORMAT_24_HOUR;
 }
 
-export function parseTime(value: string) {
-  if (typeof value === "string") {
-    return moment(value, [
-      "HH:mm:ss.sss[Z]",
-      "HH:mm:SS.sss",
-      "HH:mm:SS",
-      "HH:mm",
-    ]);
-  }
-
-  return moment.utc(value);
-}
-
 type NUMERIC_UNIT_FORMATS_KEY_TYPE =
   | "minute-of-hour"
   | "hour-of-day"
