@@ -3,10 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.index :as semantic.index]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu :refer [query-index
-                                                                          populate-index!
-                                                                          upsert-index!
-                                                                          delete-from-index!]]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
