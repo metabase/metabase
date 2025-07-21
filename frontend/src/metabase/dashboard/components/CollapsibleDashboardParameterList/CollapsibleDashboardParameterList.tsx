@@ -57,10 +57,8 @@ export const CollapsibleDashboardParameterList = forwardRef<
               className={triggerClassName}
               aria-label={t`Show filters`}
               tooltipLabel={t`Show filters`}
-              onClick={(e) => {
-                // To avoid focusing the input when clicking the button
-                e.stopPropagation();
-              }}
+              onMouseDown={preventDragOrInputFocus}
+              onClick={preventDragOrInputFocus}
             >
               <Icon name="filter" />
               {parametersWithValues.length > 0 && (
@@ -104,3 +102,7 @@ export const CollapsibleDashboardParameterList = forwardRef<
     </>
   );
 });
+
+function preventDragOrInputFocus(e: React.MouseEvent) {
+  e.stopPropagation();
+}

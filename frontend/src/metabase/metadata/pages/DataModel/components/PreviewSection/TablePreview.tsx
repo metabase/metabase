@@ -2,7 +2,9 @@ import { memo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
+import EmptyState from "metabase/common/components/EmptyState";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -19,7 +21,7 @@ import type {
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { Error } from "./Error";
-import { getErrorMessage, is403Error } from "./utils";
+import { getDataErrorMessage, is403Error } from "./utils";
 
 const PREVIEW_ROW_COUNT = 5;
 
@@ -32,7 +34,17 @@ interface Props {
 }
 
 const TablePreviewBase = (props: Props) => {
+  const { field } = props;
   const { error, isFetching, rawSeries } = useDataSample(props);
+  const data = rawSeries?.[0]?.data?.rows;
+
+  if (isFieldHidden(field)) {
+    return (
+      <Stack h="100%" justify="center" p="md">
+        <EmptyState message={t`This field is hidden`} />
+      </Stack>
+    );
+  }
 
   if (isFetching) {
     return (
@@ -48,6 +60,14 @@ const TablePreviewBase = (props: Props) => {
 
   if (error) {
     return <Error message={error} />;
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <Stack h="100%" justify="center" p="md">
+        <EmptyState title={t`No data to show`} />
+      </Stack>
+    );
   }
 
   return (
@@ -70,14 +90,19 @@ function useDataSample({
   const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId, pkFields);
 
   const { data, refetch, ...rest } = useGetAdhocQueryQuery(
-    {
-      ...datasetQuery,
-      ignore_error: true,
-      _refetchDeps: field,
-    },
-    {},
+    isFieldHidden(field)
+      ? skipToken
+      : {
+          ...datasetQuery,
+          ignore_error: true,
+          _refetchDeps: field,
+        },
   );
-  const base = { ...rest, error: undefined, rawSeries: undefined };
+  const base = {
+    ...rest,
+    error: rest.error ? getErrorMessage(rest.error) : undefined,
+    rawSeries: undefined,
+  };
 
   if (rest?.status === "rejected" && is403Error(rest.error)) {
     return {
@@ -88,7 +113,7 @@ function useDataSample({
   }
 
   if (data?.status === "failed") {
-    return { ...base, isError: true, error: getErrorMessage(data) };
+    return { ...base, isError: true, error: getDataErrorMessage(data) };
   }
 
   if (!data?.data || data.data.cols.length === 0) {
@@ -137,6 +162,13 @@ function getPreviewQuery(
       "order-by": pkFieldRefs.map((pkFieldRef) => ["asc", pkFieldRef]),
     },
   };
+}
+
+function isFieldHidden(field: Field) {
+  return (
+    field.visibility_type === "sensitive" ||
+    field.visibility_type === "details-only"
+  );
 }
 
 export const TablePreview = memo(TablePreviewBase);

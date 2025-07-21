@@ -58,7 +58,8 @@ export const ParameterTargetList = ({
       renderItemIcon={(item: ParameterMappingOption) => (
         <Icon name={(item.icon as IconName) || "unknown"} size={18} />
       )}
-      alwaysExpanded={true}
+      alwaysExpanded
+      globalSearch
       hideSingleSectionTitle={!hasForeignOption}
     />
   );

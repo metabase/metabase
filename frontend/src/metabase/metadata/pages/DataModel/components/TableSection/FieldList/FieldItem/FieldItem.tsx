@@ -5,10 +5,11 @@ import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import EditableText from "metabase/common/components/EditableText";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Card, Flex, Group, Icon, Text, rem } from "metabase/ui";
+import { Box, Card, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -34,10 +35,16 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
 
     const { error } = await updateField({ id, display_name: name });
 
-    if (!error) {
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update name of ${field.display_name}`,
+      });
+    } else {
       sendToast({
         icon: "check",
-        message: t`Display name for ${field.display_name} updated`,
+        message: t`Name of ${field.display_name} updated`,
       });
     }
   };
@@ -55,10 +62,16 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       description: newDescription.length === 0 ? null : newDescription,
     });
 
-    if (!error) {
+    if (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "var(--mb-color-warning)",
+        message: t`Failed to update description of ${field.display_name}`,
+      });
+    } else {
       sendToast({
         icon: "check",
-        message: t`Description for ${field.display_name} updated`,
+        message: t`Description of ${field.display_name} updated`,
       });
     }
   };
@@ -99,6 +112,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
     >
       <Flex
         align="flex-start"
+        className={S.link}
         component={Link}
         direction="column"
         draggable={false} // this + onClick handler is required, otherwise interaction is broken on macOS
@@ -115,6 +129,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
       >
         <Group
           align="center"
+          c="text-light"
           flex="0 0 auto"
           gap={0}
           maw="100%"
@@ -124,20 +139,20 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
           <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
 
           {parent && (
-            <Text
-              c="text-light"
+            <Box
               data-testid="name-prefix"
               flex="0 0 auto"
               lh="normal"
-              lineClamp={1}
               maw="50%"
               mb={rem(-4)}
               mr="xs"
               mt={rem(-3)}
             >
-              {parent.display_name}
-              {":"}
-            </Text>
+              <Ellipsified lines={1} tooltip={parent.display_name}>
+                {parent.display_name}
+                {":"}
+              </Ellipsified>
+            </Box>
           )}
 
           <Box
@@ -161,7 +176,7 @@ export const FieldItem = ({ active, field, href, parent }: Props) => {
         </Group>
 
         <Box
-          className={S.input}
+          className={cx(S.input, S.description)}
           // TODO: fix EditableText or use something else
           // https://linear.app/metabase/issue/SEM-429/data-model-inline-field-namedescription-inputs
           component={EditableText}
