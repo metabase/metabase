@@ -174,12 +174,12 @@
       (catch Exception _ false))))
 
 (defn table-has-index?
-  [table-name index-name-pattern]
+  [table-name index-name]
   (when table-name
     (try
       (let [result (jdbc/execute! @semantic.db/data-source
-                                  ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname LIKE ?)"
+                                  ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?)"
                                    (name table-name)
-                                   index-name-pattern])]
+                                   (name index-name)])]
         (-> result first vals first))
       (catch Exception _ false))))
