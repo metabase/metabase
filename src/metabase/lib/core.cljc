@@ -27,7 +27,6 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -67,7 +66,6 @@
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
-         lib.metadata.ident/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -304,14 +302,6 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
- [lib.metadata.ident
-  add-model-ident
-  explicitly-joined-ident
-  implicit-join-clause-ident
-  implicitly-joined-ident
-  model-ident
-  native-ident
-  remove-model-ident]
  [lib.native
   engine
   extract-template-tags
@@ -324,7 +314,6 @@
   template-tag-card-ids
   template-tags-referenced-cards
   template-tags
-  validate-native-query
   with-different-database
   with-native-extras
   with-native-query

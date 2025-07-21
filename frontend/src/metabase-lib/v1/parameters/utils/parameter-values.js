@@ -159,8 +159,24 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
   );
 }
 
+/**
+ * 1. Preserve compatibility with existing native query parameters where
+ * `isMultiSelect` was not set. Before, non field filter variables were
+ * always single-value, and field filters were always multi-value.
+ * `hasVariableTemplateTagTarget` is `false` for field filters and `true`
+ * otherwise. Now you can control this setting, and we set the default value
+ * here to match the old behavior.
+ *
+ * 2. Dashboard parameters are automatically switched to single-value when
+ * mapped to native query variables that are not field filters. This works
+ * because `isMultiSelect` is `undefined`, and `hasVariableTemplateTagTarget`
+ * becomes `true`, leading to `getIsMultiSelect` returning `false`. It would be
+ * better if dashboards manually set the correct `isMultiValue` value when
+ * mapping is changed instead of relying on the `undefined` value and the
+ * implicit behavior of this function.
+ */
 export function getIsMultiSelect(parameter) {
-  return parameter.isMultiSelect ?? true;
+  return parameter.isMultiSelect ?? !parameter.hasVariableTemplateTagTarget;
 }
 
 export function hasValue(value) {
