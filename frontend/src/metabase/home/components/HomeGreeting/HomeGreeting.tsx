@@ -35,11 +35,11 @@ export const HomeGreeting = (): JSX.Element => {
 const getMessage = (name: string | null | undefined): string => {
   const namePart = name ? `, ${name}` : "";
   const options = [
-    t`Hey there${namePart}`,
-    t`How's it going${namePart}?`,
-    t`Howdy${namePart}`,
-    t`Greetings${namePart}`,
-    t`Good to see you${namePart}`,
+    t`Hey there test${namePart}`,
+    t`How's it going test${namePart}?`,
+    t`Howdy test${namePart}`,
+    t`Greetings test${namePart}`,
+    t`Good to see you test${namePart}`,
   ];
 
   return _.sample(options) ?? "";
