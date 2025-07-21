@@ -19,7 +19,6 @@ export function MassTableVisibilityToggle({
   onUpdate,
 }: Props) {
   const [updateTables, { isLoading }] = useUpdateTableListMutation();
-  const ids = tables.map((table) => table.id);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const areAllHidden = tables.every(
@@ -28,6 +27,9 @@ export function MassTableVisibilityToggle({
   const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
+    const ids = tables
+      .filter((table) => table.visibility_type == null)
+      .map((table) => table.id);
     const { error } = await updateTables({
       ids,
       visibility_type: "hidden",
@@ -51,6 +53,7 @@ export function MassTableVisibilityToggle({
   };
 
   const unhide = async () => {
+    const ids = tables.map((table) => table.id);
     const { error } = await updateTables({
       ids,
       visibility_type: null,
