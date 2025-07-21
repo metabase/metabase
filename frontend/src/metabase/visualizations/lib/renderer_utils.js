@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 
 import { dimensionIsNumeric } from "./numeric";

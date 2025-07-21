@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
@@ -122,7 +123,7 @@ describe("getXValues", () => {
     series._raw = series;
     const settings = { "graph.dimensions": ["date"] };
     const [xVal] = getXValues({ settings, series });
-    expect(moment.isMoment(xVal)).toBe(true);
+    expect(dayjs.isDayjs(xVal)).toBe(true);
   });
 
   it("should sort values according to parsed value", () => {
