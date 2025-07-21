@@ -75,6 +75,10 @@
   (prn "delete transform" id)
   "success")
 
+(defn- compile-source [{query-type :type :as source}]
+  (case query-type
+    "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
+
 (api.macros/defendpoint :post "/:id/execute"
   [{:keys [id]}]
   (prn "execute transform" id)
@@ -96,7 +100,7 @@
     (transforms.execute/execute
      {:db db
       :driver driver
-      :sql (:query (qp.compile/compile-with-inline-parameters source))
+      :sql (compile-source source)
       :output-table (:table target)
       :overwrite? true})))
 
