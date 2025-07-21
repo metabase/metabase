@@ -116,3 +116,9 @@
     border-color: var(--mb-color-brand);
   }
 }
+
+.DashboardNight .parameter {
+  --mb-color-border: var(--mb-base-color-orion-60);
+
+  background-color: transparent;
+}
