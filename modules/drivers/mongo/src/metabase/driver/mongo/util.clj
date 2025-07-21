@@ -4,6 +4,7 @@
   (:require
    [flatland.ordered.map :as ordered-map]
    [metabase.driver.mongo.conversion :as mongo.conversion])
+  (:refer-clojure :exclude [drop])
   (:import
    (com.mongodb MongoClientSettings)
    (com.mongodb.client ClientSession FindIterable MongoClient MongoClients MongoCollection MongoDatabase)))
