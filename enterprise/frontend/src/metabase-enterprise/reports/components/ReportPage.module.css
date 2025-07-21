@@ -2,7 +2,6 @@
   display: flex;
   height: calc(100vh - var(--nav-sidebar-height, 60px));
   background-color: var(--mb-color-bg-white);
-  position: relative;
 }
 
 .mainContent {
@@ -10,7 +9,6 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding-right: 300px; /* Make room for sidebar */
 }
 
 .documentContainer {
@@ -20,11 +18,8 @@
 }
 
 .sidebar {
-  position: fixed;
-  right: 0;
-  top: var(--nav-sidebar-height, 60px);
   width: 300px;
-  height: calc(100vh - var(--nav-sidebar-height, 60px));
+  flex-shrink: 0;
   background-color: var(--mb-color-bg-light);
   border-left: 1px solid var(--mb-color-border);
   overflow-y: auto;
