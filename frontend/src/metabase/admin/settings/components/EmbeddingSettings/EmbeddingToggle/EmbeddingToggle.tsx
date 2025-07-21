@@ -12,7 +12,8 @@ export type EmbeddingToggleProps = {
   settingKey:
     | "enable-embedding-static"
     | "enable-embedding-sdk"
-    | "enable-embedding-interactive";
+    | "enable-embedding-interactive"
+    | "enable-embedding-iframe-sdk";
 } & Omit<SwitchProps, "onChange">;
 
 export function EmbeddingToggle({
