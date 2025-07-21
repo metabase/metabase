@@ -95,15 +95,15 @@
        (fn
          [[_tag _opts pred-expr-pairs default]]
          (or expression/*suppress-expression-type-check?*
-          (let [exprs (concat
-                        (map second pred-expr-pairs)
-                        (when (some? default)
-                          [default]))
-                types (map expression/type-of exprs)
-                return-type (case-coalesce-return-type types)]
-            (or
-              (not= return-type :type/*)
-              (some #{:expression/type.unknown} types)))))]]])
+             (let [exprs (concat
+                          (map second pred-expr-pairs)
+                          (when (some? default)
+                            [default]))
+                   types (map expression/type-of exprs)
+                   return-type (case-coalesce-return-type types)]
+               (or
+                (not= return-type :type/*)
+                (some #{:expression/type.unknown} types)))))]]])
 
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs default]]
@@ -128,11 +128,11 @@
      (fn
        [[_coalesce _opts & exprs]]
        (or expression/*suppress-expression-type-check?*
-        (let [types (map expression/type-of exprs)
-              return-type (case-coalesce-return-type types)]
-          (or
-            (not= return-type :type/*)
-            (some #{:expression/type.unknown} types)))))]]])
+           (let [types (map expression/type-of exprs)
+                 return-type (case-coalesce-return-type types)]
+             (or
+              (not= return-type :type/*)
+              (some #{:expression/type.unknown} types)))))]]])
 
 (defmethod expression/type-of-method :coalesce
   [[_coalesce _opts & exprs]]

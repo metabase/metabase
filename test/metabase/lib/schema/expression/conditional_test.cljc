@@ -54,10 +54,10 @@
   (binding [expression/*suppress-expression-type-check?* false]
     (are [a b] (true?
                 (mr/validate :mbql.clause/case
-                            [:case
+                             [:case
                               {:lib/uuid (str (random-uuid))}
                               [[true a]
-                              [true b]]]))
+                               [true b]]]))
       10 20
       10 20.5
       "A" "B"
@@ -88,10 +88,10 @@
   (binding [expression/*suppress-expression-type-check?* false]
     (are [a b] (false?
                 (mr/validate :mbql.clause/case
-                            [:case
+                             [:case
                               {:lib/uuid (str (random-uuid))}
                               [[true a]
-                              [true b]]]))
+                               [true b]]]))
       10 "A"
       10.5 "B"
       true "A"
@@ -114,10 +114,10 @@
   (binding [expression/*suppress-expression-type-check?* true]
     (are [a b] (true?
                 (mr/validate :mbql.clause/case
-                            [:case
+                             [:case
                               {:lib/uuid (str (random-uuid))}
                               [[true a]
-                              [true b]]]))
+                               [true b]]]))
       10 "A"
       10.5 "B"
       true "A"
@@ -192,7 +192,7 @@
   (binding [expression/*suppress-expression-type-check?* false]
     (testing "schema validation for invalid :coalesce expressions"
       (are [args] (false?
-                  (mr/validate :mbql.clause/coalesce
+                   (mr/validate :mbql.clause/coalesce
                                 (into [:coalesce {:lib/uuid (str (random-uuid))}] args)))
         [1]
         [1 "A"]
@@ -205,7 +205,7 @@
   (binding [expression/*suppress-expression-type-check?* false]
     (are [a b] (true?
                 (mr/validate :mbql.clause/coalesce
-                            [:coalesce
+                             [:coalesce
                               {:lib/uuid (str (random-uuid))}
                               a b]))
       10 20
@@ -237,7 +237,7 @@
   (binding [expression/*suppress-expression-type-check?* false]
     (are [a b] (false?
                 (mr/validate :mbql.clause/coalesce
-                            [:coalesce
+                             [:coalesce
                               {:lib/uuid (str (random-uuid))}
                               a b]))
       10 "A"
@@ -262,7 +262,7 @@
   (binding [expression/*suppress-expression-type-check?* true]
     (are [a b] (true?
                 (mr/validate :mbql.clause/coalesce
-                            [:coalesce
+                             [:coalesce
                               {:lib/uuid (str (random-uuid))}
                               a b]))
       10 "A"
