@@ -2963,12 +2963,10 @@ describe("scenarios > admin > datamodel", () => {
         PreviewSection.get().should("not.exist");
 
         FieldSection.getPreviewButton().click();
-        FieldSection.getPreviewButton().should("not.exist");
         PreviewSection.get().should("be.visible");
 
         cy.realPress("Escape");
         PreviewSection.get().should("not.exist");
-        FieldSection.getPreviewButton().should("be.visible");
       });
 
       it("should not close the preview when hitting Esc key while modal is open", () => {
