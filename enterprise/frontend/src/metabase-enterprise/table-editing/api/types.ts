@@ -56,3 +56,25 @@ export type TableUndoRedoRequest = {
 export type TableUndoRedoResponse = {
   outputs?: ExecuteOutput<"created" | "updated" | "deleted">[];
 };
+
+export enum ActionFormInputType {
+  Text = "text",
+  Textarea = "textarea",
+  Date = "date",
+  DateTime = "datetime",
+  Dropdown = "dropdown",
+}
+
+export type ActionFormParameter = {
+  id: string;
+  display_name: string;
+  input_type: ActionFormInputType;
+  semantic_type?: string;
+  optional?: boolean;
+  nullable?: boolean;
+  readonly?: boolean;
+  field_id?: number;
+  human_readable_field_id?: number;
+  database_default?: string;
+  value?: RowValue;
+};
