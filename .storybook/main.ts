@@ -3,6 +3,8 @@ const appConfig = require("../rspack.main.config.js");
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
+const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
+
 const mainAppStories = [
   "../frontend/**/*.mdx",
   "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
@@ -57,9 +59,19 @@ const config: StorybookConfig = {
           ...(config.module?.rules ?? []).filter(
             (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),
-          ...appConfig.module.rules.filter(
-            (rule: any) => isCSSRule(rule) || isSvgRule(rule),
-          ),
+          ...appConfig.module.rules.filter((rule: any) => isSvgRule(rule)),
+          // We use MiniCssExtractPlugin, because Storybook can't properly work with `rspack.CssExtractRspackPlugin`
+          {
+            test: /\.css$/,
+            use: [
+              {
+                loader: MiniCssExtractPlugin.loader,
+                options: { publicPath: "./" },
+              },
+              { loader: "css-loader", options: CSS_CONFIG },
+              { loader: "postcss-loader" },
+            ],
+          },
         ],
       },
     };

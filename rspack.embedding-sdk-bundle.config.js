@@ -97,9 +97,7 @@ const config = {
       {
         test: /\.css$/,
         use: [
-          {
-            loader: "style-loader",
-          },
+          { loader: "style-loader" },
           { loader: "css-loader", options: CSS_CONFIG },
           { loader: "postcss-loader" },
         ],

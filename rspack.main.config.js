@@ -142,9 +142,7 @@ const config = {
         use: [
           {
             loader: rspack.CssExtractRspackPlugin.loader,
-            options: {
-              publicPath: "./",
-            },
+            options: { publicPath: "./" },
           },
           { loader: "css-loader", options: CSS_CONFIG },
           { loader: "postcss-loader" },
