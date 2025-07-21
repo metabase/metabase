@@ -116,7 +116,7 @@
 ;;                                       Serialization                                            ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(declare released-definition)
+(declare latest-release)
 
 (defmethod serdes/make-spec "DataAppRelease" [_model-name _opts]
   {:copy      []
@@ -138,8 +138,9 @@
 (defn- export-released-definition
   "Export the released definition for a data app, if it exists."
   [data-app]
-  (when-let [definition (released-definition (:id data-app))]
-    [(serdes/extract-one "DataAppDefinition" {} (assoc definition :release [(t2/select-one :model/DataAppRelease :app_definition_id (:id definition))]))]))
+  (when-let [release (latest-release (:id data-app))]
+    [(serdes/extract-one "DataAppDefinition" {} (assoc (t2/select-one :model/DataAppDefinition (:app_definition_id release))
+                                                       :release [release]))]))
 
 ;; data-apps => definition => release
 
@@ -263,17 +264,6 @@
                                       :app_definition_id (:id latest-def)
                                       :creator_id        creator-id}))))
 
-(defn released-definition
-  "Get the latest released definition for a data app."
-  [app-id]
-  (when-let [release-definition-id (t2/select-one-fn :app_definition_id
-                                                     :model/DataAppRelease
-                                                     :app_id app-id
-                                                     :retracted false
-                                                     ;; it's an append-only table so sorting by id for better perf
-                                                     {:order-by [[:id :desc]]})]
-    (t2/select-one :model/DataAppDefinition release-definition-id)))
-
 (defn latest-release
   "Get the latest release info for a data app."
   [app-id]
@@ -281,6 +271,12 @@
                  :app_id app-id
                  :retracted false
                  {:order-by [[:id :desc]]}))
+
+(defn released-definition
+  "Get the latest released definition for a data app."
+  [app-id]
+  (when-let [release-definition-id (:app_definition_id (latest-release app-id))]
+    (t2/select-one :model/DataAppDefinition release-definition-id)))
 
 (defn get-published-data-app
   "Get the published version of a data app by id."
