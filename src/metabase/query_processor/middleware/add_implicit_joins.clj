@@ -136,11 +136,13 @@
   [query                       :- ::lib.schema/query
    path                        :- ::lib.walk/path
    {:keys [joins], :as _stage} :- ::lib.schema/stage]
-  (into (vec joins)
-        (distinct)
-        (when-let [previous-path (lib.walk/previous-path path)]
-          (let [previous-stage (get-in query previous-path)]
-            (visible-joins query previous-path previous-stage)))))
+  (into []
+        (comp cat
+              (m/distinct-by :alias))
+        [joins
+         (when-let [previous-path (lib.walk/previous-path path)]
+           (let [previous-stage (get-in query previous-path)]
+             (visible-joins query previous-path previous-stage)))]))
 
 (mu/defn- distinct-fields :- [:or ::qp.schema/xform ::lib.schema/fields]
   ([]
@@ -314,9 +316,9 @@
       stage)
 
     :else
-    (as-> stage $stage
-      (add-condition-fields-from-next-stage query path $stage)
-      (add-referenced-fields-from-next-stage query path $stage))))
+    (->> stage
+         (add-condition-fields-from-next-stage query path)
+         (add-referenced-fields-from-next-stage query path))))
 
 (mu/defn- join-dependencies :- [:set ::lib.schema.join/alias]
   "Get a set of join aliases that `join` has an immediate dependency on."
