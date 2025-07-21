@@ -1,10 +1,11 @@
 import cx from "classnames";
+import dayjs, { type Dayjs } from "dayjs";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp as deprecatedParseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
@@ -758,7 +759,7 @@ export function formatDateTimeForParameter(
   value: string,
   unit: DatetimeUnit | null,
 ) {
-  const m = parseTimestamp(value, unit);
+  const m = deprecatedParseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -780,7 +781,7 @@ export function formatDateToRangeForParameter(
   value: string,
   unit: DatetimeUnit | null,
 ) {
-  const m = parseTimestamp(value, unit);
+  const m = deprecatedParseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -805,7 +806,7 @@ export function normalizeDateTimeRangeWithUnit(
   options: OptionsType = {},
 ) {
   const [a, b] = [values[0], values[1] ?? values[0]].map((d) =>
-    parseTimestamp(d, unit, options.local),
+    deprecatedParseTimestamp(d, unit, options.local),
   );
   if (!a.isValid() || !b.isValid()) {
     return [a, b];
@@ -1017,15 +1018,15 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
     .replace(/\bdddd\b/g, getDayFormat(options));
 }
 
-export function formatDateTimeWithFormats(
-  value: number | string | Date | Moment,
+function formatDateTimeWithFormats(
+  value: number | string | Date | Moment | Dayjs,
   dateFormat: string,
   timeFormat: string | null,
   options: OptionsType,
 ) {
   const m = moment.isMoment(value)
     ? value
-    : parseTimestamp(
+    : deprecatedParseTimestamp(
         value,
         options.column && options.column.unit,
         options.local,
@@ -1062,8 +1063,9 @@ export function formatDateTimeWithUnit(
     }
   }
 
-  const m = parseTimestamp(value, unit, options.local);
-  if (!m.isValid()) {
+  // using parseTimestamp breaks date representation
+  const d = deprecatedParseTimestamp(value, unit, options.local);
+  if (!d.isValid()) {
     return String(value);
   }
 
@@ -1105,10 +1107,10 @@ export function formatDateTimeWithUnit(
     );
   }
 
-  return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
+  return formatDateTimeWithFormats(d, dateFormat, timeFormat, options);
 }
 
-const EXAMPLE_DATE = moment("2018-01-31 17:24");
+const EXAMPLE_DATE = dayjs("2018-01-31 17:24");
 
 export function getDateStyleOptionsForUnit(
   unit: DatetimeUnit,
