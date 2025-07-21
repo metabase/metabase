@@ -102,3 +102,11 @@ export function formatFrame(frame: "first" | "last" | "mid") {
       return frame;
   }
 }
+
+export function parseTime(value: string) {
+  if (typeof value === "string") {
+    return dayjs(value, ["HH:mm:SS", "HH:mm"]);
+  }
+
+  return dayjs.utc(value);
+}
