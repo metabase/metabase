@@ -8,7 +8,8 @@
 }
 
 .questionEmbed {
-  border: 2px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
   margin: 1rem 0;
   user-select: none;
   -webkit-user-select: none;
