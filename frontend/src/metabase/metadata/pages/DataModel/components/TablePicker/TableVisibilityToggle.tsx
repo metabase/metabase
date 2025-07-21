@@ -27,6 +27,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
     });
 
     onUpdateRef.current();
+
     if (error) {
       sendErrorToast(t`Failed to hide ${table.display_name}`);
     } else {
@@ -87,6 +88,7 @@ export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}
+        c={table.visibility_type != null ? "text-secondary" : undefined}
         className={className}
         disabled={isLoading}
         variant="transparent"

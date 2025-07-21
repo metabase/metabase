@@ -214,7 +214,7 @@ export function Results({
               onClick={() => handleItemSelect()}
               onFocus={() => onSelectedIndexChange?.(index)}
             >
-              <Flex align="center" py="xs" mih={ITEM_MIN_HEIGHT} w="100%">
+              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
                     {hasChildren(type) && (
@@ -235,9 +235,16 @@ export function Results({
                     <Loading />
                   ) : (
                     <Box
-                      pl="sm"
                       className={S.label}
+                      c={
+                        type === "table" &&
+                        item.table &&
+                        item.table.visibility_type != null
+                          ? "text-secondary"
+                          : undefined
+                      }
                       data-testid="tree-item-label"
+                      pl="sm"
                     >
                       {label}
                     </Box>
