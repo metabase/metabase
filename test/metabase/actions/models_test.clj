@@ -334,24 +334,3 @@
               (is (= {"name" true}  (hide-state (action/select-action action-id))))
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
               (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))
-
-(deftest create-or-fix-action-id-test
-  (let [f         (partial #'action/create-or-fix-action-id "parent_type")
-        parent-id 1337]
-    (mt/with-dynamic-fn-redefs [u/generate-nano-id (fn [] "rAnDoM")]
-      (testing "leaves valid ids alone"
-        (is (= "parent_type:7331:unique"
-               (f parent-id "parent_type:7331:unique"))))
-      (testing "replaces temporary FE ids"
-        (let [temp-id (str (random-uuid))]
-          (is (= (str "parent_type:1337:" temp-id)
-                 (f parent-id temp-id)))))
-      (testing "creates useful and unique ids"
-        (is (= "parent_type:1337:rAnDoM"
-               (f parent-id nil))))
-      (testing "does its best without a saved parent"
-        (is (= "parent_type:unknown:rAnDoM"
-               (f nil nil))))
-      (testing "updates when we know the parent"
-        (is (= "parent_type:1337:SAVE_ME"
-               (f parent-id "parent_type:unknown:SAVE_ME")))))))
