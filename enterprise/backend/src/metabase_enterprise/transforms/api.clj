@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -70,10 +71,22 @@
                                    :source source
                                    :target target}))
 
+(defn- delete-target-table! [id]
+  (let [{:keys [_name _source target]} (t2/select-one :model/Transform id)
+        {:keys [database table]} target
+        {driver :engine} (t2/select-one :model/Database database)]
+    (driver/drop-table! driver database table)))
+
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]}]
   (log/info "delete transform" id)
+  (delete-target-table! id)
   (t2/delete! :model/Transform id))
+
+(api.macros/defendpoint :delete "/:id/table"
+  [{:keys [id]}]
+  (log/info "delete transform target table" id)
+  (delete-target-table! id))
 
 (defn- compile-source [{query-type :type :as source}]
   (case query-type
