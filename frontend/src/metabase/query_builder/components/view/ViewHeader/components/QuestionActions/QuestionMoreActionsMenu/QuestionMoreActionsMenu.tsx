@@ -34,6 +34,7 @@ const MOVE_TESTID = "move-button";
 const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
+const TRANSFORM_TESTID = "transform";
 
 type QuestionMoreActionsMenuProps = {
   question: Question;
@@ -150,6 +151,16 @@ export const QuestionMoreActionsMenu = ({
         onClick={handleTurnToModel}
       >
         {t`Turn into a model`}
+      </Menu.Item>
+    ),
+    hasDataPermissions && (
+      <Menu.Item
+        key="transform"
+        leftSection={<Icon name="clone" />}
+        data-testid={TRANSFORM_TESTID}
+        onClick={() => onOpenModal(MODAL_TYPES.NEW_TRANSFORM)}
+      >
+        {t`Turn into a transform`}
       </Menu.Item>
     ),
     hasCollectionPermissions && isModel && (

@@ -15,6 +15,7 @@ export const MODAL_TYPES = {
   MOVE_EVENT: "move-event",
   PREVIEW_QUERY: "preview-query",
   QUESTION_EMBED: "question-embed",
+  NEW_TRANSFORM: "new-transform",
 } as const;
 
 export type QueryModalType = (typeof MODAL_TYPES)[keyof typeof MODAL_TYPES];

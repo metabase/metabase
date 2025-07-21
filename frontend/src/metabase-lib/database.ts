@@ -11,3 +11,11 @@ import type { Query } from "./types";
 export function databaseID(query: Query): number | null {
   return ML.database_id(query);
 }
+
+export function databaseIdOrThrow(query: Query): number {
+  const id = databaseID(query);
+  if (id == null) {
+    throw new TypeError(`Expected database id, but got ${id}`);
+  }
+  return id;
+}
