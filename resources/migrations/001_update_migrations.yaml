@@ -12143,7 +12143,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v55.2025-07-18T10:00:00
+      id: v55.2025-07-21T10:00:00
       author: ranquild
       comment: Remove semantic_type when base_type is type/Boolean and semantic_type is type/Category
       changes:
