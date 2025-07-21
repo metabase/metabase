@@ -1280,7 +1280,7 @@
                                                         :database (mt/id)}}]
          (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :blocked
                                                         :create-queries :no
-                                                        :data-model {:schemas :none}}}
+                                                        :data-model {:schemas {"PUBLIC" {(mt/id :venues) :none}}}}}
            (mt/user-http-request :rasta :post 401 (format "card/%d/query" (u/the-id card)))
            (mt/user-http-request :rasta :post 401 "card" {:name "DUPLICATE"
                                                           :display "table"
