@@ -1,6 +1,7 @@
 (ns metabase.data-apps.models
   (:require
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -36,7 +37,7 @@
 (def ^:private simple-slug-regex #"^[0-9a-zA-Z_-]+$")
 
 (t2/deftransforms :model/DataApp
-  {:status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum data-app-statuses))
+  {:status (mi/transform-validator mi/transform-keyword  (fn [v] (mi/assert-enum data-app-statuses (keyword v))))
    :slug   (mi/transform-validator mi/transform-identity (partial mi/assert-regex simple-slug-regex))})
 
 ;; TODO: revisit permissions model
@@ -115,8 +116,45 @@
 ;;                                       Serialization                                            ;;
 ;;------------------------------------------------------------------------------------------------;;
 
-(comment
-  #_todo)
+(declare latest-release)
+
+(defmethod serdes/make-spec "DataAppRelease" [_model-name _opts]
+  {:copy      []
+   :skip      []
+   :transform {:created_at        (serdes/date)
+               :updated_at        (serdes/date)
+               :creator_id        (serdes/fk :model/User)
+               :app_id            (serdes/fk :model/DataApp)
+               :app_definition_id (serdes/parent-ref)}})
+
+(defmethod serdes/make-spec "DataAppDefinition" [_model-name opts]
+  {:copy      [:revision_number :config]
+   :skip      []
+   :transform {:created_at (serdes/date)
+               :creator_id (serdes/fk :model/User)
+               :app_id     (serdes/parent-ref)
+               :release    (serdes/nested :model/DataAppRelease :app_definition_id opts)}})
+
+(defn- export-released-definition
+  "Export the released definition for a data app, if it exists."
+  [data-app]
+  (when-let [release (latest-release (:id data-app))]
+    [(serdes/extract-one "DataAppDefinition" {} (assoc (t2/select-one :model/DataAppDefinition (:app_definition_id release))
+                                                       :release [release]))]))
+
+;; data-apps => definition => release
+
+(defmethod serdes/make-spec "DataApp" [_model-name opts]
+  {:copy      [:name :description :slug :status :entity_id]
+   :skip      []
+   :transform {:created_at          (serdes/date)
+               :updated_at          (serdes/date)
+               :creator_id          (serdes/fk :model/User)
+               :released_definition (assoc (serdes/nested :model/DataAppDefinition :app_id opts)
+                                           :export-with-context (fn [data-app _k _input] (export-released-definition data-app)))}})
+
+(defmethod serdes/dependencies "DataApp" [_]
+  #{})
 
 ;;------------------------------------------------------------------------------------------------;;
 ;;                                        Public APIs                                             ;;
@@ -226,32 +264,26 @@
                                       :app_definition_id (:id latest-def)
                                       :creator_id        creator-id}))))
 
-(defn released-definition
-  "Get the latest released definition for a data app."
-  [app-id]
-  (when-let [release-definition-id (t2/select-one-fn :app_definition_id
-                                                     :model/DataAppRelease
-                                                     :app_id app-id
-                                                     :retracted false
-                                                     ;; it's an append-only table so sorting by id for better perf
-                                                     {:order-by [[:id :desc]]})]
-    (t2/select-one :model/DataAppDefinition release-definition-id)))
-
 (defn latest-release
   "Get the latest release info for a data app."
   [app-id]
-  ;; app_definition_id is only needed for testing
-  (t2/select-one [:model/DataAppRelease :id :app_definition_id :created_at]
+  (t2/select-one :model/DataAppRelease
                  :app_id app-id
                  :retracted false
                  {:order-by [[:id :desc]]}))
 
+(defn released-definition
+  "Get the latest released definition for a data app."
+  [app-id]
+  (when-let [release-definition-id (:app_definition_id (latest-release app-id))]
+    (t2/select-one :model/DataAppDefinition release-definition-id)))
+
 (defn get-published-data-app
   "Get the published version of a data app by id."
   [slug]
-  (let [app (t2/select-one :model/DataApp :slug slug :status :published)
-        _   (when-not app
-              (throw (ex-info "Not found." {:status-code 404})))
+  (let [app                 (t2/select-one :model/DataApp :slug slug :status :published)
+        _                   (when-not app
+                              (throw (ex-info "Not found." {:status-code 404})))
         released-definition (released-definition (:id app))]
     (when-not released-definition
       (throw (ex-info "Data app is not released"

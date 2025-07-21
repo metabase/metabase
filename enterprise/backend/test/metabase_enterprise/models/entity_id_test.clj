@@ -5,7 +5,6 @@
   This file makes it impossible to forget to add entity_id to new entities. It tests that every entity is either
   explicitly excluded, or has the :entity_id property."
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
@@ -31,64 +30,62 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  (set/union
-   (set (map #(keyword "model" %) serdes.models/to-implement-models))
-   #{:model/ApiKey
-     :model/HTTPAction
-     :model/ImplicitAction
-     :model/QueryAction
-     :model/ApplicationPermissionsRevision
-     :model/AuditLog
-     :model/BookmarkOrdering
-     :model/CacheConfig
-     :model/CardBookmark
-     :model/ChannelTemplate
-     :model/CollectionBookmark
-     :model/ContentTranslation
-     :model/DashboardBookmark
-     :model/DataPermissions
-     :model/DatabaseRouter
-     :model/CollectionPermissionGraphRevision
-     :model/DashboardCardSeries
-     :model/LoginHistory
-     :model/FieldValues
-     :model/ModelIndex
-     :model/ModelIndexValue
-     :model/ModerationReview
-     :model/Notification
-     :model/NotificationCard
-     :model/NotificationSubscription
-     :model/NotificationHandler
-     :model/NotificationRecipient
-     :model/ParameterCard
-     :model/Permissions
-     :model/PermissionsGroup
-     :model/PermissionsGroupMembership
-     :model/PermissionsRevision
-     :model/PersistedInfo
-     :model/Pulse
-     :model/PulseCard
-     :model/PulseChannel
-     :model/PulseChannelRecipient
-     :model/Query
-     :model/QueryCache
-     :model/QueryExecution
-     :model/QueryField
-     :model/QueryTable
-     :model/RecentViews
-     :model/Revision
-     :model/SearchIndexMetadata
-     :model/Secret
-     :model/Session
-     :model/TaskHistory
-     :model/TimelineEvent
-     :model/User
-     :model/UserParameterValue
-     :model/UserKeyValue
-     :model/ViewLog
-     :model/GroupTableAccessPolicy
-     :model/ConnectionImpersonation
-     :model/CloudMigration}))
+  #{:model/ApiKey
+    :model/HTTPAction
+    :model/ImplicitAction
+    :model/QueryAction
+    :model/ApplicationPermissionsRevision
+    :model/AuditLog
+    :model/BookmarkOrdering
+    :model/CacheConfig
+    :model/CardBookmark
+    :model/ChannelTemplate
+    :model/CollectionBookmark
+    :model/ContentTranslation
+    :model/DashboardBookmark
+    :model/DataPermissions
+    :model/DatabaseRouter
+    :model/CollectionPermissionGraphRevision
+    :model/DashboardCardSeries
+    :model/LoginHistory
+    :model/FieldValues
+    :model/ModelIndex
+    :model/ModelIndexValue
+    :model/ModerationReview
+    :model/Notification
+    :model/NotificationCard
+    :model/NotificationSubscription
+    :model/NotificationHandler
+    :model/NotificationRecipient
+    :model/ParameterCard
+    :model/Permissions
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/PermissionsRevision
+    :model/PersistedInfo
+    :model/Pulse
+    :model/PulseCard
+    :model/PulseChannel
+    :model/PulseChannelRecipient
+    :model/Query
+    :model/QueryCache
+    :model/QueryExecution
+    :model/QueryField
+    :model/QueryTable
+    :model/RecentViews
+    :model/Revision
+    :model/SearchIndexMetadata
+    :model/Secret
+    :model/Session
+    :model/TaskHistory
+    :model/TimelineEvent
+    :model/User
+    :model/UserParameterValue
+    :model/UserKeyValue
+    :model/ViewLog
+    :model/GroupTableAccessPolicy
+    :model/ConnectionImpersonation
+    :model/CloudMigration})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

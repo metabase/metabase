@@ -17,7 +17,9 @@
   (let [data-app (api/read-check (t2/select-one :model/DataApp id))]
     (assoc data-app
            :definition (data-apps.models/latest-definition id)
-           :release (data-apps.models/latest-release id))))
+           ;; app_definition_id is only needed for testing
+           :release    (some-> (data-apps.models/latest-release id)
+                               (select-keys [:id :app_definition_id :created_at])))))
 
 (defn- data-app-clauses
   "Honeysql clauses for filtering data apps with status and pagination"
