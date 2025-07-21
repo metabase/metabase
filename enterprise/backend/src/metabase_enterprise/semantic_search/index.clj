@@ -119,6 +119,7 @@
   "Inserts a set of documents into the index table. Throws when trying to insert
   existing model + model_id pairs. (Use upsert-index! to update existing documents)"
   [documents]
+  (log/info "Populating index with" (count documents) "documents")
   (when (seq documents)
     (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
           texts (mapv :searchable_text documents)
@@ -149,6 +150,7 @@
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
   [documents]
+  (log/info "Populating index with" (count documents) "documents")
   (when (seq documents)
     (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
           texts (mapv :searchable_text documents)
@@ -185,7 +187,7 @@
         (when force-reset? (drop-index-table! tx))
         (jdbc/execute!
          tx
-         (-> (sql.helpers/create-table *index-table-name*)
+         (-> (sql.helpers/create-table *index-table-name* :if-not-exists)
              (sql.helpers/with-columns (index-table-schema vector-dimensions))
              sql-format-quoted))
         (jdbc/execute!
