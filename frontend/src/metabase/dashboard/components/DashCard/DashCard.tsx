@@ -10,11 +10,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { addParameter, duplicateCard } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
-import {
-  getDashcardData,
-  getDashcardHref,
-  getParametersForDashcard,
-} from "metabase/dashboard/selectors";
+import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
@@ -315,23 +311,18 @@ function DashCardInner({
     let initialState: VisualizerVizDefinitionWithColumns;
 
     if (isVisualizerDashboardCard(dashcard)) {
-      initialState = getInitialStateForVisualizerCard(
-        dashcard,
-        datasets,
-        getParametersForDashcard(store.getState(), dashcard),
-      );
+      initialState = getInitialStateForVisualizerCard(dashcard, datasets);
     } else if (series.length > 1) {
       initialState = getInitialStateForMultipleSeries(series);
     } else {
       initialState = getInitialStateForCardDataSource(
         series[0].card,
         series[0],
-        getParametersForDashcard(store.getState(), dashcard),
       );
     }
 
     onEditVisualization(dashcard, initialState);
-  }, [dashcard, series, onEditVisualization, datasets, store]);
+  }, [dashcard, series, onEditVisualization, datasets]);
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {

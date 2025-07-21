@@ -31,7 +31,6 @@ export type DraggedItem = DraggedColumn | DraggedWellItem;
 export interface VisualizerVizDefinitionWithColumns
   extends VisualizerVizDefinition {
   columns: DatasetColumn[];
-  parameters?: unknown[];
 }
 
 export interface VisualizerState extends VisualizerVizDefinitionWithColumns {

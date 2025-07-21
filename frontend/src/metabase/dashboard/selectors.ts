@@ -31,7 +31,6 @@ import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
   getParameterValuesBySlug,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   DashCardId,
@@ -741,23 +740,4 @@ export const getFiltersToReset = createSelector(
 export const getCanResetFilters = createSelector(
   [getFiltersToReset],
   (filtersToReset) => filtersToReset.length > 0,
-);
-
-export const getParametersForDashcard = createSelector(
-  [
-    getDashboard,
-    getParameterValues,
-    (_: State, dashcard: DashboardCard) => dashcard,
-  ],
-  (dashboard, parameterValues, dashcard) => {
-    const parameters = dashcard.card?.parameters?.length
-      ? applyParameters(
-          dashcard.card,
-          dashboard?.parameters,
-          parameterValues,
-          dashcard.parameter_mappings ?? undefined,
-        ).parameters
-      : null;
-    return parameters;
-  },
 );
