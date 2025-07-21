@@ -123,28 +123,24 @@
   (when (seq documents)
     (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
           texts (mapv :searchable_text filtered-documents)
-          embeddings (embedding/get-embeddings-batch texts)]
-      (batch-update!
-       (fn [db-records]
-         (-> (sql.helpers/insert-into *index-table-name*)
-             (sql.helpers/values db-records)
-             sql-format-quoted))
-       filtered-documents
-       embeddings))))
+          text->doc (zipmap texts filtered-documents)]
+      (embedding/process-embeddings-streaming
+       texts
+       (fn [batch-texts batch-embeddings]
+         (let [batch-documents (mapv text->doc batch-texts)]
+           (batch-update!
+            (fn [db-records]
+              (-> (sql.helpers/insert-into *index-table-name*)
+                  (sql.helpers/values db-records)
+                  sql/format))
+            batch-documents
+            batch-embeddings)))))))
 
 (defn- db-records->update-set
   [db-records]
   (let [update-keys (-> db-records first (dissoc :id :model :model_id) keys)
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
     (zipmap update-keys (map excluded-kw update-keys))))
-
-(comment
-  (db-records->update-set
-   [{:id 123
-     :model "card"
-     :model_id 123
-     :creator_id 456
-     :content "foo"}]))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
@@ -154,17 +150,21 @@
   (when (seq documents)
     (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
           texts (mapv :searchable_text filtered-documents)
-          embeddings (embedding/get-embeddings-batch texts)]
-      (batch-update!
-       (fn [db-records]
-         (->
-          (sql.helpers/insert-into *index-table-name*)
-          (sql.helpers/values db-records)
-          (sql.helpers/on-conflict :model :model_id)
-          (sql.helpers/do-update-set (db-records->update-set db-records))
-          sql-format-quoted))
-       filtered-documents
-       embeddings))))
+          text->doc (zipmap texts documents)]
+      (embedding/process-embeddings-streaming
+       texts
+       (fn [batch-texts batch-embeddings]
+         (let [batch-documents (mapv text->doc batch-texts)]
+           (batch-update!
+            (fn [db-records]
+              (->
+               (sql.helpers/insert-into *index-table-name*)
+               (sql.helpers/values db-records)
+               (sql.helpers/on-conflict :model :model_id)
+               (sql.helpers/do-update-set (db-records->update-set db-records))
+               sql/format))
+            batch-documents
+            batch-embeddings)))))))
 
 (defn- drop-index-table-sql
   []
