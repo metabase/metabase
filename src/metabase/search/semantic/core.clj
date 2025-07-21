@@ -77,6 +77,8 @@
   [_search-ctx]
   (disj search.config/all-models "indexed-entity"))
 
+;; NOTE if you remove this you need to also modify filter-read-permitted to handle indexed-entity docs.
+;; See the corresponding note in metabase-enterprise.semantic-search.index/filter-read-permitted.
 (defn- remove-indexed-entities
   "Remove indexed-entities from `document-reducible`"
   [document-reducible]

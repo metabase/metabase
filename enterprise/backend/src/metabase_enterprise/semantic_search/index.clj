@@ -270,6 +270,8 @@
   [docs]
   (let [doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         t2-instances  (for [[t2-model docs] (group-by doc->t2-model docs)
+                            ;; NOTE an "indexed-entity" (:model/ModelIndexValue) does not have an :id column. For now
+                            ;; we are filtering indexed-entities out and they should not appear here.
                             t2-instance     (t2/select t2-model :id [:in (map :id docs)])]
                         t2-instance)
         doc->t2       (comp (u/index-by (juxt :id t2/model) t2-instances)
