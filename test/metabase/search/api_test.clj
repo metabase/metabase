@@ -1806,11 +1806,11 @@
                                                                        :description  "The state or province of the account’s billing address."}]}]
         (testing "Can include `result_metadata` info"
           (is (=? [{:description "The state or province of the account’s billing address."}]
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
-                      :data
-                      (filter #(= reg-card-id (:id %)))
-                      first
-                      :result_metadata))))
+                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
+                       :data
+                       (filter #(= reg-card-id (:id %)))
+                       first
+                       :result_metadata))))
         (testing "result_metadata not included by default"
           (is (nil?
                (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
