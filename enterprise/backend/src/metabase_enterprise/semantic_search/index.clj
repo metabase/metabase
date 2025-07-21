@@ -193,7 +193,7 @@
         (jdbc/execute!
          tx
          (-> (sql.helpers/create-index
-              (keyword (str "embedding_hnsw_index_" (nano-id/nano-id)))
+              [:embedding_hnsw_idx :if-not-exists]
               [*index-table-name* :using-hnsw [:raw "embedding vector_cosine_ops"]])
              sql-format-quoted))))
     (catch Exception e

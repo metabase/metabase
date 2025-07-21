@@ -16,14 +16,13 @@
       (semantic.tu/with-temp-index-table!
         ;; with-temp-index-table! creates the temp table, so drop it in order to test create!.
         (semantic.index/drop-index-table!)
-        (let [embedding-index-pattern "embedding_hnsw_index_%"]
-          (testing "index table is not present before create!"
-            (is (not (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*)))
-            (is (not (semantic.tu/table-has-index? semantic.index/*index-table-name* embedding-index-pattern))))
-          (testing "index table is present after create!"
-            (semantic.index/create-index-table! {:force-reset? false})
-            (is (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*))
-            (is (semantic.tu/table-has-index? semantic.index/*index-table-name* embedding-index-pattern))))))))
+        (testing "index table is not present before create!"
+          (is (not (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*)))
+          (is (not (semantic.tu/table-has-index? semantic.index/*index-table-name* :embedding_hnsw_idx))))
+        (testing "index table is present after create!"
+          (semantic.index/create-index-table! {:force-reset? false})
+          (is (semantic.tu/table-exists-in-db? semantic.index/*index-table-name*))
+          (is (semantic.tu/table-has-index? semantic.index/*index-table-name* :embedding_hnsw_idx)))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}
