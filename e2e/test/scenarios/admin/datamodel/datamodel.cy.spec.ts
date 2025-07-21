@@ -638,6 +638,46 @@ describe("scenarios > admin > datamodel", () => {
         },
       );
 
+      it(
+        "should update the table picker state when toggling visibility of not currently selected branch",
+        { tags: ["@external"] },
+        () => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          H.DataModel.visit();
+
+          TablePicker.getDatabase("Sample Database").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getSchema("Wild").click();
+          TablePicker.getTable("Animals").click();
+
+          TablePicker.getTable("Accounts")
+            .button("Unhide table")
+            .should("exist")
+            .click();
+          cy.wait("@updateTable");
+          verifyTablesVisible(["Accounts"]);
+
+          TablePicker.getDatabase("Sample Database")
+            .button("Hide all tables")
+            .should("exist")
+            .click();
+          cy.wait("@updateTables");
+          verifyTablesHidden([
+            "Accounts",
+            "Analytic Events",
+            "Feedback",
+            "Invoices",
+            "Orders",
+            "People",
+            "Products",
+            "Reviews",
+          ]);
+        },
+      );
+
       it("hidden table should not show up in various places in UI", () => {
         cy.signInAsAdmin();
 
