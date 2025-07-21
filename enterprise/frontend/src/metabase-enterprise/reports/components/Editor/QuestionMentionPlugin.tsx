@@ -82,12 +82,38 @@ export const QuestionMentionPlugin = ({
       }
     };
 
+    const keydownHandler = (event: KeyboardEvent) => {
+      if (!showPopover) {
+        return;
+      }
+
+      // Only prevent default for arrow keys to stop cursor movement in editor
+      // Let the popover dropdown handle the actual navigation
+      if (["ArrowUp", "ArrowDown"].includes(event.key)) {
+        event.preventDefault();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        setShowPopover(false);
+        setMentionRange(null);
+        editor.commands.focus();
+      }
+    };
+
     editor.on("update", updateHandler);
     editor.on("selectionUpdate", updateHandler);
+
+    // Add keydown listener to the editor's DOM element
+    const editorElement = editor.view.dom;
+    editorElement.addEventListener("keydown", keydownHandler, true);
 
     return () => {
       editor.off("update", updateHandler);
       editor.off("selectionUpdate", updateHandler);
+      editorElement.removeEventListener("keydown", keydownHandler, true);
     };
   }, [editor, mentionRange, showPopover]);
 
@@ -137,10 +163,6 @@ export const QuestionMentionPlugin = ({
 
   return (
     <>
-      <div
-        ref={virtualRef}
-        style={{ position: "fixed", pointerEvents: "none" }}
-      />
       <Popover
         opened={showPopover}
         position="bottom-start"
@@ -148,20 +170,21 @@ export const QuestionMentionPlugin = ({
         shadow="md"
         withinPortal
         closeOnClickOutside={false}
+        middlewares={{ flip: true, shift: true }}
         onClose={() => {
           setShowPopover(false);
           setMentionRange(null);
         }}
       >
         <Popover.Target>
-          <div style={{ display: "none" }} />
+          <div
+            ref={virtualRef}
+            style={{ position: "fixed", pointerEvents: "none" }}
+          />
         </Popover.Target>
 
         <Popover.Dropdown
           style={{
-            position: "fixed",
-            left: anchorPos?.x ?? 0,
-            top: anchorPos?.y ?? 0,
             maxHeight: 400,
             overflow: "auto",
           }}
