@@ -44,8 +44,10 @@ jobs:
       JOB_NAME: ${{ inputs.name }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       MB_EXPERIMENTAL_SEARCH_BLOCK_ON_QUEUE: true
@@ -55,13 +57,7 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
-      CYPRESS_IS_EMBEDDING_SDK: ${{ inputs.name == 'embedding-sdk' }}
-      mongo: ${{ inputs.name == 'mongo' }}
-      postgres: ${{ inputs.name != 'mongo' }}
-      mysql: ${{ inputs.name != 'mongo' }}
-      openldap: true
-      maildev: true
-      webhook: true
+      CYPRESS_IS_EMBEDDING_SDK: "${{ inputs.name == 'embedding-sdk' }}"
     steps:
       - uses: actions/checkout@v4
 
@@ -71,11 +67,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
-          openldap: ${{ env.openldap }}
-          postgres: ${{ env.postgres }}
-          mysql: ${{ env.mysql }}
-          mongo: ${{ env.mongo }}
-          webhook: ${{ env.webhook }}
+          openldap: true
+          webhook: true
+          snowplow: true
+          postgres: ${{ inputs.name != 'mongo' }}
+          mysql: ${{ inputs.name != 'mongo' }}
+          mongo: ${{ inputs.name == 'mongo' }}
 
       - name: Run Embedding SDK Storybook
         if: inputs.name == 'embedding-sdk'
@@ -110,9 +107,6 @@ jobs:
       - name: Get failed specs
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
-
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start

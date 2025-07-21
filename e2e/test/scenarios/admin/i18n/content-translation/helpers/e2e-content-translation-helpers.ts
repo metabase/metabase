@@ -15,11 +15,15 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
     "uploadDictionary",
   );
+  cy.intercept("GET", "/api/setting").as("getSettings");
   cy.signInAsAdmin();
   cy.visit("/admin/settings/localization");
+  cy.wait("@getSettings");
+
   cy.findByTestId("content-localization-setting").findByText(
     /Upload translation dictionary/,
   );
+
   cy.get("#content-translation-dictionary-upload-input").selectFile(
     {
       contents: Cypress.Buffer.from(getCSVWithHeaderRow(rows)),
@@ -28,7 +32,16 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
     },
     { force: true },
   );
+
+  cy.findByRole("dialog", { name: /upload new dictionary/i })
+    .button("Replace existing dictionary")
+    .click();
+
   cy.wait("@uploadDictionary");
+
+  cy.findByRole("heading", {
+    name: "Localizing user-generated content",
+  }).scrollIntoView();
 };
 
 export const uploadTranslationDictionaryViaAPI = (rows: DictionaryArray) => {

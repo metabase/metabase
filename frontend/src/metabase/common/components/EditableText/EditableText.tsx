@@ -62,7 +62,7 @@ const EditableText = forwardRef(function EditableText(
   const previousInitialValue = usePrevious(initialValue);
 
   useEffect(() => {
-    if (initialValue && initialValue !== previousInitialValue) {
+    if (initialValue != null && initialValue !== previousInitialValue) {
       setInputValue(initialValue);
     }
   }, [initialValue, previousInitialValue]);
@@ -103,6 +103,9 @@ const EditableText = forwardRef(function EditableText(
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.nativeEvent.isComposing) {
+        return;
+      }
       if (event.key === "Escape") {
         event.stopPropagation(); // don't close modal
         setInputValue(submitValue ?? "");
@@ -129,14 +132,13 @@ const EditableText = forwardRef(function EditableText(
     <Box
       component={EditableTextRoot}
       onClick={isMarkdown ? handleRootElementClick : undefined}
-      {...props}
       ref={ref}
       isEditing={isEditing}
       isDisabled={isDisabled}
       isEditingMarkdown={!shouldShowMarkdown}
       data-value={`${displayValue}\u00A0`}
       data-testid="editable-text"
-      tabIndex={0}
+      tabIndex={isDisabled ? -1 : 0}
       // For a11y, allow typing to activate the textarea
       onKeyDown={(e: React.KeyboardEvent) => {
         if (shouldPassKeyToTextarea(e.key)) {
@@ -149,6 +151,7 @@ const EditableText = forwardRef(function EditableText(
         }
       }}
       lh={1.57}
+      {...props}
     >
       {shouldShowMarkdown ? (
         <Markdown>{inputValue}</Markdown>

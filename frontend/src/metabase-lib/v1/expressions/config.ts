@@ -323,15 +323,29 @@ const CONVERSION = defineClauses(
       displayName: "datetime",
       type: "datetime",
       requiresFeature: "expressions/datetime",
-      description: () => t`Converts a datetime string to a datetime.`,
+      description: () => t`Converts a datetime string or bytes to a datetime.`,
+      hasOptions: true,
       args: () => [
         {
           name: t`value`,
           type: "expression",
-          description: t`The string to convert to a datetime.`,
+          description: t`The string, bytes, or number to convert to a datetime.`,
           example: "2025-03-20 12:45:04",
         },
+        {
+          name: t`mode`,
+          type: "string",
+          description: t`The mode indicating the format. One of: \`"simple"\`, \`"iso"\`, \`"simpleBytes"\`, \`"isoBytes"\`, \`"unixSeconds"\`, \`"unixMilliseconds"\`, \`"unixMicroseconds"\`, \`"unixNanoseconds"\`. Default is \`"iso"\`.`,
+          optional: true,
+        },
       ],
+    },
+    today: {
+      displayName: "today",
+      type: "datetime",
+      requiresFeature: "expressions/today",
+      description: () => t`Returns the current date.`,
+      args: () => [],
     },
     float: {
       displayName: "float",

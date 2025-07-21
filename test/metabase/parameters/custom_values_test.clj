@@ -124,6 +124,40 @@
                         (mt/$ids $venues.category_id)
                         {:query-string 2})))))))))))
 
+(deftest ^:parallel with-mbql-card-test-4-explicit-fields
+  (testing "source card with explicit :fields and no aggregations or breakouts"
+    (binding [custom-values/*max-rows* 3]
+      (mt/with-temp
+        [:model/Card card (mt/card-with-source-metadata-for-query
+                           (mt/mbql-query venues
+                             {:fields [$id $latitude $longitude $name]
+                              :filter [:= $category_id 2]}))]
+        (testing "get values ignores the existing fields list"
+          (is (= {:has_more_values true
+                  :values          [["Chez Jay"] ["Marlowe"] ["Musso & Frank Grill"]]}
+                 (custom-values/values-from-card
+                  card
+                  (mt/$ids $venues.name)))))))))
+
+(deftest ^:parallel with-mbql-card-test-5-explicit-fields-in-join
+  (testing "source card with explicit :fields on a join, and no aggregations or breakouts"
+    (binding [custom-values/*max-rows* 3]
+      (mt/with-temp
+        [:model/Card card (mt/card-with-source-metadata-for-query
+                           (mt/mbql-query venues
+                             {:fields [$id $latitude $longitude $name]
+                              :joins [{:source-table $$categories
+                                       :alias        "Cat"
+                                       :fields       [&Cat.$categories.name]
+                                       :condition    [:= $category_id &Cat.$categories.id]}]
+                              :filter [:= $category_id 2]}))]
+        (testing "get values ignores the existing fields list"
+          (is (= {:has_more_values true
+                  :values          [["Chez Jay"] ["Marlowe"] ["Musso & Frank Grill"]]}
+                 (custom-values/values-from-card
+                  card
+                  (mt/$ids $venues.name)))))))))
+
 (deftest ^:parallel with-filter-stage-test
   (binding [custom-values/*max-rows* 3]
     (testing "should nest the query if the target stage is after the last stage"
@@ -140,8 +174,23 @@
                   :has_more_values true}
                  (custom-values/values-from-card
                   card
-                  [:field "NAME_2" {:base_type :type/Text}]
+                  [:field "Categories__NAME" {:base_type :type/Text}]
                   {:stage-number 1}))))))))
+
+(deftest ^:parallel with-mbql-card-test-6-expressions
+  (binding [custom-values/*max-rows* 3]
+    (testing "source card with expressions (#44703)"
+      (mt/with-temp
+        [:model/Card card (merge (mt/card-with-source-metadata-for-query
+                                  (mt/mbql-query orders
+                                    {:expressions {"unit price" [:/ $subtotal $quantity]}}))
+                                 {:type :question})]
+        (is (= {:values [[0.37796296296296295] [0.4318840579710145] [0.4328813559322034]]
+                :has_more_values true}
+               (custom-values/values-from-card
+                card
+                [:expression "unit price" {:base_type :type/Float}]
+                {:stage-number 0})))))))
 
 (deftest ^:parallel with-native-card-test
   (doseq [model? [true false]]

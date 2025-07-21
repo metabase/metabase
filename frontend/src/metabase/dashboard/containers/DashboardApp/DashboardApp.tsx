@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
 import type { Route, WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
+import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
@@ -11,16 +11,20 @@ import {
   addCardToDashboard,
   navigateToNewCardFromDashboard,
   setEditingDashboard,
+  toggleSidebar,
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
-import { DashboardContextProvider } from "metabase/dashboard/context";
 import {
-  useDashboardUrlParams,
-  useDashboardUrlQuery,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
-import { parseHashOptions } from "metabase/lib/browser";
+  DASHBOARD_EDITING_ACTIONS,
+  DASHBOARD_VIEW_ACTIONS,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
+import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { DashboardContextProvider } from "metabase/dashboard/context";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
+import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
+import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -30,12 +34,45 @@ import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-das
 import { getFavicon } from "../../selectors";
 
 import { DashboardTitle } from "./DashboardTitle";
+import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps extends PropsWithChildren {
+interface DashboardAppProps
+  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
   dashboardId?: DashboardId;
   route: Route;
 }
+
+type DashboardAppInnerProps = Pick<
+  DashboardAppProps,
+  "location" | "route" | "children"
+>;
+
+function DashboardAppInner({
+  location,
+  route,
+  children,
+}: DashboardAppInnerProps) {
+  useDashboardLocationSync({ location });
+  const pageFavicon = useSelector(getFavicon);
+  useFavicon({ favicon: pageFavicon });
+  useSlowCardNotification();
+
+  return (
+    <>
+      <DashboardTitle />
+      <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
+        <DashboardLeaveConfirmationModal route={route} />
+        <Dashboard />
+        {/* For rendering modal urls */}
+        {children}
+      </div>
+    </>
+  );
+}
+
+export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
+  isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = ({
   location,
@@ -44,7 +81,7 @@ export const DashboardApp = ({
   route,
   dashboardId: _dashboardId,
   children,
-}: DashboardAppProps & WithRouterProps<{ slug: string }>) => {
+}: DashboardAppProps) => {
   const dispatch = useDispatch();
 
   const [error, setError] = useState<string>();
@@ -53,41 +90,32 @@ export const DashboardApp = ({
   const dashboardId =
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
-  const options = parseHashOptions(window.location.hash);
-  const editingOnLoad = options.edit;
-  const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
-
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId,
-    parameterQueryParams,
-  });
-
-  const {
-    hasNightModeToggle,
-    isFullscreen,
-    isNightMode,
-    onNightModeChange,
-    refreshPeriod,
-    onFullscreenChange,
-    setRefreshElapsedHook,
-    onRefreshPeriodChange,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
-    theme,
-    setTheme,
-  } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
 
-  const onLoadDashboard = (dashboard: IDashboard) => {
+  const extractHashOption = async (
+    key: string,
+    options: ReturnType<typeof parseHashOptions>,
+  ) => {
+    const { [key]: removed, ...restHashOptions } = options;
+    return restHashOptions;
+  };
+
+  const onLoadDashboard = async (dashboard: IDashboard) => {
+    let options: ReturnType<typeof parseHashOptions> = parseHashOptions(
+      window.location.hash,
+    );
+    const editingOnLoad = options.edit;
+    const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
+
     try {
       if (editingOnLoad) {
-        onRefreshPeriodChange(null);
         dispatch(setEditingDashboard(dashboard));
-        dispatch(push({ ...location, hash: "" }));
+        options = await extractHashOption("edit", options);
       }
+
       if (addCardOnLoad != null) {
+        options = await extractHashOption("add", options);
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
         const tabId = tabParam ? parseInt(tabParam, 10) : null;
@@ -100,8 +128,14 @@ export const DashboardApp = ({
           }),
         );
       }
+      const hash = stringifyHashOptions(options);
+      await dispatch(replace({ ...location, hash: hash ? "#" + hash : "" }));
     } catch (error) {
-      if (error instanceof Response && error.status === 404) {
+      // 400: provided entity id format is invalid.
+      if (
+        error instanceof Response &&
+        (error.status === 400 || error.status === 404)
+      ) {
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
@@ -110,50 +144,32 @@ export const DashboardApp = ({
     }
   };
 
+  const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+    useAutoScrollToDashcard(location);
+
   return (
     <ErrorBoundary message={error}>
       <DashboardContextProvider
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
-        theme={theme}
-        setTheme={setTheme}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-        hasNightModeToggle={hasNightModeToggle}
-        onNightModeChange={onNightModeChange}
-        isNightMode={isNightMode}
-        refreshPeriod={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onRefreshPeriodChange={onRefreshPeriodChange}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-        onLoad={onLoadDashboard}
+        onLoadWithoutCards={onLoadDashboard}
         onError={(error) => dispatch(setErrorPage(error))}
         navigateToNewCardFromDashboard={(opts) =>
           dispatch(navigateToNewCardFromDashboard(opts))
         }
+        onNewQuestion={() => dispatch(addDashboardQuestion("notebook"))}
+        onAddQuestion={(dashboard: IDashboard | null) => {
+          dispatch(setEditingDashboard(dashboard));
+          dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+        }}
+        dashboardActions={DASHBOARD_APP_ACTIONS}
       >
-        <DashboardTitle />
-        <DashboardFavicon />
-        <DashboardNotifications />
-        <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-          <DashboardLeaveConfirmationModal route={route} />
-          <Dashboard />
-          {/* For rendering modal urls */}
+        <DashboardAppInner location={location} route={route}>
           {children}
-        </div>
+        </DashboardAppInner>
       </DashboardContextProvider>
     </ErrorBoundary>
   );
 };
-
-function DashboardFavicon() {
-  const pageFavicon = useSelector(getFavicon);
-  useFavicon({ favicon: pageFavicon });
-  return null;
-}
-
-function DashboardNotifications() {
-  useSlowCardNotification();
-  return null;
-}

@@ -235,7 +235,7 @@
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
                                (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
-                                                          :size_y :parameter_mappings :visualization_settings :action])
+                                                          :size_y :parameter_mappings :visualization_settings :action :inline_parameters])
                                    (update :card remove-card-non-public-columns)
                                    (update :series (fn [series]
                                                      (for [series series]

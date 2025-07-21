@@ -34,17 +34,8 @@ describe("metabase#31587", () => {
         cy.button("Add action").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          const actionButtonContainer = cy.findByTestId(
-            "action-button-full-container",
-          );
-          // eslint-disable-next-line no-unsafe-element-filtering
-          const dashCard = cy
-            .findAllByTestId("dashcard-container")
-            .last()
-            .should("have.text", "Click Me");
-
-          actionButtonContainer.then((actionButtonElem) => {
-            dashCard.then((dashCardElem) => {
+          actionButtonContainer().then((actionButtonElem) => {
+            dashCard().then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -62,17 +53,8 @@ describe("metabase#31587", () => {
         cy.icon("info").click();
 
         cy.findByTestId("dashboard-parameters-and-cards").within(() => {
-          const actionButtonContainer = cy.findByTestId(
-            "action-button-full-container",
-          );
-          // eslint-disable-next-line no-unsafe-element-filtering
-          const dashCard = cy
-            .findAllByTestId("dashcard-container")
-            .last()
-            .should("have.text", "Click Me");
-
-          actionButtonContainer.then((actionButtonElem) => {
-            dashCard.then((dashCardElem) => {
+          actionButtonContainer().then((actionButtonElem) => {
+            dashCard().then((dashCardElem) => {
               expect(actionButtonElem[0].scrollHeight).to.eq(
                 dashCardElem[0].scrollHeight,
               );
@@ -476,3 +458,13 @@ function setupBasicActionsInModel() {
   H.sidesheet().findByText("Actions").click();
   cy.button(/Create basic actions/).click();
 }
+
+const actionButtonContainer = () =>
+  cy.findByTestId("action-button-full-container");
+
+const dashCard = () =>
+  // eslint-disable-next-line no-unsafe-element-filtering
+  cy
+    .findAllByTestId("dashcard-container")
+    .last()
+    .should("have.text", "Click Me");

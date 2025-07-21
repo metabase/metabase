@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -52,6 +53,21 @@
                                            :before  before
                                            :after   changes
                                            :user_id api/*current-user-id*))))
+
+(mu/defn increment-implicit-perms-revision!
+  "Save changes made to permissions that are NOT due to an explicit update to the permissions graph, but rather due to
+  adding or removing entities from the system. For example, when adding a collection, we should increment the current
+  revision number.
+
+  Note that in these cases, `before` and `after` will not be provided."
+  [model :- [:enum :model/CollectionPermissionGraphRevision]
+   remark :- :string]
+  (when api/*current-user-id*
+    (t2/insert! model {:id (inc (collection-permission-graph-revision/latest-id))
+                       :before {}
+                       :after {}
+                       :user_id api/*current-user-id*
+                       :remark remark})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |

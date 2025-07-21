@@ -128,7 +128,7 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      await screen.findByText("Unknown Metric: Imaginary");
+      await screen.findByText("Unknown Aggregation or Metric: Imaginary");
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
@@ -164,6 +164,7 @@ describe("ExpressionWidget", () => {
 async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const query = createQuery();
   const stageIndex = 0;
+  const availableColumns = Lib.expressionableColumns(query, stageIndex);
   const onChangeClause = jest.fn();
   const onClose = jest.fn();
 
@@ -182,8 +183,9 @@ async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
       clause={undefined}
       name={undefined}
       query={query}
-      reportTimezone="UTC"
       stageIndex={stageIndex}
+      availableColumns={availableColumns}
+      reportTimezone="UTC"
       onChangeClause={onChangeClause}
       onClose={onClose}
       {...additionalProps}

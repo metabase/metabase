@@ -22,7 +22,11 @@ export const UpsellWhitelabel = ({ source }: { source: string }) => {
   // Even though getDocsUrl allows to pass utm params as one of the props,
   // the product requirement is to keep them in sync with the primary CTA.
   // That's why we're using useUpsellLink hook again here.
-  const url = useUpsellLink({ url: docsUrl, campaign: "whitelabel", source });
+  const url = useUpsellLink({
+    url: docsUrl,
+    campaign: "whitelabel",
+    location: source,
+  });
 
   if (isWhitelabeled) {
     return null;

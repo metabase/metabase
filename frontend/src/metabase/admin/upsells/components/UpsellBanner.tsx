@@ -1,11 +1,25 @@
+import cx from "classnames";
 import { useMount } from "react-use";
+import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { Box, Flex, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  Title,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
+import {
+  type DismissibleProps,
+  UpsellWrapperDismissible,
+} from "./UpsellBannerDismissible";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import S from "./Upsells.module.css";
@@ -22,14 +36,19 @@ type CardLinkProps =
       buttonLink?: never;
     };
 
-export type UpsellBannerProps = {
+type UpsellBannerPropsBase = {
   title: string;
   buttonText: string;
   campaign: string;
-  source: string;
+  location: string;
+  large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
-} & CardLinkProps;
+};
+
+export type UpsellBannerProps =
+  | (UpsellBannerPropsBase & CardLinkProps)
+  | (UpsellBannerPropsBase & CardLinkProps & DismissibleProps);
 
 export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   title,
@@ -37,58 +56,81 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   buttonLink,
   internalLink,
   campaign,
-  source,
+  location,
+  large,
   children,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
-    source,
+    location,
   });
 
   useMount(() => {
-    trackUpsellViewed({ source, campaign });
+    trackUpsellViewed({ location, campaign });
   });
+
+  const { dismissible, onDismiss, ...domProps } =
+    "dismissible" in props
+      ? props
+      : { dismissible: false, onDismiss: () => {} };
+  const gemSize = large ? 24 : undefined;
+  const contentAlignment = large ? "flex-start" : "center";
 
   return (
     <Box
-      className={S.UpsellBannerComponent}
+      className={cx(S.UpsellBannerComponent, large && S.Large)}
       data-testid="upsell-banner"
       bg="bg-white"
-      {...props}
+      {...domProps}
     >
-      <Flex align="center" gap="md" wrap="nowrap">
-        <UpsellGem />
-        <Box>
+      <Flex align={contentAlignment} gap="md" wrap="nowrap">
+        <UpsellGem size={gemSize} />
+        <Stack gap="xs">
           <Title lh={1.25} order={3} size="md">
             {title}
           </Title>
-          <Text lh="1rem" size="sm">
+          <Text lh="1rem" size="sm" c="text-secondary">
             {children}
           </Text>
-        </Box>
+        </Stack>
       </Flex>
 
-      {buttonLink !== undefined ? (
-        <ExternalLink
-          onClickCapture={() => trackUpsellClicked({ source, campaign })}
-          href={url}
-          className={S.UpsellCTALink}
-        >
-          {buttonText}
-        </ExternalLink>
-      ) : (
-        <Link
-          onClickCapture={() => trackUpsellClicked({ source, campaign })}
-          to={internalLink}
-          className={S.UpsellCTALink}
-        >
-          {buttonText}
-        </Link>
-      )}
+      <Flex align="center" gap="md">
+        {buttonLink !== undefined ? (
+          <ExternalLink
+            onClickCapture={() => trackUpsellClicked({ location, campaign })}
+            href={url}
+            className={S.UpsellCTALink}
+          >
+            {buttonText}
+          </ExternalLink>
+        ) : (
+          <Link
+            onClickCapture={() => trackUpsellClicked({ location, campaign })}
+            to={internalLink}
+            className={S.UpsellCTALink}
+          >
+            {buttonText}
+          </Link>
+        )}
+
+        {dismissible && (
+          <UnstyledButton
+            role="button"
+            component={Icon}
+            size="1rem"
+            name="close"
+            aria-label={t`Dismiss banner`}
+            onClick={onDismiss}
+          />
+        )}
+      </Flex>
     </Box>
   );
 };
 
-export const UpsellBanner = UpsellWrapper(_UpsellBanner);
+export const UpsellBanner = UpsellWrapperDismissible(
+  UpsellWrapper(_UpsellBanner),
+);

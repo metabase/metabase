@@ -6,7 +6,6 @@ import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
-import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
@@ -32,18 +31,9 @@ import {
   isRecentTableItem,
 } from "metabase-types/api";
 
+import { getAdminSettingsSections } from "../constants";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
-
-type SettingsSections = {
-  [key: string]: {
-    name?: string;
-    order?: number;
-    settings?: any[];
-    getHidden?: (settings: Record<string, any>) => boolean;
-    adminOnly?: boolean;
-  };
-};
 
 export const useCommandPalette = ({
   locationQuery,
@@ -101,7 +91,6 @@ export const useCommandPalette = ({
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
-  const settingsSections = ADMIN_SETTINGS_SECTIONS as SettingsSections;
 
   const docsAction = useMemo<PaletteAction[]>(() => {
     const link = debouncedSearchText
@@ -295,9 +284,9 @@ export const useCommandPalette = ({
       return [];
     }
 
-    return Object.entries(settingsSections)
-      .filter(([slug, section]) => {
-        if (section.getHidden?.(settingValues)) {
+    return Object.entries(getAdminSettingsSections(settingValues))
+      .filter(([_slug, section]) => {
+        if (section.hidden) {
           return false;
         }
 
@@ -305,7 +294,7 @@ export const useCommandPalette = ({
           return false;
         }
 
-        return !slug.includes("/");
+        return true;
       })
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
@@ -317,7 +306,7 @@ export const useCommandPalette = ({
           href: `/admin/settings/${slug}`,
         },
       }));
-  }, [canUserAccessSettings, isAdmin, settingsSections, settingValues]);
+  }, [canUserAccessSettings, isAdmin, settingValues]);
 
   useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
     adminActions,

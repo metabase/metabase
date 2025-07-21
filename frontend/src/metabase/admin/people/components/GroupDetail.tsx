@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,

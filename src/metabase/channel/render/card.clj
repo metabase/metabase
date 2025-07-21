@@ -22,9 +22,10 @@
 (mr/def ::options
   "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
   [:map
-   [:channel.render/include-buttons?     {:description "default: false", :optional true} :boolean]
-   [:channel.render/include-title?       {:description "default: false", :optional true} :boolean]
-   [:channel.render/include-description? {:description "default: false", :optional true} :boolean]])
+   [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]])
 
 (defn- card-href
   [card]
@@ -189,7 +190,9 @@
           text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
          attachment-href                  (if (render.util/is-visualizer-dashcard? dashcard)
                                             (visualizer-dashcard-href dashcard)
-                                            (card-href card))]
+                                            (card-href card))
+         inline-parameters                (when (:channel.render/include-inline-parameters? options)
+                                            (-> dashcard :visualization_settings :inline_parameters))]
      (cond-> {:attachments (merge title-attachments body-attachments)
               :content [:p
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
@@ -204,6 +207,9 @@
                                              :text-decoration :none})}
                           title
                           description
+                          (when (seq inline-parameters)
+                            [:div {:style (style/style {:padding-bottom :16px})}
+                             (render.util/render-parameters inline-parameters)])
                           [:div {:class "pulse-body"
                                  :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
                                                       :display :block
@@ -232,7 +238,8 @@
     options :- [:maybe ::options]]
    (log/with-context {:card_id (:id card)}
      (let [options                       (merge {:channel.render/include-title?       true
-                                                 :channel.render/include-description? true}
+                                                 :channel.render/include-description? true
+                                                 :channel.render/include-inline-parameters? true}
                                                 options)
            {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
        {:attachments attachments

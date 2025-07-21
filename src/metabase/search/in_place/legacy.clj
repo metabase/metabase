@@ -91,6 +91,8 @@
    :moderated_status    :text
    :display             :text
    :dashboard_id        :integer
+   :display_type        :text
+   :has_temporal_dimensions :boolean
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -328,6 +330,11 @@
     :where  [:= :report_dashboardcard.card_id :card.id]}
    :dashboardcard_count])
 
+(def ^:private has-temporal-dimensions-col
+  [[:case
+    [:like :result_metadata "%\"temporal_unit\":%"] true
+    :else false] :has_temporal_dimensions])
+
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
   [:table_id
@@ -362,7 +369,10 @@
         [:collection.authority_level :collection_authority_level]
         [:dashboard.name :dashboard_name]
         :dashboard_id
-        bookmark-col dashboardcard-count-col))
+        bookmark-col dashboardcard-count-col
+        :result_metadata
+        has-temporal-dimensions-col
+        [:display :display_type]))
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]

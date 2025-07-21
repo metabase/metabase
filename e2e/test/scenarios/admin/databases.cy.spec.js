@@ -334,7 +334,7 @@ describe("admin > database > add", () => {
         H.popover().findByText("MongoDB").click({ force: true });
 
         cy.findByTestId("database-form").within(() => {
-          cy.findByText("Paste a connection string").click();
+          cy.findByLabelText("Use a connection string").click();
           H.typeAndBlurUsingLabel("Display name", "QA Mongo");
           cy.findByLabelText("Port").should("not.exist");
           cy.findByLabelText("Paste your connection string").type(badDBString, {
@@ -542,7 +542,7 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    IS_ENTERPRISE && H.setTokenFeatures("all");
+    IS_ENTERPRISE && H.activateToken("pro-self-hosted");
 
     cy.intercept(
       {

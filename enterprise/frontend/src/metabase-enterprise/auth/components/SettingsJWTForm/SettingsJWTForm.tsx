@@ -4,9 +4,9 @@ import _ from "underscore";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import {
   useGetAdminSettingsDetailsQuery,

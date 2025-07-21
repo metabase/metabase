@@ -27,7 +27,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
       cy.visit("/admin/people");
     });
@@ -71,7 +71,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
 
       // Add user attribute to existing ("normal" / id:2) user
@@ -200,7 +200,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 
@@ -265,7 +265,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 

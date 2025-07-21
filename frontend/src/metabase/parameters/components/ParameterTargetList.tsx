@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import AccordionList from "metabase/common/components/AccordionList";
+import { AccordionList } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import type {
   ParameterMappingOption,
@@ -58,7 +58,8 @@ export const ParameterTargetList = ({
       renderItemIcon={(item: ParameterMappingOption) => (
         <Icon name={(item.icon as IconName) || "unknown"} size={18} />
       )}
-      alwaysExpanded={true}
+      alwaysExpanded
+      globalSearch
       hideSingleSectionTitle={!hasForeignOption}
     />
   );

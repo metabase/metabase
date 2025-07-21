@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { Text } from "metabase/ui";
 

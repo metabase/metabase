@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
+import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
-import { getErrorMessage } from "metabase-enterprise/metabot/constants";
+import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
 import { QuestionDetails } from "./QuestionDetails";
@@ -60,7 +60,7 @@ interface MessageProps {
   message: string;
 }
 function Message({ message }: MessageProps) {
-  const isErrorMessage = message === getErrorMessage();
+  const isErrorMessage = message === METABOT_ERR_MSG.agentOffline;
   if (isErrorMessage) {
     return (
       <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg" ta="center">

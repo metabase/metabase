@@ -81,10 +81,7 @@ export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-declare const JoinConditionOperatorSymbol: unique symbol;
-export type JoinConditionOperator = unknown & {
-  _opaque: typeof JoinConditionOperatorSymbol;
-};
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
 export type Clause =
   | AggregationClause
@@ -285,6 +282,7 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
   "base-type"?: string;
   "effective-type"?: string;
+  mode?: DatetimeMode;
 };
 
 declare const FilterOperatorSymbol: unique symbol;
@@ -353,6 +351,16 @@ export type ExcludeDateFilterUnit =
   | "day-of-week"
   | "month-of-year"
   | "quarter-of-year";
+
+export type DatetimeMode =
+  | "iso"
+  | "simple"
+  | "iso-bytes"
+  | "simple-bytes"
+  | "unix-seconds"
+  | "unix-milliseconds"
+  | "unix-microseconds"
+  | "unix-nanoseconds";
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -449,16 +457,10 @@ export type DefaultFilterParts = {
   column: ColumnMetadata;
 };
 
-export type JoinConditionOperatorDisplayInfo = {
-  displayName: string;
-  shortName: string;
-  default?: boolean;
-};
-
 export type JoinConditionParts = {
   operator: JoinConditionOperator;
-  lhsColumn: ColumnMetadata;
-  rhsColumn: ColumnMetadata;
+  lhsExpression: ExpressionClause;
+  rhsExpression: ExpressionClause;
 };
 
 export type JoinStrategyDisplayInfo = {

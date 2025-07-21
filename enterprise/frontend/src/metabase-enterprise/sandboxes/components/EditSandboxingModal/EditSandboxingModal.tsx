@@ -7,11 +7,11 @@ import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import ActionButton from "metabase/common/components/ActionButton";
-import QuestionLoader from "metabase/common/components/QuestionLoader";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
+} from "metabase/common/components/Pickers/QuestionPicker";
+import QuestionLoader from "metabase/common/components/QuestionLoader";
 import Radio from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";

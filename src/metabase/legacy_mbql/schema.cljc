@@ -15,6 +15,7 @@
    [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.util.i18n :as i18n]
@@ -299,7 +300,7 @@
 
   `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
   JOINING against."}
-     [:maybe ::lib.schema.common/non-blank-string]]
+     [:maybe ::lib.schema.join/alias]]
 
     [:binning
      {:optional true
@@ -332,7 +333,7 @@
    {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
-    "id-or-name" [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
+    "id-or-name" [:or ::lib.schema.id/field :string]
     "options"    [:maybe [:ref ::FieldOptions]])
    [:ref
     {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
@@ -442,7 +443,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today})
 
 (def ^:private NumericExpression
   "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
@@ -474,8 +475,7 @@
    [:numeric-expression NumericExpression]
    [:aggregation        Aggregation]
    [:value              value]
-   [:field              Field]])
-
+   [:field              Reference]])
 (def ^:private NumericExpressionArg
   [:ref ::NumericExpressionArg])
 
@@ -723,22 +723,18 @@
 (defclause ^{:requires-features #{:expressions :expressions/date}} date
   string [:or StringExpressionArg DateTimeExpressionArg])
 
+(defclause ^{:requires-features #{:expressions :expressions/today}} today)
+
 (def ^:private LiteralDatetimeModeString
-  [:enum {:error/message "datetime mode string"
-          :decode/normalize lib.schema.common/normalize-keyword-lower}
-   :iso
-   :simple
-   :unixmilliseconds
-   :unixseconds
-   :unixmicroseconds
-   :unixnanoseconds])
+  (into [:enum {:error/message "datetime mode string"}]
+        lib.schema.expression.temporal/datetime-modes))
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  StringExpressionArg ;; normally a string, number, or bytes
-  mode   (optional LiteralDatetimeModeString))
+  value  :any ;; normally a string, number, or bytes
+  options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
 (mr/def ::DatetimeExpression
-  (one-of + datetime-add datetime-subtract convert-timezone now date datetime))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -987,7 +983,8 @@
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
           temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
-          get-hour get-minute get-second))
+          get-hour get-minute get-second
+          aggregation))
 
 (mr/def ::StringExpression
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case case:if host domain
@@ -1084,7 +1081,7 @@
                        :numeric-expression
                        :else))}
    [:numeric-expression NumericExpression]
-   [:else (one-of avg cum-sum distinct distinct-where stddev sum min max metric share count-where
+   [:else (one-of aggregation avg cum-sum distinct distinct-where stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
@@ -1207,6 +1204,7 @@
    [:map
     [:type        [:= :dimension]]
     [:dimension   field]
+    [:alias       {:optional true} :string]
 
     [:widget-type
      [:ref
@@ -1230,7 +1228,10 @@
   "Schema for a temporal unit template tag."
   [:merge
    TemplateTag:Value:Common
-   [:map [:type [:= :temporal-unit]]]])
+   [:map
+    [:type      [:= :temporal-unit]]
+    [:dimension field]
+    [:alias     {:optional true} :string]]])
 
 ;; Example:
 ;;
@@ -1468,7 +1469,7 @@
   in the options.
 
   Driver implementations: This is guaranteed to be present after pre-processing."}
-     ::lib.schema.common/non-blank-string]
+     ::lib.schema.join/alias]
 
     [:ident
      {:optional true

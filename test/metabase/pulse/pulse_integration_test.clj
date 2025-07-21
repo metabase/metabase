@@ -10,7 +10,6 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.settings :as channel.settings]
-   [metabase.lib.core :as lib]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -333,6 +332,7 @@
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
    :source-table (format "card__%s" base-card-id)})
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest consistent-date-formatting-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (let [q (sql-time-query "2023-12-11 15:30:45.123" 20)]
@@ -354,7 +354,8 @@
         (mt/with-temp [:model/Card {native-card-id :id} (-> (mt/card-with-source-metadata-for-query
                                                              (mt/native-query {:query q}))
                                                             (assoc :name "NATIVE"))
-                       :model/Card {model-card-id  :id} (-> (mt/card-with-source-metadata-for-query
+                       :model/Card {model-card-metadata :result_metadata
+                                    model-card-id  :id} (-> (mt/card-with-source-metadata-for-query
                                                              {:database (mt/id)
                                                               :type     :query
                                                               :query    (model-query native-card-id)})
@@ -362,11 +363,12 @@
                                                                     :type :model})
                                                             (update :result_metadata
                                                                     #(mapv model-metadata-fn %)))
-                       :model/Card {meta-model-card-id :id} (-> (mt/card-with-source-metadata-for-query
+                       :model/Card {meta-model-card-metadata :result_metadata
+                                    meta-model-card-id :id} (-> (mt/card-with-source-metadata-for-query
                                                                  (mt/mbql-query nil
                                                                    {:source-table (format "card__%s" model-card-id)}))
-                                                                (assoc :name                   "METAMODEL"
-                                                                       :type                   :model
+                                                                (assoc :name "METAMODEL"
+                                                                       :type :model
                                                                        :visualization_settings
                                                                        {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
                                                                                           {:date_abbreviate true
@@ -413,7 +415,32 @@
                 native-results    (get-res "NATIVE.csv")
                 model-results     (get-res "MODEL.csv")
                 metamodel-results (get-res "METAMODEL.csv")]
+            (testing "Sanity check: metadata should have correct display names"
+              (testing "model card"
+                (is (= ["Full Datetime Utc"
+                        "Full Datetime Pacific"
+                        "Example Timestamp"
+                        "Example Timestamp With Time Zone"
+                        "Example Date"
+                        "Example Time"
+                        "Example Year"
+                        "Example Month"
+                        "Example Day"
+                        "Example Week Number"
+                        "Example Week: Week"
+                        "Example Hour"
+                        "Example Minute"
+                        "Example Second"]
+                       (map :display_name model-card-metadata))))
+              (testing "metamodel card"
+                (is (= (map :display_name model-card-metadata)
+                       (map :display_name meta-model-card-metadata))))
+              (testing "metamodel results"
+                (is (= (sort (map :display_name model-card-metadata))
+                       (sort (keys metamodel-results))))))
             ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
+            ;;
+            ;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see #59803
             (testing "The default export formats conform to the default UI formats"
               (is (= {"FULL_DATETIME_UTC"                "December 11, 2023, 3:30 PM"
                       "FULL_DATETIME_PACIFIC"            "December 11, 2023, 3:30 PM"
@@ -870,14 +897,11 @@
                        :type            :model
                        :entity_id       model-eid
                        :result_metadata [{:name  "ID"
-                                          :id    (mt/id :airport :id)
-                                          :ident (lib/model-ident (mt/ident :airport :id) model-eid)}
+                                          :id    (mt/id :airport :id)}
                                          {:semantic_type :type/Longitude
-                                          :name          "LONGITUDE"
-                                          :ident         (lib/model-ident (mt/ident :airport :longitude) model-eid)}
+                                          :name          "LONGITUDE"}
                                          {:semantic_type :type/Latitude
-                                          :name          "LATITUDE"
-                                          :ident         (lib/model-ident (mt/ident :airport :latitude) model-eid)}]}]
+                                          :name          "LATITUDE"}]}]
         (mt/with-temp [:model/Card {card-id :id} base-card
                        :model/Card {model-id :id} model
                        :model/Dashboard {dash-id :id} {}

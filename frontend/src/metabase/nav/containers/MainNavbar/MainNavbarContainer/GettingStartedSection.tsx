@@ -3,8 +3,6 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { getCanAccessOnboardingPage } from "metabase/home/selectors";
-import { useSelector } from "metabase/lib/redux";
 import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
@@ -13,22 +11,16 @@ import type { SelectedItem } from "../types";
 
 export const GettingStartedSection = ({
   nonEntityItem,
+  onAddDataModalOpen,
   children,
 }: PropsWithChildren<{
   nonEntityItem: SelectedItem;
+  onAddDataModalOpen: () => void;
 }>) => {
   const [opened, { toggle }] = useDisclosure(true);
 
-  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
-
   const ONBOARDING_URL = "/getting-started";
   const isOnboardingPageSelected = nonEntityItem?.url === ONBOARDING_URL;
-
-  const isEmpty = !children && !canAccessOnboarding;
-
-  if (isEmpty) {
-    return null;
-  }
 
   return (
     <div aria-selected={opened} role="tab">
@@ -45,18 +37,26 @@ export const GettingStartedSection = ({
         <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
       </Group>
 
-      <Collapse in={opened} transitionDuration={0} role="tabpanel">
-        {canAccessOnboarding && (
-          <PaddedSidebarLink
-            icon="learn"
-            url={ONBOARDING_URL}
-            isSelected={isOnboardingPageSelected}
-            onClick={() => trackOnboardingChecklistOpened()}
-          >
-            {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
-            {t`How to use Metabase`}
-          </PaddedSidebarLink>
-        )}
+      <Collapse
+        in={opened}
+        transitionDuration={0}
+        role="tabpanel"
+        aria-expanded={opened}
+      >
+        <PaddedSidebarLink icon="add_data" onClick={onAddDataModalOpen}>
+          {t`Add data`}
+        </PaddedSidebarLink>
+
+        <PaddedSidebarLink
+          icon="learn"
+          url={ONBOARDING_URL}
+          isSelected={isOnboardingPageSelected}
+          onClick={() => trackOnboardingChecklistOpened()}
+        >
+          {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+          {t`How to use Metabase`}
+        </PaddedSidebarLink>
+
         {children}
       </Collapse>
     </div>

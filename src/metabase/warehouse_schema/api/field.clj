@@ -12,12 +12,14 @@
    [metabase.sync.core :as sync]
    [metabase.types.core :as types]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2])
@@ -119,12 +121,22 @@
   (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
-        (or (when-let [coercion-strategy (keyword coercion-strategy)]
-              (let [effective (types/effective-type-for-coercion coercion-strategy)]
-                ;; throw an error in an else branch?
-                (when (types/is-coercible? coercion-strategy (:base_type field) effective)
-                  [effective coercion-strategy])))
-            [(:base_type field) nil])
+        (cond (not (contains? body :coercion_strategy))
+              [((some-fn :effective_type :base_type) field) (:coercion_strategy field)]
+
+              (nil? coercion-strategy)
+              [(:base_type field) nil]
+
+              :else
+              (when-let [coercion-strategy (keyword coercion-strategy)]
+                (let [effective (types/effective-type-for-coercion coercion-strategy)]
+                  (if (types/is-coercible? coercion-strategy (:base_type field) effective)
+                    [effective coercion-strategy]
+                    (throw (ex-info (i18n/tru "Incompatible coercion strategy.")
+                                    {:status-code 400
+                                     :base-type (:base_type field)
+                                     :coercion-strategy coercion-strategy
+                                     :effective-type effective}))))))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
 
@@ -143,14 +155,17 @@
        (when removed-fk?
          (clear-dimension-on-fk-change! field))
        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-       (t2/update! :model/Field id
-                   (u/select-keys-when (assoc body
-                                              :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                              :effective_type effective-type
-                                              :coercion_strategy coercion-strategy)
-                                       :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                                                  :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
-                                       :non-nil #{:display_name :settings}))))
+       (let [body (assoc body
+                         :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                         :effective_type effective-type
+                         :coercion_strategy coercion-strategy)]
+         (schema.field-user-settings/upsert-user-settings field body)
+         (t2/update! :model/Field
+                     id
+                     (u/select-keys-when body
+                                         {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
+                                                     :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                          :non-nil #{:display_name :visibility_type :settings}})))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them

@@ -1,6 +1,11 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { UpsellDevInstances } from "metabase/admin/upsells";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
@@ -9,7 +14,6 @@ import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";
 import { Alert, Box, Button, Icon, Text } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
-import { SettingsPageWrapper, SettingsSection } from "../../SettingsSection";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
 import { EmbeddingToggle } from "../EmbeddingToggle";
 
@@ -102,6 +106,7 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Embedding SDK`}>
+      <UpsellDevInstances location="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           label={t`Enable Embedded analytics SDK for React`}

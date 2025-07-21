@@ -1,4 +1,4 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { compileExpression } from "../compiler";
 import { query } from "../test/shared";
@@ -303,6 +303,19 @@ describe("pratt/compiler", () => {
           { operator: "*", options: {}, args: [5, 6] },
           { operator: "-", options: {}, args: [4, 3] },
         ],
+      });
+    });
+
+    it("should correctly handle the mode option for datetime functions", () => {
+      expect(expr('datetime("2024-01-08")')).toEqual({
+        operator: "datetime",
+        options: {},
+        args: ["2024-01-08"],
+      });
+      expect(expr('datetime(10, "unixSeconds")')).toEqual({
+        operator: "datetime",
+        options: { mode: "unix-seconds" },
+        args: [10],
       });
     });
   });
@@ -804,6 +817,7 @@ describe("resolve", () => {
       expressionMode,
       query,
       stageIndex,
+      availableColumns: Lib.expressionableColumns(query, stageIndex),
       resolver(type: ExpressionType, name: string) {
         if (type === "boolean") {
           segments.push(name);

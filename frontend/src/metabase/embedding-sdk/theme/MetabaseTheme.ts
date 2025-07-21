@@ -195,6 +195,12 @@ export type MetabaseComponentTheme = {
         fontSize: string;
       };
     };
+
+    splitLine: {
+      lineStyle: {
+        color: string;
+      };
+    };
   };
 
   /** Tooltip */

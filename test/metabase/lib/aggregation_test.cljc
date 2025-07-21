@@ -712,27 +712,25 @@
                   (lib/aggregate (lib/sum (lib/case [[(lib/< (meta/field-metadata :venues :price) 2)
                                                       (meta/field-metadata :venues :price)]]
                                             0))))]
-    (is (=? [{:description              nil
-              :lib/type                 :metadata/column
+    (is (=? [{:lib/type                 :metadata/column
               :table-id                 (meta/id :venues)
               :name                     "CATEGORY_ID"
               :base-type                :type/Integer
               :semantic-type            :type/FK
               :database-type            "INTEGER"
               :effective-type           :type/Integer
-              :lib/source               :source/breakouts
+              :lib/source               :source/table-defaults
+              :lib/breakout?            true
               :lib/source-column-alias  "CATEGORY_ID"
               :lib/source-uuid          string?
               :fk-target-field-id       (meta/id :categories :id)
               :custom-position          0
               :active                   true
               :id                       (meta/id :venues :category-id)
-              :parent-id                nil
               :visibility-type          :normal
               :lib/desired-column-alias "CATEGORY_ID"
               :display-name             "Category ID"
               :has-field-values         :none
-              :target                   nil
               :preview-display          true
               :fingerprint              {:global {:distinct-count 28, :nil% 0.0}}}
              {:lib/type                 :metadata/column
@@ -820,21 +818,6 @@
       1 [:count {}]
       2 nil)))
 
-(deftest ^:parallel aggregation-column-test
-  (let [query      (-> (lib.tu/venues-query)
-                       (lib/breakout  (meta/field-metadata :venues :category-id))
-                       (lib/aggregate (lib/count))
-                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
-        price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
-        aggs       (lib/aggregations query)]
-    (is (= 2
-           (count aggs)))
-    (testing "aggregations like COUNT have no column"
-      (is (nil? (lib.aggregation/aggregation-column query -1 (first aggs)))))
-    (testing "aggregations like SUM return the column of interest"
-      (is (=? price
-              (lib.aggregation/aggregation-column query -1 (second aggs)))))))
-
 (deftest ^:parallel aggregation-operators-update-after-join
   (testing "available operators includes avg and sum once numeric fields are present (#31384)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))]
@@ -864,3 +847,65 @@
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (with-redefs [lib.util/ref-clause? (constantly true)]
                      (lib/selected-aggregation-operators available (first (lib/aggregations query)))))))))
+
+(deftest ^:parallel aggregable-columns-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))]
+    (is (=? [{:name "ID",          :effective-type :type/BigInteger, :lib/source :source/table-defaults}
+             {:name "NAME",        :effective-type :type/Text,       :lib/source :source/table-defaults}
+             {:name "CATEGORY_ID", :effective-type :type/Integer,    :lib/source :source/table-defaults}
+             {:name "LATITUDE",    :effective-type :type/Float,      :lib/source :source/table-defaults}
+             {:name "LONGITUDE",   :effective-type :type/Float,      :lib/source :source/table-defaults}
+             {:name "PRICE",       :effective-type :type/Integer,    :lib/source :source/table-defaults}
+             {:name "ID",          :effective-type :type/BigInteger, :lib/source :source/implicitly-joinable}
+             {:name "NAME",        :effective-type :type/Text,       :lib/source :source/implicitly-joinable}
+             {:name "count",       :effective-type :type/Integer,    :lib/source :source/aggregations}]
+            (lib/aggregable-columns query nil)))))
+
+(deftest ^:parallel aggregable-columns-e2e-test
+  (let [by-name (fn [col-name cols]
+                  (m/find-first (comp #{col-name} :name) cols))
+        add-aggregate (fn add-aggregate
+                        [query source-name target-name]
+                        (lib/aggregate query (lib/with-expression-name
+                                               (->> (lib/aggregable-columns query nil)
+                                                    (by-name source-name)
+                                                    lib/ref)
+                                               target-name)))
+        aggregate-column-names (fn aggregate-column-names
+                                 ([query] (aggregate-column-names query nil))
+                                 ([query pos]
+                                  (keep #(when (= (:lib/source %) :source/aggregations)
+                                           (:name %))
+                                        (lib/aggregable-columns query pos))))
+        query0 (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                   (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))
+        query1 (add-aggregate query0 "count" "a")
+        query2 (add-aggregate query1 "a" "b")
+        query3 (add-aggregate query2 "b" "c")
+        all-aggregates ["count" "a" "b" "c"]]
+    (is (=? [{:name "ID", :lib/source :source/table-defaults}
+             {:name "NAME", :lib/source :source/table-defaults}
+             {:name "CATEGORY_ID", :lib/source :source/table-defaults}
+             {:name "LATITUDE", :lib/source :source/table-defaults}
+             {:name "LONGITUDE", :lib/source :source/table-defaults}
+             {:name "PRICE", :lib/source :source/table-defaults}
+             {:name "ID", :lib/source :source/implicitly-joinable}
+             {:name "NAME", :lib/source :source/implicitly-joinable}
+             {:name "count", :lib/source :source/aggregations}]
+            (lib/aggregable-columns query0 nil)))
+    (is (= ["count" "a"]
+           (aggregate-column-names query1)))
+    (is (= ["count" "a" "b"]
+           (aggregate-column-names query2)))
+    (is (= all-aggregates
+           (aggregate-column-names query3)))
+    (doseq [pos (range (count all-aggregates))]
+      (is (= (keep-indexed #(when (not= %1 pos) %2) all-aggregates)
+             (aggregate-column-names query3 pos))))))
+
+(deftest ^:parallel aggregation-ref-type-of-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))]
+    (is (=? :type/Integer
+            (lib/type-of query (first (lib/aggregations query)))))))

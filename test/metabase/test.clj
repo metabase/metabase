@@ -281,7 +281,7 @@
   with-discarded-collections-perms-changes
   with-discard-model-updates!
   with-env-keys-renamed-by
-  with-locale
+  with-locale!
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
@@ -329,6 +329,7 @@
   arbitrary-select-query
   count-with-template-tag-query
   count-with-field-filter-query
+  make-alias
   dataset-definition
   db-qualified-table-name
   db-test-env-var
@@ -338,7 +339,6 @@
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
-  field-reference
   has-test-extensions?
   metabase-instance
   native-query-with-card-template-tag
