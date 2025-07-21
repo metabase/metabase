@@ -20,10 +20,8 @@
    [:schema {:optional true} :string]
    [:table :string]])
 
-(api.macros/defendpoint :get "/"
-  "Get a list of transforms."
-  [_route-params
-   _query-params]
+(comment
+  ;; Examples
   [{:id 1
     :name "Gadget Products"
     :source {:type "query"
@@ -36,44 +34,44 @@
              :schema "transforms"
              :table "gadget_products"}}])
 
+(api.macros/defendpoint :get "/"
+  "Get a list of transforms."
+  [_route-params
+   _query-params]
+  (t2/select :model/Transform))
+
 (api.macros/defendpoint :post "/"
   [_route-params
    _query-params
-   {:keys [_name _source _target] :as _body} :- [:map
-                                                 [:name :string]
-                                                 [:source ::transform-source]
-                                                 [:target ::transform-target]]]
-  _body)
+   {:keys [name source target] :as _body} :- [:map
+                                              [:name :string]
+                                              [:source ::transform-source]
+                                              [:target ::transform-target]]]
+  (t2/insert-returning-pk! :model/Transform {:name name
+                                             :source source
+                                             :target target}))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]}]
   (prn "get transform" id)
-  {:id 1
-   :name "Gadget Products"
-   :source {:type "query"
-            :query {:database 1
-                    :type "native",
-                    :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
-                             :template-tags {}}}}
-   :target {:type "table"
-            :database 1
-            :schema "transforms"
-            :table "gadget_products"}})
+  (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]}
    _query-params
-   {:keys [_name _source _target] :as _body} :- [:map
-                                                 [:name :string]
-                                                 [:source ::transform-source]
-                                                 [:target ::transform-target]]]
+   {:keys [name source target] :as _body} :- [:map
+                                              [:name :string]
+                                              [:source ::transform-source]
+                                              [:target ::transform-target]]]
   (prn "put transform" id)
-  _body)
+  (t2/update! :model/Transform id {:name name
+                                   :source source
+                                   :target target}))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]}]
   (prn "delete transform" id)
-  "success")
+  (t2/delete! :model/Transform id))
 
 (defn- compile-source [{query-type :type :as source}]
   (case query-type
@@ -82,19 +80,7 @@
 (api.macros/defendpoint :post "/:id/execute"
   [{:keys [id]}]
   (prn "execute transform" id)
-  (let [{:keys [name source target]}
-        {:id 1
-         :name "Gadget Products"
-         :source {:type "query"
-                  :query {:database 1
-                          :type "native",
-                          :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
-                                   :template-tags {}}}}
-         :target {:type "table"
-                  :database 1
-                  :schema "transforms"
-                  :table "gadget_products"}}
-
+  (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
         db (get-in source [:query :database])
         {driver :engine} (t2/select-one :model/Database db)]
     (transforms.execute/execute
