@@ -213,3 +213,22 @@
                        :content "Tiger Conservation"
                        :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
                      (query-embeddings {:model "card" :model_id "3"}))))))))))
+
+(deftest prometheus-metrics-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (mt/with-prometheus-system! [_ system]
+        (testing "semantic-index-size starts at zero"
+          (is (= 0.0 (mt/metric-value system :metabase-search/semantic-index-size))))
+        (testing "semantic-index-size is updated after upsert-index! on empty db"
+          (is (= {"card" 1, "dashboard" 1}
+                 (semantic.tu/upsert-index! semantic.tu/mock-documents)))
+          (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))
+        (testing "semantic-index-size is updated after delete-from-index!"
+          (is (= {"card" 1}
+                 (semantic.tu/delete-from-index! "card" ["123"])))
+          (is (= 1.0 (mt/metric-value system :metabase-search/semantic-index-size))))
+        (testing "semantic-index-size is updated after upsert-index! on populated db"
+          (is (= {"card" 1, "dashboard" 1}
+                 (semantic.tu/upsert-index! semantic.tu/mock-documents)))
+          (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))))))

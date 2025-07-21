@@ -4,6 +4,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -92,8 +93,22 @@
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
+(defn- analytics-set-index-size!
+  "Set the semantic-index-size metric to the number of rows in the index table."
+  [connectable table-name]
+  (try
+    (->> (jdbc/execute-one! connectable
+                            (-> (sql.helpers/select [:%count.* :count])
+                                (sql.helpers/from (keyword table-name))
+                                (sql.helpers/limit 1)
+                                sql-format-quoted))
+         :count
+         (analytics/set! :metabase-search/semantic-index-size))
+    (catch Exception e
+      (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
+
 (defn- batch-update!
-  [connectable records->sql documents embeddings]
+  [connectable table-name records->sql documents embeddings]
   (when (seq documents)
     (u/prog1 (transduce (comp (map (fn [[doc embedding]] (doc->db-record embedding doc)))
                               (partition-all *batch-size*)
@@ -106,10 +121,11 @@
                                                   "documents with frequencies" <>)))))
                         (partial merge-with +)
                         (map vector documents embeddings))
-      (log/trace "semantic search processed" (count documents) "total documents with frequencies" <>))))
+      (log/trace "semantic search processed" (count documents) "total documents with frequencies" <>)
+      (analytics-set-index-size! connectable table-name))))
 
 (defn- batch-delete-ids!
-  [connectable model ids->sql ids]
+  [connectable table-name model ids->sql ids]
   (when (seq ids)
     (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
                                    (map (fn [ids]
@@ -120,7 +136,8 @@
                              +
                              ids)
                   (array-map model))
-      (log/trace "semantic search deleted" (get <> model) "total documents with model type" model))))
+      (log/trace "semantic search deleted" (get <> model) "total documents with model type" model)
+      (analytics-set-index-size! connectable table-name))))
 
 (defn- db-records->update-set
   [db-records]
@@ -161,6 +178,7 @@
                        (keys text->embedding))]
            (batch-update!
             connectable
+            (:table-name index)
             (fn [db-records]
               (-> (sql.helpers/insert-into (keyword (:table-name index)))
                   (sql.helpers/values db-records)
@@ -397,6 +415,7 @@
   [db index model model-ids]
   (batch-delete-ids!
    db
+   (:table-name index)
    model
    (fn [batch-ids]
      (-> (sql.helpers/delete-from (keyword (:table-name index)))

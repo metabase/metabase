@@ -276,7 +276,9 @@
       ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
-                     {:description "Number of rows in the active index table."})
+                     {:description "Number of rows in the active appdb index table."})
+   (prometheus/gauge :metabase-search/semantic-index-size
+                     {:description "Number of rows in the active semantic index table."})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
