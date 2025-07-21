@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -47,13 +48,14 @@
                                               [:name :string]
                                               [:source ::transform-source]
                                               [:target ::transform-target]]]
-  (t2/insert-returning-pk! :model/Transform {:name name
-                                             :source source
-                                             :target target}))
+  (let [id (t2/insert-returning-pk! :model/Transform {:name name
+                                                      :source source
+                                                      :target target})]
+    (t2/select-one :model/Transform id)))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]}]
-  (prn "get transform" id)
+  (log/info "get transform" id)
   (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :put "/:id"
@@ -63,14 +65,14 @@
                                               [:name :string]
                                               [:source ::transform-source]
                                               [:target ::transform-target]]]
-  (prn "put transform" id)
+  (log/info "put transform" id)
   (t2/update! :model/Transform id {:name name
                                    :source source
                                    :target target}))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]}]
-  (prn "delete transform" id)
+  (log/info "delete transform" id)
   (t2/delete! :model/Transform id))
 
 (defn- compile-source [{query-type :type :as source}]
@@ -79,7 +81,7 @@
 
 (api.macros/defendpoint :post "/:id/execute"
   [{:keys [id]}]
-  (prn "execute transform" id)
+  (log/info "execute transform" id)
   (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
         db (get-in source [:query :database])
         {driver :engine} (t2/select-one :model/Database db)]

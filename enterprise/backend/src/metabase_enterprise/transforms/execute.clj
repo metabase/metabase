@@ -1,7 +1,8 @@
 (ns metabase-enterprise.transforms.execute
-  (:require [metabase.driver :as driver]
-            [metabase.query-processor.preprocess :as qp.preprocess]
-            [metabase.query-processor.setup :as qp.setup]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]))
 
 (defn- execute-query [driver db sql]
   (let [query {:native {:query sql}
