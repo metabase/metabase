@@ -67,7 +67,7 @@
     "echarts": "^5.5.1-rc.1",
     "fast-text-encoding": "^1.0.6",
     "formik": "^2.4.5",
-    "got": "^12.6.0",
+    "got": "^12.6.1",
     "hast-util-from-html": "^2.0.1",
     "hast-util-to-html": "^9.0.0",
     "history": "3",
