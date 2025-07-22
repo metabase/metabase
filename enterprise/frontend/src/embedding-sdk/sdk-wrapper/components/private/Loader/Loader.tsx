@@ -27,19 +27,19 @@ const Spinner = ({ size = "1.5rem", color = "#509EE3" }: SpinnerProps) => {
             box-sizing: border-box;
             width: ${size};
             height: ${size};
+          }
 
-            &::after {
-              content: '';
-              display: block;
-              box-sizing: border-box;
-              width: ${size};
-              height: ${size};
-              border-radius: 10000px;
-              border-width: calc(${size} / 8);
-              border-style: solid;
-              border-color: ${color} ${color} ${color} transparent;
-              animation: metabase-spinner-loader-animation 1.2s linear infinite;
-            }
+          .metabase-spinner-loader::after {
+            content: '';
+            display: block;
+            box-sizing: border-box;
+            width: ${size};
+            height: ${size};
+            border-radius: 10000px;
+            border-width: calc(${size} / 8);
+            border-style: solid;
+            border-color: ${color} ${color} ${color} transparent;
+            animation: metabase-spinner-loader-animation 1.2s linear infinite;
           }
         `}
       </style>
