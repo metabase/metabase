@@ -139,8 +139,12 @@
        (fn [text-embedding-map]
          (let [batch-documents
                (keep (fn [doc]
-                       (when-let [embedding (get text-embedding-map (:searchable_text doc))]
-                         (assoc doc :embedding embedding)))
+                       (if-let [embedding (get text-embedding-map (:searchable_text doc))]
+                         (assoc doc :embedding embedding)
+                         (log/warn "No embedding found for document"
+                                   {:model (:model doc)
+                                    :model_id (:model_id doc)
+                                    :searchable_text (:searchable_text doc)})))
                      filtered-documents)]
            (batch-update!
             connectable
