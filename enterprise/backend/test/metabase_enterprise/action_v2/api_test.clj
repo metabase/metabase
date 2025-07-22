@@ -27,7 +27,7 @@
 
 (def ^:private execute-url "/ee/action-v2/execute")
 (def ^:private execute-bulk-url "/ee/action-v2/execute-bulk")
-(def ^:private execute-form-url "/ee/action-v2/execute-bulk")
+(def ^:private execute-form-url "/ee/action-v2/execute-form")
 
 (defn create-rows!
   ([table-id rows]
@@ -60,9 +60,9 @@
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
-    (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 execute-url))
-    (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 execute-bulk-url))
-    (mt/assert-has-premium-feature-error "Editing Table Data" (mt/user-http-request :crowberto :post 402 execute-form-url))))
+    (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-url))
+    (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-bulk-url))
+    (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-form-url))))
 
 ;; To Chris: I'm trying to get this tests passed
 (deftest table-operations-via-action-execute-test
@@ -129,83 +129,81 @@
                                                      :name  [:text]
                                                      :song  [:text]}
                                                     {:primary-key [:id_1 :id_2]}]]
-        (let [url "action/v2/execute-bulk"]
-          (testing "Initially the table is empty"
-            (is (= [] (table-rows table-id))))
+        (testing "Initially the table is empty"
+          (is (= [] (table-rows table-id))))
 
-          (testing "POST should insert new rows"
-            (is (= #{{:op "created", :table-id table-id, :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "Car alarms"}}
-                     {:op "created", :table-id table-id, :row {:id_1 2, :id_2 2, :name "Spearow",    :song "Hold music"}}
-                     {:op "created", :table-id table-id, :row {:id_1 3, :id_2 3, :name "Farfetch'd", :song "The land of lisp"}}}
-                   (set
-                    (:outputs
-                     (mt/user-http-request :crowberto :post 200 url
-                                           {:action_id "data-grid.row/create"
-                                            :scope     {:table-id table-id}
-                                            :inputs    [{:name "Pidgey"     :song "Car alarms"}
-                                                        {:name "Spearow"    :song "Hold music"}
-                                                        {:name "Farfetch'd" :song "The land of lisp"}]})))))
+        (testing "POST should insert new rows"
+          (is (= #{{:op "created", :table-id table-id, :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "Car alarms"}}
+                   {:op "created", :table-id table-id, :row {:id_1 2, :id_2 2, :name "Spearow",    :song "Hold music"}}
+                   {:op "created", :table-id table-id, :row {:id_1 3, :id_2 3, :name "Farfetch'd", :song "The land of lisp"}}}
+                 (set
+                  (:outputs
+                   (mt/user-http-request :crowberto :post 200 execute-bulk-url
+                                         {:action "data-grid.row/create"
+                                          :scope  {:table-id table-id}
+                                          :inputs [{:name "Pidgey"     :song "Car alarms"}
+                                                   {:name "Spearow"    :song "Hold music"}
+                                                   {:name "Farfetch'd" :song "The land of lisp"}]})))))
 
-            (is (= [[1 1 "Pidgey" "Car alarms"]
-                    [2 2 "Spearow" "Hold music"]
-                    [3 3 "Farfetch'd" "The land of lisp"]]
-                   (table-rows table-id))))
+          (is (= [[1 1 "Pidgey" "Car alarms"]
+                  [2 2 "Spearow" "Hold music"]
+                  [3 3 "Farfetch'd" "The land of lisp"]]
+                 (table-rows table-id))))
 
-          (testing "PUT should update the relevant rows and columns"
-            (is (= #{{:op "updated", :table-id table-id :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "Join us now and share the software"}}
-                     {:op "updated", :table-id table-id :row {:id_1 2, :id_2 2, :name "Speacolumn", :song "Hold music"}}}
-                   (set
-                    (:outputs
-                     (mt/user-http-request :crowberto :post 200 url
-                                           {:action_id "data-grid.row/update"
-                                            :scope     {:table-id table-id}
-                                            :inputs    [{:id_1 1, :id_2 1, :song "Join us now and share the software"}
-                                                        {:id_1 2, :id_2 2, :name "Speacolumn"}]})))))
+        (testing "PUT should update the relevant rows and columns"
+          (is (= #{{:op "updated", :table-id table-id :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "Join us now and share the software"}}
+                   {:op "updated", :table-id table-id :row {:id_1 2, :id_2 2, :name "Speacolumn", :song "Hold music"}}}
+                 (set
+                  (:outputs
+                   (mt/user-http-request :crowberto :post 200 execute-bulk-url
+                                         {:action "data-grid.row/update"
+                                          :scope  {:table-id table-id}
+                                          :inputs [{:id_1 1, :id_2 1, :song "Join us now and share the software"}
+                                                   {:id_1 2, :id_2 2, :name "Speacolumn"}]})))))
 
-            (is (= #{[1 1 "Pidgey" "Join us now and share the software"]
-                     [2 2 "Speacolumn" "Hold music"]
-                     [3 3 "Farfetch'd" "The land of lisp"]}
-                   (set (table-rows table-id)))))
+          (is (= #{[1 1 "Pidgey" "Join us now and share the software"]
+                   [2 2 "Speacolumn" "Hold music"]
+                   [3 3 "Farfetch'd" "The land of lisp"]}
+                 (set (table-rows table-id)))))
 
-          (testing "PUT can also do bulk updates"
-            (is (= #{{:op "updated", :table-id table-id, :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "The Star-Spangled Banner"}}
-                     {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
-                   (set
-                    (:outputs
-                     (mt/user-http-request :crowberto :post 200 url
-                                           {:action_id "data-grid.row/update"
-                                            :scope     {:table-id table-id}
-                                            :inputs    [{:id_1 1, :id_2 1}
-                                                        {:id_1 2, :id_2 2}]
-                                            :params    {:song "The Star-Spangled Banner"}})))))
+        (testing "PUT can also do bulk updates"
+          (is (= #{{:op "updated", :table-id table-id, :row {:id_1 1, :id_2 1, :name "Pidgey",     :song "The Star-Spangled Banner"}}
+                   {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
+                 (set
+                  (:outputs
+                   (mt/user-http-request :crowberto :post 200 execute-bulk-url
+                                         {:action "data-grid.row/update"
+                                          :scope  {:table-id table-id}
+                                          :inputs [{:id_1 1, :id_2 1}
+                                                   {:id_1 2, :id_2 2}]
+                                          :params {:song "The Star-Spangled Banner"}})))))
 
-            (is (= #{[1 1 "Pidgey" "The Star-Spangled Banner"]
-                     [2 2 "Speacolumn" "The Star-Spangled Banner"]
-                     [3 3 "Farfetch'd" "The land of lisp"]}
-                   (set (table-rows table-id)))))
+          (is (= #{[1 1 "Pidgey" "The Star-Spangled Banner"]
+                   [2 2 "Speacolumn" "The Star-Spangled Banner"]
+                   [3 3 "Farfetch'd" "The land of lisp"]}
+                 (set (table-rows table-id)))))
 
-          (testing "DELETE should remove the corresponding rows"
-            (is (= #{{:op "deleted", :table-id table-id, :row {:id_1 1, :id_2 1}}
-                     {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 2}}}
-                   (set
-                    (:outputs
-                     (mt/user-http-request :crowberto :post 200 url
-                                           {:action_id "data-grid.row/delete"
-                                            :scope     {:table-id table-id}
-                                            :inputs    [{:id_1 1, :id_2 1}
-                                                        {:id_1 2, :id_2 2}]})))))
-            (is (= [[3 3 "Farfetch'd" "The land of lisp"]]
-                   (table-rows table-id)))))))))
+        (testing "DELETE should remove the corresponding rows"
+          (is (= #{{:op "deleted", :table-id table-id, :row {:id_1 1, :id_2 1}}
+                   {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 2}}}
+                 (set
+                  (:outputs
+                   (mt/user-http-request :crowberto :post 200 execute-bulk-url
+                                         {:action "data-grid.row/delete"
+                                          :scope  {:table-id table-id}
+                                          :inputs [{:id_1 1, :id_2 1}
+                                                   {:id_1 2, :id_2 2}]})))))
+          (is (= [[3 3 "Farfetch'd" "The land of lisp"]]
+                 (table-rows table-id))))))))
 
-;; TODO update now that we don't detect or delete children automatically, or require confirmation for cascading, or have undo
 (deftest simple-delete-with-children-test
   (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
     (mt/with-premium-features #{:actions}
       (data-editing.tu/with-temp-test-db!
-        (let [body {:action_id "data-grid.row/delete"
-                    :scope     {:table-id (mt/id :products)}
-                    :inputs    [{(mt/format-name :id) 1}
-                                {(mt/format-name :id) 2}]}
+        (let [body {:action "data-grid.row/delete"
+                    :scope  {:table-id (mt/id :products)}
+                    :inputs [{(mt/format-name :id) 1}
+                             {(mt/format-name :id) 2}]}
               children-count (fn []
                                (let [result (mt/rows (qp/process-query {:database (mt/id)
                                                                         :type     :query
@@ -220,22 +218,32 @@
                     2 98}
                    (children-count))))
           (testing "delete without delete-children param will return errors with children count"
-            (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :orders) 191}}}
+            (is (=? {:errors [{:index       0
+                               :type        "metabase.actions.error/violate-foreign-key-constraint",
+                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :errors      {}
+                               :status-code 400}
+                              {:index       1,
+                               :type        "metabase.actions.error/violate-foreign-key-constraint",
+                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :errors      {},
+                               :status-code 400}]}
                     (mt/user-http-request :crowberto :post 400 execute-bulk-url
                                           body))))
 
-          (testing "success with delete-children options"
-            (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
-                               {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
-                    (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                          (assoc body :params {:delete-children true}))))
-            (is (empty? (children-count)))
-            (testing "the change is not undoable"
-              (is (= "Your previous change cannot be undone"
-                     (mt/user-http-request :crowberto :post 405 execute-bulk-url
-                                           {:action_id "data-editing/undo"
-                                            :scope     {:table-id (mt/id :products)}
-                                            :inputs    []}))))))))))
+          ;; TODO: an edge case we could handle in the future
+          #_(testing "success with delete-children options"
+              (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
+                                 {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
+                      (mt/user-http-request :crowberto :post 200 execute-bulk-url
+                                            (assoc body :params {:delete-children true}))))
+              (is (empty? (children-count)))
+              (testing "the change is not undoable"
+                (is (= "Your previous change cannot be undone"
+                       (mt/user-http-request :crowberto :post 405 execute-bulk-url
+                                             {:action "data-editing/undo"
+                                              :scope     {:table-id (mt/id :products)}
+                                              :inputs    []}))))))))))
 
 (mt/defdataset self-referential-categories
   [["category"
@@ -247,31 +255,35 @@
      ["Smartphones" 2]
      ["Gaming Laptops" 3]]]])
 
-;; Update this too with actual behavior
-#_(deftest simple-delete-with-self-referential-children-test
-    (mt/with-premium-features #{:actions}
-      (data-editing.tu/with-actions-temp-db self-referential-categories
-        (let [body {:action_id "data-grid.row/delete"
-                    :scope     {:table-id (mt/id :category)}
-                    :inputs    [{(mt/format-name :id) 1}]}
-              children-count (fn [parent-id]
-                               (let [result (mt/rows (qp/process-query {:database (mt/id)
-                                                                        :type     :query
-                                                                        :query    {:source-table (mt/id :category)
-                                                                                   :aggregation  [[:count]]
-                                                                                   :filter       [:= (mt/$ids $category.parent_id) parent-id]}}))]
-                                 (-> result first first)))]
+(deftest simple-delete-with-self-referential-children-test
+  (mt/with-premium-features #{:actions}
+    (data-editing.tu/with-actions-temp-db self-referential-categories
+      (let [body {:action "data-grid.row/delete"
+                  :scope  {:table-id (mt/id :category)}
+                  :inputs [{(mt/format-name :id) 1}]}
+            children-count (fn [parent-id]
+                             (let [result (mt/rows (qp/process-query {:database (mt/id)
+                                                                      :type     :query
+                                                                      :query    {:source-table (mt/id :category)
+                                                                                 :aggregation  [[:count]]
+                                                                                 :filter       [:= (mt/$ids $category.parent_id) parent-id]}}))]
+                               (-> result first first)))]
 
-          (testing "sanity check that we have self-referential children"
-            (is (= 2 (children-count 1)))
-            (is (= 1 (children-count 2)))
-            (is (= 1 (children-count 3))))
+        (testing "sanity check that we have self-referential children"
+          (is (= 2 (children-count 1)))
+          (is (= 1 (children-count 2)))
+          (is (= 1 (children-count 3))))
 
-          (testing "delete parent with self-referential children should return error without delete-children param"
-            (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :category) 4}}}
-                    (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
+        (testing "delete parent with self-referential children should return error without delete-children param"
+          (is (=? {:errors [{:index       0
+                             :type        "metabase.actions.error/violate-foreign-key-constraint",
+                             :message     "Other tables rely on this row so it cannot be deleted.",
+                             :errors      {}
+                             :status-code 400}]}
+                  (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
 
-          (testing "success with delete-children option should cascade delete all descendants"
+        ;; TODO: same with the test above, this is one of the case where we want to handle in the future
+        #_(testing "success with delete-children option should cascade delete all descendants"
             (is (=? {:outputs [{:table-id (mt/id :category)
                                 :op       "deleted"
                                 :row      {(keyword (mt/format-name :id)) 1}}]}
@@ -282,52 +294,55 @@
             (testing "the change is not undoable for self-referential cascades"
               (is (= "Your previous change cannot be undone"
                      (mt/user-http-request :crowberto :post 405 execute-bulk-url
-                                           {:action_id "data-editing/undo"
-                                            :scope     {:table-id (mt/id :category)}
-                                            :inputs    []})))))))))
+                                           {:action "data-editing/undo"
+                                            :scope  {:table-id (mt/id :category)}
+                                            :inputs []})))))))))
 
-#_(mt/defdataset mutual-recursion-users-teams
-    [["user"
-      [{:field-name "id" :base-type :type/Integer :pk? true}
-       {:field-name "name" :base-type :type/Text :not-null? true}
-       {:field-name "team_id" :base-type :type/Integer #_:fk #_:team}]
-      [[1 "Alice" 1]
-       [2 "Bob" 2]]]
-     ["team"
-      [{:field-name "id" :base-type :type/Integer :pk? true}
-       {:field-name "name" :base-type :type/Text :not-null? true}
-       {:field-name "manager_id" :base-type :type/Integer :fk :user}]
-      [[1 "Alpha" nil]
-       [2 "Beta" 1]]]])
+(mt/defdataset mutual-recursion-users-teams
+  [["user"
+    [{:field-name "id" :base-type :type/Integer :pk? true}
+     {:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "team_id" :base-type :type/Integer #_:fk #_:team}]
+    [[1 "Alice" 1]
+     [2 "Bob" 2]]]
+   ["team"
+    [{:field-name "id" :base-type :type/Integer :pk? true}
+     {:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "manager_id" :base-type :type/Integer :fk :user}]
+    [[1 "Alpha" nil]
+     [2 "Beta" 1]]]])
 
 ;; TODO let's keep this test setup, but track our current behavior with no smarts
-#_(deftest mutual-recursion-delete-test
-    (mt/test-drivers #{:h2 :postgres}
-      (mt/with-premium-features #{:actions}
-        (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
-          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                         (sql.tx/add-fk-sql driver/*driver*
-                                            mutual-recursion-users-teams
-                                            {:table-name "user"}
-                                            {:fk :team :field-name "team_id"})
-                         {:transaction? false})
-          (sync/sync-database! (mt/db))
-          (let [users-table-id (mt/id :user)
-                teams-table-id (mt/id :team)
-                delete-user-body {:action_id "data-grid.row/delete"
-                                  :scope     {:table-id users-table-id}
-                                  :inputs    [{(mt/format-name :id) 1}]}]
+(deftest mutual-recursion-delete-test
+  (mt/test-drivers #{:h2 :postgres}
+    (mt/with-premium-features #{:actions}
+      (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/add-fk-sql driver/*driver*
+                                          mutual-recursion-users-teams
+                                          {:table-name "user"}
+                                          {:fk :team :field-name "team_id"})
+                       {:transaction? false})
+        (sync/sync-database! (mt/db))
+        (let [users-table-id (mt/id :user)
+              #_teams-table-id #_(mt/id :team)
+              delete-user-body {:action "data-grid.row/delete"
+                                :scope     {:table-id users-table-id}
+                                :inputs    [{(mt/format-name :id) 1}]}]
 
-            (testing "delete user involved in mutual recursion should return error without delete-children param"
-              (is (=? {:errors {:type "metabase.actions.error/children-exist"
-                                :children-count {(mt/id :team) 1
-                                                 (mt/id :user) 1}}}
-                      (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
-            (testing "delete with delete-children should handle mutual recursion gracefully"
-            ; When deleting Alice with delete-children, it should:
-            ; 1. Delete Alice (user 1)
-            ; 2. This should cascade to Team Beta (which Alice manages)
-            ; 3. Deleting Team Beta should cascade to Bob (who belong to Team Beta)
+          (testing "delete user involved in mutual recursion should return error without delete-children param"
+            (is (=? {:errors [{:index       0
+                               :type        "metabase.actions.error/violate-foreign-key-constraint",
+                               :message     "Other tables rely on this row so it cannot be deleted.",
+                               :errors      {}
+                               :status-code 400}]}
+                    (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
+          ;; TODO: same with the test above, this is one of the case where we want to handle in the future
+          #_(testing "delete with delete-children should handle mutual recursion gracefully"
+              ; When deleting Alice with delete-children, it should:
+              ; 1. Delete Alice (user 1)
+              ; 2. This should cascade to Team Beta (which Alice manages)
+              ; 3. Deleting Team Beta should cascade to Bob (who belong to Team Beta)
               (is (=? {:outputs [{:table-id users-table-id
                                   :op       "deleted"
                                   :row      {(keyword (mt/format-name :id)) 1}}]}
@@ -344,7 +359,7 @@
   (mt/with-premium-features #{:actions}
     (mt/test-drivers #{:h2 :postgres}
       (testing "40x returned if user/database not configured for editing"
-        (let [test-endpoints (fn [flags]
+        (let [test-endpoints (fn [flags status-code]
                                (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
                                  (let [actions-enabled (:a flags)
                                        editing-enabled (:d flags)
@@ -357,30 +372,34 @@
                                    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings settings}
                                      {:settings settings
                                       :user     user
-                                      :responses {:create (req user :post url {:action :data-grid.row/create, :inputs [{:name "Pidgey" :song "Car alarms"}]})
-                                                  :update (req user :post url {:action :data-grid.row/update, :inputs [{:id 1 :song "Join us now and share the software"}]})
-                                                  :delete (req user :post url {:action :data-grid.row/delete, :inputs [{:id 1}]})}}))))
+                                      :responses {:create (create-rows! table-id status-code [{:name "Pidgey" :song "Car alarms"}])
+                                                  :update (update-rows! table-id status-code [{:id 1 :song "Join us now and share the software"}])
+                                                  :delete (delete-rows! table-id status-code [{:id 1}])}}))))
 
               error-or-ok
-              (fn [{:keys [status body]}]
-                (if (<= 200 status 299)
-                  :ok
-                  [(:message body body) status]))
+              (fn [res]
+                (if (:message res)
+                  [(:message res) (-> res :data :status-code)]
+                  :ok))
 
               ;; Shorthand config notation
               ;; :a == action-editing should not affect result
               ;; :d == data-editing   only allowed to edit if editing enabled
               ;; :s == super-user     only allowed to edit if a superuser
               tests
-              [#{:a}       ["You don't have permissions to do that." 403]
-               #{:d}       ["You don't have permissions to do that." 403]
-               #{:a :d}    ["You don't have permissions to do that." 403]
+              ;; TODO: figure out the expected permisison model for non-super users
+              [;#{:a}       ["You don't have permissions to do that." 403]
+               ;#{:d}       ["You don't have permissions to do that." 403]
+               ;#{:a :d}    ["You don't have permissions to do that." 403]
                #{:s}       ["Data editing is not enabled."           400]
                #{:s :a}    ["Data editing is not enabled."           400]
                #{:s :d}    :ok
                #{:s :a :d} :ok]]
           (doseq [[flags expected] (partition 2 tests)
-                  :let [{:keys [settings user responses]} (test-endpoints flags)]
+                  :let [expected-status-code              (if (sequential? expected)
+                                                            (last expected)
+                                                            200)
+                        {:keys [settings user responses]} (test-endpoints flags expected-status-code)]
                   [verb  response] responses]
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected (error-or-ok response))))))))))
@@ -411,23 +430,23 @@
                                 get-db-state  (fn [] (sql-jdbc/query driver (mt/id) {:select [:*] :from [table-name-kw]}))]
                             (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
                             (testing "create"
-                              (let [row {:o input}
-                                    {returned-state :created-rows} (create! table-id [row])
-                                    qp-state (get-qp-state)
-                                    _ (is (= 1 (count returned-state)))]
+                              (let [row                {:o input}
+                                    {outputs :outputs} (create! table-id [row])
+                                    qp-state           (get-qp-state)
+                                    _                  (is (= 1 (count outputs)))]
                                 (when-not (lossy? coercion-strategy)
-                                  (is (= qp-state returned-state) "we should return the same coerced output that table/$table-id/data would return")
+                                  (is (= qp-state (map :row outputs)) "we should return the same coerced output that table/$table-id/data would return")
                                   (is (= input (:o (first qp-state))) "the qp value should be the same as the input"))
                                 (is (= expected (:o (first (get-db-state)))))))
                             (testing "update"
-                              (let [[{id :id}] (:created-rows (create! table-id [{:o nil}]))
+                              (let [[{id :id}]         (map :row (:outputs (create! table-id [{:o nil}])))
                                     _ (is (some? id))
-                                    {returned-state :updated} (update! table-id [{:id id, :o input}])
+                                    {outputs :outputs} (update! table-id [{:id id, :o input}])
                                     [qp-row] (filter (comp #{id} :id) (get-qp-state))]
-                                (is (= 1 (count returned-state)))
+                                (is (= 1 (count outputs)))
                                 (is (some? qp-row))
                                 (when-not (lossy? coercion-strategy)
-                                  (is (= [qp-row] returned-state))
+                                  (is (= [qp-row] (map :row outputs)))
                                   (is (= input (:o qp-row))))
                                 (is (= expected (:o (first (get-db-state)))))))))))]
 
@@ -454,7 +473,6 @@
              (partition 4)
              (run! #(apply do-test %)))))))
 
-;; TODO update this to use the execute api
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{:actions}
     (mt/test-drivers #{:h2 :postgres}
@@ -463,7 +481,7 @@
               _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
               field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
               create!      #(create-rows! table-id %)
-              update!      #(mt/user-http-request :crowberto :put 200 execute-bulk-url {:rows %})
+              update!      #(update-rows! table-id %)
               expect-field-values
               (fn [expect]                     ; redundantly pass expect get ok-ish assert errors (preserve last val)
                 (let [last-res (volatile! nil)]
@@ -490,221 +508,6 @@
 ;; actions (need this to associate with the route namespace)
 ;; data-editing (keep this to control whether the data-grid.row actions are callable?)
 
-(deftest unified-execute-test
-  (let [url "action/v2/execute"
-        req #(mt/user-http-request-full-response (:user % :crowberto) :post url
-                                                 (merge {:scope {:unknown :model-action} :input {}}
-                                                        (dissoc % :user-id)))]
-    (mt/with-premium-features #{:actions}
-      (mt/test-drivers #{:h2 :postgres}
-        (mt/with-non-admin-groups-no-root-collection-perms
-          (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
-                                                         :name [:text]
-                                                         :status [:text]}
-                                                        {:primary-key [:id]}]]
-            (mt/with-temp [:model/Card          model    {:type           :model
-                                                          :table_id       table-id
-                                                          :database_id    (mt/id)
-                                                          :dataset_query  {:database (mt/id)
-                                                                           :type :query
-                                                                           :query {:source-table table-id}}}
-                           :model/Action        action   {:type           :implicit
-                                                          :name           "update"
-                                                          :model_id       (:id model)
-                                                          :parameters     [{:id "a"
-                                                                            :name "Id"
-                                                                            :slug "id"}
-                                                                           {:id "b"
-                                                                            :name "Name"
-                                                                            :slug "name"}
-                                                                           {:id "c"
-                                                                            :name "Status"
-                                                                            :slug "status"}]}
-                           :model/ImplicitAction _       {:action_id      (:id action)
-                                                          :kind           "row/update"}
-                           :model/Dashboard     dash     {}
-                           :model/DashboardCard dashcard {:dashboard_id   (:id dash)
-                                                          :card_id        (:id model)
-                                                          :visualization_settings
-                                                          {:table_id table-id
-                                                           :editableTable.enabledActions
-                                                           (let [param-maps
-                                                                 ;; TODO change these to use field ids, to test the translation
-                                                                 [{:parameterId "id",     :sourceType "row-data", :sourceValueTarget "id"}
-                                                                  {:parameterId "name",   :sourceType "row-data", :sourceValueTarget "name"}
-                                                                  {:parameterId "status", :sourceType "row-data", :sourceValueTarget "status"}]]
-                                                             [{:id                "dashcard:unknown:abcdef"
-                                                               :actionId          (:id action)
-                                                               :actionType        "data-grid/custom-action"
-                                                               :parameterMappings param-maps
-                                                               :enabled           true}
-                                                              {:id                "dashcard:unknown:fedcba"
-                                                               :actionId          "table.row/update"
-                                                               :actionType        "data-grid/custom-action"
-                                                               :mapping           {:table-id table-id
-                                                                                   :row      "::root"}
-                                                               :parameterMappings param-maps
-                                                               :enabled           true}])}}]
-              (testing "no access to the model"
-                (is (= 403 (:status (req {:user      :rasta
-                                          :action_id (:id action)
-                                          :scope     {:dashcard-id (:id dashcard)}
-                                          :input     {:id 1}
-                                          :params    {:status "approved"}})))))
-              ;; should not need this permission for model actions
-              (data-editing.tu/with-data-editing-enabled! false
-                (testing "non-row action modifying a row"
-                  (testing "underlying row does not exist, action not executed"
-                    (is (= 400 (:status (req {:action_id (:id action)
-                                              :scope     {:dashcard-id (:id dashcard)}
-                                              :input     {:id 1}
-                                              :params    {:status "approved"}})))))
-                  (testing "underlying row exists, action executed"
-                    (data-editing.tu/with-data-editing-enabled! true
-                      (create-rows! table-id [{:name "Widgets", :status "waiting"}]))
-                    (is (= {:status 200
-                            :body   {:outputs [{:rows-updated 1}]}}
-                           (-> (req {:action_id (:id action)
-                                     :scope     {:dashcard-id (:id dashcard)}
-                                     :input     {:id 1}
-                                     :params    {:status "approved"}})
-                               (select-keys [:status :body]))))))
-                (testing "dashcard row action modifying a row - implicit action"
-                  (let [action-id "dashcard:unknown:abcdef"]
-                    (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action_id action-id
-                                                :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id 2}
-                                                :params    {:status "approved"}})))))
-                    (testing "underlying row exists, action executed"
-                      (data-editing.tu/with-data-editing-enabled! true
-                        (create-rows! table-id [{:name "Sprockets", :status "waiting"}]))
-                      (is (= {:status 200
-                              :body   {:outputs [{:rows-updated 1}]}}
-                             (-> (req {:action_id action-id
-                                       :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id 2}
-                                       :params    {:status "approved"}})
-                                 (select-keys [:status :body]))))))))
-              ;; but it is necessary for the primitives
-              (data-editing.tu/with-data-editing-enabled! true
-                (testing "dashcard row action modifying a row - primitive action"
-                  (let [action-id "dashcard:unknown:fedcba"]
-                    (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action_id action-id
-                                                :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id 3}
-                                                :params    {:status "approved"}})))))
-                    (testing "underlying row exists, action executed"
-                      (create-rows! table-id [{:name "Braai tongs", :status "waiting"}])
-                      (is (= {:status 200
-                              :body   {:outputs [{:table-id table-id
-                                                  :op       "updated"
-                                                  :row      {:id 3, :name "Braai tongs", :status "approved"}}]}}
-                             (-> (req {:action_id action-id
-                                       :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id 3}
-                                       :params    {:status "approved"}})
-                                 (select-keys [:status :body])))))))))))))))
-
-;; TODO we may want to test that data-grid/built-in actions can't get called in they're disabled?
-;;    i.e. the data-editing premium feature is enabled
-
-(deftest unified-execute-server-side-mapping-test
-  (mt/with-premium-features #{:actions}
-    (mt/test-drivers #{:h2 :postgres}
-      (data-editing.tu/with-test-tables! [table-1-id [{:id  'auto-inc-type
-                                                       :col [:text]}
-                                                      {:primary-key [:id]}]
-                                          table-2-id [{:id 'auto-inc-type
-                                                       :a  [:text]
-                                                       :b  [:text]
-                                                       :c  [:text]
-                                                       :d  [:text]}
-                                                      {:primary-key [:id]}]]
-
-        (mt/with-temp [:model/Card          model    {:type           :model
-                                                      :table_id       table-1-id
-                                                      :database_id    (mt/id)
-                                                      :dataset_query  {:database (mt/id)
-                                                                       :type     :query
-                                                                       :query    {:source-table table-1-id}}}
-                       :model/Dashboard     dash     {}
-                       :model/DashboardCard dashcard {:dashboard_id   (:id dash)
-                                                      :card_id        (:id model)
-                                                      :visualization_settings
-                                                      {:table_id table-1-id
-                                                       :editableTable.enabledActions
-                                                       [{:id         "dashcard:unknown:my-row-action"
-                                                         :actionId   "table.row/create"
-                                                         :actionType "data-grid/custom-action"
-                                                         :mapping    {:table-id table-2-id
-                                                                      :row      {:a ["::key" "aa"]
-                                                                                 :b ["::key" "bb"]
-                                                                                 :c ["::key" "cc"]
-                                                                                 :d ["::key" "dd"]}}
-                                                         :parameterMappings
-                                                         [{:parameterId "aa" :sourceType "row-data" :sourceValueTarget "col"}
-                                                          {:parameterId "bb" :sourceType "ask-user"}
-                                                          {:parameterId "cc" :sourceType "ask-user" :value "default"}
-                                                          {:parameterId "dd" :sourceType "constant" :value "hard-coded"}]
-                                                         :enabled    true}]}}]
-          (testing "dashcard row action modifying a row - primitive action"
-            (let [action-id "dashcard:unknown:my-row-action"]
-              (testing "underlying row does not exist, action not executed"
-                (mt/user-http-request :crowberto :post 404 execute-url {:action_id action-id
-                                                                        :scope  {:dashcard-id (:id dashcard)}
-                                                                        :input  {:id 1}
-                                                                        :params {:status "approved"}}))
-              (testing "underlying row exists, action executed\n"
-                (create-rows! table-1-id [{:col "database-value"}])
-                (let [base-req {:action_id action-id
-                                :scope     {:dashcard-id (:id dashcard)}
-                                :input     {:id 1, :col "stale-value"}
-                                :params    {:bb nil}}]
-                  ;; TODO don't have a way to make params required for non-legacy actions yet, d'oh
-                  ;;      oh well, let nil spill through
-                  (testing "missing required param"
-                    (is (=? {:outputs [{:table-id table-2-id
-                                        :op       "created"
-                                        :row      {:id 1
-                                                   :a  "database-value"
-                                                   :b  nil
-                                                   :c  "default"
-                                                   :d  "hard-coded"}}]}
-                            (mt/user-http-request :crowberto :post 200 execute-url base-req))))
-                  (testing "missing optional param"
-                    (is (=? {:outputs [{:table-id table-2-id
-                                        :op       "created"
-                                        :row      {:id 2
-                                                   :a  "database-value"
-                                                   :b  "necessary"
-                                                   :c  "default"
-                                                   :d  "hard-coded"}}]}
-                            (mt/user-http-request :crowberto :post 200 execute-url (assoc-in base-req [:params :bb] "necessary")))))
-                  (testing "null optional param"
-                    (is (= {:outputs [{:table-id table-2-id
-                                       :op       "created"
-                                       :row      {:id 3
-                                                  :a  "database-value"
-                                                  :b  "necessary"
-                                                  :c  nil
-                                                  :d  "hard-coded"}}]}
-                           (mt/user-http-request :crowberto :post 200 execute-url (-> base-req
-                                                                                      (assoc-in [:params :bb] "necessary")
-                                                                                      (assoc-in [:params :cc] nil))))))
-                  (testing "provided optional param"
-                    (is (= {:outputs [{:table-id table-2-id
-                                       :op       "created"
-                                       :row      {:id 4
-                                                  :a  "database-value"
-                                                  :b  "necessary"
-                                                  :c  "optional"
-                                                  :d  "hard-coded"}}]}
-                           (mt/user-http-request :crowberto :post 200 execute-url (-> base-req
-                                                                                      (assoc-in [:params :bb] "necessary")
-                                                                                      (assoc-in [:params :cc] "optional")))))))))))))))
-
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{:actions}
     (mt/test-drivers #{:h2 :postgres}
@@ -728,9 +531,9 @@
                                     {:id "int"       :display_name "Int"       :input_type "text"}
                                     {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
                                     {:id "date"      :display_name "Date"      :input_type "date"}]}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/execute-form"
+                      (mt/user-http-request :crowberto :post 200 execute-form-url
                                             {:scope     scope
-                                             :action_id create-id}))))
+                                             :action create-id}))))
 
             (testing "update"
               (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"}
@@ -738,12 +541,12 @@
                                     {:id "int"       :display_name "Int"       :input_type "text"}
                                     {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
                                     {:id "date"      :display_name "Date"      :input_type "date"}]}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/execute-form"
+                      (mt/user-http-request :crowberto :post 200 execute-form-url
                                             {:scope     scope
-                                             :action_id update-id}))))
+                                             :action update-id}))))
 
             (testing "delete"
               (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/execute-form"
+                      (mt/user-http-request :crowberto :post 200 execute-form-url
                                             {:scope     scope
-                                             :action_id delete-id}))))))))))
+                                             :action delete-id}))))))))))

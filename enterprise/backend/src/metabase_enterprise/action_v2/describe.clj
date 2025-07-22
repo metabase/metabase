@@ -94,7 +94,11 @@
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
-                          :nullable                (:database_is_nullable field)
+
+                          :nullable                (:database_is_nullable field
+                                                                          ;; can the remove the default "false"
+                                                                          ;; value once #60263 is merged
+                                                                          false)
                           :database_default        (:database_default field)
                           :readonly                (or (= "readonly" (:visibility param-setting))
                                                        (not (dashcard-column-editable? (:name field))))
