@@ -23,7 +23,7 @@ import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
 import DatabaseDetailField from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
-import DatabaseNameField from "../DatabaseNameField";
+import { DatabaseNameField } from "../DatabaseNameField";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
