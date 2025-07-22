@@ -5,7 +5,16 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { ActionIcon, Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Loader,
+  Menu,
+  Text,
+} from "metabase/ui";
 import {
   useCreateReportMutation,
   useGetReportQuery,
