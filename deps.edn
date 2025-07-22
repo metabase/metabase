@@ -45,6 +45,7 @@
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
                                             {:mvn/version "4.3.1"}              ; templating engine
+  com.github.oliyh/martian-clj-http         {:mvn/version "0.1.31"}             ; openapi client
   com.github.pangloss/transducers           {:git/sha "c91d39046c8c64dc31b84ebb27154a8084fcda4c" ; like medley for transducers
                                              :git/url "https://github.com/pangloss/transducers"}
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1310"}           ; Honey SQL 2. SQL generation from Clojure data maps
@@ -63,7 +64,7 @@
   com.vladsch.flexmark/flexmark-ext-autolink
   {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
   commons-codec/commons-codec               {:mvn/version "1.18.0"}             ; Apache Commons -- useful codec util fns
-  commons-io/commons-io                     {:mvn/version "2.19.0"}             ; Apache Commons -- useful IO util fns
+  commons-io/commons-io                     {:mvn/version "2.20.0"}             ; Apache Commons -- useful IO util fns
   commons-net/commons-net                   {:mvn/version "3.11.1"}             ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
   commons-validator/commons-validator       {:mvn/version "1.9.0"               ; Apache Commons -- useful validation util fns
                                              :exclusions  [commons-beanutils/commons-beanutils
@@ -95,7 +96,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "4.2.0"
+  metabase/saml20-clj                       {:mvn/version "4.2.1"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -299,6 +300,8 @@
                  "-XX:+IgnoreUnrecognizedVMOptions"
                  ;; include more details for debugging NPEs (Java 14+)
                  "-XX:+ShowCodeDetailsInExceptionMessages"
+                 ;; test self-signed certificates for testing
+                 "-Dmail.smtps.ssl.trust=*"
                  ;; Support Snowflake in Java 17+. See https://github.com/metabase/metabase/pull/47997 and
                  ;; https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later
                  "--add-opens"

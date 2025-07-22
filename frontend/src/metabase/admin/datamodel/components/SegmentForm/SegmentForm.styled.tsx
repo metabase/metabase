@@ -9,6 +9,9 @@ import {
 
 export const FormRoot = styled.form`
   width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const FormSection = styled.div`

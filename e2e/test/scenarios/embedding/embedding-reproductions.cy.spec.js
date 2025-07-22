@@ -1035,10 +1035,10 @@ describe("issue 8490", () => {
               ],
             ],
             filter: [
-              "time-interval",
+              "between",
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-              -12,
-              "month",
+              "2024-01-01",
+              "2025-01-01",
             ],
           },
           limit: 100,

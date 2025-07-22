@@ -68,6 +68,7 @@
   :metabase/validate-logging                           {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
+  :metabase/discourage-millis-duration                 {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning
@@ -235,6 +236,8 @@
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
+    (metabase.lib.util.match/match-lite)
+    (metabase.lib.util.match/match-lite-recursive)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
     (metabase.driver-api.core/match)
@@ -290,7 +293,9 @@
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}}
+   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
+   toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -497,6 +502,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
+   clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
@@ -521,6 +527,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    metabase.dashboards.models.dashboard-tab-test/with-dashtab-in-personal-collection                                         hooks.common/with-one-top-level-binding
    metabase.dashboards.models.dashboard-test/with-dash-in-collection!                                                        hooks.common/with-three-bindings
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
+   metabase.driver.mongo-test/with-describe-table-for-sample                                                                 hooks.metabase.driver.mongo-test/with-describe-table-for-sample
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
    metabase.driver-api/defenterprise                                                                                         hooks.metabase.premium-features.defenterprise/defenterprise
@@ -734,6 +741,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
     :metabase/validate-string-or-str-args-to-i18n {:level :warning}
+    :metabase/discourage-millis-duration {:level :warning}
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}

@@ -16,6 +16,7 @@ const BASE_SETUP_CONFIG = {
   "docker-env-path": ".env.docker",
   defaultBranch: BRANCH_NAME,
   env: BASE_ENV,
+  healthcheckPorts: [BASE_ENV.MB_PORT, BASE_ENV.CLIENT_PORT],
 };
 
 export const SAMPLE_APP_SETUP_CONFIGS = {
@@ -31,6 +32,11 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
       CLIENT_PORT_APP_ROUTER: BASE_ENV.CLIENT_PORT,
       CLIENT_PORT_PAGES_ROUTER: BASE_ENV.CLIENT_PORT + 1,
     },
+    healthcheckPorts: [
+      BASE_ENV.MB_PORT,
+      BASE_ENV.CLIENT_PORT,
+      BASE_ENV.CLIENT_PORT + 1,
+    ],
   },
   "shoppy-e2e": {
     ...BASE_SETUP_CONFIG,

@@ -4,7 +4,9 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 /**
  * we should wrap all upsell components in this HoC to ensure that they are only rendered for admins
  */
-export function UpsellWrapper<Props>(Component: React.ComponentType<Props>) {
+export function UpsellWrapper<Props extends object>(
+  Component: React.ComponentType<Props>,
+) {
   const WrappedComponent = (props: Props) => {
     const isAdmin = useSelector(getUserIsAdmin);
 
@@ -12,7 +14,7 @@ export function UpsellWrapper<Props>(Component: React.ComponentType<Props>) {
       return null;
     }
 
-    return <Component {...(props as any)} />;
+    return <Component {...props} />;
   };
 
   return WrappedComponent;

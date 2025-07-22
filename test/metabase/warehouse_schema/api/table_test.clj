@@ -13,6 +13,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -705,6 +706,7 @@
                   {:display_name      "Go Dubs!"
                    :schema            "Everything else"
                    :db_id             (:database_id card)
+                   :db                {:id (:database_id card)}
                    :id                card-virtual-table-id
                    :entity_id         (:entity_id card)
                    :type              "question"
@@ -754,6 +756,32 @@
                      u/the-id
                      (format "table/card__%d/query_metadata")
                      (mt/user-http-request :crowberto :get 200))))))))
+
+(deftest virtual-table-metadata-permission-test
+  (testing "GET /api/table/card__:id/query_metadata"
+    (testing "Make sure we do not leak the database info when the user does not have data perms"
+      (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                       :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                       :type     :query
+                                                       :database (mt/id)}}]
+        (mt/with-full-data-perms-for-all-users!
+          (is (=? {:id     (str "card__" (u/the-id card))
+                   :schema "Everything else"
+                   :db_id  (:database_id card)
+                   :db     {:id (:database_id card)}}
+                  (->> card
+                       u/the-id
+                       (format "table/card__%d/query_metadata")
+                       (mt/user-http-request :rasta :get 200)))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (=? {:id     (str "card__" (u/the-id card))
+                   :db_id  (:database_id card)
+                   :schema "Everything else"
+                   :db     nil}
+                  (->> card
+                       u/the-id
+                       (format "table/card__%d/query_metadata")
+                       (mt/user-http-request :rasta :get 200)))))))))
 
 (deftest ^:parallel virtual-table-metadata-deleted-cards-test
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
@@ -1241,3 +1269,31 @@
                             :table-id (:id table)
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/sync_schema                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest ^:parallel non-admins-cant-trigger-sync-test
+  (testing "Non-admins should not be allowed to trigger sync"
+    (mt/with-temp [:model/Table table {}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 (format "table/%d/sync_schema" (u/the-id table))))))))
+
+(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
+  (fn [tbl]
+    (when (= (u/the-id tbl) (u/the-id expected-tbl))
+      (deliver promise-to-deliver true))))
+
+(deftest trigger-metadata-sync-for-table-test
+  (testing "Can we trigger a metadata sync for a table?"
+    (let [sync-called? (promise)
+          timeout (* 10 60)]
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+          (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
+      (testing "sync called?"
+        (is (true?
+             (deref sync-called? timeout :sync-never-called)))))))

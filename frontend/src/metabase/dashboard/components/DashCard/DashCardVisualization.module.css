@@ -5,3 +5,15 @@
 .VirtualDashCardOverlayText {
   color: var(--mb-color-text-medium);
 }
+
+.InlineParametersList *,
+.InlineParametersMenuTrigger * {
+  pointer-events: all;
+}
+
+.isNightMode {
+  & .invertInNightMode {
+    border-color: var(--mb-color-text-white-alpha-85);
+    background-color: var(--mb-color-bg-night);
+  }
+}

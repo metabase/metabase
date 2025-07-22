@@ -35,7 +35,7 @@ interface Options {
 const setup = (options: Options) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: options.hasEmbeddingFeature ?? true,
-    "development-mode": options.isDevelopmentMode ?? false,
+    development_mode: options.isDevelopmentMode ?? false,
   });
 
   const settingValues = createMockSettings({

@@ -16,7 +16,7 @@ const tablePageTemplate = fs.readFileSync('./src/tablePageTemplate.html', 'utf8'
 export async function gitLog(majorVersion: number) {
   const previousMajorVersion = majorVersion - 1; // we want to parse back to the prior major version to get everything in the .0 release.
   const { stdout: baseCommit } = await $`git merge-base origin/release-x.${previousMajorVersion}.x origin/master`;
-  const { stdout } = await $`git log origin/release-x.${majorVersion}.x ...${baseCommit.trim()} --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'`;
+  const { stdout } = await $`git log ${baseCommit.trim()}..origin/release-x.${majorVersion}.x --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'`;
   const processedCommits = stdout.split('\n').map(processCommit);
   return buildTable(processedCommits, majorVersion);
 }
@@ -34,7 +34,7 @@ export function processCommit(commitLine: string): CommitInfo {
 
 const issueLink = (issueNumber: string) => `https://github.com/metabase/metabase/issues/${issueNumber}`;
 
-function escapeHtml(unsafe: string) {
+function escapeHtml(unsafe: string = '') {
   return unsafe
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

@@ -41,4 +41,5 @@ export interface VisualizerState extends VisualizerVizDefinitionWithColumns {
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
   error: string | null;
   draggedItem: DraggedItem | null;
+  hoveredItems: DraggedColumn[] | null;
 }

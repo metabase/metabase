@@ -1,6 +1,7 @@
 import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
+  EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
@@ -18,8 +19,21 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import type { ConcreteFieldReference, Parameter } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+
+const DATE_FILTER: Parameter = {
+  id: "2",
+  name: "Date filter",
+  slug: "filter-date",
+  type: "date/all-options",
+};
+const CREATED_AT_FIELD_REF: ConcreteFieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  { "base-type": "type/DateTime" },
+];
 
 describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
@@ -315,7 +329,7 @@ describe("scenarios > embedding-sdk > styles", () => {
     });
   });
 
-  describe("modals and tooltips", () => {
+  describe("modals, popovers and tooltips", () => {
     it("legacy WindowModal modals should render with our styles", () => {
       // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
       cy.mount(
@@ -361,7 +375,25 @@ describe("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
-    describe("tooltips/overlays styles", () => {
+    it("mantine modals should render with proper position", () => {
+      cy.mount(
+        <div style={{ paddingLeft: "9999px" }}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </div>,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Summarize").click();
+        cy.findByText("Count of rows").click();
+        cy.findByText("Save").click();
+
+        cy.findByText("Save question").should("be.visible");
+      });
+    });
+
+    describe("popover/tooltips/overlays styles", () => {
       beforeEach(() => {
         signInAsAdminAndEnableEmbeddingSdk();
 
@@ -386,20 +418,49 @@ describe("scenarios > embedding-sdk > styles", () => {
                   row: 0,
                   col: 0,
                   card_id: ordersQuestionId,
+                  parameter_mappings: [
+                    {
+                      parameter_id: DATE_FILTER.id,
+                      card_id: ORDERS_QUESTION_ID,
+                      target: ["dimension", CREATED_AT_FIELD_REF],
+                    },
+                  ],
                 },
               ],
+              parameters: [DATE_FILTER],
             }),
           )
           .then((dashboard) => {
             cy.wrap(dashboard.body.id).as("dashboardId");
           });
-
         cy.signOut();
 
         cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
         cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
           "dashcardQuery",
         );
+      });
+
+      it("should render legacy Popover with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+
+          H.editDashboard();
+          H.clickBehaviorSidebar().within(() => {
+            cy.findByText("Update a dashboard filter").click();
+            cy.findAllByTestId("click-target-column").first().click();
+          });
+
+          H.popover()
+            .findByText("Columns")
+            .should("have.css", "font-family", "Impact");
+        });
       });
 
       it("should render Mantine tooltip with our styles", () => {

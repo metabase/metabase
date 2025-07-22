@@ -20,7 +20,7 @@ To help you out in situations like this, Metabase has a serialization feature wh
 There are two ways to run these `export` and `import` commands:
 
 - [Using CLI commands](#serialization-with-cli-commands)
-- [Through the API](#serialization-via-the-api).
+- [Through the API](#serialization-via-the-api)
 
 > We're interested in how we can improve serialization to suit your workflow. [Upvote an existing issue](https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+serialization+label%3AOperation%2FSerialization) to let us know it's important to you. If a relevant issue doesn't yet exist, please create one and tell us what you need.
 

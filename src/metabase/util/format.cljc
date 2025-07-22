@@ -54,8 +54,9 @@
 
 #?(:clj
    (def colorize?
-     "Whether or not to colorize log messages."
-     ;; As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)
+     "Whether we should print in colors or not.
+
+  As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)"
      (if (config/config-str :no-color)
        false
        (config/config-bool :mb-colorize-logs))))

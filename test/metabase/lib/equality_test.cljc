@@ -10,7 +10,6 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
@@ -353,15 +352,13 @@
 (deftest ^:parallel find-matching-column-self-join-test
   (testing "find-matching-column with a self join"
     (let [query     (lib.tu/query-with-self-join)
-          [join]    (lib/joins query)
           cols      (for [col (meta/fields :orders)]
                       (meta/field-metadata :orders col))
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(-> %
                          (merge {:lib/source                   :source/joins
                                  :metabase.lib.join/join-alias "Orders"
-                                 :lib/desired-column-alias     (str "Orders__" (:name %))})
-                         (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
+                                 :lib/desired-column-alias     (str "Orders__" (:name %))}))
           sorted    #(sort-by (juxt :position :source-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
@@ -420,7 +417,7 @@
                            :table-id           (meta/id :orders)
                            :id                 (meta/id :orders :id)
                            :name               "ID"
-                           :lib/source         :source/fields
+                           :lib/source         :source/table-defaults
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "ID"
@@ -433,7 +430,7 @@
                            :table-id           (meta/id :orders)
                            :id                 (meta/id :orders :tax)
                            :name               "TAX"
-                           :lib/source         :source/fields
+                           :lib/source         :source/table-defaults
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "Tax"
@@ -447,7 +444,7 @@
                            :id                 (meta/id :orders :id)
                            :name               "ID_2"
                            :source-alias       "Orders"
-                           :lib/source         :source/fields
+                           :lib/source         :source/joins
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "Orders → ID"
@@ -461,12 +458,11 @@
                            :id                 (meta/id :orders :tax)
                            :name               "TAX_2"
                            :source-alias       "Orders"
-                           :lib/source         :source/fields
+                           :lib/source         :source/joins
                            :fk-target-field-id nil
                            :parent-id          nil
                            :display-name       "Orders → Tax"
                            :position           4}
-
               ret-4 [hr-own-id hr-own-tax hr-join-id hr-join-tax]
               ret-3 [hr-own-id hr-own-tax hr-join-id]
               refs  (for [join-alias       [nil "Orders"]
