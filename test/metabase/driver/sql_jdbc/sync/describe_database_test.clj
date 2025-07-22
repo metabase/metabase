@@ -279,9 +279,7 @@
   [probe-errors query-canceled]
   (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
     (sql-jdbc.execute/do-with-connection-with-options
-     driver/*driver*
-     (mt/db)
-     nil
+     driver/*driver* (mt/db) nil
      (fn [^Connection conn]
        (let [select-probes (atom 0)]
          (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
@@ -295,10 +293,11 @@
             @select-probes]))))))
 
 (deftest retry-have-select-privilege-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
-                                             :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
-                                                                 (get-method sql-jdbc.sync/have-select-privilege? %))]
-                                             :-features [:table-privileges]})
+  (mt/test-drivers (mt/normal-driver-select
+                    {:+parent :sql-jdbc
+                     :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
+                                         (get-method sql-jdbc.sync/have-select-privilege? %))]
+                     :-features [:table-privileges]})
     (testing "we will retry syncing a table once if there is an exception on the first attempt"
       (let [[result probes] (run-retry-have-select-privilege! 2 false)]
         (is (true? result))
