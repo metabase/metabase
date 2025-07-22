@@ -132,20 +132,21 @@
   (log/info "Populating semantic search index with" (count documents) "documents")
   (when (seq documents)
     (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
+          text->docs         (group-by :searchable_text filtered-documents)
           searchable-texts   (map :searchable_text filtered-documents)]
       (embedding/process-embeddings-streaming
        (:embedding-model index)
        searchable-texts
-       (fn [text-embedding-map]
+       (fn [text->embedding]
          (let [batch-documents
-               (keep (fn [doc]
-                       (if-let [embedding (get text-embedding-map (:searchable_text doc))]
-                         (assoc doc :embedding embedding)
-                         (log/warn "No embedding found for document"
-                                   {:model (:model doc)
-                                    :model_id (:model_id doc)
-                                    :searchable_text (:searchable_text doc)})))
-                     filtered-documents)]
+               (mapcat (fn [text]
+                         (if-let [embedding (text->embedding text)]
+                           (map #(assoc % :embedding embedding) (get text->docs text))
+                           (when-let [docs (get text->docs text)]
+                             (log/warn "No embedding found for" (count docs) "documents with searchable text:"
+                                       {:searchable_text text
+                                        :document_count (count docs)}))))
+                       (keys text->embedding))]
            (batch-update!
             connectable
             (fn [db-records]
