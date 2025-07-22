@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -20,7 +21,15 @@ import {
   useUpdateReportMutation,
 } from "metabase-enterprise/api";
 
+import {
+  fetchReportQuestionData,
+  selectQuestion,
+  toggleSidebar,
+} from "../reports.slice";
+import { getIsSidebarOpen, getSelectedQuestionId } from "../selectors";
+
 import { Editor } from "./Editor";
+import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
@@ -29,6 +38,9 @@ export const ReportPage = ({
 }: {
   params: { id?: number | "new" };
 }) => {
+  const dispatch = useDispatch();
+  const selectedQuestionId = useSelector(getSelectedQuestionId);
+  const isSidebarOpen = useSelector(getIsSidebarOpen);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [questionRefs, setQuestionRefs] = useState<
     Array<{ id: number; name: string }>
@@ -42,7 +54,25 @@ export const ReportPage = ({
 
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Centralized data loading for question embeds
+  const questionIds = useMemo(
+    () =>
+      questionRefs
+        .map((ref) => ref.id)
+        .sort()
+        .join(","),
+    [questionRefs],
+  );
+
+  useEffect(() => {
+    if (questionIds) {
+      const ids = questionIds.split(",").map((id) => parseInt(id));
+      ids.forEach((id) => {
+        dispatch(fetchReportQuestionData(id));
+      });
+    }
+  }, [questionIds, dispatch]);
 
   useEffect(() => {
     if (report) {
@@ -67,9 +97,9 @@ export const ReportPage = ({
       : createReport(newReportData).unwrap();
   }, [editorInstance, createReport, updateReport, report, reportTitle]);
 
-  const toggleSidebar = useCallback(() => {
-    setIsSidebarOpen((prev) => !prev);
-  }, []);
+  const handleToggleSidebar = useCallback(() => {
+    dispatch(toggleSidebar());
+  }, [dispatch]);
 
   const handleQuestionClick = useCallback(
     (questionId: number) => {
@@ -145,7 +175,7 @@ export const ReportPage = ({
               variant="subtle"
               size="md"
               ml="auto"
-              onClick={toggleSidebar}
+              onClick={handleToggleSidebar}
               aria-label={isSidebarOpen ? t`Hide sidebar` : t`Show sidebar`}
             >
               <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
@@ -200,6 +230,7 @@ export const ReportPage = ({
               <Editor
                 onEditorReady={setEditorInstance}
                 onQuestionRefsChange={setQuestionRefs}
+                onQuestionSelect={(id) => dispatch(selectQuestion(id))}
                 content={reportContent}
               />
             )}
@@ -208,30 +239,37 @@ export const ReportPage = ({
 
         {isSidebarOpen && (
           <Box className={styles.sidebar}>
-            <Stack gap="lg" p="lg">
-              <Paper>
-                <Text size="sm" fw="bold" mb="sm">
-                  {t`Question References`}
-                </Text>
-                {questionRefs.length === 0 ? (
-                  <Text size="sm" color="text-light">
-                    {t`No questions embedded yet`}
+            {selectedQuestionId ? (
+              <EmbedQuestionSettingsSidebar
+                questionId={selectedQuestionId}
+                onClose={() => dispatch(selectQuestion(null))}
+              />
+            ) : (
+              <Stack gap="lg" p="lg">
+                <Paper>
+                  <Text size="sm" fw="bold" mb="sm">
+                    {t`Question References`}
                   </Text>
-                ) : (
-                  <Stack gap="xs">
-                    {questionRefs.map((ref) => (
-                      <Box
-                        key={ref.id}
-                        className={styles.questionRef}
-                        onClick={() => handleQuestionClick(ref.id)}
-                      >
-                        <Text size="sm">{ref.name}</Text>
-                      </Box>
-                    ))}
-                  </Stack>
-                )}
-              </Paper>
-            </Stack>
+                  {questionRefs.length === 0 ? (
+                    <Text size="sm" color="text-light">
+                      {t`No questions embedded yet`}
+                    </Text>
+                  ) : (
+                    <Stack gap="xs">
+                      {questionRefs.map((ref) => (
+                        <Box
+                          key={ref.id}
+                          className={styles.questionRef}
+                          onClick={() => handleQuestionClick(ref.id)}
+                        >
+                          <Text size="sm">{ref.name}</Text>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Paper>
+              </Stack>
+            )}
           </Box>
         )}
       </Box>

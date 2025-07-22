@@ -61,7 +61,7 @@
 }
 
 .sidebar {
-  width: 300px;
+  width: 360px;
   flex-shrink: 0;
   background-color: var(--mb-color-bg-light);
   border-left: 1px solid var(--mb-color-border);
