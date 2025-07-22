@@ -10,6 +10,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mr/def ::transform-source
@@ -46,9 +47,10 @@
 
 (defn- target-table-exists?
   [{:keys [source target] :as _transform}]
-  (let [database (-> source :query :database)
-        driver (t2/select-one-fn :engine :model/Database database)]
-    (some? (driver/describe-table driver database (qualified-table-name target)))))
+  false
+  #_(let [database (-> source :query :database)
+          driver (t2/select-one-fn :engine :model/Database database)]
+      (some? (driver/describe-table driver database (qualified-table-name target)))))
 
 (defn- delete-target-table!
   [{:keys [source target] :as _transform}]
@@ -81,12 +83,14 @@
     (t2/select-one :model/Transform id)))
 
 (api.macros/defendpoint :get "/:id"
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (log/info "get transform" id)
   (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :put "/:id"
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
    _query-params
    body :- [:map
             [:name {:optional true} :string]
@@ -103,14 +107,16 @@
   (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :delete "/:id"
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
-  (delete-target-table-by-id! id)
+  #_(delete-target-table-by-id! id)
   (t2/delete! :model/Transform id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
   (delete-target-table-by-id! id))
 
@@ -119,7 +125,8 @@
     "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
 
 (api.macros/defendpoint :post "/:id/execute"
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
   (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
         db (get-in source [:query :database])
