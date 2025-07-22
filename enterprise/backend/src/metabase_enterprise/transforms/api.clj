@@ -20,7 +20,6 @@
 (mr/def ::transform-target
   [:map
    [:type [:= "table"]]
-   [:database :int]
    [:schema {:optional true} :string]
    [:table :string]])
 
@@ -39,6 +38,28 @@
              :table "gadget_products"}}]
   -)
 
+;; TODO add driver specific quoting
+(defn- qualified-table-name
+  [{:keys [schema table]}]
+  (cond->> table
+    schema (str schema ".")))
+
+(defn- target-table-exists?
+  [{:keys [source target] :as _transform}]
+  (let [database (-> source :query :database)
+        driver (t2/select-one-fn :engine :model/Database database)]
+    (some? (driver/describe-table driver database (qualified-table-name target)))))
+
+(defn- delete-target-table!
+  [{:keys [source target] :as _transform}]
+  (let [database (-> source :query :database)
+        driver (t2/select-one-fn :engine :model/Database database)]
+    (driver/drop-table! driver database (qualified-table-name target))))
+
+(defn- delete-target-table-by-id!
+  [transform-id]
+  (delete-target-table! (t2/select-one :model/Transform transform-id)))
+
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
@@ -48,10 +69,12 @@
 (api.macros/defendpoint :post "/"
   [_route-params
    _query-params
-   {:keys [name source target] :as _body} :- [:map
-                                              [:name :string]
-                                              [:source ::transform-source]
-                                              [:target ::transform-target]]]
+   {:keys [name source target] :as body} :- [:map
+                                             [:name :string]
+                                             [:source ::transform-source]
+                                             [:target ::transform-target]]]
+  (when (target-table-exists? body)
+    (api/throw-403))
   (let [id (t2/insert-returning-pk! :model/Transform {:name name
                                                       :source source
                                                       :target target})]
@@ -70,25 +93,26 @@
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (log/info "put transform" id)
-  (t2/update! :model/Transform id (select-keys body [:name :source :target]))
+  (let [old (t2/select-one-fn :target :model/Transform id)
+        new (merge old body)]
+    (when (not= (select-keys (:target old) [:schema :table])
+                (select-keys (:target new) [:schema :table]))
+      (when (target-table-exists? new)
+        (api/throw-403))
+      (delete-target-table! old)))
   (t2/select-one :model/Transform id))
-
-(defn- delete-target-table! [id]
-  (let [{:keys [database table]} (t2/select-one-fn :target :model/Transform id)
-        driver (t2/select-one-fn :engine :model/Database database)]
-    (driver/drop-table! driver database table)))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]}]
   (log/info "delete transform" id)
-  (delete-target-table! id)
+  (delete-target-table-by-id! id)
   (t2/delete! :model/Transform id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"
   [{:keys [id]}]
   (log/info "delete transform target table" id)
-  (delete-target-table! id))
+  (delete-target-table-by-id! id))
 
 (defn- compile-source [{query-type :type :as source}]
   (case query-type
@@ -107,8 +131,7 @@
      {:db db
       :driver driver
       :sql (compile-source source)
-      :output-table (cond->> (:table target)
-                      (:schema target) (str (:schema target) "."))
+      :output-table (qualified-table-name target)
       :overwrite? true})))
 
 (def ^{:arglists '([request respond raise])} routes
