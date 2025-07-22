@@ -1,0 +1,72 @@
+(ns metabase-enterprise.reports.api.report
+  (:require [metabase.api.common :as api]
+            [metabase.api.macros :as api.macros]
+            [metabase.api.routes.common :refer [+auth]]
+            [metabase.models.interface :as mi]
+            [metabase.util.malli.schema :as ms]
+            [toucan2.core :as t2]))
+
+(defn- get-report [id]
+  (api/check-404 (t2/query-one {:select [:report.id
+                                         :name
+                                         :document
+                                         :content_type
+                                         [:version_identifier :version]
+                                         [:report.created_at :created_at]
+                                         [:report.updated_at :updated_at]]
+                                :from   [[(t2/table-name :model/Report) :report]]
+                                :join   [[(t2/table-name :model/ReportVersion) :ver] [:= :report.current_version_id :ver.id]]
+                                :where  [:= :report.id id]})))
+
+(api.macros/defendpoint :get "/:report-id"
+  "Returns an existing Report by ID."
+  [{:keys [report-id]} :- [:map
+                           [:report-id ms/PositiveInt]]]
+
+  (get-report report-id))
+
+(api.macros/defendpoint :post "/"
+  "Create a new `Report`."
+  [_route-params
+   _query-params
+   {:keys [name document version created_at updated_at]}
+   :- [:map
+       [:name :string]
+       [:document :string]]]
+  (get-report (t2/with-transaction [conn]
+                (let [report-id (t2/insert-returning-pk! :conn conn :model/Report {:name name})
+                      report-version-id (t2/insert-returning-pk! :conn conn :model/ReportVersion
+                                                                 {:report_id          report-id
+                                                                  :document           document
+                                                                  :content_type       "text/markdown"
+                                                                  :version_identifier 1
+                                                                  :user_id            api/*current-user-id*})
+                      _ (t2/select-one :conn conn :model/Report :id report-id)
+                      _ (t2/select-one :conn conn :model/ReportVersion :report_id report-id)
+                      _ (t2/update! :conn conn :model/Report report-id {:current_version_id report-version-id})]
+                  report-id))))
+
+(api.macros/defendpoint :put "/:report-id"
+  "Updates an existing `Report`."
+  [{:keys [report-id]} :- [:map
+                           [:report-id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name :string]
+            [:document :string]]]
+  (let [existing-report (get-report report-id)]
+    (get-report (t2/with-transaction [conn]
+                  (let [new-report-version-id (t2/insert-returning-pk! :conn conn :model/ReportVersion
+                                                                       {:report_id          report-id
+                                                                        :document           (:document body)
+                                                                        :content_type       "text/markdown"
+                                                                        :version_identifier (inc (:version existing-report))
+                                                                        :user_id            api/*current-user-id*})
+                        _ (t2/update! :conn conn :model/Report report-id {:name               (:name body)
+                                                                          :current_version_id new-report-version-id
+                                                                          :updated_at         (mi/now)})]
+                    report-id)))))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/report/` routes."
+  (api.macros/ns-handler *ns* +auth))
