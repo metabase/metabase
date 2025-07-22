@@ -216,21 +216,22 @@
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
               (doseq [auto-commit [true false]]
                 (testing (pr-str {:auto-commit auto-commit :schema schema :name table-name})
-                  (sql-jdbc.execute/do-with-connection-with-options
-                   driver/*driver*
-                   (mt/db)
-                   nil
-                   (fn [^Connection conn]
-                     ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
-                     ;; exception results in testing the true value only.
-                     (try
-                       (.setAutoCommit conn auto-commit)
-                       (catch Exception _
-                         (log/trace "Failed to set auto commit.")))
-                     (is (false? (sql-jdbc.sync.interface/have-select-privilege?
-                                  driver/*driver* conn schema (str table-name "_should_not_exist"))))
-                     (is (true? (sql-jdbc.sync.interface/have-select-privilege?
-                                 driver/*driver* conn schema table-name))))))))))))))
+                  (driver/do-with-resilient-connection
+                   driver/*driver* (mt/db)
+                   (fn [driver db]
+                     (sql-jdbc.execute/do-with-connection-with-options
+                      driver db nil
+                      (fn [^Connection conn]
+                        ;; Databricks does not support setting auto commit to false. Catching the setAutoCommi
+                        ;; exception results in testing the true value only.
+                        (try
+                          (.setAutoCommit conn auto-commit)
+                          (catch Exception _
+                            (log/trace "Failed to set auto commit.")))
+                        (is (false? (sql-jdbc.sync.interface/have-select-privilege?
+                                     driver conn schema (str table-name "_should_not_exist"))))
+                        (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                                    driver conn schema table-name))))))))))))))))
 
 ;;; TODO: fix and change this to test on (mt/sql-jdbc-drivers)
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
