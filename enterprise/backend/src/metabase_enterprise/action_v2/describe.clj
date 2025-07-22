@@ -79,16 +79,15 @@
                                     (:table.row/delete :data-grid.row/delete) pk
                                     ;; update takes both the pk and field (if not a row action)
                                     (:table.row/update
-                                     :table.row/create-or-update
-                                     :data-grid.row/update
-                                     :data-grid.row/create-or-update) true)
+                                     :data-grid.row/update) true)
                             ;; row-actions can explicitly hide parameters
                             :when (not= "hidden" (:visibility param-setting))
                             ;; dashcard column context can hide parameters (if defined)
                             :when (:enabled dashcard-column true)
                             :let [required (or pk (:database_required field))]]
                         (u/remove-nils
-                         {:id                      (:name field) ;; TODO we shouldn't use field name as id I think, what if we have 1 field that maps to 2 params?
+                         ;; TODO yet another comment about how field id would be a better key, due to case issues
+                         {:id                      (:name field)
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
                           :input_type              (field-input-type field field-values)

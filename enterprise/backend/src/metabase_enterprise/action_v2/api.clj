@@ -18,12 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn require-authz?
-  "Temporary hack to have auth be off by default, only on if MB_DATA_EDITING_AUTHZ=true.
-  Remove once auth policy is fixed for dashboards."
-  []
-  (= "true" (System/getenv "MB_DATA_EDITING_AUTHZ")))
-
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
 ;; model (e.g are admins trusted with writing arbitrary SQL cases anyway, will non admins ever call this?)
 (def ^:private Identifier
@@ -44,12 +38,6 @@
 
 (def ^:private ColumnType
   (into [:enum] (keys column-type->upload-type)))
-
-(defn- ensure-database-type [driver column-type]
-  (if-some [upload-type (column-type->upload-type column-type)]
-    (driver/upload-type->database-type driver upload-type)
-    (throw (ex-info (i18n/tru "Not a supported column type: {0}" column-type)
-                    {:status 400, :column-type column-type}))))
 
 (mr/def ::api-model-action-id
   "Refers to a row in the actions table."

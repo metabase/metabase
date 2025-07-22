@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.test-util :as data-editing.tu]
-   [metabase.actions.models :as actions]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -30,17 +29,23 @@
 (def ^:private execute-bulk-url "/ee/action-v2/execute-bulk")
 (def ^:private execute-form-url "/ee/action-v2/execute-bulk")
 
-(defn- create-rows! [table-id rows]
-  (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                        {:action :data-grid.row/create
-                         :scope  {:table-id table-id}
-                         :inputs rows}))
+(defn create-rows!
+  ([table-id rows]
+   (create-rows! table-id 200 rows))
+  ([table-id response-code rows]
+   (mt/user-http-request :crowberto :post response-code execute-bulk-url
+                         {:action :data-grid.row/create
+                          :scope  {:table-id table-id}
+                          :inputs rows})))
 
-(defn- update-rows! [table-id rows]
-  (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                        {:action :data-grid.row/update
-                         :scope  {:table-id table-id}
-                         :inputs rows}))
+(defn- update-rows!
+  ([table-id rows]
+   (update-rows! table-id 200 rows))
+  ([table-id response-code rows]
+   (mt/user-http-request :crowberto :post response-code execute-bulk-url
+                         {:action :data-grid.row/update
+                          :scope  {:table-id table-id}
+                          :inputs rows})))
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
@@ -196,7 +201,7 @@
             (is (= [[3 3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
 
-;; TODO update now that we don't detect or delete children automatically, or require confirmation for casacades, or have undo
+;; TODO update now that we don't detect or delete children automatically, or require confirmation for cascading, or have undo
 (deftest simple-delete-with-children-test
   (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
     (mt/with-premium-features #{:actions}
@@ -247,96 +252,97 @@
      ["Gaming Laptops" 3]]]])
 
 ;; Update this too with actual behavior
-(deftest simple-delete-with-self-referential-children-test
-  (mt/with-premium-features #{:actions}
-    (data-editing.tu/with-actions-temp-db self-referential-categories
-      (let [body {:action_id "data-grid.row/delete"
-                  :scope     {:table-id (mt/id :category)}
-                  :inputs    [{(mt/format-name :id) 1}]}
-            children-count (fn [parent-id]
-                             (let [result (mt/rows (qp/process-query {:database (mt/id)
-                                                                      :type     :query
-                                                                      :query    {:source-table (mt/id :category)
-                                                                                 :aggregation  [[:count]]
-                                                                                 :filter       [:= (mt/$ids $category.parent_id) parent-id]}}))]
-                               (-> result first first)))]
-
-        (testing "sanity check that we have self-referential children"
-          (is (= 2 (children-count 1)))
-          (is (= 1 (children-count 2)))
-          (is (= 1 (children-count 3))))
-
-        (testing "delete parent with self-referential children should return error without delete-children param"
-          (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :category) 4}}}
-                  (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
-
-        (testing "success with delete-children option should cascade delete all descendants"
-          (is (=? {:outputs [{:table-id (mt/id :category)
-                              :op       "deleted"
-                              :row      {(keyword (mt/format-name :id)) 1}}]}
-                  (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                        (assoc body :params {:delete-children true}))))
-          (is (= 0 (count (table-rows (mt/id :category)))))
-
-          (testing "the change is not undoable for self-referential cascades"
-            (is (= "Your previous change cannot be undone"
-                   (mt/user-http-request :crowberto :post 405 execute-bulk-url
-                                         {:action_id "data-editing/undo"
-                                          :scope     {:table-id (mt/id :category)}
-                                          :inputs    []})))))))))
-
-(mt/defdataset mutual-recursion-users-teams
-  [["user"
-    [{:field-name "id" :base-type :type/Integer :pk? true}
-     {:field-name "name" :base-type :type/Text :not-null? true}
-     {:field-name "team_id" :base-type :type/Integer #_:fk #_:team}]
-    [[1 "Alice" 1]
-     [2 "Bob" 2]]]
-   ["team"
-    [{:field-name "id" :base-type :type/Integer :pk? true}
-     {:field-name "name" :base-type :type/Text :not-null? true}
-     {:field-name "manager_id" :base-type :type/Integer :fk :user}]
-    [[1 "Alpha" nil]
-     [2 "Beta" 1]]]])
-
-(deftest mutual-recursion-delete-test
-  (mt/test-drivers #{:h2 :postgres}
+#_(deftest simple-delete-with-self-referential-children-test
     (mt/with-premium-features #{:actions}
-      (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                       (sql.tx/add-fk-sql driver/*driver*
-                                          mutual-recursion-users-teams
-                                          {:table-name "user"}
-                                          {:fk :team :field-name "team_id"})
-                       {:transaction? false})
-        (sync/sync-database! (mt/db))
-        (let [users-table-id (mt/id :user)
-              teams-table-id (mt/id :team)
-              delete-user-body {:action_id "data-grid.row/delete"
-                                :scope     {:table-id users-table-id}
-                                :inputs    [{(mt/format-name :id) 1}]}]
+      (data-editing.tu/with-actions-temp-db self-referential-categories
+        (let [body {:action_id "data-grid.row/delete"
+                    :scope     {:table-id (mt/id :category)}
+                    :inputs    [{(mt/format-name :id) 1}]}
+              children-count (fn [parent-id]
+                               (let [result (mt/rows (qp/process-query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :category)
+                                                                                   :aggregation  [[:count]]
+                                                                                   :filter       [:= (mt/$ids $category.parent_id) parent-id]}}))]
+                                 (-> result first first)))]
 
-          (testing "delete user involved in mutual recursion should return error without delete-children param"
-            (is (=? {:errors {:type "metabase.actions.error/children-exist"
-                              :children-count {(mt/id :team) 1
-                                               (mt/id :user) 1}}}
-                    (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
-          (testing "delete with delete-children should handle mutual recursion gracefully"
+          (testing "sanity check that we have self-referential children"
+            (is (= 2 (children-count 1)))
+            (is (= 1 (children-count 2)))
+            (is (= 1 (children-count 3))))
+
+          (testing "delete parent with self-referential children should return error without delete-children param"
+            (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :category) 4}}}
+                    (mt/user-http-request :crowberto :post 400 execute-bulk-url body))))
+
+          (testing "success with delete-children option should cascade delete all descendants"
+            (is (=? {:outputs [{:table-id (mt/id :category)
+                                :op       "deleted"
+                                :row      {(keyword (mt/format-name :id)) 1}}]}
+                    (mt/user-http-request :crowberto :post 200 execute-bulk-url
+                                          (assoc body :params {:delete-children true}))))
+            (is (= 0 (count (table-rows (mt/id :category)))))
+
+            (testing "the change is not undoable for self-referential cascades"
+              (is (= "Your previous change cannot be undone"
+                     (mt/user-http-request :crowberto :post 405 execute-bulk-url
+                                           {:action_id "data-editing/undo"
+                                            :scope     {:table-id (mt/id :category)}
+                                            :inputs    []})))))))))
+
+#_(mt/defdataset mutual-recursion-users-teams
+    [["user"
+      [{:field-name "id" :base-type :type/Integer :pk? true}
+       {:field-name "name" :base-type :type/Text :not-null? true}
+       {:field-name "team_id" :base-type :type/Integer #_:fk #_:team}]
+      [[1 "Alice" 1]
+       [2 "Bob" 2]]]
+     ["team"
+      [{:field-name "id" :base-type :type/Integer :pk? true}
+       {:field-name "name" :base-type :type/Text :not-null? true}
+       {:field-name "manager_id" :base-type :type/Integer :fk :user}]
+      [[1 "Alpha" nil]
+       [2 "Beta" 1]]]])
+
+;; TODO let's keep this test setup, but track our current behavior with no smarts
+#_(deftest mutual-recursion-delete-test
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-premium-features #{:actions}
+        (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                         (sql.tx/add-fk-sql driver/*driver*
+                                            mutual-recursion-users-teams
+                                            {:table-name "user"}
+                                            {:fk :team :field-name "team_id"})
+                         {:transaction? false})
+          (sync/sync-database! (mt/db))
+          (let [users-table-id (mt/id :user)
+                teams-table-id (mt/id :team)
+                delete-user-body {:action_id "data-grid.row/delete"
+                                  :scope     {:table-id users-table-id}
+                                  :inputs    [{(mt/format-name :id) 1}]}]
+
+            (testing "delete user involved in mutual recursion should return error without delete-children param"
+              (is (=? {:errors {:type "metabase.actions.error/children-exist"
+                                :children-count {(mt/id :team) 1
+                                                 (mt/id :user) 1}}}
+                      (mt/user-http-request :crowberto :post 400 execute-bulk-url delete-user-body))))
+            (testing "delete with delete-children should handle mutual recursion gracefully"
             ; When deleting Alice with delete-children, it should:
             ; 1. Delete Alice (user 1)
             ; 2. This should cascade to Team Beta (which Alice manages)
             ; 3. Deleting Team Beta should cascade to Bob (who belong to Team Beta)
-            (is (=? {:outputs [{:table-id users-table-id
-                                :op       "deleted"
-                                :row      {(keyword (mt/format-name :id)) 1}}]}
-                    (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                          (assoc delete-user-body :params {:delete-children true}))))
+              (is (=? {:outputs [{:table-id users-table-id
+                                  :op       "deleted"
+                                  :row      {(keyword (mt/format-name :id)) 1}}]}
+                      (mt/user-http-request :crowberto :post 200 execute-bulk-url
+                                            (assoc delete-user-body :params {:delete-children true}))))
 
-            (let [remaining-users (table-rows users-table-id)
-                  remaining-teams (table-rows teams-table-id)]
-              (testing "mutual recursion cascade should delete interconnected records"
-                (is (empty? remaining-users))
-                (is (= 1 (count remaining-teams)))))))))))
+              (let [remaining-users (table-rows users-table-id)
+                    remaining-teams (table-rows teams-table-id)]
+                (testing "mutual recursion cascade should delete interconnected records"
+                  (is (empty? remaining-users))
+                  (is (= 1 (count remaining-teams)))))))))))
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:actions}
@@ -460,7 +466,7 @@
         (let [field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
               _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
               field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
-              create!      #(create-rows table-id %)
+              create!      #(create-rows! table-id %)
               update!      #(mt/user-http-request :crowberto :put 200 execute-bulk-url {:rows %})
               expect-field-values
               (fn [expect]                     ; redundantly pass expect get ok-ish assert errors (preserve last val)
@@ -542,11 +548,6 @@
                                                                :mapping           {:table-id table-id
                                                                                    :row      "::root"}
                                                                :parameterMappings param-maps
-                                                               :enabled           true}
-                                                              {:id                "dashcard:unknown:xyzabc"
-                                                               :actionId          (#'actions/encoded-action-id :table.row/update table-id)
-                                                               :actionType        "data-grid/custom-action"
-                                                               :parameterMappings param-maps
                                                                :enabled           true}])}}]
               (testing "no access to the model"
                 (is (= 403 (:status (req {:user      :rasta
@@ -564,8 +565,7 @@
                                               :params    {:status "approved"}})))))
                   (testing "underlying row exists, action executed"
                     (data-editing.tu/with-data-editing-enabled! true
-                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url table-id)
-                                            {:rows [{:name "Widgets", :status "waiting"}]}))
+                      (create-rows! table-id [{:name "Widgets", :status "waiting"}]))
                     (is (= {:status 200
                             :body   {:outputs [{:rows-updated 1}]}}
                            (-> (req {:action_id (:id action)
@@ -582,8 +582,7 @@
                                                 :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
                       (data-editing.tu/with-data-editing-enabled! true
-                        (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url table-id)
-                                              {:rows [{:name "Sprockets", :status "waiting"}]}))
+                        (create-rows! table-id [{:name "Sprockets", :status "waiting"}]))
                       (is (= {:status 200
                               :body   {:outputs [{:rows-updated 1}]}}
                              (-> (req {:action_id action-id
@@ -601,8 +600,7 @@
                                                 :input     {:id 3}
                                                 :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
-                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url table-id)
-                                            {:rows [{:name "Braai tongs", :status "waiting"}]})
+                      (create-rows! table-id [{:name "Braai tongs", :status "waiting"}])
                       (is (= {:status 200
                               :body   {:outputs [{:table-id table-id
                                                   :op       "updated"
@@ -663,8 +661,7 @@
                                                                         :input  {:id 1}
                                                                         :params {:status "approved"}}))
               (testing "underlying row exists, action executed\n"
-                (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url table-1-id)
-                                      {:rows [{:col "database-value"}]})
+                (create-rows! table-1-id [{:col "database-value"}])
                 (let [base-req {:action_id action-id
                                 :scope     {:dashcard-id (:id dashcard)}
                                 :input     {:id 1, :col "stale-value"}
