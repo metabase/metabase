@@ -21,8 +21,12 @@ import {
   useUpdateReportMutation,
 } from "metabase-enterprise/api";
 
-import { fetchReportQuestionData, selectQuestion } from "../reports.slice";
-import { getSelectedQuestionId } from "../selectors";
+import {
+  fetchReportQuestionData,
+  selectQuestion,
+  toggleSidebar,
+} from "../reports.slice";
+import { getIsSidebarOpen, getSelectedQuestionId } from "../selectors";
 
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
@@ -36,6 +40,7 @@ export const ReportPage = ({
 }) => {
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
+  const isSidebarOpen = useSelector(getIsSidebarOpen);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [questionRefs, setQuestionRefs] = useState<
     Array<{ id: number; name: string }>
@@ -49,7 +54,6 @@ export const ReportPage = ({
 
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Centralized data loading for question embeds
   useEffect(() => {
@@ -81,9 +85,9 @@ export const ReportPage = ({
       : createReport(newReportData).unwrap();
   }, [editorInstance, createReport, updateReport, report, reportTitle]);
 
-  const toggleSidebar = useCallback(() => {
-    setIsSidebarOpen((prev) => !prev);
-  }, []);
+  const handleToggleSidebar = useCallback(() => {
+    dispatch(toggleSidebar());
+  }, [dispatch]);
 
   const handleQuestionClick = useCallback(
     (questionId: number) => {
@@ -159,7 +163,7 @@ export const ReportPage = ({
               variant="subtle"
               size="md"
               ml="auto"
-              onClick={toggleSidebar}
+              onClick={handleToggleSidebar}
               aria-label={isSidebarOpen ? t`Hide sidebar` : t`Show sidebar`}
             >
               <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />

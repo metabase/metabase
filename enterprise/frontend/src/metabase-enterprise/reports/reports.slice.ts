@@ -15,6 +15,7 @@ export interface ReportsState {
   loadingDatasets: Record<CardId, boolean>;
   selectedQuestionId: CardId | null;
   vizSettingsUpdates: Record<CardId, VisualizationSettings>;
+  isSidebarOpen: boolean;
 }
 
 const initialState: ReportsState = {
@@ -24,6 +25,7 @@ const initialState: ReportsState = {
   loadingDatasets: {},
   selectedQuestionId: null,
   vizSettingsUpdates: {},
+  isSidebarOpen: false,
 };
 
 export const fetchReportCard = createAsyncThunk<Card, CardId>(
@@ -76,6 +78,16 @@ const reportsSlice = createSlice({
   reducers: {
     selectQuestion: (state, action: PayloadAction<CardId | null>) => {
       state.selectedQuestionId = action.payload;
+      // Auto-open sidebar when a question is selected
+      if (action.payload !== null) {
+        state.isSidebarOpen = true;
+      }
+    },
+    toggleSidebar: (state) => {
+      state.isSidebarOpen = !state.isSidebarOpen;
+    },
+    setSidebarOpen: (state, action: PayloadAction<boolean>) => {
+      state.isSidebarOpen = action.payload;
     },
     updateVizSettings: (
       state,
@@ -159,6 +171,8 @@ const reportsSlice = createSlice({
 
 export const {
   selectQuestion,
+  toggleSidebar,
+  setSidebarOpen,
   updateVizSettings,
   applyVizSettings,
   clearVizSettingsUpdates,

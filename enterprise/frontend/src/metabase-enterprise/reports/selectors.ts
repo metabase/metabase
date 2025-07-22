@@ -38,6 +38,11 @@ export const getSelectedQuestionId = createSelector(
   (reports): CardId | null => reports.selectedQuestionId,
 );
 
+export const getIsSidebarOpen = createSelector(
+  getReportsState,
+  (reports): boolean => reports.isSidebarOpen,
+);
+
 export const getVizSettingsUpdates = createSelector(
   [getReportsState, (_, cardId: CardId) => cardId],
   (reports, cardId): VisualizationSettings =>
