@@ -7,9 +7,8 @@ import { Flex, Group } from "metabase/ui";
 
 import { EmbeddingToggle } from "../../EmbeddingToggle";
 import { EmbeddingOption } from "../EmbeddingOption";
+import { SdkIcon } from "../EmbeddingSdkOptionCard/SdkIcon";
 import { LinkButton } from "../LinkButton";
-
-import { IframeSdkIcon } from "./IframeSdkIcon";
 
 export function EmbeddingIframeSdkOptionCard() {
   const isIframeEmbeddingSdkEnabled = useSetting("enable-embedding-iframe-sdk");
@@ -17,7 +16,8 @@ export function EmbeddingIframeSdkOptionCard() {
 
   return (
     <EmbeddingOption
-      icon={<IframeSdkIcon disabled={!isIframeEmbeddingSdkEnabled} />}
+      // TODO: add the actual icon for iframe embedding sdk
+      icon={<SdkIcon disabled={!isIframeEmbeddingSdkEnabled} />}
       title={t`Embedded analytics SDK for iframe`}
       label={
         <Flex gap="sm">

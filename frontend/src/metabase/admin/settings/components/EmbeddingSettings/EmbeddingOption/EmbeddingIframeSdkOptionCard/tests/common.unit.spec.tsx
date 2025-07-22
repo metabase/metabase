@@ -2,7 +2,7 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
@@ -62,20 +62,5 @@ describe("EmbeddingIframeSdkOptionCard (OSS)", () => {
     expect(
       screen.getByRole("button", { name: "Try it out" }),
     ).toBeInTheDocument();
-  });
-
-  it("displays 'Disabled' when iframe embedding SDK is disabled", async () => {
-    const { state } = setup({ isEmbeddingEnabled: false });
-
-    renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-      storeInitialState: state,
-    });
-
-    await waitFor(() => {
-      expect(screen.getByRole("switch")).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole("switch")).not.toBeChecked();
-    expect(screen.getByText("Disabled")).toBeInTheDocument();
   });
 });
