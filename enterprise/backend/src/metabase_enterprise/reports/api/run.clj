@@ -33,7 +33,7 @@
   (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
 
   (let [run-id (t2/insert-returning-pk! :model/ReportRun {:version_id report-version-id
-                                                          :status "in-progress"
+                                                          :status :in-progress
                                                           :user_id api/*current-user-id*})
         cards-to-run (t2/select :model/Card :report_document_version_id report-version-id)]
 
@@ -41,15 +41,14 @@
     ;; Run each card using the query processor
     (try
       (doseq [card cards-to-run]
-        ;; Use the query processor to run each card
         (qp.card/process-query-for-card
          (:id card) :api
          :context :report))
-      ;; Update status to completed when all cards have been processed
-      (t2/update! :model/ReportRun run-id {:status "finished"})
+
+      (t2/update! :model/ReportRun run-id {:status :finished})
       (catch Exception e
         (log/error e "Error running report" {:report-id report-id :version-id report-version-id :run-id run-id})
-        (t2/update! :model/ReportRun run-id {:status "failed"})))
+        (t2/update! :model/ReportRun run-id {:status :errored})))
 
     (first (t2/hydrate [(t2/select-one :model/ReportRun :id run-id)] :user))))
 

@@ -37,7 +37,7 @@
         ;; Verify run was created
         (let [runs (t2/select :model/ReportRun :version_id version-id)]
           (is (= 1 (count runs)))
-          (is (= "in-progress" (:status (first runs))))
+          (is (= :finished (:status (first runs))))
           (is (= (mt/user->id :crowberto) (:user_id (first runs))))))
 
       (testing "should return 404 for non-existent report version"
