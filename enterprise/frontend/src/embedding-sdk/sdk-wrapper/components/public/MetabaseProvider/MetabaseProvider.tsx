@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-load-sdk-bundle";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
 
@@ -19,7 +20,8 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   const { isLoading } = useWaitForSdkBundle();
 
   const store = useMemo(
-    () => (!isLoading ? window.MetabaseEmbeddingSDK?.getSdkStore() : undefined),
+    () =>
+      !isLoading ? getWindow()?.MetabaseEmbeddingSDK?.getSdkStore() : undefined,
     [isLoading],
   );
 
@@ -27,7 +29,7 @@ export const MetabaseProvider = memo(function MetabaseProvider({
 
   const Component = isLoading
     ? null
-    : window.MetabaseEmbeddingSDK?.MetabaseProvider;
+    : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
 
   return (
     <MetabaseProviderInner store={store} props={props}>

@@ -1,3 +1,4 @@
+import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { createComponent } from "embedding-sdk/sdk-wrapper/components/private/ComponentWrapper/ComponentWrapper";
 
 /**
@@ -8,5 +9,5 @@ import { createComponent } from "embedding-sdk/sdk-wrapper/components/private/Co
  * @param props
  */
 export const StaticDashboard = createComponent(
-  () => window.MetabaseEmbeddingSDK?.StaticDashboard,
+  () => getWindow()?.MetabaseEmbeddingSDK?.StaticDashboard,
 );
