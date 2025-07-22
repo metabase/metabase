@@ -1,13 +1,21 @@
 import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
+import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
+import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import Search from "metabase/entities/search";
 import { getName } from "metabase/lib/name";
 import { useDispatch } from "metabase/lib/redux";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
-import { Popover } from "metabase/ui";
+import {
+  ResultNameSection,
+  ResultTitle,
+  SearchResultContainer,
+} from "metabase/search/components/SearchResult";
+import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
+import { Box, Group, Icon, Popover } from "metabase/ui";
 import type {
   RecentItem,
   SearchModel,
@@ -15,6 +23,41 @@ import type {
 } from "metabase-types/api";
 
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
+
+interface SearchResultsFooterProps {
+  isSelected?: boolean;
+  onFooterSelect?: () => void;
+}
+
+const SearchResultsFooter = ({
+  isSelected,
+  onFooterSelect,
+}: SearchResultsFooterProps) => (
+  <Box mx="sm" mb="sm" mt={-8}>
+    <SearchResultContainer
+      align="center"
+      isActive
+      isSelected={isSelected}
+      onClick={onFooterSelect}
+    >
+      <IconWrapper active archived={false} type="search">
+        <Icon name="search" />
+      </IconWrapper>
+
+      <ResultNameSection justify="center" gap="xs">
+        <Group gap="xs" align="center" wrap="nowrap">
+          <ResultTitle
+            role="heading"
+            data-testid="search-result-item-name"
+            truncate
+          >
+            {t`Browse all`}
+          </ResultTitle>
+        </Group>
+      </ResultNameSection>
+    </SearchResultContainer>
+  </Box>
+);
 
 interface QuestionMentionPluginProps {
   editor: Editor;
@@ -25,6 +68,7 @@ export const QuestionMentionPlugin = ({
 }: QuestionMentionPluginProps) => {
   const dispatch = useDispatch();
   const [showPopover, setShowPopover] = useState(false);
+  const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
   const [mentionRange, setMentionRange] = useState<{
     from: number;
@@ -42,7 +86,7 @@ export const QuestionMentionPlugin = ({
     .filter(
       (item: RecentItem) => item.model === "card" || item.model === "dataset",
     )
-    .slice(0, 5);
+    .slice(0, 4);
 
   useEffect(() => {
     if (!editor) {
@@ -192,19 +236,38 @@ export const QuestionMentionPlugin = ({
           {query.length > 0 ? (
             <SearchResults
               searchText={query}
+              limit={4}
               forceEntitySelect
               onEntitySelect={handleSelect}
               models={MODELS_TO_SEARCH}
+              footerComponent={SearchResultsFooter}
+              onFooterSelect={() => setModal("question-picker")}
             />
           ) : (
             <RecentsListContent
               isLoading={isRecentsLoading}
               results={filteredRecents}
               onClick={handleRecentSelect}
+              footerComponent={SearchResultsFooter}
+              onFooterSelect={() => setModal("question-picker")}
             />
           )}
         </Popover.Dropdown>
       </Popover>
+
+      {modal === "question-picker" && (
+        <QuestionPickerModal
+          onChange={(item) => {
+            handleSelect({
+              id: item.id,
+              model: item.model,
+              name: item.name,
+            });
+            setModal(null);
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
     </>
   );
 };

@@ -7,7 +7,7 @@ import type { SearchModel } from "metabase-types/api";
 function getColorForIconWrapper(
   active: boolean,
   archived: boolean,
-  type: SearchModel,
+  type: SearchModel | "search",
 ) {
   if (!active || archived) {
     return color("text-medium");
@@ -21,7 +21,7 @@ function getColorForIconWrapper(
 export const IconWrapper = styled.div<{
   active: boolean;
   archived: boolean;
-  type: SearchModel;
+  type: SearchModel | "search";
 }>`
   border: 1px solid var(--mb-color-border);
   border-radius: ${({ theme }) => theme.radius.sm};
