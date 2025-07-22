@@ -65,18 +65,15 @@
     #"^[\w_]+$"]])
 
 (mu/defn test-dataset-id :- ::dataset-id
-  "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
-  time."
-  [{:keys [database-name] :as db-def}]
-  (cond
-    tx/*use-routing-dataset*
+  "All databases created during test runs by this JVM instance get a suffix based on the timestamp from when this
+  namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no reasonable
+  hook to do so (from this test extension namespace), so instead we will rely on each run cleaning up outdated,
+  transient datasets via the [[transient-dataset-outdated?]] mechanism."
+  ^String [database-name :- :string]
+  (if tx/*use-routing-dataset*
     "metabase_routing_dataset"
-
-    (str/starts-with? database-name "sha_")
-    database-name
-
-    :else
-    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+    (let [s (normalize-name database-name)]
+      (str "v4_" s "__transient_" (dataset-timestamp)))))
 
 (defn- test-db-details []
   {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
