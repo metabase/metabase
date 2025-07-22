@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-load-sdk-bundle";
@@ -12,10 +12,10 @@ import { MetabaseProviderInner } from "../../private/MetabaseProviderInner/Metab
  * @function
  * @category MetabaseProvider
  */
-export const MetabaseProvider = ({
+export const MetabaseProvider = memo(function MetabaseProvider({
   children,
   ...props
-}: MetabaseProviderProps) => {
+}: MetabaseProviderProps) {
   const { isLoading } = useWaitForSdkBundle();
 
   const store = useMemo(
@@ -34,4 +34,4 @@ export const MetabaseProvider = ({
       {Component ? <Component {...props}>{children}</Component> : children}
     </MetabaseProviderInner>
   );
-};
+});
