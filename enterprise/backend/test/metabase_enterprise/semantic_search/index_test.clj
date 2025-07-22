@@ -192,21 +192,22 @@
                                :creator_id 3
                                :legacy_input {:model "card" :id "3"}
                                :metadata {}}]]
-          (binding [semantic.index/*batch-size* 1]
-            (semantic.tu/upsert-index! test-documents)
+          ;; Each embedding should be processed separately
+          (mt/with-temporary-setting-values [openai-max-tokens-per-batch 3]
+            (binding [semantic.index/*batch-size* 1]
+              (semantic.tu/upsert-index! test-documents)
+              ;; Verify each document has its own correct embedding
+              (is (= [{:model "card" :model_id "1" :creator_id 1
+                       :content "Dog Training Guide"
+                       :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
+                     (query-embeddings {:model "card" :model_id "1"})))
 
-            ;; Verify each document has its own correct embedding
-            (is (= [{:model "card" :model_id "1" :creator_id 1
-                     :content "Dog Training Guide"
-                     :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
-                   (query-embeddings {:model "card" :model_id "1"})))
+              (is (= [{:model "card" :model_id "2" :creator_id 2
+                       :content "Elephant Migration"
+                       :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
+                     (query-embeddings {:model "card" :model_id "2"})))
 
-            (is (= [{:model "card" :model_id "2" :creator_id 2
-                     :content "Elephant Migration"
-                     :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
-                   (query-embeddings {:model "card" :model_id "2"})))
-
-            (is (= [{:model "card" :model_id "3" :creator_id 3
-                     :content "Tiger Conservation"
-                     :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
-                   (query-embeddings {:model "card" :model_id "3"})))))))))
+              (is (= [{:model "card" :model_id "3" :creator_id 3
+                       :content "Tiger Conservation"
+                       :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
+                     (query-embeddings {:model "card" :model_id "3"}))))))))))
