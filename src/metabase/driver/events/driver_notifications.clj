@@ -15,7 +15,7 @@
 (derive :event/database-update ::event)
 (derive :event/database-delete ::event)
 
-(methodical/defmethod driver-api/publish-event! ::event
+(methodical/defmethod events/publish-event! ::event
   [topic {database :object, previous-database :previous-object, details-changed? :details-changed? :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
