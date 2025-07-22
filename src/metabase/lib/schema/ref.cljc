@@ -9,6 +9,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.types.core]
@@ -25,6 +26,7 @@
                                        opts))}
    ::common/options
    [:map
+    [:join-alias                                 {:optional true} [:ref ::lib.schema.join/alias]]
     [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
     [:binning                                    {:optional true} [:ref ::binning/binning]]
     [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]

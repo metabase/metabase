@@ -55,6 +55,7 @@ export type SetupOpts = {
   isEmbeddingIframe?: boolean;
   hasWhitelabelToken?: boolean;
   applicationName?: string;
+  activeUsersCount?: number;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -72,6 +73,7 @@ export async function setup({
   pathname = "/",
   route = pathname,
   user = createMockUser(),
+  activeUsersCount = 2,
   hasDataAccess = true,
   openDashboard,
   openQuestionCard,
@@ -191,6 +193,7 @@ export async function setup({
         whitelabel: hasWhitelabelToken,
       }),
       "show-google-sheets-integration": true,
+      "active-users-count": activeUsersCount,
     }),
   });
 

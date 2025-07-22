@@ -1,26 +1,40 @@
+import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { createDatabase } from "metabase/admin/databases/database";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch } from "metabase/lib/redux";
-import { Stack, Text, Title } from "metabase/ui";
+import { Button, Stack, Text, Title } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const DataConnectionStep = () => {
-  useForceLocaleRefresh();
-
   const dispatch = useDispatch();
-  const { setDatabase, goToNextStep } = useEmbeddingSetup();
+  const { setDatabase, goToNextStep, trackEmbeddingSetupClick } =
+    useEmbeddingSetup();
 
   const handleSubmit = async (databaseData: DatabaseData) => {
     const createdDatabase = await dispatch(createDatabase(databaseData));
     setDatabase(createdDatabase);
     goToNextStep();
   };
+  const onCancel = useCallback(() => {
+    trackEmbeddingSetupClick("add-data-later-or-skip");
+    dispatch(push("/"));
+  }, [dispatch, trackEmbeddingSetupClick]);
+
+  const ContinueWithoutDataButton = useCallback(
+    ({ onCancel }: { onCancel?: () => void }) => {
+      return (
+        <Button variant="subtle" c="text-secondary" onClick={onCancel}>
+          {t`I'll add my data later`}
+        </Button>
+      );
+    },
+    [],
+  );
 
   return (
     <Stack gap="xl">
@@ -34,7 +48,9 @@ export const DataConnectionStep = () => {
       <DatabaseForm
         onSubmit={handleSubmit}
         onEngineChange={() => {}}
-        onCancel={() => dispatch(push("/"))}
+        onCancel={onCancel}
+        showSampleDatabase={false}
+        ContinueWithoutDataSlot={ContinueWithoutDataButton}
       />
     </Stack>
   );
