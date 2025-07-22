@@ -138,7 +138,7 @@ const SdkDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
   dashboardActions,
-  dashcardMenu = plugins?.dashboard?.dashboardCardMenu,
+  dashcardMenu,
   getClickActionMode,
   navigateToNewCardFromDashboard = undefined,
   className,
@@ -169,6 +169,9 @@ const SdkDashboardInner = ({
   } = useCommonDashboardParams({
     dashboardId,
   });
+
+  const finalDashcardMenu =
+    plugins?.dashboard?.dashboardCardMenu ?? dashcardMenu;
 
   const [renderModeState, setRenderMode] = useState<
     "dashboard" | "queryBuilder"
@@ -280,7 +283,7 @@ const SdkDashboardInner = ({
       onLoadWithoutCards={handleLoadWithoutCards}
       onError={(error) => dispatch(setErrorPage(error))}
       getClickActionMode={getClickActionMode}
-      dashcardMenu={dashcardMenu}
+      dashcardMenu={finalDashcardMenu}
       dashboardActions={dashboardActions}
       onAddQuestion={(dashboard) => {
         dispatch(setEditingDashboard(dashboard));

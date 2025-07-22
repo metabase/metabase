@@ -11,14 +11,14 @@ import { t } from "ttag";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { useDocsUrl } from "metabase/common/hooks";
-import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import {
   type HelpText,
   expressionModeSupportsClause,
   getClauseDefinition,
   getHelpText,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
+import { Box, Flex, Icon, UnstyledButton } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
