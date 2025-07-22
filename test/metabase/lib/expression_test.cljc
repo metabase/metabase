@@ -107,8 +107,7 @@
   (let [query (lib.tu/venues-query-with-last-stage
                {:expressions [[:+
                                {:lib/uuid (str (random-uuid))
-                                :lib/expression-name "prev_month"
-                                :ident               (u/generate-nano-id)}
+                                :lib/expression-name "prev_month"}
                                (lib.tu/field-clause :users :last-login)
                                [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
@@ -284,19 +283,19 @@
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer, :ident string?} 100]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer} 100]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text} "value"]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.23]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float} 1.23]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 1.23)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean, :ident string?} false]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean} false]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" false)
               (lib/expressions)))))

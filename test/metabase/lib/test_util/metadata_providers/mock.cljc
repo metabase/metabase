@@ -159,8 +159,6 @@
   ([m]
    (-> m
        ->mock-metadata
-       (m/update-existing :fields #(for [field %]
-                                     (u/assoc-default field :ident (u/generate-nano-id))))
        ->MockMetadataProvider))
 
   ([parent-metadata-provider mock-metadata]

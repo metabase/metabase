@@ -651,12 +651,10 @@
                                                     {:source-table $$orders
                                                      :joins        [{:source-table $$products
                                                                      :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                                     :ident        "oJhVb8BtrfV9-KsWj5kKw"
                                                                      :condition    [:= product-id products-id]
                                                                      :strategy     :left-join
                                                                      :fk-field-id  %product-id}]
                                                      :expressions  {"pivot-grouping" [:abs 0]}
-                                                     :expression-idents {"pivot-grouping" "F_YdWocSQso_vOKlxhzR2"}
                                                      :fields       [product-id
                                                                     created-at
                                                                     pivot-grouping
@@ -668,14 +666,12 @@
                                        !year.created-at
                                        [:expression "pivot-grouping"]]
                          :expressions {"pivot-grouping" [:abs 0]}
-                         :expression-idents {"pivot-grouping" "F_YdWocSQso_vOKlxhzR2"}
                          :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
                                        [:asc !year.created-at]
                                        [:asc [:expression "pivot-grouping"]]]
                          :joins       [{:source-table $$products
                                         :strategy     :left-join
                                         :alias        "PRODUCTS__via__PRODUCT_ID"
-                                        :ident        "oJhVb8BtrfV9-KsWj5kKw"
                                         :fk-field-id  %product-id
                                         :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
                       qp.preprocess/preprocess

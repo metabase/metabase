@@ -243,10 +243,10 @@
   []
   (lib.metadata.jvm/application-database-metadata-provider (id)))
 
-(defn ident
+(defn ^:deprecated ident
   "Get the ident for a field. Arguments are the same as for `(mt/id :table :field)`."
-  [table-key field-key]
-  (:ident (lib.metadata/field (metadata-provider) (id table-key field-key))))
+  [_table-key _field-key]
+  nil)
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the

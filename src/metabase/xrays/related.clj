@@ -26,9 +26,8 @@
            qp.util/normalize-token)]]
    [:* :any]])
 
-(defn- strip-idents [clause]
-  (cond-> clause
-    (mbql.u/is-clause? :field clause) (update 2 dissoc :ident)))
+(defn- ^:deprecated strip-idents [clause]
+  clause)
 
 (defn- collect-context-bearing-forms
   [form]

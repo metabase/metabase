@@ -164,14 +164,18 @@
                       (str "Not a valid base type: " (pr-str value)))}
     base-type?]])
 
+(defn- normalize-options-map [m]
+  (let [m (normalize-map m)]
+    (-> m
+        ;; add `:lib/uuid` if it's missing
+        (cond-> (not (:lib/uuid m)) (assoc :lib/uuid (str (random-uuid))))
+        ;; remove deprecated `:ident` key
+        (dissoc :ident))))
+
 (mr/def ::options
   [:map
    {:default {}
-    :decode/normalize (fn [m]
-                        (let [m (normalize-map m)]
-                          ;; add `:lib/uuid` if it's missing
-                          (cond-> m
-                            (not (:lib/uuid m)) (assoc :lib/uuid (str (random-uuid))))))}
+    :decode/normalize normalize-options-map}
    [:lib/uuid ::uuid]
    ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
    [:base-type      {:optional true} [:maybe ::base-type]]

@@ -63,8 +63,8 @@
       (lib/with-binning nil)
       (dissoc :lib/expression-name)))
 
-(defn- copy-ident [to from]
-  (lib.options/update-options to m/assoc-some :ident (lib.options/ident from)))
+(defn- ^:deprecated copy-ident [to from]
+  to)
 
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage

@@ -62,21 +62,15 @@
 (deftest ^:parallel query=-idents-test
   (testing "idents are ignored for query="
     (testing "on legacy queries"
-      (let [q1 #js {"query" #js {"source-table"       1
-                                 "aggregation"        #js [#js ["count"]]
-                                 "aggregation-idents" #js {"0" (u/generate-nano-id)}
-                                 "breakout"           #js [#js ["field" 3 nil]]
-                                 "breakout-idents"    #js {"0" (u/generate-nano-id)}
-                                 "expressions"        #js {"some_expr" #js ["field" 12 nil]}
-                                 "expression-idents"  #js {"some_expr" (u/generate-nano-id)}}}
+      (let [q1 #js {"query" #js {"source-table" 1
+                                 "aggregation"  #js [#js ["count"]]
+                                 "breakout"     #js [#js ["field" 3 nil]]
+                                 "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}
             ;; Same query, but idents will be different.
-            q2 #js {"query" #js {"source-table"       1
-                                 "aggregation"        #js [#js ["count"]]
-                                 "aggregation-idents" #js {"0" (u/generate-nano-id)}
-                                 "breakout"           #js [#js ["field" 3 nil]]
-                                 "breakout-idents"    #js {"0" (u/generate-nano-id)}
-                                 "expressions"        #js {"some_expr" #js ["field" 12 nil]}
-                                 "expression-idents"  #js {"some_expr" (u/generate-nano-id)}}}]
+            q2 #js {"query" #js {"source-table" 1
+                                 "aggregation"  #js [#js ["count"]]
+                                 "breakout"     #js [#js ["field" 3 nil]]
+                                 "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}]
         (is (lib.js/query= q1 q2))))
     (testing "on pMBQL queries"
       (let [q1 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

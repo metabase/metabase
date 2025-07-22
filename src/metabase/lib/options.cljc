@@ -85,7 +85,7 @@
   [x]
   (:lib/uuid (options x)))
 
-(mu/defn ident :- [:maybe ::lib.schema.common/non-blank-string]
-  "Get the `:ident` associated with something, e.g. an MBQL clause or join."
-  [x]
-  (:ident (options x)))
+(mu/defn ^:deprecated ident :- [:maybe ::lib.schema.common/non-blank-string]
+  "DEPRECTATED"
+  [_x]
+  nil)

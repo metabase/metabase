@@ -178,10 +178,16 @@
    [:page  pos-int?]
    [:items pos-int?]])
 
+(defn- normalize-mbql-stage [m]
+  (when (map? m)
+    (let [m (common/normalize-map m)]
+      ;; remove deprecated ident keys if they are present for some reason.
+      (dissoc m :aggregation-idents :breakout-idents :expression-idents))))
+
 (mr/def ::stage.mbql
   [:and
    [:map
-    {:decode/normalize common/normalize-map}
+    {:decode/normalize normalize-mbql-stage}
     [:lib/type           [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
     [:joins              {:optional true} [:ref ::join/joins]]

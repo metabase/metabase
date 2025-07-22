@@ -18,12 +18,7 @@
     (qp.store/with-metadata-provider (if (qp.store/initialized?)
                                        (qp.store/metadata-provider)
                                        meta/metadata-provider)
-      (->> (add-source-metadata/add-source-metadata-for-source-queries query)
-           (walk/postwalk
-            (fn [form]
-              (if (map? form)
-                (dissoc form :ident)
-                form)))))))
+      (add-source-metadata/add-source-metadata-for-source-queries query))))
 
 (defn- results-col [col]
   (select-keys
@@ -364,9 +359,7 @@
                                               :order-by     [[:asc $id]]
                                               :limit        2}})
           metadata          (qp.store/with-metadata-provider meta/metadata-provider
-                              (->> (qp.preprocess/query->expected-cols query)
-                                   (mapv (fn [col]
-                                           (dissoc col :ident)))))
+                              (qp.preprocess/query->expected-cols query))
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
           ;; `qp.preprocess/query->expected-cols`
           expected-metadata (map results-col metadata)]

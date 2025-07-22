@@ -21,7 +21,6 @@
                      :database-required false
                      :table-id 1
                      :name "TEST_ME"
-                     :ident (u/generate-nano-id)
                      :coercion-strategy nil
                      :settings nil
                      :caveats nil
@@ -65,7 +64,6 @@
                        :database-required false,
                        :table-id 1,
                        :name "ID",
-                       :ident (u/generate-nano-id)
                        :coercion-strategy nil,
                        :settings nil,
                        :caveats nil,
@@ -120,7 +118,6 @@
                        :custom-position 0,
                        :active true,
                        :id 10,
-                       :ident (u/generate-nano-id)
                        :parent-id nil,
                        :points-of-interest nil,
                        :visibility-type :normal,
@@ -140,7 +137,6 @@
                        :database-required false
                        :table-id 10
                        :name "FK_ID"
-                       :ident (u/generate-nano-id)
                        :coercion-strategy nil
                        :settings nil
                        :caveats nil

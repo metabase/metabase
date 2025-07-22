@@ -128,8 +128,6 @@
                                    :nfc_path           nil
                                    :parent_id          nil
                                    :id                 (meta/id :checkins :user-id)
-                                   ;; TODO: This :ident is made up, since `:result-metadata` doesn't contain idents yet.
-                                   :ident              (get-in query [:query :breakout-idents 0])
                                    :fk_target_field_id (meta/id :users :id)
                                    :visibility_type    :normal
                                    :display_name       "User ID"
@@ -139,8 +137,6 @@
                                    :semantic_type  :type/Quantity
                                    :name           "count"
                                    :display_name   "Count"
-                                   ;; TODO: This :ident is made up, since `:result-metadata` doesn't contain idents yet.
-                                   :ident          (get-in query [:query :aggregation-idents 0])
                                    :source         :aggregation
                                    :field_ref      [:aggregation 0]
                                    :effective_type :type/BigInteger}]}]}))))
@@ -210,13 +206,11 @@
                    :lib/stage-metadata {:lib/type :metadata/results
                                         :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
-                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
                                                    {:lib/type      :metadata/column
                                                     :name          "sum"
-                                                    :ident         "native[zkZ11tfUHvSej1u4yPLjB]__sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
@@ -265,7 +259,6 @@
       :database-id   (:id (lib.metadata/database metadata-provider))
       :name          "Mock model - Products and Reviews"
       :type          :model
-      :entity-id     (lib/random-ident)
       :dataset-query
       {:database (:id (lib.metadata/database metadata-provider))
        :type     :query
@@ -273,7 +266,6 @@
                   :joins        [{:fields       :all
                                   :alias        "Reviews"
                                   :source-table (:id reviews)
-                                  :ident        (lib/random-ident)
                                   :condition    [:=
                                                  [:field (:id pk) {:base-type :type/BigInteger}]
                                                  [:field (:id fk)
@@ -329,17 +321,9 @@
 (defn as-model
   "Given a mock card, make it a model.
 
-  This sets the `:type` of the card, and also adds `model[...]__...` to the `:ident`s in its `:result-metadata`, if any.
-
-  If the `:type` is already `:model`, this does nothing. Randomizes an `:entity-id` if not provided."
+  This sets the `:type` of the card to `:model`."
   [card]
-  (if (= (:type card) :model)
-    card ; Do nothing if it's already a model.
-    (let [eid (or (:entity-id card)
-                  (lib/random-ident))]
-      (-> card
-          (assoc :type      :model
-                 :entity-id eid)))))
+  (assoc card :type :model))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
