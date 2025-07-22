@@ -3,13 +3,16 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
    [metabase.util.malli.registry :as mr]))
 
-#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+(comment
+  metabase.lib.metadata.protocols/keep-me ; so `:metabase.lib.metadata.protocols/metadata-provider` gets loaded
+  #?(:cljs metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel disallow-duplicate-uuids-test
   (testing "sanity check: make sure query is valid with different UUIDs"
@@ -28,13 +31,13 @@
                        :source-table 2
                        :order-by
                        [[:asc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000020"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000020"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000030"
                            :base-type :type/BigInteger}
                           3]]
                         [:desc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000040"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000040"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000050"
                            :base-type :type/Integer}
@@ -50,13 +53,13 @@
                        :source-table 2
                        :order-by
                        [[:asc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000020"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000020"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000030"
                            :base-type :type/Integer}
                           3]]
                         [:asc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000040"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000040"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000050"
                            :base-type :type/Integer}

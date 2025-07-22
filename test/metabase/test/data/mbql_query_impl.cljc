@@ -167,10 +167,9 @@
 (defn wrap-inner-query
   "Internal impl fn of `data/mbql-query` macro."
   [inner-query]
-  (-> {:database (list *id-fn-symb*)
-       :type     :query
-       :query    inner-query}
-      (vary-meta assoc :type  :metabase.lib.test-util.macros/mbql-query)))
+  {:database (list *id-fn-symb*)
+   :type     :query
+   :query    inner-query})
 
 (defn maybe-add-source-table
   "Internal impl fn of `data/mbql-query` macro. Add `:source-table` to `inner-query` unless it already has a

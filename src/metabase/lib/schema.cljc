@@ -292,7 +292,7 @@
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
          (when (map? stage)
-           (lib.util.match/match-lite-recursive (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
+           (lib.util.match/match-lite-recursive (dissoc stage :joins :lib/stage-metadata)
              [:field {:join-alias (join-alias :guard (and (some? join-alias)
                                                           (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))

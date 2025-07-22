@@ -157,8 +157,7 @@
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-inner-query <>)
-     (vary-meta <> assoc :type :mbql-query))))
+     (mbql-query-impl/wrap-inner-query <>))))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
@@ -171,7 +170,6 @@
   ([table-name outer-query]
    {:pre [(map? outer-query)]}
    (merge
-    ^{:type :mbql-query}
     {:database `(id)
      :type     :query}
     (cond-> (mbql-query-impl/parse-tokens table-name outer-query)
