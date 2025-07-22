@@ -108,7 +108,7 @@
                              +
                              ids)
                   (array-map model))
-      (log/trace "semantic search deleted" <> "total documents with model type" model))))
+      (log/trace "semantic search deleted" (get <> model) "total documents with model type" model))))
 
 (defn- db-records->update-set
   [db-records]
