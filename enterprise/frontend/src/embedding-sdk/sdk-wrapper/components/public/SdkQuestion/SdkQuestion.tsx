@@ -15,6 +15,7 @@ const _SdkQuestion = createComponent(
  */
 export const SdkQuestion = _SdkQuestion as typeof _SdkQuestion &
   InteractiveQuestionComponents;
+export const InteractiveQuestion = SdkQuestion;
 
 SdkQuestion.BackButton = createComponent(
   () => getWindow()?.MetabaseEmbeddingSDK?.SdkQuestion?.BackButton,

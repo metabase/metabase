@@ -30,7 +30,7 @@ const Spinner = ({ size = "1.5rem", color = "#509EE3" }: SpinnerProps) => {
           }
 
           .metabase-spinner-loader::after {
-            content: '';
+            content: "";
             display: block;
             box-sizing: border-box;
             width: ${size};
