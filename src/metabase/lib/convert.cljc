@@ -207,15 +207,14 @@
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
-                      (m/assoc-some :expressions expressions
-                                    :aggregation aggregations))
+                      (m/assoc-some :expressions expressions))
             stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
                        stage
                        (update stage k ->pMBQL)))
                    stage
-                   (disj stage-keys :aggregation :breakout :expressions))]
+                   (disj stage-keys :expressions))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
