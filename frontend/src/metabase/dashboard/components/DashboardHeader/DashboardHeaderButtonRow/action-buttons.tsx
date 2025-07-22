@@ -1,5 +1,4 @@
 import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -93,8 +92,7 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     component: FullscreenToggle,
-    enabled: ({ isFullscreen, isPublic }) =>
-      isPublic || isFullscreen || isEmbeddingSdk(),
+    enabled: ({ isFullscreen, isPublic }) => isPublic || isFullscreen,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
     component: DashboardBookmark,
@@ -147,7 +145,6 @@ export const dashboardActionButtons: Record<
   },
   DOWNLOAD_PDF: {
     component: () => <ExportAsPdfButton />,
-    enabled: ({ downloadsEnabled, isEmbeddingSdk }) =>
-      isEmbeddingSdk && Boolean(downloadsEnabled.pdf),
+    enabled: ({ downloadsEnabled }) => Boolean(downloadsEnabled.pdf),
   },
 };

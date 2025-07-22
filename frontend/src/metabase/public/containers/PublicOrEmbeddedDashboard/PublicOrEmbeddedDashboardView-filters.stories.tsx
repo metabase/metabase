@@ -8,6 +8,7 @@ import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getUnsavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import {
@@ -393,6 +394,7 @@ const Template: StoryFn<MockDashboardContextProps> = (
       {...args}
       dashboardId={dashboard.id}
       parameters={PARAMETER_MAPPING[parameterType]}
+      dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
     >
       <PublicOrEmbeddedDashboardView />
     </MockDashboardContext>

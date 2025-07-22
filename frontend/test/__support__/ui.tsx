@@ -233,6 +233,7 @@ export function TestWrapper({
   withDND,
   withUndos,
   theme,
+  withCssVariables = false,
 }: {
   children: React.ReactElement;
   store: any;
@@ -242,11 +243,12 @@ export function TestWrapper({
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
+  withCssVariables?: boolean;
 }): JSX.Element {
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <themeProviderContext.Provider value={{ withCssVariables: false }}>
+        <themeProviderContext.Provider value={{ withCssVariables }}>
           <ThemeProvider theme={theme}>
             <GlobalStylesForTest />
 
@@ -255,7 +257,6 @@ export function TestWrapper({
                 {children}
               </MaybeRouter>
             </MaybeKBar>
-
             {withUndos && <UndoListing />}
           </ThemeProvider>
         </themeProviderContext.Provider>

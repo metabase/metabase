@@ -79,8 +79,6 @@ export function DashboardHeaderView({
     await dispatch(applyDraftParameterValues());
   }, [dispatch]);
 
-  const { dashboardActions } = useDashboardContext();
-
   const _headerButtons = useMemo(
     () => (
       <Flex
@@ -91,18 +89,11 @@ export function DashboardHeaderView({
         <DashboardHeaderButtonRow
           canResetFilters={canResetFilters}
           onResetFilters={handleResetFilters}
-          dashboardActionKeys={dashboardActions}
           isAnalyticsDashboard={isAnalyticsDashboard}
         />
       </Flex>
     ),
-    [
-      canResetFilters,
-      handleResetFilters,
-      dashboardActions,
-      isAnalyticsDashboard,
-      isNavBarOpen,
-    ],
+    [canResetFilters, handleResetFilters, isAnalyticsDashboard, isNavBarOpen],
   );
 
   useEffect(() => {
