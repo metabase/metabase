@@ -46,7 +46,7 @@ saved later when it is ready."
 
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
   [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
-                                                                            [:valid-metadata? :any]]]
+                                                                  [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (-> query
                       legacy-result-metadata-future)

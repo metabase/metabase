@@ -41,7 +41,6 @@
   #?(:clj bytes?
      :cljs :any))
 
-
 (mr/def ::info
   "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
   was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
