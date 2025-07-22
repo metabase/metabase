@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel mbql-query-metadata-test
   (testing "Should be able to calculate metadata for an MBQL query without going in to driver land"

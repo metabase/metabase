@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]

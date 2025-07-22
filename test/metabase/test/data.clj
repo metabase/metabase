@@ -39,8 +39,7 @@
    [colorize.core :as colorize]
    [mb.hawk.init :as hawk.init]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.schema-migrations-test.impl
-    :as schema-migrations-test.impl]
+   [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
@@ -52,7 +51,6 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [next.jdbc]))

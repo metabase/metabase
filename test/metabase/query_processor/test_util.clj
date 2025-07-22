@@ -521,7 +521,7 @@
                     :entity-id     (u/generate-nano-id)
                     :dataset-query query}))
     (completing
-     (fn [metadata-provider {query :dataset-query, eid :entity-id, :as card}]
+     (fn [metadata-provider {query :dataset-query, :as card}]
        (qp.store/with-metadata-provider metadata-provider
          (let [result-metadata (if (= (:type query) :query)
                                  (qp.preprocess/query->expected-cols query)

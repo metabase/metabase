@@ -426,9 +426,6 @@
     (is (not= breakouts replaced-breakouts))
     (is (= 2 (count replaced-breakouts)))
     (is (= (second breakouts) (second replaced-breakouts)))
-    (testing "preserves the :ident"
-      (is (=? (map lib.options/ident breakouts)
-              (map lib.options/ident replaced-breakouts))))
     (testing "replacing with dependent should cascade"
       (is (=? {:stages [{:breakout [[:field {} (meta/id :venues :price)] (second breakouts)]}
                         (complement :filters)]}
@@ -504,9 +501,6 @@
     (is (not= aggregations replaced-aggregations))
     (is (= 2 (count replaced-aggregations)))
     (is (= (second aggregations) (second replaced-aggregations)))
-    (testing "preserves the :idents"
-      (is (=? (map lib.options/ident aggregations)
-              (map lib.options/ident replaced-aggregations))))
     (testing "replacing with dependent should cascade keeping valid parts"
       (let [query' (-> query
                        (as-> <> (lib/aggregate <> (lib/with-expression-name (lib/aggregation-ref <> 0) "expr")))
@@ -632,7 +626,6 @@
   (let [query    (-> (lib.tu/venues-query)
                      (lib/expression "a" (lib/+ (meta/field-metadata :venues :name) 7))
                      (as-> $q (lib/breakout $q -1 (lib/expression-ref $q -1 "a"))))
-        [before] (lib/breakouts query)
         [expr]   (lib/expressions query)
         edited   (lib/replace-clause query -1 expr (lib/with-expression-name expr "b"))]
     (is (=? [{:lib/expression-name "b"}]
@@ -1100,7 +1093,6 @@
                      (meta/field-metadata :products :created-at))
         query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/join (lib/join-clause (meta/table-metadata :products) [(filter-1)])))
-        [join]     (lib/joins query)
         new-clause (lib/join-clause (meta/table-metadata :products) [(filter-2)])]
     (testing "New clause alias is maintained if table is maintained"
       (let [multi-query     (-> query

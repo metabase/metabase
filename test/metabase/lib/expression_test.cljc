@@ -14,7 +14,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
 
@@ -88,7 +87,6 @@
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
             (is (mr/validate ::lib.schema/query query))
-            (is (string? (-> resolved lib.options/ident not-empty)))
             (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
@@ -440,9 +438,7 @@
       (is (= "newly-named-expression"
              (lib/display-name query expr)))
       (is (not= (lib.options/uuid orig-expr)
-                (lib.options/uuid expr)))
-      (is (= (lib.options/ident orig-expr)
-             (lib.options/ident expr))))
+                (lib.options/uuid expr))))
     (testing "aggregation expressions can be renamed"
       (is (= "my count"
              (lib/display-name query agg)))
@@ -458,9 +454,7 @@
       (is (= "my count"
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
-                (lib.options/uuid agg)))
-      (is (= (lib.options/ident orig-expr)
-             (lib.options/ident expr))))
+                (lib.options/uuid agg))))
     (testing "filter expressions can be renamed"
       (is (= "my filter"
              (lib/display-name query new-filter)))

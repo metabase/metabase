@@ -283,7 +283,6 @@
                                                           :native   {:query "select 1 as \"ID\", current_timestamp::datetime as \"ALIAS_CREATED_AT\"", :template-tags {}}
                                                           :type     :native}
                                  :id                     5
-                                 :entity-id              card-eid
                                  :parameter-mappings     []
                                  :display                :table
                                  :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}

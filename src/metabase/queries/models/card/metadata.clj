@@ -97,7 +97,7 @@ saved later when it is ready."
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
+  [{:keys [original-query query metadata original-metadata model?], :as options}]
   (let [valid-metadata? (and metadata
                              (mr/validate analyze/ResultsMetadata metadata))]
     (cond

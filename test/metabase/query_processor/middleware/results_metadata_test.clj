@@ -206,14 +206,13 @@
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"
-    (let [card-eid (u/generate-nano-id)]
-      (is (=? {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
-                           (-> col (update :semantic_type keyword) (update :base_type keyword)))}
-              (-> (qp/process-query
-                   (qp/userland-query
-                    (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})))
-                  (get-in [:data :results_metadata])
-                  round-to-2-decimals))))))
+    (is (=? {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
+                         (-> col (update :semantic_type keyword) (update :base_type keyword)))}
+            (-> (qp/process-query
+                 (qp/userland-query
+                  (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})))
+                (get-in [:data :results_metadata])
+                round-to-2-decimals)))))
 
 (deftest ^:parallel metadata-in-results-test-2
   (testing "models"
@@ -234,8 +233,7 @@
                                                :base_type)
                                               cols)))]
         (testing "native"
-          (let [card-eid (u/generate-nano-id)
-                fields (str/join ", " (map :name (default-card-results-native)))
+          (let [fields (str/join ", " (map :name (default-card-results-native)))
                 native-query (str "SELECT " fields " FROM VENUES")
                 existing-metadata (add-preserved (default-card-results-native))
                 results (-> (mt/native-query   {:query native-query})

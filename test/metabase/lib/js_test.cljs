@@ -13,7 +13,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel query=-test
