@@ -22,8 +22,6 @@ When upgrading to a new major version, you'll want to upgrade both your Metabase
 
 You can do this locally or in your staging environment. If your testing setup involves a lot of test user accounts, getting a [development instance](../../installation-and-operation/development-instance.md) could be more cost-effective.
 
-
-
 See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md).
 
 ### Upgrade the SDK with npm or yarn
