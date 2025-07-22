@@ -1356,4 +1356,4 @@
 
 (defmulti compile-transform dispatch-on-initialized-driver :hierarchy #'hierarchy)
 
-(defmulti drop-transform dispatch-on-initialized-driver :hierarchy #'hierarchy)
+(defmulti compile-drop-table dispatch-on-initialized-driver :hierarchy #'hierarchy)
