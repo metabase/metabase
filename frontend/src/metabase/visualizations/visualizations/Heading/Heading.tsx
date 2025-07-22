@@ -1,12 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ComponentProps, MouseEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { MouseEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { CollapsibleDashboardParameterList } from "metabase/dashboard/components/CollapsibleDashboardParameterList";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
-import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
 import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardParameterMappingOptions,
@@ -14,10 +15,11 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
-import resizeObserver from "metabase/lib/resize-observer";
 import { isEmpty } from "metabase/lib/validate";
-import { Flex, Icon, Menu } from "metabase/ui";
+import { getSetting } from "metabase/selectors/settings";
+import { Box, Flex } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
@@ -26,6 +28,8 @@ import type {
 } from "metabase-types/api";
 
 import {
+  HEADING_FONT_SIZE,
+  HEADING_FONT_WEIGHT,
   HeadingContent,
   HeadingTextInput,
   InputContainer,
@@ -82,29 +86,6 @@ export function Heading({
   );
   const hasVariables = mappingOptions.length > 0;
 
-  const container = useRef<HTMLDivElement>(null);
-  const [isNarrow, setIsNarrow] = useState(false);
-
-  useEffect(() => {
-    const element = container.current;
-    if (!element) {
-      return;
-    }
-
-    const handleResize = () => {
-      if (!container.current) {
-        return;
-      }
-
-      setIsNarrow(container.current.getBoundingClientRect().width < 600);
-    };
-
-    resizeObserver.subscribe(element, handleResize);
-    return () => {
-      resizeObserver.unsubscribe(element, handleResize);
-    };
-  }, [isEditing]);
-
   const translatedText = useMemo(() => tc(settings.text), [settings.text, tc]);
 
   // handles a case when settings are updated externally
@@ -128,11 +109,36 @@ export function Heading({
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can connect widgets to {{variables}} in heading cards.`;
 
+  const fontFamily = useSelector((state) =>
+    getSetting(state, "application-font"),
+  );
+
+  const { shouldCollapseList, containerRef, parameterListRef } =
+    useResponsiveParameterList({
+      reservedWidth: measureTextWidth(content, {
+        family: fontFamily,
+        size: HEADING_FONT_SIZE,
+        weight: HEADING_FONT_WEIGHT,
+      }),
+    });
+
   let leftContent: JSX.Element | null;
 
-  if (hasVariables && isEditingParameter) {
+  if (isEditingParameter) {
     leftContent = (
-      <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
+      <Box h="100%" style={{ overflow: "hidden" }}>
+        {hasVariables ? (
+          <DashCardParameterMapper
+            compact
+            dashcard={dashcard}
+            isMobile={isMobile}
+          />
+        ) : (
+          <Flex h="100%" display="flex" align="center">
+            <Ellipsified>{t`You can connect widgets to {{ variables }} in heading cards.`}</Ellipsified>
+          </Flex>
+        )}
+      </Box>
     );
   } else if (isPreviewing) {
     leftContent = (
@@ -172,17 +178,18 @@ export function Heading({
         isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
-        ref={container}
+        ref={containerRef}
         style={{
-          paddingRight: isNarrow && isShort ? "2.5rem" : undefined,
+          paddingRight: shouldCollapseList && isShort ? "2.5rem" : undefined,
         }}
       >
         {leftContent}
         {inlineParameters.length > 0 && (
-          <ParametersList
-            isNarrow={isNarrow}
+          <CollapsibleDashboardParameterList
+            isCollapsed={shouldCollapseList}
             parameters={inlineParameters}
             widgetsVariant="subtle"
+            ref={parameterListRef}
           />
         )}
       </InputContainer>
@@ -197,7 +204,7 @@ export function Heading({
       justify="space-between"
       pl="0.75rem"
       style={{ overflow: "hidden" }}
-      ref={container}
+      ref={containerRef}
     >
       <HeadingContent
         data-testid="saved-dashboard-heading-content"
@@ -206,83 +213,13 @@ export function Heading({
         {content}
       </HeadingContent>
       {inlineParameters.length > 0 && (
-        <ParametersList
-          isNarrow={isNarrow}
+        <CollapsibleDashboardParameterList
+          isCollapsed={shouldCollapseList}
           parameters={inlineParameters}
           widgetsVariant="subtle"
+          ref={parameterListRef}
         />
       )}
     </Flex>
   );
-}
-
-interface ParametersListProps
-  extends ComponentProps<typeof DashboardParameterList> {
-  isNarrow: boolean;
-}
-
-function ParametersList(props: ParametersListProps) {
-  const { isNarrow, ...rest } = props;
-
-  const { editingParameter } = useDashboardContext();
-
-  const parametersWithValues = useMemo(
-    () => rest.parameters.filter((p) => p.value != null),
-    [rest.parameters],
-  );
-
-  const parametersListCommonProps = {
-    ...rest,
-    widgetsVariant: "subtle" as const,
-    isSortable: false,
-  };
-
-  if (isNarrow) {
-    if (editingParameter) {
-      const parameters = rest.parameters.filter(
-        (p) => p.id === editingParameter.id,
-      );
-      // If a parameter is being edited, we don't show the dropdown
-      return (
-        <DashboardParameterList
-          {...parametersListCommonProps}
-          parameters={parameters}
-        />
-      );
-    }
-
-    return (
-      <Menu>
-        <Menu.Target data-testid="show-filter-parameter-button">
-          <ToolbarButton
-            aria-label={t`Show filters`}
-            tooltipLabel={t`Show filters`}
-            onClick={(e) => {
-              // To avoid focusing the input when clicking the button
-              e.stopPropagation();
-            }}
-          >
-            <Icon name="filter" />
-            {parametersWithValues.length > 0 && (
-              <span data-testid="show-filter-parameter-count">
-                &nbsp;{parametersWithValues.length}
-              </span>
-            )}
-          </ToolbarButton>
-        </Menu.Target>
-        <Menu.Dropdown
-          data-testid="show-filter-parameter-dropdown"
-          style={{ overflow: "visible" }}
-        >
-          <DashboardParameterList
-            {...parametersListCommonProps}
-            widgetsWithinPortal={false}
-            vertical
-          />
-        </Menu.Dropdown>
-      </Menu>
-    );
-  }
-
-  return <DashboardParameterList {...parametersListCommonProps} />;
 }

@@ -132,7 +132,7 @@
         (let [user-info {:user-id (:id user) :is-superuser? false}
               permission-mapping {:perms/view-data :unrestricted}
               query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
-              results (t2/debug (t2/query query))]
+              results (t2/query query)]
           (is (not (some #(= (:id table1) (:id %)) results)) "User with non-matching permissions should get no results"))))))
 
 (deftest empty-permission-mapping-test

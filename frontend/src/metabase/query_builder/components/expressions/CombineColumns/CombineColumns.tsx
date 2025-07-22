@@ -6,7 +6,7 @@ import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex, Icon, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
+import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
 
 import { ColumnAndSeparatorRow } from "./ColumnAndSeparatorRow";
 import { Example } from "./Example";
@@ -22,6 +22,7 @@ import {
 interface Props {
   query: Lib.Query;
   stageIndex: number;
+  availableColumns: Lib.ColumnMetadata[];
   onCancel?: () => void;
   onSubmit: (name: string, clause: Lib.ExpressionClause) => void;
   withTitle?: boolean;
@@ -42,24 +43,23 @@ type State = {
 export function CombineColumns({
   query,
   stageIndex,
+  availableColumns,
   onCancel,
   onSubmit,
   width,
   column,
   withTitle,
 }: Props) {
-  const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
-
   const [state, setState] = useState<State>(() => {
     const defaultSeparator = getDefaultSeparator(column);
 
     const firstColumnAndSeparator = {
-      column: column ?? expressionableColumns[0] ?? null,
+      column: column ?? availableColumns[0] ?? null,
       separator: null,
     };
 
     const secondColumnAndSeparator = getNextColumnAndSeparator(
-      expressionableColumns,
+      availableColumns,
       defaultSeparator,
       [firstColumnAndSeparator],
     );
@@ -121,7 +121,7 @@ export function CombineColumns({
         columnsAndSeparators: [
           ...state.columnsAndSeparators,
           getNextColumnAndSeparator(
-            expressionableColumns,
+            availableColumns,
             state.defaultSeparator,
             state.columnsAndSeparators,
           ),
@@ -178,7 +178,7 @@ export function CombineColumns({
                           query={query}
                           stageIndex={stageIndex}
                           index={index}
-                          columns={expressionableColumns}
+                          columns={availableColumns}
                           column={item.column}
                           separator={item.separator ?? ""}
                           showSeparator={

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 
 import type { SdkDashboardProps } from "../SdkDashboard";
@@ -14,6 +14,7 @@ const setup = async (
     props?: Partial<SdkDashboardProps>;
     providerProps?: Partial<MetabaseProviderProps>;
     isLocaleLoading?: boolean;
+    dashboardName?: string;
   } = {},
 ) => {
   return setupSdkDashboard({
@@ -47,7 +48,7 @@ describe("SdkDashboard", () => {
   });
 
   it("should allow to navigate back to dashboard from a question", async () => {
-    await setup();
+    await setup({ dashboardName: "Test dashboard" });
 
     await userEvent.click(screen.getByText("Here is a card title"));
 
@@ -55,9 +56,9 @@ describe("SdkDashboard", () => {
       await screen.findByTestId("query-visualization-root"),
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Back to Dashboard")).toBeInTheDocument();
+    expect(screen.getByLabelText("Back to Test dashboard")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Back to Dashboard"));
+    await userEvent.click(screen.getByLabelText("Back to Test dashboard"));
 
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 
@@ -68,7 +69,7 @@ describe("SdkDashboard", () => {
   });
 
   it("should allow to navigate back to dashboard from a question with empty results", async () => {
-    await setup();
+    await setup({ dashboardName: "Test dashboard" });
 
     await userEvent.click(screen.getByText("Here is a card title"));
 
@@ -76,7 +77,7 @@ describe("SdkDashboard", () => {
       await screen.findByTestId("query-visualization-root"),
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Back to Dashboard")).toBeInTheDocument();
+    expect(screen.getByLabelText("Back to Test dashboard")).toBeInTheDocument();
 
     await userEvent.click(screen.getByText("Back to previous results"));
 
@@ -131,5 +132,54 @@ describe("SdkDashboard", () => {
 
     expect(onLoad).toHaveBeenCalledTimes(1);
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+  });
+
+  it("should render a custom dashcard menu if one is provided with a user plugin", async () => {
+    const onClickCustomAction = jest.fn();
+    await setup({
+      props: {
+        withDownloads: true,
+        plugins: {
+          dashboard: {
+            dashboardCardMenu: {
+              withDownloads: true,
+              withEditLink: true,
+              customItems: [
+                {
+                  iconName: "chevronright",
+                  label: "Custom Action",
+                  onClick: onClickCustomAction,
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    expect(dashcard).toBeInTheDocument();
+
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    const dashcardMenuPopover = await screen.findByRole("menu");
+    expect(
+      within(dashcardMenuPopover).getByText("Download results"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Edit question"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    );
+
+    expect(dashcardMenuPopover).not.toBeInTheDocument();
+    expect(onClickCustomAction).toHaveBeenCalled();
   });
 });

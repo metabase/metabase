@@ -5,6 +5,7 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
+import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { IconName } from "metabase/ui";
 import {
@@ -168,6 +169,7 @@ const setup = ({
           onNightModeChange={jest.fn()}
           isNightMode={isNightMode}
           downloadsEnabled={{ pdf: false }}
+          dashboardActions={DASHBOARD_APP_ACTIONS}
         >
           <DashboardHeaderButtonRow
             canResetFilters

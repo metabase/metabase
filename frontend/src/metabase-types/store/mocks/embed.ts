@@ -15,6 +15,5 @@ export const createMockEmbedState = (
   opts?: Partial<EmbedState>,
 ): EmbedState => ({
   options: createMockEmbedOptions(),
-  isEmbeddingSdk: false,
   ...opts,
 });

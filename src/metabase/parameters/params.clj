@@ -123,8 +123,9 @@
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
     (for [field fields]
       ;; add matching `:name_field` if it's a PK
-      (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
-                                 (table-id->name-field (:table_id field)))))))
+      (when field
+        (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
+                                   (table-id->name-field (:table_id field))))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
 ;; don't want to return. The two functions below work to remove the unneeded ones.
@@ -152,7 +153,7 @@
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                                              (t2/hydrate :has_field_values :name_field :target
+                                              (t2/hydrate :has_field_values :name_field [:target :name_field]
                                                           [:dimensions :human_readable_field])
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids

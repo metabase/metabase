@@ -38,6 +38,7 @@ interface HeadBreadcrumbsProps {
   parts: DataSourcePart[];
   divider?: string | ReactElement;
   inactiveColor?: string;
+  isObjectDetail?: boolean;
 }
 
 export function HeadBreadcrumbs({
@@ -47,6 +48,7 @@ export function HeadBreadcrumbs({
   inactiveColor,
   ...props
 }: HeadBreadcrumbsProps) {
+  const { isObjectDetail, ...rest } = props;
   return (
     <Flex
       align="center"
@@ -55,7 +57,7 @@ export function HeadBreadcrumbs({
       className={cx(HeaderBreadcrumbsS.Container, {
         [HeaderBreadcrumbsS.headVariant]: variant === "head",
       })}
-      {...props}
+      {...rest}
     >
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;

@@ -12,7 +12,7 @@ Cypress.Commands.add(
     group_id = COLLECTION_GROUP,
     table_id = STATIC_ORDERS_ID,
   } = {}) => {
-    // Extract the name of the table, as well as `schema` and `db_id` that we'll need later on for `cy.updatePermissionsSchemas()`
+    // Extract the name of the table, as well as `schema` and `db_id` that we'll need later on for `cy.updatePermissionsGraph()`
     cy.request("GET", "/api/table").then(({ body: tables }) => {
       const { name, schema, db_id } = tables.find(
         (table) => table.id === table_id,

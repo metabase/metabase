@@ -1,4 +1,6 @@
-name: E2E Cross-version Tests
+name: E2E cross-version for breaking changes
+
+# See `bin/backward-compatibility-test.js` for the documentation of this workflow.
 
 on:
   workflow_dispatch:
@@ -36,6 +38,7 @@ on:
 
 jobs:
   generate-matrix:
+    name: "Breaking changes E2E > Generate matrix"
     runs-on: ubuntu-latest
     outputs:
       matrix_json: ${{ steps.set_matrix.outputs.matrix_json }}
@@ -60,6 +63,7 @@ jobs:
           TOTAL_SHARDS_INPUT: ${{ inputs.total-shards }}
 
   build-jar:
+    name: "Breaking changes E2E > Build jar"
     runs-on: ubuntu-22.04
     timeout-minutes: 45
 
@@ -96,6 +100,7 @@ jobs:
           if-no-files-found: error
 
   run-breaking-changes-tests:
+    name: "Breaking changes E2E > Run breaking changes tests"
     needs: [build-jar, generate-matrix]
     runs-on: ubuntu-22.04
     timeout-minutes: 45

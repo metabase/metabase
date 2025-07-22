@@ -776,9 +776,8 @@ describe("scenarios > dashboard", () => {
     H.saveDashboard();
 
     cy.log("Assert that the selected filter is present in the dashboard");
-    cy.icon("location");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Location");
+    cy.findByText("Location", { exact: false }).should("be.visible");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {

@@ -12,7 +12,6 @@ import {
   SkeletonCaptionDescription,
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,
-  SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
 import type { SkeletonCaptionSize } from "./types";
 
@@ -30,11 +29,7 @@ const SkeletonCaption = ({
 }: SkeletonCaptionProps): JSX.Element => {
   return (
     <SkeletonCaptionRoot className={className}>
-      {name ? (
-        <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>
-      ) : (
-        <SkeletonPlaceholder />
-      )}
+      {name && <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>}
       <LegendRightContent>
         {description && (
           <Tooltip

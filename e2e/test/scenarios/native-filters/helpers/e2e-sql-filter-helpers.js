@@ -29,7 +29,7 @@ export function openTypePickerFromDefaultFilterType() {
 /**
  * Sets the SQL filter type.
  *
- * @param {("Text"|"Number"|"Date"|"Field Filter")} filterType
+ * @param {("Text"|"Number"|"Date"|"Boolean"|"Field Filter")} filterType
  *
  * @example
  * chooseType("Date");
@@ -109,4 +109,8 @@ export function getRunQueryButton() {
 
 export function getSaveQueryButton() {
   return cy.findByRole("button", { name: "Save" });
+}
+
+export function setFieldAlias(alias) {
+  cy.findByTestId("field-alias-input").clear().type(alias).blur();
 }
