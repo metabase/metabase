@@ -18,6 +18,10 @@
   (throw (ex-info (str "legos.actions/execute! is not implemented for " (:lego lego))
                   {:lego lego})))
 
+(mr/def ::lego
+  [:map
+   [:lego :string]])
+
 (mr/def ::transform
   [:map
    [:lego [:= "transform"]]
@@ -40,3 +44,13 @@
       :sql query
       :output-table (qualified-table-name driver schema table)
       :overwrite? true})))
+
+(mr/def ::plan
+  [:map
+   [:steps [:+ ::lego]]])
+
+(defn execute-plan!
+  "Execute an entire plan."
+  [plan]
+  (doseq [step (:steps plan)]
+    (execute! step)))
