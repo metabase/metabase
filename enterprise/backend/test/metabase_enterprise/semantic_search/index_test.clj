@@ -16,11 +16,11 @@
       (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
       (testing "index table is not present before create!"
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
-        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) :embedding_hnsw_idx))))
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (:index-name @index-ref)))))
       (testing "index table is present after create!"
         (semantic.index/create-index-table! semantic.tu/db semantic.tu/mock-index {:force-reset? false})
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
-        (is (semantic.tu/table-has-index? (:table-name @index-ref) :embedding_hnsw_idx))))))
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) (:index-name @index-ref)))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}

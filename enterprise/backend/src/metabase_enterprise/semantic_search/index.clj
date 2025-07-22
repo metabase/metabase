@@ -119,9 +119,11 @@
 (defn default-index
   "Returns the default index spec for a model."
   [embedding-model]
-  (let [{:keys [model-name provider vector-dimensions]} embedding-model]
+  (let [{:keys [model-name provider vector-dimensions]} embedding-model
+        table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)]
     {:embedding-model embedding-model
-     :table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)}))
+     :table-name table-name
+     :index-name (str table-name "__hnsw_idx")}))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
@@ -166,8 +168,8 @@
   force-reset? is true, drops and recreates the table if it exists."
   [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
-    (let [{:keys [embedding-model table-name]} index
-          {:keys [vector-dimensions]}          embedding-model]
+    (let [{:keys [embedding-model index-name table-name]} index
+          {:keys [vector-dimensions]}                     embedding-model]
       (log/info "Creating index table" table-name)
       (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
       (when force-reset? (drop-index-table! connectable index))
@@ -179,7 +181,7 @@
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [:embedding_hnsw_idx :if-not-exists]
+            [(keyword index-name) :if-not-exists]
             [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
            sql-format-quoted)))
     (catch Exception e
