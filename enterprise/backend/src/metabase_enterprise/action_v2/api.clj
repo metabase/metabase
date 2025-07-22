@@ -172,7 +172,7 @@
       (throw (ex-info "We do not currently support execution of Model Actions" {:status-code 400}))
       (:action-kw action-def)
       (let [action-kw (keyword (:action-kw action-def))]
-        (:outputs (actions/perform-action! action-kw scope inputs)))
+        (:outputs (actions/perform-action! action-kw inputs {:scope scope})))
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 400 :scope scope :action action-def})))))
 
