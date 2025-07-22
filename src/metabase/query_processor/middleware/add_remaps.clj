@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.add-dimension-projections
+(ns metabase.query-processor.middleware.add-remaps
   "Middleware for adding remapping and other dimension related projections. This remaps Fields that have a corresponding
   Dimension object (which defines a remapping) in two different ways, depending on the `:type` attribute of the
   Dimension:
@@ -30,7 +30,6 @@
   (:require
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -59,7 +58,7 @@
     :map
     [:fn
      {:error/message "options map without namespaced keys and base-type/effective-type"}
-     (complement (some-fn :base-type :effective-type :lib/uuid))]]
+     (complement (some-fn :base-type :effective-type :ident :lib/uuid))]]
    [:or
     ::lib.schema.id/field
     :string]])
@@ -69,7 +68,7 @@
   (lib/update-options a-ref (fn [opts]
                               (-> opts
                                   (->> (m/filter-keys simple-keyword?))
-                                  (dissoc :base-type :effective-type)))))
+                                  (dissoc :base-type :effective-type :ident)))))
 
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
@@ -115,7 +114,13 @@
 (mr/def ::remap-info
   [:map
    [:original-field-clause :mbql.clause/field]
-   [:new-field-clause      :mbql.clause/field]
+   [:new-field-clause      [:and
+                            :mbql.clause/field
+                            [:tuple
+                             [:= :field]
+                             [:map
+                              [::new-field-dimension-id ::lib.schema.id/dimension]]
+                             :any]]]
    [:dimension             ::external-remapping]])
 
 (mu/defn- remap-column-infos :- [:maybe [:sequential ::remap-info]]
@@ -234,7 +239,7 @@
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (not-empty (remap-column-infos query (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [ ;; make a map of field-id-clause -> fk-clause from the tuples
+      (let [;; make a map of field-id-clause -> fk-clause from the tuples
             original->remapped             (into {}
                                                  (map (fn [{:keys [original-field-clause new-field-clause]}]
                                                         [(simplify-ref-options original-field-clause) new-field-clause]))
@@ -272,7 +277,7 @@
   of [[:sequential ::external-remapping]] information maps)."
   [query :- ::lib.schema/query]
   (let [query' (lib.walk/walk-stages query add-fk-remaps-one-level)
-        remaps (::remaps (lib/query-stage query' -1) )]
+        remaps (::remaps (lib/query-stage query' -1))]
     {:query  (lib.walk/walk-stages
               query'
               (fn [_query _path stage]

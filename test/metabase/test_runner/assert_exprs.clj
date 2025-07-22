@@ -8,7 +8,6 @@
    [clojure.test :as t]
    [clojure.walk :as walk]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [medley.core :as m]
    [metabase.test-runner.assert-exprs.malli-equals]
    [methodical.core :as methodical]))
 
