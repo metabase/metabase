@@ -7,18 +7,17 @@ EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
 defineGlobalDependencies();
 
-export * from "./sdk-wrapper/components/public/CollectionBrowser";
-export * from "./sdk-wrapper/components/public/CreateQuestion";
-export * from "./sdk-wrapper/components/public/CreateDashboardModal";
-export * from "./sdk-wrapper/components/public/dashboard/EditableDashboard";
-export * from "./sdk-wrapper/components/public/dashboard/InteractiveDashboard";
-export * from "./sdk-wrapper/components/public/dashboard/StaticDashboard";
-export * from "./sdk-wrapper/components/public/debug/SdkDebugInfo";
-export { SdkQuestion as InteractiveQuestion } from "./sdk-wrapper/components/public/SdkQuestion";
-export * from "./sdk-wrapper/components/public/StaticQuestion";
+export { CollectionBrowser } from "./sdk-wrapper/components/public/CollectionBrowser";
+export { CreateQuestion } from "./sdk-wrapper/components/public/CreateQuestion";
+export { CreateDashboardModal } from "./sdk-wrapper/components/public/CreateDashboardModal";
+export { EditableDashboard } from "./sdk-wrapper/components/public/dashboard/EditableDashboard";
+export { InteractiveDashboard } from "./sdk-wrapper/components/public/dashboard/InteractiveDashboard";
+export { StaticDashboard } from "./sdk-wrapper/components/public/dashboard/StaticDashboard";
+export { InteractiveQuestion } from "./sdk-wrapper/components/public/SdkQuestion";
+export { StaticQuestion } from "./sdk-wrapper/components/public/StaticQuestion";
 // eslint-disable-next-line no-literal-metabase-strings -- Export
-export * from "./sdk-wrapper/components/public/MetabaseProvider";
-export * from "./sdk-wrapper/components/public/MetabotQuestion";
+export { MetabaseProvider } from "./sdk-wrapper/components/public/MetabaseProvider";
+export { MetabotQuestion } from "./sdk-wrapper/components/public/MetabotQuestion";
 
 export { useApplicationName } from "./sdk-wrapper/hooks/public/use-application-name";
 export { useAvailableFonts } from "./sdk-wrapper/hooks/public/use-available-fonts";
