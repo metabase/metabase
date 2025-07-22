@@ -18,12 +18,7 @@ export function useWaitForSdkBundle() {
 
   const updateLoadingState = useCallback(
     (loadingState: SdkBundleScriptLoadingState) => {
-      const _window = getWindow();
-
-      if (_window) {
-        _window.EMBEDDING_SDK_BUNDLE_LOADING_STATE = loadingState;
-      }
-
+      window.EMBEDDING_SDK_BUNDLE_LOADING_STATE = loadingState;
       setLoadingState(loadingState);
     },
     [setLoadingState],

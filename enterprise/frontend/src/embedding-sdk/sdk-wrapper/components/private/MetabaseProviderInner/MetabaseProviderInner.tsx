@@ -1,6 +1,8 @@
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type PropsWithChildren, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
+import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import {
   type MetabaseProviderPropsToStore,
   MetabaseProviderStore,
@@ -9,53 +11,68 @@ import type { SdkStoreState } from "embedding-sdk/store/types";
 
 type Props = {
   className?: string;
-  store: Store<SdkStoreState, Action> | undefined;
+  store?: Store<SdkStoreState, Action>;
   props: MetabaseProviderPropsToStore;
+  children: (state: { initialized: boolean }) => ReactNode;
 };
 
-export const MetabaseProviderInner = ({
-  children,
-  store,
-  props,
-}: PropsWithChildren<Props>) => {
-  const existingMetabaseProviderStoreRef = useRef(
-    MetabaseProviderStore.getInstance(),
+const incrementProvidersCount = () => {
+  window.METABASE_PROVIDERS_COUNT = (window.METABASE_PROVIDERS_COUNT ?? 0) + 1;
+};
+
+const decrementProvidersCount = () => {
+  window.METABASE_PROVIDERS_COUNT = Math.max(
+    0,
+    (window.METABASE_PROVIDERS_COUNT ?? 1) - 1,
   );
+};
 
-  const initializedRef = useRef<boolean>(false);
-  const sdkStoreInitializedRef = useRef<boolean>(false);
+const shouldInitialize = () => {
+  return (getWindow()?.METABASE_PROVIDERS_COUNT ?? 0) <= 1;
+};
 
-  if (!initializedRef.current) {
-    if (existingMetabaseProviderStoreRef.current) {
+const shouldCleanup = () => {
+  return (getWindow()?.METABASE_PROVIDERS_COUNT ?? 0) === 0;
+};
+
+export function MetabaseProviderInner({ store, props, children }: Props) {
+  const [initialized, setInitialized] = useState(false);
+  const [sdkStoreInitialized, setSdkStoreInitialized] = useState(false);
+
+  useEffect(() => {
+    incrementProvidersCount();
+
+    if (shouldInitialize()) {
+      MetabaseProviderStore.initialize(props);
+    } else {
       console.warn(
-        // eslint-disable-next-line no-literal-metabase-strings -- error message
+        // eslint-disable-next-line no-literal-metabase-strings -- Warning message
         "Multiple instances of MetabaseProvider detected. Metabase Embedding SDK may work unexpectedly. Ensure only one instance of MetabaseProvider is rendered at a time.",
       );
-    } else {
-      MetabaseProviderStore.initialize(props);
-      initializedRef.current = true;
     }
-  }
 
-  if (
-    !sdkStoreInitializedRef.current &&
-    !existingMetabaseProviderStoreRef.current &&
-    store
-  ) {
-    MetabaseProviderStore.getInstance()?.setSdkStore(store);
-    sdkStoreInitializedRef.current = true;
-  }
+    setInitialized(true);
+
+    return () => {
+      decrementProvidersCount();
+
+      if (shouldCleanup()) {
+        MetabaseProviderStore.cleanup();
+      }
+    };
+    // eslint-disable-next-line -- Run on mount only
+  }, []);
+
+  useEffect(() => {
+    if (store && !sdkStoreInitialized) {
+      MetabaseProviderStore.getInstance()?.setSdkStore(store);
+      setSdkStoreInitialized(true);
+    }
+  }, [store, sdkStoreInitialized]);
 
   useEffect(() => {
     MetabaseProviderStore.getInstance()?.updateProps(props);
   }, [props]);
 
-  useEffect(
-    () => () => {
-      MetabaseProviderStore.cleanup();
-    },
-    [],
-  );
-
-  return children;
-};
+  return <>{children({ initialized: initialized && sdkStoreInitialized })}</>;
+}

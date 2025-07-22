@@ -5,7 +5,7 @@ import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
-import { useMetabaseProviderStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-store";
+import { MetabaseProviderStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-store";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -89,7 +89,7 @@ export interface MetabaseProviderProps
   allowConsoleLog?: boolean;
 }
 
-interface InternalMetabaseProviderProps extends MetabaseProviderProps {
+export interface InternalMetabaseProviderProps extends MetabaseProviderProps {
   store: Store<SdkStoreState, Action>;
 }
 
@@ -163,25 +163,20 @@ export const MetabaseProviderInternal = ({
 };
 
 export const MetabaseProvider = memo(function MetabaseProvider(
-  props: MetabaseProviderProps,
+  props: Omit<InternalMetabaseProviderProps, "store">,
 ) {
   const storeRef = useRef<Store<SdkStoreState, Action> | null>(null);
-  const metabaseProviderStore = useMetabaseProviderStore();
 
   if (!storeRef.current) {
-    const existingStore = metabaseProviderStore?.sdkStore;
+    const existingStore = MetabaseProviderStore.getInstance()?.getSdkStore();
 
-    if (existingStore) {
-      storeRef.current = existingStore;
-    } else {
-      storeRef.current = getSdkStore();
-    }
+    storeRef.current = existingStore ?? getSdkStore();
   }
 
   return (
-    <MetabaseReduxProvider store={storeRef.current}>
+    <MetabaseReduxProvider store={storeRef.current!}>
       <MetabotProvider>
-        <MetabaseProviderInternal store={storeRef.current} {...props} />
+        <MetabaseProviderInternal {...props} store={storeRef.current!} />
       </MetabotProvider>
     </MetabaseReduxProvider>
   );
