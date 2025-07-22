@@ -368,7 +368,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v56.2025-07-22T12:00:00
-      author: assistant
+      author: edpaget
       comment: Create report_run table
       preConditions:
         - onFail: MARK_RAN
@@ -423,7 +423,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v56.2025-07-22T12:01:00
-      author: assistant
+      author: edpaget
       comment: add report_document_version_id column to report_card
       changes:
         - addColumn:
@@ -438,7 +438,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v56.2025-07-22T12:01:01
-      author: assistant
+      author: edpaget
       comment: add foreign key constraint for report_document_version_id in report_card
       changes:
         - addForeignKeyConstraint:
