@@ -50,7 +50,7 @@
   (let [db           (semantic.db/init-db!)
         active-index (get-active-index)]
     (jdbc/with-transaction [tx db]
-      (semantic.index/create-index-table! tx active-index {:force-reset? false}))
+      (semantic.index/ensure-index-table-ready! tx active-index {:force-reset? false}))
     (semantic.index/upsert-index! db active-index (into [] searchable-documents))))
 
 (defenterprise reindex!
@@ -61,7 +61,7 @@
   (let [db @semantic.db/data-source
         active-index (get-active-index)]
     (jdbc/with-transaction [tx db]
-      (semantic.index/create-index-table! tx active-index {:force-reset? false}))
+      (semantic.index/ensure-index-table-ready! tx active-index {:force-reset? false}))
     (semantic.index/upsert-index! db active-index (into [] searchable-documents))))
 
 ;; TODO: implement
