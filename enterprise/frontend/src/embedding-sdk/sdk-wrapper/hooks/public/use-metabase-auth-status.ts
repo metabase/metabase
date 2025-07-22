@@ -1,4 +1,5 @@
+import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { useLazySelector } from "embedding-sdk/sdk-wrapper/hooks/private/use-lazy-selector";
 
 export const useMetabaseAuthStatus = () =>
-  useLazySelector(window.MetabaseEmbeddingSDK?.getLoginStatus) ?? null;
+  useLazySelector(getWindow()?.MetabaseEmbeddingSDK?.getLoginStatus) ?? null;

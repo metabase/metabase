@@ -3,6 +3,8 @@ import type { Action, Store } from "@reduxjs/toolkit";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 
+import { getWindow } from "./get-window";
+
 export type MetabaseProviderPropsToStore = Omit<
   MetabaseProviderProps,
   "children"
@@ -22,18 +24,23 @@ export class MetabaseProviderStore {
     }
 
     MetabaseProviderStore.instance = new MetabaseProviderStore(initialProps);
-    window.METABASE_PROVIDER_STORE = MetabaseProviderStore;
+
+    const _window = getWindow();
+
+    if (_window) {
+      _window.METABASE_PROVIDER_STORE = MetabaseProviderStore;
+    }
   }
 
   public static cleanup(): void {
     MetabaseProviderStore.instance = null;
-    delete window.METABASE_PROVIDER_STORE;
+    delete getWindow()?.METABASE_PROVIDER_STORE;
   }
 
   public static getInstance(): MetabaseProviderStore | null {
     return (
-      (window.METABASE_PROVIDER_STORE ?? MetabaseProviderStore)?.instance ??
-      null
+      (getWindow()?.METABASE_PROVIDER_STORE ?? MetabaseProviderStore)
+        ?.instance ?? null
     );
   }
 

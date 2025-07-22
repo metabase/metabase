@@ -1,3 +1,4 @@
+import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { createComponent } from "embedding-sdk/sdk-wrapper/components/private/ComponentWrapper/ComponentWrapper";
 
 /**
@@ -7,5 +8,5 @@ import { createComponent } from "embedding-sdk/sdk-wrapper/components/private/Co
  * @category CreateDashboardModal
  */
 export const CreateDashboardModal = createComponent(
-  () => window.MetabaseEmbeddingSDK?.CreateDashboardModal,
+  () => getWindow()?.MetabaseEmbeddingSDK?.CreateDashboardModal,
 );
