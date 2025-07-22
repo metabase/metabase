@@ -5,20 +5,24 @@ import {
   useUpdateTableFieldsOrderMutation,
   useUpdateTableMutation,
 } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
+import EmptyState from "metabase/common/components/EmptyState";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
   SortableFieldList,
 } from "metabase/metadata/components";
-import { Box, Button, Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Group, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
+import { ResponsiveButton } from "../ResponsiveButton";
 
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
+import { useResponsiveButtons } from "./hooks";
 
 interface Props {
   params: RouteParams;
@@ -29,11 +33,24 @@ interface Props {
 const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
-  const [updateTableSorting, { isLoading: isChangingSorting }] =
+  const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
-  const [sendToast] = useToast();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
   const [isSorting, setIsSorting] = useState(false);
+  const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setDoneButtonWidth,
+    setSortingButtonWidth,
+    setSyncButtonWidth,
+  } = useResponsiveButtons({
+    hasFields,
+    isSorting,
+    isUpdatingSorting,
+  });
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTable({
@@ -42,15 +59,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update table name`,
-      });
+      sendErrorToast(t`Failed to update table name`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Table name updated`,
+      sendSuccessToast(t`Table name updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          display_name: table.display_name,
+        });
+        sendUndoToast(error);
       });
     }
   };
@@ -59,15 +75,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     const { error } = await updateTable({ id: table.id, description });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update table description`,
-      });
+      sendErrorToast(t`Failed to update table description`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Table description updated`,
+      sendSuccessToast(t`Table description updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          description: table.description ?? "",
+        });
+        sendUndoToast(error);
       });
     }
   };
@@ -79,15 +94,14 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update field order`,
-      });
+      sendErrorToast(t`Failed to update field order`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Field order updated`,
+      sendSuccessToast(t`Field order updated`, async () => {
+        const { error } = await updateTable({
+          id: table.id,
+          field_order: table.field_order,
+        });
+        sendUndoToast(error);
       });
     }
   };
@@ -99,25 +113,34 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
     });
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to update field order`,
-      });
+      sendErrorToast(t`Failed to update field order`);
     } else {
-      sendToast({
-        icon: "check",
-        message: t`Field order updated`,
+      sendSuccessToast(t`Field order updated`, async () => {
+        const { error: fieldsOrderError } = await updateTableFieldsOrder({
+          id: table.id,
+          field_order: table.fields?.map(getRawTableFieldId) ?? [],
+        });
+
+        if (table.field_order !== "custom") {
+          const { error: tableError } = await updateTable({
+            id: table.id,
+            field_order: table.field_order,
+          });
+          sendUndoToast(fieldsOrderError ?? tableError);
+        } else {
+          sendUndoToast(fieldsOrderError);
+        }
       });
     }
   };
 
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
-      <Box
+      <Stack
         bg="accent-gray-light"
         className={S.header}
-        pb="lg"
+        gap="lg"
+        pb={12}
         pos="sticky"
         pt="xl"
         px="xl"
@@ -133,66 +156,73 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onDescriptionChange={handleDescriptionChange}
           onNameChange={handleNameChange}
         />
-      </Box>
+
+        <Group
+          align="center"
+          gap="md"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
+          <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+
+          <Group
+            flex="1"
+            gap="md"
+            justify="flex-end"
+            miw={0}
+            ref={buttonsContainerRef}
+            wrap="nowrap"
+          >
+            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+
+            {isUpdatingSorting && (
+              <Loader data-testid="loading-indicator" size="xs" />
+            )}
+
+            {!isSorting && hasFields && (
+              <ResponsiveButton
+                icon="sort_arrows"
+                showLabel={showButtonLabel}
+                onClick={() => setIsSorting(true)}
+                onRequestWidth={setSortingButtonWidth}
+              >{t`Sorting`}</ResponsiveButton>
+            )}
+
+            {!isSorting && (
+              <ResponsiveButton
+                icon="gear_settings_filled"
+                showLabel={showButtonLabel}
+                onClick={onSyncOptionsClick}
+                onRequestWidth={setSyncButtonWidth}
+              >{t`Sync options`}</ResponsiveButton>
+            )}
+
+            {isSorting && (
+              <FieldOrderPicker
+                value={table.field_order}
+                onChange={handleFieldOrderTypeChange}
+              />
+            )}
+
+            {isSorting && (
+              <ResponsiveButton
+                icon="check"
+                showLabel={showButtonLabel}
+                showIconWithLabel={false}
+                onClick={() => setIsSorting(false)}
+                onRequestWidth={setDoneButtonWidth}
+              >{t`Done`}</ResponsiveButton>
+            )}
+          </Group>
+        </Group>
+      </Stack>
 
       <Stack gap="lg" px="xl">
         <Stack gap={12}>
-          <Group align="center" gap="md" justify="space-between">
-            <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+          {!hasFields && <EmptyState message={t`This table has no fields`} />}
 
-            <Group
-              className={S.buttons}
-              flex="1"
-              gap="md"
-              justify="flex-end"
-              wrap="nowrap"
-            >
-              {isChangingSorting && (
-                <Loader size="xs" data-testid="loading-indicator" />
-              )}
-
-              {!isSorting && (
-                <Button
-                  h={32}
-                  leftSection={<Icon name="sort_arrows" />}
-                  px="sm"
-                  py="xs"
-                  size="xs"
-                  onClick={() => setIsSorting(true)}
-                >{t`Sorting`}</Button>
-              )}
-
-              {!isSorting && (
-                <Button
-                  h={32}
-                  leftSection={<Icon name="gear_settings_filled" />}
-                  px="sm"
-                  py="xs"
-                  size="xs"
-                  onClick={onSyncOptionsClick}
-                >{t`Sync options`}</Button>
-              )}
-
-              {isSorting && (
-                <FieldOrderPicker
-                  value={table.field_order}
-                  onChange={handleFieldOrderTypeChange}
-                />
-              )}
-
-              {isSorting && (
-                <Button
-                  h={32}
-                  px="md"
-                  py="xs"
-                  size="xs"
-                  onClick={() => setIsSorting(false)}
-                >{t`Done`}</Button>
-              )}
-            </Group>
-          </Group>
-
-          {isSorting && (
+          {isSorting && hasFields && (
             <SortableFieldList
               activeFieldId={fieldId}
               table={table}
@@ -200,7 +230,7 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
             />
           )}
 
-          {!isSorting && (
+          {!isSorting && hasFields && (
             <FieldList
               activeFieldId={fieldId}
               getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}

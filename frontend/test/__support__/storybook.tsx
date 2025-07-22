@@ -50,6 +50,7 @@ export const VisualizationWrapper = ({
       withKBar={false}
       theme={theme}
       withDND
+      withCssVariables
     >
       {children}
     </TestWrapper>

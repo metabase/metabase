@@ -1,8 +1,4 @@
-.JoinColumnPicker {
-  color: var(--mb-color-brand);
-}
-
-.JoinCellItem {
+.joinCellItem {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -19,7 +15,7 @@
 
   &.hasColumnStyle {
     min-height: 39px;
-    padding: 6px 16px 6px 10px;
+    padding: 6px 10px 6px 10px;
     border-radius: 6px;
     background-color: var(--mb-color-brand);
 
@@ -55,4 +51,8 @@
       border-color: var(--mb-color-brand);
     }
   }
+}
+
+.joinCellContent {
+  word-break: break-word;
 }

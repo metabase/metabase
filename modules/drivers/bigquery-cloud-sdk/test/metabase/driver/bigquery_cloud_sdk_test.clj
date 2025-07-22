@@ -343,7 +343,13 @@
                                           :base-type :type/Integer}]}]}]
     [["foo" {"a" 1 "b" "a" "rr" {"aa" 10}}]
      ["bar" {"a" 2 "b" "b"}]
-     ["baz" {"a" 3 "b" "c"}]]]])
+     ["baz" {"a" 3 "b" "c"}]]]
+   ["records_o"
+    [{:field-name     "r"
+      :base-type      :type/Dictionary
+      :nested-fields  [{:field-name     "rr"
+                        :base-type      :type/Integer}]}]
+    [[{"rr" 1}]]]])
 
 (deftest sync-nested-fields-test
   (mt/test-driver
@@ -351,8 +357,8 @@
     (mt/dataset
       nested-records
       (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
-            table (first (:tables database))]
-        (is (=? {:name "records"} table))
+            tables (sort-by :name (:tables database))]
+        (is (=? [{:name "records"} {:name "records_o"}] tables))
         (is (=? [{:name "id"}
                  {:name "name"}
                  {:name "r"
@@ -385,7 +391,22 @@
                    (if (set? n)
                      (sort-by :name n)
                      n))
-                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]})))))))))
+                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records"]})))))
+        (is (=? [{:name "id"}
+                 {:name "r"
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :nested-fields [{:name "rr",
+                                   :database-type "INTEGER",
+                                   :base-type :type/Integer,
+                                   :nfc-path ["r"]}]}]
+                (walk/postwalk
+                 (fn [n]
+                   (if (set? n)
+                     (sort-by :name n)
+                     n))
+                 (into [] (filter (fn [x] (= (:table-name x) "records_o"))
+                                  (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records" "records_o"]}))))))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver

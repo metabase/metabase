@@ -1,8 +1,7 @@
 import cx from "classnames";
+import dayjs from "dayjs";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import Mustache from "mustache";
-import type * as React from "react";
 import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -143,7 +142,7 @@ export function formatValueRaw(
 
   const remapped = getRemappedValue(value as string | number, options);
   if (remapped !== undefined && options.view_as !== "link") {
-    return remapped;
+    value = remapped;
   }
 
   if (value == null) {
@@ -191,9 +190,9 @@ export function formatValueRaw(
     );
   } else if (
     isDate(column) ||
-    moment.isDate(value) ||
-    moment.isMoment(value) ||
-    moment(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    isDateValue(value) ||
+    dayjs.isDayjs(value) ||
+    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
@@ -234,4 +233,8 @@ export function formatValueRaw(
   } else {
     return String(value);
   }
+}
+
+function isDateValue(value: unknown): value is Date {
+  return Object.prototype.toString.call(value) === "[object Date]";
 }
