@@ -48,10 +48,10 @@
  {actions
   {:team "Workflows"
    :api  #{metabase.actions.api
+           metabase.actions.args
            metabase.actions.core
            metabase.actions.init
-           metabase.actions.types
-           metabase.actions.args}
+           metabase.actions.types}
    :uses #{analytics
            api
            collections

@@ -173,31 +173,6 @@
        [:params {:optional true} [:map-of :keyword :any]]]]
   {:outputs (execute!* action scope params inputs)})
 
-(defn- row-data-mapping
-  ;; TODO get this working with arbitrary nesting of inner actions
-  "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
-  [{:keys [param-map] :as action}]
-  ;; We create a version of the action that will "map" to an input which is just the row data itself.
-  (let [row-data-mapping (u/for-map [[_ {:keys [sourceType sourceValueTarget]}] param-map
-                                     :when (= "row-data" sourceType)]
-                           [sourceValueTarget [::key (keyword sourceValueTarget)]])]
-    (when (seq row-data-mapping)
-      {:inner-action {:action-kw :placeholder}
-       :dashcard-id  (:dashcard-id action)
-       :param-map    (u/for-map [[_ {:keys [sourceType sourceValueTarget] :as param-setting}] param-map
-                                 :when (= "row-data" sourceType)]
-                       [(keyword sourceValueTarget) param-setting])
-       :mapping      row-data-mapping})))
-
-(defn- get-row-data
-  "For a row or header action, fetch underlying database values that'll be used for specific action params in mapping."
-  [action input]
-  ;; it would be nice to avoid using "apply-mapping" twice (once here on this stub action, once later on the real one)
-  (some-> (row-data-mapping action)
-          (apply-mapping-nested nil [input])
-          first
-          not-empty))
-
 (api.macros/defendpoint :post "/execute-form"
   "Temporary endpoint for describing an actions parameters
   such that they can be presented correctly in a modal ahead of execution."
