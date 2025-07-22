@@ -9,7 +9,7 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
-import { EmbeddingSdkLegaleseModal } from "./EmbeddingSdkLegaleseModal";
+import { EmbeddingLegaleseModal } from "./EmbeddingLegaleseModal";
 
 const setup = () => {
   const onClose = jest.fn();
@@ -17,7 +17,13 @@ const setup = () => {
   setupSettingsEndpoints([]);
   setupUpdateSettingsEndpoint();
 
-  renderWithProviders(<EmbeddingSdkLegaleseModal opened onClose={onClose} />);
+  renderWithProviders(
+    <EmbeddingLegaleseModal
+      setting="enable-embedding-sdk"
+      opened
+      onClose={onClose}
+    />,
+  );
 
   return { onClose };
 };

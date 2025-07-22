@@ -38,7 +38,7 @@ export function EmbeddingIframeSdkOptionCard() {
           >{t`Beta`}</Badge>
         </Flex>
       }
-      description={t`Embed Metabase components within iframes using the SDK. Provides similar functionality to the React SDK but uses iframes for easier integration across different frameworks. Supports SSO via JWT with iframe-specific settings and configurations.`}
+      description={t`Embed Metabase components within iframes. Supports SSO via JWT with iframe-specific settings and configurations.`}
     >
       <Group justify="space-between" align="center" w="100%">
         <LinkButton

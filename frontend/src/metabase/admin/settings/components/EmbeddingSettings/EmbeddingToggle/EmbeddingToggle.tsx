@@ -6,7 +6,7 @@ import { useAdminSetting } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { Switch, type SwitchProps, Text } from "metabase/ui";
 
-import { EmbeddingSdkLegaleseModal } from "../EmbeddingSdkLegaleseModal";
+import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
 
 export type EmbeddingToggleProps = {
   settingKey:
@@ -33,8 +33,12 @@ export function EmbeddingToggle({
       <Text c="var(--mb-color-text-secondary)">{t`Set via environment variable`}</Text>
     );
   }
+
   const isEnabled = Boolean(value);
-  const isEmbeddingToggle = settingKey === "enable-embedding-sdk";
+
+  const isEmbeddingToggle =
+    settingKey === "enable-embedding-sdk" ||
+    settingKey === "enable-embedding-iframe-sdk";
 
   const handleChange = (newValue: boolean) => {
     if (showSdkEmbedTerms && isEmbeddingToggle && newValue) {
@@ -63,8 +67,10 @@ export function EmbeddingToggle({
           handleChange(event.currentTarget.checked);
         }}
       />
+
       {isEmbeddingToggle && (
-        <EmbeddingSdkLegaleseModal
+        <EmbeddingLegaleseModal
+          setting={settingKey}
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
         />
