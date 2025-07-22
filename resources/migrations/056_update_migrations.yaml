@@ -280,7 +280,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: version_identiifer
+                  name: version_identifier
                   remarks: Version number
                   type: int
                   constraints:
@@ -301,6 +301,14 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  remarks: The timestamp of when the version was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
 
   - changeSet:
       id: v56.2025-07-21T12:01:56
@@ -315,7 +323,7 @@ databaseChangeLog:
                   remarks: current version of a report that should be loaded by default
                   type: int
                   constraints:
-                    nullable: false
+                    nullable: true
 
   - changeSet:
       id: v56.2025-07-21T12:01:57
