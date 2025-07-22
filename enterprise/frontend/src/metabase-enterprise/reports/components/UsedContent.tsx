@@ -23,22 +23,20 @@ export const UsedContentSidebar = ({
     >
       <Stack gap="md" p="md">
         <Box>
-          <Text fw="bold" mb="sm">
+          <Text fw="bold" mb="md">
             {t`Used Content`}
           </Text>
           {questionRefs.length === 0 ? (
-            <Text size="sm" c="text.2">
-              {t`No questions embedded yet`}
-            </Text>
+            <Text c="text.2">{t`No questions embedded yet`}</Text>
           ) : (
-            <Stack gap="xs">
+            <Stack gap="md">
               {questionRefs.map((ref) => (
                 <Box
                   key={ref.id}
                   className={styles.questionRef}
                   onClick={() => onQuestionClick(ref.id)}
                 >
-                  <Text size="sm">{ref.name}</Text>
+                  <Text>{ref.name}</Text>
                 </Box>
               ))}
             </Stack>

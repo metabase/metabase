@@ -8,10 +8,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
   Button,
+  Group,
   Icon,
   Loader,
   Menu,
-  Space,
   Stack,
   Text,
 } from "metabase/ui";
@@ -157,9 +157,9 @@ export const EmbedQuestionSettingsSidebar = ({
         backgroundColor: "var(--mb-color-bg-white)",
       }}
     >
-      <Stack gap="md" p="md">
-        <Box>
-          <Text size="sm" fw="bold" mb="xs">
+      <Box>
+        <Group align="center" p="md">
+          <Text size="md" fw="bold">
             {t`Visualize as`}
           </Text>
           <Menu position="bottom-start">
@@ -174,7 +174,6 @@ export const EmbedQuestionSettingsSidebar = ({
                   ) : null
                 }
                 justify="space-between"
-                fullWidth
               >
                 {selectedElem?.label}
               </Button>
@@ -206,9 +205,8 @@ export const EmbedQuestionSettingsSidebar = ({
               )}
             </Menu.Dropdown>
           </Menu>
-        </Box>
-      </Stack>
-      <Space h="md" />
+        </Group>
+      </Box>
       <QuestionChartSettings
         question={question as any}
         series={series}
