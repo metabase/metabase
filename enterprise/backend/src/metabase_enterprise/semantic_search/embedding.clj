@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
+   [metabase.analytics.core :as analytics]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
@@ -86,6 +87,11 @@
   {"openai" "text-embedding-3-small"
    "ollama" "mxbai-embed-large"})
 
+(def supported-models-for-provider
+  "Get all supported models for a give provider."
+  {"openai" openai-supported-models
+   "ollama" ollama-supported-models})
+
 ;;;; Provider SPI
 
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
@@ -106,6 +112,7 @@
 
 (defn- ollama-get-embedding [model-name text]
   (try
+    ;; TODO count ollama tokens into :metabase-search/semantic-embedding-tokens?
     (log/debug "Generating Ollama embedding for text of length:" (count text))
     (-> (http/post "http://localhost:11434/api/embeddings"
                    {:headers {"Content-Type" "application/json"}
@@ -160,7 +167,10 @@
       (catch Exception e
         (log/error e "Failed to generate OpenAI embeddings for batch of" (count texts) "texts"
                    "with token count:" (count-tokens-batch texts))
-        (throw e)))))
+        (throw e)))
+    (analytics/inc! :metabase-search/semantic-embedding-tokens
+                    {:provider "openai", :model model-name}
+                    (count-tokens-batch texts))))
 
 (defn- openai-get-embedding [model-name text]
   (try
@@ -218,6 +228,16 @@
         (let [embeddings (get-embeddings-batch embedding-model texts)
               text-embedding-map (zipmap texts embeddings)]
           (process-fn text-embedding-map))))))
+
+(comment
+  ;; This gets loaded after metabase.analytics.prometheus/setup-metrics! so the known labels don't get initialized. If
+  ;; we care about this, we need to ensure this namespace gets loaded before setup-metrics! is called, e.g. by requiring
+  ;; this namespace in the semantic search module's init file. See https://github.com/metabase/metabase/pull/52834
+  (defmethod analytics/known-labels :metabase-search/semantic-embedding-tokens
+    [_]
+    (for [provider (keys supported-models-for-provider)
+          model (keys (supported-models-for-provider provider))]
+      {:provider provider :model model})))
 
 (comment
   ;; Configuration:

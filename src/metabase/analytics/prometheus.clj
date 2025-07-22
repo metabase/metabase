@@ -291,6 +291,10 @@
    (prometheus/gauge :metabase-search/engine-active
                      {:description "Whether a given engine is active. This does NOT mean that it is the default."
                       :labels [:engine]})
+   (prometheus/counter :metabase-search/semantic-embedding-tokens
+                       {:description (str "Number of tokens consumed by the given embedding model and provider. "
+                                          "Not all providers track token use.")
+                        :labels [:model :provider]})
    ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
