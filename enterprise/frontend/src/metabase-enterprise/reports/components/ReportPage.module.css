@@ -1,7 +1,50 @@
 .reportPage {
   display: flex;
+  flex-direction: column;
   height: calc(100vh - var(--nav-sidebar-height, 60px));
   background-color: var(--mb-color-bg-white);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  background-color: var(--mb-color-bg-white);
+  gap: 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.titleInput {
+  flex: 1;
+  max-width: 600px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--mb-color-text-dark);
+  font-family: inherit;
+  padding: 0;
+  margin: 0;
+}
+
+.titleInput::placeholder {
+  color: var(--mb-color-text-light);
+  opacity: 0.7;
+}
+
+.titleInput:focus {
+  outline: none;
+}
+
+.contentArea {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 .mainContent {

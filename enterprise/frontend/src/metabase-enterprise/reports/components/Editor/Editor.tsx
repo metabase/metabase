@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { Box } from "metabase/ui";
 
 import styles from "./Editor.module.css";
-import { EditorToolbar } from "./EditorToolbar";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import {
   MarkdownSerializer,
@@ -84,7 +83,6 @@ export const Editor: React.FC<EditorProps> = ({
 
   return (
     <Box className={styles.editor}>
-      <EditorToolbar editor={editor} />
       <Box
         className={styles.editorContent}
         onClick={(e) => {
