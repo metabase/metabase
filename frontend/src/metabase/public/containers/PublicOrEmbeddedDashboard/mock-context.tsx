@@ -3,6 +3,7 @@ import { noop } from "underscore";
 
 import {
   DashboardContext,
+  type DashboardContextOwnProps,
   type DashboardContextReturned,
 } from "metabase/dashboard/context";
 import {
@@ -12,17 +13,33 @@ import {
 import { connect } from "metabase/lib/redux";
 
 export type MockDashboardContextProps = Partial<
-  PropsWithChildren<DashboardContextReturned>
+  Omit<PropsWithChildren<DashboardContextReturned>, "dashboardActions"> & {
+    dashboardActions: DashboardContextOwnProps["dashboardActions"];
+  }
 >;
 
 // Create a component that accepts all redux props and passes them into DashboardContext
 const DashboardContextWithReduxProps = (
   props: PropsWithChildren<DashboardContextReturned>,
-) => (
-  <DashboardContext.Provider value={props}>
-    {props.children}
-  </DashboardContext.Provider>
-);
+) => {
+  const {
+    isEditing,
+    downloadsEnabled,
+    dashboardActions: dashboardActionsOrGetter,
+  } = props;
+
+  // Use exact same implementation as in DashboardContextProviderInner
+  const dashboardActions =
+    typeof dashboardActionsOrGetter === "function"
+      ? dashboardActionsOrGetter({ isEditing, downloadsEnabled })
+      : (dashboardActionsOrGetter ?? null);
+
+  return (
+    <DashboardContext.Provider value={{ ...props, dashboardActions }}>
+      {props.children}
+    </DashboardContext.Provider>
+  );
+};
 
 const ConnectedDashboardContextWithReduxProps = connect(
   mapStateToProps,

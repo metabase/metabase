@@ -46,7 +46,7 @@ export {
   type InteractiveQuestionSummarizeDropdownProps,
   type InteractiveQuestionTitleProps,
   type DrillThroughQuestionProps,
-} from "./InteractiveQuestion";
+} from "./SdkQuestion";
 export {
   MetabaseProvider,
   type MetabaseProviderProps,

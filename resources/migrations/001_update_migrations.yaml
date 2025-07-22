@@ -12001,6 +12001,37 @@ databaseChangeLog:
                            'v54.2025-02-14T08:05:00'
                   );
 
+  - changeSet:
+      id: v55.2025-07-04T15:00:00
+      author: qnkhuat
+      comment: fix v_alerts where cron string contains slash (#60427)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v4/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v4/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v3/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v3/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v3/h2-alerts.sql
+            relativeToChangelogFile: true
+
   # This exists because a v56 migration was backported to v55 without renaming the migration version
   # this allows us to rename those migrations to v55 in master and the release v56 branches which ensure
   # that downgrading or upgrading to v55 picks up the correct migrations needed to run v55 in all cases

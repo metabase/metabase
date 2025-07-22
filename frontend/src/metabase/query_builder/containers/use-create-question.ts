@@ -11,7 +11,7 @@ import type { DashboardTabId } from "metabase-types/api";
 
 import { updateUrl } from "../actions/url";
 
-type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+export type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
 interface UseCreateQuestionParams {
   scheduleCallback?: ScheduleCallback;
