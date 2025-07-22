@@ -48,13 +48,12 @@
 
 (defn- target-table-exists?
   [{:keys [source target] :as _transform}]
-  false
-  #_(let [database (-> source :query :database)
-          driver (t2/select-one-fn :engine :model/Database database)]
-      (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
-          :fields
-          seq
-          boolean)))
+  (let [database (-> source :query :database)
+        driver (t2/select-one-fn :engine :model/Database database)]
+    (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
+        :fields
+        seq
+        boolean)))
 
 (defn- delete-target-table!
   [{:keys [source target] :as _transform}]
