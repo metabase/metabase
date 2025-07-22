@@ -148,8 +148,6 @@
 
 (comment
 
-  (schema->response-obj schema)
-
   (mjs-collect-definitions :metabase.timeline.api.timeline/Timeline)
   (schema->response-obj :metabase.timeline.api.timeline/Timeline))
 
