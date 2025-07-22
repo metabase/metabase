@@ -215,8 +215,9 @@
                     (process-fn batch-texts embeddings)))
                 batches))
         ;; For other providers, process all at once (existing behavior)
-        (let [embeddings (get-embeddings-batch provider texts)]
+        (let [embeddings (get-embeddings-batch embedding-model texts)]
           (process-fn texts embeddings))))))
+
 (comment
   ;; Configuration:
   ;; MB_EE_EMBEDDING_PROVIDER:  "openai" or "ollama" (default)

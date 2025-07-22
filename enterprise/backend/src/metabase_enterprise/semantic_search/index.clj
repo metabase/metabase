@@ -166,7 +166,7 @@
            (batch-update!
             connectable
             (fn [db-records]
-              (-> (sql.helpers/insert-into *index-table-name*)
+              (-> (sql.helpers/insert-into (keyword (index-table-name embedding-model)))
                   (sql.helpers/values db-records)
                   (sql.helpers/on-conflict :model :model_id)
                   (sql.helpers/do-update-set (db-records->update-set db-records))
