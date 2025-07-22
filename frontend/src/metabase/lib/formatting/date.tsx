@@ -28,8 +28,7 @@ const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
   "minute-of-hour": "m",
   "day-of-week": "dddd",
   "day-of-month": "D",
-  "day-of-year": "DDD",
-  "week-of-year": "Wo",
+  "week-of-year": "wo",
   "month-of-year": "MMMM",
   "quarter-of-year": "[Q]Q",
 };
@@ -821,8 +820,9 @@ export function normalizeDateTimeRangeWithUnit(
   const start = a.clone().startOf(momentUnit);
   const end = b.clone().endOf(momentUnit);
   const shift = a.diff(start, "days");
-  [start, end].forEach((d) => d.add(shift, "days"));
-  return [start, end, shift];
+  const shiftedStart = start.add(shift, "days");
+  const shiftedEnd = end.add(shift, "days");
+  return [shiftedStart, shiftedEnd, shift];
 }
 
 /** This formats a time with unit as a date range */
@@ -1080,6 +1080,11 @@ export function formatDateTimeWithUnit(
   const d = parseTimestamp(value, unit, options.local);
   if (!d.isValid()) {
     return String(value);
+  }
+
+  // handle day of year as DDD format adds leading zeroes
+  if (unit === "day-of-year") {
+    return d.dayOfYear();
   }
 
   // expand "week" into a range in specific contexts

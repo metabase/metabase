@@ -18,6 +18,49 @@ describe("time-dayjs", () => {
         expect(parseTimestamp(53, "week-of-year").isoWeek()).toBe(53);
       });
     });
+
+    it("should correctly parse milliseconds with trailing zeros", () => {
+      const timestamp = "2025-03-11T20:45:17.01-07:00";
+      const parsed = parseTimestamp(timestamp);
+
+      expect(parsed.isValid()).toBe(true);
+      expect(parsed.millisecond()).toBe(10);
+      expect(parsed.format("MMMM D, YYYY, h:mm:ss.SSS A")).toBe(
+        "March 11, 2025, 8:45:17.010 PM",
+      );
+    });
+
+    it("should handle various millisecond formats", () => {
+      const testCases = [
+        {
+          input: "2025-03-11T20:45:17.1-07:00",
+          expectedMs: 100,
+          expectedFormat: "100",
+        },
+        {
+          input: "2025-03-11T20:45:17.01-07:00",
+          expectedMs: 10,
+          expectedFormat: "010",
+        },
+        {
+          input: "2025-03-11T20:45:17.001-07:00",
+          expectedMs: 1,
+          expectedFormat: "001",
+        },
+        {
+          input: "2025-03-11T20:45:17.123-07:00",
+          expectedMs: 123,
+          expectedFormat: "123",
+        },
+      ];
+
+      testCases.forEach(({ input, expectedMs, expectedFormat }) => {
+        const parsed = parseTimestamp(input);
+        expect(parsed.isValid()).toBe(true);
+        expect(parsed.millisecond()).toBe(expectedMs);
+        expect(parsed.format("SSS")).toBe(expectedFormat);
+      });
+    });
   });
 
   describe("parseTime", () => {
