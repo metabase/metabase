@@ -145,22 +145,8 @@ Metabase uses these dictionaries to translate user-generated content, like the n
 | pt_BR    | Examples                                | Exemplos                                     |
 | pt_BR    | First tab                               | Primeira aba                                 |
 | pt_BR    | Another tab                             | Outra aba                                    |
-| pt_BR    | Category                                | Pagodeira                                    |
-| pt_BR    | Doohickey                               | Pé na areia                                  |
-| pt_BR    | Gadget                                  | Caipirinha                                   |
-| pt_BR    | Gizmo                                   | Água de coco                                 |
-| pt_BR    | Widget                                  | Cervejinha                                   |
-| pt_BR    | This is an awesome header               | Esse é um ótimo título                       |
-| pt_BR    | Sum of total over month                 | Soma do total por mês                        |
-| pt_BR    | Count per category                      | Contagem por categoria                       |
-| pt_BR    | Table of data                           | Tabela de dados                              |
-| pt_BR    | ID                                      | Identificação                                |
-| pt_BR    | Ean                                     | Código EAN                                   |
 | pt_BR    | Title                                   | Título                                       |
 | pt_BR    | Vendor                                  | Vendedor                                     |
-| pt_BR    | more text that we like                  | textos aleatórios                            |
-| pt_BR    | I use this dashboard to translate stuff | Eu uso esse painel para traduzir umas coisas |
-| pt_BR    | Product                                 | Produto                                      |
 
 [See a list of supported locales](#supported-languages)
 
