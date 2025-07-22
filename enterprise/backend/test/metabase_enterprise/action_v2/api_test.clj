@@ -51,7 +51,7 @@
 
 (defn- delete-rows!
   ([table-id rows]
-   (update-rows! table-id 200 rows))
+   (delete-rows! table-id 200 rows))
   ([table-id response-code rows]
    (mt/user-http-request :crowberto :post response-code execute-bulk-url
                          {:action :data-grid.row/delete
