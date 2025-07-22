@@ -21,6 +21,8 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
    [metabase.lib.util :as lib.util]
@@ -44,6 +46,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -519,6 +522,9 @@
     (dashboard-internal-card? card) check-dashboard-internal-card-insert))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
+;;
+;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
+;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []
@@ -602,6 +608,9 @@
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
+;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
+;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
+;;; function. We should move it all here or move it all there. Weird to split it up between two places.
 (defn- pre-update [{id :id :as card} changes]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
@@ -688,7 +697,11 @@
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
-(defn- upgrade-card-schema-to-latest [card]
+(mu/defn- upgrade-card-schema-to-latest :- [:map
+                                            [:result_metadata {:optional true} [:maybe
+                                                                                [:sequential
+                                                                                 ::lib.schema.metadata/lib-or-legacy-column]]]]
+  [card]
   (if (and (:id card)
            (or (:dataset_query card)
                (:result_metadata card)
@@ -751,20 +764,23 @@
     (assoc card :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     card))
 
-(defn- populate-result-metadata
+(mu/defn- populate-result-metadata :- [:map
+                                       [:result_metadata {:optional true} [:maybe
+                                                                           [:sequential
+                                                                            ::lib.schema.metadata/lib-or-legacy-column]]]]
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
   [card changes verified-result-metadata?]
-  (cond-> card
-    (or (empty? (:result_metadata card))
-        (not verified-result-metadata?)
-        (contains? (t2/changes card) :type))
-    (card.metadata/populate-result-metadata changes)))
+  (-> (cond-> card
+        (or (empty? (:result_metadata card))
+            (not verified-result-metadata?)
+            (contains? (t2/changes card) :type))
+        (card.metadata/populate-result-metadata changes))
+      (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-
   (let [changes (t2/changes card)]
     (-> card
         (dissoc :verified-result-metadata?)

@@ -358,6 +358,11 @@
   color: var(--mb-color-text-tertiary);
 }
 
+.bgBrandLighter,
+.bgBrandLighterHover:hover {
+  background-color: var(--mb-color-brand-lighter);
+}
+
 .bgLight,
 .bgLightHover:hover {
   background-color: var(--mb-color-bg-light);

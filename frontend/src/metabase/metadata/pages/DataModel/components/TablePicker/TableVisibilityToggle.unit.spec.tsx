@@ -14,7 +14,7 @@ function setup({ table }: { table: Table }) {
 
   renderWithProviders(
     <>
-      <TableVisibilityToggle table={table} />
+      <TableVisibilityToggle table={table} onUpdate={jest.fn()} />
       <UndoListing />
     </>,
   );

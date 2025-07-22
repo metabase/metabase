@@ -13,7 +13,7 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Group, Loader, Stack, Text } from "metabase/ui";
+import { Group, Loader, Stack, Text } from "metabase/ui";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
@@ -23,8 +23,6 @@ import { ResponsiveButton } from "../ResponsiveButton";
 import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 import { useResponsiveButtons } from "./hooks";
-
-const OUTLINE_SAFETY_MARGIN = 2;
 
 interface Props {
   params: RouteParams;
@@ -138,10 +136,11 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
 
   return (
     <Stack data-testid="table-section" gap={0} pb="xl">
-      <Box
+      <Stack
         bg="accent-gray-light"
         className={S.header}
-        pb="lg"
+        gap="lg"
+        pb={12}
         pos="sticky"
         pt="xl"
         px="xl"
@@ -157,70 +156,70 @@ const TableSectionBase = ({ params, table, onSyncOptionsClick }: Props) => {
           onDescriptionChange={handleDescriptionChange}
           onNameChange={handleNameChange}
         />
-      </Box>
 
-      <Stack gap="lg" px="xl" pt={OUTLINE_SAFETY_MARGIN}>
-        <Stack gap={12}>
+        <Group
+          align="center"
+          gap="md"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
+          <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+
           <Group
-            align="center"
+            flex="1"
             gap="md"
-            justify="space-between"
+            justify="flex-end"
             miw={0}
+            ref={buttonsContainerRef}
             wrap="nowrap"
           >
-            <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
 
-            <Group
-              flex="1"
-              gap="md"
-              justify="flex-end"
-              miw={0}
-              ref={buttonsContainerRef}
-              wrap="nowrap"
-            >
-              {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+            {isUpdatingSorting && (
+              <Loader data-testid="loading-indicator" size="xs" />
+            )}
 
-              {isUpdatingSorting && (
-                <Loader data-testid="loading-indicator" size="xs" />
-              )}
+            {!isSorting && hasFields && (
+              <ResponsiveButton
+                icon="sort_arrows"
+                showLabel={showButtonLabel}
+                onClick={() => setIsSorting(true)}
+                onRequestWidth={setSortingButtonWidth}
+              >{t`Sorting`}</ResponsiveButton>
+            )}
 
-              {!isSorting && hasFields && (
-                <ResponsiveButton
-                  icon="sort_arrows"
-                  showLabel={showButtonLabel}
-                  onClick={() => setIsSorting(true)}
-                  onRequestWidth={setSortingButtonWidth}
-                >{t`Sorting`}</ResponsiveButton>
-              )}
+            {!isSorting && (
+              <ResponsiveButton
+                icon="gear_settings_filled"
+                showLabel={showButtonLabel}
+                onClick={onSyncOptionsClick}
+                onRequestWidth={setSyncButtonWidth}
+              >{t`Sync options`}</ResponsiveButton>
+            )}
 
-              {!isSorting && (
-                <ResponsiveButton
-                  icon="gear_settings_filled"
-                  showLabel={showButtonLabel}
-                  onClick={onSyncOptionsClick}
-                  onRequestWidth={setSyncButtonWidth}
-                >{t`Sync options`}</ResponsiveButton>
-              )}
+            {isSorting && (
+              <FieldOrderPicker
+                value={table.field_order}
+                onChange={handleFieldOrderTypeChange}
+              />
+            )}
 
-              {isSorting && (
-                <FieldOrderPicker
-                  value={table.field_order}
-                  onChange={handleFieldOrderTypeChange}
-                />
-              )}
-
-              {isSorting && (
-                <ResponsiveButton
-                  icon="check"
-                  showLabel={showButtonLabel}
-                  showIconWithLabel={false}
-                  onClick={() => setIsSorting(false)}
-                  onRequestWidth={setDoneButtonWidth}
-                >{t`Done`}</ResponsiveButton>
-              )}
-            </Group>
+            {isSorting && (
+              <ResponsiveButton
+                icon="check"
+                showLabel={showButtonLabel}
+                showIconWithLabel={false}
+                onClick={() => setIsSorting(false)}
+                onRequestWidth={setDoneButtonWidth}
+              >{t`Done`}</ResponsiveButton>
+            )}
           </Group>
+        </Group>
+      </Stack>
 
+      <Stack gap="lg" px="xl">
+        <Stack gap={12}>
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 
           {isSorting && hasFields && (
