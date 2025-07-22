@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
+   [metabase.secrets.models.secret :as secrets]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
   (:import
@@ -82,7 +83,7 @@
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
   (sql-jdbc.conn/invalidate-pool-for-db! database)
-  (memoize/memo-clear! driver-api/secret-value-as-file!))
+  (memoize/memo-clear! secrets/value-as-file!))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
