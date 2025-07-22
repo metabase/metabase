@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -10,6 +11,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -48,9 +50,13 @@
 
 (defn- target-table-exists?
   [{:keys [source target] :as _transform}]
-  (let [database (-> source :query :database)
-        driver (t2/select-one-fn :engine :model/Database database)]
-    (some? (driver/describe-table driver database (qualified-table-name target)))))
+  false
+  #_(let [database (-> source :query :database)
+          driver (t2/select-one-fn :engine :model/Database database)]
+      (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
+          :fields
+          seq
+          boolean)))
 
 (defn- delete-target-table!
   [{:keys [source target] :as _transform}]
@@ -83,50 +89,53 @@
     (t2/select-one :model/Transform id)))
 
 (api.macros/defendpoint :get "/:id"
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (log/info "get transform" id)
-  (t2/select-one :model/Transform (Long/parseLong id)))
+  (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :put "/:id"
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
    _query-params
    body :- [:map
             [:name {:optional true} :string]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
-  (let [id (Long/parseLong id)]
-    (log/info "put transform" id)
-    (let [old (t2/select-one-fn :target :model/Transform id)
-          new (merge old body)]
-      (when (not= (select-keys (:target old) [:schema :table])
-                  (select-keys (:target new) [:schema :table]))
-        (when (target-table-exists? new)
-          (api/throw-403))
-        (delete-target-table! old)))
-    (t2/update! :model/Transform id body)
-    (t2/select-one :model/Transform id)))
+  (log/info "put transform" id)
+  (let [old (t2/select-one-fn :target :model/Transform id)
+        new (merge old body)]
+    (when (not= (select-keys (:target old) [:schema :table])
+                (select-keys (:target new) [:schema :table]))
+      (when (target-table-exists? new)
+        (api/throw-403))
+      (delete-target-table! old)))
+  (t2/update! :model/Transform id body)
+  (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :delete "/:id"
-  [{:keys [id]}]
-  (let [id (Long/parseLong id)]
-    (log/info "delete transform" id)
-    (delete-target-table-by-id! id)
-    (t2/delete! :model/Transform id))
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (log/info "delete transform" id)
+  #_(delete-target-table-by-id! id)
+  (t2/delete! :model/Transform id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/table"
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
-  (delete-target-table-by-id! (Long/parseLong id)))
+  (delete-target-table-by-id! id))
 
 (defn- compile-source [{query-type :type :as source}]
   (case query-type
     "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
 
 (api.macros/defendpoint :post "/:id/execute"
-  [{:keys [id]}]
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
-  (let [{:keys [_name source target]} (t2/select-one :model/Transform (Long/parseLong id))
+  (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
         db (get-in source [:query :database])
         {driver :engine} (t2/select-one :model/Database db)]
     (when (not= (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db)
