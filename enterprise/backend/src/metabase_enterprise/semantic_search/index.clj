@@ -1,5 +1,3 @@
-;; TODO: we need to distinguish from a typeahead context and complete search terms
-
 (ns metabase-enterprise.semantic-search.index
   (:require
    [clojure.string :as str]
@@ -55,9 +53,7 @@
      [:official_collection :boolean]
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
-     ;; TODO make this :not-null w/o generated statement, but instead use the language of the instance to decide the
-     ;; vector language
-     [:text_search_vector :tsvector [:raw "GENERATED ALWAYS AS (to_tsvector('english', content)) STORED"]]
+     [:text_search_vector :tsvector :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
@@ -83,7 +79,10 @@
    :official_collection official_collection
    :embedding           [:raw (format-embedding embedding-vec)]
    :content             searchable_text
-   ;; TODO: create a ts vector from the site language here
+   :text_search_vector [:||
+                        (postgres-spec/weighted-tsvector "A" (:name doc))
+                        ;; TODO: :searchable_text contains the doc's name which we don't want for B weighted results
+                        (postgres-spec/weighted-tsvector "B" (:searchable_text doc ""))]
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
@@ -202,10 +201,8 @@
        (-> (sql.helpers/create-index
             [(keyword fts-index-name) :if-not-exists]
             [(keyword table-name) :using-gin [:raw "text_search_vector"]])
-           sql-format-quoted))
-    ) (catch Exception e
-      (throw (ex-info "Failed to create index table" {} e)))
-    ))
+           sql-format-quoted))) (catch Exception e
+                                  (throw (ex-info "Failed to create index table" {} e)))))
 
 (comment
   (def embedding-model {:provider "ollama"
@@ -246,7 +243,6 @@
   [index search-context]
   (let [filters (search-filters search-context)
         search-string (:search-string search-context)
-        ;; TODO: idk why terms are quoted... hacking around it
         ts-search-vector (str/replace (postgres-spec/to-tsquery-expr search-string) "'" "")
         base-query {:select [[:id :id]
                              [:model_id :model_id]
@@ -254,11 +250,10 @@
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
-                             [[:raw "ts_rank_cd(text_search_vector, to_tsquery('" (postgres-spec/tsv-language) "', '" ts-search-vector "'))"] :fts_score]
-                             [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, to_tsquery('" (postgres-spec/tsv-language) "', '" ts-search-vector "')))"] :fts_rank]]
+                             [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, to_tsquery('" (postgres-spec/tsv-language) "', '" ts-search-vector "')) DESC)"] :keyword_rank]]
                     :from   [(keyword (:table-name index))]
                     :where  [:raw (str  "text_search_vector @@ to_tsquery('" (postgres-spec/tsv-language) "', '" ts-search-vector "')")]
-                    :order-by [[:fts_score :asc]]
+                    :order-by [[:keyword_rank :asc]]
                     :limit  100}]
     (if filters
       (update base-query :where #(into [:and] [% filters]))
@@ -274,11 +269,11 @@
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
-                             [[:raw (str "embedding <=> " (format-embedding embedding))] :distance]
-                             [[:raw (str "row_number() OVER (ORDER BY embedding <=> " (format-embedding embedding) ")")] :vector_rank]]
+                             [[:raw (str "row_number() OVER (ORDER BY embedding <=> " (format-embedding embedding) " ASC)")] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
+                    ;; TODO: parameterize max cosine distance
                     :where [:<= [:raw (str "embedding <=> " (format-embedding embedding))] 0.35]
-                    :order-by [[:distance :asc]]
+                    :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
       (update base-query :where #(into [:and] [% filters]))
@@ -289,6 +284,9 @@
   [index embedding search-context]
   (let [semantic-results (semantic-search-query index embedding search-context)
         keyword-results (keyword-search-query index search-context)
+        k 60
+        keyword-weight 0.5
+        semantic-weight 0.5
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
                     :select [[[:coalesce :v.id :t.id] :id]
@@ -297,10 +295,14 @@
                              [[:coalesce :v.content :t.content] :content]
                              [[:coalesce :v.verified :t.verified] :verified]
                              [[:coalesce :v.metadata :t.metadata] :metadata]
-                             [[:coalesce :v.vector_rank 0] :vector_rank]
-                             [[:coalesce :t.fts_rank 0] :text_rank]
-                             [[:raw "COALESCE(1.0 / (60 + COALESCE(v.vector_rank, 0)), 0) + COALESCE(1.0 / (60 + COALESCE(t.fts_rank, 0)), 0)"] :rrf_rank]
-                             [[:raw "row_number() OVER (ORDER BY COALESCE(1.0 / (60 + COALESCE(v.vector_rank, 0)), 0) + COALESCE(1.0 / (60 + COALESCE(t.fts_rank, 0)), 0) DESC)"] :rank]]
+                             [[:coalesce :v.semantic_rank -1] :semantic_rank]
+                             [[:coalesce :t.keyword_rank -1] :keyword_rank]
+                             [[:+
+                               [:* [:cast semantic-weight :float]
+                                [:/ 1.0 [:+ k [:coalesce [:. :v :semantic_rank] 0]]]]
+                               [:* [:cast keyword-weight :float]
+                                [:/ 1.0 [:+ k [:coalesce [:. :t :keyword_rank] 0]]]]]
+                              :rrf_rank]]
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
                     :order-by [[:rrf_rank :desc]]
@@ -349,13 +351,13 @@
         search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
       (let [embedding (embedding/get-embedding embedding-model search-string)
-            query       (hybrid-search-query index embedding search-context)
+            query     (hybrid-search-query index embedding search-context)
             xform     (comp (map unqualify-keys)
                             (map decode-metadata)
                             (map legacy-input-with-score))
             reducible (jdbc/plan db (sql-format-quoted query))]
         (-> (transduce xform conj [] reducible)
-            filter-read-permitted)))))
+            #_(filter-read-permitted))))))
 
 (comment
   (keyword-search-query index {:search-string "dog"})
@@ -366,6 +368,8 @@
   (semantic-search-query index embed {:search-string "cat"})
   (sql-format-quoted (semantic-search-query index embed {:search-string "cat"}))
   (jdbc/execute! db (sql-format-quoted (semantic-search-query index embed {:search-string "cat"})))
+
+  (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed {:search-string "cat"})))
 
   (query-index db index {:search-string "cat"}))
 

@@ -155,7 +155,7 @@
                  "search_vector")
                " @@ query")])})
 
-(defn- weighted-tsvector [weight text]
+(defn weighted-tsvector [weight text]
   ;; tsvector has a max value size of 1048575 bytes, limit to less than that because the multiple values get concatenated together
   [:setweight [:to_tsvector [:inline (tsv-language)] [:cast (u.str/limit-bytes text search.ingestion/max-searchable-value-length) :text]] [:inline weight]])
 
