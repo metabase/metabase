@@ -61,7 +61,7 @@
       border-left-width: 1.6px;
     }
 
-    .cm-tooltip {
+    .cm-tooltip:not(.cm-tooltip-autocomplete) {
       border: none !important;
       background: none !important;
     }
