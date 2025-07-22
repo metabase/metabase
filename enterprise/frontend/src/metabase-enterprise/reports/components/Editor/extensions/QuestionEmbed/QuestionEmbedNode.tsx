@@ -3,8 +3,7 @@ import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useGetCardQuery } from "metabase/api";
-import { CardApi } from "metabase/services";
+import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -107,7 +106,7 @@ export const QuestionEmbedComponent = ({
 }: NodeViewProps) => {
   const { questionId, questionName, customName } = node.attrs;
   const { data: card, isLoading, error } = useGetCardQuery({ id: questionId });
-  const [results, setResults] = useState<any>(null);
+  const { data: results } = useGetCardQueryQuery({ cardId: questionId });
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(customName || "");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -115,14 +114,6 @@ export const QuestionEmbedComponent = ({
 
   const displayName = customName || card?.name || questionName;
   const isGuiQuestion = card?.dataset_query?.type !== "native";
-
-  useEffect(() => {
-    if (card?.id) {
-      CardApi.query({ cardId: card.id })
-        .then((data) => setResults(data))
-        .catch((err) => console.error("Failed to load question results:", err));
-    }
-  }, [card?.id]);
 
   useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
@@ -234,7 +225,7 @@ export const QuestionEmbedComponent = ({
                 <Text
                   size="md"
                   color="text-dark"
-                  weight={700}
+                  fw={700}
                   onClick={() => {
                     setEditedTitle(displayName);
                     setIsEditingTitle(true);

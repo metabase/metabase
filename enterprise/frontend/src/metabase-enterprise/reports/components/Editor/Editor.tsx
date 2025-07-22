@@ -12,7 +12,7 @@ import {
   MarkdownSerializer,
   serializeToMarkdown,
 } from "./extensions/MarkdownExtensions";
-import { QuestionEmbed } from "./extensions/QuestionMention";
+import { QuestionEmbed } from "./extensions/QuestionEmbed";
 
 interface EditorProps {
   onEditorReady?: (editor: any) => void;
