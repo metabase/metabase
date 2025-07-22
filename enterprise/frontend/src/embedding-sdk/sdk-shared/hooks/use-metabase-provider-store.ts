@@ -22,7 +22,7 @@ export const useMetabaseProviderStore = () => {
     return metabaseProviderStore.getSnapshot;
   }, [metabaseProviderStore]);
 
-  const props = useSyncExternalStore(subscribe, getSnapshot);
+  const props = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   return metabaseProviderStore && props
     ? {
