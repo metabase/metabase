@@ -125,33 +125,63 @@
      :table-name table-name
      :index-name (str table-name "__hnsw_idx")}))
 
+(defn- get-existing-embeddings-by-content
+  "Returns a map of content -> embedding vector for content that exists in the index."
+  [connectable table-name content-texts]
+  (when (seq content-texts)
+    (let [query (-> (sql.helpers/select-distinct :content :embedding)
+                    (sql.helpers/from (keyword table-name))
+                    (sql.helpers/where [:in :content content-texts])
+                    sql-format-quoted)
+          rows  (jdbc/execute! connectable query)]
+      (into {} (map (fn [row]
+                      [(:content row) (:embedding row)])
+                    rows)))))
+
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
-  model + model_id already exists, it will be replaced."
+  model + model_id already exists, it will be replaced. Embeddings are fetched from the
+  configured embedding provider unless an embedding for identical text is already present in the index, in
+  which case it is reused."
   [connectable index documents]
   (log/info "Populating semantic search index with" (count documents) "documents")
-  (when (seq documents)
-    (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
-          searchable-texts   (map :searchable_text filtered-documents)]
-      (embedding/process-embeddings-streaming
-       (:embedding-model index)
-       searchable-texts
-       (fn [_batch-texts batch-embeddings]
-         (let [batch-documents
-               (mapv (fn [doc embedding]
-                       (assoc doc :embedding embedding))
-                     filtered-documents
-                     batch-embeddings)]
-           (batch-update!
-            connectable
-            (fn [db-records]
-              (-> (sql.helpers/insert-into (keyword (:table-name index)))
-                  (sql.helpers/values db-records)
-                  (sql.helpers/on-conflict :model :model_id)
-                  (sql.helpers/do-update-set (db-records->update-set db-records))
-                  sql-format-quoted))
-            batch-documents
-            batch-embeddings)))))))
+  (if-let [filtered-documents (seq (remove #(= (:model %) "indexed-entity") documents))]
+    (let [searchable-texts   (map :searchable_text filtered-documents)
+          existing-embeddings (get-existing-embeddings-by-content connectable (:table-name index) (distinct searchable-texts))
+          {docs-with-embeddings true docs-need-embeddings false}
+          (group-by #(existing-embeddings (:searchable_text %)) filtered-documents)]
+      (log/info "Reusing embeddings for" (count docs-with-embeddings) "documents, generating embeddings for" (count docs-need-embeddings) "documents")
+
+      (when (seq docs-with-embeddings)
+        (let [cached-embeddings (map #(get existing-embeddings (:searchable_text %)) docs-with-embeddings)]
+          (batch-update!
+           connectable
+           (fn [db-records]
+             (-> (sql.helpers/insert-into (keyword (:table-name index)))
+                 (sql.helpers/values db-records)
+                 (sql.helpers/on-conflict :model :model_id)
+                 (sql.helpers/do-update-set (db-records->update-set db-records))
+                 sql-format-quoted))
+           docs-with-embeddings
+           cached-embeddings)))
+
+      (when (seq docs-need-embeddings)
+        (let [new-texts (map :searchable_text docs-need-embeddings)]
+          (embedding/process-embeddings-streaming
+           (:embedding-model index)
+           new-texts
+           (fn [_batch-texts batch-embeddings]
+             (batch-update!
+              connectable
+              (fn [db-records]
+                (-> (sql.helpers/insert-into (keyword (:table-name index)))
+                    (sql.helpers/values db-records)
+                    (sql.helpers/on-conflict :model :model_id)
+                    (sql.helpers/do-update-set (db-records->update-set db-records))
+                    sql-format-quoted))
+              docs-need-embeddings
+              batch-embeddings))))))
+    (log/info "No documents to index after filtering")))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
@@ -163,13 +193,14 @@
   [connectable index]
   (jdbc/execute! connectable (drop-index-table-sql index)))
 
-(defn create-index-table!
+(defn ensure-index-table-ready!
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists."
   [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
     (let [{:keys [embedding-model index-name table-name]} index
-          {:keys [vector-dimensions]}                     embedding-model]
+          {:keys [vector-dimensions]}                     embedding-model
+          content-index-name                              (str table-name "__content_idx")]
       (log/info "Creating index table" table-name)
       (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
       (when force-reset? (drop-index-table! connectable index))
@@ -183,6 +214,12 @@
        (-> (sql.helpers/create-index
             [(keyword index-name) :if-not-exists]
             [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
+           sql-format-quoted))
+      (jdbc/execute!
+       connectable
+       (-> (sql.helpers/create-index
+            [(keyword content-index-name) :if-not-exists]
+            [(keyword table-name) :content])
            sql-format-quoted)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {} e)))))
@@ -193,7 +230,7 @@
                         :vector-dimensions 1024})
   (def index (default-index embedding-model))
   (drop-index-table! db index)
-  (create-index-table! db index)
+  (ensure-index-table-ready! db index)
   (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table__%'"]))
 
 (defn- search-filters
@@ -305,7 +342,7 @@
 (comment
   (def embedding-model (embedding/get-active-model))
   (def index (default-index embedding-model))
-  (create-index-table! index {:force-reset? true})
+  (ensure-index-table-ready! index {:force-reset? true})
   (upsert-index! db index [{:model "card"
                             :id "1"
                             :searchable_text "This is a test card"}])

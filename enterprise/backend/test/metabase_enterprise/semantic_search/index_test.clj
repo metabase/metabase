@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
@@ -9,7 +10,7 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(deftest create-index-table!-test
+(deftest ensure-index-table-ready!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]
       ;; open-temp-index-table! creates the temp table, so drop it in order to test create!.
@@ -18,7 +19,7 @@
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (:index-name @index-ref)))))
       (testing "index table is present after create!"
-        (semantic.index/create-index-table! semantic.tu/db semantic.tu/mock-index {:force-reset? false})
+        (semantic.index/ensure-index-table-ready! semantic.tu/db semantic.tu/mock-index {:force-reset? false})
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
         (is (semantic.tu/table-has-index? (:table-name @index-ref) (:index-name @index-ref)))))))
 
@@ -169,3 +170,69 @@
               (is (= {"dashboard" 11}
                      (semantic.tu/delete-from-index! "dashboard" (into ["456"] extra-ids))))
               (check-index-has-no-mock-docs))))))))
+
+(deftest embedding-reuse-optimization-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (let [;; Documents with identical content but different model+id combinations
+            docs-with-same-content [{:model "card", :id "100", :searchable_text "Dog Training Guide", :creator_id 1, :archived false}
+                                    {:model "card", :id "101", :searchable_text "Dog Training Guide", :creator_id 2, :archived false}
+                                    {:model "dashboard", :id "200", :searchable_text "Dog Training Guide", :creator_id 1, :archived false}]
+
+            ;; Documents with new content
+            docs-with-new-content [{:model "card", :id "102", :searchable_text "New Content Here", :creator_id 1, :archived false}
+                                   {:model "dashboard", :id "201", :searchable_text "Another New Content", :creator_id 2, :archived false}]
+
+            all-docs (concat docs-with-same-content docs-with-new-content)]
+
+        ;; First, populate index with one document to establish existing content
+        (testing "populate index with initial content"
+          (semantic.tu/upsert-index! semantic.tu/mock-documents)
+          (check-index-has-mock-docs))
+
+        ;; Track embedding API calls by overriding the mock provider method
+        (let [embedding-call-count (atom 0)
+              original-mock-method (get-method semantic.embedding/get-embeddings-batch "mock")]
+
+          ;; Override the mock method to count calls
+          (defmethod semantic.embedding/get-embeddings-batch "mock" [embedding-model texts]
+            (when (seq texts)
+              (swap! embedding-call-count + (count texts)))
+            (original-mock-method embedding-model texts))
+
+          (try
+
+            (testing "embedding reuse optimization works correctly"
+              ;; Reset counter
+              (reset! embedding-call-count 0)
+
+              ;; Insert documents - some with existing content, some with new content
+              (semantic.tu/upsert-index! all-docs)
+
+              ;; Should only generate embeddings for the 2 new unique texts
+              (is (= 2 @embedding-call-count)
+                  "Should only generate embeddings for new content, not reuse existing embeddings")
+
+              ;; Verify all documents were inserted correctly
+              (testing "all documents with identical content are present"
+                (is (= 3 (count (query-embeddings {:model "card"}))))
+                (is (= 2 (count (query-embeddings {:model "dashboard"})))))
+
+              ;; Verify documents with same content have same embeddings
+              (testing "documents with identical content have identical embeddings"
+                (let [card-results (query-embeddings {:model "card"})
+                      dog-training-cards (filter #(= "Dog Training Guide" (:content %)) card-results)
+                      embeddings (map :embedding dog-training-cards)]
+                  (is (= 2 (count dog-training-cards)) "Should have 2 cards with 'Dog Training Guide' content")
+                  (is (apply = embeddings) "Embeddings should be identical for identical content")))
+
+              ;; Test second batch with more of the same content - should generate 0 new embeddings
+              (testing "second upsert with same content generates no new embeddings"
+                (reset! embedding-call-count 0)
+                (semantic.tu/upsert-index! [{:model "card", :id "103", :searchable_text "Dog Training Guide", :creator_id 3, :archived false}])
+                (is (= 0 @embedding-call-count)
+                    "Should generate zero embeddings when content already exists")))
+            (finally
+              ;; Restore the original method
+              (defmethod semantic.embedding/get-embeddings-batch "mock" [embedding-model texts]
+                (original-mock-method embedding-model texts)))))))))
