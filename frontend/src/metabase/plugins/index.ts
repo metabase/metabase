@@ -789,4 +789,5 @@ export const PLUGIN_SMTP_OVERRIDE = {
 
 export const PLUGIN_REPORTS = {
   getRoutes: () => null as React.ReactElement | null,
+  shouldShowReportInNewItemMenu: () => false,
 };

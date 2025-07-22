@@ -5,7 +5,10 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  PLUGIN_REPORTS,
+} from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon, Menu } from "metabase/ui";
@@ -89,6 +92,19 @@ const NewItemMenuView = ({
         {t`Dashboard`}
       </Menu.Item>,
     );
+
+    if (PLUGIN_REPORTS.shouldShowReportInNewItemMenu()) {
+      items.push(
+        <Menu.Item
+          key="report"
+          component={ForwardRefLink}
+          to="/report"
+          leftSection={<Icon name="document" />}
+        >
+          {t`Report`}
+        </Menu.Item>,
+      );
+    }
 
     // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
     if (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu()) {

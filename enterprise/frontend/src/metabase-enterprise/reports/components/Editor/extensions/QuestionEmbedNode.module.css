@@ -1,0 +1,53 @@
+.embedContainer {
+  margin: 1rem 0;
+}
+
+.embedWrapper {
+  display: block;
+  width: 100%;
+}
+
+.questionEmbed {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  margin: 1rem 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.questionEmbed.selected {
+  border-color: var(--mb-color-brand);
+  outline: none;
+}
+
+.questionEmbed * {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.questionHeader {
+  padding: 0.5rem 1rem;
+}
+
+.questionResults {
+  height: 400px;
+  position: relative;
+}
+
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.errorContainer {
+  padding: 1rem;
+  color: var(--mb-color-error);
+}
