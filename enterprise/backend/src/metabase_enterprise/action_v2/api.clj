@@ -62,12 +62,11 @@
     [:model-action-id ms/PositiveInt]]
    [:map {:closed true}
     [:action-kw :keyword]
-    [:mapping :map]]
+    [:mapping :map]]])
    ;; Coming soon:
    ;; - data app actions (with their mappings)
    ;; - action expressions (e.g., unsaved data app actions. might not need these with auto save)
    ;; - dashboard buttons (unless we deprecate them instead)
-   ])
 
 (mr/def ::api-action-expression
   "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside."

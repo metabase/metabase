@@ -5,6 +5,7 @@
   These routes should generally live under prefixes like `/api/ee/<feature>/` -- see the
   `enterprise/backend/README.md` for more details."
   (:require
+   [metabase-enterprise.action-v2.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.ai-entity-analysis.api]
@@ -36,7 +37,8 @@
          metabase-enterprise.llm.api/keep-me)
 
 (def ^:private required-feature->message
-  {:advanced-permissions       (deferred-tru "Advanced Permissions")
+  {:actions                    (deferred-tru "Action")
+   :advanced-permissions       (deferred-tru "Advanced Permissions")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
