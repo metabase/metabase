@@ -1,0 +1,97 @@
+(ns ^:mb/driver-tests metabase-enterprise.transforms.api-test
+  "Tests for /api/transform endpoints."
+  (:require
+   [clojure.test :refer :all]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
+
+(deftest list-transforms-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/user-http-request :rasta :get 200 "ee/transform")))
+
+(deftest create-transform-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/user-http-request :rasta :post 200 "ee/transform"
+                          {:name "Gadget Products"
+                           :source {:type "query"
+                                    :query {:database (mt/id)
+                                            :type "native",
+                                            :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                     :template-tags {}}}}
+                           :target {:type "table"
+                                    :database (mt/id)
+                                    ;; leave out schema for now
+                                    ;;:schema (str (rand-int 10000))
+                                    :table "gadget_products"}})))
+
+(deftest get-transforms-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+                                     {:name "Gadget Products"
+                                      :source {:type "query"
+                                               :query {:database (mt/id)
+                                                       :type "native",
+                                                       :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                                :template-tags {}}}}
+                                      :target {:type "table"
+                                               :database (mt/id)
+                                               :schema "transforms"
+                                               :table "gadget_products"}})]
+      (mt/user-http-request :rasta :get 200 (format "ee/transform/%s" (:id resp))))))
+
+(deftest put-transforms-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+                                     {:name "Gadget Products"
+                                      :source {:type "query"
+                                               :query {:database (mt/id)
+                                                       :type "native",
+                                                       :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                                :template-tags {}}}}
+                                      :target {:type "table"
+                                               :database (mt/id)
+                                               :schema "transforms"
+                                               :table "gadget_products"}})]
+      (mt/user-http-request :rasta :put 200 (format "ee/transform/%s" (:id resp))
+                            {:name "Gadget Products 2"
+                             :source {:type "query"
+                                      :query {:database (mt/id)
+                                              :type "native",
+                                              :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'None'"
+                                                       :template-tags {}}}}
+                             :target {:type "table"
+                                      :database (mt/id)
+                                      :schema "transforms"
+                                      :table "gadget_products"}}))))
+
+(deftest delete-transforms-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+                                     {:name "Gadget Products"
+                                      :source {:type "query"
+                                               :query {:database (mt/id)
+                                                       :type "native",
+                                                       :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                                :template-tags {}}}}
+                                      :target {:type "table"
+                                               :database (mt/id)
+                                               :schema "transforms"
+                                               :table "gadget_products"}})]
+      (mt/user-http-request :rasta :delete 200 (format "ee/transform/%s" (:id resp)))
+      (prn (mt/user-http-request :rasta :get 500 (format "ee/transform/%s" (:id resp)))))))
+
+(deftest delete-table-transforms-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+                                     {:name "Gadget Products"
+                                      :source {:type "query"
+                                               :query {:database (mt/id)
+                                                       :type "native",
+                                                       :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                                :template-tags {}}}}
+                                      :target {:type "table"
+                                               :database (mt/id)
+                                               :schema "transforms"
+                                               :table "gadget_products"}})]
+      (mt/user-http-request :rasta :delete 200 (format "ee/transform/%s/table" (:id resp))))))
