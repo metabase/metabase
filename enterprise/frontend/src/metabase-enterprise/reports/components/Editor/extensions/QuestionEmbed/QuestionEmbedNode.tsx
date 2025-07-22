@@ -3,9 +3,16 @@ import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+
+import {
+  getIsLoadingCard,
+  getIsLoadingDataset,
+  getReportCard,
+  getReportDataset,
+} from "../../../../selectors";
 
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import styles from "./QuestionEmbedNode.module.css";
@@ -104,8 +111,14 @@ export const QuestionEmbedComponent = ({
   getPos,
 }: NodeViewProps) => {
   const { questionId, questionName, customName } = node.attrs;
-  const { data: card, isLoading, error } = useGetCardQuery({ id: questionId });
-  const { data: results } = useGetCardQueryQuery({ cardId: questionId });
+  const card = useSelector((state) => getReportCard(state, questionId));
+  const dataset = useSelector((state) => getReportDataset(state, questionId));
+  const isLoadingCard = useSelector((state) =>
+    getIsLoadingCard(state, questionId),
+  );
+  const isLoadingDataset = useSelector((state) =>
+    getIsLoadingDataset(state, questionId),
+  );
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(customName || "");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +126,14 @@ export const QuestionEmbedComponent = ({
 
   const displayName = customName || card?.name || questionName;
   const isGuiQuestion = card?.dataset_query?.type !== "native";
+  const isLoading = isLoadingCard || isLoadingDataset;
+
+  // Only show error if we've tried to load and failed, not if we haven't tried yet
+  const hasTriedToLoad = card || isLoadingCard || isLoadingDataset;
+  const error =
+    hasTriedToLoad && !isLoading && questionId && !card
+      ? "Failed to load question"
+      : null;
 
   useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
@@ -273,10 +294,10 @@ export const QuestionEmbedComponent = ({
             </Box>
           </Box>
         )}
-        {results && card ? (
+        {dataset && card ? (
           <Box className={styles.questionResults}>
             <Visualization
-              rawSeries={[{ card, data: results.data }]}
+              rawSeries={[{ card, data: dataset.data }]}
               isEditing={false}
               isDashboard={false}
             />

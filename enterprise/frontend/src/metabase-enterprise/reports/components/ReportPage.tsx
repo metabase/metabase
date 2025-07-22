@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -20,6 +21,9 @@ import {
   useUpdateReportMutation,
 } from "metabase-enterprise/api";
 
+import { fetchReportQuestionData, selectQuestion } from "../reports.slice";
+import { getSelectedQuestionId } from "../selectors";
+
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
@@ -30,6 +34,8 @@ export const ReportPage = ({
 }: {
   params: { id?: number | "new" };
 }) => {
+  const dispatch = useDispatch();
+  const selectedQuestionId = useSelector(getSelectedQuestionId);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [questionRefs, setQuestionRefs] = useState<
     Array<{ id: number; name: string }>
@@ -44,9 +50,13 @@ export const ReportPage = ({
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(
-    null,
-  );
+
+  // Centralized data loading for question embeds
+  useEffect(() => {
+    questionRefs.forEach((ref) => {
+      dispatch(fetchReportQuestionData(ref.id));
+    });
+  }, [questionRefs, dispatch]);
 
   useEffect(() => {
     if (report) {
@@ -204,7 +214,7 @@ export const ReportPage = ({
               <Editor
                 onEditorReady={setEditorInstance}
                 onQuestionRefsChange={setQuestionRefs}
-                onQuestionSelect={setSelectedQuestionId}
+                onQuestionSelect={(id) => dispatch(selectQuestion(id))}
                 content={reportContent}
               />
             )}
@@ -216,7 +226,7 @@ export const ReportPage = ({
             {selectedQuestionId ? (
               <EmbedQuestionSettingsSidebar
                 questionId={selectedQuestionId}
-                onClose={() => setSelectedQuestionId(null)}
+                onClose={() => dispatch(selectQuestion(null))}
               />
             ) : (
               <Stack gap="lg" p="lg">

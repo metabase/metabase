@@ -1,13 +1,20 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Loader, Stack, Text } from "metabase/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
+
+import { updateVizSettings } from "../reports.slice";
+import {
+  getCardWithUpdatedSettings,
+  getIsLoadingCard,
+  getIsLoadingDataset,
+  getReportDataset,
+} from "../selectors";
 
 interface EmbedQuestionSettingsSidebarProps {
   questionId: number;
@@ -17,34 +24,39 @@ interface EmbedQuestionSettingsSidebarProps {
 export const EmbedQuestionSettingsSidebar = ({
   questionId,
 }: EmbedQuestionSettingsSidebarProps) => {
+  const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const { data: card, isLoading: isCardLoading } = useGetCardQuery({
-    id: questionId,
-  });
-  const { data: queryResults, isLoading: isResultsLoading } =
-    useGetCardQueryQuery({ cardId: questionId });
+  const card = useSelector((state) =>
+    getCardWithUpdatedSettings(state, questionId),
+  );
+  const dataset = useSelector((state) => getReportDataset(state, questionId));
+  const isCardLoading = useSelector((state) =>
+    getIsLoadingCard(state, questionId),
+  );
+  const isResultsLoading = useSelector((state) =>
+    getIsLoadingDataset(state, questionId),
+  );
 
   const question = useMemo(
-    () => new Question(card, metadata),
+    () => (card ? new Question(card, metadata) : null),
     [card, metadata],
   );
   const series = useMemo(() => {
-    if (!card || !queryResults?.data) {
+    if (!card || !dataset?.data) {
       return null;
     }
     return [
       {
         card,
-        data: queryResults.data,
+        data: dataset.data,
       },
     ];
-  }, [card, queryResults]);
+  }, [card, dataset]);
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
-    // For now, this doesn't update the embedded question
-    // This is just for viewing settings
-    // eslint-disable-next-line no-console
-    console.log("Settings changed:", settings);
+    if (card) {
+      dispatch(updateVizSettings({ cardId: card.id, settings }));
+    }
   };
 
   if (isCardLoading || isResultsLoading || !series) {
@@ -67,7 +79,7 @@ export const EmbedQuestionSettingsSidebar = ({
     );
   }
 
-  if (!card || !queryResults?.data) {
+  if (!card || !dataset?.data) {
     return (
       <Stack gap="lg" p="lg" style={{ height: "100%" }}>
         <Box
