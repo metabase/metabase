@@ -157,6 +157,10 @@
   ([]   (jdbc/execute! @db/data-source (drop-index-table-sql)))
   ([tx] (jdbc/execute! tx (drop-index-table-sql))))
 
+(defn- embedding-index-name
+  []
+  (str (name *index-table-name*) "_embedding_hnsw_idx"))
+
 (defn create-index-table!
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists."
@@ -174,7 +178,7 @@
         (jdbc/execute!
          tx
          (-> (sql.helpers/create-index
-              [:embedding_hnsw_idx :if-not-exists]
+              [(embedding-index-name) :if-not-exists]
               [*index-table-name* :using-hnsw [:raw "embedding vector_cosine_ops"]])
              sql-format-quoted))))
     (catch Exception e
