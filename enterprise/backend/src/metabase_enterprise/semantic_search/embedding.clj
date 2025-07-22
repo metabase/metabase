@@ -176,7 +176,7 @@
 
 ;;;; Global embedding model
 
-(def ^:dynamic ^:redef *active-model*
+(def ^:dynamic *active-model*
   "The model being used by the current semantic search engine."
   nil)
 
