@@ -297,13 +297,13 @@
 (comment
   (def embedding-model (embedding/get-active-model))
   (create-index-table! embedding-model {:force-reset? true})
-  (upsert-index! [{:model "card"
-                   :id "1"
-                   :searchable_text "This is a test card"}])
-  (delete-from-index! "card" ["1"])
-  (delete-from-index! "dashboard" ["13"])
+  (upsert-index! db embedding-model [{:model "card"
+                                      :id "1"
+                                      :searchable_text "This is a test card"}])
+  (delete-from-index! db embedding-model "card" ["1"])
+  (delete-from-index! db embedding-model "dashboard" ["13"])
   ;; no user
-  (query-index {:search-string "Copper knife"})
+  (query-index db embedding-model {:search-string "Copper knife"})
 
   #_:clj-kondo/ignore
   (require '[metabase.test :as mt])
