@@ -12,6 +12,8 @@
   (:import (clojure.lang IDeref)
            (java.io Closeable)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private init-delay
   (delay
     (when-not @semantic.db/data-source
@@ -125,7 +127,7 @@
      (try
        (semantic.index/drop-index-table! db mock-embedding-model)
        (catch Exception e
-         (log/error "Warning: failed to clean up test table" (semantic.index/index-table-name mock-embedding-model) e))))))
+         (log/error e "Warning: failed to clean up test table" (semantic.index/index-table-name mock-embedding-model)))))))
 
 (defmacro with-indexable-documents!
   "Add a collection of test documents to that can be indexed to the appdb."

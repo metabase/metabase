@@ -1,11 +1,9 @@
 (ns metabase-enterprise.semantic-search.embedding
   (:require
    [clj-http.client :as http]
-   [clojure.string :as str]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [potemkin.types :as p])
+   [metabase.util.log :as log])
   (:import
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]))
@@ -182,12 +180,13 @@
   "The model being used by the current semantic search engine."
   nil)
 
-(defn get-active-model []
+(defn get-active-model
   "Returns *active-model* if defined.
 
   Otherwise get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
 
   Requires the model dimensions are defined in ollama-supported-models or openai-supported-models (throws if not)."
+  []
   (or *active-model*
       (let [provider (semantic-settings/ee-embedding-provider)
             models (case provider

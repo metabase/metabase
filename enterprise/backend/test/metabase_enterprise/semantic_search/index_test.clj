@@ -75,7 +75,7 @@
 (defn- check-index-has-no-mock-docs []
   (let [table-name               (semantic.index/index-table-name semantic.tu/mock-embedding-model)
         table-exists-sql         "select exists(select * from information_schema.tables where table_name = ?) table_exists"
-        [{:keys [table_exists] :as r}] (jdbc/execute! semantic.tu/db [table-exists-sql table-name])]
+        [{:keys [table_exists]}] (jdbc/execute! semantic.tu/db [table-exists-sql table-name])]
     (when table_exists
       (check-index-has-no-mock-card)
       (check-index-has-no-mock-dashboard))))

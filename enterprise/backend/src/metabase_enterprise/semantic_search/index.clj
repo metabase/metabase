@@ -19,8 +19,8 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  ((requiring-resolve `metabase-enterprise.semantic-search.db/init-db!))
-  (def db @@(requiring-resolve `metabase-enterprise.semantic-search.db/data-source)))
+  ((requiring-resolve 'metabase-enterprise.semantic-search.db/init-db!))
+  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db/data-source)))
 
 (def index-metadata-schema
   "Database schema for index metadata, e.g which indexes are available and for which models"
@@ -33,7 +33,7 @@
    [[:constraint :unique_index_metadata_provider_model_name]
     [:unique [:composite :provider :model_name]]]])
 
-(defn create-index-metadata-table! [db]
+(defn- create-index-metadata-table! [db]
   (jdbc/execute! db
                  (-> (sql.helpers/create-table :index_metadata)
                      (sql.helpers/with-columns index-metadata-schema)
@@ -44,7 +44,10 @@
   (jdbc/execute! db ["select column_name, data_type, column_default from INFORMATION_SCHEMA.columns where table_name = 'index_metadata'"])
   (jdbc/execute! db (-> (sql.helpers/drop-table :index_metadata) sql/format)))
 
-(defn index-table-name [embedding-model]
+(defn index-table-name
+  "Returns the (string) name for a given embedding model. Requires quoting in SQL.
+  e.g. index_table__openai__text-embedding-3-small__1536"
+  [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model]
     (str "index_table__" provider "__" model-name "__" vector-dimensions)))
 
@@ -180,6 +183,7 @@
       sql-format-quoted))
 
 (defn drop-index-table!
+  "Drops the index table for the given embedding model if it exists."
   [connectable embedding-model]
   (jdbc/execute! connectable (drop-index-table-sql embedding-model)))
 
@@ -215,7 +219,7 @@
   (create-index-table! db embedding-model)
   (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table__%'"]))
 
-(defn create-index-table-metadata!
+(defn- create-index-table-metadata!
   [db embedding-model]
   (let [row {:provider          (:provider embedding-model)
              :model_name        (:model-name embedding-model)
@@ -348,4 +352,4 @@
   #_:clj-kondo/ignore
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
-    (doall (query-index {:search-string "Copper knife"}))))
+    (doall (query-index db embedding-model {:search-string "Copper knife"}))))
