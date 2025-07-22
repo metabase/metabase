@@ -155,7 +155,7 @@
                               extra-ids
                               (flatten (repeat semantic.tu/mock-documents)))
               mock-docs (into semantic.tu/mock-documents extra-docs)]
-          (testing "ensure populate! upsert! and delete! work when batch size is exceeded"
+          (testing "ensure upsert! and delete! work when batch size is exceeded"
             (check-index-has-no-mock-docs)
             (testing "upsert-index! with batch processing"
               (is (= {"card" 6, "dashboard" 6}
