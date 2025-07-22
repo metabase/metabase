@@ -136,12 +136,12 @@
       (embedding/process-embeddings-streaming
        (:embedding-model index)
        searchable-texts
-       (fn [_batch-texts batch-embeddings]
+       (fn [text-embedding-map]
          (let [batch-documents
-               (mapv (fn [doc embedding]
-                       (assoc doc :embedding embedding))
-                     filtered-documents
-                     batch-embeddings)]
+               (keep (fn [doc]
+                       (when-let [embedding (get text-embedding-map (:searchable_text doc))]
+                         (assoc doc :embedding embedding)))
+                     filtered-documents)]
            (batch-update!
             connectable
             (fn [db-records]
@@ -151,7 +151,7 @@
                   (sql.helpers/do-update-set (db-records->update-set db-records))
                   sql-format-quoted))
             batch-documents
-            batch-embeddings)))))))
+            (map :embedding batch-documents))))))))
 
 (defn- drop-index-table-sql
   [{:keys [table-name]}]

@@ -169,3 +169,44 @@
               (is (= {"dashboard" 11}
                      (semantic.tu/delete-from-index! "dashboard" (into ["456"] extra-ids))))
               (check-index-has-no-mock-docs))))))))
+
+(deftest upsert-index-batched-embeddings-pairing-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (testing "Documents with different searchable texts get associated with their correct embeddings"
+        (let [test-documents [{:model "card"
+                               :id "1"
+                               :searchable_text "Dog Training Guide"
+                               :creator_id 1
+                               :legacy_input {:model "card" :id "1"}
+                               :metadata {}}
+                              {:model "card"
+                               :id "2"
+                               :searchable_text "Elephant Migration"
+                               :creator_id 2
+                               :legacy_input {:model "card" :id "2"}
+                               :metadata {}}
+                              {:model "card"
+                               :id "3"
+                               :searchable_text "Tiger Conservation"
+                               :creator_id 3
+                               :legacy_input {:model "card" :id "3"}
+                               :metadata {}}]]
+          (binding [semantic.index/*batch-size* 1]
+            (semantic.tu/upsert-index! test-documents)
+
+            ;; Verify each document has its own correct embedding
+            (is (= [{:model "card" :model_id "1" :creator_id 1
+                     :content "Dog Training Guide"
+                     :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
+                   (query-embeddings {:model "card" :model_id "1"})))
+
+            (is (= [{:model "card" :model_id "2" :creator_id 2
+                     :content "Elephant Migration"
+                     :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
+                   (query-embeddings {:model "card" :model_id "2"})))
+
+            (is (= [{:model "card" :model_id "3" :creator_id 3
+                     :content "Tiger Conservation"
+                     :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
+                   (query-embeddings {:model "card" :model_id "3"})))))))))
