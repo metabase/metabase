@@ -81,7 +81,7 @@
               query (lib/aggregate query (lib/with-expression-name
                                            (lib/* 2 (find-col query "Order Total"))
                                            "2*total"))]
-          (is (= {:columns ["Order Total" "2*total"]
+          (is (= {:columns ["sum" "2*total"]
                   :rows [[1510617.7 3021235.4]]}
                  (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))))
 
