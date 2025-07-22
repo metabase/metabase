@@ -1,12 +1,14 @@
 (ns metabase.lib.schema.expression.temporal
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.time.impl-common :as u.time.impl-common])
   #?@
@@ -60,20 +62,77 @@
             [:ref ::expression/string]      ;; parse string as date
             [:ref ::expression/temporal]]]) ;; truncate datetime to date
 
-(mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
-  [:value [:schema :any]] ;; need to support bytes type
-  [:mode [:?
-          [:schema
-           [:enum {:error/message "datetime mode string"
-                   :decode/normalize common/normalize-keyword-lower}
-            :iso
-            :simple
-            :isobytes
-            :simplebytes
-            :unixmilliseconds
-            :unixseconds
-            :unixmicroseconds
-            :unixnanoseconds]]]])
+(mbql-clause/define-tuple-mbql-clause :today :- :type/Date)
+
+(def datetime-string-modes
+  "String modes supported by datetime() custom expression function."
+  #{:iso
+    :simple})
+
+(def datetime-binary-modes
+  "Binary modes supported by datetime() custom expression function."
+  #{:iso-bytes
+    :simple-bytes})
+
+(def datetime-number-modes
+  "Binary modes supported by datetime() custom expression function."
+  #{:unix-seconds
+    :unix-milliseconds
+    :unix-microseconds
+    :unix-nanoseconds})
+
+(def datetime-modes
+  "Modes supported by datetime() custom expression function."
+  (set/union datetime-string-modes
+             datetime-binary-modes
+             datetime-number-modes))
+
+(defn- datetime-mode->string [s]
+  (-> s
+      name
+      u/lower-case-en
+      (str/replace #"-" "")))
+
+(def ^:private datetime-mode-map
+  (into {} (for [k datetime-modes]
+             [(datetime-mode->string k) k])))
+
+(defn normalize-datetime-mode
+  "Convert a keyword or string to an internal datetime-mode keyword, or itself if it's not correct.
+
+   Is lenient on case and hyphens."
+  [s]
+  (get datetime-mode-map (datetime-mode->string s) s))
+
+(mbql-clause/define-mbql-clause :datetime :- :type/DateTime
+  [:cat
+   {:error/message (str "Valid " :datetime " clause")}
+   [:= {:decode/normalize common/normalize-keyword} :datetime]
+   [:alt
+    ;; string modes
+    [:cat
+     [:merge
+      ::common/options
+      [:map [:mode {:optional true} ;; no mode should be iso string
+             (into [:enum {:decode/normalize normalize-datetime-mode}]
+                   datetime-string-modes)]]]
+     [:schema [:ref ::expression/string]]]
+
+    ;; number modes
+    [:cat
+     [:merge
+      ::common/options
+      [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
+                         datetime-number-modes)]]]
+     [:schema [:ref ::expression/number]]]
+
+    ;; binary modes
+    [:cat
+     [:merge
+      ::common/options
+      [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
+                         datetime-binary-modes)]]]
+     :any]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

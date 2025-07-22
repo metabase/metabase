@@ -117,7 +117,7 @@ describe("AccordionList", () => {
       />,
     );
     const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
-    const CONTAINER = screen.getAllByRole("grid")[0];
+    const CONTAINER = screen.getAllByRole("tree")[0];
 
     fireEvent.change(SEARCH_FIELD, { target: { value: "Ba" } });
     assertPresence(["Bar", "Baz"]);

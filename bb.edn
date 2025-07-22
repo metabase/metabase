@@ -155,8 +155,19 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
-  ;; - hidden from `./bin/mage` listing and `bb tasks`
-  ;; - start with a `-`
+  ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
+  ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -token-scan
+  {:doc        "Security token scanner for detecting leaked API keys and secrets"
+   :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
+                ["./bin/mage -token-scan -v deps.edn" "Scan with verbose output"]
+                ["./bin/mage -token-scan -a" "Scan all files in the project"]]
+   :requires   [[mage.token-scan :as token-scan]]
+   :options    [["-a" "--all-files" "Scan all files in the project"]
+                ["-v" "--verbose" "Verbose output"]]
+   :arg-schema [:sequential [:string {:description "Files to scan"}]]
+   :task       (task! (token-scan/run-scan parsed))}
 
   -repl
   {:doc      "Eval a string of clojure code in the backend dev server"
@@ -175,8 +186,7 @@
                    code (first (:arguments parsed))
                    port (or (:port (:options parsed))
                             (slurp ".nrepl-port")
-                            (do (println (c/red "No port specified, and no .nrepl-port file found."))
-                                (System/exit 1)))
+                            (throw (ex-info (c/red "No port specified, and no .nrepl-port file found.") {:babashka/exit 1})))
                    nns (or (:namespace (:options parsed)) "user")]
                (nrepl-eval nns code port))}
 

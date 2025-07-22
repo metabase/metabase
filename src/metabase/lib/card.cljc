@@ -7,7 +7,6 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.query :as lib.query]
@@ -64,14 +63,10 @@
           (fallback-display-name source-card)))))
 
 (mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [metadata-providerable                :- ::lib.schema.metadata/metadata-providerable
-   {card-query :dataset-query :as card} :- :map]
+  [metadata-providerable                 :- ::lib.schema.metadata/metadata-providerable
+   {card-query :dataset-query :as _card} :- :map]
   (when (some? card-query)
-    (let [cols      (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
-          model-eid (when (= (:type card) :model)
-                      (:entity-id card))]
-      (cond->> cols
-        model-eid (map #(lib.metadata.ident/add-model-ident % model-eid))))))
+    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (mu/defn- ->card-metadata-column :- ::lib.schema.metadata/column
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
@@ -130,9 +125,9 @@
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     cols                  :- [:maybe [:or
-                                      [:sequential ::lib.schema.metadata/card.result-metadata.map]
+                                      [:sequential ::lib.schema.metadata/lib-or-legacy-column]
                                       [:map
-                                       [:columns [:sequential ::lib.schema.metadata/card.result-metadata.map]]]]]]
+                                       [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
    ;; contains` :columns` as well.
    (when-let [cols (not-empty (cond

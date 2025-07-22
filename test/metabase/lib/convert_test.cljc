@@ -225,7 +225,7 @@
                 :stages   [{:lib/type     :mbql.stage/mbql
                             :source-table 1
                             :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                            [:field {:lib/uuid string?
+                                            [:field {:lib/uuid (str (random-uuid))
                                                      :effective-type :type/Integer} 1]]]
                             :breakout     [[:aggregation
                                             {:display-name   "Revenue"
@@ -1274,3 +1274,174 @@
                                     :lib/stage-metadata (symbol "nil #_\"key is not present.\"")
                                     :source-metadata    (symbol "nil #_\"key is not present.\"")}]}]}
                 (-> legacy lib.convert/->pMBQL lib.convert/->legacy-MBQL lib.convert/->pMBQL)))))))
+
+(deftest ^:parallel ->pMBQL-datetime-test
+  (is (=? [:datetime {:mode :unix-seconds
+                      :lib/uuid string?} 10]
+          (lib.convert/->pMBQL [:datetime 10 {:mode :unix-seconds}])))
+  (is (=? [:datetime {:mode :iso
+                      :lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime "" {:mode :iso}])))
+  (is (=? [:datetime {:lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime "" {}])))
+  (is (=? [:datetime {:lib/uuid string?} ""]
+          (lib.convert/->pMBQL [:datetime ""]))))
+
+(deftest ^:parallel ->legacy-MBQL-test
+  (is (= [:datetime 10 {:mode :unix-seconds}]
+         (lib.convert/->legacy-MBQL [:datetime {:mode :unix-seconds, :lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} 10])))
+  (is (= [:datetime ""]
+         (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} ""])))
+  (is (= [:datetime "" {:mode :iso}]
+         (lib.convert/->legacy-MBQL [:datetime {:lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9" :mode :iso} ""]))))
+
+(deftest ^:parallel round-trip-aggregation-reference-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        sum   (->> (lib/aggregable-columns query nil)
+                   (m/find-first (comp #{"sum"} :name)))
+        query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
+        legacy-query (lib.convert/->legacy-MBQL query)]
+    (is (= legacy-query
+           (-> legacy-query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
+
+(deftest ^:parallel convert-join-with-filters-test
+  (testing "A join whose sole stage has :filters should get converted to a join with a :source-query (QUE-1566)"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :joins        [{:alias      "c"
+                                             :conditions [[:=
+                                                           {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                                           [:field
+                                                            {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                             :base-type :type/Integer}
+                                                            33402]
+                                                           [:field
+                                                            {:join-alias "c"
+                                                             :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                             :base-type  :type/BigInteger}
+                                                            33100]]]
+                                             :lib/type   :mbql/join
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 33010
+                                                           :filters      [[:=
+                                                                           {:lib/uuid "cba9a408-5f66-4ae2-83a9-bdaca23ef878"}
+                                                                           [:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]
+                                                                           "BBQ"]]}]}]
+                             :source-table 33040}]
+                 :database 33001}]
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:joins        [{:alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 {:base-type :type/Integer}]
+                                                         [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
+                                          :source-query {:source-table 33010
+                                                         :filter       [:= [:field 33101 nil] "BBQ"]}
+                                          :source-table (symbol "nil #_\"key is not present.\"")
+                                          :filter       (symbol "nil #_\"key is not present.\"")}]
+                          :source-table 33040}}
+              (lib/->legacy-MBQL query))))))
+
+(deftest ^:parallel convert-join-with-fields-test
+  (testing ":fields is allowed in a join top-level, we don't need to wrap it in :source-query"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :joins        [{:alias      "c"
+                                             :conditions [[:=
+                                                           {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                                           [:field
+                                                            {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                             :base-type :type/Integer}
+                                                            33402]
+                                                           [:field
+                                                            {:join-alias "c"
+                                                             :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                             :base-type  :type/BigInteger}
+                                                            33100]]]
+                                             :lib/type   :mbql/join
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 33010
+                                                           :fields       [[:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]]}]}]
+                             :source-table 33040}]
+                 :database 33001}]
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:joins        [{:alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 {:base-type :type/Integer}]
+                                                         [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
+                                          :source-table 33010
+                                          :fields       [[:field 33101 nil]]}]
+                          :source-table 33040}}
+              (lib/->legacy-MBQL query))))))
+
+(deftest ^:parallel join-native-source-query->legacy-test
+  (testing "join :source-query should rename :query to :native for native stages"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type :mbql.stage/mbql
+                             :joins    [{:lib/type   :mbql/join
+                                         :alias      "c"
+                                         :conditions [[:=
+                                                       {:lib/uuid "43813e7b-ebf7-4278-8ab4-af23be9ffc0d"}
+                                                       [:field
+                                                        {:lib/uuid "b8ad483b-1ff8-4979-bb3e-c006fe5caf46"}
+                                                        61325]
+                                                       [:field
+                                                        {:base-type :type/BigInteger, :join-alias "c", :lib/uuid "3000ef3f-a190-4f47-88df-404150748352"}
+                                                        "ID"]]]
+                                         :stages     [{:lib/type :mbql.stage/native
+                                                       :native   "SELECT * FROM categories WHERE name = ?;"
+                                                       :params   ["BBQ"]}]}]}]}]
+      (is (=? {:type  :query
+               :query {:joins [{:alias        "c"
+                                :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
+                                :source-query {:native "SELECT * FROM categories WHERE name = ?;"
+                                               :params ["BBQ"]}}]}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel metadata-roundtrip-test
+  (testing "Do not convert lib keys to snake_case when converting metadata"
+    (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                              lib/append-stage)
+          columns         (lib/returned-columns query)
+          test-cases      [{:mbql-5-path  [:stages 0 :lib/stage-metadata :columns]
+                            :mbql-4-path  [:query :source-metadata]
+                            :mbql-4-shape :legacy}
+                           {:mbql-5-path  [:info :metadata/model-metadata]
+                            :mbql-4-path  [:info :metadata/model-metadata]
+                            :mbql-4-shape :lib}
+                           {:mbql-5-path  [:info :pivot/result-metadata]
+                            :mbql-4-path  [:info :pivot/result-metadata]
+                            :mbql-4-shape :lib}]
+          expected-shapes {:legacy [{:name                     "ID"
+                                     :base_type                :type/BigInteger
+                                     :lib/desired-column-alias "ID"}
+                                    {:name                     "NAME"
+                                     :base_type                :type/Text
+                                     :lib/desired-column-alias "NAME"
+                                     :fingerprint              {:global {}
+                                                                :type   {:type/Text {}}}}]
+                           :lib    [{:name                     "ID"
+                                     :base-type                :type/BigInteger
+                                     :lib/desired-column-alias "ID"}
+                                    {:name                     "NAME"
+                                     :base-type                :type/Text
+                                     :lib/desired-column-alias "NAME"
+                                     :fingerprint              {:global {}
+                                                                :type   {:type/Text {}}}}]}]
+      (testing "5 => 4"
+        (doseq [{:keys [mbql-5-path mbql-4-path mbql-4-shape]} test-cases]
+          (testing (pr-str mbql-5-path)
+            (let [query (assoc-in query mbql-5-path columns)]
+              (is (=? (assoc-in {} mbql-4-path (expected-shapes mbql-4-shape))
+                      (lib.convert/->legacy-MBQL query)))))))
+      (testing "4 => 5"
+        (doseq [{:keys [mbql-5-path mbql-4-path mbql-4-shape]} test-cases]
+          (testing (pr-str mbql-4-path)
+            (let [query (-> {:database 1, :type :query, :query {:source-query {}}}
+                            (assoc-in mbql-4-path (case mbql-4-shape
+                                                    :lib    columns
+                                                    :legacy (#'lib.convert/stage-metadata->legacy-metadata {:columns columns}))))]
+              (is (=? (assoc-in {:stages [{} {}]} mbql-5-path (expected-shapes :lib))
+                      (lib.convert/->pMBQL query))))))))))

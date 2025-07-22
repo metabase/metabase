@@ -107,7 +107,7 @@ export function NumberInputWidget({
       onSubmit={handleSubmit}
     >
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      {arity === "n" ? (
+      {arity === "n" || options.length > 0 ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
             value={filteredUnsavedArrayValue.map((value) => value?.toString())}

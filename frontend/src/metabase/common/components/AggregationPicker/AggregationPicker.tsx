@@ -14,17 +14,19 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/query_builder/components/expressions";
 import {
   type DefinedClauseName,
   type MBQLClauseFunctionConfig,
   clausesForMode,
   getClauseDefinition,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Box, Flex, Icon, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
@@ -193,8 +195,8 @@ export function AggregationPicker({
   ]);
 
   const availableColumns = useMemo(
-    () => Lib.expressionableColumns(query, stageIndex),
-    [query, stageIndex],
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
   );
 
   const checkIsItemSelected = useCallback(
@@ -306,6 +308,7 @@ export function AggregationPicker({
         clause={clause}
         withName
         expressionMode="aggregation"
+        expressionIndex={clauseIndex}
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
@@ -356,7 +359,6 @@ export function AggregationPicker({
       renderItemWrapper={renderItemWrapper}
       maxHeight={Infinity}
       itemTestId="dimension-list-item"
-      withBorders
       globalSearch
       fuzzySearch
     />

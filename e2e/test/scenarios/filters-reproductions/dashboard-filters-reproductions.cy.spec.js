@@ -4678,11 +4678,11 @@ describe("issue 44090", () => {
   });
 });
 
-describe.skip("issue 47951", () => {
+describe("issue 47951", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should do X (metabase#47951)", () => {
@@ -4829,6 +4829,171 @@ describe("issue 59306", () => {
         .type("asdf".repeat(20))
         .invoke("outerWidth")
         .should("be.lt", 400);
+    });
+  });
+});
+
+describe("Issue 60987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        type: "question",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              "source-table": PRODUCTS_ID,
+              fields: "all",
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    }).then((response) => {
+      H.visitDashboard(response.body.dashboard_id);
+    });
+  });
+
+  it("should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)", () => {
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.getDashboardCard().findByText("Select…").click();
+    H.popover().findByPlaceholderText("Find...").type("aa");
+    H.popover().findByText("Didn't find any results").should("be.visible");
+  });
+});
+
+describe("Issue 60987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        type: "question",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              "source-table": PRODUCTS_ID,
+              fields: "all",
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    }).then((response) => {
+      H.visitDashboard(response.body.dashboard_id);
+    });
+
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.getDashboardCard().findByText("Select…").click();
+  });
+
+  it("should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)", () => {
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("aa");
+      cy.findByText("Didn't find any results")
+        .should("be.visible")
+        .should("have.css", "color", "rgb(105, 110, 123)"); // the text should be grey
+    });
+  });
+});
+
+describe("Issue 46767", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        type: "question",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              "source-table": PRODUCTS_ID,
+              fields: "all",
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    }).then((response) => {
+      H.visitDashboard(response.body.dashboard_id);
+    });
+
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.getDashboardCard().findByText("Select…").click();
+  });
+
+  it("search results for parameter target picker should not show empty sections (metabase#46767)", () => {
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("Ean");
+      cy.findByText("Products").should("be.visible");
+      cy.findByText("User").should("not.exist");
     });
   });
 });

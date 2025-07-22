@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { type FocusEvent, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
+import S from "./SemanticTypePicker.module.css";
 import { getCompatibleSemanticTypes } from "./utils";
 
 const NO_SEMANTIC_TYPE = null;
@@ -21,6 +22,7 @@ export const SemanticTypePicker = ({
   field,
   value,
   onChange,
+  onFocus,
   ...props
 }: Props) => {
   const data = useMemo(() => getData({ field, value }), [field, value]);
@@ -30,8 +32,14 @@ export const SemanticTypePicker = ({
     onChange(parsedValue);
   };
 
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+    onFocus?.(event);
+  };
+
   return (
     <Select
+      className={S.semanticTypePicker}
       comboboxProps={{
         middlewares: {
           flip: true,
@@ -48,6 +56,7 @@ export const SemanticTypePicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
+      onFocus={handleFocus}
       {...props}
     />
   );
