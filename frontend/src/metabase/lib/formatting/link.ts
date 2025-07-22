@@ -67,7 +67,10 @@ export function renderLinkURLForClick(
     ) => {
       const valueForLinkTemplate = formatValueForLinkTemplate(value, column);
 
-      if ([null, NULL_DISPLAY_VALUE].includes(valueForLinkTemplate)) {
+      if (
+        valueForLinkTemplate == null ||
+        valueForLinkTemplate === NULL_DISPLAY_VALUE
+      ) {
         return "";
       }
 
@@ -86,11 +89,11 @@ export function renderLinkURLForClick(
       const isColumnValue = column != null;
       const isStart = offset === 0;
       const shouldSkipEncoding =
-        isColumnValue && isStart && isSafeUrl(valueForLinkTemplate);
+        isColumnValue && isStart && isSafeUrl(valueForLinkTemplate.toString());
 
       return shouldSkipEncoding
         ? valueForLinkTemplate
-        : encodeURIComponent(valueForLinkTemplate);
+        : encodeURIComponent(valueForLinkTemplate.toString());
     },
   );
 }
