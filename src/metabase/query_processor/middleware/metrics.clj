@@ -147,13 +147,11 @@
                                           (lib/ref col)
                                           ;; This is probably due to a field-id where it shouldn't be
                                           &match))
-                          update-f (fn [x]
-                                     (-> x
-                                         (update :display-name #(or % metric-name))
-                                         (merge (select-keys (get &match 1) [:lib/uuid :name :display-name]))))]
-                      (update (lib.util/fresh-uuids replacement)
-                              1
-                              update-f))
+                          merge-metric-options (fn [opts]
+                                                 (-> opts
+                                                     (update :display-name #(or % metric-name))
+                                                     (merge (select-keys (get &match 1) [:lib/uuid :name :display-name]))))]
+                      (update (lib.util/fresh-uuids replacement) 1 merge-metric-options))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
@@ -395,7 +393,7 @@
                                     (get metric-id)
                                     u/ignore-exceptions)]
                 (throw (ex-info "Failed to replace metric"
-                                {:metric-id   metric-id
+                                {:metric-id metric-id
                                  :metric-data metric-data}))))))
         (catch Throwable e
           (analytics/inc! :metabase-query-processor/metrics-adjust-errors)
