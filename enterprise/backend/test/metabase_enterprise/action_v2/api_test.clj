@@ -115,7 +115,7 @@
         (testing "DELETE should remove the corresponding rows"
           (is (= #{{:op "deleted", :table-id table-id, :row {:id 1}}
                    {:op "deleted", :table-id table-id, :row {:id 2}}}
-                 (seth
+                 (set
                   (:outputs
                    (delete-rows! table-id [{:id 1} {:id 2}])))))
           (is (= [[3 "Farfetch'd" "The land of lisp"]]

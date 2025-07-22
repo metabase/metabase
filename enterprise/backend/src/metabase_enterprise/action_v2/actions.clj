@@ -66,10 +66,3 @@
 (mu/defmethod actions/default-mapping :data-grid.row/common
   [_ scope]
   (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.action-v2.api/root))
-
-(mu/defmethod actions/default-mapping :data-grid.row/delete
-  [_ scope]
-  (assoc (select-keys scope [:table-id])
-         ;; TODO yeah, a shorter namespace would be nice, that doesn't require importing from EE
-         :row :metabase-enterprise.action-v2.api/input
-         :delete-children [:metabase-enterprise.action-v2.api/param :delete-children]))
