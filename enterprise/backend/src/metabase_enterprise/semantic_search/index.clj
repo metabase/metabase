@@ -19,8 +19,8 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  ((requiring-resolve `metabase-enterprise.semantic-search.db/init-db!))
-  (def db @@(requiring-resolve `metabase-enterprise.semantic-search.db/data-source)))
+  ((requiring-resolve 'metabase-enterprise.semantic-search.db/init-db!))
+  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db/data-source)))
 
 (defn sql-format-quoted
   "Call [[sql/format]] with {:quoted true}.
@@ -30,7 +30,10 @@
   [honey-sql & {:as opts}]
   (sql/format honey-sql (merge opts {:quoted true})))
 
-(defn index-table-name [embedding-model]
+(defn index-table-name
+  "Returns the (string) name for a given embedding model. Requires quoting in SQL.
+  e.g. index_table__openai__text-embedding-3-small__1536"
+  [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model]
     (str "index_table__" provider "__" model-name "__" vector-dimensions)))
 
@@ -154,6 +157,7 @@
       sql-format-quoted))
 
 (defn drop-index-table!
+  "Drops the index table for the given embedding model if it exists."
   [connectable embedding-model]
   (jdbc/execute! connectable (drop-index-table-sql embedding-model)))
 
@@ -308,4 +312,4 @@
   #_:clj-kondo/ignore
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
-    (doall (query-index {:search-string "Copper knife"}))))
+    (doall (query-index db embedding-model {:search-string "Copper knife"}))))
