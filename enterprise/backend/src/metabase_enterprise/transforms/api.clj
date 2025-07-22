@@ -1,6 +1,5 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -42,26 +41,26 @@
              :table "gadget_products"}}]
   -)
 
-;; TODO add driver specific quoting
 (defn- qualified-table-name
-  [{:keys [schema table]}]
-  (cond->> table
-    schema (str schema ".")))
+  [driver {:keys [schema table]}]
+  (cond->> (driver/escape-alias driver table)
+    (string? schema) (str (driver/escape-alias driver schema) ".")))
 
 (defn- target-table-exists?
   [{:keys [source target] :as _transform}]
-  (let [database (-> source :query :database)
-        driver (t2/select-one-fn :engine :model/Database database)]
-    (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
-        :fields
-        seq
-        boolean)))
+  (let [db-id (-> source :query :database)
+        database (t2/select-one :model/Database db-id)
+        driver (:engine database)
+        needle ((juxt :schema :table) target)
+        normalize-fn (juxt :schema :name)]
+    (some #(= (normalize-fn %) needle)
+          (:tables (driver/describe-database driver database)))))
 
 (defn- delete-target-table!
   [{:keys [source target] :as _transform}]
   (let [database (-> source :query :database)
         driver (t2/select-one-fn :engine :model/Database database)]
-    (driver/drop-table! driver database (qualified-table-name target))))
+    (driver/drop-table! driver database (qualified-table-name driver target))))
 
 (defn- delete-target-table-by-id!
   [transform-id]
@@ -144,7 +143,7 @@
      {:db db
       :driver driver
       :sql (compile-source source)
-      :output-table (qualified-table-name target)
+      :output-table (qualified-table-name driver target)
       :overwrite? true})))
 
 (def ^{:arglists '([request respond raise])} routes
