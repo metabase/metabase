@@ -202,7 +202,7 @@
 
 (defn process-embeddings-streaming
   "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
-  [texts embeddings] for each batch."
+  a map from text to embedding for each batch."
   [embedding-model texts process-fn]
   (when (seq texts)
     (let [{:keys [model-name provider]} embedding-model]
@@ -210,12 +210,14 @@
         ;; For OpenAI, use token-aware batching and stream processing
         (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)]
           (run! (fn [batch-texts]
-                  (let [embeddings (openai-get-embeddings-batch model-name batch-texts)]
-                    (process-fn batch-texts embeddings)))
+                  (let [embeddings (openai-get-embeddings-batch model-name batch-texts)
+                        text-embedding-map (zipmap batch-texts embeddings)]
+                    (process-fn text-embedding-map)))
                 batches))
         ;; For other providers, process all at once (existing behavior)
-        (let [embeddings (get-embeddings-batch embedding-model texts)]
-          (process-fn texts embeddings))))))
+        (let [embeddings (get-embeddings-batch embedding-model texts)
+              text-embedding-map (zipmap texts embeddings)]
+          (process-fn text-embedding-map))))))
 
 (comment
   ;; Configuration:
