@@ -25,6 +25,9 @@ export type {
 } from "./dashboard";
 export {
   InteractiveQuestion,
+  type InteractiveQuestionProps,
+} from "./InteractiveQuestion";
+export {
   type BaseSdkQuestionProps,
   type SdkQuestionProps,
   type InteractiveQuestionBackButtonProps,
