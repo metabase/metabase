@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -9,7 +9,9 @@ import {
   Icon,
   Loader,
   Menu,
+  Modal,
   Paper,
+  ScrollArea,
   Stack,
   Text,
   Tooltip,
@@ -44,6 +46,8 @@ export const ReportPage = () => {
       return hasNewQuestions ? newStates : prevStates;
     });
   }, [questionRefs]);
+
+
   const [isDownloading, setIsDownloading] = useState(false);
   const [reportTitle, setReportTitle] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -53,6 +57,17 @@ export const ReportPage = () => {
     hasBeenRun: boolean;
     lastRunAt?: string;
   }>>({});
+  const [documentVersions, setDocumentVersions] = useState<Array<{
+    id: string;
+    content: string;
+    timestamp: Date;
+    title: string;
+    type: 'edit' | 'run';
+    questionCount?: number;
+  }>>([]);
+  const [lastEditedAt, setLastEditedAt] = useState<Date | null>(null);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleSave = useCallback(() => {
     if (!editorInstance) {
@@ -107,12 +122,72 @@ export const ReportPage = () => {
     // Set overall running state to false after the longest possible delay
     setTimeout(() => {
       setIsRunningReport(false);
+      // Create a version entry to record the data snapshot
+      createDocumentVersion('run', questionRefs.length);
     }, 3500);
   }, [handleSave, questionRefs, questionRunStates]);
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
   }, []);
+
+  const createDocumentVersion = useCallback((type: 'edit' | 'run' = 'edit', questionCount?: number) => {
+    if (!editorInstance) return;
+
+    const content = editorInstance.storage.markdown?.getMarkdown();
+    if (!content) return;
+
+    const newVersion = {
+      id: Date.now().toString(),
+      content,
+      timestamp: new Date(),
+      title: reportTitle || t`Untitled Report`,
+      type,
+      questionCount,
+    };
+
+    setDocumentVersions(prev => [newVersion, ...prev.slice(0, 19)]); // Keep last 20 versions
+    setLastEditedAt(newVersion.timestamp);
+  }, [editorInstance, reportTitle]);
+
+  const debouncedCreateVersion = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      createDocumentVersion();
+    }, 2000); // 2 second debounce
+  }, [createDocumentVersion]);
+
+  // Track editor changes for versioning
+  useEffect(() => {
+    if (!editorInstance) return;
+
+    const handleUpdate = () => {
+      debouncedCreateVersion();
+    };
+
+    editorInstance.on('update', handleUpdate);
+
+    return () => {
+      editorInstance.off('update', handleUpdate);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+     }, [editorInstance, debouncedCreateVersion]);
+
+  // Create initial version when editor is ready
+  useEffect(() => {
+    if (editorInstance && documentVersions.length === 0) {
+      // Create initial version after a short delay to ensure editor is fully ready
+      const timer = setTimeout(() => {
+        createDocumentVersion();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [editorInstance, documentVersions.length, createDocumentVersion]);
 
   const handleQuestionClick = useCallback(
     (questionId: number) => {
@@ -195,16 +270,35 @@ export const ReportPage = () => {
             </ActionIcon>
           </Flex>
           <Box className={styles.documentContainer}>
-            <Box className={styles.header} mt="xl" pt="xl">
-              <input
-                value={reportTitle}
-                onChange={(event) => setReportTitle(event.currentTarget.value)}
-                placeholder={t`New report`}
-                className={styles.titleInput}
-              />
-              <Box
-                style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
-              >
+                         <Box className={styles.header} mt="xl" pt="xl">
+                <Box style={{ flex: 1 }}>
+                  <input
+                    value={reportTitle}
+                    onChange={(event) => setReportTitle(event.currentTarget.value)}
+                    placeholder={t`New report`}
+                    className={styles.titleInput}
+                  />
+                                    {lastEditedAt && (
+                    <Text
+                      size="xs"
+                      color="text-light"
+                      style={{
+                        marginTop: "0.25rem",
+                        cursor: "pointer",
+                        textDecoration: "underline"
+                      }}
+                      onClick={() => setIsVersionHistoryOpen(true)}
+                    >
+                      {documentVersions[0]?.type === 'run'
+                        ? t`Data last updated ${lastEditedAt.toLocaleString()}`
+                        : t`Last edited ${lastEditedAt.toLocaleString()}`
+                      }
+                    </Text>
+                  )}
+                </Box>
+               <Box
+                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
+               >
                                  <Tooltip label={t`This will generate new snapshots of the queries in this report and create a new version`} openDelay={1000}>
                   <Button
                     variant="filled"
@@ -323,6 +417,72 @@ export const ReportPage = () => {
           </Box>
         )}
       </Box>
+
+      {/* Version History Modal */}
+      <Modal
+        opened={isVersionHistoryOpen}
+        onClose={() => setIsVersionHistoryOpen(false)}
+        title={t`Version History`}
+        size="lg"
+      >
+        <ScrollArea style={{ height: "60vh" }}>
+          {documentVersions.length === 0 ? (
+            <Text color="text-light" ta="center" py="xl">
+              {t`No versions saved yet`}
+            </Text>
+          ) : (
+            <Stack gap="sm">
+                             {documentVersions.map((version, index) => (
+                 <Box
+                   key={version.id}
+                   p="md"
+                   style={{
+                     border: "1px solid var(--mb-color-border)",
+                     borderRadius: "var(--mantine-radius-md)",
+                     cursor: "pointer",
+                     backgroundColor: version.type === 'run' ? "var(--mb-color-bg-light)" : "transparent"
+                   }}
+                   onClick={() => {
+                     // TODO: Implement version restoration
+                     // Future: Load this version back into the editor
+                     setIsVersionHistoryOpen(false);
+                   }}
+                 >
+                   <Flex justify="space-between" align="center" mb="xs">
+                     <Flex align="center" gap="xs">
+                       <Text fw="bold" size="sm">
+                         {version.title}
+                       </Text>
+                       {version.type === 'run' && (
+                         <Icon name="refresh" size={12} color="var(--mb-color-brand)" />
+                       )}
+                     </Flex>
+                     <Text size="xs" color="text-light">
+                       {index === 0 ? t`Current` : t`${index} version${index > 1 ? 's' : ''} ago`}
+                     </Text>
+                   </Flex>
+                   <Text size="xs" color="text-medium" mb="sm">
+                     {version.timestamp.toLocaleString()}
+                   </Text>
+                   <Text size="sm" color={version.type === 'run' ? "brand" : "text-light"} mb="xs">
+                     {version.type === 'run'
+                       ? t`Data re-snapshotted (${version.questionCount} question${version.questionCount !== 1 ? 's' : ''})`
+                       : t`Document edited`
+                     }
+                   </Text>
+                   <Text size="sm" color="text-light" style={{
+                     overflow: "hidden",
+                     textOverflow: "ellipsis",
+                     whiteSpace: "nowrap"
+                   }}>
+                     {version.content.substring(0, 100)}...
+                   </Text>
+                 </Box>
+               ))}
+            </Stack>
+          )}
+        </ScrollArea>
+      </Modal>
     </Box>
   );
 };
