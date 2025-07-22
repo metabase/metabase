@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -56,11 +56,23 @@ export const ReportPage = ({
   const [reportContent, setReportContent] = useState("");
 
   // Centralized data loading for question embeds
+  const questionIds = useMemo(
+    () =>
+      questionRefs
+        .map((ref) => ref.id)
+        .sort()
+        .join(","),
+    [questionRefs],
+  );
+
   useEffect(() => {
-    questionRefs.forEach((ref) => {
-      dispatch(fetchReportQuestionData(ref.id));
-    });
-  }, [questionRefs, dispatch]);
+    if (questionIds) {
+      const ids = questionIds.split(",").map((id) => parseInt(id));
+      ids.forEach((id) => {
+        dispatch(fetchReportQuestionData(id));
+      });
+    }
+  }, [questionIds, dispatch]);
 
   useEffect(() => {
     if (report) {

@@ -14,7 +14,6 @@ export interface ReportsState {
   loadingCards: Record<CardId, boolean>;
   loadingDatasets: Record<CardId, boolean>;
   selectedQuestionId: CardId | null;
-  vizSettingsUpdates: Record<CardId, VisualizationSettings>;
   isSidebarOpen: boolean;
 }
 
@@ -24,7 +23,6 @@ const initialState: ReportsState = {
   loadingCards: {},
   loadingDatasets: {},
   selectedQuestionId: null,
-  vizSettingsUpdates: {},
   isSidebarOpen: false,
 };
 
@@ -97,28 +95,16 @@ const reportsSlice = createSlice({
       }>,
     ) => {
       const { cardId, settings } = action.payload;
-      state.vizSettingsUpdates[cardId] = {
-        ...state.vizSettingsUpdates[cardId],
-        ...settings,
-      };
-    },
-    applyVizSettings: (state, action: PayloadAction<CardId>) => {
-      const cardId = action.payload;
-      const card = state.cards[cardId];
-      const updates = state.vizSettingsUpdates[cardId];
-      if (card && updates) {
+      // Directly update the card's visualization settings
+      if (state.cards[cardId]) {
         state.cards[cardId] = {
-          ...card,
+          ...state.cards[cardId],
           visualization_settings: {
-            ...card.visualization_settings,
-            ...updates,
+            ...state.cards[cardId].visualization_settings,
+            ...settings,
           },
         };
-        delete state.vizSettingsUpdates[cardId];
       }
-    },
-    clearVizSettingsUpdates: (state, action: PayloadAction<CardId>) => {
-      delete state.vizSettingsUpdates[action.payload];
     },
     resetReports: () => initialState,
   },
@@ -130,6 +116,14 @@ const reportsSlice = createSlice({
       })
       .addCase(fetchReportCard.fulfilled, (state, action) => {
         const card = action.payload;
+        // Preserve existing visualization settings if we already have them
+        const existingCard = state.cards[card.id];
+        if (existingCard?.visualization_settings) {
+          card.visualization_settings = {
+            ...card.visualization_settings,
+            ...existingCard.visualization_settings,
+          };
+        }
         state.cards[card.id] = card;
         state.loadingCards[card.id] = false;
       })
@@ -156,6 +150,14 @@ const reportsSlice = createSlice({
       })
       .addCase(fetchReportQuestionData.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
+        // Preserve existing visualization settings if we already have them
+        const existingCard = state.cards[card.id];
+        if (existingCard?.visualization_settings) {
+          card.visualization_settings = {
+            ...card.visualization_settings,
+            ...existingCard.visualization_settings,
+          };
+        }
         state.cards[card.id] = card;
         state.datasets[card.id] = dataset;
         state.loadingCards[card.id] = false;
@@ -174,8 +176,6 @@ export const {
   toggleSidebar,
   setSidebarOpen,
   updateVizSettings,
-  applyVizSettings,
-  clearVizSettingsUpdates,
   resetReports,
 } = reportsSlice.actions;
 

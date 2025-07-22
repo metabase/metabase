@@ -10,10 +10,10 @@ import type { VisualizationSettings } from "metabase-types/api";
 
 import { updateVizSettings } from "../reports.slice";
 import {
-  getCardWithUpdatedSettings,
   getIsLoadingCard,
   getIsLoadingDataset,
-  getReportDataset,
+  getReportCard,
+  getReportRawSeries,
 } from "../selectors";
 
 interface EmbedQuestionSettingsSidebarProps {
@@ -26,10 +26,8 @@ export const EmbedQuestionSettingsSidebar = ({
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const card = useSelector((state) =>
-    getCardWithUpdatedSettings(state, questionId),
-  );
-  const dataset = useSelector((state) => getReportDataset(state, questionId));
+  const card = useSelector((state) => getReportCard(state, questionId));
+  const series = useSelector((state) => getReportRawSeries(state, questionId));
   const isCardLoading = useSelector((state) =>
     getIsLoadingCard(state, questionId),
   );
@@ -41,17 +39,6 @@ export const EmbedQuestionSettingsSidebar = ({
     () => (card ? new Question(card, metadata) : null),
     [card, metadata],
   );
-  const series = useMemo(() => {
-    if (!card || !dataset?.data) {
-      return null;
-    }
-    return [
-      {
-        card,
-        data: dataset.data,
-      },
-    ];
-  }, [card, dataset]);
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (card) {
@@ -79,7 +66,7 @@ export const EmbedQuestionSettingsSidebar = ({
     );
   }
 
-  if (!card || !dataset?.data) {
+  if (!card || !series) {
     return (
       <Stack gap="lg" p="lg" style={{ height: "100%" }}>
         <Box

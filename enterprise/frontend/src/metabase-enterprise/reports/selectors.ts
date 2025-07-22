@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import type { Card, CardId, VisualizationSettings } from "metabase-types/api";
+import type { Card, CardId } from "metabase-types/api";
 
 // Use a more flexible typing approach that works with the existing State interface
 export const getReportsState = (state: any) => state.plugins?.reports;
@@ -43,28 +43,15 @@ export const getIsSidebarOpen = createSelector(
   (reports): boolean => reports.isSidebarOpen,
 );
 
-export const getVizSettingsUpdates = createSelector(
-  [getReportsState, (_, cardId: CardId) => cardId],
-  (reports, cardId): VisualizationSettings =>
-    reports.vizSettingsUpdates[cardId] ?? {},
-);
-
-export const getCardWithUpdatedSettings = createSelector(
+export const getReportRawSeries = createSelector(
   [
     (state: any, cardId: CardId) => getReportCard(state, cardId),
-    (state: any, cardId: CardId) => getVizSettingsUpdates(state, cardId),
+    (state: any, cardId: CardId) => getReportDataset(state, cardId),
   ],
-  (card, updates): Card | null => {
-    if (!card) {
+  (card, dataset) => {
+    if (!card || !dataset?.data) {
       return null;
     }
-
-    return {
-      ...card,
-      visualization_settings: {
-        ...card.visualization_settings,
-        ...updates,
-      },
-    };
+    return [{ card, data: dataset.data }];
   },
 );
