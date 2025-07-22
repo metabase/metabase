@@ -1274,9 +1274,8 @@
   (let [dimensions (dataset-query->dimensions dataset_query)
         dim-ids    (->> dimensions
                         (remove lib.types/temporal?)
-                        (filter :id)
-                        (map :id)
-                        (sort))]
+                        (keep :id)
+                        sort)]
     (json/encode (or dim-ids []))))
 
 (defn has-temporal-dimension?
