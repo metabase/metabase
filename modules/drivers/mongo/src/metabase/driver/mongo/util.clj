@@ -4,6 +4,7 @@
   (:require
    [flatland.ordered.map :as ordered-map]
    [metabase.driver.mongo.conversion :as mongo.conversion])
+  (:refer-clojure :exclude [drop])
   (:import
    (com.mongodb MongoClientSettings)
    (com.mongodb.client ClientSession FindIterable MongoClient MongoClients MongoCollection MongoDatabase)))
@@ -51,6 +52,11 @@
   "Return `MongoCollection` for `db` by its name."
   ^MongoCollection [^MongoDatabase db coll-name]
   (.getCollection db coll-name))
+
+(defn drop
+  "Drop `MongoCollection` from db"
+  [^MongoCollection coll]
+  (.drop coll))
 
 ;; https://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-sync/com/mongodb/client/MongoCollection.html#listIndexes()
 (defn list-indexes
