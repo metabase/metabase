@@ -44,20 +44,22 @@
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents _opts]
-  (let [embedding-model (semantic.embedding/get-active-model)]
-    (jdbc/with-transaction [tx (semantic.db/init-db!)]
+  (let [db (semantic.db/init-db!)
+        embedding-model (semantic.embedding/get-active-model)]
+    (jdbc/with-transaction [tx db]
       (semantic.index/create-index-table! tx embedding-model {:force-reset? false}))
-    (semantic.index/upsert-index! tx embedding-model (into [] searchable-documents))))
+    (semantic.index/upsert-index! db embedding-model (into [] searchable-documents))))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
   [searchable-documents _opts]
   (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (let [embedding-model (semantic.embedding/get-active-model)]
-    (jdbc/with-transaction [tx (semantic.db/init-db!)]
+  (let [db @semantic.db/data-source
+        embedding-model (semantic.embedding/get-active-model)]
+    (jdbc/with-transaction [tx db]
       (semantic.index/create-index-table! tx embedding-model {:force-reset? false}))
-    (semantic.index/upsert-index! tx embedding-model (into [] searchable-documents))))
+    (semantic.index/upsert-index! db embedding-model (into [] searchable-documents))))
 
 ;; TODO: implement
 (defenterprise reset-tracking!
