@@ -51,22 +51,11 @@ const toDashCase = (str: string): string =>
   str.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 
 // Convert values to string attributes
-const formatAttributeValue = (value: any): string => {
-  if (typeof value === "string") {
-    return `"${value}"`;
-  }
-
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-
-  if (typeof value === "number") {
-    return `"${value}"`;
-  }
-
+const formatAttributeValue = (value: unknown): string => {
   if (Array.isArray(value) || typeof value === "object") {
     return `'${JSON.stringify(value)}'`;
   }
+
   return `"${value}"`;
 };
 
