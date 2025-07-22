@@ -98,7 +98,7 @@ const NewItemMenuView = ({
         <Menu.Item
           key="report"
           component={ForwardRefLink}
-          to="/report"
+          to="report/new"
           leftSection={<Icon name="document" />}
         >
           {t`Report`}

@@ -16,11 +16,13 @@ import { QuestionEmbed } from "./extensions/QuestionEmbed";
 interface EditorProps {
   onEditorReady?: (editor: any) => void;
   onQuestionRefsChange?: (refs: Array<{ id: number; name: string }>) => void;
+  content: string;
 }
 
 export const Editor: React.FC<EditorProps> = ({
   onEditorReady,
   onQuestionRefsChange,
+  content = "",
 }) => {
   const editor = useEditor({
     extensions: [
@@ -32,7 +34,7 @@ export const Editor: React.FC<EditorProps> = ({
       }),
       MarkdownSerializer,
     ],
-    content: "",
+    content,
     autofocus: true,
   });
 

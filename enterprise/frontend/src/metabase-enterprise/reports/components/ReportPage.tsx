@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import {
   ActionIcon,
   Box,
@@ -13,41 +14,58 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import {
+  useCreateReportMutation,
+  useGetReportQuery,
+  useUpdateReportMutation,
+} from "metabase-enterprise/api";
 
 import { Editor } from "./Editor";
 import styles from "./ReportPage.module.css";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
-export const ReportPage = () => {
+export const ReportPage = ({
+  params: { id: reportId },
+}: {
+  params: { id?: number | "new" };
+}) => {
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [questionRefs, setQuestionRefs] = useState<
     Array<{ id: number; name: string }>
   >([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [createReport] = useCreateReportMutation();
+  const [updateReport] = useUpdateReportMutation();
+  const { data: report, isLoading: isReportLoading } = useGetReportQuery(
+    reportId && reportId !== "new" ? reportId : skipToken,
+  );
+
   const [reportTitle, setReportTitle] = useState("");
+  const [reportContent, setReportContent] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (report) {
+      setReportTitle(report.name);
+      setReportContent(report.document);
+    }
+  }, [report]);
 
   const handleSave = useCallback(() => {
     if (!editorInstance) {
       return;
     }
 
-    const markdown = editorInstance.storage.markdown?.getMarkdown();
-    const reportData = {
-      title: reportTitle,
-      content: markdown,
-      questionReferences: questionRefs,
-      createdAt: new Date().toISOString(),
+    const markdown = editorInstance.storage.markdown?.getMarkdown() ?? "";
+    const newReportData = {
+      name: reportTitle,
+      document: markdown as string,
     };
 
-    // eslint-disable-next-line no-console
-    console.log("Report data to save:", reportData);
-  }, [editorInstance, questionRefs, reportTitle]);
-
-  const handleSaveAndRun = useCallback(() => {
-    handleSave();
-    // TODO: Add run logic here
-  }, [handleSave]);
+    report?.id
+      ? updateReport({ ...newReportData, id: report.id }).unwrap()
+      : createReport(newReportData).unwrap();
+  }, [editorInstance, createReport, updateReport, report, reportTitle]);
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
@@ -144,8 +162,8 @@ export const ReportPage = () => {
               <Box
                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
               >
-                <Button variant="filled" onClick={handleSaveAndRun} size="md">
-                  {t`Save and run`}
+                <Button variant="filled" onClick={handleSave} size="md">
+                  {t`Save`}
                 </Button>
 
                 <Menu position="bottom-end">
@@ -176,10 +194,15 @@ export const ReportPage = () => {
                 </Menu>
               </Box>
             </Box>
-            <Editor
-              onEditorReady={setEditorInstance}
-              onQuestionRefsChange={setQuestionRefs}
-            />
+            {isReportLoading ? (
+              <Loader />
+            ) : (
+              <Editor
+                onEditorReady={setEditorInstance}
+                onQuestionRefsChange={setQuestionRefs}
+                content={reportContent}
+              />
+            )}
           </Box>
         </Box>
 
