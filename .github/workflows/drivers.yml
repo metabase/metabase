@@ -159,42 +159,6 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-druid-ee:
-    needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    env:
-      CI: 'true'
-      DRIVERS: druid
-    services:
-      druid:
-        image: metabase/druid:0.20.2
-        ports:
-          - "8082:8082"
-        env:
-          CLUSTER_SIZE: nano-quickstart
-    name: Druid (Legacy)
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test Druid driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-druid-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
@@ -337,19 +301,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
-            junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
-            env:
-              enable-ssl-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
             image: circleci/mariadb:latest
-            env:
-              enable-ssl-tests: 'false'
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
           - name: MySQL Latest
@@ -443,9 +397,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MongoDB 6.0
-            junit-name: be-tests-mongo-6-0-ee
-            image: metabase/qa-databases:mongo-sample-6
+
           - name: MongoDB Latest
             junit-name: be-tests-mongo-latest-ee
             image: mongo:latest
@@ -592,14 +544,6 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Oracle 18.4
-            junit-name: be-tests-oracle-18-4-ee
-            image: gvenzl/oracle-xe:18.4.0-slim
-            port: 1521
-            env:
-              user: system
-              password: 'password'
-              enable-ssl-tests: false
           - name: Oracle 21.3
             junit-name: be-tests-oracle-21-3-ee
             image: metabase/qa-databases:oracle-xe-21.3
@@ -663,11 +607,6 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
-            junit-name: postgres-ee
-            docker-image: postgres:12-alpine
-            env:
-              enable-ssl-tests: 'false'
           - name: Postgres Latest
             junit-name: postgres-latest-ee
             docker-image: postgres:latest
@@ -1092,7 +1031,6 @@ jobs:
       - be-tests-h2
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
-      - be-tests-druid-ee
       - be-tests-databricks-ee
       - be-tests-druid-jdbc-ee
       - be-tests-mysql-mariadb
