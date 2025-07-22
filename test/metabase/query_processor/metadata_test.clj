@@ -42,9 +42,7 @@
 
 (deftest ^:parallel native-query-metadata-test
   (testing "Should be able to get metadata without actually running the query (using the `:sql-jdbc` implementation) (#28195)"
-    (let [eid   (u/generate-nano-id)
-          query (-> (mt/native-query {:query "SELECT * FROM venues WHERE id = ?;", :params [1]})
-                    (assoc-in [:info :card-entity-id] eid))]
+    (let [query (mt/native-query {:query "SELECT * FROM venues WHERE id = ?;", :params [1]})]
       (is (=? [{:lib/type      :metadata/column
                 :name          "ID"
                 :database-type "BIGINT"
@@ -73,9 +71,7 @@
 
 (deftest ^:parallel native-query-metadata-semantic-type-test
   (testing "Should still infer Semantic type based on column name"
-    (let [eid   (u/generate-nano-id)
-          query (-> (mt/native-query {:query "SELECT id, created_at FROM products LIMIT 5;"})
-                    (assoc-in [:info :card-entity-id] eid))]
+    (let [query (mt/native-query {:query "SELECT id, created_at FROM products LIMIT 5;"})]
       (is (=? [{:name          "ID"
                 :display-name  "ID"
                 :semantic-type :type/PK}

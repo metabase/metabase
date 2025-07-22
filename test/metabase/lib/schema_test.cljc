@@ -7,7 +7,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))

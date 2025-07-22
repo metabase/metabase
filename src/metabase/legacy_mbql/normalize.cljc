@@ -37,7 +37,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]

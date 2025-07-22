@@ -677,9 +677,10 @@
                                         ;; We ignore the order of the fields in the lists, but need to make sure any
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
-                                        ;; Remove the randomized idents, which are of course not going to match.
+                                        ;; Remove the randomized idents, which are of course not going to match. These
+                                        ;; are deprecated and should no longer be populated
                                         (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
-      ;; Ignore :info since it contains the randomized :card-entity-id.
+      ;; Ignore :info since it contains the randomized :card-entity-id. (This is no longer populated either.)
       (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
@@ -688,9 +689,7 @@
                             (map #(assoc % 1 {})))
                    (mapv (fn [id] [:field {} id]) field-ids))]
     (lib.util/update-query-stage a-query -1
-                                 #(-> %
-                                      (assoc :fields (frequencies fields))
-                                      lib.schema.util/remove-randomized-idents))))
+                                 #(assoc % :fields (frequencies fields)))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]

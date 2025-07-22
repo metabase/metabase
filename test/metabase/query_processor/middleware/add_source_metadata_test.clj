@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.add-source-metadata-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.test-metadata :as meta]

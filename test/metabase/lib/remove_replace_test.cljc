@@ -870,7 +870,7 @@
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "alias_2"}
-                                                         (meta/id :users :
+                                                         (meta/id :venues :id)]]]
                                           :alias "alias_2"}]
                                  :filters [[:>
                                             {}

@@ -258,10 +258,9 @@
     ;; (That is the job of the resolve middleware to worry about that stuff.)
     (is (= {:source-table 1
             :breakout     [[:field Integer/MAX_VALUE nil]]}
-           (binding [lib.metadata/*enforce-idents* false]
-             (auto-bucket-mbql
-              {:source-table 1
-               :breakout     [[:field Integer/MAX_VALUE nil]]}))))))
+           (auto-bucket-mbql
+            {:source-table 1
+             :breakout     [[:field Integer/MAX_VALUE nil]]})))))
 
 (deftest ^:parallel do-not-auto-bucket-relative-time-interval-test
   (testing "does a :type/DateTime breakout Field that is already bucketed pass thru unchanged?"

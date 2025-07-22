@@ -94,7 +94,6 @@
 (defn- populate-metadata [{query :dataset_query, id :id, eid :entity_id :as _model}]
   (let [updater (a/thread
                   (let [metadata (-> query
-                                     (assoc-in [:info :card-entity-id] eid)
                                      #_{:clj-kondo/ignore [:deprecated-var]}
                                      (qp.metadata/legacy-result-metadata nil))]
                     (t2/update! :model/Card id {:result_metadata metadata})))]

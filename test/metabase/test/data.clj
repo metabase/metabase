@@ -45,7 +45,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -160,7 +159,6 @@
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-populate-idents <>)
      (mbql-query-impl/wrap-inner-query <>)
      (vary-meta <> assoc :type :mbql-query))))
 
@@ -179,8 +177,7 @@
     {:database `(id)
      :type     :query}
     (cond-> (mbql-query-impl/parse-tokens table-name outer-query)
-      (not (:native outer-query)) (-> (update :query mbql-query-impl/maybe-add-source-table table-name)
-                                      (update :query mbql-query-impl/wrap-populate-idents))))))
+      (not (:native outer-query)) (update :query mbql-query-impl/maybe-add-source-table table-name)))))
 
 (declare id)
 
@@ -204,8 +201,7 @@
   "Like `mbql-query`, but runs the query as well."
   {:style/indent :defn}
   [table-name & [query]]
-  `(run-mbql-query* (-> (mbql-query ~table-name ~(or query {}))
-                        (assoc-in [:info :card-entity-id] (u/generate-nano-id)))))
+  `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (def ^:private FormattableName
   [:or

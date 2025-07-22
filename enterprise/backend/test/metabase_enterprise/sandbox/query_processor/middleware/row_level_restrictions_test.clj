@@ -965,7 +965,6 @@
                       (assoc :parameters [{:type   :category
                                            :target [:variable [:template-tag param-name]]
                                            :value  param-value}])
-                      (assoc-in [:info :card-entity-id] (:entity_id card))
                       qp/process-query))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))

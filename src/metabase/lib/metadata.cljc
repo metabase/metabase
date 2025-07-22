@@ -69,10 +69,6 @@
    card-id              :- ::lib.schema.id/card]
   (lib.metadata.protocols/metadatas-for-card (->metadata-provider metadata-providerable) metadata-type card-id))
 
-(def ^:dynamic ^:deprecated *enforce-idents*
-  "DEPRECATED"
-  false)
-
 (mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

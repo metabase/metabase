@@ -8,8 +8,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.util :as u]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 (defn- metadata-with-column-of-type
   [column-type]

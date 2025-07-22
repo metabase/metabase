@@ -143,14 +143,13 @@
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
           (compare-results export-format (mt/mbql-query venues
-                                           {:fields   [$name $category_id->categories.name]
-                                            :order-by [[:asc $id]]
-                                            :limit    5})))
+                                                        {:fields   [$name $category_id->categories.name]
+                                                         :order-by [[:asc $id]]
+                                                         :limit    5})))
         (testing "A query with emoji and other fancy unicode"
           (let [[sql & args] (t2.pipeline/compile* {:select [["Cam 𝌆 Saul 💩" :cam]]})]
-            (compare-results export-format (assoc-in (mt/native-query {:query  sql
-                                                                       :params args})
-                                                     [:info :card-entity-id] (u/generate-nano-id)))))))))
+            (compare-results export-format (mt/native-query {:query  sql
+                                                             :params args}))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 

@@ -3,9 +3,7 @@
   (:require
    #?@(:clj ([toucan2.core :as t2]))
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [clojure.walk :as walk]))
 
 #?(:clj (set! *warn-on-reflection* true))
 

@@ -3,7 +3,6 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (defn- query [uuid-1 uuid-2]
@@ -32,25 +31,6 @@
 (def query-with-duplicate-uuids
   (query "00000000-0000-0000-0000-000000000001"
          "00000000-0000-0000-0000-000000000001"))
-
-(def ^:private query-with-no-uuids
-  {:lib/type :mbql/query
-   :database 1
-   :stages   [{:lib/type     :mbql.stage/mbql
-               :source-table 2
-               :filter       [:=
-                              {}
-                              [:field
-                               {:base-type :type/Text}
-                               3]
-                              4]}
-              {:lib/type :mbql.stage/mbql
-               :filter   [:=
-                          {}
-                          [:field
-                           {:base-type :type/Text}
-                           "my_field"]
-                          4]}]})
 
 (deftest ^:parallel collect-uuids-test
   (are [query expected-uuids] (= expected-uuids

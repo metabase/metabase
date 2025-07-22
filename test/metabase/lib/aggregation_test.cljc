@@ -144,28 +144,27 @@
    (lib/metadata query stage clause)))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
-  (let [ident (u/generate-nano-id)]
-    (are [clause expected] (=? expected
-                               (col-info-for-aggregation-clause clause))
-      ;; :count, no field
-      [:/ {} [:count {}] 2]
-      {:base-type    :type/Float
-       :name         "expression"
-       :display-name "Count ÷ 2"}
+  (are [clause expected] (=? expected
+                             (col-info-for-aggregation-clause clause))
+    ;; :count, no field
+    [:/ {} [:count {}] 2]
+    {:base-type    :type/Float
+     :name         "expression"
+     :display-name "Count ÷ 2"}
 
-      ;; :sum
-      [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
-      {:base-type    :type/Integer
-       :name         "sum"
-       :display-name "Sum of Price + 1"}
+    ;; :sum
+    [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
+    {:base-type    :type/Integer
+     :name         "sum"
+     :display-name "Sum of Price + 1"}
 
-      ;; options map
-      [:sum
-       {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
-       (lib.tu/field-clause :venues :price)]
-      {:base-type    :type/BigInteger
-       :name         "sum_2"
-       :display-name "My custom name"})))
+    ;; options map
+    [:sum
+     {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
+     (lib.tu/field-clause :venues :price)]
+    {:base-type    :type/BigInteger
+     :name         "sum_2"
+     :display-name "My custom name"}))
 
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
