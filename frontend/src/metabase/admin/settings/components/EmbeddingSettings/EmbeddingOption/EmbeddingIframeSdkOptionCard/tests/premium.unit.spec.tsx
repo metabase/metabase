@@ -1,33 +1,112 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  findRequests,
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
+import type { Settings, TokenFeatures } from "metabase-types/api";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { EmbeddingIframeSdkOptionCard } from "../EmbeddingIframeSdkOptionCard";
 
-import { setup as baseSetup } from "./setup";
+interface SetupOpts {
+  showSdkEmbedTerms?: Settings["show-sdk-embed-terms"];
+  isEmbeddingIframeSdkEnabled?: boolean;
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
+}
 
-const setup = () => {
-  const { state } = baseSetup({
-    hasEnterprisePlugins: true,
-    tokenFeatures: { embedding_iframe_sdk: true },
+async function setup({
+  showSdkEmbedTerms = true,
+  isEmbeddingIframeSdkEnabled = false,
+  hasEnterprisePlugins = true,
+}: SetupOpts = {}) {
+  const settingValues = createMockSettings({
+    "show-sdk-embed-terms": showSdkEmbedTerms,
+    "enable-embedding-iframe-sdk": isEmbeddingIframeSdkEnabled,
+    "token-features": createMockTokenFeatures({
+      embedding_iframe_sdk: true,
+    }),
   });
 
-  jest.spyOn(PLUGIN_EMBEDDING, "isEnabled").mockReturnValue(true);
+  const settingDefinitions = [
+    createMockSettingDefinition({
+      key: "show-sdk-embed-terms",
+      value: showSdkEmbedTerms,
+    }),
+    createMockSettingDefinition({
+      key: "enable-embedding-iframe-sdk",
+      value: isEmbeddingIframeSdkEnabled,
+    }),
+  ];
 
-  renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-    storeInitialState: state,
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
+  setupSettingsEndpoints(settingDefinitions);
+  setupPropertiesEndpoints(settingValues);
+  setupUpdateSettingEndpoint();
+
+  jest
+    .spyOn(PLUGIN_EMBEDDING, "isEnabled")
+    .mockReturnValue(hasEnterprisePlugins);
+
+  renderWithProviders(<EmbeddingIframeSdkOptionCard />);
+
+  // wait until both settings api endpoints (properties and setting) are called
+  await waitFor(async () => {
+    const gets = await findRequests("GET");
+    expect(gets).toHaveLength(2);
   });
-};
+}
 
 describe("EmbeddingIframeSdkOptionCard (EE with token)", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("shows 'Configure' button for EE instances", () => {
-    setup();
+  it("enables the 'Configure' button for EE instances with token", async () => {
+    await setup();
 
-    expect(
-      screen.getByRole("button", { name: "Configure" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Configure" })).toBeEnabled();
+  });
+
+  it("shows the legalese modal when the user hasn't agreed to terms", async () => {
+    await setup({
+      showSdkEmbedTerms: true,
+      isEmbeddingIframeSdkEnabled: false,
+    });
+
+    const toggle = screen.getByRole("switch", { name: "Disabled" });
+    await userEvent.click(toggle);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("updates enable-embedding-iframe-sdk directly if the user had agreed to the terms", async () => {
+    await setup({
+      showSdkEmbedTerms: false,
+      isEmbeddingIframeSdkEnabled: false,
+    });
+
+    const toggle = screen.getByRole("switch", { name: "Disabled" });
+    await userEvent.click(toggle);
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+
+    const [{ url, body }] = puts;
+    expect(url).toContain("api/setting/enable-embedding-iframe-sdk");
+    expect(body).toEqual({ value: true });
   });
 });

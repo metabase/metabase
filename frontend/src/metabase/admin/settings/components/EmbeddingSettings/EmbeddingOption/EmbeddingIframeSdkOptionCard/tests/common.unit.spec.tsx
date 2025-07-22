@@ -10,15 +10,13 @@ import { EmbeddingIframeSdkOptionCard } from "../EmbeddingIframeSdkOptionCard";
 
 import { setup as baseSetup } from "./setup";
 
-const setup = ({
-  isEmbeddingEnabled = false,
-}: { isEmbeddingEnabled?: boolean } = {}) => {
+const setup = () => {
   const { state } = baseSetup({ hasEnterprisePlugins: false });
 
   const settings = [
     createMockSettingDefinition({
       key: "enable-embedding-iframe-sdk",
-      value: isEmbeddingEnabled,
+      value: false,
     }),
     createMockSettingDefinition({
       key: "show-sdk-embed-terms",
@@ -52,11 +50,9 @@ describe("EmbeddingIframeSdkOptionCard (OSS)", () => {
     expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
   });
 
-  it("shows 'Try it out' button for non-EE instances", () => {
-    setup();
+  it("disables the 'Configure' button", async () => {
+    await setup();
 
-    expect(
-      screen.getByRole("button", { name: "Try it out" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Configure" })).toBeDisabled();
   });
 });

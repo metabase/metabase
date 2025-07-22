@@ -43,8 +43,9 @@ export function EmbeddingIframeSdkOptionCard() {
       <Group justify="space-between" align="center" w="100%">
         <LinkButton
           to={"/admin/settings/embedding-in-other-applications/iframe-sdk"}
+          disabled={!isEE}
         >
-          {!isEE ? t`Try it out` : t`Configure`}
+          {t`Configure`}
         </LinkButton>
 
         <EmbeddingToggle settingKey="enable-embedding-iframe-sdk" />
