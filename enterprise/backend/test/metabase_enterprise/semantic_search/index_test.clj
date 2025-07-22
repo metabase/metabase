@@ -41,6 +41,7 @@
   [row]
   (update row :embedding #'semantic.index/decode-pgobject))
 
+#_:clj-kondo/ignore
 (defn- full-index
   "Query the full index table and return all documents with decoded embeddings.
   Not used in tests, but useful for debugging."
