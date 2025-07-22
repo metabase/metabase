@@ -134,7 +134,7 @@
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
-   (ensure-legacy #'qp.add-dimension-projections/add-remapped-columns)
+   (ensure-pmbql #'qp.add-dimension-projections/add-remapped-columns)
    (ensure-legacy #'qp.resolve-fields/resolve-fields)
    (ensure-legacy #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
