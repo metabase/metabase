@@ -3,18 +3,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Loader,
-  Menu,
-  Paper,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
 import {
   useCreateReportMutation,
   useGetReportQuery,
@@ -31,6 +20,7 @@ import { getIsSidebarOpen, getSelectedQuestionId } from "../selectors";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
+import { UsedContentSidebar } from "./UsedContent";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
 export const ReportPage = ({
@@ -252,30 +242,10 @@ export const ReportPage = ({
                 onClose={() => dispatch(selectQuestion(null))}
               />
             ) : (
-              <Stack gap="lg" p="lg">
-                <Paper>
-                  <Text size="sm" fw="bold" mb="sm">
-                    {t`Question References`}
-                  </Text>
-                  {questionRefs.length === 0 ? (
-                    <Text size="sm" color="text-light">
-                      {t`No questions embedded yet`}
-                    </Text>
-                  ) : (
-                    <Stack gap="xs">
-                      {questionRefs.map((ref) => (
-                        <Box
-                          key={ref.id}
-                          className={styles.questionRef}
-                          onClick={() => handleQuestionClick(ref.id)}
-                        >
-                          <Text size="sm">{ref.name}</Text>
-                        </Box>
-                      ))}
-                    </Stack>
-                  )}
-                </Paper>
-              </Stack>
+              <UsedContentSidebar
+                questionRefs={questionRefs}
+                onQuestionClick={handleQuestionClick}
+              />
             )}
           </Box>
         )}
