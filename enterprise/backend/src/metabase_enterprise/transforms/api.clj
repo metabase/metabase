@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -48,7 +49,10 @@
   [{:keys [source target] :as _transform}]
   (let [database (-> source :query :database)
         driver (t2/select-one-fn :engine :model/Database database)]
-    (some? (driver/describe-table driver database (qualified-table-name target)))))
+    (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
+        :fields
+        seq
+        boolean)))
 
 (defn- delete-target-table!
   [{:keys [source target] :as _transform}]
