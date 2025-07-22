@@ -1,20 +1,22 @@
 import type { Action, Store } from "@reduxjs/toolkit";
 
-import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import type { InternalMetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import { dispatchMetabaseProviderStoreInitializationEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-metabase-provider-store-initialization-event";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 
 import { getWindow } from "./get-window";
 
 export type MetabaseProviderPropsToStore = Omit<
-  MetabaseProviderProps,
-  "children"
->;
+  InternalMetabaseProviderProps,
+  "children" | "store"
+> & {
+  store?: InternalMetabaseProviderProps["store"];
+};
 
 export class MetabaseProviderStore {
   private static instance: MetabaseProviderStore | null = null;
 
   private props: MetabaseProviderPropsToStore;
-  private sdkStore: Store<SdkStoreState, Action> | null = null;
 
   private readonly listeners = new Set<() => void>();
 
@@ -30,11 +32,23 @@ export class MetabaseProviderStore {
     if (_window) {
       _window.METABASE_PROVIDER_STORE = MetabaseProviderStore;
     }
+
+    Promise.resolve().then(() => {
+      dispatchMetabaseProviderStoreInitializationEvent("initialized");
+    });
   }
 
   public static cleanup(): void {
+    if (!MetabaseProviderStore.instance) {
+      return;
+    }
+
     MetabaseProviderStore.instance = null;
     delete getWindow()?.METABASE_PROVIDER_STORE;
+
+    Promise.resolve().then(() => {
+      dispatchMetabaseProviderStoreInitializationEvent("uninitialized");
+    });
   }
 
   public static getInstance(): MetabaseProviderStore | null {
@@ -77,10 +91,10 @@ export class MetabaseProviderStore {
   }
 
   public setSdkStore(store: Store<SdkStoreState, Action>): void {
-    this.sdkStore = store;
+    this.update("store", store);
   }
 
   public getSdkStore() {
-    return this.sdkStore;
+    return this.props.store;
   }
 }
