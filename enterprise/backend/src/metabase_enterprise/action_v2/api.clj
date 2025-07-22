@@ -8,9 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.driver :as driver]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -39,43 +37,35 @@
 (def ^:private ColumnType
   (into [:enum] (keys column-type->upload-type)))
 
-(mr/def ::api-model-action-id
-  "Refers to a row in the actions table."
-  ms/PositiveInt)
-
-(mr/def ::api-action-id-primitive-or-data-app
-  "We refer to primitive actions through their names.
-  In future we will also use a special format to refer to actions that are defined within data apps."
-  :string)
-
 (mr/def ::api-action-id
   "Primitive actions, saved actions, and packed encodings from the picker."
   [:or
-   ::api-model-action-id
-   ::api-action-id-primitive-or-data-app])
+   ;; :model/Action id - these are for legacy Model Actions.
+   ms/PositiveInt
+   ;; primitive action
+   :string])
+
+(mr/def ::api-action-expression
+  "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside."
+  :map)
+
+(mr/def ::api-action-id-or-expression
+  "All the various ways of referring to an action with the v2 APIs."
+  [:or ::api-action-id ::api-action-expression])
 
 ;; TODO Regret this name, let's rename it to something like ::action-expression once it's pure data.
 (mr/def ::action-expression
   "The internal representation used by our APIs, after we've parsed the relevant ids and fetched their configuration."
+  ;; Expected extensions:
+  ;; - data app actions (with their mappings)
+  ;; - action expressions (e.g., unsaved data app actions. might not need these with auto save)
+  ;; - dashboard buttons (unless we deprecate them instead)
   [:or
    [:map {:closed true}
     [:model-action-id ms/PositiveInt]]
    [:map {:closed true}
     [:action-kw :keyword]
-    [:mapping :map]]])
-   ;; Coming soon:
-   ;; - data app actions (with their mappings)
-   ;; - action expressions (e.g., unsaved data app actions. might not need these with auto save)
-   ;; - dashboard buttons (unless we deprecate them instead)
-
-(mr/def ::api-action-expression
-  "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside."
-  ;; TODO let's wait until we've written all our API tests and integrated the FE before typing this.
-  :map)
-
-(mr/def ::api-action-id-or-expression
-  "All the various ways of referring to an action with the v2 APIs."
-  [:or ::api-action-expression ::api-action-id])
+    [:mapping [:maybe :map]]]])
 
 (mu/defn- fetch-unified-action :- ::action-expression
   "Resolve various flavors of action-id into plain data, making it easier to dispatch on. Fetch config etc."
@@ -83,6 +73,7 @@
    raw   :- ::api-action-id-or-expression]
   (cond
     (map? raw)     (throw (ex-info "We do not currently support action expressions." {:status-code 400, :expression raw}))
+    ;; TODO ideally this would fetch the configuration as well, but using an opaque id makes it easier to reuse legacy code
     (pos-int? raw) {:model-action-id raw}
     (string? raw)  (let [kw (keyword raw)]
                      {:action-kw kw
@@ -172,7 +163,7 @@
       (throw (ex-info "We do not currently support execution of Model Actions" {:status-code 400}))
       (:action-kw action-def)
       (let [action-kw (keyword (:action-kw action-def))]
-        (:outputs (actions/perform-action! action-kw inputs {:scope scope})))
+        (:outputs (actions/perform-action-v2! action-kw scope inputs)))
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 400 :scope scope :action action-def})))))
 
@@ -180,25 +171,25 @@
   "TODO: docstring"
   [{}
    {}
-   {:keys [action_id scope params input]}
+   {:keys [action scope params input]}
    :- [:map
-       [:action_id ::api-action-id-or-expression]
+       [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:params {:optional true} :map]
        [:input :map]]]
-  {:outputs (execute!* action_id scope params [input])})
+  {:outputs (execute!* action scope params [input])})
 
 (api.macros/defendpoint :post "/execute-bulk"
   "TODO: docstring"
   [{}
    {}
-   {:keys [action_id scope inputs params]}
+   {:keys [action scope inputs params]}
    :- [:map
-       [:action_id ::api-action-id-or-expression]
+       [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:inputs [:sequential :map]]
        [:params {:optional true} [:map-of :keyword :any]]]]
-  {:outputs (execute!* action_id scope params inputs)})
+  {:outputs (execute!* action scope params inputs)})
 
 (defn- row-data-mapping
   ;; TODO get this working with arbitrary nesting of inner actions
@@ -231,9 +222,9 @@
   [{}
    {}
    ;; TODO support for bulk actions
-   {:keys [action_id scope input]}]
+   {:keys [action scope input]}]
   (let [scope         (actions/hydrate-scope scope)
-        unified       (fetch-unified-action scope action_id)
+        unified       (fetch-unified-action scope action)
         row-data      (get-row-data unified input)
         partial-input (first (apply-mapping-nested unified nil [input]))]
     (data-editing.describe/describe-unified-action unified scope row-data partial-input)))

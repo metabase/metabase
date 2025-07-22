@@ -29,6 +29,7 @@
   cached-table
   default-mapping
   perform-action!
+  perform-action-v2!
   ;; allow actions to be defined in the data-editing module
   perform-action!*
   perform-nested-action!]

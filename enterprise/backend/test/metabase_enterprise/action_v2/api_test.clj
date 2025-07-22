@@ -41,9 +41,20 @@
 (defn- update-rows!
   ([table-id rows]
    (update-rows! table-id 200 rows))
+  ([table-id response-code rows & [params]]
+   (mt/user-http-request :crowberto :post response-code execute-bulk-url
+                         (cond->
+                          {:action :data-grid.row/update
+                           :scope  {:table-id table-id}
+                           :inputs rows}
+                           params (assoc :params params)))))
+
+(defn- delete-rows!
+  ([table-id rows]
+   (update-rows! table-id 200 rows))
   ([table-id response-code rows]
    (mt/user-http-request :crowberto :post response-code execute-bulk-url
-                         {:action :data-grid.row/update
+                         {:action :data-grid.row/delete
                           :scope  {:table-id table-id}
                           :inputs rows})))
 
@@ -67,63 +78,48 @@
                    {:op "created", :table-id table-id, :row {:id 3, :name "Farfetch'd", :song "The land of lisp"}}}
                  (set
                   (:outputs
-                   (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                         {:action_id "data-grid.row/create"
-                                          :scope     {:table-id table-id}
-                                          :inputs    [{:name "Pidgey"     :song "Car alarms"}
-                                                      {:name "Spearow"    :song "Hold music"}
-                                                      {:name "Farfetch'd" :song "The land of lisp"}]})))))
+                   (create-rows! table-id [{:name "Pidgey" :song "Car alarms"}
+                                           {:name "Spearow" :song "Hold music"}
+                                           {:name "Farfetch'd" :song "The land of lisp"}])))))
 
           (is (= [[1 "Pidgey" "Car alarms"]
                   [2 "Spearow" "Hold music"]
                   [3 "Farfetch'd" "The land of lisp"]]
                  (table-rows table-id))))
 
-        #_(testing "PUT should update the relevant rows and columns"
-            (is (= #{{:op "updated", :table-id table-id :row {:id 1, :name "Pidgey",     :song "Join us now and share the software"}}
-                     {:op "updated", :table-id table-id :row {:id 2, :name "Speacolumn", :song "Hold music"}}}
-                   (set
-                    (:outputs
-                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                           {:action_id "data-grid.row/update"
-                                            :scope     {:table-id table-id}
-                                            :inputs    [{:id 1 :song "Join us now and share the software"}
-                                                        {:id 2 :name "Speacolumn"}]})))))
+        (testing "PUT should update the relevant rows and columns"
+          (is (= #{{:op "updated", :table-id table-id :row {:id 1, :name "Pidgey", :song "Join us now and share the software"}}
+                   {:op "updated", :table-id table-id :row {:id 2, :name "Speacolumn", :song "Hold music"}}}
+                 (set
+                  (:outputs
+                   (update-rows! table-id [{:id 1 :song "Join us now and share the software"}
+                                           {:id 2 :name "Speacolumn"}])))))
 
-            (is (= #{[1 "Pidgey" "Join us now and share the software"]
-                     [2 "Speacolumn" "Hold music"]
-                     [3 "Farfetch'd" "The land of lisp"]}
-                   (set (table-rows table-id)))))
+          (is (= #{[1 "Pidgey" "Join us now and share the software"]
+                   [2 "Speacolumn" "Hold music"]
+                   [3 "Farfetch'd" "The land of lisp"]}
+                 (set (table-rows table-id)))))
 
-        #_(testing "PUT can also do bulk updates"
-            (is (= #{{:op "updated", :table-id table-id, :row {:id 1, :name "Pidgey",     :song "The Star-Spangled Banner"}}
-                     {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
-                   (set
-                    (:outputs
-                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                           {:action_id "data-grid.row/update"
-                                            :scope     {:table-id table-id}
-                                            :inputs    [{:id 1}
-                                                        {:id 2}]
-                                            :params    {:song "The Star-Spangled Banner"}})))))
+        (testing "PUT can also do bulk updates"
+          (is (= #{{:op "updated", :table-id table-id, :row {:id 1, :name "Pidgey", :song "The Star-Spangled Banner"}}
+                   {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
+                 (set
+                  (:outputs
+                   (update-rows! table-id 200 [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
 
-            (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
-                     [2 "Speacolumn" "The Star-Spangled Banner"]
-                     [3 "Farfetch'd" "The land of lisp"]}
-                   (set (table-rows table-id)))))
+          (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
+                   [2 "Speacolumn" "The Star-Spangled Banner"]
+                   [3 "Farfetch'd" "The land of lisp"]}
+                 (set (table-rows table-id)))))
 
-        #_(testing "DELETE should remove the corresponding rows"
-            (is (= #{{:op "deleted", :table-id table-id, :row {:id 1}}
-                     {:op "deleted", :table-id table-id, :row {:id 2}}}
-                   (set
-                    (:outputs
-                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                           {:action_id "data-grid.row/delete"
-                                            :scope     {:table-id table-id}
-                                            :inputs    [{:id 1}
-                                                        {:id 2}]})))))
-            (is (= [[3 "Farfetch'd" "The land of lisp"]]
-                   (table-rows table-id))))))))
+        (testing "DELETE should remove the corresponding rows"
+          (is (= #{{:op "deleted", :table-id table-id, :row {:id 1}}
+                   {:op "deleted", :table-id table-id, :row {:id 2}}}
+                 (seth
+                  (:outputs
+                   (delete-rows! table-id [{:id 1} {:id 2}])))))
+          (is (= [[3 "Farfetch'd" "The land of lisp"]]
+                 (table-rows table-id))))))))
 
 (deftest table-operations-via-action-execute-with-compound-pk-test
   (mt/with-premium-features #{:actions}
