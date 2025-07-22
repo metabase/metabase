@@ -19,6 +19,7 @@ import {
   getValidationSchema,
   getVisibleFields,
 } from "../../utils/schema";
+import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
 import DatabaseDetailField from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
@@ -158,7 +159,7 @@ const DatabaseFormBody = ({
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty } = useFormikContext<DatabaseData>();
+  const { values, dirty, setFieldValue } = useFormikContext<DatabaseData>();
 
   useEffect(() => {
     setIsDirty?.(dirty);
@@ -187,6 +188,10 @@ const DatabaseFormBody = ({
           />
         </>
       )}
+      <DatabaseConnectionStringField
+        setFieldValue={setFieldValue}
+        engine={engine}
+      />
       {engine && (
         <DatabaseNameField
           engine={engine}
