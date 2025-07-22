@@ -8,37 +8,53 @@ import {
 import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
-import type { DescribeActionFormResponse } from "../api/types";
+import type { DescribeActionFormResponse } from "../../api/types";
+import type { TableDataGetColumnSortDirection } from "../use-edit-table-data";
+import type { TableRowUpdateHandler } from "../use-table-crud";
 
 import S from "./EditTableDataGrid.module.css";
 import { useEditDataDridColumnOptions } from "./use-edit-datagrid-column-options";
-import type { TableDataGetColumnSortDirection } from "./use-edit-table-data";
 import { useTableEditingCell } from "./use-table-editing-cell";
 
 type EditTableDataGridProps = {
   data: DatasetData;
-  onRowExpandClick: (rowIndex: number) => void;
   updateFormDescription?: DescribeActionFormResponse;
+  handleRowUpdate: TableRowUpdateHandler;
+  onRowExpandClick: (rowIndex: number) => void;
   getColumnSortDirection?: TableDataGetColumnSortDirection;
   onColumnSort?: (field: DatasetColumn) => void;
 };
 
 export const EditTableDataGrid = ({
   data,
+  updateFormDescription,
   onRowExpandClick,
   getColumnSortDirection,
   onColumnSort,
+  handleRowUpdate,
 }: EditTableDataGridProps) => {
   const { cols, rows } = data;
 
-  const { handleSelectEditingCell } = useTableEditingCell({
+  const {
+    editingCell,
+    getCellState,
+    handleSelectEditingCell,
+    handleCancelEditing,
+    handleUpdateEditingCell,
+  } = useTableEditingCell({
     data,
+    handleRowUpdate,
   });
 
   const columnsOptions = useEditDataDridColumnOptions({
     cols,
+    editingCell,
+    updateFormDescription,
     getColumnSortDirection,
     onColumnSort,
+    onCancelEditing: handleCancelEditing,
+    onValueUpdated: handleUpdateEditingCell,
+    getCellState,
   });
 
   const rowIdColumnOptions: RowIdColumnOptions = useMemo(
@@ -59,15 +75,25 @@ export const EditTableDataGrid = ({
         return;
       }
 
+      if (
+        editingCell?.rowIndex === rowIndex &&
+        editingCell?.columnId === columnId
+      ) {
+        return;
+      }
+
       handleSelectEditingCell(rowIndex, columnId);
     },
-    [onRowExpandClick, handleSelectEditingCell],
+    [onRowExpandClick, handleSelectEditingCell, editingCell],
   );
+
+  const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
 
   const tableProps = useDataGridInstance({
     data: rows,
     rowId: rowIdColumnOptions,
     columnsOptions,
+    columnOrder,
   });
 
   const stylingProps = useMemo(

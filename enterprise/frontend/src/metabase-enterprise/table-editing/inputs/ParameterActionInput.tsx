@@ -1,13 +1,30 @@
 import type { TableActionFormParameter } from "../api/types";
 import { TableActionFormInputType } from "../api/types";
 
-import { TableActionInputDateTime } from "./TableActionInputDateTime";
-import { TableActionInputSearchableSelect } from "./TableActionInputSearchableSelect";
-import { TableActionInputText } from "./TableActionInputText";
-import { TableActionInputTextarea } from "./TableActionInputTextarea";
-import type { TableActionInputSharedProps } from "./types";
+import {
+  TableActionInputDateTime,
+  type TableActionInputDateTimeProps,
+} from "./TableActionInputDateTime";
+import {
+  TableActionInputSearchableSelect,
+  type TableActionInputSearchableSelectProps,
+} from "./TableActionInputSearchableSelect";
+import {
+  TableActionInputText,
+  type TableActionInputTextProps,
+} from "./TableActionInputText";
+import {
+  TableActionInputTextarea,
+  type TableActionInputTextareaProps,
+} from "./TableActionInputTextarea";
 
-export type ParameterActionInputProps = TableActionInputSharedProps & {
+type TableActionInputProps =
+  | TableActionInputDateTimeProps
+  | TableActionInputTextProps
+  | TableActionInputTextareaProps
+  | TableActionInputSearchableSelectProps;
+
+export type ParameterActionInputProps = TableActionInputProps & {
   parameter: TableActionFormParameter;
 };
 

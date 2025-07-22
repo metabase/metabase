@@ -5,7 +5,7 @@ import type { TableActionInputSharedProps } from "./types";
 const DEFAULT_MAX_ROWS = 8;
 const DEFAULT_MIN_ROWS = 1;
 
-type TableActionInputTextareaProps = TableActionInputSharedProps & {
+export type TableActionInputTextareaProps = TableActionInputSharedProps & {
   minRows?: number;
   maxRows?: number;
   classNames?: {

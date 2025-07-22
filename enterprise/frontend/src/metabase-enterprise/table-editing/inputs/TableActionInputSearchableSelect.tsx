@@ -15,15 +15,17 @@ import {
 import type { TableActionInputSharedProps } from "./types";
 import { useActionInputSearchableOptions } from "./use-action-input-searchable-options";
 
-type TableActionInputSearchableSelectProps = TableActionInputSharedProps & {
-  fieldId: number;
-  searchFieldId?: number;
-  withCreateNew?: boolean;
-  classNames?: {
-    wrapper?: string;
-    selectTextInputElement?: string;
+export type TableActionInputSearchableSelectProps =
+  TableActionInputSharedProps & {
+    fieldId: number;
+    searchFieldId?: number;
+    withCreateNew?: boolean;
+    classNames?: {
+      wrapper?: string;
+      selectTextInputElement?: string;
+      selectLabel?: string;
+    };
   };
-};
 
 export const TableActionInputSearchableSelect = ({
   autoFocus,
@@ -36,6 +38,7 @@ export const TableActionInputSearchableSelect = ({
   withCreateNew,
   onBlur,
   onChange,
+  onEscape,
 }: TableActionInputSearchableSelectProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(initialValue?.toString() ?? "");
@@ -62,12 +65,19 @@ export const TableActionInputSearchableSelect = ({
     (value: string | null) => {
       setValue(value ?? "");
       onChange?.(value);
-
-      // Close the dropdown
       onBlur?.(value);
       combobox.closeDropdown();
     },
     [setValue, onChange, onBlur, combobox],
+  );
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Escape") {
+        onEscape?.(value);
+      }
+    },
+    [onEscape, value],
   );
 
   const inputLabel = useMemo(() => {
@@ -76,19 +86,27 @@ export const TableActionInputSearchableSelect = ({
       if (searchFieldId) {
         const option = options.find((item) => item.value === value);
         if (option) {
-          return <Text truncate="end">{option.label}</Text>;
+          return (
+            <Text truncate="end" className={classNames?.selectLabel}>
+              {option.label}
+            </Text>
+          );
         }
       }
 
       // Display the raw value if `searchFieldId` is not provided (e.g. for FKs)
       else {
-        return <Text truncate="end">{value}</Text>;
+        return (
+          <Text truncate="end" className={classNames?.selectLabel}>
+            {value}
+          </Text>
+        );
       }
     }
 
     if (!value && inputProps?.placeholder) {
       return (
-        <Input.Placeholder c="text-light">
+        <Input.Placeholder c="text-light" className={classNames?.selectLabel}>
           {inputProps.placeholder}
         </Input.Placeholder>
       );
@@ -96,17 +114,30 @@ export const TableActionInputSearchableSelect = ({
 
     if (isLoading) {
       return (
-        <Input.Placeholder c="text-light">{t`Loading...`}</Input.Placeholder>
+        <Input.Placeholder c="text-light" className={classNames?.selectLabel}>
+          {t`Loading...`}
+        </Input.Placeholder>
       );
     }
 
     // Fallback to the raw value instead of a label
     if (value) {
-      return <Text truncate="end">{value}</Text>;
+      return (
+        <Text truncate="end" className={classNames?.selectLabel}>
+          {value}
+        </Text>
+      );
     }
 
     return null;
-  }, [isLoading, value, inputProps?.placeholder, options, searchFieldId]);
+  }, [
+    isLoading,
+    value,
+    inputProps?.placeholder,
+    options,
+    searchFieldId,
+    classNames?.selectLabel,
+  ]);
 
   const shouldDisplayClearButton =
     isNullable && !!value && !inputProps?.disabled;
@@ -158,6 +189,7 @@ export const TableActionInputSearchableSelect = ({
             // whereas `onDropdownOpen` is called only when dropdown is opened by clicking the button (e.g. modal editing)
             autoFocus
             ref={searchInputRef}
+            onKeyDown={handleKeyDown}
           />
         </Box>
 

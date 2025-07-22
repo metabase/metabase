@@ -9,6 +9,7 @@ export type TableActionInputSharedProps = {
   onBlur?: (value: string | null) => unknown;
   onEscape?: (value: string | null) => unknown;
   onEnter?: (value: string | null) => unknown;
+  onSelect?: (value: string | null) => unknown;
 };
 
 type InputProps = {

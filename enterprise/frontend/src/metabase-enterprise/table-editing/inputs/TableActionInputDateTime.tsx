@@ -13,7 +13,7 @@ import type { TableActionInputSharedProps } from "./types";
 
 const DEFAULT_DATETIME_STYLE = `${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`;
 
-type TableActionInputDateTimeProps = TableActionInputSharedProps & {
+export type TableActionInputDateTimeProps = TableActionInputSharedProps & {
   isDateTime?: boolean;
   dateStyle?: string;
   dateTimeStyle?: string;
@@ -48,9 +48,7 @@ export const TableActionInputDateTime = ({
           return null;
         }
 
-        return dayjs(date)
-          .tz(reportTimezone)
-          .format("YYYY-MM-DDTHH:mm:ss.SSSZ");
+        return dayjs(date).tz(reportTimezone).format("YYYY-MM-DDTHH:mm:ssZ");
       },
     }),
     [initialValue, reportTimezone],

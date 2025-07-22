@@ -2,7 +2,7 @@ import { Input } from "metabase/ui";
 
 import type { TableActionInputSharedProps } from "./types";
 
-type TableActionInputTextProps = TableActionInputSharedProps & {
+export type TableActionInputTextProps = TableActionInputSharedProps & {
   classNames?: {
     wrapper?: string;
     textInputElement?: string;

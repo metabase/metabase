@@ -15,9 +15,9 @@ import { TableActionFormModal } from "../modals/TableActionFormModal";
 import { isDatabaseTableEditingEnabled } from "../settings";
 
 import S from "./EditTableDataContainer.module.css";
-import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { EditTableDataGrid } from "./data-grid/EditTableDataGrid";
 import { useEditTableData } from "./use-edit-table-data";
 import { useEditTableLoadingOverlay } from "./use-edit-table-loading-overlay";
 import { useTableCreateRow } from "./use-table-create-row";
@@ -147,6 +147,7 @@ export const EditTableDataContainer = ({
         <EditTableDataOverlay {...loadingOverlayProps} />
         {datasetData && (
           <EditTableDataGrid
+            handleRowUpdate={handleRowUpdate}
             updateFormDescription={updateFormDescription}
             data={datasetData}
             getColumnSortDirection={getColumnSortDirection}

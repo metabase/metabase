@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import type { DatasetData } from "metabase-types/api";
 
 import {
@@ -15,7 +13,11 @@ import type {
   TableEditingActionScope,
 } from "../api/types";
 
-import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
+import { useTableEditingToastController } from "./toasts/use-table-editing-toast-controller";
+import type {
+  OptimisticUpdatePatchResult,
+  TableEditingStateUpdateStrategy,
+} from "./use-table-state-update-strategy";
 
 type UseTableCRUDProps = {
   scope: TableEditingActionScope;
@@ -23,12 +25,11 @@ type UseTableCRUDProps = {
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 };
 
-export type TableRowUpdateHandler = ({
-  input,
-  params,
-}: {
+export type TableRowUpdateHandler = (props: {
   input: RowCellsWithPkValue;
   params: RowCellsWithPkValue;
+  optimisticUpdate?: boolean;
+  onDismissError?: () => void;
 }) => Promise<boolean>;
 
 export const useTableCRUD = ({
@@ -36,7 +37,7 @@ export const useTableCRUD = ({
   datasetData,
   stateUpdateStrategy,
 }: UseTableCRUDProps) => {
-  const dispatch = useDispatch();
+  const toastController = useTableEditingToastController();
 
   const [deleteTableRows, { isLoading: isDeleting }] =
     useDeleteTableRowsMutation();
@@ -49,9 +50,13 @@ export const useTableCRUD = ({
     async ({
       inputs,
       params,
+      optimisticUpdate,
+      onDismissError,
     }: {
       inputs: RowCellsWithPkValue[];
       params: RowCellsWithPkValue;
+      optimisticUpdate?: boolean;
+      onDismissError?: () => void;
     }) => {
       if (!datasetData) {
         console.warn(
@@ -60,34 +65,54 @@ export const useTableCRUD = ({
         return false;
       }
 
-      const response = await updateTableRows({
-        inputs,
-        params,
-        scope,
-      });
+      let patchResult: OptimisticUpdatePatchResult | void;
+      if (optimisticUpdate) {
+        const updatedRows = inputs.map((input) => ({
+          ...input,
+          ...params,
+        }));
 
-      if (!response.error && response.data) {
-        stateUpdateStrategy.onRowsUpdated(
-          response.data.outputs.map((output) => output.row),
-        );
-
-        dispatch(
-          addUndo({
-            message: t`Successfully updated`,
-          }),
-        );
-      } else {
-        // TODO: handle error
+        patchResult = stateUpdateStrategy.onRowsUpdated(updatedRows);
       }
 
-      return !response.error;
+      try {
+        const response = await updateTableRows({
+          inputs,
+          params,
+          scope,
+        });
+
+        if (!response.error && response.data) {
+          stateUpdateStrategy.onRowsUpdated(
+            response.data.outputs.map((output) => output.row),
+          );
+
+          toastController.showSuccessToast(t`Successfully updated`);
+        } else {
+          toastController.showErrorToast(response.error, () => {
+            patchResult?.revert();
+            onDismissError?.();
+          });
+        }
+
+        return !response.error;
+      } catch (error) {
+        toastController.showErrorToast(error);
+
+        throw error;
+      }
     },
-    [datasetData, updateTableRows, scope, stateUpdateStrategy, dispatch],
+    [datasetData, updateTableRows, scope, stateUpdateStrategy, toastController],
   );
 
   const handleRowUpdate = useCallback<TableRowUpdateHandler>(
-    async ({ input, params }) => {
-      return handleRowUpdateBulk({ inputs: [input], params });
+    async ({ input, params, optimisticUpdate, onDismissError }) => {
+      return handleRowUpdateBulk({
+        inputs: [input],
+        params,
+        optimisticUpdate,
+        onDismissError,
+      });
     },
     [handleRowUpdateBulk],
   );
@@ -104,18 +129,14 @@ export const useTableCRUD = ({
           response.data.outputs.map((output) => output.row),
         );
 
-        dispatch(
-          addUndo({
-            message: t`Record successfully created`,
-          }),
-        );
+        toastController.showSuccessToast(t`Record successfully created`);
       } else {
-        // TODO: handle error
+        toastController.showErrorToast(response.error);
       }
 
       return !response.error;
     },
-    [insertTableRows, scope, stateUpdateStrategy, dispatch],
+    [insertTableRows, scope, stateUpdateStrategy, toastController],
   );
 
   const handleRowDeleteBulk = useCallback(
@@ -142,25 +163,16 @@ export const useTableCRUD = ({
           response.data.outputs.map((output) => output.row),
         );
 
-        dispatch(
-          addUndo({
-            message: t`${inputs.length} rows successfully deleted`,
-          }),
-        );
+        toastController.showSuccessToast(t`Successfully deleted`);
       }
 
       if (response.error) {
-        // This type of errors is handled specifically by `useForeignKeyConstraintHandling` hook.
-        if (isForeignKeyConstraintErrorResponse(response.error)) {
-          return false;
-        }
-
-        // TODO: handle error
+        toastController.showErrorToast(response.error);
       }
 
       return !response.error;
     },
-    [datasetData, deleteTableRows, scope, stateUpdateStrategy, dispatch],
+    [datasetData, deleteTableRows, scope, stateUpdateStrategy, toastController],
   );
 
   const handleRowDelete = useCallback(

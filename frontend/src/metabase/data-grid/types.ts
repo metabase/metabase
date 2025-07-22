@@ -71,6 +71,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom cell render template */
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
 
+  /** Custom cell render template for cells in editing state */
+  editingCell?: (props: CellContext<TRow, TValue>) => React.JSX.Element;
+
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
@@ -78,10 +81,18 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   cellVariant?: BodyCellVariant;
 
   /** Function to determine CSS class names for cells */
-  getCellClassName?: (value: TValue, rowIndex: number) => string;
+  getCellClassName?: (
+    value: TValue,
+    rowIndex: number,
+    columnId: string,
+  ) => string;
 
   /** Function to determine CSS styles for cells */
-  getCellStyle?: (value: TValue, rowIndex: number) => React.CSSProperties;
+  getCellStyle?: (
+    value: TValue,
+    rowIndex: number,
+    columnId: string,
+  ) => React.CSSProperties;
 
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
@@ -109,6 +120,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values when copying to clipboard */
   clipboardFormatter?: PlainCellFormatter<TValue>;
+
+  /** Function to determine if a cell is in editing state */
+  getIsEditing?: (columnId: string, rowIndex: number) => boolean;
 }
 
 /**
