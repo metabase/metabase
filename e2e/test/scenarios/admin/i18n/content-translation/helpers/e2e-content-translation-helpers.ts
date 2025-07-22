@@ -40,7 +40,7 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.wait("@uploadDictionary");
 
   cy.findByRole("heading", {
-    name: "Localizing user-generated content",
+    name: "Translate embedded dashboards and questions",
   }).scrollIntoView();
 };
 
