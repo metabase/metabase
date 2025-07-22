@@ -284,10 +284,11 @@
      (fn [^Connection conn]
        (let [select-probes (atom 0)]
          (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
-                       (fn [_driver _conn _sql]
+                       (fn [_driver conn' [sql]]
                          (let [n (swap! select-probes inc)]
                            (when (< n probe-errors)
-                             (throw (ex-info "Mock probe error" {})))))
+                             (.close conn')
+                             (.prepareStatement conn' sql))))
                        driver/query-canceled? (constantly query-canceled)]
            [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
             @select-probes]))))))
