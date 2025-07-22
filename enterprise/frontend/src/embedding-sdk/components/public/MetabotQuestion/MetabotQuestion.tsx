@@ -6,7 +6,7 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
+import { SdkQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
@@ -40,7 +40,7 @@ const MetabotQuestionInner = () => {
           onNavigateBack={() => {}}
           isSaveEnabled={false}
         >
-          <InteractiveQuestionDefaultView
+          <SdkQuestionDefaultView
             withChartTypeSelector
             title={
               <Stack gap="sm" mb="1rem">

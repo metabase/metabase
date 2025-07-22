@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { type ComponentProps, useState } from "react";
 
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Modal, Stack } from "metabase/ui";
 
@@ -28,7 +28,7 @@ export const Default = {
     const [newQuestionTitle, setNewQuestionTitle] = useState("");
 
     return (
-      <InteractiveQuestion
+      <SdkQuestion
         onBeforeSave={async () => setBeforeSaveCalled(true)}
         onSave={(question, context) => {
           if (context.isNewQuestion) {
@@ -45,17 +45,17 @@ export const Default = {
 
         {isSaveModalOpen && (
           <Modal opened={isSaveModalOpen} onClose={close}>
-            <InteractiveQuestion.SaveQuestionForm onCancel={close} />
+            <SdkQuestion.SaveQuestionForm onCancel={close} />
           </Modal>
         )}
 
-        {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
+        {!isSaveModalOpen && <SdkQuestion.QuestionVisualization />}
 
         <Stack p="lg">
           {isBeforeSaveCalled && <Box>onBeforeSave is called</Box>}
           {newQuestionTitle && <Box>question saved as {newQuestionTitle}</Box>}
         </Stack>
-      </InteractiveQuestion>
+      </SdkQuestion>
     );
   },
 

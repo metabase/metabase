@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { BaseInteractiveQuestionProps } from "embedding-sdk/components/public/SdkQuestion";
+import type { BaseSdkQuestionProps } from "embedding-sdk/components/public/SdkQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
@@ -9,8 +9,8 @@ import {
   SdkQuestionProvider,
 } from "../SdkQuestion/context";
 import {
-  InteractiveQuestionDefaultView,
-  type InteractiveQuestionDefaultViewProps,
+  SdkQuestionDefaultView,
+  type SdkQuestionDefaultViewProps,
 } from "../SdkQuestionDefaultView";
 
 interface InteractiveAdHocQuestionProps {
@@ -38,8 +38,8 @@ export const InteractiveAdHocQuestion = ({
   initialSqlParameters,
   onNavigateBack,
 }: InteractiveAdHocQuestionProps &
-  Omit<BaseInteractiveQuestionProps, "questionId"> &
-  InteractiveQuestionDefaultViewProps) => {
+  Omit<BaseSdkQuestionProps, "questionId"> &
+  SdkQuestionDefaultViewProps) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
     [questionPath],
@@ -71,7 +71,7 @@ export const InteractiveAdHocQuestion = ({
       onNavigateBack={onNavigateBack}
     >
       {children ?? (
-        <InteractiveQuestionDefaultView
+        <SdkQuestionDefaultView
           height={height}
           width={width}
           className={className}

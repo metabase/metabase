@@ -1,7 +1,4 @@
-import {
-  type BaseInteractiveQuestionProps,
-  InteractiveQuestion,
-} from "../SdkQuestion";
+import { type BaseSdkQuestionProps, InteractiveQuestion } from "../SdkQuestion";
 
 /**
  * @interface
@@ -9,7 +6,7 @@ import {
  * @category CreateQuestion
  */
 export type CreateQuestionProps = Omit<
-  Partial<BaseInteractiveQuestionProps>,
+  Partial<BaseSdkQuestionProps>,
   "questionId" | "children"
 >;
 
