@@ -43,6 +43,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
+  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -294,6 +295,13 @@ export const getRoutes = (store) => {
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />
+          </Route>
+
+          <Route path="/transform">
+            <Route
+              path="new/:databaseId/query"
+              component={PLUGIN_TRANSFORMS.NewQueryTransformPage}
+            />
           </Route>
 
           <Route path="browse">
