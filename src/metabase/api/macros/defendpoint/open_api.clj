@@ -11,6 +11,7 @@
    [metabase.api.open-api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
