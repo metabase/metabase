@@ -75,6 +75,7 @@
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/Report                            metabase-enterprise.reports.models.report
     :model/ReportRun                         metabase-enterprise.reports.models.report-run
+    :model/ReportRunCardData metabase-enterprise.reports.models.report-run-card-data
     :model/ReportVersion                     metabase-enterprise.reports.models.report-version
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata

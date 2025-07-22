@@ -449,6 +449,51 @@ databaseChangeLog:
             constraintName: fk_report_card_document_version_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v56.2025-07-22T12:01:02
+      author: edpaget
+      comment: Create report_run_card_data table
+      preConditions:
+      changes:
+        - createTable:
+            tableName: report_run_card_data
+            remarks: Report stores data for each card involved in a given report run
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: run_id
+                  remarks: Referenced report run
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_run
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_run_card_data_run_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  remarks: Referenced card run
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_run_card_data_card_id
+                    deleteCascade: true
+              - column:
+                  name: data
+                  remarks: binary encrypted data for the run and card id
+                  type: bytea
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
