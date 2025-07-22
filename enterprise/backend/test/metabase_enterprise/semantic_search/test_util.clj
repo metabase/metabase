@@ -76,18 +76,21 @@
    :model-name        "mock-model"
    :vector-dimensions 4})
 
+(def mock-index
+  (semantic.index/default-index mock-embedding-model))
+
 (defmethod semantic.embedding/get-embedding        "mock" [_ text] (get-mock-embedding text))
 (defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts] (get-mock-embeddings-batch texts))
 (defmethod semantic.embedding/pull-model           "mock" [_])
 
 (defn query-index [search-context]
-  (semantic.index/query-index db mock-embedding-model search-context))
+  (semantic.index/query-index db mock-index search-context))
 
 (defn upsert-index! [documents]
-  (semantic.index/upsert-index! db mock-embedding-model documents))
+  (semantic.index/upsert-index! db mock-index documents))
 
 (defn delete-from-index! [model ids]
-  (semantic.index/delete-from-index! db mock-embedding-model model ids))
+  (semantic.index/delete-from-index! db mock-index model ids))
 
 (def mock-documents
   [{:model "card"
@@ -119,15 +122,15 @@
     Closeable
     (close [_] (close-fn o))))
 
-(defn open-temp-index-table! []
+(defn open-temp-index! []
   (closeable
-   (do (semantic.index/create-index-table! db mock-embedding-model {:force-reset? true})
-       (semantic.index/index-table-name mock-embedding-model))
-   (fn cleanup-temp-index-table! [_]
+   (do (semantic.index/create-index-table! db mock-index {:force-reset? true})
+       mock-index)
+   (fn cleanup-temp-index-table! [{:keys [table-name]}]
      (try
-       (semantic.index/drop-index-table! db mock-embedding-model)
+       (semantic.index/drop-index-table! db mock-index)
        (catch Exception e
-         (log/error e "Warning: failed to clean up test table" (semantic.index/index-table-name mock-embedding-model)))))))
+         (log/error e "Warning: failed to clean up test table" table-name))))))
 
 (defmacro with-indexable-documents!
   "Add a collection of test documents to that can be indexed to the appdb."
@@ -184,7 +187,7 @@
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
   [& body]
   `(with-indexable-documents!
-     (with-open [_# (open-temp-index-table!)]
+     (with-open [_# (open-temp-index!)]
        (binding [semantic.embedding/*active-model* mock-embedding-model
                  search.ingestion/*force-sync* true]
          (search.core/reindex! :search.engine/semantic {:force-reset true}))

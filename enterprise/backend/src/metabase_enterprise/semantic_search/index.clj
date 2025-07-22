@@ -30,13 +30,6 @@
   [honey-sql & {:as opts}]
   (sql/format honey-sql (merge opts {:quoted true})))
 
-(defn index-table-name
-  "Returns the (string) name for a given embedding model. Requires quoting in SQL.
-  e.g. index_table__openai__text-embedding-3-small__1536"
-  [embedding-model]
-  (let [{:keys [model-name provider vector-dimensions]} embedding-model]
-    (str "index_table__" provider "__" model-name "__" vector-dimensions)))
-
 (def ^:dynamic *batch-size*
   "The number of documents to process per batch when updating the index."
   150)
@@ -123,16 +116,23 @@
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
     (zipmap update-keys (map excluded-kw update-keys))))
 
+(defn default-index
+  "Returns the default index spec for a model."
+  [embedding-model]
+  (let [{:keys [model-name provider vector-dimensions]} embedding-model]
+    {:embedding-model embedding-model
+     :table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)}))
+
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
-  [connectable embedding-model documents]
+  [connectable index documents]
   (log/info "Populating semantic search index with" (count documents) "documents")
   (when (seq documents)
     (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
           searchable-texts   (map :searchable_text filtered-documents)]
       (embedding/process-embeddings-streaming
-       embedding-model
+       (:embedding-model index)
        searchable-texts
        (fn [_batch-texts batch-embeddings]
          (let [batch-documents
@@ -143,7 +143,7 @@
            (batch-update!
             connectable
             (fn [db-records]
-              (-> (sql.helpers/insert-into (keyword (index-table-name embedding-model)))
+              (-> (sql.helpers/insert-into (keyword (:table-name index)))
                   (sql.helpers/values db-records)
                   (sql.helpers/on-conflict :model :model_id)
                   (sql.helpers/do-update-set (db-records->update-set db-records))
@@ -152,25 +152,25 @@
             batch-embeddings)))))))
 
 (defn- drop-index-table-sql
-  [embedding-model]
-  (-> (sql.helpers/drop-table :if-exists (symbol (index-table-name embedding-model)))
+  [{:keys [table-name]}]
+  (-> (sql.helpers/drop-table :if-exists (keyword table-name))
       sql-format-quoted))
 
 (defn drop-index-table!
   "Drops the index table for the given embedding model if it exists."
-  [connectable embedding-model]
-  (jdbc/execute! connectable (drop-index-table-sql embedding-model)))
+  [connectable index]
+  (jdbc/execute! connectable (drop-index-table-sql index)))
 
 (defn create-index-table!
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists."
-  [connectable embedding-model & {:keys [force-reset?] :or {force-reset? false}}]
+  [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
-    (let [vector-dimensions (:vector-dimensions embedding-model)
-          table-name (index-table-name embedding-model)]
+    (let [{:keys [embedding-model table-name]} index
+          {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
       (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
-      (when force-reset? (drop-index-table! connectable embedding-model))
+      (when force-reset? (drop-index-table! connectable index))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
@@ -183,14 +183,15 @@
             [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
            sql-format-quoted)))
     (catch Exception e
-      (throw (ex-info "Failed to create index table" {:cause e})))))
+      (throw (ex-info "Failed to create index table" {} e)))))
 
 (comment
   (def embedding-model {:provider "ollama"
                         :model-name "mxbai-embed-large"
                         :vector-dimensions 1024})
-  (drop-index-table! db embedding-model)
-  (create-index-table! db embedding-model)
+  (def index (default-index embedding-model))
+  (drop-index-table! db index)
+  (create-index-table! db index)
   (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table__%'"]))
 
 (defn- search-filters
@@ -220,7 +221,7 @@
 
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity."
-  [embedding-model embedding search-context]
+  [index embedding search-context]
   (let [filters (search-filters search-context)
         base-query {:select [[:model_id :model_id]
                              [:model :model]
@@ -228,7 +229,7 @@
                              [:verified :verified]
                              [[:raw (str "embedding <=> " (format-embedding embedding))] :distance]
                              [:metadata :metadata]]
-                    :from   [(keyword (index-table-name embedding-model))]
+                    :from   [(keyword (:table-name index))]
                     :order-by [[:distance :asc]]
                     :limit  100}]
     (if filters
@@ -272,11 +273,12 @@
 
 (defn query-index
   "Query the index for documents similar to the search string."
-  [db embedding-model search-context]
-  (let [search-string (:search-string search-context)]
+  [db index search-context]
+  (let [{:keys [embedding-model]} index
+        search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
       (let [embedding (embedding/get-embedding embedding-model search-string)
-            query     (semantic-search-query embedding-model embedding search-context)
+            query     (semantic-search-query index embedding search-context)
             xform     (comp (map unqualify-keys)
                             (map decode-metadata)
                             (map legacy-input-with-score))
@@ -286,12 +288,12 @@
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
-  [db embedding-model model model-ids]
+  [db index model model-ids]
   (batch-delete-ids!
    db
    model
    (fn [batch-ids]
-     (-> (sql.helpers/delete-from (keyword (index-table-name embedding-model)))
+     (-> (sql.helpers/delete-from (keyword (:table-name index)))
          (sql.helpers/where [:and
                              [:= :model model]
                              [:in :model_id batch-ids]])
@@ -300,16 +302,17 @@
 
 (comment
   (def embedding-model (embedding/get-active-model))
-  (create-index-table! embedding-model {:force-reset? true})
-  (upsert-index! db embedding-model [{:model "card"
-                                      :id "1"
-                                      :searchable_text "This is a test card"}])
-  (delete-from-index! db embedding-model "card" ["1"])
-  (delete-from-index! db embedding-model "dashboard" ["13"])
+  (def index (default-index embedding-model))
+  (create-index-table! index {:force-reset? true})
+  (upsert-index! db index [{:model "card"
+                            :id "1"
+                            :searchable_text "This is a test card"}])
+  (delete-from-index! db index "card" ["1"])
+  (delete-from-index! db index "dashboard" ["13"])
   ;; no user
-  (query-index db embedding-model {:search-string "Copper knife"})
+  (query-index db index {:search-string "Copper knife"})
 
   #_:clj-kondo/ignore
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
-    (doall (query-index db embedding-model {:search-string "Copper knife"}))))
+    (doall (query-index db index {:search-string "Copper knife"}))))

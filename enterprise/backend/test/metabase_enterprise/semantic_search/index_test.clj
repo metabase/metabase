@@ -11,25 +11,25 @@
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
-    (with-open [table-name-ref (semantic.tu/open-temp-index-table!)]
+    (with-open [index-ref (semantic.tu/open-temp-index!)]
       ;; open-temp-index-table! creates the temp table, so drop it in order to test create!.
-      (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-embedding-model)
+      (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
       (testing "index table is not present before create!"
-        (is (not (semantic.tu/table-exists-in-db? @table-name-ref)))
-        (is (not (semantic.tu/table-has-index? @table-name-ref :embedding_hnsw_idx))))
+        (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) :embedding_hnsw_idx))))
       (testing "index table is present after create!"
-        (semantic.index/create-index-table! semantic.tu/db semantic.tu/mock-embedding-model {:force-reset? false})
-        (is (semantic.tu/table-exists-in-db? @table-name-ref))
-        (is (semantic.tu/table-has-index? @table-name-ref :embedding_hnsw_idx))))))
+        (semantic.index/create-index-table! semantic.tu/db semantic.tu/mock-index {:force-reset? false})
+        (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) :embedding_hnsw_idx))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}
-    (with-open [table-name-ref (semantic.tu/open-temp-index-table!)]
+    (with-open [index-ref (semantic.tu/open-temp-index!)]
       (testing "index table is present before drop!"
-        (is (semantic.tu/table-exists-in-db? @table-name-ref)))
+        (is (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
       (testing "index table is not present after drop!"
-        (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-embedding-model)
-        (is (not (semantic.tu/table-exists-in-db? @table-name-ref)))))))
+        (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
+        (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))))))
 
 (defn- decode-embedding
   "Decode `row`s `:embedding`."
@@ -43,7 +43,7 @@
   []
   (->> (jdbc/execute! semantic.tu/db
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
-                          (sql.helpers/from (keyword (semantic.index/index-table-name semantic.tu/mock-embedding-model)))
+                          (sql.helpers/from (keyword (:table-name semantic.tu/mock-index)))
                           semantic.index/sql-format-quoted))
        (map #'semantic.index/unqualify-keys)
        (map decode-embedding)))
@@ -52,7 +52,7 @@
   [{:keys [model model_id]}]
   (->> (jdbc/execute! semantic.tu/db
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
-                          (sql.helpers/from (keyword (semantic.index/index-table-name semantic.tu/mock-embedding-model)))
+                          (sql.helpers/from (keyword (:table-name semantic.tu/mock-index)))
                           (sql.helpers/where :and
                                              [:= :model model]
                                              [:= :model_id model_id])
@@ -73,7 +73,7 @@
                               :model_id "456"})))))
 
 (defn- check-index-has-no-mock-docs []
-  (let [table-name               (semantic.index/index-table-name semantic.tu/mock-embedding-model)
+  (let [{:keys [table-name]}     semantic.tu/mock-index
         table-exists-sql         "select exists(select * from information_schema.tables where table_name = ?) table_exists"
         [{:keys [table_exists]}] (jdbc/execute! semantic.tu/db [table-exists-sql table-name])]
     (when table_exists
@@ -104,7 +104,7 @@
 
 (deftest upsert-index!-test
   (mt/with-premium-features #{:semantic-search}
-    (with-open [_ (semantic.tu/open-temp-index-table!)]
+    (with-open [_ (semantic.tu/open-temp-index!)]
       (check-index-has-no-mock-docs)
       (testing "upsert-index! returns nil if you pass it an empty collection"
         (is (nil? (semantic.tu/upsert-index! [])))
@@ -120,7 +120,7 @@
 
 (deftest delete-from-index!-test
   (mt/with-premium-features #{:semantic-search}
-    (with-open [_ (semantic.tu/open-temp-index-table!)]
+    (with-open [_ (semantic.tu/open-temp-index!)]
       (check-index-has-no-mock-docs)
       (testing "upsert-index! before delete!"
         (is (= {"card" 1, "dashboard" 1}
@@ -145,7 +145,7 @@
 
 (deftest batch-process-mock-docs!-test
   (mt/with-premium-features #{:semantic-search}
-    (with-open [_ (semantic.tu/open-temp-index-table!)]
+    (with-open [_ (semantic.tu/open-temp-index!)]
       (binding [semantic.index/*batch-size* 1]
         (let [extra-ids (->> (range 1337 1347) (map str))
               extra-docs (map (fn [id doc]
