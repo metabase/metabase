@@ -13,8 +13,8 @@ import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
+  isBooleanParameter,
   isDateParameter,
   isStringParameter,
   isTemporalUnitParameter,
@@ -25,7 +25,10 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Dashboard, ParameterId } from "metabase-types/api";
 
-import { ParameterDropdownWidget } from "./ParameterDropdownWidget";
+import {
+  ParameterDropdownWidget,
+  isTextWidget,
+} from "./ParameterDropdownWidget";
 import { WidgetStatus } from "./WidgetStatus";
 
 export type ParameterValueWidgetProps = {
@@ -337,15 +340,14 @@ export const ParameterValueWidget = ({
 function hasNoPopover(parameter: UiParameter) {
   // This is needed because isTextWidget check isn't complete,
   // and returns true for dates too.
-  if (isDateParameter(parameter) || isTemporalUnitParameter(parameter)) {
+  if (
+    isDateParameter(parameter) ||
+    isTemporalUnitParameter(parameter) ||
+    isBooleanParameter(parameter)
+  ) {
     return false;
   }
   return isTextWidget(parameter);
-}
-
-function isTextWidget(parameter: UiParameter) {
-  const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
 }
 
 function wrapArray<T>(value: T | T[]): T[] {

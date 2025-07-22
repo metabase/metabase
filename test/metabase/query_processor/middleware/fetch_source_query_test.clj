@@ -194,7 +194,7 @@
                                    :limit        50}}]))
         card     (lib.metadata/card base 1)
         eid      (lib/random-ident)
-        metadata (mapv #(update % :ident lib/model-ident eid) (:result-metadata card))]
+        metadata (:result-metadata card)]
     (lib.tu/merged-mock-metadata-provider base {:cards [{:id              1
                                                          :type            :model
                                                          :entity-id       eid
@@ -251,10 +251,10 @@
   (qp.store/with-metadata-provider joins-metadata-provider
     (testing "Are `card__id` source tables resolved in `:joins`?"
       (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:source-query    {:source-table $$categories, :limit 100}
-                          :alias           "c"
-                          :condition       [:= $category-id [:field %categories.id {:join-alias "c"}]]
-                          :source-metadata joins-metadata}]})
+                {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
+                                         :source-metadata joins-metadata}
+                          :alias        "c"
+                          :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:joins [{:source-table "card__1"
@@ -280,11 +280,11 @@
     (testing "Are `card__id` source tables resolved in JOINs inside nested source queries?"
       (is (=? (lib.tu.macros/mbql-query venues
                 {:source-query {:source-table $$venues
-                                :joins        [{:source-query    {:source-table $$categories
-                                                                  :limit        100}
-                                                :alias           "c"
-                                                :condition       [:= $category-id [:field %categories.id {:join-alias "c"}]]
-                                                :source-metadata joins-metadata}]}})
+                                :joins        [{:source-query {:source-query    {:source-table $$categories
+                                                                                 :limit        100}
+                                                               :source-metadata joins-metadata}
+                                                :alias        "c"
+                                                :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:source-query
@@ -306,13 +306,13 @@
                                                   :result-metadata (qp.preprocess/query->expected-cols query)})]}))
     (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
       (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:alias           "c"
-                          :condition       [:= $category-id &c.$categories.id]
-                          :source-query    {:source-query    {:source-table $$categories
-                                                              :limit        100}
-                                            :source-metadata joins-metadata
-                                            :limit           200}
-                          :source-metadata (map #(select-keys % [:field_ref]) joins-metadata)}]})
+                {:joins [{:alias        "c"
+                          :condition    [:= $category-id &c.$categories.id]
+                          :source-query {:source-query    {:source-query    {:source-table $$categories
+                                                                             :limit        100}
+                                                           :source-metadata joins-metadata
+                                                           :limit           200}
+                                         :source-metadata [{} {}]}}]})
               (clean-metadata
                (resolve-source-cards
                 (lib.tu.macros/mbql-query venues

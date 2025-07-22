@@ -6,6 +6,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";
@@ -34,6 +35,7 @@ export function StaticEmbeddingSettings() {
           </Box>
         )}
       </SettingsSection>
+      <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
     </SettingsPageWrapper>
   );
 }

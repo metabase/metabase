@@ -239,6 +239,28 @@
                             (search.config/column-with-model-alias model :updated_at)
                             last-edited-at)))
 
+;; Display types filter
+(doseq [model ["card" "dataset" "metric"]]
+  (defmethod build-optional-filter-query [:display-type model]
+    [_filter model query display-types]
+    (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
+
+;; Has temporal dimensions filter
+(doseq [model ["card" "dataset" "metric"]]
+  (defmethod build-optional-filter-query [:has-temporal-dimensions model]
+    [_filter model query has-temporal-dimensions?]
+    (if has-temporal-dimensions?
+      ;; Filter for cards that DO have temporal dimensions
+      (sql.helpers/where query [:like
+                                (search.config/column-with-model-alias model :result_metadata)
+                                "%\"temporal_unit\":%"])
+      ;; Filter for cards that do NOT have temporal dimensions
+      (sql.helpers/where query [:or
+                                [:is (search.config/column-with-model-alias model :result_metadata) nil]
+                                [:not [:like
+                                       (search.config/column-with-model-alias model :result_metadata)
+                                       "%\"temporal_unit\":%"]]]))))
+
 (defn- feature->supported-models
   "Return A map of filter to its support models.
 
@@ -275,15 +297,19 @@
                 last-edited-by
                 models
                 search-native-query
-                verified]}        search-context
+                verified
+                display-type
+                has-temporal-dimensions?]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
-      (some? created-at)          (set/intersection (:created-at feature->supported-models))
-      (some? created-by)          (set/intersection (:created-by feature->supported-models))
-      (some? last-edited-at)      (set/intersection (:last-edited-at feature->supported-models))
-      (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
-      (true? search-native-query) (set/intersection (:search-native-query feature->supported-models))
-      (true? verified)            (set/intersection (:verified feature->supported-models)))))
+      (some? created-at)                          (set/intersection (:created-at feature->supported-models))
+      (some? created-by)                          (set/intersection (:created-by feature->supported-models))
+      (some? last-edited-at)                      (set/intersection (:last-edited-at feature->supported-models))
+      (some? last-edited-by)                      (set/intersection (:last-edited-by feature->supported-models))
+      (true? search-native-query)                 (set/intersection (:search-native-query feature->supported-models))
+      (true? verified)                            (set/intersection (:verified feature->supported-models))
+      (seq   display-type)                        (set/intersection (:display-type feature->supported-models))
+      (some? has-temporal-dimensions?)            (set/intersection (:has-temporal-dimensions feature->supported-models)))))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
@@ -299,7 +325,9 @@
                 search-string
                 search-native-query
                 verified
-                ids]}    search-context]
+                ids
+                display-type
+                has-temporal-dimensions?]} search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
@@ -326,6 +354,12 @@
       (and (some? ids)
            (contains? models model))
       (#(build-optional-filter-query :id model % ids))
+
+      (seq display-type)
+      (#(build-optional-filter-query :display-type model % display-type))
+
+      (some? has-temporal-dimensions?)
+      (#(build-optional-filter-query :has-temporal-dimensions model % has-temporal-dimensions?))
 
       (= "table" model)
       (sql.helpers/where
