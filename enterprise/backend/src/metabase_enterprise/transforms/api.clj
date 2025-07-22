@@ -10,6 +10,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (mr/def ::transform-source
   [:map
    [:type [:= "query"]]
@@ -57,7 +59,7 @@
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]}]
   (log/info "get transform" id)
-  (t2/select-one :model/Transform id))
+  (t2/select-one :model/Transform (Long/parseLong id)))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]}
@@ -67,26 +69,29 @@
                                               [:source ::transform-source]
                                               [:target ::transform-target]]]
   (log/info "put transform" id)
-  (t2/update! :model/Transform id {:name name
-                                   :source source
-                                   :target target}))
+  (t2/update! :model/Transform (Long/parseLong id) {:name name
+                                                    :source source
+                                                    :target target}))
 
 (defn- delete-target-table! [id]
+  (prn (t2/select-one :model/Transform id))
   (let [{:keys [_name _source target]} (t2/select-one :model/Transform id)
         {:keys [database table]} target
-        {driver :engine} (t2/select-one :model/Database database)]
+        _ (prn database)
+        {driver :engine :as poop} (t2/select-one :model/Database database)]
+    (prn poop)
     (driver/drop-table! driver database table)))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]}]
   (log/info "delete transform" id)
-  (delete-target-table! id)
-  (t2/delete! :model/Transform id))
+  (delete-target-table! (Long/parseLong id))
+  (t2/delete! :model/Transform (Long/parseLong id)))
 
 (api.macros/defendpoint :delete "/:id/table"
   [{:keys [id]}]
   (log/info "delete transform target table" id)
-  (delete-target-table! id))
+  (delete-target-table! (Long/parseLong id)))
 
 (defn- compile-source [{query-type :type :as source}]
   (case query-type
