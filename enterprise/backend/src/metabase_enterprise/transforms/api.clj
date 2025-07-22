@@ -70,6 +70,7 @@
   "Get a list of transforms."
   [_route-params
    _query-params]
+  (api/check-superuser)
   (t2/select :model/Transform))
 
 (api.macros/defendpoint :post "/"
@@ -79,6 +80,7 @@
                                              [:name :string]
                                              [:source ::transform-source]
                                              [:target ::transform-target]]]
+  (api/check-superuser)
   (when (target-table-exists? body)
     (api/throw-403))
   (let [id (t2/insert-returning-pk! :model/Transform {:name name
@@ -90,6 +92,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
+  (api/check-superuser)
   (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :put "/:id"
@@ -101,6 +104,7 @@
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (log/info "put transform" id)
+  (api/check-superuser)
   (let [old (t2/select-one-fn :target :model/Transform id)
         new (merge old body)]
     (when (not= (select-keys (:target old) [:schema :table])
@@ -115,7 +119,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
-  #_(delete-target-table-by-id! id)
+  (api/check-superuser)
+  (delete-target-table-by-id! id)
   (t2/delete! :model/Transform id)
   nil)
 
@@ -123,6 +128,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
+  (api/check-superuser)
   (delete-target-table-by-id! id))
 
 (defn- compile-source [{query-type :type :as source}]
@@ -133,12 +139,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
-  (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
+  (api/check-superuser)
+  (let [{:keys [source target]} (t2/select-one :model/Transform id)
         db (get-in source [:query :database])
         {driver :engine} (t2/select-one :model/Database db)]
-    (when (not= (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db)
-                :query-builder-and-native)
-      (api/throw-403))
     (transforms.execute/execute
      {:db db
       :driver driver
