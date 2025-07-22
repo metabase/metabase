@@ -160,7 +160,7 @@ export const QuestionMoreActionsMenu = ({
         data-testid={TRANSFORM_TESTID}
         onClick={() => onOpenModal(MODAL_TYPES.NEW_TRANSFORM)}
       >
-        {t`Turn into a transform`}
+        {t`Create a transform`}
       </Menu.Item>
     ),
     hasCollectionPermissions && isModel && (
