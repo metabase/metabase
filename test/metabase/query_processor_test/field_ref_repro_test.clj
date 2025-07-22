@@ -10,8 +10,10 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -386,21 +388,19 @@
 
 (deftest self-join-with-external-remapping-test
   (testing "Should handle self joins with external remapping (#60444)"
-    (mt/with-driver :h2
-      (mt/with-temp [:model/Dimension _ {:field_id (mt/id :orders :user_id)
-                                         :name "User ID"
-                                         :type :external
-                                         :human_readable_field_id (mt/id :people :email)}]
-        (let [query (mt/mbql-query orders
-                      {:joins [{:source-table $$orders
-                                :alias "j"
-                                :condition
-                                [:= $id &j.orders.product_id]
-                                :fields :all}]})]
-          ;; should return 20 columns and 37320 rows
-          (mt/with-native-query-testing-context query
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"column number mismatch"
-                                  (-> query qp/process-query mt/rows count)))))))))
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider (mt/application-database-metadata-provider (mt/id))
+                                                                     (mt/id :orders :user_id)
+                                                                     (mt/id :people :email))
+      (let [query (mt/mbql-query orders
+                    {:joins [{:source-table $$orders
+                              :alias "j"
+                              :condition
+                              [:= $id &j.orders.product_id]
+                              :fields :all}]})]
+        ;; should return 20 columns and 37320 rows
+        (mt/with-native-query-testing-context query
+          (is (= 37320
+                 (-> query qp/process-query mt/rows count))))))))
 
 (deftest multi-stage-with-external-remapping-test
   (testing "Should handle multiple stages with external remapping (#60587)"

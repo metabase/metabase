@@ -6,10 +6,12 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
@@ -475,9 +477,17 @@
                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
                                              [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
                                             (xlsx-test/parse-xlsx-results results))))}})))]
-    (mt/with-column-remappings [venues.category_id categories.name]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (mt/id :categories :name))
       (testfn :external))
-    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (mapv first (mt/rows (qp/process-query
+                                                            (mt/mbql-query categories
+                                                              {:fields [$name], :order-by [[:asc $id]]})))))
       (testfn :internal))))
 
 (deftest join-export-test

@@ -518,7 +518,9 @@
   (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
                                     (mt/application-database-metadata-provider (mt/id))
                                     (mt/id :venues :category_id)
-                                    (mapv second (mt/rows (qp/process-query (mt/mbql-query categories)))))
+                                    (mapv first (mt/rows (qp/process-query
+                                                          (mt/mbql-query categories
+                                                            {:fields [$name], :order-by [[:asc $id]]})))))
     (let [query     {:database (mt/id)
                      :type     :query
                      :query    {:source-table (mt/id :venues)
