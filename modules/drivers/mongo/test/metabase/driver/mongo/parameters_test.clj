@@ -40,7 +40,8 @@
                           :name      (name field-name)
                           :base-type (or base-type :type/*)}
                          (cond-> {:type value-type, :value value}
-                           (map? options) (assoc :options options)))))
+                           (map? options) (assoc :options options))
+                         nil)))
 
 (deftest ^:parallel substitute-test
   (testing "non-parameterized strings should not be substituted"
@@ -184,7 +185,7 @@
 (deftest ^:parallel field-filter-test-4
   (testing "parameter not supplied"
     (is (= (to-bson [{:$match {}}])
-           (substitute {:date (params/->FieldFilter {:name "date"} params/no-value)} ["[{$match: " (param :date) "}]"])))))
+           (substitute {:date (params/->FieldFilter {:name "date"} params/no-value nil)} ["[{$match: " (param :date) "}]"])))))
 
 (deftest ^:parallel field-filter-test-5
   (testing "operators"

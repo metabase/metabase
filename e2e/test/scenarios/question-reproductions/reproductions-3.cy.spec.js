@@ -2,6 +2,7 @@ const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -783,7 +784,7 @@ describe("issue 40064", () => {
       blur: true,
     });
     H.popover().within(() => {
-      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
+      cy.findByText("Unknown column: Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });
@@ -3045,6 +3046,90 @@ describe("Issue 42942", () => {
       "Total is greater than or equal to 90",
     );
     H.queryBuilderFiltersPanel().findByText("Total is less than 90.75");
+  });
+});
+
+describe("Issue 48771", () => {
+  const MODEL_NAME = "M1";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion({
+      name: MODEL_NAME,
+      type: "model",
+      native: {
+        database: SAMPLE_DB_ID,
+        query: "SELECT 1 AS ID",
+      },
+    }).then(({ body: model }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          query: {
+            filter: [
+              ">=",
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              0.5,
+            ],
+            "source-query": {
+              database: SAMPLE_DB_ID,
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  "source-table": `card__${model.id}`,
+                  fields: "all",
+                  alias: MODEL_NAME,
+                  strategy: "left-join",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                    [
+                      "field",
+                      "ID",
+                      { "join-alias": MODEL_NAME, "base-type": "type/Integer" },
+                    ],
+                  ],
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [["field", ORDERS.CREATED_AT, null]],
+            },
+          },
+        },
+        { visitQuestion: true, wrapId: true },
+      );
+    });
+
+    cy.log("give nosql user access to root collection");
+    cy.updateCollectionGraph({
+      [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
+    });
+
+    cy.signOut();
+    cy.signIn("nosql");
+  });
+
+  it("should allow to add a filter after summary stage (metabase#48771)", () => {
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Count is greater than or equal to 0.5")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").clear().type("0.7");
+      cy.button("Update filter").click();
+    });
+    H.visualize();
   });
 });
 

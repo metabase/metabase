@@ -11,7 +11,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -1265,8 +1264,8 @@
             col (lib/visible-columns query)
             :let [col-ref (lib/ref col)]]
       (testing (str "ref " col-ref " of " (symbol query-var))
-        (is (= (dissoc col :lib/source-uuid)
-               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid)))))))
+        (is (= (dissoc col :lib/source-uuid :lib/original-ref)
+               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid :lib/original-ref)))))))
 
 (deftest ^:parallel find-visible-column-for-ref-test-2
   (testing "reference by ID instead of name"
@@ -1450,11 +1449,9 @@
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
                                      :source-alias "Products")
-                              (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)
-                               (update :ident lib.metadata.ident/implicitly-joined-ident (meta/ident :orders :user-id))
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
       (is (=? (map #(dissoc % :ident)
@@ -1504,13 +1501,12 @@
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
     (mu/disable-enforcement
-      (binding [lib.metadata.ident/*enforce-idents-present* false]
-        (is (=? {:lib/type        :metadata/column
-                 :lib/source-uuid string?
-                 :name            "Unknown Field"
-                 :display-name    "Unknown Field"}
-                (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
-                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid string?
+               :name            "Unknown Field"
+               :display-name    "Unknown Field"}
+              (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
+                                                 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"

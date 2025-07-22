@@ -62,6 +62,9 @@
    v]
   (swap! *store* assoc-in ks v))
 
+;;; TODO (Cam 7/7/25) -- now that we use cached metadata providers consistently and cached metadata providers support
+;;; general value caching we should use those facilities instead. We can remove the bespoke logic here and
+;;; use the stuff in [[metabase.lib.metadata.cache]] instead going forward
 (mu/defn miscellaneous-value
   "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
   ([ks]

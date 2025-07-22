@@ -17,6 +17,7 @@ export function DefaultFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
@@ -88,6 +89,7 @@ export function DefaultFilterPicker({
           isNew={isNew}
           isValid
           withAddButton={withAddButton}
+          withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         />
       </div>

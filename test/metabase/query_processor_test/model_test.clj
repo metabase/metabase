@@ -76,7 +76,6 @@
               "Average of Rating"
               ;; the 'correct' display name here seems to change any time we touch anything. Some previous values:
               #_"Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
-              #_"Products+Reviews Summary - Reviews → Created At: Month → Created At"
               #_"Products+Reviews Summary - Reviews → Created At: Month → Created At: Month"
               "Products+Reviews Summary - Reviews → Created At: Month → Created At"
               "Products+Reviews Summary - Reviews → Created At: Month → Sum of Price"]

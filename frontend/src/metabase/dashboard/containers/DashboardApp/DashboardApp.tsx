@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
 import type { Route, WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
+import { replace } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
@@ -19,6 +19,7 @@ import {
   DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
+import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
@@ -89,27 +90,32 @@ export const DashboardApp = ({
   const dashboardId =
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
-  const options = parseHashOptions(window.location.hash);
-  const editingOnLoad = options.edit;
-  const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
-
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(router, location);
 
-  const extractAndRemoveHashOption = (key: string) => {
+  const extractHashOption = async (
+    key: string,
+    options: ReturnType<typeof parseHashOptions>,
+  ) => {
     const { [key]: removed, ...restHashOptions } = options;
-    const hash = stringifyHashOptions(restHashOptions);
-    dispatch(push({ ...location, hash: hash ? "#" + hash : "" }));
+    return restHashOptions;
   };
 
-  const onLoadDashboard = (dashboard: IDashboard) => {
+  const onLoadDashboard = async (dashboard: IDashboard) => {
+    let options: ReturnType<typeof parseHashOptions> = parseHashOptions(
+      window.location.hash,
+    );
+    const editingOnLoad = options.edit;
+    const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
+
     try {
       if (editingOnLoad) {
         dispatch(setEditingDashboard(dashboard));
-        extractAndRemoveHashOption("edit");
+        options = await extractHashOption("edit", options);
       }
+
       if (addCardOnLoad != null) {
-        extractAndRemoveHashOption("add");
+        options = await extractHashOption("add", options);
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
         const tabId = tabParam ? parseInt(tabParam, 10) : null;
@@ -122,8 +128,14 @@ export const DashboardApp = ({
           }),
         );
       }
+      const hash = stringifyHashOptions(options);
+      await dispatch(replace({ ...location, hash: hash ? "#" + hash : "" }));
     } catch (error) {
-      if (error instanceof Response && error.status === 404) {
+      // 400: provided entity id format is invalid.
+      if (
+        error instanceof Response &&
+        (error.status === 400 || error.status === 404)
+      ) {
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
@@ -142,11 +154,12 @@ export const DashboardApp = ({
         parameterQueryParams={parameterQueryParams}
         autoScrollToDashcardId={autoScrollToDashcardId}
         reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-        onLoad={onLoadDashboard}
+        onLoadWithoutCards={onLoadDashboard}
         onError={(error) => dispatch(setErrorPage(error))}
         navigateToNewCardFromDashboard={(opts) =>
           dispatch(navigateToNewCardFromDashboard(opts))
         }
+        onNewQuestion={() => dispatch(addDashboardQuestion("notebook"))}
         onAddQuestion={(dashboard: IDashboard | null) => {
           dispatch(setEditingDashboard(dashboard));
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));

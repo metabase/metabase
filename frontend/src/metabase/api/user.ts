@@ -117,6 +117,10 @@ export const userApi = Api.injectEndpoints({
   }),
 });
 
+/** To minimize requests, useListUsersQuery should be invoked where possible
+ * with this limit and an offset of 0 */
+export const STANDARD_USER_LIST_PAGE_SIZE = 27;
+
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,

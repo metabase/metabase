@@ -352,18 +352,15 @@ function DashCardInner({
             [S.hasHiddenBackground]: hasHiddenBackground,
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
             [S.isNightMode]: shouldRenderAsNightMode,
-            [S.isUsuallySlow]: isSlow === "usually-slow",
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
           },
           className,
         )}
         style={(theme) => {
           const { border } = theme.other.dashboard.card;
-
-          return {
-            "--slow-card-border-color": theme.fn.themeColor("accent4"),
-            ...(border && { border }),
-          };
+          if (border) {
+            return { border };
+          }
         }}
         ref={cardRootRef}
       >

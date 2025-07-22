@@ -31,9 +31,11 @@ const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
 
   return (
     <FilterPickerBody
+      autoFocus={false}
       column={column}
       query={query}
       stageIndex={STAGE_INDEX}
+      withSubmitButton={false}
       onChange={_.noop}
     />
   );

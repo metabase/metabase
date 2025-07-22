@@ -52,7 +52,6 @@ export type SharedAccordionProps<
   searchPlaceholder?: string;
   showItemArrows?: boolean;
   showSpinner?: (itemOrSection: TItem | TSection) => boolean;
-  withBorders?: boolean;
 };
 
 type AccordionListCellProps<
@@ -138,7 +137,6 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     showSpinner = () => false,
     style,
     toggleSection,
-    withBorders,
   }: AccordionListCellProps<TItem, TSection>,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -433,8 +431,8 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
         [ListS.ListSectionToggleAble]: canToggleSections,
-        [styles.borderTop]: withBorders && borderTop,
-        [styles.borderBottom]: withBorders && borderBottom,
+        [styles.borderTop]: borderTop,
+        [styles.borderBottom]: borderBottom,
         [styles.sticky]: isSticky,
       })}
     >

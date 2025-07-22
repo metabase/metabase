@@ -402,3 +402,80 @@
         (is (=? [{:name "CREATED_AT_2", :display_name "Created At: Month", :field_ref [:field "CREATED_AT_2" {}]}
                  {:name "count", :display_name "Count", :field_ref [:field "count" {}]}]
                 (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel filter-on-implicitly-joined-column-test
+  (testing "Should be able to remove a column that was implicitly joined from a column in an explicit join (#59695)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query (lib.tu.macros/mbql-query orders)}]})
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query nil
+                   {:source-table "card__1"
+                    :joins        [{:source-table (meta/id :checkins)
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "CH"
+                                    :condition    [:=
+                                                   [:field "ID" {:base-type :type/BigInteger}]
+                                                   [:field (meta/id :checkins :id)
+                                                    {:base-type :type/BigInteger, :join-alias "CH"}]]}]
+                    :filter       [:=
+                                   [:field (meta/id :venues :price) {:base-type               :type/Text
+                                                                     :source-field            (meta/id :checkins :venue-id)
+                                                                     :source-field-join-alias "CH"}]
+                                   "Basic"]}))]
+      (is (=? {:query {:source-query {:source-table (meta/id :orders)
+                                      :fields       [[:field (meta/id :orders :id)         nil]
+                                                     [:field (meta/id :orders :user-id)    nil]
+                                                     [:field (meta/id :orders :product-id) nil]
+                                                     [:field (meta/id :orders :subtotal)   nil]
+                                                     [:field (meta/id :orders :tax)        nil]
+                                                     [:field (meta/id :orders :total)      nil]
+                                                     [:field (meta/id :orders :discount)   nil]
+                                                     [:field (meta/id :orders :created-at) nil]
+                                                     [:field (meta/id :orders :quantity)   nil]]}
+                       :joins        [{:source-table (meta/id :checkins)
+                                       :alias        "CH"
+                                       :strategy     :left-join
+                                       :fields       [[:field (meta/id :checkins :id)       {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
+                                       :condition    [:=
+                                                      [:field "ID" {:base-type :type/BigInteger}]
+                                                      [:field (meta/id :checkins :id)
+                                                       {:base-type :type/BigInteger, :join-alias "CH"}]]}
+                                      {:source-table        (meta/id :venues)
+                                       :qp/is-implicit-join true
+                                       :fk-join-alias       "CH"
+                                       :alias               "VENUES__via__VENUE_ID__via__CH"
+                                       :strategy            :left-join
+                                       :fk-field-id         (meta/id :checkins :venue-id)
+                                       :condition           [:=
+                                                             [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]
+                                                             [:field (meta/id :venues :id) {:join-alias "VENUES__via__VENUE_ID__via__CH"}]]}]
+                       ;; TODO (Cam 7/15/25) -- these should ACTUALLY be using field name refs rather than ID refs
+                       :fields       [[:field (meta/id :orders :id)         nil]
+                                      [:field (meta/id :orders :user-id)    nil]
+                                      [:field (meta/id :orders :product-id) nil]
+                                      [:field (meta/id :orders :subtotal)   nil]
+                                      [:field (meta/id :orders :tax)        nil]
+                                      [:field (meta/id :orders :total)      nil]
+                                      [:field (meta/id :orders :discount)   nil]
+                                      [:field (meta/id :orders :created-at) nil]
+                                      [:field (meta/id :orders :quantity)   nil]
+                                      [:field (meta/id :checkins :id)       {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
+                       :filter       [:=
+                                      [:field
+                                       (meta/id :venues :price)
+                                       {:source-field-join-alias "CH"
+                                        :join-alias              "VENUES__via__VENUE_ID__via__CH"}]
+                                      [:value "Basic" {}]]}}
+              (qp.preprocess/preprocess query)))
+      (testing "Query should be convertable back to MBQL 5"
+        (is (lib/query mp (qp.preprocess/preprocess query)))))))
