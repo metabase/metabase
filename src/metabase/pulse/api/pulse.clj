@@ -340,15 +340,18 @@
 (def ^:private preview-card-width 400)
 
 (api.macros/defendpoint :get "/preview_card_png/:id"
-  "Get PNG rendering of a Card with `id`."
+  "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   {:keys [width]} :- [:map
+                      [:width {:optional true} [:maybe ms/PositiveInt]]]]
   (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)
+        width  (or width preview-card-width)
         ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
                                                         card
                                                         result
-                                                        preview-card-width
+                                                        width
                                                         {:channel.render/include-title? true})]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
