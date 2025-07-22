@@ -37,7 +37,7 @@
   (when-not @semantic.db/data-source (semantic.db/init-db!))
   (semantic.index/delete-from-index! model ids))
 
-;; TODO: add reindexing logic when index is detected as stale
+;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
@@ -50,7 +50,6 @@
   "Reindex the semantic search index."
   :feature :semantic-search
   [searchable-documents _opts]
-  ;; TODO:implement reindexing without dropping the table
   (when-not @semantic.db/data-source (semantic.db/init-db!))
   (semantic.index/create-index-table! {:force-reset? false})
   (semantic.index/upsert-index! (into [] searchable-documents)))
