@@ -11,6 +11,8 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "../types";
 
+import { filterEmptySettings } from "./filter-empty-settings";
+
 type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
 
 export function getEmbedSnippet({
@@ -33,13 +35,38 @@ export function getEmbedSnippet({
     ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
+  const config = _.pick(settings, ALLOWED_EMBED_SETTING_KEYS_MAP.base);
+
+  const cleanedConfig = {
+    ..._.omit(config, ["useExistingUserSession"]),
+
+    // Only include useExistingUserSession if it is true.
+    ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),
+
+    // Append these settings that can't be controlled by users.
+    instanceUrl,
+  };
+
+  // filter out empty arrays, strings, objects, null and undefined.
+  // this keeps the embed settings readable.
+  const filteredConfig = filterEmptySettings(cleanedConfig);
+
+  // format the json settings with proper indentation
+  const formattedConfig = JSON.stringify(filteredConfig, null, 2)
+    .replace(/^{/, "")
+    .replace(/}$/, "")
+    .split("\n")
+    .map((line) => `  ${line}`)
+    .join("\n")
+    .trim();
+
   // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
   return `<script src="${instanceUrl}/app/embed.js"></script>
 
 <script>
   const { defineMetabaseConfig } = window["metabase.embed"];
   defineMetabaseConfig({
-    instanceUrl: "${instanceUrl}",${settings.useExistingUserSession ? "\n    useExistingUserSession: true," : ""}${settings.theme ? `\n    theme: ${JSON.stringify(settings.theme)},` : ""}${settings.locale ? `\n    locale: "${settings.locale}",` : ""}
+    ${formattedConfig}
   });
 </script>
 
