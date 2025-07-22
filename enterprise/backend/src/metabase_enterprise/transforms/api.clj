@@ -1,10 +1,12 @@
 (ns metabase-enterprise.transforms.api
   (:require
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -20,7 +22,6 @@
 (mr/def ::transform-target
   [:map
    [:type [:= "table"]]
-   [:database :int]
    [:schema {:optional true} :string]
    [:table :string]])
 
@@ -36,7 +37,30 @@
     :target {:type "table"
              :database 1
              :schema "transforms"
-             :table "gadget_products"}}])
+             :table "gadget_products"}}]
+  -)
+
+;; TODO add driver specific quoting
+(defn- qualified-table-name
+  [{:keys [schema table]}]
+  (cond->> table
+    schema (str schema ".")))
+
+(defn- target-table-exists?
+  [{:keys [source target] :as _transform}]
+  (let [database (-> source :query :database)
+        driver (t2/select-one-fn :engine :model/Database database)]
+    (some? (driver/describe-table driver database (qualified-table-name target)))))
+
+(defn- delete-target-table!
+  [{:keys [source target] :as _transform}]
+  (let [database (-> source :query :database)
+        driver (t2/select-one-fn :engine :model/Database database)]
+    (driver/drop-table! driver database (qualified-table-name target))))
+
+(defn- delete-target-table-by-id!
+  [transform-id]
+  (delete-target-table! (t2/select-one :model/Transform transform-id)))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
@@ -47,10 +71,12 @@
 (api.macros/defendpoint :post "/"
   [_route-params
    _query-params
-   {:keys [name source target] :as _body} :- [:map
-                                              [:name :string]
-                                              [:source ::transform-source]
-                                              [:target ::transform-target]]]
+   {:keys [name source target] :as body} :- [:map
+                                             [:name :string]
+                                             [:source ::transform-source]
+                                             [:target ::transform-target]]]
+  (when (target-table-exists? body)
+    (api/throw-403))
   (let [id (t2/insert-returning-pk! :model/Transform {:name name
                                                       :source source
                                                       :target target})]
@@ -64,34 +90,34 @@
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]}
    _query-params
-   {:keys [name source target] :as _body} :- [:map
-                                              [:name :string]
-                                              [:source ::transform-source]
-                                              [:target ::transform-target]]]
-  (log/info "put transform" id)
-  (t2/update! :model/Transform (Long/parseLong id) {:name name
-                                                    :source source
-                                                    :target target}))
-
-(defn- delete-target-table! [id]
-  (prn (t2/select-one :model/Transform id))
-  (let [{:keys [_name _source target]} (t2/select-one :model/Transform id)
-        {:keys [database table]} target
-        _ (prn database)
-        {driver :engine :as poop} (t2/select-one :model/Database database)]
-    (prn poop)
-    (driver/drop-table! driver database table)))
+   body :- [:map
+            [:name {:optional true} :string]
+            [:source {:optional true} ::transform-source]
+            [:target {:optional true} ::transform-target]]]
+  (let [id (Long/parseLong id)]
+    (log/info "put transform" id)
+    (let [old (t2/select-one-fn :target :model/Transform id)
+          new (merge old body)]
+      (when (not= (select-keys (:target old) [:schema :table])
+                  (select-keys (:target new) [:schema :table]))
+        (when (target-table-exists? new)
+          (api/throw-403))
+        (delete-target-table! old)))
+    (t2/update! :model/Transform id body)
+    (t2/select-one :model/Transform id)))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]}]
-  (log/info "delete transform" id)
-  (delete-target-table! (Long/parseLong id))
-  (t2/delete! :model/Transform (Long/parseLong id)))
+  (let [id (Long/parseLong id)]
+    (log/info "delete transform" id)
+    (delete-target-table-by-id! id)
+    (t2/delete! :model/Transform id))
+  nil)
 
 (api.macros/defendpoint :delete "/:id/table"
   [{:keys [id]}]
   (log/info "delete transform target table" id)
-  (delete-target-table! (Long/parseLong id)))
+  (delete-target-table-by-id! (Long/parseLong id)))
 
 (defn- compile-source [{query-type :type :as source}]
   (case query-type
@@ -103,11 +129,14 @@
   (let [{:keys [_name source target]} (t2/select-one :model/Transform (Long/parseLong id))
         db (get-in source [:query :database])
         {driver :engine} (t2/select-one :model/Database db)]
+    (when (not= (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db)
+                :query-builder-and-native)
+      (api/throw-403))
     (transforms.execute/execute
      {:db db
       :driver driver
       :sql (compile-source source)
-      :output-table (:table target)
+      :output-table (qualified-table-name target)
       :overwrite? true})))
 
 (def ^{:arglists '([request respond raise])} routes

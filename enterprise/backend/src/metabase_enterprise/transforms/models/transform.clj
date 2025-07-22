@@ -14,3 +14,31 @@
 (t2/deftransforms :model/Transform
   {:source mi/transform-json
    :target mi/transform-json})
+
+(comment
+
+  (t2/insert-returning-pk! :model/Transform {:name "Gadget Products"
+                                             :source {:type "query"
+                                                      :query {:database 1
+                                                              :type "native",
+                                                              :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                                       :template-tags {}}}}
+                                             :target {:type "table"
+                                                      :database 1
+                                                      :schema "transforms"
+                                                      :table "gadget_products"}})
+
+  (t2/update! :model/Transform 2 {:name "Gadget Products xxx"
+                                  :source {:type "query"
+                                           :query {:database 1
+                                                   :type "native",
+                                                   :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                            :template-tags {}}}}
+                                  :target {:type "table"
+                                           :database 1
+                                           :schema "transforms"
+                                           :table "gadget_products"}})
+
+  (t2/select-one :model/Transform)
+  (t2/select :model/Transform)
+  (t2/delete! :model/Transform 1))
