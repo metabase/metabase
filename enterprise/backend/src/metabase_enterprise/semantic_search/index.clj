@@ -115,27 +115,6 @@
                    (array-map model))
        (log/trace "semantic search deleted" (get <> model) "total documents with model type" model)))))
 
-(defn populate-index!
-  "Inserts a set of documents into the index table. Throws when trying to insert
-  existing model + model_id pairs. (Use upsert-index! to update existing documents)"
-  [documents]
-  (log/info "Populating index with" (count documents) "documents")
-  (when (seq documents)
-    (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
-          texts (mapv :searchable_text filtered-documents)
-          text->doc (zipmap texts filtered-documents)]
-      (embedding/process-embeddings-streaming
-       texts
-       (fn [batch-texts batch-embeddings]
-         (let [batch-documents (mapv text->doc batch-texts)]
-           (batch-update!
-            (fn [db-records]
-              (-> (sql.helpers/insert-into *index-table-name*)
-                  (sql.helpers/values db-records)
-                  sql/format))
-            batch-documents
-            batch-embeddings)))))))
-
 (defn- db-records->update-set
   [db-records]
   (let [update-keys (-> db-records first (dissoc :id :model :model_id) keys)
@@ -146,23 +125,25 @@
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
   [documents]
-  (log/info "Populating index with" (count documents) "documents")
+  (log/info "Populating semantic search index with" (count documents) "documents")
   (when (seq documents)
-    (let [filtered-documents (filter #(not= (:model %) "indexed-entity") documents)
-          texts (mapv :searchable_text filtered-documents)
-          text->doc (zipmap texts documents)]
+    (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
+          searchable-texts   (map :searchable_text filtered-documents)]
       (embedding/process-embeddings-streaming
-       texts
-       (fn [batch-texts batch-embeddings]
-         (let [batch-documents (mapv text->doc batch-texts)]
+       searchable-texts
+       (fn [_batch-texts batch-embeddings]
+         (let [batch-documents
+               (mapv (fn [doc embedding]
+                       (assoc doc :embedding embedding))
+                     filtered-documents
+                     batch-embeddings)]
            (batch-update!
             (fn [db-records]
-              (->
-               (sql.helpers/insert-into *index-table-name*)
-               (sql.helpers/values db-records)
-               (sql.helpers/on-conflict :model :model_id)
-               (sql.helpers/do-update-set (db-records->update-set db-records))
-               sql/format))
+              (-> (sql.helpers/insert-into *index-table-name*)
+                  (sql.helpers/values db-records)
+                  (sql.helpers/on-conflict :model :model_id)
+                  (sql.helpers/do-update-set (db-records->update-set db-records))
+                  sql-format-quoted))
             batch-documents
             batch-embeddings)))))))
 
@@ -281,12 +262,12 @@
   [search-context]
   (let [search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
-      (let [embedding   (embedding/get-embedding search-string)
-            query       (semantic-search-query embedding search-context)
-            xform       (comp (map unqualify-keys)
-                              (map decode-metadata)
-                              (map legacy-input-with-score))
-            reducible   (jdbc/plan @db/data-source (sql-format-quoted query))]
+      (let [embedding (embedding/get-embedding search-string)
+            query     (semantic-search-query embedding search-context)
+            xform     (comp (map unqualify-keys)
+                            (map decode-metadata)
+                            (map legacy-input-with-score))
+            reducible (jdbc/plan @db/data-source (sql-format-quoted query))]
         (-> (transduce xform conj [] reducible)
             filter-read-permitted)))))
 

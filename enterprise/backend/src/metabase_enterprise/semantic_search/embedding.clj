@@ -220,6 +220,7 @@
   ([model]
    (-model-dimensions (get-provider) model)))
 
+;; TODO: dedupe embedding fetching for identical values
 (defn process-embeddings-streaming
   "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
   [texts embeddings] for each batch."
