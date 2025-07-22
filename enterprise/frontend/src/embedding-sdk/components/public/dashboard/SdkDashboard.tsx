@@ -10,15 +10,15 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
+import { SdkQuestionProvider } from "embedding-sdk/components/private/SdkQuestion/context";
+import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -54,7 +54,7 @@ import type { DashboardId } from "metabase-types/api";
 import type {
   DrillThroughQuestionProps,
   InteractiveQuestionProps,
-} from "../InteractiveQuestion";
+} from "../SdkQuestion";
 
 import {
   SdkDashboardStyledWrapper,
@@ -392,7 +392,7 @@ function DashboardQueryBuilder({
   }
 
   return (
-    <InteractiveQuestionProvider
+    <SdkQuestionProvider
       questionId="new"
       targetDashboardId={targetDashboardId}
       onSave={(question, { isNewQuestion, dashboardTabId }) => {
@@ -414,6 +414,6 @@ function DashboardQueryBuilder({
         // The default value is 600px and it cuts off the "Visualize" button.
         height="700px"
       />
-    </InteractiveQuestionProvider>
+    </SdkQuestionProvider>
   );
 }
