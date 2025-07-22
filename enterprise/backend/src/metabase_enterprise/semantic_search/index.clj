@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.semantic-search.db :as db]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
@@ -19,9 +18,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *index-table-name*
-  "The name of the index table used for semantic search."
-  :search_index)
+(comment
+  ((requiring-resolve 'metabase-enterprise.semantic-search.db/init-db!))
+  (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db/data-source)))
+
+(defn sql-format-quoted
+  "Call [[sql/format]] with {:quoted true}.
+
+  Ensures identifiers are quoted since the nano-ids used in temp table names when testing (and various other places)
+  might contain uppercase chars or hyphens which need to be quoted."
+  [honey-sql & {:as opts}]
+  (sql/format honey-sql (merge opts {:quoted true})))
 
 (def ^:dynamic *batch-size*
   "The number of documents to process per batch when updating the index."
@@ -50,14 +57,6 @@
      [[:constraint unique-constraint-name]
       [:unique [:composite :model :model_id]]]]))
 
-(defn sql-format-quoted
-  "Call [[sql/format]] with {:quoted true}.
-
-  Ensures identifiers are quoted since the nano-ids used in temp table names when testing (and various other places)
-  might contain uppercase chars or hyphens which need to be quoted."
-  [honey-sql & {:as opts}]
-  (sql/format honey-sql (merge opts {:quoted true})))
-
 (defn- format-embedding
   "Formats the embedding vector for SQL insertion."
   [embedding]
@@ -82,38 +81,34 @@
    :metadata            [:cast (json/encode doc) :jsonb]})
 
 (defn- batch-update!
-  ([records->sql documents embeddings]
-   (batch-update! @db/data-source records->sql documents embeddings))
-  ([connectable records->sql documents embeddings]
-   (when (seq documents)
-     (u/prog1 (transduce (comp (map (fn [[doc embedding]] (doc->db-record embedding doc)))
-                               (partition-all *batch-size*)
-                               (map (fn [db-records]
-                                      (jdbc/execute! connectable (records->sql db-records))
-                                      ;; TODO should this return (or at least log) the number of docs actually
-                                      ;; updated, not just the number in the batch?
-                                      (u/prog1 (->> db-records (map :model) frequencies)
-                                        (log/trace "semantic search processed a batch of" (count db-records)
-                                                   "documents with frequencies" <>)))))
-                         (partial merge-with +)
-                         (map vector documents embeddings))
-       (log/trace "semantic search processed" (count documents) "total documents with frequencies" <>)))))
+  [connectable records->sql documents embeddings]
+  (when (seq documents)
+    (u/prog1 (transduce (comp (map (fn [[doc embedding]] (doc->db-record embedding doc)))
+                              (partition-all *batch-size*)
+                              (map (fn [db-records]
+                                     (jdbc/execute! connectable (records->sql db-records))
+                                     ;; TODO should this return (or at least log) the number of docs actually
+                                     ;; updated, not just the number in the batch?
+                                     (u/prog1 (->> db-records (map :model) frequencies)
+                                       (log/trace "semantic search processed a batch of" (count db-records)
+                                                  "documents with frequencies" <>)))))
+                        (partial merge-with +)
+                        (map vector documents embeddings))
+      (log/trace "semantic search processed" (count documents) "total documents with frequencies" <>))))
 
 (defn- batch-delete-ids!
-  ([model ids->sql ids]
-   (batch-delete-ids! @db/data-source model ids->sql ids))
-  ([connectable model ids->sql ids]
-   (when (seq ids)
-     (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
-                                    (map (fn [ids]
-                                           (jdbc/execute! connectable (ids->sql ids))
-                                           (u/prog1 (count ids)
-                                             (log/trace "semantic search deleted a batch of" <>
-                                                        "documents with model type" model)))))
-                              +
-                              ids)
-                   (array-map model))
-       (log/trace "semantic search deleted" (get <> model) "total documents with model type" model)))))
+  [connectable model ids->sql ids]
+  (when (seq ids)
+    (u/prog1 (->> (transduce (comp (partition-all *batch-size*)
+                                   (map (fn [ids]
+                                          (jdbc/execute! connectable (ids->sql ids))
+                                          (u/prog1 (count ids)
+                                            (log/trace "semantic search deleted a batch of" <>
+                                                       "documents with model type" model)))))
+                             +
+                             ids)
+                  (array-map model))
+      (log/trace "semantic search deleted" (get <> model) "total documents with model type" model))))
 
 (defn- db-records->update-set
   [db-records]
@@ -121,15 +116,25 @@
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
     (zipmap update-keys (map excluded-kw update-keys))))
 
+(defn default-index
+  "Returns the default index spec for a model."
+  [embedding-model]
+  (let [{:keys [model-name provider vector-dimensions]} embedding-model
+        table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)]
+    {:embedding-model embedding-model
+     :table-name table-name
+     :index-name (str table-name "__hnsw_idx")}))
+
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
   model + model_id already exists, it will be replaced."
-  [documents]
+  [connectable index documents]
   (log/info "Populating semantic search index with" (count documents) "documents")
   (when (seq documents)
     (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
           searchable-texts   (map :searchable_text filtered-documents)]
       (embedding/process-embeddings-streaming
+       (:embedding-model index)
        searchable-texts
        (fn [_batch-texts batch-embeddings]
          (let [batch-documents
@@ -138,8 +143,9 @@
                      filtered-documents
                      batch-embeddings)]
            (batch-update!
+            connectable
             (fn [db-records]
-              (-> (sql.helpers/insert-into *index-table-name*)
+              (-> (sql.helpers/insert-into (keyword (:table-name index)))
                   (sql.helpers/values db-records)
                   (sql.helpers/on-conflict :model :model_id)
                   (sql.helpers/do-update-set (db-records->update-set db-records))
@@ -148,37 +154,47 @@
             batch-embeddings)))))))
 
 (defn- drop-index-table-sql
-  []
-  (-> (sql.helpers/drop-table :if-exists *index-table-name*)
+  [{:keys [table-name]}]
+  (-> (sql.helpers/drop-table :if-exists (keyword table-name))
       sql-format-quoted))
 
 (defn drop-index-table!
-  "Drop the index table if it exists."
-  ([]   (jdbc/execute! @db/data-source (drop-index-table-sql)))
-  ([tx] (jdbc/execute! tx (drop-index-table-sql))))
+  "Drops the index table for the given embedding model if it exists."
+  [connectable index]
+  (jdbc/execute! connectable (drop-index-table-sql index)))
 
 (defn create-index-table!
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists."
-  [{:keys [force-reset?] :or {force-reset? false}}]
+  [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
-    (let [vector-dimensions (embedding/model-dimensions)]
-      (jdbc/with-transaction [tx @db/data-source]
-        (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
-        (when force-reset? (drop-index-table! tx))
-        (jdbc/execute!
-         tx
-         (-> (sql.helpers/create-table *index-table-name* :if-not-exists)
-             (sql.helpers/with-columns (index-table-schema vector-dimensions))
-             sql-format-quoted))
-        (jdbc/execute!
-         tx
-         (-> (sql.helpers/create-index
-              [:embedding_hnsw_idx :if-not-exists]
-              [*index-table-name* :using-hnsw [:raw "embedding vector_cosine_ops"]])
-             sql-format-quoted))))
+    (let [{:keys [embedding-model index-name table-name]} index
+          {:keys [vector-dimensions]}                     embedding-model]
+      (log/info "Creating index table" table-name)
+      (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+      (when force-reset? (drop-index-table! connectable index))
+      (jdbc/execute!
+       connectable
+       (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
+           (sql.helpers/with-columns (index-table-schema vector-dimensions))
+           sql-format-quoted))
+      (jdbc/execute!
+       connectable
+       (-> (sql.helpers/create-index
+            [(keyword index-name) :if-not-exists]
+            [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
+           sql-format-quoted)))
     (catch Exception e
-      (throw (ex-info "Failed to create index table" {:cause e})))))
+      (throw (ex-info "Failed to create index table" {} e)))))
+
+(comment
+  (def embedding-model {:provider "ollama"
+                        :model-name "mxbai-embed-large"
+                        :vector-dimensions 1024})
+  (def index (default-index embedding-model))
+  (drop-index-table! db index)
+  (create-index-table! db index)
+  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table__%'"]))
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
@@ -207,7 +223,7 @@
 
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity."
-  [embedding search-context]
+  [index embedding search-context]
   (let [filters (search-filters search-context)
         base-query {:select [[:model_id :model_id]
                              [:model :model]
@@ -215,7 +231,7 @@
                              [:verified :verified]
                              [[:raw (str "embedding <=> " (format-embedding embedding))] :distance]
                              [:metadata :metadata]]
-                    :from   [*index-table-name*]
+                    :from   [(keyword (:table-name index))]
                     :order-by [[:distance :asc]]
                     :limit  100}]
     (if filters
@@ -259,25 +275,27 @@
 
 (defn query-index
   "Query the index for documents similar to the search string."
-  [search-context]
-  (let [search-string (:search-string search-context)]
+  [db index search-context]
+  (let [{:keys [embedding-model]} index
+        search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
-      (let [embedding (embedding/get-embedding search-string)
-            query     (semantic-search-query embedding search-context)
+      (let [embedding (embedding/get-embedding embedding-model search-string)
+            query     (semantic-search-query index embedding search-context)
             xform     (comp (map unqualify-keys)
                             (map decode-metadata)
                             (map legacy-input-with-score))
-            reducible (jdbc/plan @db/data-source (sql-format-quoted query))]
+            reducible (jdbc/plan db (sql-format-quoted query))]
         (-> (transduce xform conj [] reducible)
             filter-read-permitted)))))
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
-  [model model-ids]
+  [db index model model-ids]
   (batch-delete-ids!
+   db
    model
    (fn [batch-ids]
-     (-> (sql.helpers/delete-from *index-table-name*)
+     (-> (sql.helpers/delete-from (keyword (:table-name index)))
          (sql.helpers/where [:and
                              [:= :model model]
                              [:in :model_id batch-ids]])
@@ -285,19 +303,18 @@
    model-ids))
 
 (comment
-  (create-index-table! {:force-reset? true})
-  (populate-index! [{:model "card"
-                     :id "1"
-                     :searchable_text "This is a test card"}])
-  (upsert-index! [{:model "card"
-                   :id "1"
-                   :searchable_text "This is a test card"}])
-  (delete-from-index! "card" ["1"])
-  (delete-from-index! "dashboard" ["13"])
+  (def embedding-model (embedding/get-active-model))
+  (def index (default-index embedding-model))
+  (create-index-table! index {:force-reset? true})
+  (upsert-index! db index [{:model "card"
+                            :id "1"
+                            :searchable_text "This is a test card"}])
+  (delete-from-index! db index "card" ["1"])
+  (delete-from-index! db index "dashboard" ["13"])
   ;; no user
-  (query-index {:search-string "Copper knife"})
+  (query-index db index {:search-string "Copper knife"})
 
   #_:clj-kondo/ignore
   (require '[metabase.test :as mt])
   (mt/with-test-user :crowberto
-    (doall (query-index {:search-string "Copper knife"}))))
+    (doall (query-index db index {:search-string "Copper knife"}))))
