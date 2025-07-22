@@ -61,6 +61,17 @@ describe("time-dayjs", () => {
         expect(parsed.format("SSS")).toBe(expectedFormat);
       });
     });
+
+    it("should handle numeric values for day-of-year and week-of-year", () => {
+      // Test that numeric values still work (backward compatibility)
+      const dayOfYear = parseTimestamp(100, "day-of-year");
+      expect(dayOfYear.isValid()).toBe(true);
+      expect(dayOfYear.dayOfYear()).toBe(100);
+
+      const weekOfYear = parseTimestamp(20, "week-of-year");
+      expect(weekOfYear.isValid()).toBe(true);
+      expect(weekOfYear.isoWeek()).toBe(20);
+    });
   });
 
   describe("parseTime", () => {

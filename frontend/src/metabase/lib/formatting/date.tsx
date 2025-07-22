@@ -19,6 +19,12 @@ import {
 } from "./datetime-utils";
 import type { OptionsType } from "./types";
 
+function getOrdinal(number: number): string {
+  const ordinals = ["th", "st", "nd", "rd"];
+  const v = number % 100;
+  return ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0];
+}
+
 const EN_DASH = `–`;
 
 type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
@@ -1085,6 +1091,12 @@ export function formatDateTimeWithUnit(
   // handle day of year as DDD format adds leading zeroes
   if (unit === "day-of-year") {
     return d.dayOfYear();
+  }
+
+  if (unit === "week-of-year") {
+    const weekNumber = d.isoWeek();
+    const ordinal = getOrdinal(weekNumber);
+    return `${weekNumber}${ordinal}`;
   }
 
   // expand "week" into a range in specific contexts
