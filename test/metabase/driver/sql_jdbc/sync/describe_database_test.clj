@@ -257,10 +257,9 @@
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
     (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
                                               (get-method driver/describe-database %))]
-      (mt/test-drivers (into #{}
-                             (comp (filter jdbc-describe-database)
-                                   (filter #(not (driver/database-supports? % :table-privileges nil))))
-                             (descendants driver/hierarchy :sql-jdbc))
+      (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                                 :+fns [jdbc-describe-database]
+                                                 :-features [:table-privileges]})
         (let [closed-first (volatile! false)
               execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
               all-tables (driver/describe-database driver/*driver* (mt/id))]
