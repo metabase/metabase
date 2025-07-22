@@ -182,7 +182,7 @@
 
 (defmethod get-embedding        "openai" [{:keys [model-name]} text] (openai-get-embedding model-name text))
 (defmethod get-embeddings-batch "openai" [{:keys [model-name]} text] (openai-get-embeddings-batch model-name text))
-(defmethod pull-model           "openai" [_] (log/info "OpenAI provider does not require pulling a model"))
+(defmethod pull-model           "openai" [_] (log/debug "OpenAI provider does not require pulling a model"))
 
 ;;;; Global embedding model
 

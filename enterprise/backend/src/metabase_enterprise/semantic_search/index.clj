@@ -117,11 +117,11 @@
                                      ;; TODO should this return (or at least log) the number of docs actually
                                      ;; updated, not just the number in the batch?
                                      (u/prog1 (->> db-records (map :model) frequencies)
-                                       (log/trace "semantic search processed a batch of" (count db-records)
+                                       (log/debug "semantic search processed a batch of" (count db-records)
                                                   "documents with frequencies" <>)))))
                         (partial merge-with +)
                         (map vector documents embeddings))
-      (log/trace "semantic search processed" (count documents) "total documents with frequencies" <>)
+      (log/info "semantic search processed" (count documents) "total documents with frequencies" <>)
       (analytics-set-index-size! connectable table-name))))
 
 (defn- batch-delete-ids!
@@ -131,12 +131,12 @@
                                    (map (fn [ids]
                                           (jdbc/execute! connectable (ids->sql ids))
                                           (u/prog1 (count ids)
-                                            (log/trace "semantic search deleted a batch of" <>
+                                            (log/debug "semantic search deleted a batch of" <>
                                                        "documents with model type" model)))))
                              +
                              ids)
                   (array-map model))
-      (log/trace "semantic search deleted" (get <> model) "total documents with model type" model)
+      (log/info "semantic search deleted" (get <> model) "total documents with model type" model)
       (analytics-set-index-size! connectable table-name))))
 
 (defn- db-records->update-set
