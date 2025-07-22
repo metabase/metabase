@@ -17,12 +17,14 @@ interface EditorProps {
   onEditorReady?: (editor: any) => void;
   onQuestionRefsChange?: (refs: Array<{ id: number; name: string }>) => void;
   content: string;
+  onQuestionSelect?: (questionId: number | null) => void;
 }
 
 export const Editor: React.FC<EditorProps> = ({
   onEditorReady,
   onQuestionRefsChange,
   content = "",
+  onQuestionSelect,
 }) => {
   const editor = useEditor({
     extensions: [
@@ -78,6 +80,49 @@ export const Editor: React.FC<EditorProps> = ({
       onEditorReady(editor);
     }
   }, [editor, onEditorReady]);
+
+  // Track selection changes to detect when a question embed is selected
+  useEffect(() => {
+    if (!editor || !onQuestionSelect) {
+      return;
+    }
+
+    const updateSelection = () => {
+      const { selection } = editor.state;
+      const node = editor.state.doc.nodeAt(selection.from);
+
+      if (node && node.type.name === "questionEmbed") {
+        onQuestionSelect(node.attrs.questionId);
+      } else {
+        // Check if selection is inside a question embed
+        let foundQuestionId: number | null = null;
+        editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
+          if (node.type.name === "questionEmbed") {
+            foundQuestionId = node.attrs.questionId;
+            return false;
+          }
+        });
+        onQuestionSelect(foundQuestionId);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        // Clear selection by moving cursor to end of document
+        editor.commands.focus("end");
+        onQuestionSelect(null);
+      }
+    };
+
+    updateSelection();
+    editor.on("selectionUpdate", updateSelection);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      editor.off("selectionUpdate", updateSelection);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [editor, onQuestionSelect]);
 
   if (!editor) {
     return null;

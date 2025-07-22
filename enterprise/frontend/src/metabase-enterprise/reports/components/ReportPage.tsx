@@ -21,6 +21,7 @@ import {
 } from "metabase-enterprise/api";
 
 import { Editor } from "./Editor";
+import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
@@ -43,6 +44,9 @@ export const ReportPage = ({
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     if (report) {
@@ -200,6 +204,7 @@ export const ReportPage = ({
               <Editor
                 onEditorReady={setEditorInstance}
                 onQuestionRefsChange={setQuestionRefs}
+                onQuestionSelect={setSelectedQuestionId}
                 content={reportContent}
               />
             )}
@@ -208,30 +213,37 @@ export const ReportPage = ({
 
         {isSidebarOpen && (
           <Box className={styles.sidebar}>
-            <Stack gap="lg" p="lg">
-              <Paper>
-                <Text size="sm" fw="bold" mb="sm">
-                  {t`Question References`}
-                </Text>
-                {questionRefs.length === 0 ? (
-                  <Text size="sm" color="text-light">
-                    {t`No questions embedded yet`}
+            {selectedQuestionId ? (
+              <EmbedQuestionSettingsSidebar
+                questionId={selectedQuestionId}
+                onClose={() => setSelectedQuestionId(null)}
+              />
+            ) : (
+              <Stack gap="lg" p="lg">
+                <Paper>
+                  <Text size="sm" fw="bold" mb="sm">
+                    {t`Question References`}
                   </Text>
-                ) : (
-                  <Stack gap="xs">
-                    {questionRefs.map((ref) => (
-                      <Box
-                        key={ref.id}
-                        className={styles.questionRef}
-                        onClick={() => handleQuestionClick(ref.id)}
-                      >
-                        <Text size="sm">{ref.name}</Text>
-                      </Box>
-                    ))}
-                  </Stack>
-                )}
-              </Paper>
-            </Stack>
+                  {questionRefs.length === 0 ? (
+                    <Text size="sm" color="text-light">
+                      {t`No questions embedded yet`}
+                    </Text>
+                  ) : (
+                    <Stack gap="xs">
+                      {questionRefs.map((ref) => (
+                        <Box
+                          key={ref.id}
+                          className={styles.questionRef}
+                          onClick={() => handleQuestionClick(ref.id)}
+                        >
+                          <Text size="sm">{ref.name}</Text>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Paper>
+              </Stack>
+            )}
           </Box>
         )}
       </Box>

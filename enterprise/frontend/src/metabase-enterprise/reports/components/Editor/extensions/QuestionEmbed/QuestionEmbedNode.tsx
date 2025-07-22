@@ -16,7 +16,6 @@ export interface QuestionEmbedAttributes {
   customName?: string;
   model: string;
 }
-
 export const QuestionEmbedNode = Node.create<{
   HTMLAttributes: Record<string, any>;
 }>({
