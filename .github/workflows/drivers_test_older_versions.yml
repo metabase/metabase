@@ -1,0 +1,394 @@
+name: Driver Tests Older Versions
+
+on:
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 0 * * *' # runs at midnight UTC every day
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers-older-versions
+  cancel-in-progress: true
+
+jobs:
+  be-tests-druid-ee:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: druid
+    services:
+      druid:
+        image: metabase/druid:0.20.2
+        ports:
+          - "8082:8082"
+        env:
+          CLUSTER_SIZE: nano-quickstart
+    name: Druid (Legacy)
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Druid driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-druid-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+
+  be-tests-mysql-mariadb:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: MariaDB 10.2
+            junit-name: be-tests-mariadb-10-2-ee
+            image: circleci/mariadb:10.2.23
+            env:
+              enable-ssl-tests: 'false'
+          - name: MySQL 8.0
+            junit-name: be-tests-mysql-8-0-ee
+            image: mysql:8.0
+            env:
+              enable-ssl-tests: 'false'
+        job:
+          - name: Driver Tests
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+
+    services:
+      mysql:
+        image: ${{ matrix.version.image }}
+        ports:
+          - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: circle_test
+    env:
+      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
+      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
+      # it in to the command below.
+      __ADDITIONAL_EXCLUDED_TAG__: >-
+        ${{
+          (
+            github.event_name == 'push' &&
+            (
+              github.ref == 'master' ||
+              startsWith(github.ref, 'release-')
+            ) &&
+            ''
+          ) ||
+          ':mb/old-migrations-test'
+        }}
+      # actual serious env vars below
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+      #
+      # SSL config: only for mysql latest tests.
+      #
+      # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
+      # they are deliberately given a different name to prevent them from affecting the regular test run against
+      # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
+      # that overrides the MB_MYSQL_TEST_* values with them
+      # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
+      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
+      MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
+      # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
+      MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
+      MB_MYSQL_SSL_TEST_USER: metabase
+      MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
+    # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
+    # "be-tests-mariadb-10-2-ee (0)"
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.version.name }}
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: ${{ matrix.version.junit-name }}
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-mongo:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: MongoDB 6.0
+            junit-name: be-tests-mongo-6-0-ee
+            image: metabase/qa-databases:mongo-sample-6
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
+    services:
+      mongodb:
+        image: ${{ matrix.version.image }}
+        ports:
+          - "27017:27017"
+        env:
+          MONGO_INITDB_ROOT_USERNAME: metabase
+          MONGO_INITDB_ROOT_PASSWORD: metasample123
+    name: ${{ matrix.version.name }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test ${{ matrix.version.name }}
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: ${{ matrix.version.junit-name }}
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+
+  be-tests-oracle:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: Oracle 18.4
+            junit-name: be-tests-oracle-18-4-ee
+            image: gvenzl/oracle-xe:18.4.0-slim
+            port: 1521
+            env:
+              user: system
+              password: 'password'
+              enable-ssl-tests: false
+    env:
+      CI: 'true'
+      DRIVERS: oracle
+      MB_ORACLE_TEST_HOST: localhost
+      MB_ORACLE_TEST_USER: '${{ matrix.version.env.user }}'
+      MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      # Only the non-SSL 18.4 tests specify password as an env var; the SSL 21.3 tests get it from the keystore I guess
+      MB_ORACLE_TEST_PASSWORD: '${{ matrix.version.env.password }}'
+      # These are ignored for the 18.4 tests which do not test SSL
+      MB_ORACLE_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PATH: './test_resources/ssl/oracle/truststore.p12'
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: 'PassworD_#1234'
+      MB_ORACLE_TEST_SSL_USE_KEYSTORE: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_TEST_SSL_KEYSTORE_PATH: './test_resources/ssl/oracle/keystore.p12'
+      MB_ORACLE_TEST_SSL_KEYSTORE_OPTIONS: local
+      MB_ORACLE_TEST_SSL_KEYSTORE_PASSWORD_VALUE: 'PassworD_#1234'
+    services:
+      oracle:
+        image: ${{ matrix.version.image }}
+        env:
+          ORACLE_PASSWORD: password
+        ports:
+          - "1521:${{ matrix.version.port }}"
+    name: ${{ matrix.version.name }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test ${{ matrix.version.name }}
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: ${{ matrix.version.junit-name }}
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+
+  be-tests-postgres:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: Postgres 12.x
+            junit-name: postgres-ee
+            docker-image: postgres:12-alpine
+            env:
+              enable-ssl-tests: 'false'
+        job:
+          - name: Driver Tests
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    env:
+      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
+      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
+      # it in to the command below.
+      __ADDITIONAL_EXCLUDED_TAG__: >-
+        ${{
+          (
+            github.event_name == 'push' &&
+            (
+              github.ref == 'master' ||
+              startsWith(github.ref, 'release-')
+            ) &&
+            ''
+          ) ||
+          ':mb/old-migrations-test'
+        }}
+      # actual serious env vars below
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+      # SSL tests are only enabled for the postgres-latest job.
+      MB_POSTGRES_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
+      MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
+    services:
+      postgres:
+        image: ${{ matrix.version.docker-image }}
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  drivers-tests-result:
+    needs:
+      - be-tests-druid-ee
+      - be-tests-mysql-mariadb
+      - be-tests-mongo
+      - be-tests-oracle
+      - be-tests-postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: drivers-tests-result
+    if: always() && !cancelled()
+    steps:
+      - name: Check job status
+        id: check-job-status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // Collect failed jobs for Slack notification
+            const failedJobs = jobs.filter(job => job.result !== 'success' && job.result !== 'skipped');
+            const failedJobsText = failedJobs.map(job => `• ${job.name}: ${job.result}`).join('\n');
+
+            // Set output for Slack notification
+            core.setOutput('failed-jobs', failedJobsText);
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+                console.log("All driver tests have passed (or have been skipped).");
+                process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log("Driver tests have failed:");
+
+            process.exit(1);
+      - name: Notify Slack on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            🚨 Driver Tests Failed in ${{ github.repository }}
+
+            Workflow: ${{ github.workflow }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Failed Jobs:
+            ${{ steps.check-job-status.outputs.failed-jobs }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
