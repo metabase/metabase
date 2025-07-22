@@ -22,9 +22,13 @@ When upgrading to a new major version, you'll want to upgrade both your Metabase
 
 You can do this locally or in your staging environment. If your testing setup involves a lot of test user accounts, getting a [development instance](../../installation-and-operation/development-instance.md) could be more cost-effective.
 
+
+
 See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md).
 
 ### Upgrade the SDK with npm or yarn
+
+You'll want to test the changes locally in dev first, as there may be breaking changes that require you to upgrade your application code.
 
 Check out a new branch in your application and install the next stable version, either via npm or yarn:
 
@@ -56,7 +60,9 @@ Update or add tests for any application code changes that you make.
 
 ### Deploy to your staging environment
 
-In your staging environment, check that the Metabase embeds in your app are still working as expected, and perform any other testing you normally do with your application with respect to your embedded analtyics.
+Before deploying to your app to your staging environment, make sure you've tested your app locally (manually, as well as running any automated tests).
+
+If all goes well with your local tests, deploy to your staging environment. Check that the Metabase embeds in your staging app are still working as expected, and perform any other testing you normally do with your application with respect to your embedded analtyics.
 
 ## 3. Deploy to production
 
