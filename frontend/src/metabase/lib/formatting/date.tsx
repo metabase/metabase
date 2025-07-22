@@ -5,7 +5,6 @@ import type { unitOfTime } from "moment-timezone";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { parseTimestamp as deprecatedParseTimestamp } from "metabase/lib/time";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
@@ -20,6 +19,12 @@ import {
 } from "./datetime-utils";
 import type { OptionsType } from "./types";
 
+function getOrdinal(number: number): string {
+  const ordinals = ["th", "st", "nd", "rd"];
+  const v = number % 100;
+  return ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0];
+}
+
 const EN_DASH = `–`;
 
 type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
@@ -29,8 +34,7 @@ const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
   "minute-of-hour": "m",
   "day-of-week": "dddd",
   "day-of-month": "D",
-  "day-of-year": "DDD",
-  "week-of-year": "Wo",
+  "week-of-year": "wo",
   "month-of-year": "MMMM",
   "quarter-of-year": "[Q]Q",
 };
@@ -806,9 +810,9 @@ export function normalizeDateTimeRangeWithUnit(
   values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
-) {
+): [Dayjs, Dayjs, number] | [Dayjs, Dayjs] {
   const [a, b] = [values[0], values[1] ?? values[0]].map((d) =>
-    deprecatedParseTimestamp(d, unit, options.local),
+    parseTimestamp(d, unit, options.local),
   );
   if (!a.isValid() || !b.isValid()) {
     return [a, b];
@@ -822,8 +826,9 @@ export function normalizeDateTimeRangeWithUnit(
   const start = a.clone().startOf(momentUnit);
   const end = b.clone().endOf(momentUnit);
   const shift = a.diff(start, "days");
-  [start, end].forEach((d) => d.add(shift, "days"));
-  return [start, end, shift];
+  const shiftedStart = start.add(shift, "days");
+  const shiftedEnd = end.add(shift, "days");
+  return [shiftedStart, shiftedEnd, shift];
 }
 
 /** This formats a time with unit as a date range */
@@ -858,6 +863,21 @@ export function formatDateTimeRangeWithUnit(
   }
 
   const formatDate = (date: Dayjs, formatStr: string) => {
+    // Handle day-of-year formats with custom logic due to dayjs DDDo format bug
+    if (formatStr.includes("DDDo")) {
+      const dayOfYear = date.dayOfYear();
+      const ordinals = ["th", "st", "nd", "rd"];
+      const v = dayOfYear % 100;
+      const suffix = ordinals[(v - 20) % 10] || ordinals[v] || ordinals[0];
+      const dayOfYearOrdinal = dayOfYear + suffix;
+      let format = formatStr.replace(/DDDo/g, dayOfYearOrdinal);
+      // month format is configurable, so we need to insert it after lookup
+      format = format.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat);
+      // Remove dayjs escaping brackets for literal text
+      format = format.replace(/\[([^\]]+)\]/g, "$1");
+      return format;
+    }
+
     // month format is configurable, so we need to insert it after lookup
     return date.format(
       formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat),
@@ -1026,7 +1046,7 @@ function formatDateTimeWithFormats(
   timeFormat: string | null,
   options: OptionsType,
 ) {
-  const m = deprecatedParseTimestamp(
+  const m = parseTimestamp(
     value,
     options.column && options.column.unit,
     options.local,
@@ -1063,10 +1083,20 @@ export function formatDateTimeWithUnit(
     }
   }
 
-  // using parseTimestamp breaks date representation
-  const d = deprecatedParseTimestamp(value, unit, options.local);
+  const d = parseTimestamp(value, unit, options.local);
   if (!d.isValid()) {
     return String(value);
+  }
+
+  // handle day of year as DDD format adds leading zeroes
+  if (unit === "day-of-year") {
+    return d.dayOfYear();
+  }
+
+  if (unit === "week-of-year") {
+    const weekNumber = d.isoWeek();
+    const ordinal = getOrdinal(weekNumber);
+    return `${weekNumber}${ordinal}`;
   }
 
   // expand "week" into a range in specific contexts

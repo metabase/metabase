@@ -27,10 +27,33 @@ export function getDaylightSavingsChangeTolerance(unit: string) {
     : 0;
 }
 
+// dayjs doesn't parse standalone day names, so we map them to weekday numbers (0=Sunday)
+const DAY_NAME_TO_NUMBER: Record<string, number> = {
+  sun: 0,
+  sunday: 0,
+  mon: 1,
+  monday: 1,
+  tue: 2,
+  tuesday: 2,
+  wed: 3,
+  wednesday: 3,
+  thu: 4,
+  thursday: 4,
+  fri: 5,
+  friday: 5,
+  sat: 6,
+  saturday: 6,
+};
+
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
-    const day = dayjs.tz(value, "ddd").startOf("day");
-    return day.isValid() ? day : dayjs.tz(value).startOf("day");
+    const dayNumber = DAY_NAME_TO_NUMBER[value.toLowerCase()];
+    if (dayNumber !== undefined) {
+      return dayjs().day(dayNumber).startOf("day");
+    }
+
+    const day = dayjs(value, "ddd").startOf("day");
+    return day.isValid() ? day : dayjs(value).startOf("day");
   },
 };
 
@@ -75,11 +98,22 @@ export function parseTimestamp(
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
-    result = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
+    result = TEXT_UNIT_FORMATS[unit as keyof typeof TEXT_UNIT_FORMATS](value);
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);
+  } else if (typeof value === "string" && /^\d{4}-W\d{1,2}$/.test(value)) {
+    // Handle ISO week format like "2019-W33"
+    const [year, week] = value.split("-W").map(Number);
+    const weekResult = dayjs.utc().year(year).isoWeek(week).startOf("isoWeek");
+    // Validate that the week number is valid (typically 1-53)
+    if (weekResult.isValid() && weekResult.isoWeek() === week) {
+      result = weekResult;
+    } else {
+      result = dayjs.utc(value); // fallback to default parsing
+    }
   } else if (typeof value === "number") {
-    result = dayjs.utc(value.toString());
+    // use strict parsing to bypass small numbers like 1
+    result = dayjs.utc(value, "", true);
   } else {
     result = dayjs.utc(value);
   }
