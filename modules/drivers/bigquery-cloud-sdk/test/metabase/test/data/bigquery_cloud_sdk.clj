@@ -1,11 +1,13 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -431,7 +433,7 @@
       (tx/tracking-access-note)])))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
-  [_ {:keys [database-name table-definitions] :as db-def} & _]
+  [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (delete-old-datasets-if-needed!)
   (let [dataset-id (test-dataset-id db-def)]
@@ -443,6 +445,8 @@
         ;; now create tables and load data.
         (doseq [tabledef table-definitions]
           (load-tabledef! dataset-id tabledef))
+        (doseq [native-ddl (:native-ddl options)]
+          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
         (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
         (catch Throwable e
           (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
