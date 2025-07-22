@@ -145,7 +145,7 @@ export const ReportPage = () => {
                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
               >
                 <Button variant="filled" onClick={handleSaveAndRun} size="md">
-                  {t`Save and Run`}
+                  {t`Save and run`}
                 </Button>
 
                 <Menu position="bottom-end">
