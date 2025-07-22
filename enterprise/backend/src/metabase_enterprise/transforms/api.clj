@@ -6,7 +6,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
