@@ -2,5 +2,16 @@
   "base": {
     "name": "split-embed-settings",
     "hash": "3441035d2daa3f0c11d6fe19d15a6b82cf3eb24c"
+  },
+  "upstream": {
+    "branch": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 61292,
+        "gqlID": "PR_kwDOAczgH86f59Xq"
+      }
+    }
   }
 }
