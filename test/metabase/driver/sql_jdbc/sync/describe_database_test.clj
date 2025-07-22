@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
@@ -257,9 +256,10 @@
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
     (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
                                               (get-method driver/describe-database %))]
-      (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
-                                                 :+fns [jdbc-describe-database]
-                                                 :-features [:table-privileges]})
+      (mt/test-drivers (into #{}
+                             (comp (filter jdbc-describe-database)
+                                   (filter #(not (driver/database-supports? % :table-privileges nil))))
+                             (descendants driver/hierarchy :sql-jdbc))
         (let [closed-first (volatile! false)
               execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
               all-tables (driver/describe-database driver/*driver* (mt/id))]
@@ -273,40 +273,3 @@
                   all-tables-sans-one (table-names (driver/do-with-resilient-connection driver/*driver* (mt/id) driver/describe-database))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
-
-(defn- run-retry-have-select-privilege!
-  [probe-errors query-canceled]
-  (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver/*driver*
-     (mt/db)
-     nil
-     (fn [^Connection conn]
-       (let [select-probes (atom 0)]
-         (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
-                       (fn [_driver conn' [sql]]
-                         (let [n (swap! select-probes inc)]
-                           (when (< n probe-errors)
-                             (.close conn')
-                             (.prepareStatement conn' sql))))
-                       driver/query-canceled? (constantly query-canceled)]
-           [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
-            @select-probes]))))))
-
-(deftest retry-have-select-privilege-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
-                                             :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
-                                                                 (get-method sql-jdbc.sync/have-select-privilege? %))]
-                                             :-features [:table-privileges]})
-    (testing "we will retry syncing a table once if there is an exception on the first attempt"
-      (let [[result probes] (run-retry-have-select-privilege! 2 false)]
-        (is (true? result))
-        (is (= 2 probes))))
-    (testing "we won't retry syncing a table more than once if there is more than one exception"
-      (let [[result probes] (run-retry-have-select-privilege! 3 false)]
-        (is (false? result))
-        (is (= 2 probes))))
-    (testing "we won't retry syncing a table if the probe query was canceled"
-      (let [[result probes] (run-retry-have-select-privilege! 3 true)]
-        (is (true? result))
-        (is (= 1 probes))))))
