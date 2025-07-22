@@ -29,7 +29,6 @@
   color: var(--mb-color-text-medium);
 
   &.disabled {
-    pointer-events: none;
     opacity: 0.4;
     border-color: inherit;
   }

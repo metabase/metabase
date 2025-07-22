@@ -44,7 +44,7 @@ export const DataModel = ({ children, location, params }: Props) => {
     (database) => database.id === databaseId,
   );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
-  const [isPreviewOpen, { close: closePreview, open: openPreview }] =
+  const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
     useDisclosure();
@@ -119,17 +119,19 @@ export const DataModel = ({ children, location, params }: Props) => {
 
       {!isSegments && (
         <>
-          {tableId == null && databaseExists === false && (
-            <Stack
-              className={S.column}
-              h="100%"
-              justify="center"
-              miw={rem(400)}
-              p="xl"
-            >
-              <LoadingAndErrorWrapper error={t`Not found.`} />
-            </Stack>
-          )}
+          {databaseId != null &&
+            tableId == null &&
+            databaseExists === false && (
+              <Stack
+                className={S.column}
+                h="100%"
+                justify="center"
+                miw={rem(400)}
+                p="xl"
+              >
+                <LoadingAndErrorWrapper error={t`Not found.`} />
+              </Stack>
+            )}
 
           {tableId && (
             <Stack
@@ -169,20 +171,20 @@ export const DataModel = ({ children, location, params }: Props) => {
               miw={COLUMN_CONFIG.field.min}
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {field && (
+                {field && table && (
                   <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                     <FieldSection
                       databaseId={databaseId}
                       field={field}
-                      parent={parentField}
-                      isPreviewOpen={isPreviewOpen}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
                       key={getRawTableFieldId(field)}
+                      parent={parentField}
+                      table={table}
                       onFieldValuesClick={openFieldValuesModal}
-                      onPreviewClick={openPreview}
+                      onPreviewClick={togglePreview}
                     />
                   </Box>
                 )}
@@ -196,6 +198,7 @@ export const DataModel = ({ children, location, params }: Props) => {
 
           {!isEmptyStateShown && field && table && isPreviewOpen && (
             <Box
+              bg="accent-gray-light"
               flex={COLUMN_CONFIG.preview.flex}
               h="100%"
               p="xl"
@@ -233,7 +236,7 @@ export const DataModel = ({ children, location, params }: Props) => {
                   }
                   message={
                     table
-                      ? t`Select a field to edit it. Then change the display name, semantic type or filtering behavior.`
+                      ? t`Select a field to edit its name, description, formatting, and more.`
                       : t`Browse your databases to find the table you’d like to edit.`
                   }
                 />

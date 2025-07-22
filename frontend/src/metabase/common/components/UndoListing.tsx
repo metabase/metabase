@@ -136,6 +136,20 @@ function UndoToast({
               {undo.actionLabel ?? t`Undo`}
             </UndoButton>
           )}
+          {undo.extraAction && (
+            <UndoButton
+              role="button"
+              onClick={() => {
+                undo.extraAction?.action();
+                if (undo.canDismiss) {
+                  onDismiss();
+                }
+              }}
+              to=""
+            >
+              {undo.extraAction.label}
+            </UndoButton>
+          )}
           {undo.canDismiss && (
             <DismissIcon
               color={
