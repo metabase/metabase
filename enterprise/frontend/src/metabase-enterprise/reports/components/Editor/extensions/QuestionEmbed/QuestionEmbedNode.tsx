@@ -7,6 +7,8 @@ import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
+import { useQuestionRunState } from "../../QuestionRunStateContext";
+
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import styles from "./QuestionEmbedNode.module.css";
 
@@ -114,6 +116,15 @@ export const QuestionEmbedComponent = ({
 
   const displayName = customName || card?.name || questionName;
   const isGuiQuestion = card?.dataset_query?.type !== "native";
+
+  // Get question run state from context
+  const { questionRunStates } = useQuestionRunState();
+  const runState = questionRunStates[questionId];
+  const isQuestionRunning = runState?.isRunning || false;
+  const hasBeenRun = runState?.hasBeenRun || false;
+  const lastRunAt = runState?.lastRunAt;
+
+
 
   useEffect(() => {
     if (isEditingTitle && titleInputRef.current) {
@@ -275,12 +286,58 @@ export const QuestionEmbedComponent = ({
           </Box>
         )}
         {results && card ? (
-          <Box className={styles.questionResults}>
+          <Box className={styles.questionResults} style={{ position: "relative" }}>
+            {/* Show loading overlay when question is running */}
+            {isQuestionRunning && (
+              <Box
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundColor: "var(--mb-color-bg-white)",
+                  opacity: 0.9,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 10,
+                  borderRadius: "var(--mantine-radius-md)",
+                }}
+              >
+                <Box style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <Loader size="sm" />
+                  <Text>{t`Running query...`}</Text>
+                </Box>
+              </Box>
+            )}
+
             <Visualization
               rawSeries={[{ card, data: results.data }]}
               isEditing={false}
               isDashboard={false}
             />
+
+            {/* Show timestamp when question has been run */}
+            {hasBeenRun && lastRunAt && (
+              <Box
+                style={{
+                  position: "absolute",
+                  bottom: "0.5rem",
+                  right: "0.5rem",
+                  backgroundColor: "var(--mb-color-bg-white)",
+                  padding: "0.25rem 0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid var(--mb-color-border)",
+                  fontSize: "0.75rem",
+                  color: "var(--mb-color-text-medium)",
+                }}
+              >
+                {t`Run at: ${lastRunAt}`}
+              </Box>
+            )}
+          </Box>
+        ) : !hasBeenRun && !isLoading && !error ? (
+          <Box className={styles.loadingContainer}>
+            <Icon name="play" size={24} />
+            <Text color="text-light">{t`Question not yet run`}</Text>
           </Box>
         ) : (
           <Box className={styles.loadingContainer}>

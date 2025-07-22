@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -12,6 +12,7 @@ import {
   Paper,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 
 import { Editor } from "./Editor";
@@ -23,9 +24,35 @@ export const ReportPage = () => {
   const [questionRefs, setQuestionRefs] = useState<
     Array<{ id: number; name: string }>
   >([]);
+
+  // Initialize question run states when new questions are added
+  useEffect(() => {
+    setQuestionRunStates(prevStates => {
+      const newStates = { ...prevStates };
+      let hasNewQuestions = false;
+
+      questionRefs.forEach((ref) => {
+        if (!newStates[ref.id]) {
+          newStates[ref.id] = {
+            isRunning: false,
+            hasBeenRun: false,
+          };
+          hasNewQuestions = true;
+        }
+      });
+
+      return hasNewQuestions ? newStates : prevStates;
+    });
+  }, [questionRefs]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [reportTitle, setReportTitle] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isRunningReport, setIsRunningReport] = useState(false);
+  const [questionRunStates, setQuestionRunStates] = useState<Record<number, {
+    isRunning: boolean;
+    hasBeenRun: boolean;
+    lastRunAt?: string;
+  }>>({});
 
   const handleSave = useCallback(() => {
     if (!editorInstance) {
@@ -44,10 +71,44 @@ export const ReportPage = () => {
     console.log("Report data to save:", reportData);
   }, [editorInstance, questionRefs, reportTitle]);
 
-  const handleSaveAndRun = useCallback(() => {
+  const handleSaveAndRun = useCallback(async () => {
     handleSave();
-    // TODO: Add run logic here
-  }, [handleSave]);
+
+    if (questionRefs.length === 0) return;
+
+    setIsRunningReport(true);
+
+    // Set all questions to running state
+    const runningStates = questionRefs.reduce((acc, ref) => {
+      acc[ref.id] = { isRunning: true, hasBeenRun: questionRunStates[ref.id]?.hasBeenRun || false };
+      return acc;
+    }, {} as Record<number, { isRunning: boolean; hasBeenRun: boolean; lastRunAt?: string }>);
+
+    setQuestionRunStates(prev => ({ ...prev, ...runningStates }));
+
+    // Simulate running each question with a delay
+    for (const ref of questionRefs) {
+      // Simulate random delay between 1-3 seconds per question
+      const delay = Math.random() * 2000 + 1000;
+
+      setTimeout(() => {
+        const now = new Date().toLocaleString();
+        setQuestionRunStates(prev => ({
+          ...prev,
+          [ref.id]: {
+            isRunning: false,
+            hasBeenRun: true,
+            lastRunAt: now
+          }
+        }));
+      }, delay);
+    }
+
+    // Set overall running state to false after the longest possible delay
+    setTimeout(() => {
+      setIsRunningReport(false);
+    }, 3500);
+  }, [handleSave, questionRefs, questionRunStates]);
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
@@ -144,9 +205,17 @@ export const ReportPage = () => {
               <Box
                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
               >
-                <Button variant="filled" onClick={handleSaveAndRun} size="md">
-                  {t`Save and run`}
+                                 <Tooltip label={t`This will generate new snapshots of the queries in this report and create a new version`} openDelay={1000}>
+                  <Button
+                    variant="filled"
+                    onClick={handleSaveAndRun}
+                    size="md"
+                    loading={isRunningReport}
+                    disabled={isRunningReport || questionRefs.length === 0}
+                  >
+                   {isRunningReport ? t`Running...` : t`Run report`}
                 </Button>
+                 </Tooltip>
 
                 <Menu position="bottom-end">
                   <Menu.Target>
@@ -179,6 +248,7 @@ export const ReportPage = () => {
             <Editor
               onEditorReady={setEditorInstance}
               onQuestionRefsChange={setQuestionRefs}
+              questionRunStates={questionRunStates}
             />
           </Box>
         </Box>
@@ -196,15 +266,56 @@ export const ReportPage = () => {
                   </Text>
                 ) : (
                   <Stack gap="xs">
-                    {questionRefs.map((ref) => (
-                      <Box
-                        key={ref.id}
-                        className={styles.questionRef}
-                        onClick={() => handleQuestionClick(ref.id)}
-                      >
-                        <Text size="sm">{ref.name}</Text>
-                      </Box>
-                    ))}
+                    {questionRefs.map((ref) => {
+                      const runState = questionRunStates[ref.id];
+                      const hasNotBeenRun = !runState?.hasBeenRun;
+                      const isRunning = runState?.isRunning;
+                      const lastRunAt = runState?.lastRunAt;
+
+
+
+                      // Determine indicator state
+                      let indicatorColor = "gray";
+                      let tooltipLabel = t`Not yet run`;
+                      let isProcessing = false;
+
+                      if (isRunning) {
+                        indicatorColor = "blue";
+                        tooltipLabel = t`Running...`;
+                        isProcessing = true;
+                      } else if (hasNotBeenRun) {
+                        indicatorColor = "gray";
+                        tooltipLabel = t`Not yet run`;
+                      } else if (lastRunAt) {
+                        indicatorColor = "green";
+                        tooltipLabel = t`Completed at ${lastRunAt}`;
+                      }
+
+                      return (
+                        <Box
+                          key={ref.id}
+                          className={styles.questionRef}
+                          onClick={() => handleQuestionClick(ref.id)}
+                          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                        >
+                          <Tooltip label={tooltipLabel}>
+                            <Box
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                borderRadius: "50%",
+                                backgroundColor:
+                                  indicatorColor === "blue" ? "var(--mb-color-brand)" :
+                                  indicatorColor === "green" ? "var(--mb-color-success)" :
+                                  "var(--mb-color-text-light)",
+                                animation: isProcessing ? "pulse 1.5s infinite" : undefined
+                              }}
+                            />
+                          </Tooltip>
+                          <Text size="sm" style={{ flex: 1 }}>{ref.name}</Text>
+                        </Box>
+                      );
+                    })}
                   </Stack>
                 )}
               </Paper>
