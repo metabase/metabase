@@ -100,7 +100,7 @@
 (api.macros/defendpoint :post "/:id/execute"
   [{:keys [id]}]
   (log/info "execute transform" id)
-  (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
+  (let [{:keys [_name source target]} (t2/select-one :model/Transform (Long/parseLong id))
         db (get-in source [:query :database])
         {driver :engine} (t2/select-one :model/Database db)]
     (transforms.execute/execute
