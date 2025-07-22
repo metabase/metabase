@@ -1,12 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { getNewEmbedScript } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-export const getIframeContent = () => {
+const getIframeContent = () => {
   return cy
     .get("iframe")
     .should("be.visible")
@@ -24,17 +26,12 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
   });
 
-  describe("dashboard", () => {
-    it("should load a <metabase-dashboard dashboard-id='${number}'>", () => {
+  describe("<metabase-dashboard>", () => {
+    it("should embed a dashboard with <metabase-dashboard dashboard-id='${number}'>", () => {
       H.visitCustomHtmlPage(`
-      ${getNewEmbedScript()}
+      ${H.getNewEmbedScript()}
 
-      <script>
-        const { defineMetabaseConfig } = window["metabase.embed"];
-        defineMetabaseConfig({
-          instanceUrl: "http://localhost:4000",
-        });
-      </script>
+      ${H.getNewEmbedConfigurationScript({})}
 
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" />
       `);
@@ -42,7 +39,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       getIframeContent().should("contain", "Orders in a dashboard");
     });
 
-    it("should allow setting initial parameters and hidden parameters", () => {
+    it("should allow setting initial parameters and hidden parameters via `initial-parameters` and `hidden-parameters` attributes", () => {
       const DASHBOARD_PARAMETERS = [
         { name: "ID", slug: "id", id: "11111111", type: "id" },
         { name: "Product ID", slug: "product_id", id: "22222222", type: "id" },
@@ -68,14 +65,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           const dashboardId = card.dashboard_id;
 
           H.visitCustomHtmlPage(`
-          ${getNewEmbedScript()}
-
-          <script>
-            const { defineMetabaseConfig } = window["metabase.embed"];
-            defineMetabaseConfig({
-              instanceUrl: "http://localhost:4000",
-            });
-          </script>
+          ${H.getNewEmbedScript()}
+          ${H.getNewEmbedConfigurationScript({})}
 
           <metabase-dashboard dashboard-id="${dashboardId}" initial-parameters='{"id": "123"}' hidden-parameters='["product_id"]' />
           `);
@@ -91,6 +82,204 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           getIframeContent().findByText("1 row").should("exist");
         });
       });
+    });
+
+    it("should respect the theme passed to the configuration function", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+
+      ${H.getNewEmbedConfigurationScript({
+        theme: { colors: { brand: "#123456" } },
+      })}
+
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" />
+      `);
+
+      getIframeContent()
+        .findByText("User ID")
+        // the color is applied via rgb, not via hex
+        .should("have.css", "color", "rgb(18, 52, 86)");
+    });
+
+    it("should show title when with-title is passed with no value", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title />
+      `);
+
+      getIframeContent()
+        .findByText("Orders in a dashboard")
+        .should("be.visible");
+    });
+
+    it("should show title when with-title is 'true'", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="true" />
+      `);
+
+      getIframeContent()
+        .findByText("Orders in a dashboard")
+        .should("be.visible");
+    });
+
+    it("should hide title when with-title is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="false" />
+      `);
+
+      getIframeContent()
+        .findByText("Orders in a dashboard")
+        .should("not.exist");
+    });
+
+    it("should show download button when with-downloads is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads />
+      `);
+
+      getIframeContent()
+        .findByLabelText("Download as PDF")
+        .should("be.visible");
+    });
+
+    it("should hide download button when with-downloads is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads="false" />
+      `);
+
+      getIframeContent().findByLabelText("Download as PDF").should("not.exist");
+    });
+
+    it("should enable drill-through when is-drill-through-enabled is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" is-drill-through-enabled />
+      `);
+
+      getIframeContent()
+        .findAllByText("37.65")
+        .first()
+        .should("be.visible")
+        .click();
+      getIframeContent()
+        .findByText(/Filter by this value/)
+        .should("be.visible");
+    });
+
+    it("should disable drill-through when is-drill-through-enabled is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" is-drill-through-enabled="false" />
+      `);
+
+      getIframeContent()
+        .findAllByText("37.65")
+        .first()
+        .should("be.visible")
+        .click();
+      getIframeContent()
+        .findByText(/Filter by this value/)
+        .should("not.exist");
+    });
+  });
+
+  describe("<metabase-question>", () => {
+    it("should embed a question with <metabase-question question-id='${number}'>", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+
+      ${H.getNewEmbedConfigurationScript()}
+
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" />
+      `);
+
+      getIframeContent().findByText("Orders").should("exist");
+      getIframeContent().findByText("User ID").should("exist");
+    });
+
+    it("should show title when with-title is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title />
+      `);
+
+      getIframeContent().findByText("Orders").should("be.visible");
+    });
+
+    it("should hide title when with-title is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title="false" />
+      `);
+
+      getIframeContent().findByText("Orders").should("not.exist");
+    });
+
+    it("should show download button when with-downloads is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads />
+      `);
+
+      getIframeContent().findByLabelText("download icon").should("be.visible");
+    });
+
+    it("should hide download button when with-downloads is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads="false" />
+      `);
+
+      getIframeContent().findByLabelText("download icon").should("not.exist");
+    });
+
+    it("should enable drill-through when is-drill-through-enabled is true", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" is-drill-through-enabled />
+      `);
+
+      getIframeContent()
+        .findAllByText("37.65")
+        .first()
+        .should("be.visible")
+        .click();
+      getIframeContent()
+        .findByText(/Filter by this value/)
+        .should("be.visible");
+    });
+
+    it("should disable drill-through when is-drill-through-enabled is false", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" is-drill-through-enabled="false" />
+      `);
+
+      getIframeContent()
+        .findAllByText("37.65")
+        .first()
+        .should("be.visible")
+        .click();
+      getIframeContent()
+        .findByText(/Filter by this value/)
+        .should("not.exist");
     });
   });
 });

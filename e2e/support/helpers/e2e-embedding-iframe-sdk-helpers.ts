@@ -191,7 +191,24 @@ export const getNewEmbedScript = () => {
     <script>
     // TODO: add the shimmed function to define settings
     </script>
-    <h1>hello</h1>
+  `;
+};
+
+export const getNewEmbedConfigurationScript = ({
+  instanceUrl = "http://localhost:4000",
+  theme,
+}: {
+  instanceUrl?: string;
+  theme?: MetabaseTheme;
+} = {}) => {
+  return `
+    <script>
+      const { defineMetabaseConfig } = window["metabase.embed"];
+      defineMetabaseConfig({
+        instanceUrl: "${instanceUrl}",
+        theme: ${JSON.stringify(theme)},
+      });
+    </script>
   `;
 };
 
