@@ -36,7 +36,7 @@
 (defmethod default-mapping :table.row/common
   [_ scope]
   (when (= :table (:type scope))
-    (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.data-editing.api/root)))
+    (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.action-v2.api/root)))
 
 (methodical/defmulti perform-action!*
   "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
@@ -331,7 +331,7 @@
 (mu/defn perform-action!
   "This is the Old School version of [[perform-action!], before we returned effects and added generic bulk application."
   [action arg-map & {:keys [scope] :as opts}]
-  (try (let [scope             (or scope {:unknown :legacy-action})
+  (try (let [scope             (or scope {:unknown :model-action})
              {:keys [outputs]} (perform-action-v2! action scope [arg-map] (dissoc opts :scope))]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support actions with multiple outputs")
          (first outputs))

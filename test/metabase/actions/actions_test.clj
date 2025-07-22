@@ -21,7 +21,7 @@
 
 (use-fixtures :each (fn [thunk] (mt/with-test-user :rasta (thunk))))
 
-(def ^:private test-scope {:unknown :legacy-action})
+(def ^:private test-scope {:unknown :model-action})
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled!
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."

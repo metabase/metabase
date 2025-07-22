@@ -14,11 +14,11 @@
   [[:map [:dashboard-id ms/PositiveInt]]
    [:map [:dashcard-id ms/PositiveInt]]
    [:map [:card-id ms/PositiveInt]]
-   ;; We represent legacy-actions, which get called against a model, distinctly. Treated the same as card-id, mostly.
+   ;; We represent model-actions, which get called against a model, distinctly. Treated the same as card-id, mostly.
    [:map [:model-id ms/PositiveInt]]
    [:map [:table-id ms/PositiveInt]]
    [:map [:webhook-id ms/PositiveInt]]
-   [:map [:unknown [:enum :legacy-action]]]])
+   [:map [:unknown [:enum :model-action]]]])
 
 ;; Relaxed, as we support it being
 (mr/def ::scope.raw
