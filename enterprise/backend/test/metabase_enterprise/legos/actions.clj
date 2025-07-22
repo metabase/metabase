@@ -37,13 +37,28 @@
 
 (defmethod execute! :transform
   [{:keys [database schema table query]}]
-  (let [{driver :engine :as database} (t2/select-one :model/Database database)]
+  (let [{driver :engine} (t2/select-one :model/Database database)]
     (transforms.execute/execute
      {:db database
       :driver driver
       :sql query
       :output-table (qualified-table-name driver schema table)
       :overwrite? true})))
+
+(mr/def ::transfer
+  [:map
+   [:lego [:= "transfer"]]
+   [:source_database :int]
+   [:destination_database :int]
+   [:source_table :string]
+   [:destination_table :string]])
+
+(defmethod execute! :transfer
+  [{:keys [source_database destination_database
+           source_table destination_table]}]
+  (let [{driver :engine :as database} (t2/select-one :model/Database source_database)]
+    ;; do the right thing 👍 🕶️
+    ))
 
 (mr/def ::plan
   [:map
