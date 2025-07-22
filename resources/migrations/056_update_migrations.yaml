@@ -56,6 +56,7 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_query_table_analysis_id
                     deleteCascade: true
+
   - changeSet:
       id: v56.2025-06-06T20:11:56
       author: nvoxland
@@ -200,6 +201,253 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v56.2025-07-21T12:00:00
+      author: edpaget
+      comment: Create report_document table
+      changes:
+        - createTable:
+            tableName: report_document
+            remarks: Reports table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Report name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the report was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the report was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-07-21T12:01:00
+      author: edpaget
+      comment: Create report_version table
+      changes:
+        - createTable:
+            tableName: report_document_version
+            remarks: Report versions table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: report_id
+                  remarks: Referenced report
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_document
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_version_report_id
+                    deleteCascade: true
+              - column:
+                  name: document
+                  remarks: content of the report version
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  remarks: the content_type of the document column
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version_identifier
+                  remarks: Version number
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  remarks: User who created this version
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_version_user_id
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the version was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the version was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v56.2025-07-21T12:01:56
+      author: edpaget
+      comment: add current_version_id column to report_document
+      changes:
+        - addColumn:
+            tableName: report_document
+            columns:
+              - column:
+                  name: current_version_id
+                  remarks: current version of a report that should be loaded by default
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-21T12:01:57
+      author: edpaget
+      comment: add parent_version_id column to report_document_version
+      changes:
+        - addColumn:
+            tableName: report_document_version
+            columns:
+              - column:
+                  name: parent_version_id
+                  remarks: the report_document_version this version was created from
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-21T12:01:58
+      author: edpaget
+      comment: add foreign key constraint for current_version_id in report_document
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_document
+            baseColumnNames: current_version_id
+            referencedTableName: report_document_version
+            referencedColumnNames: id
+            constraintName: fk_current_report_document_version_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-07-21T12:01:59
+      author: edpaget
+      comment: add foreign key constraint for parent_version_id in report_document_version
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_document_version
+            baseColumnNames: parent_version_id
+            referencedTableName: report_document_version
+            referencedColumnNames: id
+            constraintName: fk_parent_report_document_version_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-07-22T12:00:00
+      author: assistant
+      comment: Create report_run table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: report_run
+      changes:
+        - createTable:
+            tableName: report_run
+            remarks: Report runs table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: version_id
+                  remarks: Referenced report version
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_document_version
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_run_version_id
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the run was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  remarks: Status of the report run
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  remarks: User who initiated this run
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_run_user_id
+
+  - changeSet:
+      id: v56.2025-07-22T12:01:00
+      author: assistant
+      comment: add report_document_version_id column to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: report_document_version_id
+                  remarks: Referenced report document version
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-22T12:01:01
+      author: assistant
+      comment: add foreign key constraint for report_document_version_id in report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: report_document_version_id
+            referencedTableName: report_document_version
+            referencedColumnNames: id
+            constraintName: fk_report_card_document_version_id
+            onDelete: CASCADE
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -73,6 +73,9 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
+    :model/Report                            metabase-enterprise.reports.models.report
+    :model/ReportRun                         metabase-enterprise.reports.models.report-run
+    :model/ReportVersion                     metabase-enterprise.reports.models.report-version
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
