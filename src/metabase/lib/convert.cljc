@@ -194,9 +194,34 @@
      [aggregations & body]
      `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
 
+(defn- index-ref-clauses->pMBQL [clauses]
+  (letfn [(pass [state]
+            (reduce (fn [{:keys [index index->uuid converted] :as state} clause]
+                      (-> (if (get converted index)
+                            state
+                            (try
+                              (let [pMBQL (binding [*legacy-index->pMBQL-uuid* index->uuid]
+                                            (->pMBQL clause))]
+                                (-> state
+                                    (update :index->uuid assoc index (lib.options/uuid pMBQL))
+                                    (update :converted assoc index pMBQL)))
+                              (catch #?(:cljs js/Error :clj clojure.lang.ExceptionInfo) e
+                                (if (= (-> e ex-data :error) ::legacy-index->pMBQL-uuid-missing)
+                                  state
+                                  (throw e)))))
+                          (update :index inc)))
+                    (assoc state :index 0)
+                    clauses))]
+    (loop [state {:index->uuid {}, :converted (vec (repeat (count clauses) nil))}]
+      (let [{:keys [index->uuid converted] :as state'} (pass state)]
+        (cond
+          (= (count index->uuid) (count clauses)) converted
+          (= converted (:converted state))        (throw (ex-info "Couldn't index clauses" {:clauses clauses}))
+          :else                                   (recur state'))))))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (let [aggregations (:aggregation stage)
+  (let [stage        (m/update-existing stage :aggregation index-ref-clauses->pMBQL)
         expressions  (->> stage
                           :expressions
                           (mapv (fn [[k v]]
@@ -204,7 +229,7 @@
                                       ->pMBQL
                                       (lib.util/top-level-expression-clause k))))
                           not-empty)]
-    (metabase.lib.convert/with-aggregation-list aggregations
+    (metabase.lib.convert/with-aggregation-list (:aggregation stage)
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
                       (m/assoc-some :expressions expressions))
@@ -214,7 +239,7 @@
                        stage
                        (update stage k ->pMBQL)))
                    stage
-                   (disj stage-keys :expressions))]
+                   (disj stage-keys :expressions :aggregation))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
