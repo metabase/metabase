@@ -80,7 +80,7 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
   return markdown.trim();
 }
 
-function parseMarkdownToHTML(markdown: string): string {
+export function parseMarkdownToHTML(markdown: string): string {
   let html = markdown
     // Match both {{card:id}} and {{card:id:custom name}}
     .replace(/{{card:(\d+)(?::([^}]+))?}}/g, (match, id, customName) => {

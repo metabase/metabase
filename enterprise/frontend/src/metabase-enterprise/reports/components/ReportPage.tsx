@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Box, Button, Flex, Icon, Loader, Menu } from "metabase/ui";
 import {
@@ -44,6 +46,7 @@ export const ReportPage = ({
 
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
+  const [sendToast] = useToast();
 
   // Centralized data loading for question embeds
   const questionIds = useMemo(
@@ -81,11 +84,35 @@ export const ReportPage = ({
       name: reportTitle,
       document: markdown as string,
     };
+    (async () => {
+      const result = await (report?.id
+        ? updateReport({ ...newReportData, id: report.id }).unwrap()
+        : createReport(newReportData).then((response) => {
+            // replace state with the report id
+            if (response.data) {
+              dispatch(replace(`/report/${response.data.id}`));
+            }
+          }));
 
-    report?.id
-      ? updateReport({ ...newReportData, id: report.id }).unwrap()
-      : createReport(newReportData).unwrap();
-  }, [editorInstance, createReport, updateReport, report, reportTitle]);
+      if (!result?.error) {
+        sendToast({
+          message: report?.id
+            ? t`Report v${result?.version} saved`
+            : t`Report created`,
+        });
+      } else {
+        sendToast({ message: t`Error saving report`, icon: "warning" });
+      }
+    })();
+  }, [
+    editorInstance,
+    createReport,
+    updateReport,
+    report,
+    reportTitle,
+    sendToast,
+    dispatch,
+  ]);
 
   const handleToggleSidebar = useCallback(() => {
     if (isSidebarOpen && selectedQuestionId) {
@@ -180,12 +207,19 @@ export const ReportPage = ({
           </Flex>
           <Box className={styles.documentContainer}>
             <Box className={styles.header} mt="xl" pt="xl">
-              <input
-                value={reportTitle}
-                onChange={(event) => setReportTitle(event.currentTarget.value)}
-                placeholder={t`New report`}
-                className={styles.titleInput}
-              />
+              <Box>
+                <input
+                  value={reportTitle}
+                  onChange={(event) =>
+                    setReportTitle(event.currentTarget.value)
+                  }
+                  placeholder={t`New report`}
+                  className={styles.titleInput}
+                />
+                <Text c="text-light" fw="bold">
+                  {report?.version ? `v${report.version}` : null}
+                </Text>
+              </Box>
               <Box
                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
               >

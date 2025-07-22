@@ -40,6 +40,13 @@ export const Editor: React.FC<EditorProps> = ({
     autofocus: true,
   });
 
+  // Update editor content when content prop changes
+  useEffect(() => {
+    if (editor && content) {
+      editor.commands.setMarkdown(content);
+    }
+  }, [editor, content]);
+
   // Track question references
   useEffect(() => {
     if (!editor || !onQuestionRefsChange) {
@@ -47,18 +54,9 @@ export const Editor: React.FC<EditorProps> = ({
     }
 
     const updateQuestionRefs = () => {
-      const refs: Array<{ id: number; name: string }> = [];
-      editor.state.doc.descendants((node) => {
-        if (node.type.name === "questionEmbed") {
-          refs.push({
-            id: node.attrs.questionId,
-            name: node.attrs.customName || node.attrs.questionName,
-          });
-        }
-      });
+      const refs = getRefs(editor);
       onQuestionRefsChange(refs);
     };
-
     updateQuestionRefs();
     editor.on("update", updateQuestionRefs);
 
@@ -148,4 +146,17 @@ export const Editor: React.FC<EditorProps> = ({
       </Box>
     </Box>
   );
+};
+
+const getRefs = (editor: any) => {
+  const refs: Array<{ id: number; name: string }> = [];
+  editor.state.doc.descendants((node: any) => {
+    if (node.type.name === "questionEmbed") {
+      refs.push({
+        id: node.attrs.questionId,
+        name: node.attrs.customName || node.attrs.questionName,
+      });
+    }
+  });
+  return refs;
 };

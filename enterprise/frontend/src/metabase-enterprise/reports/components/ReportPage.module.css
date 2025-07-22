@@ -7,7 +7,7 @@
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 1rem 0;
   background-color: var(--mb-color-bg-white);
