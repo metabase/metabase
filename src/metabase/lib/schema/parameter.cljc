@@ -233,8 +233,21 @@
    [:dimension [:ref ::dimension]]
    [:variable  [:ref ::variable]]])
 
+(defn- normalize-parameter
+  [param]
+  (when (map? param)
+    (let [param (lib.schema.common/normalize-map param)]
+      (case (keyword (:type param))
+        :number/between
+        (let [[l u] (:value param)]
+          (cond-> param
+            (nil? u) (assoc :type :number/>=, :value [l])
+            (nil? l) (assoc :type :number/<=, :value [u])))
+        param))))
+
 (mr/def ::parameter
   [:map
+   {:decode/normalize normalize-parameter}
    [:type [:ref ::type]]
    ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
    ;; At some point we need to go fix those tests and then make these keys required

@@ -5,8 +5,8 @@
    [metabase.query-processor.parameters :as params]
    [metabase.query-processor.parameters.parse :as params.parse]))
 
-(defn- param [field-name] (params/param field-name))
-(defn- optional [& args] (params/optional args))
+(defn- param [field-name] (params/param {:k field-name}))
+(defn- optional [& args] (params/optional {:args (vec args)}))
 
 (defn- normalize-tokens
   [tokens]
