@@ -98,8 +98,15 @@ export const ReportPage = ({
   }, [editorInstance, createReport, updateReport, report, reportTitle]);
 
   const handleToggleSidebar = useCallback(() => {
+    if (isSidebarOpen && selectedQuestionId) {
+      // When closing sidebar with a selected question, clear editor selection first
+      if (editorInstance) {
+        editorInstance.commands.focus("end");
+      }
+      dispatch(selectQuestion(null));
+    }
     dispatch(toggleSidebar());
-  }, [dispatch]);
+  }, [dispatch, isSidebarOpen, selectedQuestionId, editorInstance]);
 
   const handleQuestionClick = useCallback(
     (questionId: number) => {

@@ -4,6 +4,7 @@ import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import type {
   Card,
+  CardDisplayType,
   CardId,
   Dataset,
   VisualizationSettings,
@@ -76,7 +77,7 @@ const reportsSlice = createSlice({
   reducers: {
     selectQuestion: (state, action: PayloadAction<CardId | null>) => {
       state.selectedQuestionId = action.payload;
-      // Auto-open sidebar when a question is selected
+      // Only auto-open sidebar when selecting a question, not when deselecting
       if (action.payload !== null) {
         state.isSidebarOpen = true;
       }
@@ -103,6 +104,21 @@ const reportsSlice = createSlice({
             ...state.cards[cardId].visualization_settings,
             ...settings,
           },
+        };
+      }
+    },
+    updateVisualizationType: (
+      state,
+      action: PayloadAction<{
+        cardId: CardId;
+        display: CardDisplayType;
+      }>,
+    ) => {
+      const { cardId, display } = action.payload;
+      if (state.cards[cardId]) {
+        state.cards[cardId] = {
+          ...state.cards[cardId],
+          display,
         };
       }
     },
@@ -176,6 +192,7 @@ export const {
   toggleSidebar,
   setSidebarOpen,
   updateVizSettings,
+  updateVisualizationType,
   resetReports,
 } = reportsSlice.actions;
 

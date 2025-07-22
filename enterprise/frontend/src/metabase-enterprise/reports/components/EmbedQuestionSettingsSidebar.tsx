@@ -2,13 +2,28 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
+import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Loader, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Icon,
+  Loader,
+  Menu,
+  Space,
+  Stack,
+  Text,
+} from "metabase/ui";
+import visualizations from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-import { updateVizSettings } from "../reports.slice";
+import { updateVisualizationType, updateVizSettings } from "../reports.slice";
 import {
   getIsLoadingCard,
   getIsLoadingDataset,
@@ -40,9 +55,60 @@ export const EmbedQuestionSettingsSidebar = ({
     [card, metadata],
   );
 
+  const dataset =
+    useSelector((state) => getReportRawSeries(state, questionId))?.[0]?.data ||
+    null;
+
+  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
+    return getSensibleVisualizations({ result: dataset });
+  }, [dataset]);
+
+  const getVisualizationItems = (visualizationType: CardDisplayType) => {
+    const visualization = visualizations.get(visualizationType);
+    if (!visualization) {
+      return null;
+    }
+
+    return {
+      value: visualizationType,
+      label: visualization.getUiName(),
+      iconName: visualization.iconName,
+    };
+  };
+
+  const sensibleItems = useMemo(
+    () => sensibleVisualizations.map(getVisualizationItems).filter(isNotNull),
+    [sensibleVisualizations],
+  );
+
+  const nonsensibleItems = useMemo(
+    () =>
+      nonSensibleVisualizations.map(getVisualizationItems).filter(isNotNull),
+    [nonSensibleVisualizations],
+  );
+
+  const selectedElem = useMemo(
+    () =>
+      getVisualizationItems(card?.display ?? "table") ??
+      sensibleItems[0] ??
+      nonsensibleItems[0],
+    [card?.display, sensibleItems, nonsensibleItems],
+  );
+
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (card) {
       dispatch(updateVizSettings({ cardId: card.id, settings }));
+    }
+  };
+
+  const handleVisualizationTypeChange = (display: CardDisplayType) => {
+    if (card) {
+      dispatch(
+        updateVisualizationType({
+          cardId: card.id,
+          display,
+        }),
+      );
     }
   };
 
@@ -91,6 +157,58 @@ export const EmbedQuestionSettingsSidebar = ({
         backgroundColor: "var(--mb-color-bg-white)",
       }}
     >
+      <Stack gap="md" p="md">
+        <Box>
+          <Text size="sm" fw="bold" mb="xs">
+            {t`Visualize as`}
+          </Text>
+          <Menu position="bottom-start">
+            <Menu.Target>
+              <Button
+                variant="default"
+                disabled={!selectedElem}
+                rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
+                leftSection={
+                  selectedElem?.iconName ? (
+                    <Icon name={selectedElem.iconName} />
+                  ) : null
+                }
+                justify="space-between"
+                fullWidth
+              >
+                {selectedElem?.label}
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {sensibleItems.map(({ iconName, label, value }, index) => (
+                <Menu.Item
+                  key={`${value}/${index}`}
+                  onClick={() => handleVisualizationTypeChange(value)}
+                  leftSection={iconName ? <Icon name={iconName} /> : null}
+                >
+                  {label}
+                </Menu.Item>
+              ))}
+
+              {nonsensibleItems.length > 0 && (
+                <>
+                  <Menu.Label>{t`Other charts`}</Menu.Label>
+                  {nonsensibleItems.map(({ iconName, label, value }, index) => (
+                    <Menu.Item
+                      key={`${value}/${index}`}
+                      onClick={() => handleVisualizationTypeChange(value)}
+                      leftSection={iconName ? <Icon name={iconName} /> : null}
+                    >
+                      {label}
+                    </Menu.Item>
+                  ))}
+                </>
+              )}
+            </Menu.Dropdown>
+          </Menu>
+        </Box>
+      </Stack>
+      <Space h="md" />
       <QuestionChartSettings
         question={question as any}
         series={series}
