@@ -232,6 +232,12 @@
         stages (if-let [source-metadata (and (>= (count stages) 2)
                                              (:source-metadata join))]
                  (assoc-in stages [(- (count stages) 2) :lib/stage-metadata] (->stage-metadata source-metadata))
+                 stages)
+        ;; sometimes we generate an extra empty last stage (if the join has `:source-query` we generate an unneeded
+        ;; last stage for it) -- remove it
+        stages (if (and (> (count stages) 1)
+                        (= (last stages) {:lib/type :mbql.stage/mbql}))
+                 (butlast stages)
                  stages)]
     (-> join
         (dissoc :source-table :source-query)

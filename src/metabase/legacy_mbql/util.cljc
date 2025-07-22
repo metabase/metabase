@@ -103,7 +103,8 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-(defn legacy-last-stage-number
+;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
+(defn ^:deprecated legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
   [inner-query]
   (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
@@ -112,7 +113,8 @@
       n
       (recur source-query (inc n)))))
 
-(defn stage-path
+;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
+(defn ^:deprecated stage-path
   "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
   specified by `stage-number`.
 
@@ -125,7 +127,8 @@
                      (- (legacy-last-stage-number inner-query) stage-number))]
       (into [] (repeat elements :source-query)))))
 
-(mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
+;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
+(mu/defn ^:deprecated add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
   needed.
 
@@ -138,7 +141,7 @@
     (let [path (stage-path inner-query stage-number)]
       (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
-(mu/defn add-filter-clause :- mbql.s/Query
+(mu/defn ^:deprecated add-filter-clause :- mbql.s/Query
   "Add an additional filter clause to an `outer-query` at stage `stage-number`
   or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
 

@@ -14,6 +14,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -335,7 +336,6 @@
 (lib.common/defop round [x])
 (lib.common/defop power [n expo])
 (lib.common/defop interval [n unit])
-(lib.common/defop relative-datetime [t unit])
 (lib.common/defop time [t unit])
 (lib.common/defop absolute-datetime [t unit])
 (lib.common/defop now [])
@@ -384,6 +384,15 @@
    (into [:datetime {:lib/uuid (str (random-uuid))
                      :mode mode}]
          (map lib.common/->op-arg) [value])))
+
+(mu/defn relative-datetime :- :mbql.clause/relative-datetime
+  "Create a standalone `:relative-datetime` clause."
+  ([t :- [:= :current]]
+   [:relative-datetime {:lib/uuid (str (random-uuid))} t])
+
+  ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
+    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+   [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."

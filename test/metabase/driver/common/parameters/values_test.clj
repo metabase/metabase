@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -767,20 +767,7 @@
 (deftest ^:parallel handle-dashboard-parameters-without-values-test
   (testing "dash params for a template tag may have no :value or :default (#38012)"
     (mt/dataset test-data
-      (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                        meta/metadata-provider
-                                        [(lib.tu.macros/mbql-query orders)
-                                         (lib/with-template-tags
-                                           (lib/native-query meta/metadata-provider
-                                                             "SELECT * FROM Orders WHERE {{createdAt}}")
-                                           {"createdAt"
-                                            {:type         :dimension
-                                             :dimension    #_[:field (meta/id :orders :created-at)]
-                                             (lib/ref (meta/field-metadata :orders :created-at))
-                                             :name         "createdAt"
-                                             :id           "4636d745-1467-4a70-ba20-2a08069d77ff"
-                                             :display-name "CreatedAt"
-                                             :widget-type  :date/all-options}})])
+      (qp.store/with-metadata-provider meta/metadata-provider
         (let [template-tags {"createdAt" {:type         :dimension
                                           :dimension    [:field (meta/id :orders :created-at) {}]
                                           :name         "createdAt"

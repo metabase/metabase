@@ -579,6 +579,11 @@
     [:type     [:= :metric]]
     [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
 
+(mr/def ::native-query-snippet
+  [:map
+   [:lib/type [:= :metadata/native-query-snippet]]
+   [:id       ::lib.schema.id/native-query-snippet]])
+
 (mr/def ::table
   "Schema for metadata about a specific [[metabase.warehouse-schema.models.table]]. More or less the same but with
   kebab-case keys."

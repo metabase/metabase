@@ -385,6 +385,7 @@
   with-temporal-bucket]
  [lib.util
   fresh-uuids
+  native-stage?
   normalized-query-type
   previous-stage
   previous-stage-number

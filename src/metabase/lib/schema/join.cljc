@@ -96,7 +96,13 @@
     [:strategy {:optional true} ::strategy]]
    [:fn
     {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
-    (complement (some-fn :lib/stage-metadata :source-metadata))]])
+    (complement (some-fn :lib/stage-metadata :source-metadata))]
+   [:fn
+    {:error/message "join should not have top-level :filters; these should belong to one of the join :stages"}
+    (complement (some-fn :filters :filter))]
+   [:fn
+    {:error/message "join should not have top-level :parameters; these should belong to one of the join :stages"}
+    (complement :parameters)]])
 
 (mr/def ::joins
   [:and

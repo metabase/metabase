@@ -276,7 +276,9 @@
                                        (if (sequential? fields)
                                          (mapv ->pMBQL fields)
                                          (keyword fields))))
-      (not (:alias join)) (assoc :alias legacy-default-join-alias))))
+      (not (:alias join)) (assoc :alias legacy-default-join-alias)
+      (:parameters join)  (-> (update-in [:stages 0 :parameters] #(into (vec %) (:parameters join)))
+                              (dissoc :parameters)))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
@@ -692,7 +694,15 @@
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
-      (update-vals ->legacy-MBQL)))
+      (update-vals ->legacy-MBQL)
+      ;; a native stage becomes
+      ;;
+      ;;    {:native "SELECT ..."}
+      ;;
+      ;; IF it is used as a source query. If it's a top-level inner query it's
+      ;;
+      ;;    {:database 1, :type :native, :native {:query "SELECT ..."}}
+      (set/rename-keys {:query :native})))
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (try
