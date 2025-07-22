@@ -607,10 +607,7 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [remapped-query          (->> query
-                                     lib/->legacy-MBQL
-                                     qp.add-dimension-projections/add-remapped-columns
-                                     (lib.query/query (qp.store/metadata-provider)))
+  (let [remapped-query          (qp.add-dimension-projections/add-remapped-columns query)
         remap                   (remapped-indexes (lib/breakouts remapped-query))
         canonical-query         (add-pivot-group-breakout remapped-query 0) ; a query that returns ALL the result columns.
         canonical-cols          (lib/returned-columns canonical-query)
