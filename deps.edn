@@ -78,7 +78,7 @@
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
-  hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
+  hiccup/hiccup                             {:mvn/version "2.0.0"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.14.2"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
   io.github.camsaul/toucan2                 {:mvn/version "1.0.565"}
