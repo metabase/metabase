@@ -214,7 +214,7 @@ export function Heading({
       {inlineParameters.length > 0 && (
         <CollapsibleDashboardParameterList
           isCollapsed={shouldCollapseList}
-          parameters={inlineParameters as any}
+          parameters={inlineParameters}
           ref={parameterListRef}
         />
       )}
