@@ -40,7 +40,7 @@
       (into {} (filter (comp available-languages val) default-mapping)))
     {}))
 
-(defn- tsv-language []
+(defn tsv-language []
   (if-let [custom-language (search.settings/search-language)]
     custom-language
     (if-let [lang ((keyword (i18n/site-locale-string)) available-tsv-languages)]
@@ -119,7 +119,7 @@
   [expression]
   (str/replace expression #"(\S+)(?=\s*$)" "$1:*"))
 
-(defn- to-tsquery-expr
+(defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
   [input]
   (str
