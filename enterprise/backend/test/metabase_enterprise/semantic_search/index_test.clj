@@ -40,6 +40,18 @@
   [row]
   (update row :embedding #'semantic.index/decode-pgobject))
 
+#_:clj-kondo/ignore
+(defn- full-index
+  "Query the full index table and return all documents with decoded embeddings.
+  Not used in tests, but useful for debugging."
+  []
+  (->> (jdbc/execute! @semantic.db/data-source
+                      (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
+                          (sql.helpers/from semantic.index/*index-table-name*)
+                          semantic.index/sql-format-quoted))
+       (map #'semantic.index/unqualify-keys)
+       (map decode-embedding)))
+
 (defn- query-index
   [{:keys [model model_id]}]
   (->> (jdbc/execute! @semantic.db/data-source
@@ -90,24 +102,6 @@
   (check-index-has-mock-card)
   (check-index-has-mock-dashboard))
 
-(deftest populate-index!-test
-  (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-mocked-embeddings!
-      (semantic.tu/with-temp-index-table!
-        (check-index-has-no-mock-docs)
-        (testing "populate-index! returns nil if you pass it an empty collection"
-          (is (nil? (semantic.index/populate-index! [])))
-          (check-index-has-no-mock-docs))
-        (testing "populate-index! works on a fresh index"
-          (is (= {"card" 1, "dashboard" 1}
-                 (semantic.index/populate-index! semantic.tu/mock-documents)))
-          (check-index-has-mock-docs))
-        (testing "populate-index! throws if you try to insert duplicate documents"
-          (is (thrown-with-msg?
-               org.postgresql.util.PSQLException
-               #"ERROR: duplicate key value violates unique constraint.*"
-               (semantic.index/populate-index! semantic.tu/mock-documents))))))))
-
 (deftest upsert-index!-test
   (mt/with-premium-features #{:semantic-search}
     (semantic.tu/with-mocked-embeddings!
@@ -130,9 +124,9 @@
     (semantic.tu/with-mocked-embeddings!
       (semantic.tu/with-temp-index-table!
         (check-index-has-no-mock-docs)
-        (testing "populate-index! before delete!"
+        (testing "upsert-index! before delete!"
           (is (= {"card" 1, "dashboard" 1}
-                 (semantic.index/populate-index! semantic.tu/mock-documents)))
+                 (semantic.index/upsert-index! semantic.tu/mock-documents)))
           (check-index-has-mock-docs))
         (testing "delete-from-index! returns nil if you pass it an empty collection"
           (is (nil? (semantic.index/delete-from-index! "card" [])))
@@ -164,10 +158,6 @@
                 mock-docs (into semantic.tu/mock-documents extra-docs)]
             (testing "ensure populate! upsert! and delete! work when batch size is exceeded"
               (check-index-has-no-mock-docs)
-              (testing "populate-index! with batch processing"
-                (is (= {"card" 6, "dashboard" 6}
-                       (semantic.index/populate-index! mock-docs)))
-                (check-index-has-mock-docs))
               (testing "upsert-index! with batch processing"
                 (is (= {"card" 6, "dashboard" 6}
                        (semantic.index/upsert-index! mock-docs)))
@@ -177,8 +167,8 @@
                   (is (= {"card" 11}
                          (semantic.index/delete-from-index! "card" (into ["123"] extra-ids))))
                   (check-index-has-no-mock-card)
-                  (check-index-has-mock-dashboard))
-                (testing "delete the dashboard"
-                  (is (= {"dashboard" 11}
-                         (semantic.index/delete-from-index! "dashboard" (into ["456"] extra-ids))))
-                  (check-index-has-no-mock-docs))))))))))
+                  (check-index-has-mock-dashboard)))
+              (testing "delete the dashboard"
+                (is (= {"dashboard" 11}
+                       (semantic.index/delete-from-index! "dashboard" (into ["456"] extra-ids))))
+                (check-index-has-no-mock-docs)))))))))

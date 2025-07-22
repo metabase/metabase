@@ -163,28 +163,22 @@
           endpoint "https://api.openai.com/v1/embeddings"]
       (when-not api-key
         (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
-      (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)
-            batch-results (mapv (fn [batch-texts]
-                                  (try
-                                    (log/info "Generating" (count batch-texts) "OpenAI embeddings in batch")
-                                    (-> (http/post endpoint
-                                                   {:headers {"Content-Type" "application/json"
-                                                              "Authorization" (str "Bearer " api-key)}
-                                                    :body    (json/encode {:model model
-                                                                           :input batch-texts})})
-                                        :body
-                                        (json/decode true)
-                                        :data
-                                        (->> (map :embedding)))
-                                    (catch Exception e
-                                      (log/error e "Failed to generate OpenAI embeddings for batch of" (count batch-texts) "texts"
-                                                 "with token count:" (count-tokens-batch batch-texts))
-                                      (throw e))))
-                                batches)]
-        (log/info "Processed" (count texts) "texts in" (count batches) "batches"
-                  "with token counts:" (mapv count-tokens-batch batches))
-        ;; Flatten the batch results to get a single vector of embeddings
-        (vec (mapcat identity batch-results)))))
+      (try
+        (log/debug "Generating" (count texts) "OpenAI embeddings in batch")
+        (-> (http/post endpoint
+                       {:headers {"Content-Type" "application/json"
+                                  "Authorization" (str "Bearer " api-key)}
+                        :body    (json/encode {:model model
+                                               :input texts})})
+            :body
+            (json/decode true)
+            :data
+            (->> (map :embedding)
+                 vec))
+        (catch Exception e
+          (log/error e "Failed to generate OpenAI embeddings for batch of" (count texts) "texts"
+                     "with token count:" (count-tokens-batch texts))
+          (throw e)))))
 
   (-pull-model [_]
     (log/info "OpenAI provider does not require pulling a model"))
@@ -208,7 +202,7 @@
                        :available-providers (keys providers)})))))
 
 (defn get-embedding
-  "Generate an embedding using the configured provider."
+  "Generate a single embedding using the configured provider. Prefer using `process-embeddings-streaming` for bulk index population."
   [text]
   (-get-embedding (get-provider) text))
 
@@ -226,13 +220,23 @@
   ([model]
    (-model-dimensions (get-provider) model)))
 
-(defn get-embeddings-batch
-  "Generate embeddings for multiple texts using the configured provider.
-   Each provider handles its own batching logic internally if needed."
-  [texts]
+;; TODO: dedupe embedding fetching for identical values
+(defn process-embeddings-streaming
+  "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
+  [texts embeddings] for each batch."
+  [texts process-fn]
   (when (seq texts)
     (let [provider (get-provider)]
-      (-get-embeddings-batch provider texts))))
+      (if (instance? OpenAIProvider provider)
+        ;; For OpenAI, use token-aware batching and stream processing
+        (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)]
+          (run! (fn [batch-texts]
+                  (let [embeddings (-get-embeddings-batch provider batch-texts)]
+                    (process-fn batch-texts embeddings)))
+                batches))
+        ;; For other providers, process all at once (existing behavior)
+        (let [embeddings (-get-embeddings-batch provider texts)]
+          (process-fn texts embeddings))))))
 
 (comment
   ;; Configuration:

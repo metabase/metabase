@@ -79,12 +79,19 @@
   [results]
   (filter #(contains? mock-embeddings (:name %)) results))
 
+(defn mock-process-embeddings-streaming
+  "Mock implementation of process-embeddings-streaming that uses mock embeddings."
+  [texts process-fn]
+  (when (seq texts)
+    (let [embeddings (get-mock-embeddings-batch texts)]
+      (process-fn texts embeddings))))
+
 (defmacro with-mocked-embeddings! [& body]
   ;; TODO: it's warning about not using with-redefs outside of tests but we *are* using it in tests
   #_:clj-kondo/ignore
   `(with-redefs [semantic.embedding/model-dimensions (constantly 4)
                  semantic.embedding/pull-model (constantly nil)
-                 semantic.embedding/get-embeddings-batch get-mock-embeddings-batch
+                 semantic.embedding/process-embeddings-streaming mock-process-embeddings-streaming
                  semantic.embedding/get-embedding get-mock-embedding]
      ~@body))
 
