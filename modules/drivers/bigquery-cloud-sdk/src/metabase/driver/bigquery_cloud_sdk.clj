@@ -302,7 +302,7 @@
      (keep nested-column-info)
      (completing
       (fn [accum col]
-        (update accum (:nfc-path col) (fnil conj []) col)))
+        (update-in accum [(:table-name col) (:nfc-path col)] (fnil conj []) col)))
      {}
      results)))
 
@@ -362,7 +362,7 @@
      (partition-by :table_name)
      (mapcat (fn [table-rows]
                (let [table-name (:table_name (first table-rows))]
-                 (->> (describe-dataset-rows nested-column-lookup dataset-id table-name table-rows)
+                 (->> (describe-dataset-rows (get nested-column-lookup table-name) dataset-id table-name table-rows)
                       (sort-by (juxt :table-name :database-position :name))))))
      named-rows)))
 

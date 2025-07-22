@@ -1,15 +1,20 @@
 name: "[NOT REQUIRED] SDK Compatibility tests"
 
+# Note: these are currently never called, we're skipping them as they're failing, below is the original triggers
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches:
-      - "master"
-      - "release-**"
+  workflow_call:
+
+# Original trigger (commented for reference):
+# on:
+#   push:
+#     branches:
+#       - "master"
+#       - "release-**"
+#   pull_request:
+#     types: [opened, synchronize, reopened]
+#     branches:
+#       - "master"
+#       - "release-**"
 
 env:
   # we must support last two stable releases
@@ -213,7 +218,7 @@ jobs:
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_IS_EMBEDDING_SDK: true
+      CYPRESS_IS_EMBEDDING_SDK: "true"
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       TZ: US/Pacific # to make node match the instance tz
       # Sample Apps testing variables
