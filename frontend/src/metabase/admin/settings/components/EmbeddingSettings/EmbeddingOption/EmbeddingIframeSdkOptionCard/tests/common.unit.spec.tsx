@@ -32,7 +32,9 @@ const setup = ({
   // Mock PLUGIN_EMBEDDING for non-EE
   jest.spyOn(PLUGIN_EMBEDDING, "isEnabled").mockReturnValue(false);
 
-  return { state };
+  renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
+    storeInitialState: state,
+  });
 };
 
 describe("EmbeddingIframeSdkOptionCard (OSS)", () => {
@@ -40,11 +42,8 @@ describe("EmbeddingIframeSdkOptionCard (OSS)", () => {
     jest.restoreAllMocks();
   });
 
-  it("displays the embed card", () => {
-    const { state } = setup();
-    renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-      storeInitialState: state,
-    });
+  it("shows the embed card", () => {
+    setup();
 
     expect(
       screen.getByText("Embedded analytics SDK for iframe"),
@@ -54,10 +53,7 @@ describe("EmbeddingIframeSdkOptionCard (OSS)", () => {
   });
 
   it("shows 'Try it out' button for non-EE instances", () => {
-    const { state } = setup();
-    renderWithProviders(<EmbeddingIframeSdkOptionCard />, {
-      storeInitialState: state,
-    });
+    setup();
 
     expect(
       screen.getByRole("button", { name: "Try it out" }),
