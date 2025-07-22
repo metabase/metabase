@@ -470,6 +470,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
+  metabase.util/for-map                                                                 clojure.core/for
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn
   metabase.util.malli.defn/defn-                                                        schema.core/defn

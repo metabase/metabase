@@ -718,7 +718,7 @@
                   :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
      :update-row (apply dissoc row pk-names)}))
 
-(mu/defn table-row-update!
+(mu/defn- table-row-update!
   [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
