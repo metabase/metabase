@@ -75,40 +75,55 @@ export type DrillThroughQuestionProps = Omit<
  * @expand
  * @category InteractiveQuestion
  */
-export type SdkQuestionProps = BaseSdkQuestionProps &
+export type SdkQuestionProps = SdkQuestionProviderProps &
   SdkQuestionDefaultViewProps;
 
 export const _SdkQuestion = ({
   questionId,
-  withResetButton = true,
-  title,
-  plugins,
+  options,
+  deserializedCard,
+  componentPlugins: plugins,
+  onNavigateBack,
+  children,
+  onBeforeSave,
+  onSave,
+  onRun,
+  isSaveEnabled = true,
+  entityTypes,
+  targetCollection,
+  initialSqlParameters,
+  withDownloads,
+  targetDashboardId,
+  backToDashboard,
+  getClickActionMode,
+  navigateToNewCard,
+
   height,
   width,
   className,
   style,
-  children = null,
-  onBeforeSave,
-  onSave,
-  entityTypes,
-  isSaveEnabled,
-  targetCollection,
-  withChartTypeSelector = true,
-  withDownloads = false,
-  initialSqlParameters,
-  onRun,
+  title,
+  withResetButton,
+  withChartTypeSelector,
 }: SdkQuestionProps): JSX.Element | null => (
   <SdkQuestionProvider
     questionId={questionId}
+    options={options}
+    deserializedCard={deserializedCard}
     componentPlugins={plugins}
+    onNavigateBack={onNavigateBack}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
-    entityTypes={entityTypes}
+    onRun={onRun}
     isSaveEnabled={isSaveEnabled}
+    entityTypes={entityTypes}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
     withDownloads={withDownloads}
-    onRun={onRun}
+    targetDashboardId={targetDashboardId}
+    backToDashboard={backToDashboard}
+    getClickActionMode={getClickActionMode}
+    navigateToNewCard={navigateToNewCard}
   >
     {children ?? (
       <SdkQuestionDefaultView

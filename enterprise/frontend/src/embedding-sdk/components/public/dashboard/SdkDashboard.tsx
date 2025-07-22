@@ -17,8 +17,7 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
-import { SdkQuestionProvider } from "embedding-sdk/components/private/SdkQuestion/context";
-import { SdkQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -393,7 +392,7 @@ function DashboardQueryBuilder({
   }
 
   return (
-    <SdkQuestionProvider
+    <SdkQuestion
       questionId="new"
       targetDashboardId={dashboard.id}
       onSave={(question, { isNewQuestion, dashboardTabId }) => {
@@ -408,13 +407,10 @@ function DashboardQueryBuilder({
       onNavigateBack={onNavigateBack}
       backToDashboard={dashboard}
       entityTypes={dataPickerProps?.entityTypes}
-    >
-      <SdkQuestionDefaultView
-        withResetButton
-        withChartTypeSelector
-        // The default value is 600px and it cuts off the "Visualize" button.
-        height="700px"
-      />
-    </SdkQuestionProvider>
+      withResetButton
+      withChartTypeSelector
+      // The default value is 600px and it cuts off the "Visualize" button.
+      height="700px"
+    />
   );
 }

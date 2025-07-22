@@ -1,25 +1,27 @@
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  SdkQuestionProvider,
-  type SdkQuestionProviderProps,
-} from "embedding-sdk/components/private/SdkQuestion/context";
+  SdkQuestion,
+  type SdkQuestionProps,
+} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { Group, Stack } from "metabase/ui";
-
-import { InteractiveQuestion } from "../SdkQuestion";
-import type { SdkQuestionIdProps } from "../SdkQuestion/types";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 
 /**
  * @interface
  * @expand
  * @category StaticQuestion
  */
-export type StaticQuestionProps = SdkQuestionIdProps & {
-  withChartTypeSelector?: boolean;
-} & Pick<SdkQuestionProviderProps, "initialSqlParameters" | "withDownloads"> &
-  FlexibleSizeProps;
+export type StaticQuestionProps = SdkQuestionProps;
 
-const StaticQuestionInner = ({
+/**
+ * A component that renders a static question.
+ *
+ * @function
+ * @category StaticQuestion
+ */
+export const StaticQuestion = ({
   questionId: initialQuestionId,
   withChartTypeSelector,
   height,
@@ -28,34 +30,43 @@ const StaticQuestionInner = ({
   style,
   initialSqlParameters,
   withDownloads,
-}: StaticQuestionProps): JSX.Element | null => (
-  <SdkQuestionProvider
-    questionId={initialQuestionId}
-    variant="static"
-    initialSqlParameters={initialSqlParameters}
-    withDownloads={withDownloads}
-  >
-    <Stack gap="sm" w="100%" h="100%">
-      {(withChartTypeSelector || withDownloads) && (
-        <Group justify="space-between">
-          {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
-          {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
-        </Group>
-      )}
-      <InteractiveQuestion.QuestionVisualization
-        height={height}
-        width={width}
-        className={className}
-        style={style}
-      />
-    </Stack>
-  </SdkQuestionProvider>
-);
+}: StaticQuestionProps): JSX.Element | null => {
+  const getClickActionMode: ClickActionModeGetter = ({
+    question,
+  }: {
+    question: Question;
+  }) => {
+    return (
+      question &&
+      getEmbeddingMode({
+        question,
+        queryMode: StaticQuestionSdkMode,
+      })
+    );
+  };
 
-/**
- * A component that renders a static question.
- *
- * @function
- * @category StaticQuestion
- */
-export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);
+  return (
+    <SdkQuestion
+      questionId={initialQuestionId}
+      getClickActionMode={getClickActionMode}
+      navigateToNewCard={null}
+      initialSqlParameters={initialSqlParameters}
+      withDownloads={withDownloads}
+    >
+      <Stack gap="sm" w="100%" h="100%">
+        {(withChartTypeSelector || withDownloads) && (
+          <Group justify="space-between">
+            {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+            {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+          </Group>
+        )}
+        <SdkQuestion.QuestionVisualization
+          height={height}
+          width={width}
+          className={className}
+          style={style}
+        />
+      </Stack>
+    </SdkQuestion>
+  );
+};

@@ -1,17 +1,12 @@
 import { useMemo } from "react";
 
 import type { BaseSdkQuestionProps } from "embedding-sdk/components/public/SdkQuestion";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
-import {
-  type QuestionMockLocationParameters,
-  SdkQuestionProvider,
-} from "../SdkQuestion/context";
-import {
-  SdkQuestionDefaultView,
-  type SdkQuestionDefaultViewProps,
-} from "../SdkQuestionDefaultView";
+import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
+import type { SdkQuestionDefaultViewProps } from "../SdkQuestionDefaultView";
 
 interface InteractiveAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
@@ -56,7 +51,7 @@ export const InteractiveAdHocQuestion = ({
   }, [location.hash]);
 
   return (
-    <SdkQuestionProvider
+    <SdkQuestion
       questionId={questionId}
       options={options}
       deserializedCard={deserializedCard}
@@ -69,19 +64,16 @@ export const InteractiveAdHocQuestion = ({
       initialSqlParameters={initialSqlParameters}
       withDownloads={withDownloads}
       onNavigateBack={onNavigateBack}
+      height={height}
+      width={width}
+      className={className}
+      style={style}
+      title={title}
+      withResetButton={withResetButton}
+      withChartTypeSelector={withChartTypeSelector}
     >
-      {children ?? (
-        <SdkQuestionDefaultView
-          height={height}
-          width={width}
-          className={className}
-          style={style}
-          title={title}
-          withResetButton={withResetButton}
-          withChartTypeSelector={withChartTypeSelector}
-        />
-      )}
-    </SdkQuestionProvider>
+      {children}
+    </SdkQuestion>
   );
 };
 
