@@ -165,6 +165,60 @@ const setup = ({ display, visualization_settings = {} }) => {
   });
 });
 
+// --- Freeze First Column Feature Tests ---
+describe("Freeze first column feature", () => {
+  it("should show the 'Freeze first column' toggle in the Columns section", async () => {
+    setup({ display: "table" });
+    // Open the Columns section if needed (simulate user interaction)
+    // The label is 'Freeze first column' as per Table.tsx
+    expect(
+      await screen.findByLabelText("Freeze first column"),
+    ).toBeInTheDocument();
+  });
+
+  it("should update the setting when toggled", async () => {
+    const { onChange } = setup({ display: "table" });
+    const toggle = await screen.findByLabelText("Freeze first column");
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ "table.freeze_first_column": true }),
+    );
+  });
+
+  it("should apply the sticky class to the first column when enabled", async () => {
+    // Render a table with the setting enabled and some data
+    const cols = [
+      createMockColumn({ name: "ID" }),
+      createMockColumn({ name: "Name" }),
+    ];
+    const rows = [
+      [1, "Alice"],
+      [2, "Bob"],
+    ];
+    renderWithProviders(
+      <Table
+        series={[
+          {
+            card: createMockCard(),
+            data: { cols, rows, results_timezone: null },
+          },
+        ]}
+        settings={{ "table.freeze_first_column": true }}
+        metadata={metadata}
+      />,
+    );
+    // The first column's cell should have the sticky class
+    // Use Testing Library's query for data-testid (linter-compliant)
+    const stickyCells = screen.getAllByTestId("sticky-first-column");
+    expect(stickyCells.length).toBeGreaterThan(0);
+    // Assert that each sticky cell has the expected sticky class
+    stickyCells.forEach((cell) => {
+      expect(cell).toHaveClass("freezeFirstColumn");
+    });
+  });
+});
+
 describe("table.pivot", () => {
   describe("getHidden", () => {
     const createMockSeriesWithCols = (cols) => [
