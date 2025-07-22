@@ -32,7 +32,23 @@ export const NameDescriptionInput = ({
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
-  const leftSectionWidth = sectionWidth > 0 ? sectionWidth : 40;
+  const leftSectionWidth = Math.max(sectionWidth, 40);
+
+  const handleDescriptionChange = (value: string) => {
+    const newDescription = value.trim();
+
+    if (description !== newDescription) {
+      onDescriptionChange(newDescription);
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    const newName = value.trim();
+
+    if (name !== newName) {
+      onNameChange(newName);
+    }
+  };
 
   return (
     <Box ref={ref}>
@@ -95,7 +111,7 @@ export const NameDescriptionInput = ({
           },
         }}
         value={name}
-        onChange={onNameChange}
+        onChange={handleNameChange}
       />
 
       <Textarea
@@ -108,7 +124,7 @@ export const NameDescriptionInput = ({
         minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
-        onChange={onDescriptionChange}
+        onChange={handleDescriptionChange}
       />
     </Box>
   );

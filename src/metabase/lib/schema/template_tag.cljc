@@ -22,7 +22,7 @@
 (mr/def ::type
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date :temporal-unit])
+   :snippet :card :dimension :number :text :date :boolean :temporal-unit])
 
 (mr/def ::name
   [:ref
@@ -60,7 +60,10 @@
   [:merge
    [:ref ::common]
    [:map
-    [:type [:= :temporal-unit]]]])
+    [:type [:= :temporal-unit]]
+    ;; an optional alias to use in place of the normal field ref
+    [:alias       {:optional true} :string]
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
 ;; Example:
 ;;
@@ -76,7 +79,9 @@
    [:map
     [:type        [:= :dimension]]
     ;; field filters can have missing dimension before it is set
-    [:dimension {:optional true} [:ref :mbql.clause/field]]
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]
+    ;; an optional alias to use in place of the normal field ref
+    [:alias       {:optional true} :string]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]

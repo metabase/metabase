@@ -10,15 +10,15 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
+import { SdkQuestionProvider } from "embedding-sdk/components/private/SdkQuestion/context";
+import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -49,12 +49,11 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
-import type { DashboardId } from "metabase-types/api";
 
 import type {
   DrillThroughQuestionProps,
   InteractiveQuestionProps,
-} from "../InteractiveQuestion";
+} from "../SdkQuestion";
 
 import {
   SdkDashboardStyledWrapper,
@@ -139,7 +138,7 @@ const SdkDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
   dashboardActions,
-  dashcardMenu = plugins?.dashboard?.dashboardCardMenu,
+  dashcardMenu,
   getClickActionMode,
   navigateToNewCardFromDashboard = undefined,
   className,
@@ -170,6 +169,9 @@ const SdkDashboardInner = ({
   } = useCommonDashboardParams({
     dashboardId,
   });
+
+  const finalDashcardMenu =
+    plugins?.dashboard?.dashboardCardMenu ?? dashcardMenu;
 
   const [renderModeState, setRenderMode] = useState<
     "dashboard" | "queryBuilder"
@@ -281,7 +283,7 @@ const SdkDashboardInner = ({
       onLoadWithoutCards={handleLoadWithoutCards}
       onError={(error) => dispatch(setErrorPage(error))}
       getClickActionMode={getClickActionMode}
-      dashcardMenu={dashcardMenu}
+      dashcardMenu={finalDashcardMenu}
       dashboardActions={dashboardActions}
       onAddQuestion={(dashboard) => {
         dispatch(setEditingDashboard(dashboard));
@@ -319,7 +321,6 @@ const SdkDashboardInner = ({
         ))
         .with("queryBuilder", () => (
           <DashboardQueryBuilder
-            targetDashboardId={dashboardId}
             onCreate={(question) => {
               setNewDashboardQuestionId(question.id);
               setRenderMode("dashboard");
@@ -366,7 +367,6 @@ SdkDashboard.NightModeButton = Dashboard.NightModeButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 
 type DashboardQueryBuilderProps = {
-  targetDashboardId: DashboardId;
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
   dataPickerProps: EditableDashboardOwnProps["dataPickerProps"];
@@ -376,7 +376,6 @@ type DashboardQueryBuilderProps = {
  * The sole reason this is extracted into a separate component is to access the dashboard context
  */
 function DashboardQueryBuilder({
-  targetDashboardId,
   onCreate,
   onNavigateBack,
   dataPickerProps,
@@ -394,9 +393,9 @@ function DashboardQueryBuilder({
   }
 
   return (
-    <InteractiveQuestionProvider
+    <SdkQuestionProvider
       questionId="new"
-      targetDashboardId={targetDashboardId}
+      targetDashboardId={dashboard.id}
       onSave={(question, { isNewQuestion, dashboardTabId }) => {
         if (isNewQuestion) {
           onCreate(question);
@@ -416,6 +415,6 @@ function DashboardQueryBuilder({
         // The default value is 600px and it cuts off the "Visualize" button.
         height="700px"
       />
-    </InteractiveQuestionProvider>
+    </SdkQuestionProvider>
   );
 }

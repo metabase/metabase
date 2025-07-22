@@ -26,9 +26,6 @@
     [s :guard string?] s
     [{:type :metabase.lib.parse/param
       :name name}] (params/->Param (str/trim name))
-    [{:type :metabase.lib.parse/function-param
-      :name name
-      :args args}] (params/->FunctionParam name (map ->param args))
     [{:type :metabase.lib.parse/optional
       :contents contents}] (params/->Optional (map ->param contents))))
 

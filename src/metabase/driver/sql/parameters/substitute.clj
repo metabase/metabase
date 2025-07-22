@@ -9,7 +9,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
-(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [_field value], :as v}]
+(defn- substitute-field-param [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= params/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -32,8 +32,9 @@
     [sql args (conj missing k)]
     (let [v (get param->value k)]
       (cond
-        (params/FieldFilter? v)
-        (substitute-field-filter [sql args missing] in-optional? k v)
+        (or (params/FieldFilter? v)
+            (params/TemporalUnit? v))
+        (substitute-field-param [sql args missing] in-optional? k v)
 
         (params/ReferencedCardQuery? v)
         (substitute-card-query [sql args missing] v)
@@ -48,26 +49,6 @@
         (let [{:keys [replacement-snippet prepared-statement-args]}
               (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
-
-(defn- substitute-time-grouping
-  [[sql args missing] {[k column] :args} v]
-  (if (and (params/TemporalUnit? v) (string? k) (string? column))
-    (let [{:keys [replacement-snippet prepared-statement-args]}
-          (sql.params.substitution/time-grouping->replacement-snippet-info driver/*driver* column v)]
-      [(str sql replacement-snippet) (concat args prepared-statement-args) missing])
-    [sql args (conj missing k)]))
-
-(defn- substitute-function-param [param->value [sql args missing] {[k] :args :keys [function-name] :as param}]
-  (if-not (contains? param->value k)
-    [sql args (conj missing k)]
-    (let [v (get param->value k)]
-      (case function-name
-        "mb.time_grouping"
-        (substitute-time-grouping [sql args missing] param v)
-
-        (throw (ex-info (tru "Unrecognized function: {0}" function-name)
-                        {:type    driver-api/qp.error-type.invalid-query
-                         :missing missing}))))))
 
 (declare substitute*)
 
@@ -88,9 +69,6 @@
 
        (params/Param? x)
        (substitute-param param->value [sql args missing] in-optional? x)
-
-       (params/FunctionParam? x)
-       (substitute-function-param param->value [sql args missing] x)
 
        (params/Optional? x)
        (substitute-optional param->value [sql args missing] x)))

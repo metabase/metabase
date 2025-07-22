@@ -55,7 +55,9 @@
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
-  [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref]]
+  [query
+   stage-number
+   [_ag {:keys [base-type effective-type display-name], agg-name :name, :as _opts} index, :as _aggregation-ref]]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
@@ -64,7 +66,11 @@
      (when base-type
        {:base-type base-type})
      (when effective-type
-       {:effective-type effective-type}))))
+       {:effective-type effective-type})
+     (when agg-name
+       {:name agg-name})
+     (when display-name
+       {:display-name display-name}))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 
@@ -439,10 +445,14 @@
    (aggregable-columns query -1 aggregation-position))
   ([query :- ::lib.schema/query
     stage-number :- :int
-    _aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
    (let [stage (lib.util/query-stage query stage-number)
+         agg-cols (aggregations-metadata query stage-number)
          columns (into (vec (lib.metadata.calculation/visible-columns query stage-number stage))
-                       (aggregations-metadata query stage-number))]
+                       (cond->> agg-cols
+                         aggregation-position (keep-indexed (fn [i a]
+                                                              (when (not= i aggregation-position)
+                                                                a)))))]
      (not-empty columns))))
 
 (defmethod lib.metadata.calculation/type-of-method :aggregation
