@@ -626,11 +626,10 @@
   (testing "Metric name should be shown when first added to Summarize step (#58307)"
     (let [[source-metric mp] (mock-metric meta/metadata-provider
                                           (-> (basic-metric-query)
-                                              (add-aggregation-options {:name "total_price_no_tax_no_discount"
-                                                                        :display-name "Total Price (no tax/discount)"}))
+                                              (add-aggregation-options {:name "total_price_no_tax_no_discount"}))
                                           {:name "total_price_no_tax_no_discount_metric"})]
       (is (=?
-           {:stages [{:aggregation [[:avg {:name "total_price_no_tax_no_discount_metric"} some?]]}]}
+           {:stages [{:aggregation [[:avg {:display-name "total_price_no_tax_no_discount_metric"} some?]]}]}
            (adjust (-> (lib/query mp (meta/table-metadata :products))
                        (lib/aggregate (lib.metadata/metric mp (:id source-metric))))))))))
 
