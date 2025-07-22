@@ -175,14 +175,3 @@
                                                    [(u/->snake_case_en k) p s]) (mc/children schema)))
 
                          schema)))))
-
-#?(:clj
-   (defn generate-example
-     "Generate an example value for a schema. By default will include all optional keys."
-     [schema & {:keys [seed include-optional-keys?]
-                :or {include-optional-keys? true}
-                :as _opts}]
-     (let [seed   (or seed (when config/is-prod? 42))
-           schema (cond-> schema
-                    include-optional-keys? require-all-keys)]
-       (mg/generate schema {:seed seed}))))
