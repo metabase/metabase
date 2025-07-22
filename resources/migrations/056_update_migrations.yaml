@@ -268,8 +268,14 @@ databaseChangeLog:
                     foreignKeyName: fk_report_version_report_id
                     deleteCascade: true
               - column:
-                  name: markdown_document
-                  remarks: Markdown content of the report version
+                  name: document
+                  remarks: content of the report version
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  remarks: the content_type of the document column
                   type: ${text.type}
                   constraints:
                     nullable: false
