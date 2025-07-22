@@ -1,7 +1,7 @@
 (ns metabase.query-processor.parameters
-  "Various record types below are used as a convenience for differentiating the different param types."
+  "Schemas and helper functions for various PARSED parameter maps. These are created from the `:parameters` passed in
+  with a query."
   (:require
-   [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -50,10 +50,13 @@
    [:value    ::field-filter.value]])
 
 (mu/defn field-filter :- ::field-filter
+  "Create a parsed `field-filter` parameter from map `m`."
   [m]
   (assoc m :lib/type ::field-filter))
 
-(defn field-filter? [x]
+(defn field-filter?
+  "Whether `x` is a map representing a parsed [[field-filter]] parameter."
+  [x]
   (= (:lib/type x) ::field-filter))
 
 (mr/def ::temporal-unit
@@ -64,10 +67,13 @@
    [:value    some?]])
 
 (mu/defn temporal-unit :- ::temporal-unit
+  "Create a parsed `temporal-unit` parameter from map `m`."
   [m :- :map]
   (assoc m :lib/type ::temporal-unit))
 
-(defn temporal-unit? [x]
+(defn temporal-unit?
+  "Whether `x` is a map representing a parsed [[temporal-unit]] parameter."
+  [x]
   (= (:lib/type x) ::temporal-unit))
 
 (mr/def ::referenced-card-query
@@ -86,10 +92,13 @@
    [:parameters {:optional true} [:maybe [:sequential :any]]]])
 
 (mu/defn referenced-card-query :- ::referenced-card-query
+  "Create a parsed `referenced-card-query` parameter from map `m`."
   [m :- :map]
   (assoc m :lib/type ::referenced-card-query))
 
-(defn referenced-card-query? [x]
+(defn referenced-card-query?
+  "Whether `x` is a map representing a parsed [[referenced-card-query]] parameter."
+  [x]
   (= (:lib/type x) ::referenced-card-query))
 
 (mr/def ::referenced-query-snippet
@@ -105,10 +114,13 @@
    [:content    :string]])
 
 (mu/defn referenced-query-snippet :- ::referenced-query-snippet
+  "Create a parsed `referenced-query-snippet` parameter from map `m`."
   [m :- :map]
   (assoc m :lib/type ::referenced-query-snippet))
 
-(defn referenced-query-snippet? [x]
+(defn referenced-query-snippet?
+  "Whether `x` is a map representing a parsed [[referenced-query-snippet]]."
+  [x]
   (= (:lib/type x) ::referenced-query-snippet))
 
 (mr/def ::date
@@ -118,8 +130,14 @@
    [:s        ::lib.schema.literal/string.date]])
 
 (mu/defn date :- ::date
+  "Create a parsed `date` parameter from map `m`."
   [m :- :map]
   (assoc m :lib/type ::date))
+
+(defn date?
+  "Whether `x` is a map representing a parsed [[date]] parameter."
+  [x]
+  (= (:lib/type x) ::date))
 
 (mr/def ::date-range
   [:map
@@ -128,6 +146,16 @@
    [:start    :any]
    [:end      :any]])
 
+(mu/defn date-range :- ::date-range
+  "Create a new parsed `date-range` parameter from map `m`."
+  [m :- :map]
+  (assoc m :lib/type ::date-range))
+
+(defn date-range?
+  "Whether `x` is a map representing a parsed [[date-range]] parameter."
+  [x]
+  (= (:lib/type x) ::date-range))
+
 (mr/def ::date-time-range
   [:map
    [:lib/type [:= ::date-time-range]]
@@ -135,16 +163,29 @@
    [:start    :any]
    [:end      :any]])
 
+(mu/defn date-time-range :- ::date-time-range
+  "Create a new parsed `date-time-range` parameter from map `m`."
+  [m :- :map]
+  (assoc m :lib/type ::date-time-range))
+
+(defn date-time-range?
+  "Whether `x` is a map representing a parsed [[date-time-range]] parameter."
+  [x]
+  (= (:lib/type x) ::date-time-range))
+
 (mr/def ::param
   [:map
    [:lib/type [:= ::param]]
    [:k        :string]])
 
 (mu/defn param :- ::param
-  [param-name :- :string]
-  {:lib/type ::param, :k (str/trim param-name)})
+  "Create a new parsed `param` parameter from map `m`."
+  [m :- :map]
+  (assoc m :lib/type ::param))
 
-(defn param? [x]
+(defn param?
+  "Whether `x` is a map that represents a parsed [[param]] parameter."
+  [x]
   (= (:lib/type x) ::param))
 
 (mr/def ::function-param
@@ -155,13 +196,13 @@
    [:args          [:sequential :any]]])
 
 (mu/defn function-param :- ::function-param
-  [function-name :- :string
-   args          :- [:sequential :any]]
-  {:lib/type      ::function-param
-   :function-name function-name
-   :args          args})
+  "Create a new parsed `function-param` from map `m`."
+  [m :- :map]
+  (assoc m :lib/type ::function-param))
 
-(defn function-param? [x]
+(defn function-param?
+  "Whether `x` is a map that represents a parsed [[function-param]]."
+  [x]
   (= (:lib/type x) ::function-param))
 
 (mr/def ::optional
@@ -171,8 +212,11 @@
    [:args     [:sequential :any]]])
 
 (mu/defn optional :- ::optional
-  [args :- [:sequential :any]]
-  {:lib/type ::optional, :args args})
+  "Create a new parsed `optional` param from map `m`."
+  [m :- :map]
+  (assoc m :lib/type ::optional))
 
-(defn optional? [x]
+(defn optional?
+  "Whether `x` is a map that represents a parsed [[optional]] parameter."
+  [x]
   (= (:lib/type x) ::optional))

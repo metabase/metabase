@@ -22,11 +22,11 @@
        qp/process-query
        (mt/formatted-rows [->local-date-time])))
 
-(deftest can-compile-temporal-units-test
+(deftest ^:parallel can-compile-temporal-units-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
     (testing "temporal unit parameters"
       (let [field-reference (qp.store/with-metadata-provider (mt/metadata-provider)
-                              (mt/field-reference driver/*driver* (mt/id :orders :created_at)))
+                              [:field (mt/id :orders :created_at) nil])
             base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.time_grouping('time-unit', '%s')}}" field-reference))
             native-query (mt/native-query
                            (assoc base-query
@@ -71,7 +71,7 @@
                      (subvec 0 2)))
               (str "Unexpected results for grouping " grouping)))))))
 
-(deftest bad-function-names-throw-errors-test
+(deftest ^:parallel bad-function-names-throw-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.bad_function_name('time-unit', %s)}}" "'created_at'"))
@@ -88,7 +88,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized function: mb.bad_function_name"
                                 (run-sample-query query))))))))
 
-(deftest bad-parameter-throws-error-test
+(deftest ^:parallel bad-parameter-throws-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units)
     (testing "temporal unit parameters"
       (let [base-query (mt/arbitrary-select-query driver/*driver* :orders (format "{{mb.time_grouping('time-unit', %s)}}" "'created_at'"))

@@ -110,6 +110,12 @@
    card-id               :- ::lib.schema.id/card]
   (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
 
+(mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   snippet-id            :- ::lib.schema.id/native-query-snippet]
+  (lib.metadata.protocols/native-query-snippet (->metadata-provider metadata-providerable) snippet-id))
+
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Get metadata for the Segment with `segment-id`, if it can be found."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

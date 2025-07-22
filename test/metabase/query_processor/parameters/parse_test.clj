@@ -1,9 +1,9 @@
 (ns metabase.query-processor.parameters.parse-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.parse :as lib.parse]
    [metabase.query-processor.parameters :as params]
-   [metabase.query-processor.parameters.parse :as params.parse]
-   [metabase.lib.parse :as lib.parse]))
+   [metabase.query-processor.parameters.parse :as params.parse]))
 
 (defn- param [field-name] (params/param field-name))
 (defn- optional [& args] (params/optional args))
