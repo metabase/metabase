@@ -268,6 +268,7 @@ describe("getInitialStateForCardDataSource", () => {
           "funnel.metric": "METRIC",
           "funnel.dimension": "DIMENSION",
         },
+        datasetFallbacks: { [card.id]: dataset },
       });
     },
   );

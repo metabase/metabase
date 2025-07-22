@@ -1039,7 +1039,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           query: `
         SELECT
           count(*),
-          {{mb.time_grouping("unit", "created_at")}} as unit
+          {{unit}} as unit
         FROM
           ORDERS
         GROUP BY
@@ -1051,6 +1051,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
               name: "unit",
               id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
               "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
               required: true,
             },
           },
@@ -1085,7 +1086,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           query: `
         SELECT
           count(*),
-          {{mb.time_grouping("unit", "created_at")}} as unit
+          {{unit}} as unit
         FROM
           ORDERS
         GROUP BY
@@ -1097,6 +1098,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
               name: "unit",
               id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
               "display-name": "Unit",
+              dimension: ["field", ORDERS.CREATED_AT, null],
               required: true,
             },
           },

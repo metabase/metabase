@@ -1,10 +1,12 @@
-import type { StoryFn } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
+
+import type { InteractiveQuestionProps } from "../../SdkQuestion";
 
 import {
   EditableDashboard,
@@ -13,7 +15,11 @@ import {
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
-export default {
+type CustomArgs = {
+  "dataPickerProps.entityTypes"?: InteractiveQuestionProps["entityTypes"];
+};
+
+const meta = {
   title: "EmbeddingSDK/EditableDashboard",
   component: EditableDashboard,
   parameters: {
@@ -23,6 +29,16 @@ export default {
   argTypes: {
     // Core props
     dashboardId: dashboardIdArgType,
+
+    "dataPickerProps.entityTypes": {
+      control: "check",
+      options: [
+        "model",
+        "table",
+        "question",
+      ] satisfies InteractiveQuestionProps["entityTypes"],
+      description: "`question` doesn't have effect on simple data picker",
+    },
 
     // Display options
     withTitle: {
@@ -135,16 +151,23 @@ export default {
       action: "onLoadWithoutCards",
     },
   },
-};
+  render: ({ "dataPickerProps.entityTypes": entityTypes, ...args }) => {
+    return (
+      <EditableDashboard
+        {...args}
+        dataPickerProps={{
+          entityTypes,
+        }}
+      />
+    );
+  },
+} satisfies Meta<EditableDashboardProps & CustomArgs>;
+export default meta;
 
-const Template: StoryFn<EditableDashboardProps> = (args) => {
-  return <EditableDashboard {...args} />;
-};
+type Story = StoryObj<typeof meta>;
 
 export const Default = {
-  render: Template,
-
   args: {
     dashboardId: DASHBOARD_ID,
   },
-};
+} satisfies Story;

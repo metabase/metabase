@@ -134,16 +134,18 @@
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql
                                                                :source-table 2}]}
-                                 :result-metadata [{:id    4
-                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
-                                                    :name  "Field 4"}]}]})
+                                 :result-metadata [{:lib/type  :metadata/column
+                                                    :id        4
+                                                    :ident     "ybTElkkGoYYBAyDRTIiUe"
+                                                    :name      "Field 4"
+                                                    :base-type :type/Integer}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
                                                     :source-card 3}]})]
       (is (=? [{:lib/type                 :metadata/column
-                :base-type                :type/*
-                :effective-type           :type/*
+                :base-type                :type/Integer
+                :effective-type           :type/Integer
                 :id                       4
                 :name                     "Field 4"
                 :ident                    "ybTElkkGoYYBAyDRTIiUe"
@@ -154,7 +156,7 @@
               (lib/returned-columns query)))
       (is (=? {:lib/type                :metadata/column
                :base-type               :type/Text
-               :effective-type          :type/Text
+               :effective-type          :type/Integer
                :id                      4
                :name                    "Field 4"
                :ident                   "ybTElkkGoYYBAyDRTIiUe"
@@ -490,10 +492,7 @@
                                                     [(-> (first (:stages model-query))
                                                          (assoc :qp/stage-is-from-source-card 1))
                                                      (dissoc original-stage :source-card)]))]
-            (is (=? (assoc expected
-                           :lib/deduplicated-name   "C__NAME"
-                           :name                    "C__NAME"
-                           :lib/source-column-alias "C__NAME")
+            (is (=? (assoc expected :lib/source-column-alias "C__NAME")
                     (lib.field.resolution/resolve-field-ref query' -1 field-ref)))))))))
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
@@ -581,7 +580,9 @@
                                                             (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1}))]
                                                    (-> col
                                                        (dissoc :lib/type)
-                                                       (update-keys u/->snake_case_en)))
+                                                       (update-keys (fn [k]
+                                                                      (cond-> k
+                                                                        (simple-keyword? k) u/->snake_case_en)))))
                                 :alias           "Question 54"
                                 :condition       [:= $id [:field %orders.id {:join-alias "Question 54"}]]
                                 :fields          [[:field %orders.id {:join-alias "Question 54"}]
@@ -865,3 +866,32 @@
                [:field
                 {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float}
                 "Reviews__CREATED_AT"]))))))
+
+(deftest ^:parallel resolve-filter-test
+  (let [query (lib/query
+               meta/metadata-provider
+               {:type     :query
+                :database (meta/id)
+                :query    {:source-query {:source-query {:source-table (meta/id :orders)
+                                                         :aggregation  [[:count]]
+                                                         :breakout     [[:field
+                                                                         (meta/id :people :source)
+                                                                         {:base-type :type/Text, :source-field (meta/id :orders :user-id)}]]
+                                                         :filter       [:>
+                                                                        [:field (meta/id :orders :quantity) {:base-type :type/Integer}]
+                                                                        4]}
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field "PEOPLE__via__USER_ID__SOURCE" {:base-type :type/Text}]]
+                                          :filter       [:>
+                                                         [:field "count" {:base-type :type/Integer}]
+                                                         5]}
+                           :filter       [:=
+                                          [:field "PEOPLE__via__USER_ID__SOURCE" {:base-type :type/Text}]
+                                          "Organic"]}})]
+    (is (=? [[:= {}
+              [:field {} "PEOPLE__via__USER_ID__SOURCE"]
+              "Organic"]]
+            (lib/filters query -1)))
+    (is (=? [{:display-name      "User → Source is Organic"
+              :long-display-name "User → Source is Organic"}]
+            (map #(lib/display-info query %) (lib/filters query -1))))))

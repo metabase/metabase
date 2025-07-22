@@ -10,7 +10,6 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.settings :as channel.settings]
-   [metabase.lib.core :as lib]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -892,20 +891,23 @@
                         {:fields   [$id $longitude $latitude]
                          :order-by [[:asc $id]]
                          :limit    5})
-            base-card {:dataset_query   query}
+            base-card {:dataset_query query}
             model-eid (u/generate-nano-id)
             model     {:dataset_query   query
                        :type            :model
                        :entity_id       model-eid
-                       :result_metadata [{:name  "ID"
-                                          :id    (mt/id :airport :id)
-                                          :ident (lib/model-ident (mt/ident :airport :id) model-eid)}
+                       :result_metadata [{:name         "ID"
+                                          :display_name "ID"
+                                          :id           (mt/id :airport :id)
+                                          :base_type    :type/Integer}
                                          {:semantic_type :type/Longitude
                                           :name          "LONGITUDE"
-                                          :ident         (lib/model-ident (mt/ident :airport :longitude) model-eid)}
+                                          :display_name  "Longitude"
+                                          :base_type     :type/Float}
                                          {:semantic_type :type/Latitude
                                           :name          "LATITUDE"
-                                          :ident         (lib/model-ident (mt/ident :airport :latitude) model-eid)}]}]
+                                          :display_name  "Latitude"
+                                          :base_type     :type/Float}]}]
         (mt/with-temp [:model/Card {card-id :id} base-card
                        :model/Card {model-id :id} model
                        :model/Dashboard {dash-id :id} {}
