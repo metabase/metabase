@@ -185,7 +185,7 @@
 
   Otherwise get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
 
-  Requires the model dimensions are defined in ollama-supported-models or openai-supported-models (throws if not)."
+  Requires the model dimensions to be defined in ollama-supported-models or openai-supported-models (throws if not)."
   []
   (or *active-model*
       (let [provider (semantic-settings/ee-embedding-provider)
