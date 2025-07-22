@@ -183,7 +183,7 @@
   (queue/start-listeners!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
-        duration   (- (System/currentTimeMillis) start-time)]
+        duration   (u/since-ms-wall-clock start-time)]
     (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
 
 (defn init!

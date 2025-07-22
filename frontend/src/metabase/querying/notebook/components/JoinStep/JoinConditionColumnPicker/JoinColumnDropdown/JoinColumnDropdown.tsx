@@ -4,10 +4,12 @@ import {
   type ColumnListItem,
   QueryColumnPicker,
 } from "metabase/common/components/QueryColumnPicker";
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/query_builder/components/expressions/ExpressionWidget";
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
-import type { DefinedClauseName } from "metabase-lib/v1/expressions";
 
 import { getJoinStrategyIcon } from "../../utils";
 
@@ -100,7 +102,7 @@ export function JoinColumnDropdown({
 
   return (
     <QueryColumnPicker
-      className={S.JoinColumnPicker}
+      className={S.joinColumnPicker}
       query={query}
       stageIndex={stageIndex}
       columnGroups={columnGroups}
