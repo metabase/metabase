@@ -29,17 +29,20 @@ const MetabaseProvider = ({
   children,
   ...providerProps,
 }) => {
-  const Provider = dynamic(
-    () =>
-      import("@metabase/embedding-sdk-react").then((m) => {
-        return { default: m.MetabaseProvider };
-      }),
-    {
-      ssr: false,
-      loading: () => {
-        return React.createElement("div", { id: "metabase-sdk-root" }, children);
-      },
-    }
+  const Provider = React.useMemo(() =>
+    dynamic(
+      () =>
+        import("@metabase/embedding-sdk-react").then((m) => {
+          return { default: m.MetabaseProvider };
+        }),
+      {
+        ssr: false,
+        loading: () => {
+          return React.createElement("div", { id: "metabase-sdk-root" }, children);
+        },
+      }
+    ),
+    [children]
   );
 
   return React.createElement(Provider, providerProps, children);
