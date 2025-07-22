@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { mockSettings } from "__support__/settings";
@@ -660,18 +660,15 @@ describe("formatting", () => {
     });
 
     it("should always format week ranges according to returned data", () => {
-      try {
-        // globally set locale to es
-        moment.locale("es");
-        expect(
-          formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
-            type: "cell",
-          }),
-        ).toEqual("julio 7, 2019 – julio 13, 2019");
-      } finally {
-        // globally reset locale
-        moment.locale("en");
-      }
+      setSpanishLocale();
+
+      expect(
+        formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+          type: "cell",
+        }),
+      ).toEqual("julio 7, 2019 – julio 13, 2019");
+
+      resetLocale();
     });
 
     it("should format days of week with default options", () => {
@@ -854,3 +851,14 @@ describe("formatting", () => {
     });
   });
 });
+
+function setSpanishLocale() {
+  // globally set locale to es
+  require("dayjs/locale/es");
+  dayjs.locale("es");
+  dayjs.updateLocale(dayjs.locale(), { weekStart: 0 });
+}
+
+function resetLocale() {
+  dayjs.locale("en");
+}
