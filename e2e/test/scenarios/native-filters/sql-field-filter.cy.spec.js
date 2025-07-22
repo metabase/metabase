@@ -183,4 +183,45 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.popover().contains("String");
     });
   });
+
+  describe("field alias", () => {
+    it("should be able to use a field alias with a field filter", () => {
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "select * from (select id as alias from products) as p where {{filter}}",
+      );
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "ID",
+      });
+      SQLFilter.setFieldAlias("p.alias");
+      H.filterWidget().click();
+      H.popover().within(() => {
+        H.multiAutocompleteInput().type("10,20");
+        cy.button("Add filter").click();
+      });
+      SQLFilter.runQuery();
+      H.tableInteractive().should("contain", "10").and("contain", "20");
+    });
+
+    it("should be able to use a field alias with a time grouping", () => {
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "select count(*), {{date}} as date from products as p group by date",
+      );
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Time grouping");
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "Created At",
+      });
+      SQLFilter.setFieldAlias("p.created_at");
+      H.filterWidget().click();
+      H.popover().findByText("Month").click();
+      SQLFilter.runQuery();
+      H.tableInteractive().should("contain", "April 1, 2022");
+    });
+  });
 });

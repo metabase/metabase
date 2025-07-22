@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
-import CS from "metabase/css/core/index.css";
 import {
   canDownloadResults,
   canEditQuestion,
@@ -19,7 +18,7 @@ import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Icon, Menu, type MenuProps } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -33,6 +32,7 @@ interface DashCardMenuProps {
   question: Question;
   result: Dataset;
   dashcard: DashboardCard;
+  position?: MenuProps["position"];
   onEditVisualization?: () => void;
   openUnderlyingQuestionItems?: React.ReactNode;
 }
@@ -55,6 +55,7 @@ export const DashCardMenu = ({
   question,
   result,
   dashcard,
+  position = "bottom-end",
   onEditVisualization,
   openUnderlyingQuestionItems,
 }: DashCardMenuProps) => {
@@ -154,13 +155,12 @@ export const DashCardMenu = ({
   };
 
   return (
-    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+    <Menu offset={4} position={position} opened={isOpen} onClose={close}>
       <Menu.Target>
         <ActionIcon
           size="xs"
           className={cx({
             [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
-            [cx(CS.hoverChild, CS.hoverChildSmooth)]: !isOpen,
           })}
           onClick={toggle}
           data-testid="dashcard-menu"
@@ -177,14 +177,13 @@ export const DashCardMenu = ({
 type ShouldRenderDashcardMenuProps = {
   question: Question | null;
   result?: Dataset;
-} & Pick<DashboardContextReturned, "dashboard" | "dashcardMenu" | "isEditing">;
+} & Pick<DashboardContextReturned, "dashboard" | "dashcardMenu">;
 
 DashCardMenu.shouldRender = ({
   question,
   dashboard,
   dashcardMenu,
   result,
-  isEditing,
 }: ShouldRenderDashcardMenuProps) => {
   if (!question || !dashboard || dashcardMenu === null) {
     return null;
@@ -198,7 +197,6 @@ DashCardMenu.shouldRender = ({
 
   return (
     !isInternalQuery &&
-    !isEditing &&
     (canEditQuestion(question) || canDownloadResults(result))
   );
 };

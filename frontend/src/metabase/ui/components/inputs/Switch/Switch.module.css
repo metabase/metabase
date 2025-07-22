@@ -101,4 +101,8 @@
   input:disabled + * > & {
     background-color: var(--mb-color-bg-light);
   }
+
+  &::before {
+    display: none;
+  }
 }

@@ -14,6 +14,7 @@
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.common :as api.embed.common]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.public-sharing.api-test :as public-test]
    [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -1002,74 +1003,75 @@
           (dropdown [card param-key  & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
-    (mt/with-temporary-setting-values [enable-embedding-static true]
-      (with-new-secret-key!
-        (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-          (t2/update! :model/Card (:id field-filter-card)
-                      {:enable_embedding true
-                       :embedding_params (zipmap (map :slug (:parameters field-filter-card))
-                                                 (repeat "enabled"))})
-          (t2/update! :model/Card (:id card)
-                      {:enable_embedding true
-                       :embedding_params (zipmap (map :slug (:parameters card))
-                                                 (repeat "enabled"))})
-          (testing "field filter based param"
-            (let [response (dropdown field-filter-card (:field-values param-keys))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set))))
+    (binding [custom-values/*max-rows* 5]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
+        (with-new-secret-key!
+          (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
+            (t2/update! :model/Card (:id field-filter-card)
+                        {:enable_embedding true
+                         :embedding_params (zipmap (map :slug (:parameters field-filter-card))
+                                                   (repeat "enabled"))})
+            (t2/update! :model/Card (:id card)
+                        {:enable_embedding true
+                         :embedding_params (zipmap (map :slug (:parameters card))
+                                                   (repeat "enabled"))})
+            (testing "field filter based param"
+              (let [response (dropdown field-filter-card (:field-values param-keys))]
+                (is (false? (:has_more_values response)))
+                (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                                 (-> response :values set))))
 
-            (let [response (search field-filter-card (:field-values param-keys) "bar")]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
-          (testing "field filter based param entity-id"
-            (let [response (dropdown field-filter-card (:field-values param-keys) (:entity_id field-filter-card))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set))))
-            (let [response (search field-filter-card (:field-values param-keys) "bar" (:entity_id field-filter-card))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set)))
-              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
-          (testing "static based param"
-            (let [response (dropdown card (:static-list param-keys))]
-              (is (= {:has_more_values false,
-                      :values          [["African"] ["American"] ["Asian"]]}
-                     response)))
-            (let [response (search card (:static-list param-keys) "af")]
-              (is (= {:has_more_values false,
-                      :values          [["African"]]}
-                     response))))
-          (testing "static based param entity-id"
-            (let [response (dropdown card (:static-list param-keys) (:entity_id card))]
-              (is (= {:has_more_values false,
-                      :values          [["African"] ["American"] ["Asian"]]}
-                     response)))
-            (let [response (search card (:static-list param-keys) "af" (:entity_id card))]
-              (is (= {:has_more_values false,
-                      :values          [["African"]]}
-                     response))))
-          (testing "card based param"
-            (let [response (dropdown card (:card param-keys))]
-              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                      :has_more_values false}
-                     response)))
-            (let [response (search card (:card param-keys) "red")]
-              (is (= {:has_more_values false,
-                      :values          [["Fred 62"] ["Red Medicine"]]}
-                     response))))
-          (testing "card based param entity-id"
-            (let [response (dropdown card (:card param-keys) (:entity_id card))]
-              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                      :has_more_values false}
-                     response)))
-            (let [response (search card (:card param-keys) "red" (:entity_id card))]
-              (is (= {:has_more_values false,
-                      :values          [["Fred 62"] ["Red Medicine"]]}
-                     response)))))))))
+              (let [response (search field-filter-card (:field-values param-keys) "bar")]
+                (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                                 (-> response :values set)))
+                (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
+            (testing "field filter based param entity-id"
+              (let [response (dropdown field-filter-card (:field-values param-keys) (:entity_id field-filter-card))]
+                (is (false? (:has_more_values response)))
+                (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                                 (-> response :values set))))
+              (let [response (search field-filter-card (:field-values param-keys) "bar" (:entity_id field-filter-card))]
+                (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                                 (-> response :values set)))
+                (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
+            (testing "static based param"
+              (let [response (dropdown card (:static-list param-keys))]
+                (is (= {:has_more_values false,
+                        :values          [["African"] ["American"] ["Asian"]]}
+                       response)))
+              (let [response (search card (:static-list param-keys) "af")]
+                (is (= {:has_more_values false,
+                        :values          [["African"]]}
+                       response))))
+            (testing "static based param entity-id"
+              (let [response (dropdown card (:static-list param-keys) (:entity_id card))]
+                (is (= {:has_more_values false,
+                        :values          [["African"] ["American"] ["Asian"]]}
+                       response)))
+              (let [response (search card (:static-list param-keys) "af" (:entity_id card))]
+                (is (= {:has_more_values false,
+                        :values          [["African"]]}
+                       response))))
+            (testing "card based param"
+              (let [response (dropdown card (:card param-keys))]
+                (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                          ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                        :has_more_values true}
+                       response)))
+              (let [response (search card (:card param-keys) "red")]
+                (is (= {:has_more_values false,
+                        :values          [["Fred 62"] ["Red Medicine"]]}
+                       response))))
+            (testing "card based param entity-id"
+              (let [response (dropdown card (:card param-keys) (:entity_id card))]
+                (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                          ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                        :has_more_values true}
+                       response)))
+              (let [response (search card (:card param-keys) "red" (:entity_id card))]
+                (is (= {:has_more_values false,
+                        :values          [["Fred 62"] ["Red Medicine"]]}
+                       response))))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
@@ -1861,3 +1863,49 @@
                                                  card-id
                                                  (tiles.api-test/encoded-lat-field-ref)
                                                  (tiles.api-test/encoded-lon-field-ref))))))))))
+
+(deftest embedded-string-parameter-case-sensitivity-regression-test
+  "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
+   Embedded dashboards should apply case-insensitive default options for string operators."
+  (mt/dataset test-data
+    (mt/with-temp
+      [:model/Card card {:database_id (mt/id)
+                         :table_id (mt/id :venues)
+                         :dataset_query (mt/mbql-query venues)}
+       :model/Dashboard dashboard {:parameters [{:name "Name Contains"
+                                                 :slug "name_contains"
+                                                 :id "_NAME_CONTAINS_"
+                                                 :type :string/contains}]}
+       :model/DashboardCard dashcard {:card_id (:id card)
+                                      :dashboard_id (:id dashboard)
+                                      :parameter_mappings [{:parameter_id "_NAME_CONTAINS_"
+                                                            :card_id (:id card)
+                                                            :target [:dimension (mt/$ids venues $name)]}]}]
+      (with-embedding-enabled-and-new-secret-key!
+        (t2/update! :model/Dashboard (:id dashboard)
+                    {:enable_embedding true
+                     :embedding_params {"name_contains" "enabled"}})
+
+        (letfn [(dashcard-query-url [params]
+                  (format "embed/dashboard/%s/dashcard/%s/card/%s"
+                          (dash-token dashboard (when params {:params params}))
+                          (:id dashcard)
+                          (:id card)))]
+
+          (testing "Field filter should work case-insensitively in embedded dashboards"
+            (testing "Query with lowercase 'red' should find venues with 'Red' in the name"
+              (let [response    (client/client :get 202 (dashcard-query-url {"name_contains" "red"}))
+                    _           (is (= "completed" (:status response)))
+                    ;; Get venue data from the response
+                    venue-rows  (->> response :data :rows)
+                    venue-ids   (set (map first venue-rows))
+                    venue-names (set (map second venue-rows))]
+                ;; Verify we found the right number of venues
+                (is (= #{1 10} venue-ids)
+                    "Should find venues 1 and 10 when filtering with lowercase 'red' (case-insensitive)")
+                ;; Explicitly verify that we matched both "Red Medicine" (uppercase) and "Fred 62" (lowercase)
+                (testing "Should match venues with both uppercase 'Red' and lowercase 'red'"
+                  (is (some #(re-find #"Red" %) venue-names)
+                      "Should find at least one venue with uppercase 'Red' in the name")
+                  (is (some #(re-find #"red" %) venue-names)
+                      "Should find at least one venue with lowercase 'red' in the name"))))))))))

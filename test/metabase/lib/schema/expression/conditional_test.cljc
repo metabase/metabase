@@ -32,6 +32,24 @@
            :base-type      effective-type}
    x])
 
+(deftest ^:parallel case-schema-valid-test
+  (testing "schema validation for valid :case expressions"
+    (are [args] (true?
+                 (mr/validate :mbql.clause/case
+                              (into [:case {:lib/uuid (str (random-uuid))}] args)))
+      [[[true 1]] 1]
+      [[[true false]] false]
+      [[[true true]] true]
+      [[[true true]] true])))
+
+(deftest ^:parallel case-schema-invalid-test
+  (testing "schema validation for invalid :case expressions"
+    (are [args] (false?
+                 (mr/validate :mbql.clause/case
+                              (into [:case {:lib/uuid (str (random-uuid))}] args)))
+      [1]
+      [[] 1])))
+
 (deftest ^:parallel case-type-of-test
   (testing "type-of logic for :case expressions"
     ;; In QP and MLv2: `expression/type-of-method :case`
@@ -69,6 +87,20 @@
       (case-expr (value-expr :type/DateTimeWithTZ "2023-03-08T00:00:00Z")
                  (value-expr :type/Date "2023-03-08"))
       :type/DateTime)))
+
+(deftest ^:parallel coalesce-schema-valid-test
+  (testing "schema validation for valid :coalesce expressions"
+    (are [args] (true?
+                 (mr/validate :mbql.clause/coalesce
+                              (into [:coalesce {:lib/uuid (str (random-uuid))}] args)))
+      [1 2]
+      [1 2 3]
+      [1 [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} 1]]
+      ; TODO: this case should fail due to Time and Date not being compatible,
+      ; but until we have a better way to handle this, we just allow it and document
+      ; here as a test.
+      [(value-expr :type/Date "2023-03-08")
+       (value-expr :type/Time "15:03:55")])))
 
 (deftest ^:parallel coalesce-test
   (is (mr/validate

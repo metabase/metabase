@@ -616,6 +616,11 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:from_varbyte expr (h2x/literal "UTF8")]))
 
+(defmethod sql.qp/cast-temporal-byte [:redshift :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:from_varbyte expr (h2x/literal "UTF8")]))
+
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))

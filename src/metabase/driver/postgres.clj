@@ -88,7 +88,8 @@
                  :actions/custom
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
-                 #_:index-info]]
+                 #_:index-info
+                 :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -487,6 +488,11 @@
 (defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:convert_from expr (h2x/literal "UTF8")]))
+
+(defmethod sql.qp/cast-temporal-byte [:postgres :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
                                [:convert_from expr (h2x/literal "UTF8")]))
 
 (defn- extract [unit expr]

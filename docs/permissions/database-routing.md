@@ -18,6 +18,7 @@ Database routing is useful for:
 
 ## Databases that support database routing
 
+- [BigQuery](../databases/connections/bigquery.md)
 - [Druid](../databases/connections/druid.md)
 - [MongoDB](../databases/connections/mongodb.md)
 - [MariaDB](../databases/connections/mariadb.md)
@@ -28,7 +29,7 @@ Database routing is useful for:
 
 ## How database routing works
 
-You connect Metabase to a database as normal. When you turn on database routing for that database, it becomes a **router database** - the main database that will handle routing queries to **destination databases**. You'll add these destination databases to this router database, with each destination database associated with a value for the user attribute you assign to the router database.
+You connect Metabase to a database as normal. When you turn on database routing for that database, it becomes a **router database** - the main database that will handle routing queries to **destination databases**. You'll add these destination databases to this router database, with each destination database associated with a value for the user attribute you assign to the router database. You don't need to have your customer databases as separate connections.
 
 With the router database set up with its destination databases, an admin can then create questions that query the router database. When other people log in and view these questions, Metabase will route the queries to the destination database specified by the person's user attribute.
 
@@ -36,7 +37,7 @@ With the router database set up with its destination databases, an admin can the
 
 ![Database routing](./images/database-routing.png)
 
-1. [Connect to a database](../databases/connecting.md) that has _the same schema as all of your customer's databases_. This database should be a mock/dev database, ideally with some fake data. The name used for this router database will be the name all users will see, regardless of which destination database they're routed to. (You can change the display name at any time).
+1. [Connect to a database](../databases/connecting.md) that has _the same schema as all of your customer's databases_. This database should be a mock/dev database, ideally with some fake data. The name used for this router database will be the name all users will see, regardless of which destination database they're routed to, so make sure the name makes sense for everyone. (You can change the display name at any time).
 2. Once connected to this initial database (the "Router database"), go to its Database routing section and toggle on **Enable database routing**.
 3. Enter the user attribute you want to use to determine which database a user should be routed to.
 4. In the **Destination databases** section, click **Add**, then fill out the connection details. For each destination database, you'll need to specify a **slug** - this slug is the value that Metabase will use to match against the user attribute you assigned to the router database. At run time, when a user views a question built on the router database, Metabase will check the person's user attribute. If the value matches this slug, the question will query this destination database instead.
@@ -72,7 +73,7 @@ When you click **Add**, you'll see a `POST` request to `/mirror-database?check_c
 
 ### Adding a new destination database: example with PostgreSQL via `curl`
 
-Here's a `curl` command to add a PostgreSQL database as a destination database. Here the `slug` is defined by the `name` key (in this case, `Green PostgreSQL`).
+Here's a `curl` command to add a PostgreSQL database as a destination database. Here the database's `slug` is defined by `name` (in this case, `Green PostgreSQL`).
 
 ```sh
 curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connection_details=true' \

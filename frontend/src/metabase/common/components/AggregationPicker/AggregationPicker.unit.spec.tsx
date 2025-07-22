@@ -253,7 +253,7 @@ describe("AggregationPicker", () => {
       ).toHaveAttribute("aria-selected", "true");
       expect(
         screen.getByRole("option", { name: "Sum of ..." }),
-      ).not.toHaveAttribute("aria-selected");
+      ).toHaveAttribute("aria-selected", "false");
     });
 
     it("should highlight selected operator column", () => {

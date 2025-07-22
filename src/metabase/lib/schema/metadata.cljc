@@ -6,6 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
@@ -49,9 +50,23 @@
 ;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
 ;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
-(mr/def ::column-source
+(mr/def ::column.source
+  "`:lib/source` -- where a column came from with respect to the current stage.
+
+  Traditionally, `:lib/source` meant something slightly different -- it denoted what part of the current stage a
+  column came from, and thus included two additional options -- `:source/fields`, for columns used by `:fields`, and
+  `:source/breakouts`, for columns used in `:breakout`. This was not really useful information and made `:lib/source`
+  itself useless for determining if a column was 'inherited' or not (i.e., whether it came from a previous stage,
+  source card, or a join, and should get field name refs instead of field ID refs --
+  see [[metabase.lib.field.util/inherited-column?]])."
   [:enum
-   {:decode/normalize lib.schema.common/normalize-keyword}
+   {:decode/normalize (fn [k]
+                        (when-let [k (lib.schema.common/normalize-keyword k)]
+                          ;; TODO (Cam 7/1/25) -- if we wanted, we could use `:source/breakouts` to populate
+                          ;; `:lib/breakout?` -- but I think that isn't really necessary since we can
+                          ;; recalculate that information anyway.
+                          (when-not (#{:source/fields :source/breakouts} k)
+                            k)))}
    ;; these are for things from some sort of source other than the current stage;
    ;; they must be referenced with string names rather than Field IDs
    :source/card
@@ -62,13 +77,11 @@
    ;;
    ;; default columns returned by the `:source-table` for the current stage.
    :source/table-defaults
-   ;; specifically introduced by the corresponding top-level clauses.
-   :source/fields
+   ;; Introduced by `:aggregation`(s) IN THE CURRENT STAGE. Aggregations by definition are always returned.
    :source/aggregations
-   :source/breakouts
    ;; introduced by a join, not necessarily ultimately returned.
    :source/joins
-   ;; Introduced by `:expressions`; not necessarily ultimately returned.
+   ;; Introduced by `:expressions` IN THE CURRENT STAGE; not necessarily ultimately returned.
    :source/expressions
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
    :source/implicitly-joinable])
@@ -179,6 +192,71 @@
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id))))))
 
+(mr/def ::column.validate-expression-source
+  "Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it probably
+  means it's getting incorrectly propagated from a previous stage (QUE-1342)."
+  [:fn
+   {:error/message ":lib/expression-name should only be set for expressions in the current stage (:lib/source = :source/expressions)"}
+   (fn [m]
+     (if (:lib/expression-name m)
+       (= (:lib/source m) :source/expressions)
+       true))])
+
+(mr/def ::column.validate-native-column
+  "Certain keys cannot possibly be set when a column comes from directly from native query results, for example
+  `:lib/breakout?` or join aliases"
+  (let [disallowed-keys [:metabase.lib.join/join-alias ; only things that come from a JOIN should have a join alias.
+                         :lib/expression-name]]        ; if it comes from a native query then it can't come from an expression.
+    [:fn
+     {:error/message "Invalid column metadata for a column with :lib/source :source/native"
+      :error/fn      (fn [{m :value} _]
+                       (some (fn [k]
+                               (when (k m)
+                                 (str "Column has :lib/source :source/native but also " k "; this is impossible")))
+                             disallowed-keys))}
+     (fn [m]
+       (if (= (:lib/source m) :source/native)
+         (every? (fn [k]
+                   (not (k m)))
+                 disallowed-keys)
+         true))]))
+
+(mr/def ::column.validate-table-defaults-column
+  "A column with :lib/source :source/table-defaults cannot possibly have a join alias."
+  [:fn
+   {:error/message "A column with :lib/source :source/table-defaults cannot possibly have a join alias"}
+   (fn [m]
+     (if (= (:lib/source m) :source/table-defaults)
+       (not (:metabase.lib.join/join-alias m))
+       true))])
+
+;;; TODO (Cam 7/1/25) -- disabled for now because of bugs like QUE-1496; once that's fixed we should re-enable this.
+#_(mr/def ::column.validate-join-alias
+    "`:metabase.lib.join/join-alias` SHOULD ONLY be set when `:lib/source` = `:source/joins`."
+    [:fn
+     {:error/message "current stage join alias (:metabase.lib.join/join-alias) should only be set for columns whose :lib/source is :source/joins"}
+     (fn [m]
+       (if (:metabase.lib.join/join-alias m)
+         (= (:lib/source m) :source/joins)
+         true))])
+
+(def column-visibility-types
+  "Possible values for column `:visibility-type`."
+  #{:normal       ; Default setting.  field has no visibility restrictions.
+    :details-only ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
+    :hidden       ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
+    :sensitive    ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
+    :retired})    ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
+
+(mr/def ::column.visibility-type
+  (into [:enum {:decode/normalize keyword}] column-visibility-types))
+
+(mr/def ::column.legacy-source
+  "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical
+  reasons (it is used in a few places in the FE). DO NOT use this in the backend for any purpose, use `:lib/source`
+  instead."
+  [:enum {:decode/normalize keyword} :aggregation :fields :breakout :native])
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -213,9 +291,11 @@
     [:id             {:optional true} [:maybe ::lib.schema.id/field]]
     [:display-name   {:optional true} [:maybe :string]]
     [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+    [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
     ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
     [:database-type  {:optional true} [:maybe :string]]
     [:active         {:optional true} :boolean]
+    [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
     ;; if this is a field from another table (implicit join), this is the field in the current table that should be
     ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
     ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
@@ -276,9 +356,15 @@
     ;;
     ;; the name of the expression where this column came from, if the column came from a previous stage of the query
     [:lib/original-expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    ;; what top-level clause in the query this metadata originated from, if it is calculated (i.e., if this metadata
-    ;; was generated by [[metabase.lib.metadata.calculation/metadata]])
-    [:lib/source {:optional true} [:ref ::column-source]]
+    ;; where this column came from. See docstring for `::column.source`.
+    [:lib/source {:optional true} [:maybe [:ref ::column.source]]]
+    ;;
+    ;; whether this column metadata occurs in the `:breakout`(s) in the CURRENT STAGE or not. Previously this was
+    ;; signified by `:lib/source = :source/breakouts` (which has been removed)
+    ;;
+    ;; this SHOULD NOT get propagated to subsequent stages!
+    [:lib/breakout? {:optional true} [:maybe :boolean]]
+
     ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
     [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
     ;;
@@ -335,6 +421,14 @@
     ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
     [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
     ;;
+    [:fingerprint {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+    ;;
+    ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
+    ;; legacy viz settings. This should not be used for anything other than that.
+    [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]
+    ;;
+    [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
+    ;;
     ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
     ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
     ;; the application database, look at the implementation for fetching a `:metadata/column`
@@ -343,7 +437,11 @@
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
     [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map])
+   ::kebab-cased-map
+   ::column.validate-expression-source
+   ::column.validate-native-column
+   ::column.validate-table-defaults-column
+   #_::column.validate-join-alias])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
@@ -377,28 +475,26 @@
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
    :metadata/segment])
 
-(mr/def ::card.result-metadata.map
-  "Schema for the maps in card `:result-metadata`. These can be either
+(mr/def ::lib-or-legacy-column
+  "Schema for the maps in card `:result-metadata` and similar. These can be either
   `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP
   metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
   [:multi
-   {:dispatch #(boolean (:lib/type %))}
-   [true
+   {:dispatch (fn [col]
+                ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
+                ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
+                ;; styles so look at that.
+                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
+                  (if ((some-fn :lib/type :base-type) col)
+                    :lib
+                    :legacy)))}
+   [:lib
     [:merge
      [:ref ::column]
      [:map
       {:error/message "If a Card result metadata column has :lib/type it MUST be a valid kebab-cased :metabase.lib.schema.metadata/column"}]]]
-   ;; If it's not already MLv2 metadata just make sure it at the least something that can pass for legacy metadata.
-   ;; This is a sanity check -- we should not be seen maps that have duplicate keys because of case confusion. They
-   ;; should be all one or the other.
-   [false
-    [:and
-     [:map]
-     [:fn
-      {:error/message "map that does not mix snake_case and kebab-case simple keywords"}
-      (fn [m]
-        (not (and (contains? m :display-name)
-                  (contains? m :display_name))))]]]])
+   [:legacy
+    [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]]])
 
 (defn- normalize-card-query [query]
   (when query
@@ -449,7 +545,7 @@
    [:dataset-query   {:optional true} ::card.query]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential ::card.result-metadata.map]]]
+   [:result-metadata {:optional true} [:maybe [:sequential ::lib-or-legacy-column]]]
    ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
    [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a

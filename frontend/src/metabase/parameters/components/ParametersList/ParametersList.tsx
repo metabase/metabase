@@ -1,6 +1,6 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 
 import type {
   DragEndEvent,
@@ -18,118 +18,135 @@ import { ParameterWidget } from "../ParameterWidget";
 const getId = (valuePopulatedParameter: Parameter) =>
   valuePopulatedParameter.id;
 
-export const ParametersList = ({
-  className,
+export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
+  function ParametersList(
+    {
+      className,
 
-  parameters,
-  question,
-  dashboard,
-  editingParameter,
+      parameters,
+      question,
+      dashboard,
+      editingParameter,
 
-  isSortable = true,
-  isFullscreen,
-  hideParameters,
-  isEditing,
-  vertical = false,
-  commitImmediately = false,
+      isSortable = true,
+      isFullscreen,
+      hideParameters,
+      isEditing,
+      vertical = false,
+      commitImmediately = false,
 
-  setParameterValueToDefault,
-  setParameterValue,
-  setParameterIndex,
-  setEditingParameter,
-  enableParameterRequiredBehavior,
-  widgetsVariant = "default",
-  widgetsWithinPortal,
-}: ParametersListProps) => {
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 15 },
-  });
+      setParameterValueToDefault,
+      setParameterValue,
+      setParameterIndex,
+      setEditingParameter,
+      enableParameterRequiredBehavior,
+      widgetsVariant = "default",
+      widgetsWithinPortal,
+      widgetsPopoverPosition,
 
-  const visibleValuePopulatedParameters = useMemo(
-    () => getVisibleParameters(parameters, hideParameters),
-    [parameters, hideParameters],
-  );
-
-  const handleSortEnd = useCallback(
-    ({ id, newIndex }: DragEndEvent) => {
-      if (setParameterIndex) {
-        setParameterIndex(id as ParameterId, newIndex);
-      }
+      hasTestIdProps = true,
     },
-    [setParameterIndex],
-  );
+    ref,
+  ) {
+    const pointerSensor = useSensor(PointerSensor, {
+      activationConstraint: { distance: 15 },
+    });
 
-  const renderItem = ({
-    item: valuePopulatedParameter,
-    id,
-  }: RenderItemProps<Parameter>) => (
-    <ParameterWidget
-      key={`sortable-${id}`}
-      variant={widgetsVariant}
-      fullWidth={vertical}
-      withinPortal={widgetsWithinPortal}
-      className={cx({ [CS.mb2]: vertical })}
-      isEditing={isEditing}
-      isFullscreen={isFullscreen}
-      parameter={valuePopulatedParameter}
-      parameters={parameters}
-      question={question}
-      dashboard={dashboard}
-      editingParameter={editingParameter}
-      setEditingParameter={setEditingParameter}
-      setValue={
-        setParameterValue &&
-        ((value: any) => setParameterValue(valuePopulatedParameter.id, value))
-      }
-      setParameterValueToDefault={setParameterValueToDefault}
-      enableParameterRequiredBehavior={enableParameterRequiredBehavior}
-      commitImmediately={commitImmediately}
-      dragHandle={
-        isSortable && isEditing && setParameterIndex ? (
-          <div
-            className={cx(
-              CS.flex,
-              CS.layoutCentered,
-              CS.cursorGrab,
-              "text-inherit",
+    const visibleValuePopulatedParameters = useMemo(
+      () => getVisibleParameters(parameters, hideParameters),
+      [parameters, hideParameters],
+    );
+
+    const handleSortEnd = useCallback(
+      ({ id, newIndex }: DragEndEvent) => {
+        if (setParameterIndex) {
+          setParameterIndex(id as ParameterId, newIndex);
+        }
+      },
+      [setParameterIndex],
+    );
+
+    const renderItem = ({
+      item: valuePopulatedParameter,
+      id,
+    }: RenderItemProps<Parameter>) => (
+      <ParameterWidget
+        key={`sortable-${id}`}
+        variant={widgetsVariant}
+        fullWidth={vertical}
+        withinPortal={widgetsWithinPortal}
+        popoverPosition={widgetsPopoverPosition}
+        className={cx({ [CS.mb2]: vertical })}
+        isEditing={isEditing}
+        isFullscreen={isFullscreen}
+        parameter={valuePopulatedParameter}
+        parameters={parameters}
+        question={question}
+        dashboard={dashboard}
+        editingParameter={editingParameter}
+        setEditingParameter={setEditingParameter}
+        setValue={
+          setParameterValue &&
+          ((value: any) => setParameterValue(valuePopulatedParameter.id, value))
+        }
+        setParameterValueToDefault={setParameterValueToDefault}
+        enableParameterRequiredBehavior={enableParameterRequiredBehavior}
+        commitImmediately={commitImmediately}
+        dragHandle={
+          isSortable && isEditing && setParameterIndex ? (
+            <div
+              className={cx(
+                CS.flex,
+                CS.layoutCentered,
+                CS.cursorGrab,
+                "text-inherit",
+              )}
+            >
+              <Icon name="grabber" />
+            </div>
+          ) : null
+        }
+        isSortable={isSortable}
+        hasTestId={hasTestIdProps}
+      />
+    );
+
+    return visibleValuePopulatedParameters.length > 0 ? (
+      <Flex
+        display="flex"
+        direction={vertical ? "column" : "row"}
+        align="end"
+        wrap="wrap"
+        gap="sm"
+        className={className}
+        ref={ref}
+        onMouseDown={(e) => {
+          if (isEditing) {
+            // Prevents clicking a filter in edit mode triggering card dragging
+            e.stopPropagation();
+          }
+        }}
+      >
+        {isSortable ? (
+          <SortableList
+            items={visibleValuePopulatedParameters}
+            getId={getId}
+            renderItem={renderItem}
+            onSortEnd={handleSortEnd}
+            sensors={[pointerSensor]}
+          />
+        ) : (
+          <>
+            {visibleValuePopulatedParameters.map((parameter, index) =>
+              renderItem({
+                item: parameter,
+                id: getId(parameter),
+                index,
+              }),
             )}
-          >
-            <Icon name="grabber" />
-          </div>
-        ) : null
-      }
-      isSortable={isSortable}
-    />
-  );
-
-  return visibleValuePopulatedParameters.length > 0 ? (
-    <Flex
-      display="flex"
-      direction={vertical ? "column" : "row"}
-      align="end"
-      wrap="wrap"
-      gap="sm"
-      className={className}
-    >
-      {isSortable ? (
-        <SortableList
-          items={visibleValuePopulatedParameters}
-          getId={getId}
-          renderItem={renderItem}
-          onSortEnd={handleSortEnd}
-          sensors={[pointerSensor]}
-        />
-      ) : (
-        <>
-          {visibleValuePopulatedParameters.map((parameter, index) =>
-            renderItem({
-              item: parameter,
-              id: getId(parameter),
-              index,
-            }),
-          )}
-        </>
-      )}
-    </Flex>
-  ) : null;
-};
+          </>
+        )}
+      </Flex>
+    ) : null;
+  },
+);

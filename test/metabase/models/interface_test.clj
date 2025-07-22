@@ -170,25 +170,25 @@
 
 (deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
   (let [viz-settings
-        {"table.pivot_column" "TAX",
-         "graph.metrics" ["expression"],
+        {"table.pivot_column" "TAX"
+         "graph.metrics" ["expression"]
          "pivot_table.column_split"
          {"rows"
-          ["CREATED_AT" "expression" "TAX"],
-          "columns" [],
-          "values" ["sum"]},
-         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}},
-         "table.cell_column" "expression",
+          ["CREATED_AT" "expression" "TAX"]
+          "columns" []
+          "values" ["sum"]}
+         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}}
+         "table.cell_column" "expression"
          "table.column_formatting"
-         [{"columns" ["expression" nil "TAX" "count"],
-           "type" "single",
-           "operator" "is-null",
-           "value" 10,
-           "color" "#EF8C8C",
-           "highlight_row" false,
-           "id" 0}],
-         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}},
-         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}},
+         [{"columns" ["expression" nil "TAX" "count"]
+           "type" "single"
+           "operator" "is-null"
+           "value" 10
+           "color" "#EF8C8C"
+           "highlight_row" false
+           "id" 0}]
+         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}}
+         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}}
          "graph.dimensions" ["CREATED_AT"]}]
     (is (= {:table.pivot_column "TAX"
             :graph.metrics ["expression"]
@@ -211,16 +211,48 @@
             :graph.dimensions ["CREATED_AT"]}
            (mi/normalize-visualization-settings viz-settings)))))
 
-(deftest json-in-with-eliding
+(deftest ^:parallel json-in-with-eliding
   (is (= "{}" (#'mi/json-in-with-eliding {})))
   (is (= (json/encode {:a "short"}) (#'mi/json-in-with-eliding {:a "short"})))
   (is (= (json/encode {:a (str (apply str (repeat 247 "b")) "...")}) (#'mi/json-in-with-eliding {:a (apply str (repeat 500 "b"))})))
-  (is (= (json/encode {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection",
+  (is (= (json/encode {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection"
                                                             {"toucan2.jdbc.query/sql-args" (str (apply str (repeat 247 "b")) "...")}]]}})
-         (#'mi/json-in-with-eliding {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection",
+         (#'mi/json-in-with-eliding {"ex-data" {"toucan2/context-trace" [["execute SQL with class com.mchange.v2.c3p0.impl.NewProxyConnection"
                                                                           {"toucan2.jdbc.query/sql-args" (apply str (repeat 500 "b"))}]]}})))
 
   (is (= (json/encode {:a (repeat 50 "x")}) (#'mi/json-in-with-eliding {:a (repeat 500 "x")})))
 
   (testing "A passed string is not elided"
     (is (= (apply str (repeat 1000 "a")) (#'mi/json-in-with-eliding (apply str (repeat 1000 "a")))))))
+
+(deftest ^:parallel lib-result-metadata-out-test
+  (let [cols [{:active                    true
+               :base-type                 :type/Text
+               :database-type             "CHARACTER VARYING"
+               :display-name              "Category"
+               :effective-type            :type/Text
+               :field-ref                 [:field 61339 nil]
+               :fingerprint               {:global {:distinct-count 4, :nil% 0.0}
+                                           :type   {:type/Text {:average-length 6.375
+                                                                :percent-email  0.0
+                                                                :percent-json   0.0
+                                                                :percent-state  0.0
+                                                                :percent-url    0.0}}}
+               :id                        61339
+               :name                      "CATEGORY"
+               :position                  3
+               :semantic-type             :type/Category
+               :source                    :breakout
+               :table-id                  10808
+               :visibility-type           :normal
+               :lib/breakout?             true
+               :lib/deduplicated-name     "CATEGORY"
+               :lib/desired-column-alias  "CATEGORY"
+               :lib/original-display-name "Category"
+               :lib/original-name         "CATEGORY"
+               :lib/source                :source/table-defaults
+               :lib/source-column-alias   "CATEGORY"
+               :lib/type                  :metadata/column}]]
+
+    (is (= cols
+           (#'mi/result-metadata-out (json/encode cols))))))

@@ -22,11 +22,11 @@ Once added, you'll see an **Add data** button in the left navigation bar. Click 
 
 You can upload a `.csv` or `.tsv` file.
 
-Learn more about [uploads](/docs/latest/exploration-and-organization/uploads).
+Learn more about [uploads](../exploration-and-organization/uploads.md).
 
 ### Metabase Cloud Storage uses ClickHouse
 
-Under the hood, Metabase Cloud Storage uses [ClickHouse](/data-sources/clickhouse) to store your data.
+Under the hood, Metabase Cloud Storage uses [ClickHouse](https://www.metabase.com/data-sources/clickhouse) to store your data.
 
 ### Writing SQL queries on data stored in Metabase Cloud Storage
 

@@ -547,6 +547,11 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+  shouldShowEmbedInNewItemMenu: () => false,
+  SdkIframeEmbedSetup: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -589,16 +594,19 @@ type GdriveConnectionModalProps = {
   reconnect: boolean;
 };
 
+type GdriveAddDataPanelProps = {
+  onAddDataModalClose: () => void;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
-  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
-    onClick: () => void;
-  }>,
   GdriveDbMenu: PluginPlaceholder,
+  GdriveAddDataPanel:
+    PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
@@ -755,6 +763,12 @@ export const PLUGIN_DB_ROUTING = {
   ): "default" | "hidden" | "disabled" => "default",
 };
 
+export const PLUGIN_DATABASE_REPLICATION = {
+  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+};
+
 export const PLUGIN_API = {
   getRemappedCardParameterValueUrl: (
     dashboardId: DashboardId,
@@ -766,4 +780,9 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+};
+
+export const PLUGIN_SMTP_OVERRIDE = {
+  CloudSMTPConnectionCard: PluginPlaceholder,
+  SMTPOverrideConnectionForm: PluginPlaceholder,
 };
