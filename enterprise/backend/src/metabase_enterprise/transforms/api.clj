@@ -7,6 +7,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.sync.core :as sync]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -134,6 +135,16 @@
   (case query-type
     "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
 
+(defn- sync-table!
+  [database target]
+  (let [table (or (t2/select-one :model/Table
+                                 :db_id (:id database)
+                                 :schema (:schema target)
+                                 :name (:table target))
+                  (sync/create-table! database {:schema (:schema target)
+                                                :name (:table target)}))]
+    (sync/sync-table! table)))
+
 (api.macros/defendpoint :post "/:id/execute"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
@@ -141,13 +152,14 @@
   (api/check-superuser)
   (let [{:keys [source target]} (t2/select-one :model/Transform id)
         db (get-in source [:query :database])
-        {driver :engine} (t2/select-one :model/Database db)]
+        {driver :engine :as database} (t2/select-one :model/Database db)]
     (transforms.execute/execute
      {:db db
       :driver driver
       :sql (compile-source source)
       :output-table (qualified-table-name driver target)
-      :overwrite? true})))
+      :overwrite? true})
+    (sync-table! database target)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

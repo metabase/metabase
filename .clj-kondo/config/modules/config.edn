@@ -1841,6 +1841,7 @@
            models
            permissions
            query-processor
+           sync
            util}}
 
   enterprise/upload-management
