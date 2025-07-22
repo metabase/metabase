@@ -760,3 +760,8 @@
                               (lib/filterable-columns query))]
         (assert (some? col))
         (is (lib.types.isa/date-or-datetime? col))))))
+
+(deftest ^:parallel relative-datetime-current-test
+  (testing "Should be able to create a :relative-datetime clause with one arg (:current)"
+    (is (=? [:relative-datetime {:lib/uuid string?} :current]
+            (lib.expression/relative-datetime :current)))))
