@@ -11,24 +11,15 @@ import { createMockState } from "metabase-types/store/mocks";
 export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  settingValues?: Record<string, any>;
 }
 
-export const defaultSetupOpts: SetupOpts = {
-  hasEnterprisePlugins: false,
-  tokenFeatures: {},
-  settingValues: {},
-};
-
 export function setup({
-  hasEnterprisePlugins = defaultSetupOpts.hasEnterprisePlugins,
-  tokenFeatures = defaultSetupOpts.tokenFeatures,
-  settingValues = defaultSetupOpts.settingValues,
-}: SetupOpts = defaultSetupOpts) {
+  hasEnterprisePlugins = false,
+  tokenFeatures = {},
+}: SetupOpts = {}) {
   const settings = mockSettings({
     "show-sdk-embed-terms": true,
     "enable-embedding-iframe-sdk": false,
-    ...settingValues,
   });
 
   const state = createMockState({
