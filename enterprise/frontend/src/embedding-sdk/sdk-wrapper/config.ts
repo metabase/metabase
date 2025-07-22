@@ -12,3 +12,6 @@ export const SDK_BUNDLE_LOADING_ERROR_MESSAGE =
   // eslint-disable-next-line no-literal-metabase-strings -- error message
   "        `authConfig.metabaseInstanceUrl` is correct and that the Metabase\n" +
   "        instance is reachable.";
+
+export const METABASE_PROVIDER_STORE_INITIALIZATION_EVENT_NAME =
+  "metabase-embedding-sdk-provider-store-initialization";
