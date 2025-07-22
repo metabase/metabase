@@ -8,11 +8,11 @@
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers)
-    (mt/user-http-request :rasta :get 200 "ee/transform")))
+    (mt/user-http-request :crowberto :get 200 "ee/transform")))
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers)
-    (mt/user-http-request :rasta :post 200 "ee/transform"
+    (mt/user-http-request :crowberto :post 200 "ee/transform"
                           {:name "Gadget Products"
                            :source {:type "query"
                                     :query {:database (mt/id)
@@ -27,7 +27,7 @@
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers)
-    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+    (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                      {:name "Gadget Products"
                                       :source {:type "query"
                                                :query {:database (mt/id)
@@ -36,13 +36,13 @@
                                                                 :template-tags {}}}}
                                       :target {:type "table"
                                                :database (mt/id)
-                                               :schema "transforms"
+                                               ;;:schema "transforms"
                                                :table "gadget_products"}})]
-      (mt/user-http-request :rasta :get 200 (format "ee/transform/%s" (:id resp))))))
+      (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers)
-    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+    (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                      {:name "Gadget Products"
                                       :source {:type "query"
                                                :query {:database (mt/id)
@@ -51,9 +51,9 @@
                                                                 :template-tags {}}}}
                                       :target {:type "table"
                                                :database (mt/id)
-                                               :schema "transforms"
+                                               ;;:schema "transforms"
                                                :table "gadget_products"}})]
-      (mt/user-http-request :rasta :put 200 (format "ee/transform/%s" (:id resp))
+      (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                             {:name "Gadget Products 2"
                              :source {:type "query"
                                       :query {:database (mt/id)
@@ -62,12 +62,12 @@
                                                        :template-tags {}}}}
                              :target {:type "table"
                                       :database (mt/id)
-                                      :schema "transforms"
+                                      ;;:schema "transforms"
                                       :table "gadget_products"}}))))
 
 (deftest delete-transforms-test
   (mt/test-drivers (mt/normal-drivers)
-    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+    (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                      {:name "Gadget Products"
                                       :source {:type "query"
                                                :query {:database (mt/id)
@@ -76,14 +76,14 @@
                                                                 :template-tags {}}}}
                                       :target {:type "table"
                                                :database (mt/id)
-                                               :schema "transforms"
+                                               ;;:schema "transforms"
                                                :table "gadget_products"}})]
-      (mt/user-http-request :rasta :delete 200 (format "ee/transform/%s" (:id resp)))
-      (prn (mt/user-http-request :rasta :get 500 (format "ee/transform/%s" (:id resp)))))))
+      (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
+      (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp))))))
 
 (deftest delete-table-transforms-test
   (mt/test-drivers (mt/normal-drivers)
-    (let [resp (mt/user-http-request :rasta :post 200 "ee/transform"
+    (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                      {:name "Gadget Products"
                                       :source {:type "query"
                                                :query {:database (mt/id)
@@ -92,6 +92,6 @@
                                                                 :template-tags {}}}}
                                       :target {:type "table"
                                                :database (mt/id)
-                                               :schema "transforms"
+                                               ;;:schema "transforms"
                                                :table "gadget_products"}})]
-      (mt/user-http-request :rasta :delete 200 (format "ee/transform/%s/table" (:id resp))))))
+      (mt/user-http-request :crowberto :delete 200 (format "ee/transform/%s/table" (:id resp))))))

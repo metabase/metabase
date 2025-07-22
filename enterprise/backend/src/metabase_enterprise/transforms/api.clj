@@ -92,7 +92,7 @@
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
   (api/check-superuser)
-  (t2/select-one :model/Transform id))
+  (api/check-404 (t2/select-one :model/Transform id)))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
@@ -104,7 +104,7 @@
             [:target {:optional true} ::transform-target]]]
   (log/info "put transform" id)
   (api/check-superuser)
-  (let [old (t2/select-one-fn :target :model/Transform id)
+  (let [old (t2/select-one :model/Transform id)
         new (merge old body)]
     (when (not= (select-keys (:target old) [:schema :table])
                 (select-keys (:target new) [:schema :table]))
