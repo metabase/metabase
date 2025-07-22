@@ -7,8 +7,12 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util.log :as log]
-   [nano-id.core :as nano-id]
-   [next.jdbc :as jdbc]))
+   [next.jdbc :as jdbc]
+   [next.jdbc.protocols :as jdbc.protocols])
+  (:import (clojure.lang IDeref)
+           (java.io Closeable)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private init-delay
   (delay
@@ -19,6 +23,15 @@
   (when semantic.db/db-url
     @init-delay
     (f)))
+
+(def db
+  "Proxies the semantic.db/data-source, avoids the deref and prettifies a little"
+  ;; proxy because semantic.db/data-source is not initialised until the fixture runs
+  (reify jdbc.protocols/Sourceable
+    (get-datasource [_] (jdbc.protocols/get-datasource @semantic.db/data-source))))
+
+(comment
+  (jdbc/execute! db ["select 1"]))
 
 (def mock-embeddings
   "Static mapping from strings to (made-up) 4-dimensional embedding vectors for testing. Each pair of strings represents a
@@ -56,6 +69,29 @@
   [texts]
   (mapv get-mock-embedding texts))
 
+;;;; mock provider
+
+(def mock-embedding-model
+  {:provider          "mock"
+   :model-name        "mock-model"
+   :vector-dimensions 4})
+
+(def mock-index
+  (semantic.index/default-index mock-embedding-model))
+
+(defmethod semantic.embedding/get-embedding        "mock" [_ text] (get-mock-embedding text))
+(defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts] (get-mock-embeddings-batch texts))
+(defmethod semantic.embedding/pull-model           "mock" [_])
+
+(defn query-index [search-context]
+  (semantic.index/query-index db mock-index search-context))
+
+(defn upsert-index! [documents]
+  (semantic.index/upsert-index! db mock-index documents))
+
+(defn delete-from-index! [model ids]
+  (semantic.index/delete-from-index! db mock-index model ids))
+
 (def mock-documents
   [{:model "card"
     :id "123"
@@ -79,36 +115,22 @@
   [results]
   (filter #(contains? mock-embeddings (:name %)) results))
 
-(defn mock-process-embeddings-streaming
-  "Mock implementation of process-embeddings-streaming that uses mock embeddings."
-  [texts process-fn]
-  (when (seq texts)
-    (let [embeddings (get-mock-embeddings-batch texts)]
-      (process-fn texts embeddings))))
+(defn- closeable [o close-fn]
+  (reify
+    IDeref
+    (deref [_] o)
+    Closeable
+    (close [_] (close-fn o))))
 
-(defmacro with-mocked-embeddings! [& body]
-  ;; TODO: it's warning about not using with-redefs outside of tests but we *are* using it in tests
-  #_:clj-kondo/ignore
-  `(with-redefs [semantic.embedding/model-dimensions (constantly 4)
-                 semantic.embedding/pull-model (constantly nil)
-                 semantic.embedding/process-embeddings-streaming mock-process-embeddings-streaming
-                 semantic.embedding/get-embedding get-mock-embedding]
-     ~@body))
-
-(defmacro with-temp-index-table! [& body]
-  `(let [test-table-name# (keyword (str "test_search_index_" (nano-id/nano-id)))]
-     (binding [semantic.index/*index-table-name* test-table-name#
-               search.ingestion/*force-sync* true]
-       (try
-         (mt/as-admin
-           (semantic.index/create-index-table! {:force-reset? true}))
-         ~@body
-         (finally
-           (try
-             (mt/as-admin
-               (semantic.index/drop-index-table!))
-             (catch Exception e#
-               (log/error "Warning: failed to clean up test table" test-table-name# ":" (.getMessage e#)))))))))
+(defn open-temp-index! []
+  (closeable
+   (do (semantic.index/create-index-table! db mock-index {:force-reset? true})
+       mock-index)
+   (fn cleanup-temp-index-table! [{:keys [table-name]}]
+     (try
+       (semantic.index/drop-index-table! db mock-index)
+       (catch Exception e
+         (log/error e "Warning: failed to clean up test table" table-name))))))
 
 (defmacro with-indexable-documents!
   "Add a collection of test documents to that can be indexed to the appdb."
@@ -165,8 +187,10 @@
   "Ensure a clean, small index for testing populated with a few collections, cards, and dashboards."
   [& body]
   `(with-indexable-documents!
-     (with-temp-index-table!
-       (search.core/reindex! :search.engine/semantic {:force-reset true})
+     (with-open [_# (open-temp-index!)]
+       (binding [semantic.embedding/*active-model* mock-embedding-model
+                 search.ingestion/*force-sync* true]
+         (search.core/reindex! :search.engine/semantic {:force-reset true}))
        ~@body)))
 
 (defn table-exists-in-db?
@@ -174,7 +198,7 @@
   [table-name]
   (when table-name
     (try
-      (let [result (jdbc/execute! @semantic.db/data-source
+      (let [result (jdbc/execute! db
                                   ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)"
                                    (name table-name)])]
         (-> result first vals first))
@@ -184,7 +208,7 @@
   [table-name index-name]
   (when table-name
     (try
-      (let [result (jdbc/execute! @semantic.db/data-source
+      (let [result (jdbc/execute! db
                                   ["SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?)"
                                    (name table-name)
                                    (name index-name)])]
