@@ -18,25 +18,7 @@
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
 ;; model (e.g are admins trusted with writing arbitrary SQL cases anyway, will non admins ever call this?)
-(def ^:private Identifier
-  "A malli schema for strings that can be used as SQL identifiers"
-  [:re #"^[\w\- ]+$"])
-
 ;; upload types are used temporarily, I expect this to change
-(def ^:private column-type->upload-type
-  {"auto_incrementing_int_pk" :metabase.upload/auto-incrementing-int-pk
-   "boolean"                  :metabase.upload/boolean
-   "int"                      :metabase.upload/int
-   "float"                    :metabase.upload/float
-   "varchar255"               :metabase.upload/varchar-255
-   "text"                     :metabase.upload/text
-   "date"                     :metabase.upload/date
-   "datetime"                 :metabase.upload/datetime
-   "offset_datetime"          :metabase.upload/timestamp-with-time-zone})
-
-(def ^:private ColumnType
-  (into [:enum] (keys column-type->upload-type)))
-
 (mr/def ::api-action-id
   "Primitive actions, saved actions, and packed encodings from the picker."
   [:or
@@ -225,9 +207,8 @@
    {:keys [action scope input]}]
   (let [scope         (actions/hydrate-scope scope)
         unified       (fetch-unified-action scope action)
-        row-data      (get-row-data unified input)
         partial-input (first (apply-mapping-nested unified nil [input]))]
-    (data-editing.describe/describe-unified-action unified scope row-data partial-input)))
+    (data-editing.describe/describe-unified-action unified scope partial-input)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/action-v2 routes."

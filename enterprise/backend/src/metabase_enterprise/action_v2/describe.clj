@@ -111,7 +111,7 @@
 
 (mu/defn describe-unified-action :- ::action-description
   "Describe parameters of an unified action."
-  [action-def scope row-data partial-input]
+  [action-def scope partial-input]
   (cond
     (:action-id action-def)
     (throw (ex-info "We do not currently support execution of Model Actions" {:status-code 400}))

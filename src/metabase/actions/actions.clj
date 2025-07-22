@@ -19,7 +19,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [methodical.core :as m]
    [methodical.core :as methodical]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
@@ -68,7 +67,7 @@
   (into #{}
         (comp (filter sequential?)
               (map second))
-        (keys (m/primary-methods perform-action!*))))
+        (keys (methodical/primary-methods perform-action!*))))
 
 (methodical/defmethod perform-action!* :default
   [action context _inputs]

@@ -364,11 +364,9 @@
                                  (let [actions-enabled (:a flags)
                                        editing-enabled (:d flags)
                                        superuser       (:s flags)
-                                       url             execute-bulk-url
                                        settings        {:database-enable-table-editing (boolean editing-enabled)
                                                         :database-enable-actions       (boolean actions-enabled)}
-                                       user            (if superuser :crowberto :rasta)
-                                       req             mt/user-http-request-full-response]
+                                       user            (if superuser :crowberto :rasta)]
                                    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings settings}
                                      {:settings settings
                                       :user     user

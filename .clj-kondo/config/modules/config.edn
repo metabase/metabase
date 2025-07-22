@@ -49,7 +49,9 @@
   {:team "Workflows"
    :api  #{metabase.actions.api
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.types
+           metabase.actions.args}
    :uses #{analytics
            api
            collections
@@ -1437,6 +1439,18 @@
            util
            warehouse-schema}}
 
+  enterprise/action-v2
+  {:team "Workflows"
+   :api  #{metabase-enterprise.action-v2.api
+           metabase-enterprise.action-v2.core
+           metabase-enterprise.action-v2.init}
+   :uses #{actions
+           api
+           lib
+           query-processor
+           util
+           warehouse-schema}}
+
   enterprise/advanced-config
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.advanced-config.api.logs
@@ -1616,7 +1630,6 @@
            util
            warehouse-schema
            warehouses}}
-
 
   enterprise/email
   {:team "Admin Webapp"
@@ -1843,7 +1856,7 @@
            upload
            util}}}
 
- ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
+;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
  ;;
  ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
