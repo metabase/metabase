@@ -150,6 +150,7 @@
                           merge-metric-options (fn [opts]
                                                  (-> opts
                                                      (update :display-name #(or % metric-name))
+                                                     (update :name #(or % metric-name))
                                                      (merge (select-keys (get &match 1) [:lib/uuid :name :display-name]))))]
                       (update (lib.util/fresh-uuids replacement) 1 merge-metric-options))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
