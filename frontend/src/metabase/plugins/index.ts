@@ -814,13 +814,20 @@ export type TransformSectionProps = {
 };
 
 export type TransformsPlugin = {
-  useFetchTransforms(): UseFetchTransformsResult;
+  useFetchTransforms: () => UseFetchTransformsResult;
   TransformSection: ComponentType<TransformSectionProps>;
   NewTransformModal: ComponentType<NewTransformModalProps>;
 };
 
+function fetchTransforms(): Promise<UseFetchTransformsData> {
+  return Promise.resolve({});
+}
+
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  useFetchTransforms: () => [() => Promise.resolve({}), { isError: false }],
+  useFetchTransforms: () => [
+    fetchTransforms,
+    { isFetching: false, isError: false },
+  ],
   TransformSection: PluginPlaceholder,
   NewTransformModal: PluginPlaceholder,
 };
