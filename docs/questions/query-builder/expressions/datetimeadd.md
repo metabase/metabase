@@ -121,7 +121,7 @@ datetimeAdd([Opened On], 14, "day")
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query-builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [coffee sample data](#calculating-an-end-date) is stored in a PostgreSQL database:
 
