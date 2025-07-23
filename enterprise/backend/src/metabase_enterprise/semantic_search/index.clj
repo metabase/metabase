@@ -241,16 +241,25 @@
   [index search-context]
   (let [filters (search-filters search-context)
         search-string (:search-string search-context)
-        ts-search-vector (str/replace (search/to-tsquery-expr search-string) "'" "")
+        ts-search-expr (search/to-tsquery-expr search-string)
+        tsv-lang (search/tsv-language)
         base-query {:select [[:id :id]
                              [:model_id :model_id]
                              [:model :model]
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
-                             [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, to_tsquery('" (search/tsv-language) "', '" ts-search-vector "')) DESC)"] :keyword_rank]]
+                             [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, query) DESC)"] :keyword_rank]]
                     :from   [(keyword (:table-name index))]
-                    :where  [:raw (str  "text_search_vector @@ to_tsquery('" (search/tsv-language) "', '" ts-search-vector "')")]
+                    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
+                    ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
+                    :join   [[[:raw "to_tsquery('"
+                               tsv-lang
+                               "', "
+                               [:lift ts-search-expr]
+                               ")"]
+                              :query] [:= 1 1]]
+                    :where  [:raw "text_search_vector @@ query"]
                     :order-by [[:keyword_rank :asc]]
                     :limit  100}]
     (if filters
@@ -261,16 +270,19 @@
   "Build a semantic search query using vector similarity."
   [index embedding search-context]
   (let [filters (search-filters search-context)
+        embedding-literal (format-embedding embedding)
         base-query {:select [[:id :id]
                              [:model_id :model_id]
                              [:model :model]
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
-                             [[:raw (str "row_number() OVER (ORDER BY embedding <=> " (format-embedding embedding) " ASC)")] :semantic_rank]]
+                             [[:raw "row_number() OVER (ORDER BY embedding <=> embedding_param ASC)"] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
+                    ;; Using a join to parameterize the embedding vector similar to tsvector approach
+                    :join   [[[:lift embedding-literal] :embedding_param] [:= 1 1]]
                     ;; TODO: parameterize max cosine distance
-                    :where [:<= [:raw (str "embedding <=> " (format-embedding embedding))] 0.35]
+                    :where [:<= [:raw "embedding <=> embedding_param"] 0.35]
                     :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
