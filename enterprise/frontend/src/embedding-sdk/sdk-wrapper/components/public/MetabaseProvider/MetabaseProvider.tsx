@@ -8,16 +8,7 @@ import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use
 
 import { MetabaseProviderInner } from "../../private/MetabaseProviderInner/MetabaseProviderInner";
 
-/**
- * A component that provides the Metabase SDK context and theme.
- *
- * @function
- * @category MetabaseProvider
- */
-export const MetabaseProvider = memo(function MetabaseProvider({
-  children,
-  ...props
-}: MetabaseProviderProps) {
+const _MetabaseProvider = ({ children, ...props }: MetabaseProviderProps) => {
   useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
   const { isLoading } = useWaitForSdkBundle();
 
@@ -29,16 +20,27 @@ export const MetabaseProvider = memo(function MetabaseProvider({
     : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
 
   return (
+    <MetabaseProviderInner reduxStore={reduxStore} props={props}>
+      {({ initialized }) =>
+        initialized && Component ? <Component>{children}</Component> : children
+      }
+    </MetabaseProviderInner>
+  );
+};
+
+/**
+ * A component that provides the Metabase SDK context and theme.
+ *
+ * @function
+ * @category MetabaseProvider
+ */
+export const MetabaseProvider = memo(function MetabaseProvider({
+  children,
+  ...props
+}: MetabaseProviderProps) {
+  return (
     <ClientSideOnlyWrapper ssrFallback={children}>
-      <MetabaseProviderInner reduxStore={reduxStore} props={props}>
-        {({ initialized }) =>
-          initialized && Component ? (
-            <Component>{children}</Component>
-          ) : (
-            children
-          )
-        }
-      </MetabaseProviderInner>
+      <_MetabaseProvider {...props}>{children}</_MetabaseProvider>
     </ClientSideOnlyWrapper>
   );
 });
