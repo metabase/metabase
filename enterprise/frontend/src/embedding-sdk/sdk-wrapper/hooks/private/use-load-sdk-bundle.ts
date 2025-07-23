@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-wrapper/config";
-import { dispatchScriptTagStatusEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-script-tag-status-event";
+import { dispatchSdkBundleScriptLoadingEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-sdk-bundle-script-loading-event";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-wrapper/lib/private/get-sdk-bundle-script-element";
 
 const loadSdkBundle = async (metabaseInstanceUrl: string) => {
@@ -32,13 +32,13 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
         return;
       }
 
-      dispatchScriptTagStatusEvent("loading");
+      dispatchSdkBundleScriptLoadingEvent("loading");
 
       try {
         await loadSdkBundle(metabaseInstanceUrl);
-        dispatchScriptTagStatusEvent("loaded");
+        dispatchSdkBundleScriptLoadingEvent("loaded");
       } catch (error) {
-        dispatchScriptTagStatusEvent("error");
+        dispatchSdkBundleScriptLoadingEvent("error");
       }
     };
 
