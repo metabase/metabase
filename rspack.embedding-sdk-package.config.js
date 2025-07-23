@@ -9,10 +9,7 @@ const { resolve } = require("path");
 const {
   TypescriptConvertErrorsToWarnings,
 } = require("./frontend/build/embedding-sdk/rspack/typescript-convert-errors-to-warnings");
-const {
-  IS_DEV_MODE,
-  LICENSE_TEXT,
-} = require("./frontend/build/shared/constants");
+const { IS_DEV_MODE } = require("./frontend/build/shared/constants");
 const {
   OPTIMIZATION_CONFIG,
 } = require("./frontend/build/embedding-sdk/rspack/shared");
@@ -20,6 +17,12 @@ const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
+const {
+  SDK_PACKAGE_BANNER,
+} = require("./frontend/build/embedding-sdk/constants/banner");
+const {
+  getBannerOptions,
+} = require("./frontend/build/shared/rspack/get-banner-options");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
@@ -77,9 +80,7 @@ const config = {
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,
     }),
-    new rspack.BannerPlugin({
-      banner: LICENSE_TEXT,
-    }),
+    new rspack.BannerPlugin(getBannerOptions(SDK_PACKAGE_BANNER)),
     !skipDTS &&
       new ForkTsCheckerWebpackPlugin({
         async: isDevMode,
