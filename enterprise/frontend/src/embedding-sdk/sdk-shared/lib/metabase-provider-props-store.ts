@@ -1,8 +1,5 @@
-import type { Action, Store } from "@reduxjs/toolkit";
-
 import type { InternalMetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { dispatchMetabaseProviderPropsStoreInitEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-metabase-provider-props-store-init-event";
-import type { SdkStoreState } from "embedding-sdk/store/types";
 
 import { getWindow } from "./get-window";
 
@@ -20,16 +17,30 @@ export type MetabaseProviderPropsToStore = Omit<
  * This class can be used with `useSyncExternalStore` to subscribe to changes in the props.
  */
 export class MetabaseProviderPropsStore {
-  private static instance: MetabaseProviderPropsStore | null = null;
+  public props: MetabaseProviderPropsToStore;
 
-  private props: MetabaseProviderPropsToStore;
+  private static instance: MetabaseProviderPropsStore | null = null;
   private readonly listeners = new Set<() => void>();
+
+  public static getInstance(): MetabaseProviderPropsStore | null {
+    if (!MetabaseProviderPropsStore.instance) {
+      const instanceFromWindow =
+        getWindow()?.METABASE_PROVIDER_PROPS_STORE?.instance;
+
+      if (!instanceFromWindow) {
+        return null;
+      }
+
+      MetabaseProviderPropsStore.instance = instanceFromWindow;
+    }
+
+    return MetabaseProviderPropsStore.instance;
+  }
 
   public static initialize(initialProps: MetabaseProviderPropsToStore): void {
     const existingStore = MetabaseProviderPropsStore.getInstance();
 
     if (existingStore) {
-      // Don't initialize multiple instances of the store
       return;
     }
 
@@ -62,13 +73,6 @@ export class MetabaseProviderPropsStore {
     });
   }
 
-  public static getInstance(): MetabaseProviderPropsStore | null {
-    return (
-      (getWindow()?.METABASE_PROVIDER_PROPS_STORE ?? MetabaseProviderPropsStore)
-        ?.instance ?? null
-    );
-  }
-
   private constructor(initialProps: MetabaseProviderPropsToStore) {
     this.props = initialProps;
 
@@ -76,25 +80,9 @@ export class MetabaseProviderPropsStore {
     this.getSnapshot = this.getSnapshot.bind(this);
   }
 
-  public updateProps(props: MetabaseProviderPropsToStore): void {
+  public setProps(props: Partial<MetabaseProviderPropsToStore>): void {
     this.props = { ...this.props, ...props };
     this.listeners.forEach((listener) => listener());
-  }
-
-  public update<K extends keyof MetabaseProviderPropsToStore>(
-    key: K,
-    value: MetabaseProviderPropsToStore[K],
-  ): void {
-    this.props = { ...this.props, [key]: value };
-    this.listeners.forEach((listener) => listener());
-  }
-
-  public setReduxStore(reduxStore: Store<SdkStoreState, Action>): void {
-    this.update("reduxStore", reduxStore);
-  }
-
-  public getReduxStore() {
-    return this.props.reduxStore;
   }
 
   // -- useSyncExternalStore compatibility --
