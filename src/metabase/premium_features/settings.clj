@@ -250,7 +250,9 @@
   "Should Metabase generate SQL queries?"
   :ai-sql-generation)
 
-(define-premium-feature ^{:added "0.55.0"} enable-embedding-iframe-sdk-feature?
+; the "-feature" suffix avoids name collision with the setting getter
+; TODO: rename the feature token name to `:embedding-simple` before beta
+(define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
   "Should we allow users to embed the SDK in iframes?"
   :embedding-iframe-sdk)
 
@@ -293,7 +295,7 @@
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
-   :embedding_iframe_sdk           (enable-embedding-iframe-sdk-feature?)
+   :embedding_iframe_sdk           (enable-embedding-simple-feature?)
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)

@@ -233,7 +233,7 @@ export const createMockSettings = (
   "non-table-chart-generated": true,
   "enable-embedding-static": false,
   "enable-embedding-sdk": false,
-  "enable-embedding-iframe-sdk": false,
+  "enable-embedding-simple": false,
   "enable-embedding-interactive": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,

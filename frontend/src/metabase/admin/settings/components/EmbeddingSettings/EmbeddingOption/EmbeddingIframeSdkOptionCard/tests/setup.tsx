@@ -19,7 +19,7 @@ export function setup({
 }: SetupOpts = {}) {
   const settings = mockSettings({
     "show-sdk-embed-terms": true,
-    "enable-embedding-iframe-sdk": false,
+    "enable-embedding-simple": false,
   });
 
   const state = createMockState({

@@ -15,7 +15,7 @@ const setup = () => {
 
   const settings = [
     createMockSettingDefinition({
-      key: "enable-embedding-iframe-sdk",
+      key: "enable-embedding-simple",
       value: false,
     }),
     createMockSettingDefinition({

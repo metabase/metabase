@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useUpdateSettingsMutation } from "metabase/api";
 import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
 
-type SettingKey = "enable-embedding-sdk" | "enable-embedding-iframe-sdk";
+type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
 
 type Props = ModalProps & {
   setting: SettingKey;
@@ -20,7 +20,9 @@ export const EmbeddingLegaleseModal = ({ setting, opened, onClose }: Props) => {
 
     await updateSettings({
       [setting]: true,
-      "show-sdk-embed-terms": false,
+
+      // hide the legalese modal and popups.
+      [getShowEmbedTermsSetting(setting)]: false,
     });
 
     setLoading(false);
@@ -71,8 +73,14 @@ const getTitle = (key: SettingKey) =>
         t`When using the Embedded analytics SDK for React, each end user should have their own Metabase account.`,
     )
     .with(
-      "enable-embedding-iframe-sdk",
+      "enable-embedding-simple",
       () =>
         t`When using the new iframe embedding, each end user should have their own Metabase account.`,
     )
+    .exhaustive();
+
+const getShowEmbedTermsSetting = (key: SettingKey) =>
+  match(key)
+    .with("enable-embedding-sdk", () => "show-sdk-embed-terms")
+    .with("enable-embedding-simple", () => "show-simple-embed-terms")
     .exhaustive();

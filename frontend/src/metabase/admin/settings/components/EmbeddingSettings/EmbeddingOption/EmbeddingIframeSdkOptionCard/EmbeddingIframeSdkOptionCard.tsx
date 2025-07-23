@@ -11,7 +11,7 @@ import { SdkIcon } from "../EmbeddingSdkOptionCard/SdkIcon";
 import { LinkButton } from "../LinkButton";
 
 export function EmbeddingIframeSdkOptionCard() {
-  const isIframeEmbeddingSdkEnabled = useSetting("enable-embedding-iframe-sdk");
+  const isIframeEmbeddingSdkEnabled = useSetting("enable-embedding-simple");
   const isEE = PLUGIN_EMBEDDING.isEnabled();
 
   return (
@@ -48,7 +48,7 @@ export function EmbeddingIframeSdkOptionCard() {
           {t`Configure`}
         </LinkButton>
 
-        <EmbeddingToggle settingKey="enable-embedding-iframe-sdk" />
+        <EmbeddingToggle settingKey="enable-embedding-simple" />
       </Group>
     </EmbeddingOption>
   );

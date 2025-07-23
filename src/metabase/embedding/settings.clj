@@ -102,7 +102,7 @@
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
 
-(defsetting enable-embedding-iframe-sdk
+(defsetting enable-embedding-simple
   (deferred-tru "Allow admins to embed Metabase via iframe SDK?")
   :type       :boolean
   :default    false
@@ -110,7 +110,7 @@
   :export?    false
   :audit      :getter
   :feature    :embedding-iframe-sdk
-  :setter     (make-embedding-toggle-setter :enable-embedding-iframe-sdk "sdk-iframe-embedding"))
+  :setter     (make-embedding-toggle-setter :enable-embedding-simple "sdk-iframe-embedding"))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
@@ -260,7 +260,7 @@
    (enable-embedding-static)
    (enable-embedding-interactive)
    (enable-embedding-sdk)
-   (enable-embedding-iframe-sdk)))
+   (enable-embedding-simple)))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage

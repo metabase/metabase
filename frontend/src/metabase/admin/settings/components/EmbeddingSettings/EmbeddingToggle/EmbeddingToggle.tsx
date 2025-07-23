@@ -13,7 +13,7 @@ export type EmbeddingToggleProps = {
     | "enable-embedding-static"
     | "enable-embedding-sdk"
     | "enable-embedding-interactive"
-    | "enable-embedding-iframe-sdk";
+    | "enable-embedding-simple";
 } & Omit<SwitchProps, "onChange">;
 
 export function EmbeddingToggle({
@@ -22,6 +22,7 @@ export function EmbeddingToggle({
 }: EmbeddingToggleProps) {
   const { value, settingDetails, updateSetting } = useAdminSetting(settingKey);
   const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
+  const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
 
   const [
     isLegaleseModalOpen,
@@ -38,10 +39,14 @@ export function EmbeddingToggle({
 
   const isEmbeddingToggle =
     settingKey === "enable-embedding-sdk" ||
-    settingKey === "enable-embedding-iframe-sdk";
+    settingKey === "enable-embedding-simple";
 
   const handleChange = (newValue: boolean) => {
-    if (showSdkEmbedTerms && isEmbeddingToggle && newValue) {
+    const shouldShowEmbedTerms =
+      (settingKey === "enable-embedding-sdk" && showSdkEmbedTerms) ||
+      (settingKey === "enable-embedding-simple" && showSimpleEmbedTerms);
+
+    if (shouldShowEmbedTerms && isEmbeddingToggle && newValue) {
       openLegaleseModal();
       return;
     }

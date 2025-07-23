@@ -32,7 +32,7 @@ async function setup({
 }: SetupOpts = {}) {
   const settingValues = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
-    "enable-embedding-iframe-sdk": isEmbeddingIframeSdkEnabled,
+    "enable-embedding-simple": isEmbeddingIframeSdkEnabled,
     "token-features": createMockTokenFeatures({
       embedding_iframe_sdk: true,
     }),
@@ -44,7 +44,7 @@ async function setup({
       value: showSdkEmbedTerms,
     }),
     createMockSettingDefinition({
-      key: "enable-embedding-iframe-sdk",
+      key: "enable-embedding-simple",
       value: isEmbeddingIframeSdkEnabled,
     }),
   ];
@@ -93,7 +93,7 @@ describe("EmbeddingIframeSdkOptionCard (EE with token)", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("updates enable-embedding-iframe-sdk directly if the user had agreed to the terms", async () => {
+  it("updates enable-embedding-simple directly if the user had agreed to the terms", async () => {
     await setup({
       showSdkEmbedTerms: false,
       isEmbeddingIframeSdkEnabled: false,
@@ -106,7 +106,7 @@ describe("EmbeddingIframeSdkOptionCard (EE with token)", () => {
     expect(puts).toHaveLength(1);
 
     const [{ url, body }] = puts;
-    expect(url).toContain("api/setting/enable-embedding-iframe-sdk");
+    expect(url).toContain("api/setting/enable-embedding-simple");
     expect(body).toEqual({ value: true });
   });
 });

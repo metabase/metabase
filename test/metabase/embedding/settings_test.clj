@@ -204,7 +204,7 @@
                                        enable-embedding-sdk true
                                        enable-embedding-interactive true
                                        enable-embedding-static true
-                                       enable-embedding-iframe-sdk true
+                                       enable-embedding-simple true
                                        embedding-app-origin nil
                                        embedding-app-origins-interactive nil
                                        embedding-app-origins-sdk nil]
