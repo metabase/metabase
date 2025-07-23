@@ -88,7 +88,7 @@
   (let [{:keys [source target]} transform
         db (get-in source [:query :database])
         {driver :engine :as database} (t2/select-one :model/Database db)]
-    (transforms.execute/execute
+    (transforms.execute/execute!
      {:db-ref db
       :driver driver
       :sql (compile-source source)

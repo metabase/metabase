@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transfers.execute
   (:require [honey.sql.helpers :as sql.helpers]
             [metabase-enterprise.legos.core :as legos]
-            [metabase-enterprise.transforms.execute :as transforms.execute]
+            [metabase-enterprise.transforms.core :as transforms]
             [metabase.driver :as driver]
             [metabase.driver.postgres :as pg]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -37,13 +37,13 @@
                      :when (and (not nfc_path) (not parent_id) pg-type)]
                  (assoc field :pg-type pg-type))]
     (when overwrite?
-      (transforms.execute/execute-query :postgres output-db-ref (driver/compile-drop-table :postgres (keyword output-table-name))))
+      (transforms/execute-query! :postgres output-db-ref (driver/compile-drop-table :postgres (keyword output-table-name))))
 
     (-> (sql.helpers/create-table (keyword output-table-name))
         (sql.helpers/with-columns (for [{:keys [name pg-type]} fields]
                                     [(keyword name) pg-type]))
         (->> (sql.qp/format-honeysql :postgres))
-        (->> (transforms.execute/execute-query :postgres output-db-ref)))
+        (->> (transforms/execute-query! :postgres output-db-ref)))
     fields))
 
 (def #^:private step-size 100)
@@ -77,7 +77,7 @@
                                                                     fields)))
                   (sql.helpers/values cast-data)
                   (->> (sql.qp/format-honeysql :postgres)))]
-    (transforms.execute/execute-query :postgres output-db-ref query)))
+    (transforms/execute-query! :postgres output-db-ref query)))
 
 (defn execute [{:keys [input-table output-db-ref output-table-name overwrite?] :as args}]
   (let [input-fields (t2/select :model/Field :table_id (:id input-table))
