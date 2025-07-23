@@ -174,9 +174,9 @@
 
 (mr/def ::options
   [:and
+   {:default {}}
    [:map
-    {:default          {}
-     :decode/normalize normalize-options-map}
+    {:decode/normalize normalize-options-map}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]
