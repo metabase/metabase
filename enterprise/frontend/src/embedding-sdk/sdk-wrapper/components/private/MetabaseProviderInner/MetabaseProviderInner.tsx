@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import {
-  MetabaseProviderPropsStore,
   type MetabaseProviderPropsToStore,
-} from "embedding-sdk/sdk-shared/lib/metabase-provider-props-store";
+  ensureMetabaseProviderPropsStore,
+} from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
+import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 
 type Props = {
   className?: string;
@@ -41,7 +41,7 @@ export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
     incrementProvidersCount();
 
     if (shouldInitialize()) {
-      MetabaseProviderPropsStore.initialize(props);
+      ensureMetabaseProviderPropsStore(props);
     } else {
       console.warn(
         // eslint-disable-next-line no-literal-metabase-strings -- Warning message
@@ -55,7 +55,7 @@ export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
       decrementProvidersCount();
 
       if (shouldCleanup()) {
-        MetabaseProviderPropsStore.cleanup();
+        ensureMetabaseProviderPropsStore().cleanup();
       }
     };
     // eslint-disable-next-line -- Run on mount only
@@ -63,13 +63,13 @@ export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
 
   useEffect(() => {
     if (reduxStore && !reduxStoreInitialized) {
-      MetabaseProviderPropsStore.getInstance()?.setProps({ reduxStore });
+      ensureMetabaseProviderPropsStore().setProps({ reduxStore });
       setReduxStoreInitialized(true);
     }
   }, [reduxStore, reduxStoreInitialized]);
 
   useEffect(() => {
-    MetabaseProviderPropsStore.getInstance()?.setProps(props);
+    ensureMetabaseProviderPropsStore().setProps(props);
   }, [props]);
 
   return <>{children({ initialized: initialized && reduxStoreInitialized })}</>;
