@@ -45,6 +45,57 @@ table: TARGET_TABLE
 query: SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'
 " (mt/id))))))))
 
+(deftest execute-transfer-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "execute transfer literal"
+      (is (legos.actions/execute! {:lego "transfer"
+                                   :source_database (mt/id)
+                                   :source_table "products"
+                                   :destination_database 37
+                                   :destination_table "PRODUCTS_COPY"
+                                   :overwrite? true})))
+
+    (testing "execute transfer edn"
+      (is (legos.actions/execute!
+           (legos.actions/hippie-parse
+            (format "
+{:lego \"transfer\",
+ :source_database %d,
+ :source_table \"products\",
+ :destination_database 37,
+ :destination_table \"PRODUCTS_COPY\",
+ :overwrite? true}"
+                    (mt/id))))))
+
+    (testing "execute transfer json"
+      (is (legos.actions/execute!
+           (legos.actions/hippie-parse
+            (format
+             "
+{
+  \"lego\":\"transfer\",
+  \"source_database\":%d,
+  \"source_table\":\"products\",
+  \"destination_database\":37,
+  \"destination_table\":\"PRODUCTS_COPY\",
+  \"overwrite?\":true
+}"
+             (mt/id))))))
+
+    (testing "execute transfer yaml"
+      (is (legos.actions/execute!
+           (legos.actions/hippie-parse
+            (format
+             "
+lego: transfer
+source_database: %d
+source_table: products
+destination_database: 37
+destination_table: PRODUCTS_COPY
+overwrite?: true
+"
+             (mt/id))))))))
+
 (deftest execute-plan-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "executing a plan!"
