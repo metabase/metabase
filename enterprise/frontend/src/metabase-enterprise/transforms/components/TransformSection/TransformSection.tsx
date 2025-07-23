@@ -79,7 +79,7 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
   const handleDescriptionChange = async (description: string) => {
     const { error } = await updateTransform({
       id: transform.id,
-      description,
+      description: description.length === 0 ? null : description,
     });
 
     if (error) {
@@ -191,7 +191,7 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
           nameIcon="refresh_downstream"
           nameMaxLength={254}
           namePlaceholder={t`Give this transform a name`}
-          description=""
+          description={transform.description ?? ""}
           descriptionPlaceholder={t`Give this transform a description`}
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
