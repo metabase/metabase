@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
+   ^{:clj-kondo/ignore [:metabase/modules]}
    [metabase.secrets.models.secret :as secrets]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
