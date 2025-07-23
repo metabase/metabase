@@ -57,10 +57,11 @@ export function hasChildren(type: ItemType): boolean {
 export function getUrl(value: TreePath) {
   return getUrl_({
     databaseId: undefined,
-    sectionId: undefined,
     schemaName: undefined,
     tableId: undefined,
     fieldId: undefined,
+    sectionId: undefined,
+    transformId: undefined,
     ...value,
   });
 }
@@ -80,10 +81,11 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
-  const [fetchTransforms] = PLUGIN_TRANSFORMS.useFetchTransforms();
+  const [fetchTransforms, transforms] = PLUGIN_TRANSFORMS.useFetchTransforms();
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
+  const transformsRef = useLatest(transforms);
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
@@ -119,6 +121,12 @@ export function useTableLoader(path: TreePath) {
         return [];
       }
 
+      if (transformsRef.current.isError) {
+        // Do not refetch when this call failed previously.
+        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
+        return [];
+      }
+
       const response = await fetchTransforms();
       return response?.data?.map((transform) =>
         node<TransformNode>({
@@ -132,7 +140,7 @@ export function useTableLoader(path: TreePath) {
         }),
       );
     },
-    [fetchTransforms],
+    [fetchTransforms, transformsRef],
   );
 
   const getTables = useCallback(

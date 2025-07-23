@@ -792,7 +792,14 @@ export type UseFetchTransformsData = {
   data?: Transform[];
 };
 
-export type UseFetchTransformsResult = [() => Promise<UseFetchTransformsData>];
+export type UseFetchTransformsState = {
+  isError: boolean;
+};
+
+export type UseFetchTransformsResult = [
+  () => Promise<UseFetchTransformsData>,
+  UseFetchTransformsState,
+];
 
 export type NewTransformFromQueryModalProps = {
   question: Question;
@@ -805,6 +812,6 @@ export type TransformsPlugin = {
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  useFetchTransforms: () => [() => Promise.resolve({})],
+  useFetchTransforms: () => [() => Promise.resolve({}), { isError: false }],
   NewTransformFromQueryModal: PluginPlaceholder,
 };
