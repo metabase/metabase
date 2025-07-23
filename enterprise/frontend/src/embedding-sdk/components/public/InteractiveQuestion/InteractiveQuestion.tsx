@@ -3,10 +3,18 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 
-export type InteractiveQuestionProps = SdkQuestionProps;
-export const _InteractiveQuestion = (props: InteractiveQuestionProps) => {
-  return <SdkQuestion {...props} />;
-};
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionProps = Omit<
+  SdkQuestionProps,
+  "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
+>;
+export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
+  <SdkQuestion {...props} />
+);
 
 export const InteractiveQuestion =
   _InteractiveQuestion as typeof _InteractiveQuestion & {

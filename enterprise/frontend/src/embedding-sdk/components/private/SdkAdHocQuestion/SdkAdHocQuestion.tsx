@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 
-import type { BaseSdkQuestionProps } from "embedding-sdk/components/public/SdkQuestion";
+import type { SdkQuestionProps } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
 import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
-import type { SdkQuestionDefaultViewProps } from "../SdkQuestionDefaultView";
 
 interface InteractiveAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
@@ -33,8 +32,25 @@ export const InteractiveAdHocQuestion = ({
   initialSqlParameters,
   onNavigateBack,
 }: InteractiveAdHocQuestionProps &
-  Omit<BaseSdkQuestionProps, "questionId"> &
-  SdkQuestionDefaultViewProps) => {
+  Pick<
+    SdkQuestionProps,
+    | "withResetButton"
+    | "title"
+    | "plugins"
+    | "height"
+    | "width"
+    | "className"
+    | "style"
+    | "children"
+    | "onBeforeSave"
+    | "onSave"
+    | "entityTypes"
+    | "isSaveEnabled"
+    | "targetCollection"
+    | "withChartTypeSelector"
+    | "withDownloads"
+    | "initialSqlParameters"
+  >) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
     [questionPath],

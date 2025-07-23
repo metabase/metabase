@@ -1,4 +1,7 @@
-import { type BaseSdkQuestionProps, InteractiveQuestion } from "../SdkQuestion";
+import {
+  InteractiveQuestion,
+  type InteractiveQuestionProps,
+} from "embedding-sdk";
 
 /**
  * @interface
@@ -6,7 +9,7 @@ import { type BaseSdkQuestionProps, InteractiveQuestion } from "../SdkQuestion";
  * @category CreateQuestion
  */
 export type CreateQuestionProps = Omit<
-  Partial<BaseSdkQuestionProps>,
+  Partial<InteractiveQuestionProps>,
   "questionId" | "children"
 >;
 
