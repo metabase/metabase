@@ -7,11 +7,11 @@ import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
 
 type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
 
-type Props = ModalProps & {
-  setting: SettingKey;
-};
-
-export const EmbeddingLegaleseModal = ({ setting, opened, onClose }: Props) => {
+export const EmbeddingLegaleseModal = ({
+  setting,
+  opened,
+  onClose,
+}: ModalProps & { setting: SettingKey }) => {
   const [loading, setLoading] = useState(false);
   const [updateSettings] = useUpdateSettingsMutation();
 
