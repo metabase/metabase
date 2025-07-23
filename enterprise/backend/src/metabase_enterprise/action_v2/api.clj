@@ -4,6 +4,7 @@
    [metabase-enterprise.action-v2.execute-form :as data-editing.execute-form]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as types]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli :as mu]
@@ -135,6 +136,7 @@
        [:scope ::types/scope.raw]
        [:params {:optional true} :map]
        [:input :map]]]
+  (api/check-superuser)
   {:outputs (execute!* action scope params [input])})
 
 (api.macros/defendpoint :post "/execute-bulk"
@@ -147,6 +149,7 @@
        [:scope ::types/scope.raw]
        [:inputs [:sequential :map]]
        [:params {:optional true} [:map-of :keyword :any]]]]
+  (api/check-superuser)
   {:outputs (execute!* action scope params inputs)})
 
 (api.macros/defendpoint :post "/execute-form"
@@ -156,6 +159,7 @@
    {}
    ;; TODO support for bulk actions
    {:keys [action scope input]}]
+  (api/check-superuser)
   (let [scope         (actions/hydrate-scope scope)
         unified       (fetch-unified-action scope action)
         partial-input (first (apply-mapping-nested unified nil [input]))]

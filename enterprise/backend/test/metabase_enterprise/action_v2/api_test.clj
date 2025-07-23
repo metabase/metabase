@@ -42,6 +42,8 @@
 (defn create-rows!
   ([table-id rows]
    (create-rows! table-id :crowberto 200 rows))
+  ([table-id response-code rows]
+   (create-rows! table-id :crowberto response-code rows))
   ([table-id user response-code rows]
    (mt/user-http-request user :post response-code execute-bulk-url
                          {:action :data-grid.row/create
@@ -51,6 +53,8 @@
 (defn- update-rows!
   ([table-id rows]
    (update-rows! table-id :crowberto 200 rows))
+  ([table-id response-code rows]
+   (update-rows! table-id :crowberto response-code rows))
   ([table-id user response-code rows & [params]]
    (mt/user-http-request user :post response-code execute-bulk-url
                          (cond->
@@ -62,6 +66,8 @@
 (defn- delete-rows!
   ([table-id rows]
    (delete-rows! table-id :crowberto 200 rows))
+  ([table-id response-code rows]
+   (delete-rows! table-id :crowberto response-code rows))
   ([table-id user response-code rows]
    (mt/user-http-request user :post response-code execute-bulk-url
                          {:action :data-grid.row/delete
@@ -116,7 +122,7 @@
                    {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (update-rows! table-id 200 [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
+                   (update-rows! table-id :crowberto 200 [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
 
           (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
                    [2 "Speacolumn" "The Star-Spangled Banner"]
@@ -385,9 +391,11 @@
                                       :responses {:create (create-rows! table-id user status-code [{:name "Pidgey" :song "Car alarms"}])
                                                   :update (update-rows! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
                                                   :delete (delete-rows! table-id user status-code [{:id 1}])}}))))
-
-              error-or-ok    (fn [res] (if (string? res) res (:message res :ok)))
-
+              error-or-ok (fn [res]
+                            (cond
+                              (string? res)  res
+                              (:message res) (:message res)
+                              :else          :ok))
               ;; Shorthand config notation
               ;; :a == action-editing should not affect result
               ;; :d == data-editing   only allowed to edit if editing enabled
