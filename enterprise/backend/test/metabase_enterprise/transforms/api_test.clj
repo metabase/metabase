@@ -20,10 +20,27 @@
                                             :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
                                                      :template-tags {}}}}
                            :target {:type "table"
-                                    :database (mt/id)
                                     ;; leave out schema for now
                                     ;;:schema (str (rand-int 10000))
                                     :table "gadget_products"}})))
+
+(deftest list-transforms-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [body {:name "Gadget Products"
+                :description "Desc"
+                :source {:type "query"
+                         :query {:database (mt/id)
+                                 :type "native",
+                                 :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                          :template-tags {}}}}
+                :target {:type "table"
+                         ;;:schema "transforms"
+                         :table "gadget_products"}}
+          _ (mt/user-http-request :crowberto :post 200 "ee/transform" body)
+          list-resp (mt/user-http-request :crowberto :get 200 (str "ee/transform?database_id=" (mt/id)))]
+      (is (seq list-resp))
+      (is (every? #(= (mt/id) (:database_id %) (-> % :source :query :database))
+                  list-resp)))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers)
@@ -35,11 +52,10 @@
                                  :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
                                           :template-tags {}}}}
                 :target {:type "table"
-                         :database (mt/id)
                          ;;:schema "transforms"
                          :table "gadget_products"}}
           resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
-      (is (=? body
+      (is (=? (assoc body :database_id (mt/id))
               (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp))))))))
 
 (deftest put-transforms-test
@@ -52,18 +68,17 @@
                                                        :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
                                                                 :template-tags {}}}}
                                       :target {:type "table"
-                                               :database (mt/id)
                                                ;;:schema "transforms"
                                                :table "gadget_products"}})]
       (is (=? {:name "Gadget Products 2"
                :description "Desc"
+               :database_id (mt/id)
                :source {:type "query"
                         :query {:database (mt/id)
                                 :type "native",
                                 :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'None'"
                                          :template-tags {}}}}
                :target {:type "table"
-                        :database (mt/id)
                         :table "gadget_products"}}
               (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                     {:name "Gadget Products 2"
@@ -84,7 +99,6 @@
                                                        :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
                                                                 :template-tags {}}}}
                                       :target {:type "table"
-                                               :database (mt/id)
                                                ;;:schema "transforms"
                                                :table "gadget_products"}})]
       (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
@@ -100,7 +114,6 @@
                                                        :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
                                                                 :template-tags {}}}}
                                       :target {:type "table"
-                                               :database (mt/id)
                                                ;;:schema "transforms"
                                                :table "gadget_products"}})]
       (mt/user-http-request :crowberto :delete 200 (format "ee/transform/%s/table" (:id resp))))))

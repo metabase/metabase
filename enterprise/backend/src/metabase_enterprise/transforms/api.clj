@@ -36,7 +36,6 @@
                      :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
                               :template-tags {}}}}
     :target {:type "table"
-             :database 1
              :schema "transforms"
              :table "gadget_products"}}]
   -)
@@ -96,9 +95,11 @@
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
-   _query-params]
+   {database-id :database_id} :- [:map [:database_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
-  (t2/select :model/Transform))
+
+  (t2/select :model/Transform (cond-> {}
+                                database-id (assoc :where [:= :database_id database-id]))))
 
 (api.macros/defendpoint :post "/"
   [_route-params
