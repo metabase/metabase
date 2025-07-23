@@ -1,134 +1,108 @@
 (ns metabase-enterprise.reports.api.run
-  "`/api/ee/report/:report-id/version/:report-version-id/run` routes"
+  "`/api/ee/report/snapshot` routes"
   (:require
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.reports.models.report-run :as reports.m.run]
-   [metabase-enterprise.reports.models.report-run-card-data]
+   [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.query-processor :as qp]
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
 (def ^:private RunResource
   [:map
-   [:id pos-int?]
-   [:created_at :any]
-   [:status reports.m.run/RunStatus]
-   [:user [:map
-           [:id pos-int?]
-           [:first_name :string]
-           [:last_name :string]
-           [:email :string]]]])
+   [:snapshot_id pos-int?]
+   [:card_id pos-int?]])
 
-(api.macros/defendpoint :post "/:report-id/version/:report-version-id/run" :- RunResource
-  "Create a new run for this report. A run causes all queries for cards embedded in this report to be run
-  and saved.
+(def ^:private CardArgs
+  [:or
+   [:map
+    [:report_id {:optional true} pos-int?]
+    [:card_id pos-int?]]
+   [:map
+    [:report_id {:optional true} pos-int?]
+    [:name                   ms/NonBlankString]
+    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+    [:dataset_query          ms/Map]
+    ;; TODO: Make entity_id a NanoID regex schema?
+    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
+    [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+    [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+    [:description            {:optional true} [:maybe ms/NonBlankString]]
+    [:display                ms/NonBlankString]
+    [:visualization_settings ms/Map]
+    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
+    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
+    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
+    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]])
 
+(defn- snapshot-card
+  [card report-id]
+  (try
+    (impl/do-with-serialization
+     (fn [in-fn result-fn]
+       (let [capture-rff (fn capture-rff [metadata]
+                           (in-fn (assoc metadata
+                                         :cache-version 3
+                                         :last-ran (t/zoned-date-time)))
+                           (fn
+                             ([] {:data metadata})
+                             ([result]
+                              (in-fn (if (map? result)
+                                       (->
+                                        (m/dissoc-in result [:data :rows])
+                                        (m/dissoc-in [:json_query :lib/metadata]))
+                                       {}))
+                              result)
+                             ([result row]
+                              (in-fn row)
+                              result)))
+             make-run (fn [qp _]
+                        (fn [query info]
+                          (qp (assoc query :info info) capture-rff)))]
+         (qp.card/process-query-for-card
+          (:id card) :api
+          :make-run make-run
+          :context :report))
+
+       (t2/insert-returning-pk! :model/ReportRunCardData
+                                {:user_id api/*current-user-id*
+                                 :report_id report-id
+                                 :card_id (:id card)
+                                 :data (result-fn)})))
+
+    (catch Exception e
+      (throw (ex-info "Error snapshoting card" {:card-id (:id card)} e)))))
+
+(api.macros/defendpoint :post "/" :- RunResource
+  "Create a new card and and take a snapshot of the data in its query and return the snapshot id t
   TODO(edpaget): Parameters?"
-  [{:keys [report-id report-version-id]} :- [:map
-                                             [:report-id pos-int?]
-                                             [:report-version-id pos-int?]]
+  [_route-params
    _query-params
-   _body-params]
-  (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
-
-  (let [run-id (t2/insert-returning-pk! :model/ReportRun {:version_id report-version-id
-                                                          :status :in-progress
-                                                          :user_id api/*current-user-id*})
-        cards-to-run (t2/select :model/Card :report_document_version_id report-version-id)]
-
-    ;; TODO(edpaget): async?
-    ;; Run each card using the query processor
-    (try
-      (doseq [card cards-to-run]
-        ;; TODO(edpaget): encrypt
-        (impl/do-with-serialization
-         (fn [in-fn result-fn]
-           (let [capture-rff (fn capture-rff [metadata]
-                               (in-fn (assoc metadata
-                                             :cache-version 3
-                                             :last-ran (t/zoned-date-time)))
-                               (fn
-                                 ([] {:data metadata})
-                                 ([result]
-                                  (in-fn (if (map? result)
-                                           (->
-                                            (m/dissoc-in result [:data :rows])
-                                            (m/dissoc-in [:json_query :lib/metadata]))
-                                           {}))
-                                  result)
-                                 ([result row]
-                                  (in-fn row)
-                                  result)))
-                 make-run (fn [qp _]
-                            (fn [query info]
-                              (qp (assoc query :info info) capture-rff)))]
-             (qp.card/process-query-for-card
-              (:id card) :api
-              :make-run make-run
-              :context :report))
-           (t2/insert! :model/ReportRunCardData
-                       {:run_id run-id
-                        :card_id (:id card)
-                        :data (result-fn)}))))
-
-      (t2/update! :model/ReportRun run-id {:status :finished})
-      (catch Exception e
-        (log/error e "Error running report" {:report-id report-id :version-id report-version-id :run-id run-id})
-        (t2/update! :model/ReportRun run-id {:status :errored})))
-
-    (first (t2/hydrate [(t2/select-one :model/ReportRun :id run-id)] :user))))
-
-(api.macros/defendpoint :get "/:report-id/version/:report-version-id/run" :- [:map [:data [:sequential RunResource]]]
-  "Get all runs for a report and version"
-  [{:keys [report-id report-version-id]} :- [:map
-                                             [:report-id pos-int?]
-                                             [:report-version-id pos-int?]]
-   _query-params
-   _body-params]
-  (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
-
-  {:data (t2/hydrate (t2/select :model/ReportRun :version_id report-version-id {:order-by [[:created_at :desc]]}) :user)})
-
-(api.macros/defendpoint :get "/:report-id/version/:report-version-id/run/latest" :- RunResource
-  "Get the most recent run for a report version"
-  [{:keys [report-id report-version-id]} :- [:map
-                                             [:report-id pos-int?]
-                                             [:report-version-id pos-int?]]
-   _query-params
-   _body-params]
-  (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
-
-  (let [latest-run (t2/select-one :model/ReportRun
-                                  :version_id report-version-id
-                                  {:order-by [[:created_at :desc] [:id :desc]]})]
-    (api/check-404 latest-run)
-    (first (t2/hydrate [latest-run] :user))))
-
-(api.macros/defendpoint :get "/:report-id/version/:report-version-id/run/:run-id" :- RunResource
-  "Get information about a given run"
-  [{:keys [report-id report-version-id run-id]} :- [:map
-                                                    [:report-id pos-int?]
-                                                    [:report-version-id pos-int?]
-                                                    [:run-id pos-int?]]
-   _query-params
-   _body-params]
-  (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
-  (api/check-404 (t2/exists? :model/ReportRun :id run-id :version_id report-version-id))
-
-  (first (t2/hydrate [(t2/select-one :model/ReportRun :id run-id)] :user)))
+   body :- CardArgs]
+  (if-let [card-id (:card_id body)]
+    ;; TODO: check that is already a frozen report card
+    (let [card (t2/select-one :model/Card :id card-id)]
+      (api/check-404 card)
+      {:snapshot_id (snapshot-card card (:report_id body)) :card_id card-id})
+    (t2/with-transaction [_conn]
+      (let [{:keys [id] :as card} (queries/create-card! body @api/*current-user*)
+            snapshot-id (snapshot-card card (:report_id body))]
+        {:snapshot_id snapshot-id :card_id id}))))
 
 (defn- results-rff
   [rff]
@@ -154,72 +128,26 @@
 
 (defn- stream-card-data
   [card-id card-data]
-  (when-let [serialized-bytes (:data card-data)]
+  (when card-data
     (let [make-run (fn [_qp export-format]
                      (fn [_query info]
                        (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
-                         (deserialize-card-data serialized-bytes rff))))]
+                         (deserialize-card-data card-data rff))))]
       (qp.card/process-query-for-card
        card-id :api
        :make-run make-run
        :context :report))))
 
-(api.macros/defendpoint :get "/:report-id/version/:report-version-id/run/:run-id/card/:card-id"
-  "Get the saved results for a specific card in a specific run."
-  [{:keys [report-id report-version-id run-id card-id]} :- [:map
-                                                            [:report-id pos-int?]
-                                                            [:report-version-id pos-int?]
-                                                            [:run-id pos-int?]
-                                                            [:card-id pos-int?]]
+(api.macros/defendpoint :get "/:snapshot-id"
+  "Stream data for a given snapshot-id"
+  [{:keys [snapshot-id]} :- [:map [:snapshot-id pos-int?]]
    _query-params
    _body-params]
-  ;; Verify the report version exists
-  (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
-
-  ;; Verify the run exists and belongs to this version
-  (api/check-404 (t2/exists? :model/ReportRun :id run-id :version_id report-version-id))
-
-  ;; Verify the card exists and belongs to this version
-  (api/check-404 (t2/exists? :model/Card :id card-id :report_document_version_id report-version-id))
-
-  ;; Get the card data for this run
-  (let [card-data (t2/select-one :model/ReportRunCardData
-                                 :run_id run-id
-                                 :card_id card-id)]
-    (api/check-404 (:data card-data))
-
+  (let [{:keys [card_id data]} (t2/select-one :model/ReportRunCardData :id snapshot-id)]
+    (api/check-404 data)
     ;; Deserialize and return the results as regular JSON
-    (stream-card-data card-id card-data)))
-
-(api.macros/defendpoint :get "/:report-id/version/:report-version-id/run/latest/card/:card-id"
-  "Get the saved results for a specific card from the most recent run."
-  [{:keys [report-id report-version-id card-id]} :- [:map
-                                                     [:report-id pos-int?]
-                                                     [:report-version-id pos-int?]
-                                                     [:card-id pos-int?]]
-   _query-params
-   _body-params]
-  ;; Verify the report version exists
-  (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
-
-  ;; Verify the card exists and belongs to this version
-  (api/check-404 (t2/exists? :model/Card :id card-id :report_document_version_id report-version-id))
-
-  ;; Get the latest run for this version
-  (let [latest-run (t2/select-one :model/ReportRun
-                                  :version_id report-version-id
-                                  {:order-by [[:created_at :desc] [:id :desc]]})]
-    (api/check-404 latest-run)
-
-    ;; Get the card data for the latest run
-    (let [card-data (t2/select-one :model/ReportRunCardData
-                                   :run_id (:id latest-run)
-                                   :card_id card-id)]
-      (api/check-404 (:data card-data))
-
-      ;; Deserialize and return the results as regular JSON
-      (stream-card-data card-id card-data))))
+    (stream-card-data card_id data)))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/report/:report-id/version/:report-version-id/run` routes."
+  "`/api/ee/report` routes."
   (api.macros/ns-handler *ns* +auth))

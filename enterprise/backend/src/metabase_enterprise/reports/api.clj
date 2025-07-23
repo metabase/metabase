@@ -12,4 +12,5 @@
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)
    metabase-enterprise.reports.api.report/routes
-   metabase-enterprise.reports.api.run/routes))
+   (handlers/route-map-handler
+    {"/snapshot" metabase-enterprise.reports.api.run/routes})))

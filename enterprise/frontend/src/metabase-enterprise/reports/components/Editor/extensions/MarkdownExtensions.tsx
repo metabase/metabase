@@ -1,6 +1,8 @@
 import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
+import { STATIC_QUESTION_REGEX } from "./QuestionStatic/QuestionStatic";
+
 export const MarkdownSerializer = Extension.create({
   name: "markdownSerializer",
 
@@ -45,6 +47,8 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
           } else {
             paragraphContent += `{{card:${child.attrs.questionId}}}`;
           }
+        } else if (child.type.name === "questionStatic") {
+          paragraphContent += `{{static-card:${child.attrs.questionName}:series-${child.attrs.series}:viz-${child.attrs.viz}:display-${child.attrs.display}}}`;
         }
       });
       markdown += paragraphContent + "\n\n";
@@ -70,6 +74,8 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
       } else {
         markdown += `{{card:${node.attrs.questionId}}}\n\n`;
       }
+    } else if (node.type.name === "questionStatic") {
+      markdown += `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}`;
     } else if (node.type.name === "codeBlock") {
       markdown += `\`\`\`${node.attrs.language || ""}\n${node.textContent}\n\`\`\`\n\n`;
     } else {
@@ -83,12 +89,17 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
 export function parseMarkdownToHTML(markdown: string): string {
   let html = markdown
     // Match both {{card:id}} and {{card:id:custom name}}
-    .replace(/{{card:(\d+)(?::([^}]+))?}}/g, (match, id, customName) => {
+    .replace(/{{card:(\d+)(?::([^}]+))?}}/g, (_match, id, customName) => {
       if (customName) {
         return `<div data-type="question-embed" data-question-id="${id}" data-custom-name="${customName}" data-model="card"></div>`;
       }
       return `<div data-type="question-embed" data-question-id="${id}" data-model="card"></div>`;
     })
+    .replace(
+      STATIC_QUESTION_REGEX,
+      (_match, questionName, series, viz, display) =>
+        `<div data-type="question-static" data-question-name="${questionName}" data-series="${series}" data-viz="${viz}" data-display="${display}"></div>`,
+    )
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
     .replace(/^# (.*$)/gim, "<h1>$1</h1>")

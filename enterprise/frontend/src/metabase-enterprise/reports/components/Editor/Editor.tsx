@@ -12,6 +12,7 @@ import {
   serializeToMarkdown,
 } from "./extensions/MarkdownExtensions";
 import { QuestionEmbed } from "./extensions/QuestionEmbed";
+import { QuestionStaticNode } from "./extensions/QuestionStatic/QuestionStatic";
 
 interface EditorProps {
   onEditorReady?: (editor: any) => void;
@@ -34,6 +35,7 @@ export const Editor: React.FC<EditorProps> = ({
           class: "question-embed",
         },
       }),
+      QuestionStaticNode,
       MarkdownSerializer,
     ],
     content,
