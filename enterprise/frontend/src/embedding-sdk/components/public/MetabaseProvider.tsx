@@ -1,11 +1,18 @@
 import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
+import {
+  type JSX,
+  type PropsWithChildren,
+  type ReactNode,
+  memo,
+  useEffect,
+  useRef,
+} from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
-import { MetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -90,7 +97,7 @@ export interface MetabaseProviderProps
 }
 
 export interface InternalMetabaseProviderProps extends MetabaseProviderProps {
-  store: Store<SdkStoreState, Action>;
+  reduxStore: Store<SdkStoreState, Action>;
 }
 
 export const MetabaseProviderInternal = ({
@@ -99,7 +106,7 @@ export const MetabaseProviderInternal = ({
   pluginsConfig,
   eventHandlers,
   theme,
-  store,
+  reduxStore,
   className,
   locale,
   errorComponent,
@@ -111,29 +118,29 @@ export const MetabaseProviderInternal = ({
 
   useEffect(() => {
     if (fontFamily) {
-      store.dispatch(setOptions({ font: fontFamily }));
+      reduxStore.dispatch(setOptions({ font: fontFamily }));
     }
-  }, [store, fontFamily]);
+  }, [reduxStore, fontFamily]);
 
   useEffect(() => {
-    store.dispatch(setPlugins(pluginsConfig || null));
-  }, [store, pluginsConfig]);
+    reduxStore.dispatch(setPlugins(pluginsConfig || null));
+  }, [reduxStore, pluginsConfig]);
 
   useEffect(() => {
-    store.dispatch(setEventHandlers(eventHandlers || null));
-  }, [store, eventHandlers]);
+    reduxStore.dispatch(setEventHandlers(eventHandlers || null));
+  }, [reduxStore, eventHandlers]);
 
   useEffect(() => {
-    store.dispatch(setLoaderComponent(loaderComponent ?? null));
-  }, [store, loaderComponent]);
+    reduxStore.dispatch(setLoaderComponent(loaderComponent ?? null));
+  }, [reduxStore, loaderComponent]);
 
   useEffect(() => {
-    store.dispatch(setErrorComponent(errorComponent ?? null));
-  }, [store, errorComponent]);
+    reduxStore.dispatch(setErrorComponent(errorComponent ?? null));
+  }, [reduxStore, errorComponent]);
 
   useEffect(() => {
-    store.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
-  }, [store, authConfig.metabaseInstanceUrl]);
+    reduxStore.dispatch(setMetabaseClientUrl(authConfig.metabaseInstanceUrl));
+  }, [reduxStore, authConfig.metabaseInstanceUrl]);
 
   const instanceLocale = useInstanceLocale();
 
@@ -162,22 +169,29 @@ export const MetabaseProviderInternal = ({
   );
 };
 
-export const MetabaseProvider = memo(function MetabaseProvider(
-  props: Omit<InternalMetabaseProviderProps, "store">,
-) {
-  const storeRef = useRef<Store<SdkStoreState, Action> | null>(null);
+export const MetabaseProvider = memo(function MetabaseProvider({
+  children,
+}: PropsWithChildren) {
+  const props = useMetabaseProviderPropsStore();
+  const reduxStoreRef = useRef<Store<SdkStoreState, Action> | null>(null);
 
-  if (!storeRef.current) {
-    const existingStore =
-      MetabaseProviderPropsStore.getInstance()?.getSdkStore();
+  if (!reduxStoreRef.current) {
+    reduxStoreRef.current = props?.reduxStore ?? getSdkStore();
+  }
 
-    storeRef.current = existingStore ?? getSdkStore();
+  if (!props) {
+    return children;
   }
 
   return (
-    <MetabaseReduxProvider store={storeRef.current!}>
+    <MetabaseReduxProvider store={reduxStoreRef.current!}>
       <MetabotProvider>
-        <MetabaseProviderInternal {...props} store={storeRef.current!} />
+        <MetabaseProviderInternal
+          {...props}
+          reduxStore={reduxStoreRef.current!}
+        >
+          {children}
+        </MetabaseProviderInternal>
       </MetabotProvider>
     </MetabaseReduxProvider>
   );

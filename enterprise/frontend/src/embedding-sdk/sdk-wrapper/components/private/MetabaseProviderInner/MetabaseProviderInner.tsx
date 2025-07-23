@@ -1,4 +1,3 @@
-import type { Action, Store } from "@reduxjs/toolkit";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -7,12 +6,11 @@ import {
   MetabaseProviderPropsStore,
   type MetabaseProviderPropsToStore,
 } from "embedding-sdk/sdk-shared/lib/metabase-provider-props-store";
-import type { SdkStoreState } from "embedding-sdk/store/types";
 
 type Props = {
   className?: string;
-  store?: Store<SdkStoreState, Action>;
-  props: MetabaseProviderPropsToStore;
+  reduxStore?: MetabaseProviderPropsToStore["reduxStore"] | null;
+  props: Omit<MetabaseProviderPropsToStore, "reduxStore">;
   children: (state: { initialized: boolean }) => ReactNode;
 };
 
@@ -35,9 +33,9 @@ const shouldCleanup = () => {
   return (getWindow()?.METABASE_PROVIDERS_COUNT ?? 0) === 0;
 };
 
-export function MetabaseProviderInner({ store, props, children }: Props) {
+export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
   const [initialized, setInitialized] = useState(false);
-  const [sdkStoreInitialized, setSdkStoreInitialized] = useState(false);
+  const [reduxStoreInitialized, setReduxStoreInitialized] = useState(false);
 
   useEffect(() => {
     incrementProvidersCount();
@@ -64,15 +62,15 @@ export function MetabaseProviderInner({ store, props, children }: Props) {
   }, []);
 
   useEffect(() => {
-    if (store && !sdkStoreInitialized) {
-      MetabaseProviderPropsStore.getInstance()?.setSdkStore(store);
-      setSdkStoreInitialized(true);
+    if (reduxStore && !reduxStoreInitialized) {
+      MetabaseProviderPropsStore.getInstance()?.setReduxStore(reduxStore);
+      setReduxStoreInitialized(true);
     }
-  }, [store, sdkStoreInitialized]);
+  }, [reduxStore, reduxStoreInitialized]);
 
   useEffect(() => {
     MetabaseProviderPropsStore.getInstance()?.updateProps(props);
   }, [props]);
 
-  return <>{children({ initialized: initialized && sdkStoreInitialized })}</>;
+  return <>{children({ initialized: initialized && reduxStoreInitialized })}</>;
 }
