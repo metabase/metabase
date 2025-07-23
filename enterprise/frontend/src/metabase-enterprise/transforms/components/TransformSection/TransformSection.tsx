@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Group,
+  Select,
   Stack,
   Text,
   TextInputBlurChange,
@@ -69,6 +70,7 @@ function TransformSettings({ transform }: TransformSettingsProps) {
               <Title order={4}>{t`Schedule`}</Title>
               <Button>{t`Run now`}</Button>
             </Group>
+            <Select label={t`How often should this transform run?`} />
           </Stack>
         </Card>
         <Group>
