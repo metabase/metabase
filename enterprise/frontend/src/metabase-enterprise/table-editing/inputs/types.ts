@@ -20,4 +20,5 @@ type InputProps = {
   error?: TextInputProps["error"];
   rightSection?: TextInputProps["rightSection"];
   rightSectionPointerEvents?: TextInputProps["rightSectionPointerEvents"];
+  "data-testid"?: string;
 };
