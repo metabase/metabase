@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -24,7 +25,9 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { Transform } from "metabase-types/api";
+import type { DatasetQuery, Transform } from "metabase-types/api";
+
+import { TransformQueryBuilder } from "../TransformQueryBuilder";
 
 import { SCHEDULE_OPTIONS } from "./constants";
 
@@ -54,9 +57,27 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
   const [deleteTransform, { isLoading: isDeleting }] =
     useDeleteTransformMutation();
   const dispatch = useDispatch();
+  const [isEditingQuery, setIsEditingQuery] = useState(false);
 
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+
+  const handleQueryChange = async (query: DatasetQuery) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      source: {
+        type: "query",
+        query,
+      },
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform query`);
+    } else {
+      sendSuccessToast(t`Transform query updated`);
+      setIsEditingQuery(false);
+    }
+  };
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTransform({
@@ -184,6 +205,16 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
     }
   };
 
+  if (isEditingQuery) {
+    return (
+      <TransformQueryBuilder
+        query={transform.source.query}
+        onSave={handleQueryChange}
+        onCancel={() => setIsEditingQuery(false)}
+      />
+    );
+  }
+
   return (
     <Stack flex={1} p="xl" align="center">
       <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
@@ -198,7 +229,10 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
           onDescriptionChange={handleDescriptionChange}
         />
         <Group justify="end">
-          <Button leftSection={<Icon name="pencil_lines" />}>
+          <Button
+            leftSection={<Icon name="pencil_lines" />}
+            onClick={() => setIsEditingQuery(true)}
+          >
             {t`Edit query`}
           </Button>
           <Button
