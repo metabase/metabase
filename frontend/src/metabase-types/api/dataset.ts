@@ -3,6 +3,7 @@ import type {
   LocalFieldReference,
   Parameter,
   ParameterValueOrArray,
+  VisualizerColumnValueSource,
 } from "metabase-types/api";
 
 import type { Card } from "./card";
@@ -14,7 +15,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
-export type RowValue = string | number | null | boolean;
+export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 
 export type BinningMetadata = {
@@ -172,6 +173,11 @@ export interface NativeDatasetResponse {
 
 export type SingleSeries = {
   card: Card;
+  /**
+   * A record that maps visualizer series keys (in the form of COLUMN_1,
+   * COLUMN_2, etc.) to their original values (count, avg, etc.).
+   */
+  columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
 } & Pick<Dataset, "data" | "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
@@ -185,7 +191,8 @@ export type TemplateTagType =
   | "text"
   | "number"
   | "date"
-  | "temporal-unit" // e.g. for mb.time_grouping()
+  | "boolean"
+  | "temporal-unit"
   | "dimension"
   | "snippet";
 
@@ -194,11 +201,8 @@ export interface TemplateTag {
   name: TemplateTagName;
   "display-name": string;
   type: TemplateTagType;
-  dimension?: LocalFieldReference;
-  "widget-type"?: string;
   required?: boolean;
   default?: string | null;
-  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;
@@ -206,6 +210,14 @@ export interface TemplateTag {
   // Snippet specific
   "snippet-id"?: number;
   "snippet-name"?: string;
+
+  // Field filter and time grouping specific
+  dimension?: LocalFieldReference;
+  alias?: string;
+
+  // Field filter specific
+  "widget-type"?: string;
+  options?: ParameterOptions;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

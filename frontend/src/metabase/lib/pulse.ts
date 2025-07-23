@@ -361,12 +361,12 @@ export const getHasConfiguredAnyChannel = (
     _.some(Object.values(formInput.channels), (c) => c.configured)) ||
   false;
 
-export const getHasConfiguredEmailChannel = (
+export const getHasConfiguredEmailOrSlackChannel = (
   formInput: ChannelApiResponse | undefined,
 ) =>
   (formInput?.channels &&
     _.some(
       Object.values(formInput.channels),
-      (c) => c.type === "email" && c.configured,
+      (c) => ["email", "slack"].includes(c.type) && c.configured,
     )) ||
   false;

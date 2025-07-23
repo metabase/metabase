@@ -133,7 +133,8 @@
                                   vec)
                              (-> result :results first keys))
         metadata           (result-metadata col-names)
-        annotate-col-names (map (comp keyword :name) (driver-api/merged-column-info outer-query metadata))
+        annotate-col-names (map (comp keyword :name) (driver-api/merged-column-info outer-query (when-not mbql?
+                                                                                                  metadata)))
         rows               (result-rows result col-names annotate-col-names)
         base-types         (transduce identity (driver-api/base-type-inferer metadata) rows)
         metadata           (update metadata :cols (partial map (fn [col base-type]

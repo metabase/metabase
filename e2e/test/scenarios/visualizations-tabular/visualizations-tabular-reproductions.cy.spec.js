@@ -55,7 +55,7 @@ describe("issue 6010", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Created At is Jan 1–31, 2024").should("be.visible");
+      cy.findByText("Created At: Month is Jan 1–31, 2024").should("be.visible");
     });
     // FIXME metrics v2 -- check that the values in column Total are above 150
   });
@@ -1485,5 +1485,26 @@ describe("issue 55673", { tags: "@flaky" }, () => {
     );
     cy.realPress(["Escape"]);
     cy.findByTestId("click-actions-view").should("not.exist");
+  });
+});
+
+describe("issue 55637", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show column metadata popovers when header cell is clicked (metabase#55637)", () => {
+    H.openOrdersTable();
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("exist");
+
+    H.tableHeaderColumn("ID").click();
+
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("not.exist");
+
+    H.tableHeaderColumn("Tax").realHover();
+    cy.findByTestId("column-info").should("not.exist");
   });
 });

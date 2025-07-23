@@ -1,8 +1,8 @@
-import { routerActions } from "react-router-redux";
+import { push, replace, routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { MetabaseReduxContext } from "metabase/lib/redux";
+import { MetabaseReduxContext, connect } from "metabase/lib/redux";
 
 export const createAdminRouteGuard = (routeKey, Component) => {
   const Wrapper = connectedReduxRedirect({
@@ -17,3 +17,28 @@ export const createAdminRouteGuard = (routeKey, Component) => {
 
   return Wrapper(Component ?? (({ children }) => children));
 };
+
+const mapStateToProps = (state, props) => ({
+  adminItems: getAdminPaths(state),
+  path: props.location.pathname,
+});
+
+const mapDispatchToProps = {
+  push,
+  replace,
+};
+
+const _RedirectToAllowedSettings = ({ adminItems, replace }) => {
+  if (adminItems.length === 0) {
+    replace("/unauthorized");
+  } else {
+    replace(adminItems[0].path);
+  }
+
+  return null;
+};
+
+export const RedirectToAllowedSettings = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(_RedirectToAllowedSettings);

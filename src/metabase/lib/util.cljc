@@ -137,6 +137,8 @@
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
                                                           (expression-name target-clause)))
+                         ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
+                         #_{:clj-kondo/ignore [:deprecated-var]}
                          (lib.common/preserve-ident-of target-clause))
                      new-clause)]
     (m/update-existing-in
@@ -297,8 +299,6 @@
       :native (native-query->pipeline query)
       :query  (mbql-query->pipeline query))))
 
-;;; TODO (Cam 6/12/25) -- `stage-number` e.g. [[previous-stage-number]], `stage-index` e.g. [[canonical-stage-index]]
-;;; -- which is it? Decide on one term or the other then go clean up stuff.
 (mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
@@ -494,6 +494,13 @@
       (truncate-alias)))
 
 (mr/def ::unique-name-generator
+  "Stateful function with the signature
+
+    (f)        => 'fresh' unique name generator
+    (f str)    => unique-str
+    (f id str) => unique-str
+
+  i.e. repeated calls with the same string should return different unique strings."
   [:function
    ;; (f) => generates a new instance of the unique name generator for recursive generation without 'poisoning the
    ;; well'.
@@ -641,8 +648,8 @@
    (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
   ([query stage-number lib-uuid]
    (first (keep-indexed (fn [idx stage]
-                          (lib.util.match/match-one stage
-                            (clause :guard #(= lib-uuid (lib.options/uuid %)))
+                          (lib.util.match/match-lite-recursive stage
+                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
                             [idx clause]))
                         (:stages (drop-later-stages query stage-number))))))
 

@@ -43,7 +43,12 @@
 (mr/def ::stage.native
   [:and
    [:map
-    {:decode/normalize common/normalize-map}
+    {:decode/normalize #(->> %
+                             common/normalize-map
+                             ;; filter out null :collection keys -- see #59675
+                             (m/filter-kv (fn [k v]
+                                            (not (and (= k :collection)
+                                                      (nil? v))))))}
     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
@@ -75,7 +80,10 @@
     #(not (contains? % :source-table))]
    [:fn
     {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]])
+    #(not (contains? % :source-card))]
+   [:fn
+    {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
+    (complement :query)]])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -208,6 +216,7 @@
   (when (map? x)
     (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
+;;; TODO -- enforce all kebab-case keys
 (mr/def ::stage
   [:and
    {:default          {}
@@ -223,7 +232,10 @@
    [:multi {:dispatch      lib-type
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
-    [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
+    [:mbql.stage/mbql   [:ref ::stage.mbql]]]
+   [:fn
+    {:error/message "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"}
+    (complement :source-metadata)]])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
@@ -274,8 +286,9 @@
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
          (when (map? stage)
-           (lib.util.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
-             [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
+           (lib.util.match/match-lite-recursive (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
+             [:field {:join-alias (join-alias :guard (and (some? join-alias)
+                                                          (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
          (when (seq more)
            (recur visible-join-alias? (inc i) more)))))))

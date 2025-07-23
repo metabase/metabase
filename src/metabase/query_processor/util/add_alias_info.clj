@@ -62,7 +62,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
@@ -117,7 +118,9 @@
       [:expression expression-name])
 
     [:aggregation index opts]
-    (if-let [opts (remove-namespaced-options opts)]
+    (if-let [opts (-> opts
+                      (dissoc :base-type)
+                      (remove-namespaced-options))]
       [:aggregation index opts]
       [:aggregation index])
 
@@ -194,7 +197,11 @@
                        :clause field-clause
                        :query  inner-query})))))
 
-(defn- exports [query]
+(mr/def ::exported-clause
+  [:or ::mbql.s/field ::mbql.s/expression ::mbql.s/aggregation-options])
+
+(mu/defn- exports :- [:set ::exported-clause]
+  [query :- ::mbql.s/SourceQuery]
   (into #{} (lib.util.match/match (dissoc query :source-query :source-metadata :joins)
               [(_ :guard #{:field :expression :aggregation-options}) _ (_ :guard (every-pred map? ::position))])))
 
@@ -211,7 +218,11 @@
   [field-clause]
   [(second field-clause) (get-in field-clause [2 :join-alias])])
 
-(defn- field-name-match [field-name all-exports source-metadata field-exports]
+(mu/defn- field-name-match :- [:maybe ::exported-clause]
+  [field-name      :- :string
+   all-exports     :- [:set ::exported-clause]
+   source-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
+   field-exports   :- [:sequential ::mbql.s/field]]
   ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
   ;; name we're searching for.
   (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
@@ -241,9 +252,12 @@
              (when (= (count matches) 1)
                (first matches))))))))
 
-(defn- matching-field-in-source-query*
-  [source-query source-metadata field-clause & {:keys [normalize-fn]
-                                                :or   {normalize-fn normalize-clause}}]
+(mu/defn- matching-field-in-source-query*
+  [source-query    :- ::mbql.s/SourceQuery
+   source-metadata :- [:maybe [:sequential ::mbql.s/legacy-column-metadata]]
+   field-clause    :- ::mbql.s/field
+   & {:keys [normalize-fn]
+      :or   {normalize-fn normalize-clause}}]
   (let [normalized    (normalize-fn field-clause)
         all-exports   (exports source-query)
         field-exports (filter (partial mbql.u/is-clause? :field)
@@ -272,6 +286,16 @@
                                  (when (string? id-or-name)
                                    [id-or-name (some-> driver/*driver* (driver/escape-alias id-or-name))]))]
           (some #(field-name-match % all-exports source-metadata field-exports) field-names))
+        ;; if all of that failed then try to find a match using `:lib/deduplicated-name` (if present)
+        (let [[_ id-or-name] field-clause]
+          (when (string? id-or-name)
+            (when-let [col (m/find-first (fn [col]
+                                           (= (:lib/deduplicated-name col) id-or-name))
+                                         source-metadata)]
+              (when-let [desired-column-alias (:lib/desired-column-alias col)]
+                (m/find-first (fn [[_tag _id-or-name opts]]
+                                (= (::desired-alias opts) desired-column-alias))
+                              all-exports)))))
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)
@@ -312,6 +336,7 @@
   (when-let [[_tag _id-or-name {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
     desired-alias))
 
+;;; TODO (Cam 6/22/25) -- remove this method ASAP
 (defmulti ^String field-reference
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
   By default this is just the name of the field, but it can be more complicated, e.g., take
@@ -554,29 +579,35 @@
 
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
-  [query-or-inner-query]
-  (as-> query-or-inner-query $q
-    ;; first escape all the join aliases
-    (walk/postwalk
-     (fn [form]
-       (if (and (map? form)
-                (seq (:joins form)))
-         (as-> form form
-           (update form :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
-                                                  (lib.util/unique-name-generator))]
-                                 (fn [joins]
-                                   (mapv (fn [join]
-                                           (assoc join ::alias (unique (:alias join))))
-                                         joins))))
-           (assoc form ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins form))))
-         form))
-     $q)
-    ;; then add alias info
-    (walk/postwalk
-     (fn [form]
-       (if (and (map? form)
-                ((some-fn :source-query :source-table) form)
-                (not (:strategy form)))
-         (vary-meta (add-alias-info* form) assoc ::transformed true)
-         form))
-     $q)))
+  ([query-or-inner-query]
+   (add-alias-info query-or-inner-query nil))
+
+  ([query-or-inner-query {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}}]
+   (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
+                                                 (constantly (lib.util/unique-name-generator))
+                                                 lib.util/unique-name-generator)]
+     (as-> query-or-inner-query $q
+       ;; first escape all the join aliases
+       (walk/postwalk
+        (fn [form]
+          (if (and (map? form)
+                   (seq (:joins form)))
+            (as-> form form
+              (update form :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
+                                                     (make-join-alias-unique-name-generator))]
+                                    (fn [joins]
+                                      (mapv (fn [join]
+                                              (assoc join ::alias (unique (:alias join))))
+                                            joins))))
+              (assoc form ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins form))))
+            form))
+        $q)
+       ;; then add alias info
+       (walk/postwalk
+        (fn [form]
+          (if (and (map? form)
+                   ((some-fn :source-query :source-table) form)
+                   (not (:strategy form)))
+            (vary-meta (add-alias-info* form) assoc ::transformed true)
+            form))
+        $q)))))

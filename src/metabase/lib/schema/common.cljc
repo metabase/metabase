@@ -57,7 +57,8 @@
 (defn map->kebab-case
   "Convert a map to kebab case, for use with `:decode/normalize`."
   [m]
-  (update-keys m memoized-kebab-key))
+  (when (map? m)
+    (update-keys m memoized-kebab-key)))
 
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to

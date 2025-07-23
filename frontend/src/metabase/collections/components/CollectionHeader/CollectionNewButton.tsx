@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/lib/redux";
 import { setOpenModal } from "metabase/redux/ui";
 

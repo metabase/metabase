@@ -60,6 +60,9 @@
    {[:field 2 {"temporal-unit" "day"}]
     [:field 2 {:temporal-unit :day}]
 
+    [:field 2 {"inherited-temporal-unit" "day"}]
+    [:field 2 {:inherited-temporal-unit :day}]
+
     [:field 2 {"binning" {"strategy" "default"}}]
     [:field 2 {:binning {:strategy :default}}]}
 
@@ -1512,20 +1515,34 @@
                                               :avg 1}}}]
       (t/is (= fingerprint
                (mbql.normalize/normalize fingerprint)))
-      (let [query {:query
-                   {:source-query
-                    {:native     "SELECT USER_ID FROM ORDERS LIMIT 1"
-                     :parameters [{:type   :category
-                                   :target [:variable [:template-tag "sandbox"]]
-                                   :value  "1"}]}
-                    :database        1
-                    :source-metadata [{:name          "USER_ID"
-                                       :display_name  "USER_ID"
-                                       :base_type     :type/Integer
-                                       :field_ref     [:field "USER_ID" {:base-type :type/Integer}]
-                                       :fingerprint   fingerprint}]}}]
-        (t/is (= query
-                 (mbql.normalize/normalize query)))))))
+      (doseq [path [[:query :source-metadata]
+                    [:metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata]
+                    [:info :metadata/model-metadata]
+                    [:info :pivot/result-metadata]
+                    [:query :joins 0 :source-metadata]]]
+        (t/testing (pr-str path)
+          (let [query (-> {:query
+                           {:source-query
+                            {:native     "SELECT USER_ID FROM ORDERS LIMIT 1"
+                             :parameters [{:type   :category
+                                           :target [:variable [:template-tag "sandbox"]]
+                                           :value  "1"}]}
+                            :joins [{:alias "A"}]
+                            :database        1}}
+                          (assoc-in path [{:name         "USER_ID"
+                                           :display_name "USER_ID"
+                                           :base_type    :type/Integer
+                                           :field_ref    [:field "USER_ID" {:base-type :type/Integer}]
+                                           :fingerprint  fingerprint}]))]
+            (t/is (= query
+                     (mbql.normalize/normalize query)))))))))
+
+(t/deftest ^:parallel do-not-normalize-fingerprints-test-2
+  (let [col {:fingerprint {:global {:distinct-count 200, :nil% 0}
+                           :type   {:type/DateTime {:earliest "2016-04-26T19:29:55.147Z"
+                                                    :latest   "2019-04-15T13:34:19.931Z"}}}}]
+    (t/is (= col
+             (mbql.normalize/normalize-source-metadata col)))))
 
 (t/deftest ^:parallel error-messages-test
   (t/testing "Normalization error messages should be sane"
@@ -1672,3 +1689,16 @@
                                               :keyword-name                    ident2
                                               (keyword "keyword/with-slash")   ident3
                                               (keyword "namespaced" "keyword") ident4}}}))))))
+
+(t/deftest ^:parallel normalize-datetime-test
+  (t/is (= [:datetime ""]
+           (mbql.normalize/normalize-tokens [:datetime ""])))
+  (t/testing "if we add other options, they are preserved (and don't break anything)"
+    (t/is (= [:datetime "" {:x "x"}]
+             (mbql.normalize/normalize-tokens [:datetime "" {"x" "x"}]))))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens [:datetime "" {:mode :iso}])))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens [:datetime "" {:mode "iso"}])))
+  (t/is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize-tokens ["datetime" "" {"mode" "iso"}]))))

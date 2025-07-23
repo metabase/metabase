@@ -1,4 +1,4 @@
-import { act } from "@testing-library/react-hooks";
+import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";

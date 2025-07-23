@@ -209,10 +209,6 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
 
 There aren't (yet) any model features available for Athena.
 
-## Database routing
-
-See [Database routing](../../permissions/database-routing.md).
-
 ## Danger zone
 
 See [Danger Zone](../danger-zone.md).

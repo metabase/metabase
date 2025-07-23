@@ -11,7 +11,6 @@ export interface StepDefinition {
 
 export interface StepProps {
   nextStep: () => void;
-  prevStep?: () => void;
   goToStep: (key: EmbeddingSetupStepKey) => void;
   stepKey: EmbeddingSetupStepKey; // Be aware that this is sent in the `embedding_setup_step_seen` simple event
   stepIndex: number;
@@ -30,7 +29,7 @@ export const STEPS = [
   {
     key: "user-creation",
     get title() {
-      return t`Create User`;
+      return t`Set up your account`;
     },
     icon: "person",
     visibleInSidebar: true,
@@ -48,7 +47,7 @@ export const STEPS = [
     get title() {
       return t`Generate starter content`;
     },
-    icon: "table2",
+    icon: "bolt_filled",
     visibleInSidebar: true,
   },
   {

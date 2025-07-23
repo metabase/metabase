@@ -1,40 +1,29 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Box, Button, List, Space, Text, Title } from "metabase/ui";
+import { Box, Button, Space, Text, Title } from "metabase/ui";
 
+import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 import type { StepProps } from "../steps/embeddingSetupSteps";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const WelcomeStep = ({ nextStep }: StepProps) => {
-  useForceLocaleRefresh();
-
+  const { trackEmbeddingSetupClick } = useEmbeddingSetup();
   return (
-    <Box p="2xl" style={{ borderRadius: 16 }} my="xxl" bg="white">
+    <Box p="xl" style={{ borderRadius: 16 }} bg="white">
       <Title order={2} mb="lg">
-        {t`Howdy,`}
-      </Title>
-      <Title order={2} mb="lg">
-        {t`Let's get you up and running with a starting setup for embedded analytics`}
+        {t`Welcome to Metabase`}
       </Title>
 
       <Text size="lg" mb="md">
-        {t`You'll get to add working starter content to your app based on your real data.`}
-      </Text>
-      <Text size="lg" mb="md">
-        {t`This will give you a solid base to customize and keep building off of on your way to production.`}
+        {t`Let's get you up and running with a starting setup for embedded analytics. You'll get to add working starter content to your app based on your real data. This will give you a solid base to customize and keep building off of on your way to production.`}
       </Text>
 
       <Space h="xl" />
 
-      <Text size="lg" mb="xs">{t`Requirements:`}</Text>
-      <Box mb="xl" pl="lg" style={{ paddingLeft: 24 }}>
-        <List size="lg">
-          <List.Item>
-            {t`Access to your app or a sample app you want to use to experiment`}
-          </List.Item>
-        </List>
-      </Box>
+      <Title order={5} mb="xs">{t`Requirements:`}</Title>
+      <Text size="lg">
+        {t`Access to your app or a sample app you want to use to experiment.`}
+      </Text>
 
       <Space h="xl" />
 
@@ -44,8 +33,13 @@ export const WelcomeStep = ({ nextStep }: StepProps) => {
 
       <Space h="lg" />
 
-      <Text>
-        <Link to="/" style={{ color: "#888" }}>{t`Set up manually`}</Link>
+      <Text color="text-secondary">
+        <Link
+          to="/"
+          onClick={async () => {
+            trackEmbeddingSetupClick("setup-up-manually");
+          }}
+        >{t`Set up manually`}</Link>
       </Text>
     </Box>
   );

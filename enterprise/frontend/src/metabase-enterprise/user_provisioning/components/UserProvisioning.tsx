@@ -5,7 +5,7 @@ import { t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import {
   AdminSettingInput,
   BasicAdminSettingInput,
@@ -15,9 +15,9 @@ import {
   useGetSettingsQuery,
   useUpdateSettingMutation,
 } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { NotFound } from "metabase/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Button, Divider, Flex, Stack, Text, TextInput } from "metabase/ui";
 import {
   useGetScimTokenQuery,

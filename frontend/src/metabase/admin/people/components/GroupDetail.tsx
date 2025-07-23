@@ -1,15 +1,14 @@
 import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
-import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import Alert from "metabase/components/Alert";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -22,6 +21,7 @@ import { addUndo } from "metabase/redux/undo";
 import { Box } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
+import Alert from "./Alert";
 import { GroupMembersTable } from "./GroupMembersTable";
 
 interface GroupDetailProps {

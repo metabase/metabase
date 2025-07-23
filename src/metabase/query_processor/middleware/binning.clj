@@ -5,7 +5,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.card :as lib.card]
-   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -92,12 +92,10 @@
     ;; try to find field in source-metadata with matching name
     (let [mlv2-metadatas (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)
           mlv2-metadatas (cond-> mlv2-metadatas
-                           (not (every? :lib/desired-column-alias mlv2-metadatas)) add-desired-column-aliases)]
+                           (not (every? :lib/desired-column-alias mlv2-metadatas)) add-desired-column-aliases)
+          field-ref      [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]]
       (or
-       (lib.equality/find-matching-column
-        [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]
-        (for [col mlv2-metadatas]
-          (dissoc col :source-alias)))
+       (lib.field.resolution/resolve-column-in-metadata (qp.store/metadata-provider) field-ref mlv2-metadatas)
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
                             (pr-str field-name))
                        {:field field-name, :resolved-metadata mlv2-metadatas}))))))

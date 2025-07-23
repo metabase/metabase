@@ -6,7 +6,6 @@ import type {
   Card,
   Parameter,
   ParameterTarget,
-  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -21,13 +20,15 @@ function getParameterType(tag: TemplateTag) {
     return "date/single";
   }
   // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string") {
+  if (type === "string" || type === "text") {
     return "string/=";
   }
   if (type === "number") {
     return "number/=";
   }
-
+  if (type === "boolean") {
+    return "boolean/=";
+  }
   if (type === "temporal-unit") {
     return "temporal-unit";
   }
@@ -36,33 +37,29 @@ function getParameterType(tag: TemplateTag) {
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
-  return tag.type === "dimension"
+  return tag.type === "dimension" || tag.type === "temporal-unit"
     ? ["dimension", ["template-tag", tag.name]]
     : ["variable", ["template-tag", tag.name]];
 }
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  config?: ParameterValuesConfig,
+  oldParameter?: Parameter,
 ): ParameterWithTarget {
-  const type = getParameterType(tag);
-  const isTemporalUnit = type === "temporal-unit";
-
   return {
     id: tag.id,
-    type,
+    type: getParameterType(tag),
     target: getParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
     required: tag.required,
     options: tag.options,
-    values_query_type: config?.values_query_type,
-    values_source_type: config?.values_source_type,
-    values_source_config: config?.values_source_config,
-    ...(isTemporalUnit && {
-      temporal_units: config?.temporal_units,
-    }),
+    isMultiSelect: oldParameter?.isMultiSelect ?? tag.type === "dimension",
+    values_query_type: oldParameter?.values_query_type,
+    values_source_type: oldParameter?.values_source_type,
+    values_source_config: oldParameter?.values_source_config,
+    temporal_units: oldParameter?.temporal_units,
   };
 }
 
@@ -80,8 +77,9 @@ export function getTemplateTagParameters(
         tag.type != null &&
         tag.type !== "card" &&
         tag.type !== "snippet" &&
-        ((tag["widget-type"] && tag["widget-type"] !== "none") ||
-          tag.type !== "dimension"),
+        ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
+          tag.dimension != null ||
+          (tag["widget-type"] && tag["widget-type"] !== "none")),
     )
     .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));
 }

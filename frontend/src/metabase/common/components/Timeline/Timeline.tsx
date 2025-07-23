@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";

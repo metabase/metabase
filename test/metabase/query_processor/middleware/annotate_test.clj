@@ -16,6 +16,11 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel needs-type-inference?-test
+  (is (#'annotate/needs-type-inference?
+       {:lib/type :mbql/query, :stages [{:lib/type :mbql.stage/native}]}
+       {:cols [{:name "_id"} {:name "longitude"} {:name "category_id"} {:name "price"} {:name "name"} {:name "latitude"}]})))
+
 (mu/defn- add-column-info
   ([query metadata]
    (add-column-info query metadata []))
@@ -71,25 +76,39 @@
   (testing "native column info"
     (testing "should disambiguate duplicate names"
       (doseq [rows [[]
-                    [[1 nil]]]]
+                    [[1 nil]]]
+              query [{:type :native, :native {:query "SELECT *"}}
+                     {:type :query, :query {:source-query {:native "SELECT *"}}}]
+              initial-base-type [:type/Integer
+                                 :type/*]
+              :let [expected-base-type-col-1 (if (or (= rows [[1 nil]])
+                                                     (= initial-base-type :type/Integer))
+                                               :type/Integer
+                                               :type/*)
+                    expected-base-type-col-2 (if (= initial-base-type :type/Integer)
+                                               :type/Integer
+                                               :type/*)]]
         ;; should work with and without rows
-        (testing (format "\nrows = %s" (pr-str rows))
-          (is (=? [{:name         "a"
-                    :display_name "a"
-                    :base_type    :type/Integer
-                    :source       :native
-                    :field_ref    [:field "a" {:base-type :type/Integer}]}
-                   {:name         "a_2"
-                    :display_name "a"
-                    :base_type    :type/Integer
-                    :source       :native
-                    :field_ref    [:field "a_2" {:base-type :type/Integer}]}]
+        (testing (format "\nrows = %s, query = %s, initial-base-type = %s" (pr-str rows) (pr-str query) initial-base-type)
+          (is (=? [{:name           "a"
+                    :display_name   "a"
+                    :base_type      expected-base-type-col-1
+                    :effective_type expected-base-type-col-1
+                    :source         :native
+                    :field_ref      [:field "a" {:base-type expected-base-type-col-1}]}
+                   {:name           "a_2"
+                    :display_name   "a"
+                    :base_type      expected-base-type-col-2
+                    :effective_type expected-base-type-col-2
+                    :source         :native
+                    :field_ref      [:field "a_2" {:base-type expected-base-type-col-2}]}]
                   (column-info
-                   (lib/query meta/metadata-provider {:type :native})
-                   {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
+                   (lib/query meta/metadata-provider query)
+                   {:cols [{:name "a" :base_type initial-base-type}
+                           {:name "a" :base_type initial-base-type}]
                     :rows rows}))))))))
 
-(deftest ^:parallel native-column-type-inferrence-test
+(deftest ^:parallel native-column-type-inference-test
   (testing "native column info should be able to infer types from rows if not provided by driver initial metadata"
     (doseq [[expected-base-type rows] {:type/*       []
                                        :type/Integer [[1 nil]]}]
@@ -123,7 +142,7 @@
                 :let [field (fn [field-key legacy-ref]
                               (let [metadata (meta/field-metadata :venues field-key)]
                                 (-> metadata
-                                    (select-keys [:id :name :ident])
+                                    (select-keys [:id :name])
                                     (assoc :field_ref legacy-ref))))]]
           (testing (format "%d level(s) of nesting" level)
             (let [nested-query (lib/query
@@ -142,7 +161,7 @@
                          {:name      "NAME_2"
                           :id        %categories.name
                           :field_ref &c.categories.name}])
-                      (map #(select-keys % [:name :id :field_ref :ident])
+                      (map #(select-keys % [:name :id :field_ref])
                            (:cols (add-column-info nested-query {:cols []}))))))))))))
 
 (deftest ^:parallel mbql-cols-nested-queries-test-2

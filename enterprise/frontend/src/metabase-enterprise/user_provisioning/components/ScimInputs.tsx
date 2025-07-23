@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { CopyTextInput } from "metabase/components/CopyTextInput";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import type { TextInputProps } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 

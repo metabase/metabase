@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Button, Divider, Flex, Text } from "metabase/ui";
 import type { State } from "metabase-types/store";
 
 import { SettingHeader } from "../SettingHeader";
-import { SettingsSection } from "../SettingsSection";
 
 import { ExplorePlansIllustration } from "./ExplorePlansIllustration";
 

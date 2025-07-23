@@ -1,4 +1,5 @@
 (ns metabase.lib.test-util.mocks-31368
+  "Repro for `[MLv2] Handle MLv1 field references for columns from questions/models in MLv2` (#31368)"
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

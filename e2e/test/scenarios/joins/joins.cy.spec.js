@@ -103,9 +103,8 @@ describe("scenarios > question > joined questions", () => {
     H.selectSavedQuestionsToJoin("question a", "question b");
     H.popover().findByText("PRODUCT_ID").click();
     H.popover().findByText("ID").click();
-
+    cy.realPress("Escape");
     H.visualize();
-
     H.assertJoinValid({
       lhsTable: "question a",
       rhsTable: "question b",
@@ -116,18 +115,19 @@ describe("scenarios > question > joined questions", () => {
     H.openNotebook();
     H.getNotebookStep("join").icon("chevrondown").click();
     H.popover().within(() => {
-      cy.findByText("EAN").click();
-      cy.findByText("VENDOR").click();
-      cy.findByText("PRICE").click();
-      cy.findByText("CATEGORY").click();
-      cy.findByText("CREATED_AT").click();
+      cy.findByText("question b - PRODUCT_ID → EAN").click();
+      cy.findByText("question b - PRODUCT_ID → VENDOR").click();
+      cy.findByText("question b - PRODUCT_ID → PRICE").click();
+      cy.findByText("question b - PRODUCT_ID → CATEGORY").click();
+      cy.findByText("question b - PRODUCT_ID → CREATED_AT").click();
     });
+    cy.realPress("Escape");
     H.visualize();
     H.assertJoinValid({
       lhsTable: "question a",
       rhsTable: "question b",
       lhsSampleColumn: "TOTAL",
-      rhsSampleColumn: "question b - PRODUCT_ID → Rating",
+      rhsSampleColumn: "question b - PRODUCT_ID → RATING",
     });
     H.queryBuilderMain().findByText("EAN").should("not.exist");
 
@@ -135,7 +135,7 @@ describe("scenarios > question > joined questions", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("question b").click();
-      cy.findByText("CATEGORY").click();
+      cy.findByText("question b - PRODUCT_ID → CATEGORY").click();
     });
     H.selectFilterOperator("Is");
     H.popover().within(() => {
@@ -146,12 +146,12 @@ describe("scenarios > question > joined questions", () => {
     H.summarize({ mode: "notebook" });
     H.addSummaryGroupingField({
       table: "question b",
-      field: "CATEGORY",
+      field: "question b - PRODUCT_ID → CATEGORY",
     });
     H.visualize();
 
     cy.findByTestId("qb-filters-panel")
-      .findByText("question b - PRODUCT_ID → Category is Gadget")
+      .findByText("question b - PRODUCT_ID → CATEGORY is Gadget")
       .should("be.visible");
     cy.findByTestId("scalar-value").contains("Gadget").should("be.visible");
   });
@@ -194,14 +194,14 @@ describe("scenarios > question > joined questions", () => {
 
     H.openNotebook();
     H.getNotebookStep("join").icon("chevrondown").click();
-    H.popover().findByText("ID").click();
+    H.popover().findByText("Q2 - Product → ID").click();
     H.visualize();
 
     H.assertJoinValid({
       lhsTable: "Q1",
       rhsTable: "Q2",
       lhsSampleColumn: "Product ID",
-      rhsSampleColumn: "Q2 - Product → Sum of Total",
+      rhsSampleColumn: "Q2 - Product → Sum of Rating",
     });
     H.queryBuilderMain().findByText("Q2 → ID").should("not.exist");
 
@@ -218,7 +218,7 @@ describe("scenarios > question > joined questions", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Q2").click();
-      cy.findByText("ID").click();
+      cy.findByText("Q2 - Product → ID").click();
       cy.findByPlaceholderText("Enter an ID").type("12");
       cy.button("Add filter").click();
     });

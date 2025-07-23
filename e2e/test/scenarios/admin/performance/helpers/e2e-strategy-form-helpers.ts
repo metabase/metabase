@@ -4,7 +4,7 @@ import { popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
-} from "metabase/components/Schedule/strings";
+} from "metabase/common/components/Schedule/strings";
 import type {
   CacheStrategyType,
   CacheableModel,
@@ -84,11 +84,10 @@ export const formLauncher = (
 ) => {
   const regExp = new RegExp(`Edit.*${itemName}.*${preface}.*${strategyLabel}`);
   cy.log(`Finding strategy for launcher for regular expression: ${regExp}`);
-  const launcher = cy
-    .findByTestId("admin-layout-content")
-    .findByLabelText(regExp);
-  launcher.should("exist");
-  return launcher;
+  const launcher = () =>
+    cy.findByTestId("admin-layout-content").findByLabelText(regExp);
+  launcher().should("exist");
+  return launcher();
 };
 
 /** Opens the strategy form on 'Database caching' tab */

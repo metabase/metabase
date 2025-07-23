@@ -55,6 +55,15 @@ export function getVisualizationTheme({
       goalLine: {
         label: { fontSize: px(cartesian.goalLine.label.fontSize) },
       },
+      splitLine: {
+        lineStyle: {
+          color: isStaticViz
+            ? color("border")
+            : isNightMode
+              ? "var(--mb-color-border-alpha-30)"
+              : cartesian.splitLine.lineStyle.color,
+        },
+      },
     },
     pie: {
       borderColor: isStaticViz

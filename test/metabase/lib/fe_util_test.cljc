@@ -147,12 +147,11 @@
                  :name (:name col)
                  :display-name (:display-name col)}
                 (lib/expression-parts query stage-number (lib.ref/ref col))))))
-
     (testing "unknown column reference"
       (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 12345678]]
         (mu/disable-enforcement
           (is (=? {:lib/type :metadata/column
-                   :display-name "12345678"}
+                   :display-name "Unknown Field"}
                   (lib/expression-parts query stage-number unknown-ref))))))))
 
 (deftest ^:parallel expression-parts-segment-reference-test
@@ -174,7 +173,6 @@
                  :name segment-name
                  :description segment-description}
                 (lib/expression-parts query stage-number (lib.ref/ref segment))))))
-
     (testing "unknown segment reference"
       (let [unknown-ref [:segment {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement
@@ -201,7 +199,6 @@
                  :name metric-name
                  :description metric-description}
                 (lib/expression-parts query stage-number (lib.ref/ref metric))))))
-
     (testing "unknown metric reference"
       (let [unknown-ref [:metric {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement
@@ -267,8 +264,7 @@
 (deftest ^:parallel case-or-if-parts-test
   (let [query         (lib/query meta/metadata-provider (meta/table-metadata :venues))
         int-field     (m/filter-vals some? (meta/field-metadata :venues :category-id))
-        string-field  (m/filter-vals some? (meta/field-metadata :venues :name))
-        dt-field      (m/filter-vals some? (meta/field-metadata :users :last-login))
+        other-int-field     (m/filter-vals some? (meta/field-metadata :venues :price))
         boolean-field (m/filter-vals some? (meta/field-metadata :venues :category-id))
         test-cases {(lib/case [[boolean-field int-field]])
                     {:operator :case
@@ -280,25 +276,25 @@
                      :options {}
                      :args [boolean-field int-field]}
 
-                    (lib/case [[boolean-field int-field]] string-field)
+                    (lib/case [[boolean-field int-field]] other-int-field)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field string-field]}
+                     :args [boolean-field int-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]])
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]])
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field]}
+                     :args [boolean-field int-field boolean-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]] nil)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field]}
+                     :args [boolean-field int-field boolean-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]] other-int-field)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field dt-field]}}]
+                     :args [boolean-field int-field boolean-field other-int-field other-int-field]}}]
     (testing "case pairs should be flattened in expression parts"
       (doseq [[clause parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -330,7 +326,6 @@
 
 (deftest ^:parallel nested-case-or-if-parts-test
   (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
-        int-field     (m/filter-vals some? (meta/field-metadata :venues :category-id))
         string-field  (m/filter-vals some? (meta/field-metadata :venues :name))
         boolean-field (m/filter-vals some? (meta/field-metadata :venues :category-id))]
     (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
@@ -338,7 +333,7 @@
                       :operator :case
                       :options {}
                       :args [boolean-field
-                             int-field
+                             string-field
                              "default"]}
 
                      {:lib/type :mbql/expression-parts
@@ -353,7 +348,7 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field
-                                             int-field
+                                             string-field
                                              "default"]}]}]}
 
                      {:lib/type :mbql/expression-parts
@@ -852,6 +847,74 @@
         (lib.filter/not-null (meta/field-metadata :venues :name))
         (lib.filter/> column 10)
         (lib.filter/and (lib.filter/is-null column) true)))))
+
+(deftest ^:parallel aggregation-ref-parts-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        sum   (->> (lib/aggregable-columns query nil)
+                   (m/find-first (comp #{"sum"} :name)))
+        query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))]
+    (is (=? {:lib/type :mbql/expression-parts,
+             :operator :*,
+             :options  {:name "2*sum", :display-name "2*sum"},
+             :args     [2
+                        {:lib/type :metadata/column
+                         :base-type :type/Float
+                         :name "sum"
+                         :display-name "Sum of Total"
+                         :effective-type :type/Float
+                         :lib/source :source/aggregations
+                         :lib/source-uuid string?}]}
+            (lib.fe-util/expression-parts query (second (lib/aggregations query)))))))
+
+(deftest ^:parallel join-condition-clause-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (=? [:= {} lhs rhs]
+            (lib.fe-util/join-condition-clause := lhs rhs)))))
+
+(deftest ^:parallel join-condition-parts-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (= {:operator :=, :lhs-expression lhs, :rhs-expression rhs}
+           (lib.fe-util/join-condition-parts (lib/= lhs rhs))))))
+
+(deftest ^:parallel join-condition-lhs-or-rhs-literal?-test
+  (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products          (meta/table-metadata :products)
+        lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+        lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+        rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
+    (are [lhs-or-rhs] (true? (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs))
+      (lib.expression/value 10)
+      (lib.expression/value "abc")
+      (lib.expression/value true)
+      (lib.expression/value false))
+    (are [lhs-or-rhs] (false? (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs))
+      (lib/ref lhs-order-tax)
+      (lib/ref rhs-product-price)
+      (lib/+ lhs-order-tax 1)
+      (lib/+ lhs-order-tax lhs-order-tax)
+      (lib/+ 1 rhs-product-price)
+      (lib/+ rhs-product-price rhs-product-price))))
+
+(deftest ^:parallel join-condition-lhs-or-rhs-column?-test
+  (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products          (meta/table-metadata :products)
+        lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+        lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+        rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
+    (are [lhs-or-rhs] (true? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
+      (lib/ref lhs-order-tax)
+      (lib/ref rhs-product-price))
+    (are [lhs-or-rhs] (false? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
+      (lib.expression/value 1)
+      (lib/+ lhs-order-tax 1)
+      (lib/+ lhs-order-tax lhs-order-tax)
+      (lib/+ 1 rhs-product-price)
+      (lib/+ rhs-product-price rhs-product-price))))
 
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (m/filter-vals some? (meta/field-metadata :products :created-at))

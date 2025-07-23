@@ -3,7 +3,10 @@ import { c, t } from "ttag";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import { Cron, getScheduleStrings } from "metabase/components/Schedule/strings";
+import {
+  Cron,
+  getScheduleStrings,
+} from "metabase/common/components/Schedule/strings";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type {

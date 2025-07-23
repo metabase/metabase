@@ -324,8 +324,10 @@
            audit-app
            config
            driver
+           eid-translation
            events
            legacy-mbql
+           lib-be
            models
            notification
            permissions
@@ -388,6 +390,7 @@
            channel
            collections
            config
+           eid-translation
            embedding
            events
            lib
@@ -573,6 +576,7 @@
           metabase.lib.core
           metabase.lib.equality
           metabase.lib.field
+          metabase.lib.field.resolution
           metabase.lib.filter
           metabase.lib.ident
           metabase.lib.init
@@ -597,7 +601,10 @@
           metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
+          metabase.lib.schema.metadata.fingerprint
+          metabase.lib.schema.order-by
           metabase.lib.schema.parameter
+          metabase.lib.schema.ref
           metabase.lib.schema.template-tag
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.util
@@ -876,6 +883,7 @@
            config
            content-verification
            dashboards
+           eid-translation
            embedding
            events
            legacy-mbql
@@ -1346,6 +1354,7 @@
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
@@ -1354,6 +1363,7 @@
            api
            app-db
            audit-app
+           database-routing
            driver
            events
            lib
@@ -1578,6 +1588,17 @@
            api
            util}}
 
+  enterprise/database-replication
+  {:team "Cloud"
+   :api  #{metabase-enterprise.database-replication.api
+           metabase-enterprise.database-replication.init}
+   :uses #{analytics
+           api
+           premium-features
+           settings
+           util
+           enterprise/harbormaster}}
+
   enterprise/database-routing
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.database-routing.api}
@@ -1594,6 +1615,17 @@
            util
            warehouse-schema
            warehouses}}
+
+
+  enterprise/email
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.email.api}
+   :uses #{api
+           channel
+           permissions
+           premium-features
+           settings
+           util}}
 
   enterprise/gsheets
   {:team  "Cloud"
@@ -1665,11 +1697,22 @@
            pulse
            query-processor
            request
+           server
            settings
            system
            users
            util
            warehouse-schema}}
+
+  enterprise/permission-debug
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}}
 
   enterprise/premium-features
   {:team "Admin Webapp"
@@ -1740,6 +1783,7 @@
            models
            plugins
            premium-features
+           search
            settings
            setup
            util

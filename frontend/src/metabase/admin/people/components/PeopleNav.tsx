@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
-} from "metabase/admin/settings/components/AdminNav";
+} from "metabase/admin/components/AdminNav";
+import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
@@ -30,7 +30,7 @@ export function PeopleNav() {
           icon="group"
         />
       </Stack>
-      {shouldNudge && <UpsellSSO source="people-groups-settings" />}
+      {shouldNudge && <UpsellSSO location="people-groups-settings" />}
     </AdminNavWrapper>
   );
 }

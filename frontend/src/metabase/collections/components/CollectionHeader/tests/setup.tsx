@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDashboardQuestionCandidatesEndpoint,
@@ -51,6 +53,11 @@ export const setup = ({
     namespace: "user_acknowledgement",
     value: true,
   });
+  setupUserKeyValueEndpoints({
+    key: "events-menu",
+    namespace: "user_acknowledgement",
+    value: false,
+  });
 
   const props = getProps({
     collection: createMockCollection(collection),
@@ -66,9 +73,14 @@ export const setup = ({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(<CollectionHeader {...props} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route path="/" component={() => <CollectionHeader {...props} />} />,
+    {
+      storeInitialState: state,
+      initialRoute: "/",
+      withRouter: true,
+    },
+  );
 
   return props;
 };

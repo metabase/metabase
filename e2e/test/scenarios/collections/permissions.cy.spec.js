@@ -388,7 +388,7 @@ describe("collection permissions", () => {
 
   it("should load the collection permissions admin pages", () => {
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("GET", "/api/collection/graph").as("permissionsGraph");
     cy.intercept("GET", "/api/permissions/group").as("permissionsGroups");
 

@@ -62,7 +62,7 @@
 
 (deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (testing "make sure we can do a basic query with a SQL source-query"
+    (testing "make sure we can do a basic query with a native source-query"
       (is (=? {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
                       [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
                       [3 -118.428 11 2 "The Apple Pan"                34.0406]
@@ -1686,42 +1686,42 @@
   (mt/test-drivers (set/intersection
                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
                     (mt/normal-drivers-with-feature :left-join))
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          card-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
-                         (lib/order-by (lib.metadata/field mp (mt/id "orders" "created_at")))
-                         (lib/limit 1)
-                         lib/->legacy-MBQL)
-          results (qp/process-query card-query)]
-      (mt/with-temp [:model/Card {card-id :id} {:type :question
-                                                :dataset_query {:native (get-in results [:data :native_form])
-                                                                :database (mt/id)
-                                                                :type :native}
-                                                :name          "Spaces in Name"
-                                                :entity_id     "yZvzZlw8lRkATwq8w8fDi"
-                                                :result_metadata
-                                                (for [col (get-in results [:data :results_metadata :columns])]
-                                                  (assoc col :ident (lib/native-ident (:name col) "yZvzZlw8lRkATwq8w8fDi")))}]
-        (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
-              query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
-                      (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))
-
-                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
-                                                                  created-at-pred
-                                                                  (lib/breakoutable-columns $q))
-                                         :month))
-                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
-                                                                  created-at-pred
-                                                                  (lib/breakoutable-columns $q))
-                                         :day))
-                      (lib/filter $q (lib/!= (m/find-first created-at-pred (lib/filterable-columns $q)) nil))
-                      (lib/append-stage $q)
-                      (lib/breakout $q (first (lib/breakoutable-columns $q)))
-                      (lib/breakout $q (last (lib/breakoutable-columns $q))))]
-          (is (= [[#t "2016-04-01" #t "2016-04-30"]]
-                 (mt/formatted-rows
-                  [(comp t/local-date u.date/parse)
-                   (comp t/local-date u.date/parse)]
-                  (qp/process-query query)))))))))
+    (let [mp              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                              (lib/order-by (lib.metadata/field mp (mt/id :orders :created_at)))
+                              (lib/limit 1)
+                              lib/->legacy-MBQL)
+          results         (qp/process-query card-query)
+          mp              (lib.tu/mock-metadata-provider
+                           mp
+                           {:cards [{:id              1
+                                     :type            :question
+                                     :dataset-query   {:native   (get-in results [:data :native_form])
+                                                       :database (mt/id)
+                                                       :type     :native}
+                                     :name            "Spaces in Name"
+                                     :result-metadata (get-in results [:data :results_metadata :columns])}]})
+          created-at-pred (fn [col]
+                            (= (:display-name col) "Spaces in Name → Created At"))
+          query           (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $q
+                            (lib/join $q (lib/join-clause (lib.metadata/card mp 1)))
+                            (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                        created-at-pred
+                                                                        (lib/breakoutable-columns $q))
+                                               :month))
+                            (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                        created-at-pred
+                                                                        (lib/breakoutable-columns $q))
+                                               :day))
+                            (lib/filter $q (lib/!= (m/find-first created-at-pred (lib/filterable-columns $q)) nil))
+                            (lib/append-stage $q)
+                            (lib/breakout $q (first (lib/breakoutable-columns $q)))
+                            (lib/breakout $q (last (lib/breakoutable-columns $q))))]
+      (is (= [[#t "2016-04-01" #t "2016-04-30"]]
+             (mt/formatted-rows
+              [(comp t/local-date u.date/parse)
+               (comp t/local-date u.date/parse)]
+              (qp/process-query query)))))))
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"

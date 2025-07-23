@@ -159,5 +159,5 @@ export const getLastSettingsPutPayload = async () => {
   return JSON.parse((await lastSettingsCall![1]!.body!) as string);
 };
 
-export const skipTokenStep = async () =>
-  await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+export const skipTokenStep = async (name = "Skip") =>
+  await userEvent.click(screen.getByRole("button", { name }));

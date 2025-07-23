@@ -759,21 +759,23 @@
 
 (deftest ^:parallel find-matching-field-ignore-MLv2-extra-type-info-in-field-opts-test
   (testing "MLv2 refs can include extra info like `:base-type`; make sure we ignore that when finding matching refs (#33083)"
-    (let [source-query {:joins [{:alias        "Card_2"
-                                 :source-query {:breakout    [[:field 78 {:join-alias         "Products"
-                                                                          :temporal-unit      :month
-                                                                          ::add/source-table  "Products"
-                                                                          ::add/source-alias  "CREATED_AT"
-                                                                          ::add/desired-alias "Products__CREATED_AT"
-                                                                          ::add/position      0}]]
-                                                :aggregation [[:aggregation-options
-                                                               [:distinct [:field 76 {:join-alias        "Products"
-                                                                                      ::add/source-table "Products"
-                                                                                      ::add/source-alias "ID"}]]
-                                                               {:name               "count"
-                                                                ::add/source-alias  "count"
-                                                                ::add/position      1
-                                                                ::add/desired-alias "count"}]]}}]}
+    (let [source-query {:source-table 1
+                        :joins        [{:alias        "Card_2"
+                                        :source-query {:source-table 2
+                                                       :breakout     [[:field 78 {:join-alias         "Products"
+                                                                                  :temporal-unit      :month
+                                                                                  ::add/source-table  "Products"
+                                                                                  ::add/source-alias  "CREATED_AT"
+                                                                                  ::add/desired-alias "Products__CREATED_AT"
+                                                                                  ::add/position      0}]]
+                                                       :aggregation  [[:aggregation-options
+                                                                       [:distinct [:field 76 {:join-alias        "Products"
+                                                                                              ::add/source-table "Products"
+                                                                                              ::add/source-alias "ID"}]]
+                                                                       {:name               "count"
+                                                                        ::add/source-alias  "count"
+                                                                        ::add/position      1
+                                                                        ::add/desired-alias "count"}]]}}]}
           field-clause [:field 78 {:base-type :type/DateTime, :temporal-unit :month, :join-alias "Card_2"}]]
       (is (=? [:field
                78
@@ -951,3 +953,37 @@
                     qp.preprocess/preprocess
                     add/add-alias-info
                     :query)))))))
+
+(deftest ^:parallel globally-unique-join-aliases-test
+  (testing "support generating globally unique join aliases for drivers that need it (e.g. MongoDB)"
+    (driver/with-driver :h2
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (let [query (lib.tu.macros/mbql-query reviews
+                      {:source-query {:source-table $$reviews
+                                      :joins        [{:source-table $$products
+                                                      :alias        "Products"
+                                                      :condition    [:= $product-id &Products.products.id]
+                                                      :fields       :all}]
+                                      :breakout     [!month.&Products.products.created-at]
+                                      :aggregation  [[:distinct &Products.products.id]]
+                                      :filter       [:= &Products.products.category "Doohickey"]}
+                       :joins        [{:source-query {:source-table $$reviews
+                                                      :joins        [{:source-table $$products
+                                                                      :alias        "Products"
+                                                                      :condition    [:= $product-id &Products.products.id]
+                                                                      :fields       :all}]
+                                                      :breakout     [!month.&Products.products.created-at]
+                                                      :aggregation  [[:distinct &Products.products.id]]
+                                                      :filter       [:= &Products.products.category "Gizmo"]}
+                                       :alias        "Q2"
+                                       ;; yes, `!month.products.created-at` is a so-called 'bad reference' (should
+                                       ;; include the `:join-alias`) but this test is also testing that we detect this
+                                       ;; situation and handle it appropriately.
+                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
+                                       :condition    [:= !month.products.created-at !month.&Q2.products.created-at]}]})]
+          (is (=? {:source-query {:joins [{::add/alias "Products_2"}]}
+                   :joins        [{:source-query {:joins [{::add/alias "Products"}]}}]}
+                  (-> query
+                      qp.preprocess/preprocess
+                      (add/add-alias-info {:globally-unique-join-aliases? true})
+                      :query))))))))

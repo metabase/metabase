@@ -3,8 +3,8 @@ import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import SelectList from "metabase/components/SelectList";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import SelectList from "metabase/common/components/SelectList";
 import type { ColorName } from "metabase/lib/colors/types";
 import { Button, type ButtonProps, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";

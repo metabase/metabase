@@ -1,41 +1,49 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useLazyGetXrayDashboardForModelQuery } from "metabase/api/automagic-dashboards";
+import { useCreateCardMutation } from "metabase/api/card";
+import { useSaveDashboardMutation } from "metabase/api/dashboard";
 import { useUpdateSettingsMutation } from "metabase/api/settings";
+import { useSetting } from "metabase/common/hooks";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const ProcessingStep = () => {
-  useForceLocaleRefresh();
+  const siteUrl = useSetting("site-url");
 
   const { goToNextStep } = useEmbeddingSetup();
 
   const [processingStep, setProcessingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [updateSettings] = useUpdateSettingsMutation();
+  const [createCard] = useCreateCardMutation();
+  const [saveDashboard] = useSaveDashboardMutation();
+  const [getXrayDashboardForModel] = useLazyGetXrayDashboardForModelQuery();
 
   const {
     database,
     selectedTables,
     processingStatus,
     setProcessingStatus,
-    setCreatedDashboardIds,
+    setCreatedDashboard,
   } = useEmbeddingSetup();
 
   const setupSettings = useCallback(async () => {
     await updateSettings({
       "embedding-homepage": "visible",
       "enable-embedding-interactive": true,
-      "embedding-app-origins-interactive": "localhost:*",
+      "embedding-app-origins-interactive": `localhost:* ${siteUrl}`,
       "session-cookie-samesite": "none",
-    }).unwrap();
-  }, [updateSettings]);
+    });
+  }, [updateSettings, siteUrl]);
 
   useEffect(() => {
     const process = async () => {
-      if (!database?.id || !selectedTables?.length) {
+      const databaseId = database?.id;
+      if (!databaseId || !selectedTables?.length) {
         setError("No database or tables selected");
         return;
       }
@@ -47,72 +55,48 @@ export const ProcessingStep = () => {
 
         // Create models for each table
         setProcessingStatus(t`Creating models...`);
-        const models = [];
-        for (const table of selectedTables) {
-          const response = await fetch("/api/card", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+
+        const models = await Promise.all(
+          selectedTables.map(async (table) => {
+            const model = await createCard({
               name: table.display_name,
               type: "model",
               display: "table",
-              result_metadata: null,
-              collection_id: null,
-              collection_position: 1,
               visualization_settings: {},
               dataset_query: {
                 type: "query",
-                database: database.id,
+                database: databaseId,
                 query: { "source-table": table.id },
               },
               description: `A model created via the embedding setup flow`,
-            }),
-          });
+            }).unwrap();
+            setProcessingStep((prev) => prev + 1);
+            return model;
+          }),
+        );
 
-          if (!response.ok) {
-            throw new Error(`Failed to create model for ${table.display_name}`);
-          }
-
-          const model = await response.json();
-          models.push(model);
-          setProcessingStep((prev) => prev + 1);
-        }
-
-        // Create x-ray dashboards for each model
+        // Get the x-ray dashboard content (this doesn't save the dashboard yet)
         setProcessingStatus(t`Creating dashboards...`);
-        const dashboardIds = [];
-        for (const model of models) {
-          // Get the x-ray dashboard layout
-          const xrayResponse = await fetch(
-            `/api/automagic-dashboards/model/${model.id}?dashboard_load_id=${Date.now()}`,
-          );
+        const dashboardsContent = await Promise.all(
+          models.map(async (model) => {
+            const dashboardContent = await getXrayDashboardForModel({
+              modelId: model.id,
+              dashboard_load_id: Date.now(),
+            }).unwrap();
+            return dashboardContent;
+          }),
+        );
 
-          if (!xrayResponse.ok) {
-            throw new Error(`Failed to generate x-ray for ${model.name}`);
-          }
-
-          const dashboardContent = await xrayResponse.json();
-
-          // Save the dashboard
-          const saveResponse = await fetch("/api/dashboard/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(dashboardContent),
-          });
-
-          if (!saveResponse.ok) {
-            throw new Error(`Failed to save dashboard for ${model.name}`);
-          }
-
-          const savedDashboard = await saveResponse.json();
-          dashboardIds.push(savedDashboard.id);
+        // Save the dashboards one at the time, to avoid creating multiple "Automatically Generated Dashboards" collections
+        const dashboards: Dashboard[] = [];
+        for (const dashboard of dashboardsContent) {
+          const savedDashboard = await saveDashboard(dashboard).unwrap();
           setProcessingStep((prev) => prev + 1);
+          dashboards.push(savedDashboard);
         }
 
-        // Store the created dashboard IDs
-        setCreatedDashboardIds(dashboardIds);
+        setCreatedDashboard(dashboards);
 
-        // Move to final step
         goToNextStep();
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -124,9 +108,12 @@ export const ProcessingStep = () => {
     database?.id,
     selectedTables,
     setProcessingStatus,
-    setCreatedDashboardIds,
+    setCreatedDashboard,
     setupSettings,
     goToNextStep,
+    createCard,
+    saveDashboard,
+    getXrayDashboardForModel,
   ]);
 
   if (error) {

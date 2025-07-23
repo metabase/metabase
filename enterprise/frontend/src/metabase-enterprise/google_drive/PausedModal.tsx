@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
+import { BUY_STORAGE_URL } from "metabase/admin/upsells";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
@@ -33,7 +34,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
               <Button
                 variant="filled"
                 component={ExternalLink}
-                href="https://store.metabase.com"
+                href={BUY_STORAGE_URL}
                 target="_blank"
               >
                 {t`Add more storage`}

@@ -23,6 +23,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1357,6 +1358,37 @@
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
                           (map clean)))))))))))
+
+(deftest fetch-card-entity-id-test
+  (testing "GET /api/card/:id with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to fetch a Card using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (=? {:name (:name card)}
+                  (mt/user-http-request :rasta :get 200 (str "card/" (:entity_id card))))))))))
+
+(deftest card-query-metadata-entity-id-test
+  (testing "GET /api/card/:id/query_metadata with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to get query metadata using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (map? (mt/user-http-request :rasta :get 200 (str "card/" (:entity_id card) "/query_metadata")))))))))
+
+(deftest run-query-entity-id-test
+  (testing "POST /api/card/:card-id/query with entity ID"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection)
+                                             :dataset_query (mt/mbql-query venues)}]
+        (testing "Should be able to run query using entity ID when you have Collection read perms"
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+          (is (map? (mt/user-http-request :rasta :post 202 (str "card/" (:entity_id card) "/query")))))))))
 
 (deftest ^:parallel fetch-card-404-test
   (testing "GET /api/card/:id"
@@ -2825,7 +2857,17 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                     (assoc card :type :model :type "model")))))))
 
-;;; see also [[metabase.lib.card-test/preserve-edited-metadata-test]], a pure-Lib version of this test.
+;;; See also:
+;;;
+;;; - [[metabase.lib.field.resolution-test/preserve-model-metadata-test]]
+;;;
+;;; - [[metabase.lib.card-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.lib.metadata.result-metadata-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.query-processor.preprocess-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.query-processor.card-test/preserve-model-metadata-test]]
 (deftest model-card-test-2
   (testing "Cards preserve their edited metadata"
     (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
@@ -2915,6 +2957,7 @@
                                            "card"
                                            (assoc (card-with-name-and-query "card-name" query)
                                                   :type :model))]
+              (assert (some? metadata))
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (=? {:result_metadata [{:display_name "EDITED DISPLAY"}
                                          {:display_name "EDITED DISPLAY"}]}
@@ -2992,7 +3035,7 @@
    (mt/with-temp
      [:model/Card source-card {:database_id   (mt/id)
                                :table_id      (mt/id :venues)
-                               :dataset_query (mt/mbql-query venues {:limit 5})}
+                               :dataset_query (mt/mbql-query venues {})}
       :model/Card field-filter-card {:dataset_query
                                      {:database (mt/id)
                                       :type     :native
@@ -3082,17 +3125,18 @@
 
 (deftest parameters-with-source-is-card-test
   (testing "getting values"
-    (with-card-param-values-fixtures [{:keys [card param-keys]}]
-      (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
-                                   ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
-                 :has_more_values false}
-                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
+    (binding [custom-values/*max-rows* 5]
+      (with-card-param-values-fixtures [{:keys [card param-keys]}]
+        (testing "GET /api/card/:card-id/params/:param-key/values"
+          (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                     ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                   :has_more_values true}
+                  (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
-      (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          [["Fred 62"] ["Red Medicine"]]
-                :has_more_values false}
-               (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red"))))))))
+        (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+          (is (= {:values          [["Fred 62"] ["Red Medicine"]]
+                  :has_more_values false}
+                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))))
 
 (deftest parameters-with-source-is-card-test-2
   (testing "fallback to field-values"
@@ -4236,6 +4280,25 @@
                     (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
                                           {:dataset_query (lib/->legacy-MBQL query-cycle)
                                            :type card-type-c})))))))))))
+
+(deftest cannot-make-query-cycles-with-native-queries-test
+  (testing "Cannot make query cycles that include native queries"
+    (let [mp (mt/metadata-provider)
+          query-a (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :question}]
+        (let [query-b (mt/native-query {:query "select * from {{#100-base-query}}"
+                                        :template-tags
+                                        {:#100-base-query
+                                         {:type :card
+                                          :name "#100-base-query"
+                                          :id (random-uuid)
+                                          :card-id id-a
+                                          :display-name "#100 Base Query"}}})]
+          (mt/with-temp [:model/Card {id-b :id} {:dataset_query query-b :type :question}]
+            (let [query-cycle (lib/query mp (lib.metadata/card mp id-b))]
+              (mt/user-http-request :crowberto :put 400 (str "card/" id-a)
+                                    {:dataset_query (lib/->legacy-MBQL query-cycle)
+                                     :type :question}))))))))
 
 (deftest e2e-card-update-invalidates-cache-test
   (testing "Card update invalidates card's cache (#55955)"

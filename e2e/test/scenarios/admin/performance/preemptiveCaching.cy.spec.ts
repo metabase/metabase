@@ -34,7 +34,7 @@ describe(
         interceptPerformanceRoutes();
         H.restore("postgres-writable");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
         H.resyncDatabase({

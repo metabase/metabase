@@ -4,10 +4,10 @@ import { goBack } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetTaskQuery } from "metabase/api";
-import { CodeEditor } from "metabase/components/CodeEditor";
-import { CopyButton } from "metabase/components/CopyButton";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/components/ModalContent";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import ModalContent from "metabase/common/components/ModalContent";
 import { openSaveDialog } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Icon } from "metabase/ui";

@@ -420,19 +420,23 @@ describe("scenarios > question > saved", () => {
 
   it("should always be possible to view the full title text of the saved question", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
-    const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
-    savedQuestionTitle.clear();
-    savedQuestionTitle.type(
-      "Space, the final frontier. These are the voyages of the Starship Enterprise.",
-    );
-    savedQuestionTitle.blur();
+    cy.findByTestId("saved-question-header-title")
+      .as("savedQuestionTitle")
+      .should("be.visible")
+      .clear()
+      .type(
+        "Space, the final frontier. These are the voyages of the Starship Enterprise.",
+      )
+      .blur();
 
-    savedQuestionTitle.should("be.visible").should(($el) => {
-      // clientHeight: height of the textarea
-      // scrollHeight: height of the text content, including content not visible on the screen
-      const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
-      expect(heightDifference).to.eq(0);
-    });
+    cy.get("@savedQuestionTitle")
+      .should("be.visible")
+      .should(($el) => {
+        // clientHeight: height of the textarea
+        // scrollHeight: height of the text content, including content not visible on the screen
+        const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
+        expect(heightDifference).to.eq(0);
+      });
   });
 
   it("should not show '- Modified' suffix after we click 'Save' on a new model (metabase#42773)", () => {
@@ -466,22 +470,25 @@ describe("scenarios > question > saved", () => {
 
     const HIDDEN_TYPES = ["hidden", "technical", "cruft"];
 
-    function hideTable(name, visibilityType) {
-      cy.visit("/admin/datamodel");
-      H.sidebar().findByText(name).click();
-      H.main().findByText("Hidden").click();
-
-      if (visibilityType === "technical") {
-        H.main().findByText("Technical Data").click();
-      }
-      if (visibilityType === "cruft") {
-        H.main().findByText("Irrelevant/Cruft").click();
+    function hideTable({ name, id, visibilityType }) {
+      // Since v56 it's no longer possible to specify the reason (e.g. "technical" or "cruft")
+      // for hiding the table via UI.
+      // We still want to support cases where visibility type has been set to such values in
+      // the past, so we simulate it with API call.
+      if (visibilityType === "technical" || visibilityType === "cruft") {
+        cy.request("PUT", `/api/table/${id}`, {
+          visibility_type: visibilityType,
+        });
+      } else {
+        H.DataModel.visit();
+        H.DataModel.TablePicker.getTable(name).click();
+        H.DataModel.TablePicker.getTable(name).button("Hide table").click();
       }
     }
 
     HIDDEN_TYPES.forEach((visibilityType) => {
       it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
-        hideTable("Orders", visibilityType);
+        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
 
         H.visitQuestion(ORDERS_QUESTION_ID);
 
@@ -498,7 +505,7 @@ describe("scenarios > question > saved", () => {
 
       it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
         cy.signInAsAdmin();
-        hideTable("Products", visibilityType);
+        hideTable({ name: "Products", id: PRODUCTS_ID, visibilityType });
         H.createQuestion(
           {
             name: "Joined question",
@@ -584,11 +591,11 @@ describe("scenarios > question > saved", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = true;
+          res.body["token-features"].development_mode = true;
         });
       });
 
@@ -748,9 +755,8 @@ describe(
         `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
       ).then(({ body }) => {
         expect(body).to.have.length(1);
-        const payload = cy.wrap(atob(body[0].content_base64));
 
-        payload
+        cy.wrap(atob(body[0].content_base64))
           .should("have.string", "alert_creator_name")
           .and("have.string", "Bobby Tables");
       });

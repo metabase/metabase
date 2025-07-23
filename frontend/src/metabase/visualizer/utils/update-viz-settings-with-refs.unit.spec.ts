@@ -234,4 +234,39 @@ describe("updateVizSettingsWithRefs", () => {
       ],
     });
   });
+
+  it("should handle getColumnKey names too", () => {
+    const settings: VisualizationSettings = {
+      "graph.x_axis.scale": "ordinal",
+      "graph.dimensions": ["CATEGORY"],
+      column_settings: {
+        // v-- this key doesn't directly match a column name
+        '["name","count"]': {
+          number_style: "scientific",
+          prefix: "Around ",
+          suffix: "-ish",
+        },
+      },
+      "graph.metrics": ["count"],
+    };
+    const columnsToRefs = {
+      CATEGORY: "COLUMN_1",
+      count: "COLUMN_2",
+    };
+
+    const result = updateVizSettingsWithRefs(settings, columnsToRefs);
+
+    expect(result).toEqual({
+      "graph.x_axis.scale": "ordinal",
+      "graph.dimensions": ["CATEGORY"],
+      column_settings: {
+        '["name","COLUMN_2"]': {
+          number_style: "scientific",
+          prefix: "Around ",
+          suffix: "-ish",
+        },
+      },
+      "graph.metrics": ["count"],
+    });
+  });
 });

@@ -2,6 +2,11 @@
   line-height: 1.5;
 }
 
+.aiMarkdown pre {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .aiMarkdown p {
   margin-bottom: 1rem;
 }

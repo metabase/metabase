@@ -57,7 +57,8 @@
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
-  visible-table-filter-select]
+  visible-table-filter-select
+  select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
   audit-namespace-clause
   can-read-audit-helper
@@ -98,6 +99,7 @@
   log-permissions-changes
   sandboxed-or-impersonated-user?
   sandboxed-user?
+  increment-implicit-perms-revision!
   save-perms-revision!]
  [metabase.permissions.validation
   check-group-manager

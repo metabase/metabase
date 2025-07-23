@@ -2,7 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { Badge } from "metabase/components/Badge";
+import { Badge } from "metabase/common/components/Badge";
 import CS from "metabase/css/core/index.css";
 import { conjunct } from "metabase/lib/formatting";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";

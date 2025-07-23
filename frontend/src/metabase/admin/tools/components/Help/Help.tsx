@@ -7,12 +7,12 @@ import _ from "underscore";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
+import Code from "metabase/common/components/Code";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import Code from "metabase/components/Code";
-import { CopyButton } from "metabase/components/CopyButton";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
@@ -121,7 +121,7 @@ export const Help = () => {
         />
       </Group>
 
-      <UpsellBetterSupport source="settings-troubleshooting" />
+      <UpsellBetterSupport location="settings-troubleshooting" />
 
       <SettingsSection
         title={t`Diagnostic info`}

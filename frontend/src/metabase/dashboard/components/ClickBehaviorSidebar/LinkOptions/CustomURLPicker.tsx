@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
-import ModalContent from "metabase/components/ModalContent";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
+import ModalContent from "metabase/common/components/ModalContent";
+import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import CS from "metabase/css/core/index.css";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Box, Button, Icon } from "metabase/ui";
