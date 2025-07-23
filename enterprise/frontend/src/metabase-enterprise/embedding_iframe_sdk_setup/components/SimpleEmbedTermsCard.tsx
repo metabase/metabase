@@ -18,7 +18,12 @@ export const SimpleEmbedTermsCard = ({
   const message3 = t`We consider shared accounts to be unfair usage. Fair usage involves giving each end user of the embedded analytics their own Metabase account.`;
 
   return (
-    <Card shadow="lg" p="md" className={S.TermsCard}>
+    <Card
+      shadow="lg"
+      p="md"
+      className={S.TermsCard}
+      data-testid="simple-embed-terms-card"
+    >
       <Stack gap="md">
         <Text size="md" fw="bold" lh="sm">
           {t`First, some legalese.`}
