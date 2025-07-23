@@ -43,7 +43,7 @@
   :export? true)
 
 (defsetting show-simple-embed-terms
-  (deferred-tru "Check if user should see the simple embedding anti-abuse message")
+  (deferred-tru "Check if admin should see the simple embedding terms popup")
   :type    :boolean
   :default true
   :can-read-from-env? false
