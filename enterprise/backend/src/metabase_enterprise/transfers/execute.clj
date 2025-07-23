@@ -95,14 +95,15 @@
 (mr/def ::transfer
   [:map
    [:lego [:= "transfer"]]
-   [:source_table :int]
+   [:source_database :int]
+   [:source_table :string]
    [:destination_database :int]
    [:destination_table :string]
    [:overwrite? :bool]])
 
 (defmethod legos/execute! :transfer
-  [{:keys [source_table destination_database destination_table overwrite?]}]
-  (let [input-table (t2/select-one :model/Table source_table)]
+  [{:keys [source_database source_table destination_database destination_table overwrite?]}]
+  (let [input-table (t2/select-one :model/Table :db_id source_database :name source_table)]
     (execute {:input-table input-table
               :output-db-ref destination_database
               :output-table-name destination_table
