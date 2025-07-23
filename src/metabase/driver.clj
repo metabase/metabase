@@ -348,6 +348,23 @@
 (defmethod describe-fks ::driver [_ _]
   nil)
 
+(defmulti describe-routines
+  "Returns a reducible collection of maps, each containing information about stored procedures and functions.
+  Takes optional keyword arguments to narrow down the results to a set of `schema-names`
+  and `routine-names`.
+
+  Results match [[metabase.sync.interface/RoutineMetadataEntry]].
+  Results are optionally filtered by `schema-names` and `routine-names` provided.
+  Results are ordered by `schema`, `name` in ascending order.
+
+  Required for drivers that support `:describe-routines`."
+  {:added "0.58.0" :arglists '([driver database & {:keys [schema-names routine-names]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod describe-routines ::driver [_ _]
+  nil)
+
 ;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
 ;;; something useful with it like write a test that validates that drivers return correct connection details?
 
@@ -635,6 +652,10 @@
     ;; Does the driver support a faster `sync-indexes` step by fetching all index metadata in a single collection?
     ;; If true, `metabase.driver/describe-indexes` must be implemented instead of `metabase.driver/describe-table-indexes`
     :describe-indexes
+
+    ;; Does the driver support fetching stored procedures and functions metadata?
+    ;; If true, `metabase.driver/describe-routines` must be implemented
+    :describe-routines
 
     ;; Does the driver support automatically adding a primary key column to a table for uploads?
     ;; If so, Metabase will add an auto-incrementing primary key column called `_mb_row_id` for any table created or

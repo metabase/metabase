@@ -633,11 +633,34 @@
                                                      [:= :table.id :metabase_field.table_id]]]
               :limit      limit}))
 
-(defn- autocomplete-results [tables fields limit]
+(defn- autocomplete-routines [db-id search-string limit]
+  (println "DEBUG: autocomplete-routines called with db-id:" db-id "search-string:" search-string "limit:" limit)
+  (let [routines (t2/select [:model/Routine :id :db_id :schema :name :routine_type :return_type]
+                           {:where    [:and [:= :db_id db-id]
+                                       [:= :active true]
+                                       [:like :%lower.name (u/lower-case-en search-string)]]
+                            :order-by [[:%lower.name :asc]]
+                            :limit    limit})]
+    (println "DEBUG: autocomplete-routines found" (count routines) "routines")
+    (doseq [routine routines]
+      (println "DEBUG: routine found:" (:name routine) "type:" (:routine_type routine)))
+    routines))
+
+(defn- readable-routines-only
+  "Filter routines to only those the user can read"
+  [routines]
+  ;; For now, allow all routines if user can read the database
+  ;; In future, might want more granular permissions
+  routines)
+
+(defn- autocomplete-results [tables fields routines limit]
   (let [tbl-count   (count tables)
         fld-count   (count fields)
-        take-tables (min tbl-count (- limit (/ fld-count 2)))
-        take-fields (- limit take-tables)]
+        routine-count (count routines)
+        ;; Distribute the limit evenly between tables, fields, and routines
+        take-tables (min tbl-count (/ limit 3))
+        take-fields (min fld-count (/ limit 3))
+        take-routines (min routine-count (- limit take-tables take-fields))]
     (concat (for [{table-name :name} (take take-tables tables)]
               [table-name "Table"])
             (for [{:keys [table_name base_type semantic_type name]} (take take-fields fields)]
@@ -645,15 +668,21 @@
                          " "
                          base_type
                          (when semantic_type
-                           (str " " semantic_type)))]))))
+                           (str " " semantic_type)))])
+            (for [{:keys [name routine_type return_type schema]} (take take-routines routines)]
+              [name (str (when schema (str schema "."))
+                         (if (or (= routine_type "function") (= routine_type :function))
+                           (str "Function" (when return_type (str " → " return_type)))
+                           "Procedure"))]))))
 
 (defn- autocomplete-suggestions
-  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
+  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields,routines}. "
   [db-id match-string]
-  (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
-        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
-    (autocomplete-results tables fields limit)))
+  (let [limit    50
+        tables   (filter mi/can-read? (autocomplete-tables db-id match-string limit))
+        fields   (readable-fields-only (autocomplete-fields db-id match-string limit))
+        routines (readable-routines-only (autocomplete-routines db-id match-string limit))]
+    (autocomplete-results tables fields routines limit)))
 
 (api.macros/defendpoint :get "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but

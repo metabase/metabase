@@ -123,3 +123,15 @@
    table    :- i/TableInstance]
   (log-if-error "index-metadata"
     (driver/describe-table-indexes (driver.u/database->driver database) database table)))
+
+(mu/defn routine-metadata
+  "Get information about stored procedures and functions in the database."
+  [database :- i/DatabaseInstance & {:as args}]
+  (log-if-error "routine-metadata"
+    (let [driver (driver.u/database->driver database)]
+      (log/infof "Checking routine support for driver %s: %s" driver (driver.u/supports? driver :describe-routines database))
+      (when (driver.u/supports? driver :describe-routines database)
+        ;; Return the results from driver
+        (let [results (driver/describe-routines driver database args)]
+          (log/infof "Driver returned %d routines" (count results))
+          results)))))

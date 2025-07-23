@@ -5,7 +5,9 @@
    1.  Sync tables (`metabase.sync.sync-metadata.tables`)
    2.  Sync fields (`metabase.sync.sync-metadata.fields`)
    3.  Sync FKs    (`metabase.sync.sync-metadata.fks`)
-   4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
+   4.  Sync indexes (`metabase.sync.sync-metadata.indexes`)
+   5.  Sync routines (`metabase.sync.sync-metadata.routines`)
+   6.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -14,6 +16,7 @@
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.sync-metadata.indexes :as sync-indexes]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+   [metabase.sync.sync-metadata.routines :as sync-routines]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
@@ -45,6 +48,10 @@
   (format "Total number of indexes sync''d %d, %d added and %d removed"
           total-indexes added-indexes removed-indexes))
 
+(defn- sync-routines-summary [{:keys [total-routines updated-routines]}]
+  (format "Total number of routines sync''d %d, number of routines updated %d"
+          total-routines updated-routines))
+
 (defn- make-sync-steps [db-metadata]
   [(sync-util/create-sync-step "sync-dbms-version" sync-dbms-ver/sync-dbms-version! sync-dbms-version-summary)
    (sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
@@ -56,6 +63,8 @@
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
    ;; Sync index info if the database supports it
    (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-indexes-summary)
+   ;; Sync stored procedures and functions if the database supports it
+   (sync-util/create-sync-step "sync-routines" sync-routines/sync-routines! sync-routines-summary)
    ;; Sync the metabase metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 

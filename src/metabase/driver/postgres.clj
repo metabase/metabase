@@ -16,6 +16,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
+   [metabase.driver.postgres-routines :as postgres-routines]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -62,6 +63,7 @@
                               :describe-fields          true
                               :describe-fks             true
                               :describe-indexes         true
+                              :describe-routines        true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -286,6 +288,10 @@
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this
   {:tables (into #{} (describe-syncable-tables database))})
+
+(defmethod driver/describe-routines :postgres
+  [driver database & opts]
+  (apply postgres-routines/describe-routines-improved driver database opts))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
