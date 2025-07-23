@@ -214,13 +214,15 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
+// TODO clean up the unused parameters
+// Ideally the compatFns should accept an object instead of multiple parameters
 /**
  * Returns a slot where the column can be added to a cartesian chart,
  * or undefined if no suitable slot is found.
  *
  * @param state the current state of the visualizer
  * @param settings the computed visualization settings
- * @param datasets the selected datasets
+ * @param datasets the selected datasets (not used )
  * @param dataSourceColumns the current data source columns (not used )
  * @param column the column to find a slot for
  * @returns a string representing the slot where the column should be added,
@@ -232,8 +234,8 @@ export function findColumnSlotForCartesianChart(
     "display" | "columns" | "settings"
   >,
   settings: ComputedVisualizationSettings,
-  datasets: Record<VisualizerDataSourceId, Dataset>,
-  dataSourceColumns: DatasetColumn[],
+  _datasets: Record<VisualizerDataSourceId, Dataset>,
+  _dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
 ) {
   if (state.display === "scatter") {
@@ -252,55 +254,8 @@ export function findColumnSlotForCartesianChart(
       return "scatter.bubble";
     }
   } else {
-    // const metrics = settings["graph.metrics"] ?? [];
-
     if (isDimension(column) && !isMetric(column)) {
-      // Filtering out nulls as computed 'graph.dimensions' can be `[null]` sometimes
-      // const ownDimensions =
-      //   state.settings["graph.dimensions"] ??
-      //   settings["graph.dimensions"]?.filter(Boolean) ??
-      //   [];
-
       return "graph.dimensions";
-
-      // if (ownDimensions.length === 0) {
-      //   return "graph.dimensions";
-      // } else {
-      //   const isCompatibleWithUsedColumns = state.columns.some((col) => {
-      //     if (isDate(col)) {
-      //       return isDate(column);
-      //     } else {
-      //       return col.id === column.id;
-      //     }
-      //   });
-      //   if (isCompatibleWithUsedColumns) {
-      //   return "graph.dimensions";
-      //   }
-
-      //   // No breakout when there are more than one metric
-      //   if (ownDimensions.length > 0 && metrics.length > 1) {
-      //     if (!isDate(column)) {
-      //       return undefined;
-      //     }
-      //   }
-
-      //   // Handles potential new dimensions that are not yet used in a chart
-      //   // For example, a chart could show several metrics over time (from different data sources)
-      //   // And each data source can have a "User → Source" column. This check ensure that
-      //   // dimensions are considered mappable in this case if they're present in every data source.
-      //   const isCompatibleWithUnusedColumns = Object.values(datasets).every(
-      //     (dataset) =>
-      //       dataset.data.cols.some((col) => {
-      //         if (isDate(col)) {
-      //           return isDate(column);
-      //         } else {
-      //           return col.id === column.id;
-      //         }
-      //       }),
-      //   );
-
-      //   return isCompatibleWithUnusedColumns ? "graph.dimensions" : undefined;
-      // }
     } else if (isMetric(column)) {
       return "graph.metrics";
     }
