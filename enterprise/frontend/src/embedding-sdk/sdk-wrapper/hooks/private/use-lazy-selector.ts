@@ -1,46 +1,21 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
-import { MetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-props-store";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
+
+const noop = () => {};
 
 export function useLazySelector<TSelected>(
   selector: ((state: SdkStoreState) => TSelected) | null | undefined,
 ): TSelected | null {
-  const getSnapshot = useCallback((): TSelected | null => {
-    const reduxStore =
-      MetabaseProviderPropsStore.getInstance()?.props?.reduxStore;
+  const store = ensureMetabaseProviderPropsStore();
+  const reduxStore = store.getSnapshot()?.reduxStore;
 
-    if (!reduxStore || !selector) {
-      return null;
-    }
+  const subscribe = (notify: () => void) =>
+    reduxStore && selector ? reduxStore.subscribe(notify) : noop;
 
-    return selector(reduxStore.getState());
-  }, [selector]);
+  const getSnapshot = () =>
+    reduxStore && selector ? selector(reduxStore.getState()) : null;
 
-  const subscribe = useCallback(
-    (callback: () => void) => {
-      const reduxStore =
-        MetabaseProviderPropsStore.getInstance()?.props?.reduxStore;
-
-      if (!reduxStore || !selector) {
-        return () => {};
-      }
-
-      let prev = getSnapshot();
-
-      const unsubscribe = reduxStore.subscribe(() => {
-        const next = getSnapshot();
-
-        if (prev !== next) {
-          prev = next;
-          callback();
-        }
-      });
-
-      return unsubscribe;
-    },
-    [selector, getSnapshot],
-  );
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return useSyncExternalStore(subscribe, getSnapshot, () => null);
 }
