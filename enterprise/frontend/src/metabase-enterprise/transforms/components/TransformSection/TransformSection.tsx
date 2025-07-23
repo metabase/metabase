@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { NameDescriptionInput } from "metabase/metadata/components/NameDescriptionInput";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { TransformSectionProps } from "metabase/plugins";
 import {
   Button,
@@ -12,7 +13,10 @@ import {
   TextInputBlurChange,
   Title,
 } from "metabase/ui";
-import { useGetTransformQuery } from "metabase-enterprise/api";
+import {
+  useGetTransformQuery,
+  useUpdateTransformMutation,
+} from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
 import { SCHEDULE_OPTIONS } from "./constants";
@@ -32,6 +36,29 @@ type TransformSettingsProps = {
 };
 
 function TransformSettings({ transform }: TransformSettingsProps) {
+  const [updateTransform] = useUpdateTransformMutation();
+  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
+    useMetadataToasts();
+
+  const handleNameChange = async (name: string) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      name,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform name`);
+    } else {
+      sendSuccessToast(t`Transform name updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          name: transform.name,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   return (
     <Stack flex={1} p="xl" align="center">
       <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
@@ -42,7 +69,7 @@ function TransformSettings({ transform }: TransformSettingsProps) {
           namePlaceholder={t`Give this transform a name`}
           description=""
           descriptionPlaceholder={t`Give this transform a description`}
-          onNameChange={() => undefined}
+          onNameChange={handleNameChange}
           onDescriptionChange={() => undefined}
         />
         <Card p="xl" shadow="none" withBorder>

@@ -26,3 +26,11 @@ export type CreateTransformRequest = {
   source: TransformSource;
   target: TransformTarget;
 };
+
+export type UpdateTransformRequest = {
+  id: TransformId;
+  name?: string;
+  source?: TransformSource;
+  target?: TransformTarget;
+  schedule?: string | null;
+};
