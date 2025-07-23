@@ -37,10 +37,7 @@ export function NewTransformModal({
           </Flex>
         </Modal.Header>
         <Modal.Body>
-          <NewTransformForm
-            name={question.displayName() ?? ""}
-            query={question.query()}
-          />
+          <NewTransformForm query={question.query()} />
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
@@ -48,7 +45,6 @@ export function NewTransformModal({
 }
 
 type NewTransformFormProps = {
-  name: string;
   query: Lib.Query;
 };
 
@@ -64,7 +60,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object().shape({
   table: Yup.string().required(Errors.required),
 });
 
-function NewTransformForm({ name, query }: NewTransformFormProps) {
+function NewTransformForm({ query }: NewTransformFormProps) {
   const databaseId = Lib.databaseID(query);
   const {
     data: schemas = [],
@@ -75,8 +71,8 @@ function NewTransformForm({ name, query }: NewTransformFormProps) {
   const dispatch = useDispatch();
 
   const initialValues = useMemo(
-    () => ({ name, schema: schemas ? schemas[0] : "", table: "" }),
-    [name, schemas],
+    () => ({ name: "", schema: schemas ? schemas[0] : "", table: "" }),
+    [schemas],
   );
 
   const handleSubmit = async (settings: NewTransformSettings) => {
@@ -97,7 +93,7 @@ function NewTransformForm({ name, query }: NewTransformFormProps) {
     >
       <Form>
         <Stack>
-          <FormTextInput name="name" label={t`Name`} autoFocus />
+          <FormTextInput name="name" label={t`Name`} />
           <FormTextInput
             name="table"
             label={t`What should the generated table be called in the database?`}
@@ -109,7 +105,7 @@ function NewTransformForm({ name, query }: NewTransformFormProps) {
           />
           <FormErrorMessage />
           <Flex justify="end">
-            <FormSubmitButton variant="filled" />
+            <FormSubmitButton label={t`Save`} variant="filled" />
           </Flex>
         </Stack>
       </Form>
