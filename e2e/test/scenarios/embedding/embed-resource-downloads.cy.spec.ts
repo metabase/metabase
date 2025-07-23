@@ -81,7 +81,8 @@ H.describeWithSnowplowEE(
           .findByRole("button", { name: "Download as PDF" })
           .click();
 
-        cy.verifyDownload("Orders in a dashboard.pdf", { contains: true });
+        // Updated: Use contains: true to match new filename pattern with date/time
+        cy.verifyDownload("Orders in a dashboard", { contains: true });
 
         H.expectUnstructuredSnowplowEvent({
           event: "dashboard_pdf_exported",
