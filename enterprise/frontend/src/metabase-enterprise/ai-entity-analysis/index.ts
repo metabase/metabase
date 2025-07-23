@@ -11,7 +11,7 @@ import { showDashCardAnalysisSidebar } from "./actions";
 import { AIDashboardAnalysisSidebar } from "./components/AIDashboardAnalysisSidebar/AIDashboardAnalysisSidebar";
 import { AIQuestionAnalysisButton } from "./components/AIQuestionAnalysisButton";
 import { AIQuestionAnalysisSidebar } from "./components/AIQuestionAnalysisSidebar";
-import { canAnalyzeQuestion } from "./utils";
+import { CHART_ANALYSIS_RENDER_FORMATS, canAnalyzeQuestion } from "./utils";
 
 if (hasPremiumFeature("ai_entity_analysis")) {
   PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisButton = AIQuestionAnalysisButton;
@@ -23,6 +23,9 @@ if (hasPremiumFeature("ai_entity_analysis")) {
   PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion = (question: Question) => {
     return canAnalyzeQuestion(question.card().display);
   };
+
+  PLUGIN_AI_ENTITY_ANALYSIS.chartAnalysisRenderFormats =
+    CHART_ANALYSIS_RENDER_FORMATS;
 
   PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters.push(
     (question, dashcardId, dispatch) => {

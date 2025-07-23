@@ -1,5 +1,5 @@
 (ns metabase-enterprise.metabot-v3.repl
-  "Basic user message => AI Proxy => response chat flow. This namespace implements a text-based REPL you can use from
+  "Basic user message => AI Service => response chat flow. This namespace implements a text-based REPL you can use from
   Clojure or the CLI with
 
     clj -X:ee:metabot-v3/repl"

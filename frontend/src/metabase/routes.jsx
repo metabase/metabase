@@ -16,15 +16,15 @@ import {
   BrowseSchemas,
   BrowseTables,
 } from "metabase/browse";
+import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
-import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
-import { Unauthorized } from "metabase/components/ErrorPages";
-import { MoveQuestionsIntoDashboardsModal } from "metabase/components/MoveQuestionsIntoDashboardsModal";
-import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
-import { UnsubscribePage } from "metabase/containers/Unsubscribe";
-import { UserCollectionList } from "metabase/containers/UserCollectionList";
+import { Unauthorized } from "metabase/common/components/ErrorPages";
+import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
+import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
+import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
+import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
@@ -39,6 +39,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
 } from "metabase/plugins";
@@ -58,6 +59,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -86,10 +88,31 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
+          const searchParams = new URLSearchParams(window.location.search);
+          if (
+            searchParams.get("use_case") === "embedding" &&
+            searchParams.get("new_embedding_flow") === "true"
+          ) {
+            replace("/setup/embedding" + window.location.search);
+          }
           trackPageView(location.pathname);
         }}
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
+        }}
+        disableCommandPalette
+      />
+
+      {/* EMBEDDING SETUP */}
+      <Route
+        path="/setup/embedding"
+        component={EmbeddingSetup}
+        onEnter={async (nextState, replace, done) => {
+          if (hasUserSetup) {
+            replace("/");
+          }
+          trackPageView(location.pathname);
+          done();
         }}
         disableCommandPalette
       />
@@ -153,6 +176,11 @@ export const getRoutes = (store) => {
             path="trash"
             title={t`Trash`}
             component={TrashCollectionLanding}
+          />
+
+          <Route
+            path="embed-iframe"
+            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
           />
 
           <Route

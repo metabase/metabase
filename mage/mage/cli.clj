@@ -31,7 +31,7 @@
   (if-not arg-schema
     arguments
     (let [decoded-args (try (mc/decode arg-schema arguments mtx/string-transformer)
-                            (catch Exception e arguments))]
+                            (catch Exception _e arguments))]
       #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
       (if (mc/validate arg-schema decoded-args)
         decoded-args
@@ -72,7 +72,10 @@
   [{:keys [options arg-schema] :as current-task}]
   (try
     (check-print-help current-task)
-    (let [*error-hit? (atom false)
+    (let [;; options are defined in bb.edn, as data,
+          ;; so we need to eval them to get any functions to work
+          options #_:clj-kondo/ignore (eval options)
+          *error-hit? (atom false)
           {:keys [summary]
            option-errors :errors
            :as parsed-opts} (tools.cli/parse-opts *command-line-args* options)

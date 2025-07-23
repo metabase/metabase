@@ -23,8 +23,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { checkNotNull } from "metabase/lib/types";
 import type { Dashboard } from "metabase-types/api";
 import {

@@ -1,12 +1,15 @@
 name: Cross-branch migration test
 
 inputs:
-  base-ref:
+  base-ref: ## Base branch PR came from
+    required: true
+  head-ref: ## Source branch of the pull request
     required: true
 
 runs:
   using: "composite"
   steps:
+    ## First we deploy the base branch
     - name: Check out base branch
       uses: actions/checkout@v4
       with:
@@ -39,10 +42,11 @@ runs:
       run: kill $(cat metabase_pid)
       shell: bash
 
+    ## Then we deploy the PR branch to ensure it migrates up successfully
     - name: Check out pull request branch
       uses: actions/checkout@v4
       with:
-        ref: ${{ github.head_ref }}
+        ref: ${{ inputs.head-ref }}
 
     - name: Run backend on pull request branch
       run: |
@@ -64,4 +68,39 @@ runs:
 
     - name: Stop Metabase on pull request branch
       run: kill $(cat metabase_pid)
+      shell: bash
+
+    ## Testing that originally deploying this PR allows you to roll back to a previous release
+    ## Reset the checksums so when we go back to the base branch, it's as if the PR branch was what was originally deployed
+    - name: Reset the checksums as if the PR branch was what was originally deployed
+      run: |
+        clojure -M:dev:ee:migrate reset-checksums
+      shell: bash
+
+    - name: Rollback the last deployment
+      run: |
+        clojure -M:dev:ee:migrate rollback last-deployment
+      shell: bash
+
+    - name: Re-check out base branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.base-ref }}
+
+    - name: Re-run backend on base branch
+      run: |
+        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+        tail -F metabase.log &
+      shell: bash
+
+    - name: Wait for Metabase to start
+      run: |
+        while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
+          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+            cat metabase.log
+            echo "Metabase process has exited."
+            exit 1
+          fi
+          sleep 1
+        done
       shell: bash

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -15,6 +16,8 @@
    [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.test :as mt]
    [metabase.util :as u]))
+
+;;; TODO (Cam 7/18/25) -- update all the tests that use `with-temp` to use mock metadata providers instead.
 
 ;; TODO -- this is duplicated with [[metabase.query-processor.util.add-alias-info-test/remove-source-metadata]]
 (defn- remove-source-metadata [x]
@@ -227,7 +230,7 @@
                                             :fields [[:field %id #::add{:source-table  ::add/source
                                                                         :source-alias  "ID"
                                                                         :desired-alias "ID"}]
-                                                     [:field "x" {:base-type          :type/Float
+                                                     [:field "x" {:base-type          :type/Integer
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "x"
                                                                   ::add/desired-alias "x"}]
@@ -289,6 +292,33 @@
       (is (= [[:field 33 {:join-alias "Question 4918"}]
               [:field "count" {:join-alias "Question 4918"}]]
              (#'nest-query/joined-fields query))))))
+
+(deftest ^:parallel idempotence-test
+  (testing "A nested query should return the same set of columns as the original"
+    (let [mp      (lib.tu/mock-metadata-provider
+                   meta/metadata-provider
+                   {:cards [{:id            1
+                             :dataset-query (lib.tu.macros/mbql-query reviews
+                                              {:breakout    [$product-id]
+                                               :aggregation [[:count]]
+                                               ;; filter on an implicit join
+                                               :filter      [:= $product-id->products.category "Doohickey"]})}]})
+          query   (lib.tu.macros/mbql-query orders
+                    {:joins       [{:source-table "card__1"
+                                    :alias        "Question 1"
+                                    :condition    [:=
+                                                   $product-id
+                                                   [:field
+                                                    %reviews.product-id
+                                                    {:join-alias "Question 1"}]]
+                                    :fields       :all}]
+                     :expressions {"CC" [:+ 1 1]}
+                     :limit       2})
+          nested  (assoc query :query (qp.store/with-metadata-provider mp (nest-expressions query)))
+          query*  (lib/query mp query)
+          nested* (lib/query mp nested)]
+      (is (= (map :lib/desired-column-alias (lib/returned-columns query*))
+             (map :lib/desired-column-alias (lib/returned-columns nested*)))))))
 
 (deftest ^:parallel nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"

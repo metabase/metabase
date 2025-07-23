@@ -33,7 +33,9 @@
 
 (deftest ^:parallel elide-test
   (is (= "short" (u.str/elide "short" 5)))
-  (is (= "lo..." (u.str/elide "longer string" 5))))
+  (is (= "lo..." (u.str/elide "longer string" 5)))
+  (is (= "short" (u.str/limit-chars "short" 5)))
+  (is (= "longe" (u.str/limit-chars "longer string" 5))))
 
 (deftest ^:parallel random-string
   (is 10 (count (u.str/random-string 10)))

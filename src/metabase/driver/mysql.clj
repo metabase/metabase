@@ -86,7 +86,8 @@
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
                               :window-functions/offset                false
-                              :expression-literals                    true}]
+                              :expression-literals                    true
+                              :database-routing                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -293,6 +294,10 @@
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
+
+(defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime expr))
 
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])

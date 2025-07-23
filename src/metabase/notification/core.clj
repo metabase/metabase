@@ -23,7 +23,8 @@
  [metabase.notification.seed
   seed-notification!]
  [metabase.notification.send
-  send-notification!])
+  send-notification!
+  shutdown!])
 
 (defmacro with-skip-sending-notification
   "Execute `body` with [[metabase.notification.events.notification/*skip-sending-notification?*]] bound to `skip?`."

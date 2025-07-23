@@ -229,8 +229,7 @@
             (is (=? {:type  :query
                      :query {:source-table ["my-db" nil "customers"]
                              :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
-                             :aggregation  [[:count]]
-                             :aggregation-idents {0 string?}}
+                             :aggregation  [[:count]]}
                      :database "my-db"}
                     (:dataset_query card)))))
 
@@ -262,8 +261,7 @@
               (is (=? {:type     :query
                        :query    {:source-table (:id @table1d)
                                   :filter       [:>= [:field (:id @field1d) nil] 18]
-                                  :aggregation  [[:count]]
-                                  :aggregation-idents {0 string?}}
+                                  :aggregation  [[:count]]}
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
@@ -1258,7 +1256,7 @@
                 (is (= 1 (count (:errors report))))
                 (is (= 3 (count (:seen report)))))
               (is (= [["Failed to read file for Collection does-not-exist"]]
-                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}$"
+                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}\n"
                                    (messages)))))))))))
 
 (deftest with-dbs-works-as-expected-test

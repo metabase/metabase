@@ -31,8 +31,8 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
-import type { LinkProps } from "metabase/core/components/Link";
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { LinkProps } from "metabase/common/components/Link";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
@@ -68,8 +68,6 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
-  DatasetError,
-  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -82,6 +80,7 @@ import type {
   Timeline,
   TimelineEvent,
   User,
+  VisualizationDisplay,
 } from "metabase-types/api";
 import type {
   AdminPath,
@@ -118,11 +117,6 @@ export const PLUGIN_ADMIN_TOOLS = {
 export const PLUGIN_WHITELABEL = {
   WhiteLabelBrandingSettingsPage: PluginPlaceholder,
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
-};
-
-export const PLUGIN_ADMIN_TROUBLESHOOTING = {
-  EXTRA_ROUTES: [] as ReactNode[],
-  GET_EXTRA_NAV: (): ReactNode[] => [],
 };
 
 export const PLUGIN_ADMIN_SETTINGS = {
@@ -553,6 +547,11 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   SdkIframeEmbedRoute: (): ReactNode => null,
 };
 
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+  shouldShowEmbedInNewItemMenu: () => false,
+  SdkIframeEmbedSetup: (): ReactNode => null,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -595,16 +594,19 @@ type GdriveConnectionModalProps = {
   reconnect: boolean;
 };
 
+type GdriveAddDataPanelProps = {
+  onAddDataModalClose: () => void;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
-  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
-    onClick: () => void;
-  }>,
   GdriveDbMenu: PluginPlaceholder,
+  GdriveAddDataPanel:
+    PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
@@ -624,20 +626,15 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 };
 
 const defaultMetabotContextValue: MetabotContext = {
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
 };
 
-export type FixSqlQueryButtonProps = {
-  query: Lib.Query;
-  queryError: DatasetError;
-  queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
-  onHighlightLines: (fixedLineNumbers: number[]) => void;
-};
-
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+  FixSqlQueryButton: ComponentType<Record<string, never>>;
 };
 
 export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
@@ -681,6 +678,9 @@ export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
   canAnalyzeQuestion: (question: Question) => boolean;
+  chartAnalysisRenderFormats: {
+    [display in VisualizationDisplay]?: "png" | "svg" | "none";
+  };
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
@@ -688,9 +688,11 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
   canAnalyzeQuestion: () => false,
+  chartAnalysisRenderFormats: {},
 };
 
 export const PLUGIN_METABOT = {
+  isEnabled: () => false,
   Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
@@ -761,6 +763,12 @@ export const PLUGIN_DB_ROUTING = {
   ): "default" | "hidden" | "disabled" => "default",
 };
 
+export const PLUGIN_DATABASE_REPLICATION = {
+  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+};
+
 export const PLUGIN_API = {
   getRemappedCardParameterValueUrl: (
     dashboardId: DashboardId,
@@ -772,4 +780,9 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+};
+
+export const PLUGIN_SMTP_OVERRIDE = {
+  CloudSMTPConnectionCard: PluginPlaceholder,
+  SMTPOverrideConnectionForm: PluginPlaceholder,
 };

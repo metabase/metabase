@@ -19,7 +19,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   });
 
   it("shows hidden tables", () => {
-    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
     cy.icon("eye_crossed_out").eq(0).click();
 
     cy.visit(
@@ -436,7 +436,7 @@ describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {

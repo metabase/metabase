@@ -5,8 +5,8 @@ import { archiveAndTrack } from "metabase/archive/analytics";
 import {
   BulkActionBar,
   BulkActionButton,
-} from "metabase/components/BulkActionBar";
-import { UndoListOverlay } from "metabase/containers/UndoListing";
+} from "metabase/common/components/BulkActionBar";
+import { UndoListOverlay } from "metabase/common/components/UndoListing";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 

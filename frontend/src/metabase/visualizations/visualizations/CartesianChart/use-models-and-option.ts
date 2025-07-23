@@ -34,12 +34,16 @@ export function useModelsAndOption(
     selectedTimelineEventIds,
     onRender,
     hovered,
+    isFullscreen,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
   const tc = useTranslateContent();
 
-  const renderingContext = useBrowserRenderingContext({ fontFamily });
+  const renderingContext = useBrowserRenderingContext({
+    fontFamily,
+    isFullscreen,
+  });
 
   const seriesToRender = useMemo(
     () => extractRemappings(rawSeries),
@@ -80,9 +84,11 @@ export function useModelsAndOption(
       showWarning,
     );
 
-    model.dimensionModel.column.display_name = tc(
-      model.dimensionModel.column.display_name,
-    );
+    if (model.dimensionModel.column) {
+      model.dimensionModel.column.display_name = tc(
+        model.dimensionModel.column.display_name,
+      );
+    }
     return model;
   }, [
     card.display,

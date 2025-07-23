@@ -89,11 +89,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Model features
 
-There aren't (yet) any model features for ClickHouse.
-
-## Database routing
-
-See [Database routing](../../permissions/database-routing.md).
+There aren't (yet) any model features for Starburst.
 
 ## Danger zone
 

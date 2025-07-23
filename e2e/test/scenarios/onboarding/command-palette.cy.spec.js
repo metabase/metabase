@@ -238,10 +238,7 @@ describe("command palette", () => {
         H.commandPaletteAction("Performance").should("not.exist");
         H.commandPaletteInput().clear();
 
-        // Tools and Troubleshooting
-
-        H.commandPaletteInput().type("Troub");
-        H.commandPaletteAction("Troubleshooting").should("not.exist");
+        // Tools
         H.commandPaletteInput().clear().type("tool");
         H.commandPaletteAction("Tools").should("not.exist");
         H.commandPaletteInput().clear();
@@ -260,7 +257,7 @@ describe("command palette", () => {
         // setup
         cy.log("setup permissions");
 
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         cy.visit("/admin/permissions/application");
 
         const SETTINGS_INDEX = 0;
@@ -300,10 +297,7 @@ describe("command palette", () => {
           H.commandPaletteAction("Settings - General").should("exist");
           H.commandPaletteInput().clear();
 
-          // Tools and Troubleshooting
-
-          H.commandPaletteInput().type("Troub");
-          H.commandPaletteAction("Troubleshooting").should("exist");
+          // Tools
           H.commandPaletteInput().clear().type("tool");
           H.commandPaletteAction("Tools").should("exist");
           H.commandPaletteInput().clear();

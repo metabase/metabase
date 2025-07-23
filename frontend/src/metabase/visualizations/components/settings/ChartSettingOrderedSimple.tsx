@@ -3,7 +3,7 @@ import { updateIn } from "icepick";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import type { DragEndEvent } from "metabase/core/components/Sortable";
+import type { DragEndEvent } from "metabase/common/components/Sortable";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isEmpty } from "metabase/lib/validate";
 import { Box } from "metabase/ui";

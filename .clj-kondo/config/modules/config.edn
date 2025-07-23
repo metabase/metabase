@@ -324,8 +324,10 @@
            audit-app
            config
            driver
+           eid-translation
            events
            legacy-mbql
+           lib-be
            models
            notification
            permissions
@@ -388,6 +390,7 @@
            channel
            collections
            config
+           eid-translation
            embedding
            events
            lib
@@ -573,15 +576,16 @@
           metabase.lib.core
           metabase.lib.equality
           metabase.lib.field
+          metabase.lib.field.resolution
           metabase.lib.filter
           metabase.lib.ident
           metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
           metabase.lib.metadata.cached-provider
-          metabase.lib.metadata.calculation
           metabase.lib.metadata.invocation-tracker
           metabase.lib.metadata.protocols
+          metabase.lib.metadata.result-metadata
           metabase.lib.normalize
           metabase.lib.options
           metabase.lib.query
@@ -594,9 +598,12 @@
           metabase.lib.schema.expression.window
           metabase.lib.schema.id
           metabase.lib.schema.info
+          metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
+          metabase.lib.schema.metadata.fingerprint
           metabase.lib.schema.parameter
+          metabase.lib.schema.ref
           metabase.lib.schema.template-tag
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.util
@@ -755,17 +762,7 @@
   {:team "Admin Webapp"
    :api  #{metabase.permissions.api
            metabase.permissions.core
-           metabase.permissions.init
-           ;; TODO -- move these into the API namespace.
-           metabase.permissions.models.application-permissions-revision
-           metabase.permissions.models.collection-permission-graph-revision
-           metabase.permissions.models.collection.graph
-           metabase.permissions.models.data-permissions
-           metabase.permissions.models.permissions
-           metabase.permissions.models.permissions-group
-           metabase.permissions.path
-           metabase.permissions.util
-           metabase.permissions.validation}
+           metabase.permissions.init}
    :uses #{api
            app-db
            audit-app
@@ -885,6 +882,7 @@
            config
            content-verification
            dashboards
+           eid-translation
            embedding
            events
            legacy-mbql
@@ -1355,6 +1353,7 @@
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
@@ -1363,6 +1362,7 @@
            api
            app-db
            audit-app
+           database-routing
            driver
            events
            lib
@@ -1587,12 +1587,24 @@
            api
            util}}
 
+  enterprise/database-replication
+  {:team "Cloud"
+   :api  #{metabase-enterprise.database-replication.api
+           metabase-enterprise.database-replication.init}
+   :uses #{analytics
+           api
+           premium-features
+           settings
+           util
+           enterprise/harbormaster}}
+
   enterprise/database-routing
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
            config
            database-routing
+           driver
            events
            lib
            models
@@ -1602,6 +1614,17 @@
            util
            warehouse-schema
            warehouses}}
+
+
+  enterprise/email
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.email.api}
+   :uses #{api
+           channel
+           permissions
+           premium-features
+           settings
+           util}}
 
   enterprise/gsheets
   {:team  "Cloud"
@@ -1663,6 +1686,7 @@
            app-db
            collections
            config
+           driver
            legacy-mbql
            lib
            lib-be
@@ -1672,11 +1696,22 @@
            pulse
            query-processor
            request
+           server
            settings
            system
            users
            util
            warehouse-schema}}
+
+  enterprise/permission-debug
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}}
 
   enterprise/premium-features
   {:team "Admin Webapp"
@@ -1747,6 +1782,7 @@
            models
            plugins
            premium-features
+           search
            settings
            setup
            util

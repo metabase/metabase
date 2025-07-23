@@ -1,4 +1,4 @@
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./image-exports";
 const PARAMETERS_MARGIN_BOTTOM = 12;
@@ -40,7 +40,7 @@ export const getDashboardImage = async (
   }
 
   const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
     ?.cloneNode(true);
 
   let parametersHeight = 0;

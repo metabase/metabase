@@ -45,6 +45,7 @@
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
                                             {:mvn/version "4.3.1"}              ; templating engine
+  com.github.oliyh/martian-clj-http         {:mvn/version "0.1.31"}             ; openapi client
   com.github.pangloss/transducers           {:git/sha "c91d39046c8c64dc31b84ebb27154a8084fcda4c" ; like medley for transducers
                                              :git/url "https://github.com/pangloss/transducers"}
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1310"}           ; Honey SQL 2. SQL generation from Clojure data maps
@@ -63,7 +64,7 @@
   com.vladsch.flexmark/flexmark-ext-autolink
   {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
   commons-codec/commons-codec               {:mvn/version "1.18.0"}             ; Apache Commons -- useful codec util fns
-  commons-io/commons-io                     {:mvn/version "2.19.0"}             ; Apache Commons -- useful IO util fns
+  commons-io/commons-io                     {:mvn/version "2.20.0"}             ; Apache Commons -- useful IO util fns
   commons-net/commons-net                   {:mvn/version "3.11.1"}             ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
   commons-validator/commons-validator       {:mvn/version "1.9.0"               ; Apache Commons -- useful validation util fns
                                              :exclusions  [commons-beanutils/commons-beanutils
@@ -77,7 +78,7 @@
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
-  hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
+  hiccup/hiccup                             {:mvn/version "2.0.0"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.14.2"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
   io.github.camsaul/toucan2                 {:mvn/version "1.0.565"}
@@ -95,7 +96,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "4.2.0"
+  metabase/saml20-clj                       {:mvn/version "4.2.1"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -135,14 +136,14 @@
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.1.0"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
-  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.80"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.80"}
+  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.81"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.81"}
   org.clj-commons/claypoole                 {:mvn/version "1.2.2"}              ; Threadpool tools for Clojure
   org.clj-commons/dirigiste                 {:mvn/version "1.0.4"}              ; Instrumented object pooling
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.12.0"}
+  org.clojure/clojure                       {:mvn/version "1.12.1"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.logic                    {:mvn/version "1.1.0"}              ; optimized pattern matching library for Clojure
@@ -161,14 +162,14 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.21"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.21"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.21"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.22"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.22"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.22"}
   org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.21"}
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.1" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "24.2.1"}             ; GraalVM platform, required by JS engine
-  org.jsoup/jsoup                           {:mvn/version "1.20.1"}             ; required by hickory
+  org.jsoup/jsoup                           {:mvn/version "1.21.1"}             ; required by hickory
   org.liquibase/liquibase-core              ^:antq/exclude                      ; FIXME: no idea why it fails
   {:mvn/version "4.26.0"              ; migration management (Java lib)
    :exclusions  [ch.qos.logback/logback-classic]}
@@ -188,8 +189,8 @@
   redux/redux                               {:git/url "https://github.com/metabase/redux"
                                              :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.14.1"}             ; HTTP abstraction
-  ring/ring-jetty-adapter                   {:mvn/version "1.14.1"              ; Ring adapter for Jetty
+  ring/ring-core                            {:mvn/version "1.14.2"}             ; HTTP abstraction
+  ring/ring-jetty-adapter                   {:mvn/version "1.14.2"              ; Ring adapter for Jetty
                                              :exclusions  [org.eclipse.jetty/jetty-server
                                                            org.eclipse.jetty/jetty-unixdomain-server
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
@@ -249,7 +250,6 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
     djblue/portal                {:mvn/version "0.59.1"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:sha "1fe839cfa48549e21b89c6418c747895eda7e7bc"} ; test runner
@@ -258,6 +258,7 @@
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
+    net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.3.1"}                     ; nREPL server
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
@@ -266,7 +267,7 @@
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
     rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
-    ring/ring-devel              {:mvn/version "1.14.1"}                    ; reload clojure files on the fly
+    ring/ring-devel              {:mvn/version "1.14.2"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.1"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
@@ -299,6 +300,8 @@
                  "-XX:+IgnoreUnrecognizedVMOptions"
                  ;; include more details for debugging NPEs (Java 14+)
                  "-XX:+ShowCodeDetailsInExceptionMessages"
+                 ;; test self-signed certificates for testing
+                 "-Dmail.smtps.ssl.trust=*"
                  ;; Support Snowflake in Java 17+. See https://github.com/metabase/metabase/pull/47997 and
                  ;; https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later
                  "--add-opens"
@@ -785,7 +788,7 @@
   ;; get the H2 shell with clojure -X:dev:h2
   :h2
   {:extra-paths ["dev/src"]
-   :exec-fn     dev.h2-shell/shell
+   :exec-fn     dev.h2/shell
    :jvm-opts    ["-Dfile.encoding=UTF-8"]}
 
   :generate-automagic-dashboards-pot

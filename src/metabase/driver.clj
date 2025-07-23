@@ -401,6 +401,14 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti extra-info
+  "extra driver info"
+  {:added "0.56.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod extra-info ::driver [_] nil)
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 
@@ -688,6 +696,9 @@
     ;; Does this driver support casting text to floats? (`float()` custom expression function)
     :expressions/float
 
+    ;; Does this driver support returning the current date? (`today()` custom expression function)
+    :expressions/today
+
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
@@ -702,7 +713,16 @@
 
     ;; For some cloud DBs the test database is never created, and can't or shouldn't be destroyed.
     ;; This is to allow avoiding destroying the test DBs of such cloud DBs.
-    :test/cannot-destroy-db})
+    :test/cannot-destroy-db
+
+    ;; There are drivers that support uuids in queries, but not in create table as eg. Athena.
+    :test/uuids-in-create-table-statements
+
+    ;; Does this driver support Metabase's database routing feature?
+    :database-routing
+
+    ;; Does this driver support replication?
+    :database-replication})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -744,7 +764,8 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
-                              :test/dynamic-dataset-loading           true}]
+                              :test/dynamic-dataset-loading           true
+                              :test/uuids-in-create-table-statements  true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND

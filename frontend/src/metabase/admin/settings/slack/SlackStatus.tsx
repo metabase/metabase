@@ -6,9 +6,9 @@ import {
   useGetSettingsQuery,
   useUpdateSlackSettingsMutation,
 } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 
 import { SlackBadge } from "./SlackBadge";

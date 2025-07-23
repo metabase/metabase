@@ -138,11 +138,11 @@ The options you see will differ depending on the type of column you're viewing:
 
 You can rename the column.
 
-## Align text
+### Align text
 
 You can display the text on the left, right, or in the middle (i.e., centered) of the column.
 
-## Wrap text
+### Wrap text
 
 You can toggle text wrapping, which is useful for columns with long text values like comments.
 

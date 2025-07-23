@@ -390,11 +390,12 @@
                                            :dashboard_id       dash-id
                                            :parameter_mappings [{:parameter_id "__ID__"
                                                                  :card_id      orders-card-id
-                                                                 :target       [:dimension (mt/$ids orders $product_id)]}]}]
-      (is (=? {"__ID__" [{:id                 (mt/id :orders :product_id)
+                                                                 :target       [:dimension (mt/$ids orders $user_id)]}]}]
+      (is (=? {"__ID__" [{:id                 (mt/id :orders :user_id)
                           :semantic_type      :type/FK
-                          :fk_target_field_id (mt/id :products :id)
-                          :target             {:id (mt/id :products :id)}}]}
+                          :fk_target_field_id (mt/id :people :id)
+                          :target             {:id (mt/id :people :id)
+                                               :name_field {:id (mt/id :people :name)}}}]}
               (:param_fields (mt/with-test-user :crowberto
                                (#'api.dashboard/get-dashboard dash-id))))))))
 
@@ -692,6 +693,20 @@
         [:model/Dashboard {dash-id :id} {:collection_id (:id crowberto-personal-coll)}]
         (is (= (assoc crowberto-personal-coll :is_personal true :effective_location "/")
                (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
+
+(deftest dashboard-entity-id-test
+  (testing "Dashboard endpoints accept entity IDs"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-entity-id :entity_id}
+                   {:name "Test Dashboard"}]
+      (with-dashboards-in-readable-collection! [dashboard-id]
+
+        (testing "GET /api/dashboard/:id works with entity ID"
+          (is (=? {:name "Test Dashboard"}
+                  (dashboard-response (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-entity-id))))))
+
+        (testing "GET /api/dashboard/:id/query_metadata works with entity ID"
+          (is (map? (mt/user-http-request :rasta :get 200
+                                          (str "dashboard/" dashboard-entity-id "/query_metadata")))))))))
 
 (deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
@@ -2332,6 +2347,7 @@
                 :row                        0
                 :series                     []
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :created_at                 true
                 :updated_at                 true}
@@ -2341,6 +2357,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
@@ -2365,6 +2382,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     [{:name                   "Series Card"
                                               :description            nil
@@ -2380,6 +2398,7 @@
                 :col                        1
                 :row                        3
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
@@ -3516,6 +3535,39 @@
             (is (= "You don't have permissions to do that."
                    (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
                                                   :filtered [%venues.price] :filtering [%categories.name]))))))))))
+
+(deftest uuid-id-column-is-not-implicitly-remapped-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                    :test/uuids-in-create-table-statements
+                                    :test/dynamic-dataset-loading)
+    (testing "Values for uuid fields are searched using test pattern (#59020)"
+      (mt/dataset
+        uuid-dogs
+        (mt/with-temp
+          [:model/Card          card      {:dataset_query (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :dogs)))
+                                                                (lib.convert/->legacy-MBQL)))}
+           :model/Dashboard     dashboard {:parameters [{:name      "Text"
+                                                         :slug      "text"
+                                                         :id        "_text_"
+                                                         :type      "string/="
+                                                         :sectionId "string"
+                                                         :default   ["Doohickey"]}]}
+           :model/DashboardCard _dashcard {:parameter_mappings     [{:parameter_id "_text_"
+                                                                     :card_id      (:id card)
+                                                                     :target
+                                                                     [:dimension [:field (mt/id :dogs :id) nil]]}]
+                                           :card_id                (:id card)
+                                           :visualization_settings {}
+                                           :dashboard_id           (:id dashboard)}]
+          (is (=? {:values [["27e164bc-54f8-47a0-a85a-9f0e90dd7667"]
+                            ["3a0c0508-6b00-40ff-97f6-549666b2d16b"]]}
+                  (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
+                                                                (:id dashboard)
+                                                                "_text_"
+                                                              ;; a0 is part of first 2 rows of queried table
+                                                                "a0")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |

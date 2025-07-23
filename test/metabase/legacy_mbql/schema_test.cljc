@@ -239,3 +239,21 @@
     [:not-empty [:field 1 nil]]
     [:not-empty [:ltrim "A"]]
     [:not-empty [:ltrim [:field 1 nil]]]))
+
+(deftest ^:parallel field-with-empty-name-test
+  (testing "We need to support fields with empty names, this is legal in SQL Server (QUE-1418)"
+    ;; we should support field names with only whitespace as well.
+    (doseq [field-name [""
+                        " "]
+            :let [field-ref [:field field-name {:base-type :type/Text}]]]
+      (testing (pr-str field-ref)
+        (are [schema] (not (me/humanize (mr/explain schema field-ref)))
+          ::mbql.s/Reference
+          ::mbql.s/field)))))
+
+(deftest ^:parallel datetime-schema-test
+  (doseq [expr [[:datetime ""]
+                [:datetime "" {}]
+                [:datetime "" {:mode :iso}]
+                [:datetime 10 {:mode :unix-seconds}]]]
+    (is (mr/validate mbql.s/datetime expr))))

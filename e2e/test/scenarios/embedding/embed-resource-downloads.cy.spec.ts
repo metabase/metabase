@@ -30,7 +30,7 @@ H.describeWithSnowplowEE(
           enable_embedding: true,
         });
 
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.signOut();
       });
@@ -121,7 +121,7 @@ H.describeWithSnowplowEE(
         beforeEach(() => {
           cy.signInAsAdmin();
 
-          H.setTokenFeatures("all");
+          H.activateToken("pro-self-hosted");
 
           // Test parameter with accentuation (metabase#49118)
           const CATEGORY_FILTER = createMockParameter({
@@ -209,7 +209,7 @@ H.describeWithSnowplowEE(
           enable_embedding: true,
         });
 
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.signOut();
       });
@@ -301,7 +301,7 @@ H.describeWithSnowplowEE(
         beforeEach(() => {
           cy.signInAsAdmin();
 
-          H.setTokenFeatures("all");
+          H.activateToken("pro-self-hosted");
         });
 
         it("should be able to download a static embedded question as CSV with correct parameters when field filters has multiple values (metabase#52430)", () => {
@@ -366,6 +366,10 @@ H.describeWithSnowplowEE(
               {
                 pageStyle: {
                   downloads: true,
+                },
+                // should ignore `?locale=xx` search parameter when downloading results from questions without parameters (metabase#53037)
+                qs: {
+                  locale: "en",
                 },
               },
             );
@@ -471,6 +475,10 @@ H.describeWithSnowplowEE(
               {
                 pageStyle: {
                   downloads: true,
+                },
+                // should ignore `?locale=xx` search parameter when downloading results from questions with visible parameters (metabase#53037)
+                qs: {
+                  locale: "en",
                 },
               },
             );

@@ -15,9 +15,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -39,7 +37,7 @@
    (ex-info message
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
-                    :actual-permissions   (data-perms/permissions-for-user api/*current-user-id*)
+                    :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
                     :permissions-error?   true}
                    additional-ex-data))))
 
@@ -80,37 +78,69 @@
 (mu/defn query->source-ids :- [:maybe
                                [:map
                                 [:table-ids {:optional true} [:set ::lib.schema.id/table]]
+                                [:table-query-ids {:optional true} [:set ::lib.schema.id/table]]
                                 [:card-ids  {:optional true} [:set ::lib.schema.id/card]]
                                 [:native?   {:optional true} :boolean]]]
-  "Return a map containing table IDs and/or card IDs referenced by `query`, and/or the :native? boolean flag
-  indicating a native query or subquery. Intended to be used in the context of permissions enforcement."
-  [query :- :map]
-  (apply merge-with merge-source-ids
-         (lib.util.match/match query
-           ;; If we find a table id from a gtapped table add it to the list of table ids here if we fail to get perms
-           ;; for this table we'll check again for this key and try the supplied gtap perms
-           (m :guard (every-pred map? :query-permissions/gtapped-table))
-           (merge-with merge-source-ids
-                       {:table-ids #{(:query-permissions/gtapped-table m)}}
-                       ;; Remove any :native sibling queries since they will be ones supplied by the gtap and we don't
-                       ;; want to mark the whole query as native? if they exist
-                       (query->source-ids (dissoc m :query-permissions/gtapped-table :native)))
+  "Returns a map containing sources necessary for permissions checks. The map will have the full set of resources
+  necessary for ad hoc query execution.
 
-           ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
-           ;; permissions on the card and not necessarily require full native query access to the DB
-           (m :guard (every-pred map? :native))
-           (if-let [source-card-id (:qp/stage-is-from-source-card m)]
-             {:card-ids #{source-card-id}}
-             {:native? true})
+  * table-ids - tables that a user will need view-data permissions to access
+  * card-ids - cards that user will need collection-access permissions to use
+  * table-query-ids - tables that a user will create-queries permissions to run an ad hoc query
+  * native? - a flag that will be set if the query requires native permissions.
 
-           (m :guard (every-pred map? #(pos-int? (:source-table %))))
-           (merge-with merge-source-ids
-                       {:table-ids #{(:source-table m)}}
-                       ;; If there's a source card associated with a table ID, include it so that we can ensure that
-                       ;; ad-hoc queries don't access cards with no collection perms
-                       (when-let [source-card-id (:qp/stage-is-from-source-card m)]
-                         {:card-ids #{source-card-id}})
-                       (query->source-ids (dissoc m :source-table))))))
+  The process for assembling this resources matches stages in a legacy-MBQL query:
+
+  1. Does the stage have a :qp/stage-is-from-source-card key?
+
+     If there's no parent-source-card-id, add the source-card id to the card-ids set and
+     continue the match setting parent-source-card-id.
+
+  2. Does the stage have a :query-permissions/gtapped-table key?
+
+     This means the stage came from a Sandbox query, so we add the table to the table-ids set.
+     If there's no parent-source-card-id, also add it to the table-query-ids set.
+     Remove any sibling native permissions before continuing the match.
+
+  3. Does the stage have a :native query?
+
+     If there's no parent-source-card-id, set the native flag and end the match.
+
+  4. Does the stage have a :source-table?
+
+     Add the table to the table-ids set. If there's no parent-source-card-id, also add it
+     to the table-query-ids set, then continue the match."
+  ([query :- :map]
+   (query->source-ids query nil))
+  ([query :- :map
+    parent-source-card-id :- [:maybe :any]]
+   (apply merge-with merge-source-ids
+          (lib.util.match/match query
+            (m :guard (every-pred map? :qp/stage-is-from-source-card))
+            (merge-with merge-source-ids
+                        (when-not parent-source-card-id
+                          {:card-ids #{(:qp/stage-is-from-source-card m)}})
+                        (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m)))
+
+            (m :guard (every-pred map? :query-permissions/gtapped-table))
+            (merge-with merge-source-ids
+                        {:table-ids #{(:query-permissions/gtapped-table m)}}
+                        (when-not parent-source-card-id
+                          {:table-query-ids #{(:query-permissions/gtapped-table m)}})
+                        ;; Remove any :native sibling queries since they will be ones supplied by the gtap and we don't
+                        ;; want to mark the whole query as native? if they exist
+                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id))
+
+            (m :guard (every-pred map? :native))
+            (when-not parent-source-card-id
+              {:native? true})
+
+            (m :guard (every-pred map? #(pos-int? (:source-table %))))
+            (merge-with merge-source-ids
+                        {:table-ids #{(:source-table m)}}
+                        (when-not parent-source-card-id
+                          {:table-query-ids #{(:source-table m)}})
+                        (query->source-ids (dissoc m :source-table) parent-source-card-id))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
@@ -135,7 +165,7 @@
         (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn- source-card-read-perms :- [:set perms.u/PathSchema]
+(mu/defn- source-card-read-perms :- [:set perms/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- ::lib.schema.id/card]
@@ -185,13 +215,14 @@
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [query (cond-> query
                       (not already-preprocessed?) preprocess-query)
-              {:keys [table-ids card-ids native?]} (query->source-ids query)]
+              {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
           (merge
            (when (seq card-ids)
              {:card-ids card-ids})
            (when (seq table-ids)
-             {:perms/create-queries (zipmap table-ids (repeat :query-builder))
-              :perms/view-data      (zipmap table-ids (repeat :unrestricted))})
+             {:perms/view-data      (zipmap table-ids (repeat :unrestricted))})
+           (when (seq table-query-ids)
+             {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
            (when native?
              (native-query-perms query))))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
@@ -233,11 +264,11 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm gtap-perms db-id]
   (or
-   (data-perms/at-least-as-permissive? perm-type
-                                       (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
-                                       required-perm)
+   (perms/at-least-as-permissive? perm-type
+                                  (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                  required-perm)
    (when gtap-perms
-     (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
+     (perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
@@ -247,7 +278,7 @@
   (let [table-id->has-perm?
         (into {} (for [[table-id required-perm] table-id->required-perm]
                    [table-id (boolean
-                              (or (data-perms/user-has-permission-for-table?
+                              (or (perms/user-has-permission-for-table?
                                    api/*current-user-id*
                                    perm-type
                                    required-perm
@@ -258,7 +289,7 @@
                                                          gtap-table-perms
                                                          ;; ...or a map from table IDs to table permissions
                                                          (get gtap-table-perms table-id))]
-                                    (data-perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
+                                    (perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
     (every? true? (vals table-id->has-perm?))))
 
 (mu/defn has-perm-for-query? :- :boolean
@@ -289,6 +320,10 @@
     (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
                            (update-keys u/->snake_case_en)
                            (vary-meta assoc :type :model/Card))
+                   ;; In the case of SQL actions, the query being executed might not act on the same database as that
+                   ;; used by the model upon which the action is defined. In this case, the underlying model whose
+                   ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
+                   (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
                    (throw (ex-info (tru "Card {0} does not exist." card-id)
                                    {:type    qp.error-type/invalid-query
                                     :card-id card-id})))]

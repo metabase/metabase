@@ -246,7 +246,7 @@ describe("scenarios [EE] > public > question", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     H.updateSetting("enable-public-sharing", true);
   });

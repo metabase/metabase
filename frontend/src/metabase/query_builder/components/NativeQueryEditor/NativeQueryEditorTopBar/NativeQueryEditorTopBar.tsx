@@ -2,7 +2,6 @@ import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -18,7 +17,6 @@ import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
 import type { SidebarFeatures } from "../types";
-import { formatQuery } from "../utils";
 
 interface NativeQueryEditorTopBarProps {
   question: Question;
@@ -44,6 +42,7 @@ interface NativeQueryEditorTopBarProps {
 
   toggleEditor: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
+  onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
   onOpenModal: (modalType: QueryModalType) => void;
   onChange: (queryText: string) => void;
@@ -73,6 +72,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     isShowingDataReference,
     isShowingTemplateTagsEditor,
     isShowingSnippetSidebar,
+    onFormatQuery,
     onOpenModal,
     nativeEditorSelectedText,
     setIsNativeEditorOpen,
@@ -110,21 +110,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     }
   };
 
-  const handleFormatQuery = async () => {
-    const query = question.query();
-    const engine = Lib.engine(query);
-    const queryText = Lib.rawNativeQuery(query);
-
-    if (!engine) {
-      // no engine found, do nothing
-      return;
-    }
-
-    const formattedQuery = await formatQuery(queryText, engine);
-    onChange(formattedQuery);
-    setFocus();
-  };
-
   if (!question) {
     return null;
   }
@@ -153,11 +138,11 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           enableParameterRequiredBehavior
         />
       )}
-      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px">
+      <Flex ml="auto" gap="lg" mr="lg" align="center" h="55px" pl="md">
         {isNativeEditorOpen && hasEditingSidebar && !readOnly && (
           <NativeQueryEditorActionButtons
             features={sidebarFeatures}
-            onFormatQuery={handleFormatQuery}
+            onFormatQuery={onFormatQuery}
             onGenerateQuery={onChange}
             question={question}
             nativeEditorSelectedText={nativeEditorSelectedText}

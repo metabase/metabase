@@ -3,8 +3,8 @@ import type { MouseEvent } from "react";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import EmptyState from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";

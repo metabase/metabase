@@ -103,7 +103,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   it("should show a watermark on dashcards in development mode", () => {
     cy.intercept("/api/session/properties", (req) => {
       req.continue((res) => {
-        res.body["token-features"]["development-mode"] = true;
+        res.body["token-features"].development_mode = true;
       });
     });
 

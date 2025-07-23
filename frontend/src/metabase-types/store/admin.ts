@@ -12,7 +12,6 @@ export type AdminPathKey =
   | "people"
   | "databases"
   | "permissions"
-  | "troubleshooting"
   | "audit"
   | "tools"
   | "performance"

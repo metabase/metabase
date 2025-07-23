@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -72,6 +73,9 @@
 (defn- create-or-update-router!
   [db-id user-attribute]
   (let [db (t2/select-one :model/Database db-id)]
+    (when-not (driver.u/supports? (:engine db) :database-routing db)
+      (throw (ex-info "This database does not support DB routing" {:status-code 400})))
+
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*

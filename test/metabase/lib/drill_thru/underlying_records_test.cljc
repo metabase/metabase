@@ -125,13 +125,14 @@
              (t/format :iso-offset-date-time last-month))))
 
 (defn- underlying-state [query agg-index agg-value breakout-values exp-filters-fn]
-  (let [columns                         (lib/returned-columns query)
-        {aggs      :source/aggregations
-         breakouts :source/breakouts}   (group-by :lib/source columns)
-        agg-column                      (nth aggs agg-index)
-        agg-dim                         {:column     agg-column
-                                         :column-ref (lib/ref agg-column)
-                                         :value      agg-value}]
+  (let [columns    (lib/returned-columns query)
+        aggs       (filter #(= (:lib/source %) :source/aggregations)
+                           columns)
+        breakouts  (filter :lib/breakout? columns)
+        agg-column (nth aggs agg-index)
+        agg-dim    {:column     agg-column
+                    :column-ref (lib/ref agg-column)
+                    :value      agg-value}]
     (is (= (count breakouts)
            (count breakout-values)))
     (let [breakout-dims (for [[breakout value] (map vector breakouts breakout-values)]
@@ -146,10 +147,10 @@
                                                                        v))))
                                 :dimensions breakout-dims})]
       (is (=? {:lib/type :mbql/query
-               :stages [{:filters     (exp-filters-fn agg-dim breakout-dims)
-                         :aggregation (symbol "nil #_\"key is not present.\"")
-                         :breakout    (symbol "nil #_\"key is not present.\"")
-                         :fields      (symbol "nil #_\"key is not present.\"")}]}
+               :stages   [{:filters     (exp-filters-fn agg-dim breakout-dims)
+                           :aggregation (symbol "nil #_\"key is not present.\"")
+                           :breakout    (symbol "nil #_\"key is not present.\"")
+                           :fields      (symbol "nil #_\"key is not present.\"")}]}
               (->> (lib.drill-thru/available-drill-thrus query context)
                    (m/find-first #(= (:type %) :drill-thru/underlying-records))
                    (lib.drill-thru/drill-thru query -1 nil)))))))

@@ -5,6 +5,7 @@
    [babashka.process :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
@@ -218,7 +219,25 @@
   (+ 3000
      (if-let [branch (:branch version)]
        (rem (Math/abs (hash branch)) 1000) ; Use hash of branch name for port
-       (major-version version)))) ; Use major version for port
+       (major-version version))))                           ; Use major version for port
+
+(defn- parse-lein-env [env-file]
+  (let [content (slurp env-file)
+        ;; Remove lines starting with ; (comments)
+        cleaned (->> (clojure.string/split-lines content)
+                     (remove #(re-matches #"^\s*;.*" %))
+                     (clojure.string/join "\n"))
+        edn-map (edn/read-string cleaned)]
+    (update-keys edn-map #(-> % name (clojure.string/upper-case) (clojure.string/replace "-" "_")))))
+
+(defn- parse-env [env-file]
+  (when (and env-file (not (fs/exists? env-file)))
+    (throw (ex-info (str "Env file does not exist: " env-file)
+                    {:env-file      env-file
+                     :babashka/exit 1})))
+  (if env-file
+    (parse-lein-env env-file)
+    {}))
 
 (defn jar-download
   "Download a specific version of Metabase to a directory.
@@ -236,29 +255,34 @@
         ;; latest-version could be a version string like 1.50.35 or a map with :branch key
         {:keys [latest-version jar-path]} (download-jar! version dir delete?)]
     (when run?
-      ;; Check that the embedding token is set:
-      (u/env "MB_PREMIUM_EMBEDDING_TOKEN"
-             #(throw (ex-info (str "MB_PREMIUM_EMBEDDING_TOKEN is not set, please set it to run "
-                                   "your jar (it is in 1password. ask on slack if you need help).")
-                              {:parsed-args (dissoc parsed :summary)
-                               :latest-version latest-version
-                               :jar-path jar-path
-                               :babashka/exit 1})))
       (let [port        (try (parse-long (:port (:options parsed)))
                              (catch Exception _
                                (port-for-version latest-version)))
+            env-file (:env-file (:options parsed))
             socket-port (+ 3000 port)
-            db-file     (str u/project-root-directory "/metabase_" version ".db")
-            extra-env   {"MB_DB_TYPE"          "h2"
-                         "MB_DB_FILE"          db-file
-                         "MB_JETTY_PORT"       port
-                         "MB_CONFIG_FILE_PATH" (str u/project-root-directory "/mage/jar_download_config.yml")}
+            db-file (str u/project-root-directory "/metabase_" version ".db")
+            extra-env (merge {"MB_DB_TYPE"          "h2"
+                              "MB_DB_FILE"          db-file
+                              "MB_JETTY_PORT"       port
+                              "MB_CONFIG_FILE_PATH" (str u/project-root-directory "/mage/jar_download_config.yml")}
+                             (parse-env env-file))
             run-jar-cmd (str "java -Dclojure.server.repl=\"{:port " socket-port " :accept clojure.core.server/repl}\" -jar " jar-path)]
         (println (c/magenta "Running: " run-jar-cmd))
         (println "env:")
         (doseq [[k v] extra-env]
           (println (str "  " (c/yellow k) "=" (c/green v))))
+
+        (when (not (get extra-env "MB_PREMIUM_EMBEDDING_TOKEN"))
+          ;; Check that the embedding token is set:
+          (u/env "MB_PREMIUM_EMBEDDING_TOKEN"
+                 #(throw (ex-info (str "MB_PREMIUM_EMBEDDING_TOKEN is not set, please set it to run "
+                                       "your jar (it is in 1password. ask on slack if you need help).")
+                                  {:parsed-args    (dissoc parsed :summary)
+                                   :latest-version latest-version
+                                   :jar-path       jar-path
+                                   :babashka/exit  1}))))
+
         (println (str "Socket repl will open on " (c/green socket-port) ". "
                       "See: https://lambdaisland.com/guides/clojure-repls/clojure-repls#org259d775"))
         (println (str "\n\n   Open in browser: " (c/magenta "http://localhost:" port) "\n"))
-        (p/shell {:dir dir :extra-env extra-env} run-jar-cmd)))))
+        (p/shell {:dir u/project-root-directory :extra-env extra-env} run-jar-cmd)))))

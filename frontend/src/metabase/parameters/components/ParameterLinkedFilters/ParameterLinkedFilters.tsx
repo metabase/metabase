@@ -6,9 +6,9 @@ import {
   useGetFieldQuery,
   useGetValidDashboardFilterFieldsQuery,
 } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl, useLearnUrl } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { showAddParameterPopover } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import {

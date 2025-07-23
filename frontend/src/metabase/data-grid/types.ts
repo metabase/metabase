@@ -27,6 +27,8 @@ declare module "@tanstack/react-table" {
     enableReordering?: boolean;
     enableSelection?: boolean;
     headerClickTargetSelector?: string;
+    formatter?: CellFormatter<TValue>;
+    clipboardFormatter?: PlainCellFormatter<TValue>;
   }
 }
 
@@ -104,6 +106,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values for display */
   formatter?: CellFormatter<TValue>;
+
+  /** Function to format cell values when copying to clipboard */
+  clipboardFormatter?: PlainCellFormatter<TValue>;
 }
 
 /**
@@ -226,12 +231,20 @@ export type CellFormatter<TValue> = (
   columnId: string,
 ) => React.ReactNode;
 
+export type PlainCellFormatter<TValue> = (
+  value: TValue,
+  rowIndex: number,
+  columnId: string,
+) => string;
+
 export type ExpandedColumnsState = Record<string, boolean>;
 
 export type DataGridSelection = {
-  selectedCells: SelectedCell[];
+  selectedCells: CellId[];
+  focusedCell: CellId | null;
   isEnabled: boolean;
   isCellSelected: (cell: Cell<any, any>) => boolean;
+  isCellFocused: (cell: Cell<any, any>) => boolean;
   isRowSelected: (rowId: string) => boolean;
   handlers: {
     handleCellMouseDown: (
@@ -246,11 +259,11 @@ export type DataGridSelection = {
       e: React.MouseEvent<HTMLElement>,
       cell: Cell<any, any>,
     ) => void;
-    handleCellsKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+    handleCellDoubleClick: (cell: Cell<any, any>) => void;
   };
 };
 
-export type SelectedCell = {
+export type CellId = {
   rowId: string;
   columnId: string;
   cellId: string;

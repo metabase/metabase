@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.geojson.settings :as geojson.settings]
-   [metabase.permissions.validation :as validation]
+   [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -105,7 +105,7 @@
    _request
    respond
    raise]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (when-not (geojson.settings/custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
   (let [decoded-url (codec/url-decode url)]

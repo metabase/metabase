@@ -1,10 +1,12 @@
 import type {
+  CardDisplayType,
   CardId,
   CardType,
   CollectionId,
   DashboardId,
   DatasetQuery,
   PaginationResponse,
+  RowValue,
   SearchModel,
 } from ".";
 
@@ -49,7 +51,9 @@ export type MetabotHistoryEntry =
   | MetabotHistoryToolEntry
   | MetabotHistoryMessageEntry;
 
-export type MetabotHistory = any;
+export type MetabotHistory = any[];
+
+export type MetabotStateContext = Record<string, any>;
 
 export type MetabotMessageReaction = {
   type: "metabot.reaction/message";
@@ -63,9 +67,53 @@ export type MetabotRedirectReaction = {
 
 export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 
+export type MetabotColumnType =
+  | "number"
+  | "string"
+  | "date"
+  | "datetime"
+  | "time"
+  | "boolean"
+  | "null";
+export type MetabotColumnInfo = {
+  name: string;
+  type?: MetabotColumnType;
+};
+
+export type MetabotSeriesConfig = {
+  x: MetabotColumnInfo;
+  y?: MetabotColumnInfo;
+  x_values?: RowValue[];
+  y_values?: RowValue[];
+  display_name: string;
+  chart_type: CardDisplayType;
+  stacked?: boolean;
+};
+
+export type MetabotChartConfig = {
+  image_base_64?: string;
+  title?: string | null;
+  description?: string | null;
+  data?: Array<{
+    columns: Array<MetabotColumnInfo>;
+    rows: Array<Array<string | number>>;
+  }>;
+  series?: Record<string, MetabotSeriesConfig>;
+  timeline_events?: Array<{
+    name: string;
+    description?: string;
+    timestamp: string;
+  }>;
+  query?: DatasetQuery;
+  display_type?: CardDisplayType;
+};
+
 export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
+  chart_configs?: Array<MetabotChartConfig>;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotDashboardInfo = {
@@ -75,7 +123,9 @@ export type MetabotDashboardInfo = {
 
 export type MetabotAdhocQueryInfo = {
   type: "adhoc";
-  query: DatasetQuery;
+  chart_configs?: Array<MetabotChartConfig>;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotEntityInfo =
@@ -88,9 +138,10 @@ export type MetabotEntityInfo =
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  history: MetabotHistory[];
+  history: MetabotHistory;
+  state: MetabotStateContext;
   conversation_id: string; // uuid
-  state: any;
+  metabot_id?: string;
 };
 
 export type MetabotAgentResponse = {
@@ -138,36 +189,7 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
-/* Metabot v3 - Type Guards */
-
-export const isMetabotMessageReaction = (
-  reaction: MetabotReaction,
-): reaction is MetabotMessageReaction => {
-  return reaction.type === "metabot.reaction/message";
-};
-
-export const isMetabotToolMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryToolEntry => {
-  return (
-    message.role === "assistant" && message.assistant_response_type === "tools"
-  );
-};
-
-export const isMetabotHistoryMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryMessageEntry => {
-  return (
-    message.role === "assistant" &&
-    message.assistant_response_type === "message"
-  );
-};
-
-export const isMetabotMessage = (
-  message: MetabotHistoryEntry,
-): message is MetabotHistoryMessageEntry => {
-  return message.role === "assistant";
-};
+/* Metabot v3 - Entity Types */
 
 export type MetabotId = number;
 export type MetabotName = string;

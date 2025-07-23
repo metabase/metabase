@@ -2,6 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { useListChannelsQuery } from "metabase/api/channel";
 import {
   Button,
@@ -17,7 +21,6 @@ import {
 import type { NotificationChannel } from "metabase-types/api";
 
 import { SlackSettingsModal } from "../../slack/SlackSettingsModal";
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
 

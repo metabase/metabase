@@ -1,15 +1,21 @@
 import { jt, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { UpsellDevInstances } from "metabase/admin/upsells";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
+import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
+
 export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
@@ -17,6 +23,8 @@ export function GeneralSettingsPage() {
 
   return (
     <SettingsPageWrapper title={t`General`}>
+      <DevInstanceBanner />
+
       <SettingsSection title={t`App config`}>
         <AdminSettingInput
           name="site-name"
@@ -74,6 +82,7 @@ export function GeneralSettingsPage() {
           inputType="textarea"
         />
       </SettingsSection>
+      <UpsellDevInstances location="settings-general" />
     </SettingsPageWrapper>
   );
 }

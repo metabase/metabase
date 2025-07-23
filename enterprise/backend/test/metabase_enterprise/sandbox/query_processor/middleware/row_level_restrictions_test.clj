@@ -29,10 +29,13 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- identifier
   ([table-key]
@@ -194,7 +197,6 @@
                                                                           [:=
                                                                            $user_id
                                                                            [:value 5 {:base_type         :type/Integer
-                                                                                      :effective_type    :type/Integer
                                                                                       :semantic_type     :type/FK
                                                                                       :database_type     "INTEGER"
                                                                                       :name              "USER_ID"}]]]
@@ -207,7 +209,6 @@
                                             :filter                        [:=
                                                                             $venues.price
                                                                             [:value 1 {:base_type         :type/Integer
-                                                                                       :effective_type    :type/Integer
                                                                                        :semantic_type     :type/Category
                                                                                        :database_type     "INTEGER"
                                                                                        :name              "PRICE"}]]
@@ -884,7 +885,6 @@
                                 (is (= [:=
                                         [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type     :type/Text
-                                                          :effective_type :type/Text
                                                           :semantic_type  (t2/select-one-fn :semantic_type :model/Field
                                                                                             :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
@@ -980,6 +980,11 @@
                                                    :attributes {"user_id" 1, "user_cat" "Widget"}}
                                    (mt/with-column-remappings [orders.product_id products.title]
                                      (mt/run-mbql-query orders)))]
+        (testing "Sanity check: merged results metadata should not get normalized incorrectly"
+          (is (=? {:type {:type/Number {}}}
+                  (-> (get-in mbql-sandbox-results [:data :cols])
+                      (nth 3)
+                      :fingerprint))))
         (doseq [orders-gtap-card-has-metadata?   [true false]
                 products-gtap-card-has-metadata? [true false]]
           (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"
@@ -1007,7 +1012,8 @@
               (mt/with-column-remappings [orders.product_id products.title]
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
-                            (dissoc col :field_ref :id :table_id :fk_field_id :options :position :lib/external_remap :lib/internal_remap :fk_target_field_id))
+                            (-> (m/filter-keys simple-keyword? col)
+                                (dissoc :field_ref :id :table_id :fk_field_id :options :position :fk_target_field_id)))
                           (format-results [results]
                             (-> results
                                 (update-in [:data :cols] (partial map format-col))

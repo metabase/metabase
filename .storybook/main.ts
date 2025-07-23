@@ -10,7 +10,7 @@ const mainAppStories = [
 
 const config: StorybookConfig = {
   stories: mainAppStories,
-  staticDirs: ["../resources/frontend_client"],
+  staticDirs: ["../resources/frontend_client", "./msw-public"],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",
@@ -28,7 +28,7 @@ const config: StorybookConfig = {
     reactDocgen: "react-docgen-typescript",
   },
 
-  webpackFinal: config => {
+  webpackFinal: (config) => {
     return {
       ...config,
       resolve: {
@@ -48,17 +48,17 @@ const config: StorybookConfig = {
           Buffer: ["buffer", "Buffer"],
         }),
         new webpack.EnvironmentPlugin({
-          IS_EMBEDDING_SDK: false,
+          IS_EMBEDDING_SDK: "false",
         }),
       ],
       module: {
         ...config.module,
         rules: [
           ...(config.module?.rules ?? []).filter(
-            rule => !isCSSRule(rule) && !isSvgRule(rule),
+            (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),
           ...appConfig.module.rules.filter(
-            rule => isCSSRule(rule) || isSvgRule(rule),
+            (rule) => isCSSRule(rule) || isSvgRule(rule),
           ),
         ],
       },
@@ -67,5 +67,5 @@ const config: StorybookConfig = {
 };
 export default config;
 
-const isCSSRule = rule => rule.test?.toString() === "/\\.css$/";
-const isSvgRule = rule => rule.test?.test(".svg");
+const isCSSRule = (rule) => rule.test?.toString() === "/\\.css$/";
+const isSvgRule = (rule) => rule.test?.test(".svg");

@@ -18,7 +18,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -231,7 +231,7 @@
 
 (mu/defn- gtap->source :- [:map
                            [:source-query :any]
-                           [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
+                           [:source-metadata {:optional true} [:sequential ::mbql.s/legacy-column-metadata]]]
   "Get the source query associated with a `gtap`."
   [{card-id :card_id, table-id :table_id, :as gtap} :- :map]
   (-> ((if card-id
@@ -272,7 +272,7 @@
 
     (let [table-ids (sandbox->table-ids sandbox)
           table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
-          unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
+          unblocked-table-ids (filter (fn [table-id] (perms/user-has-permission-for-table?
                                                       api/*current-user-id*
                                                       :perms/view-data
                                                       :unrestricted
@@ -357,7 +357,8 @@
         (_ :guard (every-pred map? :source-table))
         (assoc &match ::gtap? true)))))
 
-(defn- expected-cols [query]
+(mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
+  [query :- ::mbql.s/Query]
   (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
@@ -400,10 +401,13 @@
 
 ;;;; Post-processing
 
-(defn- merge-metadata
+(mu/defn- merge-metadata :- [:map
+                             [:cols [:sequential ::mbql.s/legacy-column-metadata]]]
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
-  [original-metadata metadata]
+  [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
+   metadata          :- [:map
+                         [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
