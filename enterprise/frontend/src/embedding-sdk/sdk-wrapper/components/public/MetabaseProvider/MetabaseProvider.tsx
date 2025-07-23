@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
+import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-load-sdk-bundle";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
 
@@ -28,10 +29,16 @@ export const MetabaseProvider = memo(function MetabaseProvider({
     : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
 
   return (
-    <MetabaseProviderInner reduxStore={reduxStore} props={props}>
-      {({ initialized }) =>
-        initialized && Component ? <Component>{children}</Component> : children
-      }
-    </MetabaseProviderInner>
+    <ClientSideOnlyWrapper ssrFallback={children}>
+      <MetabaseProviderInner reduxStore={reduxStore} props={props}>
+        {({ initialized }) =>
+          initialized && Component ? (
+            <Component>{children}</Component>
+          ) : (
+            children
+          )
+        }
+      </MetabaseProviderInner>
+    </ClientSideOnlyWrapper>
   );
 });

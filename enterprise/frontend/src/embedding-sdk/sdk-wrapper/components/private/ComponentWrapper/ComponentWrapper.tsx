@@ -1,5 +1,6 @@
 import type { FunctionComponent } from "react";
 
+import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { ErrorMessage } from "embedding-sdk/sdk-wrapper/components/private/ErrorMessage/ErrorMessage";
 import { Loader } from "embedding-sdk/sdk-wrapper/components/private/Loader/Loader";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
@@ -49,10 +50,12 @@ export const createComponent = <
 ): ComponentWrapperFunction<TComponentProps> => {
   return function ComponentWrapper(props: TComponentProps) {
     return (
-      <ComponentWrapperInner
-        getComponent={getComponent}
-        componentProps={props}
-      />
+      <ClientSideOnlyWrapper ssrFallback={null}>
+        <ComponentWrapperInner
+          getComponent={getComponent}
+          componentProps={props}
+        />
+      </ClientSideOnlyWrapper>
     );
   } as ComponentWrapperFunction<TComponentProps>;
 };
