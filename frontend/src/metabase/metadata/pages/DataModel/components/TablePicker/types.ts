@@ -113,7 +113,7 @@ type LoadingItem = {
   label?: string;
   parent?: NodeKey;
   table?: undefined;
-  disabled?: never;
+  disabled?: true;
 };
 
 export type ExpandedState = {

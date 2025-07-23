@@ -1,6 +1,6 @@
-import type { DatabaseId } from "metabase-types/api/database";
-
+import type { DatabaseId } from "./database";
 import type { DatasetQuery } from "./query";
+import type { Table } from "./table";
 
 export type TransformId = number;
 
@@ -11,6 +11,7 @@ export type Transform = {
   source: TransformSource;
   target: TransformTarget;
   schedule: string | null;
+  table: Table | null;
 };
 
 export type TransformSource = {
