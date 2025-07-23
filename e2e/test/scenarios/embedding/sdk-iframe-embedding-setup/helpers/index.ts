@@ -26,6 +26,21 @@ export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
   }
 
   cy.visit("/embed-iframe?" + params);
+
+  cy.log("simple embedding terms card should be shown");
+  cy.findByTestId("simple-embed-terms-card").within(() => {
+    cy.findByText("First, some legalese.").should("be.visible");
+
+    cy.findByText(
+      "When using simple embedding, each end user should have their own Metabase account.",
+    ).should("be.visible");
+
+    cy.findByText("Got it").should("be.visible").click();
+  });
+
+  cy.log("simple embedding terms card should be dismissed");
+  cy.findByTestId("simple-embed-terms-card").should("not.exist");
+
   cy.wait("@dashboard");
 
   cy.get("#iframe-embed-container", {

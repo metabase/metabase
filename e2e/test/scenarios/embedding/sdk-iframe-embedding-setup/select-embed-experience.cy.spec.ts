@@ -135,20 +135,4 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText("Choisissez vos données de départ").should("be.visible");
     });
   });
-
-  it("shows the simple embed terms card on first visit", () => {
-    visitNewEmbedPage();
-
-    cy.findByTestId("simple-embed-terms-card").within(() => {
-      cy.findByText("First, some legalese.").should("be.visible");
-
-      cy.findByText(
-        "When using simple embedding, each end user should have their own Metabase account.",
-      ).should("be.visible");
-
-      cy.findByText("Got it").should("be.visible").click();
-    });
-
-    cy.findByTestId("simple-embed-terms-card").should("not.exist");
-  });
 });
