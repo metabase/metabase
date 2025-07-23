@@ -66,7 +66,6 @@ export const Loader = ({ className, style }: CommonStylingProps) => {
         height: "100%",
         display: "flex",
         justifyContent: "center",
-        alignItems: "center",
         ...style,
       }}
     >
