@@ -25,6 +25,8 @@ import TokenField, {
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -177,6 +179,7 @@ export const FieldValuesWidgetInner = forwardRef<
   );
   const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
+  const tc = useTranslateContent();
 
   const previousWidth = usePrevious(width);
 
@@ -486,10 +489,11 @@ export const FieldValuesWidgetInner = forwardRef<
                 dashboardId={dashboard?.id}
                 cardId={question?.id()}
                 value={isNumericParameter ? parseNumericValue(value) : value}
+                tc={tc}
               />
             )}
             renderOption={({ option }) => (
-              <RemappedOption option={option} fields={fields} />
+              <RemappedOption option={option} fields={fields} tc={tc} />
             )}
             onChange={(values) => {
               if (isNumericParameter) {
@@ -713,6 +717,7 @@ type RemappedValueProps = {
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
+  tc: ContentTranslationFunction;
 };
 
 function RemappedValue({
@@ -721,6 +726,7 @@ function RemappedValue({
   value,
   dashboardId,
   cardId,
+  tc,
 }: RemappedValueProps) {
   const isRemapped =
     Field.remappedField(fields) != null ||
@@ -758,19 +764,19 @@ function RemappedValue({
 
   const remappedData = dashboardData ?? cardData ?? parameterData;
   if (remappedData == null) {
-    return value;
+    return tc(value);
   }
 
   const remappedValue = getValue(remappedData);
   const remappedLabel = getLabel(remappedData);
   if (remappedLabel == null) {
-    return value;
+    return tc(value);
   }
 
   return (
     <MultiAutocompleteValue
       value={String(remappedValue)}
-      label={String(remappedLabel ?? remappedValue)}
+      label={tc(String(remappedLabel ?? remappedValue))}
     />
   );
 }
@@ -778,13 +784,16 @@ function RemappedValue({
 type RemappedOptionProps = {
   option: ComboboxItem;
   fields: Field[];
+  tc: ContentTranslationFunction;
 };
 
-function RemappedOption({ option, fields }: RemappedOptionProps) {
+function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
   if (!isRemapped) {
-    return option.label;
+    return tc(option.label);
   }
 
-  return <MultiAutocompleteOption value={option.value} label={option.label} />;
+  return (
+    <MultiAutocompleteOption value={option.value} label={tc(option.label)} />
+  );
 }
