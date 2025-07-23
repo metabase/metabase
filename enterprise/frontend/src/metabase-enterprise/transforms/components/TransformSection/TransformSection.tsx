@@ -11,6 +11,7 @@ import {
   Button,
   Card,
   Group,
+  Icon,
   Select,
   Stack,
   Text,
@@ -196,6 +197,18 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
           onNameChange={handleNameChange}
           onDescriptionChange={handleDescriptionChange}
         />
+        <Group justify="end">
+          <Button leftSection={<Icon name="pencil_lines" />}>
+            {t`Edit query`}
+          </Button>
+          <Button
+            loading={isExecuting}
+            leftSection={<Icon name="play" />}
+            onClick={handleExecute}
+          >
+            {t`Run now`}
+          </Button>
+        </Group>
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">
             <Group justify="space-between" align="start">
@@ -206,7 +219,9 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
               {transform.table && (
                 <Button
                   component={Link}
+                  target="_blank"
                   to={`/question#?db=${transform.table.db_id}&table=${transform.table.id}`}
+                  leftSection={<Icon name="external" />}
                 >
                   {t`Go to this table`}
                 </Button>
@@ -240,10 +255,7 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
             />
           </Stack>
         </Card>
-        <Group>
-          <Button loading={isExecuting} onClick={handleExecute}>
-            {t`Run now`}
-          </Button>
+        <Group justify="end">
           <Button loading={isDeleting} onClick={handleDelete}>
             {t`Delete`}
           </Button>
