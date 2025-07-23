@@ -23,7 +23,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -44,10 +43,6 @@
 (defn- drop-table-if-exists!
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
-
-(defn- drop-mv-if-exists!
-  [table-name]
-  (bigquery.tx/execute! (format "DROP MATERIALIZED VIEW IF EXISTS `%s`;" (fmt-table-name table-name))))
 
 (deftest sanity-check-test
   (mt/test-driver
@@ -572,46 +567,45 @@
         (let [table-names  ["partition_by_range" "partition_by_time_2" "partition_by_datetime"
                             "partition_by_ingestion_time_2" "partition_by_ingestion_time_not_required_2"]
               mv-names     ["mv_partition_by_datetime" "mv_partition_by_range"]]
-          (try
-            (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
-                  all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
-              (testing "Field values are correctly synced"
-                ;; Manually activate Field values since they are not created during sync (#53387)
-                (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
-                  (field-values/get-or-create-full-field-values! field))
-                (is (= {"customer_id"   #{1 2 3}
-                        "vip_customer"  #{42}
-                        "name"          #{"Khuat" "Quang" "Ngoc"}
-                        "company"       #{"Metabase" "Tesla" "Apple"}
-                        "ev_company"    #{"Tesla"}
-                        "is_awesome"    #{true false}
-                        "is_opensource" #{true false}}
-                       (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
-                                       :from   [[:metabase_field :field]]
-                                       :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
-                                       :where  [:and [:in :field.table_id table-ids]
-                                                [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
-                            (map #(update % :values (comp set json/decode)))
-                            (map (juxt :field-name :values))
-                            (into {}))))))
+          (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
+                all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
+            (testing "Field values are correctly synced"
+              ;; Manually activate Field values since they are not created during sync (#53387)
+              (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+                (field-values/get-or-create-full-field-values! field))
+              (is (= {"customer_id"   #{1 2 3}
+                      "vip_customer"  #{42}
+                      "name"          #{"Khuat" "Quang" "Ngoc"}
+                      "company"       #{"Metabase" "Tesla" "Apple"}
+                      "ev_company"    #{"Tesla"}
+                      "is_awesome"    #{true false}
+                      "is_opensource" #{true false}}
+                     (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
+                                     :from   [[:metabase_field :field]]
+                                     :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
+                                     :where  [:and [:in :field.table_id table-ids]
+                                              [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
+                          (map #(update % :values (comp set json/decode)))
+                          (map (juxt :field-name :values))
+                          (into {}))))))
 
-            (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
-              (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
-                                                                          :name "partition_by_ingestion_time_not_required_2")]
-                (is (=? [{:name           "_PARTITIONTIME"
-                          :database_type "TIMESTAMP"
-                          :base_type     :type/DateTimeWithLocalTZ
-                          :database_position 1}
-                         {:name           "_PARTITIONDATE"
-                          :database_type "DATE"
-                          :base_type     :type/Date
-                          :database_position 2}]
-                        (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
-                                   :database_partitioned true {:order-by [[:name :desc]]}))))
-              (testing "and query this table should return the column pseudocolumn as well"
-                (is (malli=
-                     [:tuple :boolean ms/TemporalString ms/TemporalString]
-                     (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required_2 {:limit 1})))))))))))))
+          (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
+            (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
+                                                                        :name "partition_by_ingestion_time_not_required_2")]
+              (is (=? [{:name           "_PARTITIONTIME"
+                        :database_type "TIMESTAMP"
+                        :base_type     :type/DateTimeWithLocalTZ
+                        :database_position 1}
+                       {:name           "_PARTITIONDATE"
+                        :database_type "DATE"
+                        :base_type     :type/Date
+                        :database_position 2}]
+                      (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
+                                 :database_partitioned true {:order-by [[:name :desc]]}))))
+            (testing "and query this table should return the column pseudocolumn as well"
+              (is (malli=
+                   [:tuple :boolean ms/TemporalString ms/TemporalString]
+                   (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required_2 {:limit 1}))))))))))))
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk

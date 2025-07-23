@@ -1,13 +1,11 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
