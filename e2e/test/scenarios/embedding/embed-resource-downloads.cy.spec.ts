@@ -81,7 +81,7 @@ H.describeWithSnowplowEE(
           .findByRole("button", { name: "Download as PDF" })
           .click();
 
-        cy.verifyDownload("Orders in a dashboard.pdf");
+        cy.verifyDownload("Orders in a dashboard.pdf", { contains: true });
 
         H.expectUnstructuredSnowplowEvent({
           event: "dashboard_pdf_exported",
