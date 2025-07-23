@@ -1298,7 +1298,7 @@ describe("issue 45877", () => {
     };
 
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    cy.get("fieldset").should("contain", "Expected Invoice").click();
+    H.filterWidget().should("contain", "Expected Invoice").click();
     H.popover().within(() => {
       cy.findByPlaceholderText("Search the list").should("exist");
 
@@ -1316,7 +1316,7 @@ describe("issue 45877", () => {
     // We don't even have to run the query to reproduce this issue
     // so let's not waste time and resources doing so.
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    cy.get("fieldset").should("contain", "false").click();
+    H.filterWidget().should("contain", "false").click();
     H.popover().within(() => {
       cy.findAllByLabelText("true").should("have.length", 1);
       cy.findAllByLabelText("false")

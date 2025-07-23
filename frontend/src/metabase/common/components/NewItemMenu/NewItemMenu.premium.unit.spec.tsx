@@ -48,7 +48,7 @@ describe("NewItemMenu (EE with token)", () => {
   });
 
   it("shows the Embed item when embedding_iframe_sdk feature is enabled", async () => {
-    setup({ tokenFeatures: { embedding_iframe_sdk: true } });
+    await setup({ tokenFeatures: { embedding_iframe_sdk: true } });
 
     expect(await screen.findByText("Embed")).toBeInTheDocument();
   });
