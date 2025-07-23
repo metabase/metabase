@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase-enterprise.action-v2.api]
    [metabase-enterprise.action-v2.test-util :as data-editing.tu]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
@@ -17,6 +18,9 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; We're postponing adding this flag until other features like data-apps need them.
+(def ^:private actions-feature-flag :table-data-editing)
 
 (defn- table-rows [table-id]
   (mt/rows
@@ -65,14 +69,14 @@
 
 (deftest feature-flag-required-test
   (mt/with-premium-features #{}
-    (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-url))
-    (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-bulk-url))
-    (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-form-url))))
+    (mt/assert-has-premium-feature-error "Table Data Editing" (mt/user-http-request :crowberto :post 402 execute-url))
+    (mt/assert-has-premium-feature-error "Table Data Editing" (mt/user-http-request :crowberto :post 402 execute-bulk-url))
+    (mt/assert-has-premium-feature-error "Table Data Editing" (mt/user-http-request :crowberto :post 402 execute-form-url))))
 
 ;; TODO have a similar test to this next one, but for single execution (which data apps will use)
 
 (deftest table-operations-via-action-execute-test
-  (mt/with-premium-features #{:actions}
+  (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
         (testing "Initially the table is empty"
@@ -128,7 +132,7 @@
                  (table-rows table-id))))))))
 
 (deftest table-operations-via-action-execute-with-compound-pk-test
-  (mt/with-premium-features #{:actions}
+  (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
                                                      :id_2   'auto-inc-type
@@ -205,7 +209,7 @@
 
 (deftest simple-delete-with-children-test
   (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
-    (mt/with-premium-features #{:actions}
+    (mt/with-premium-features #{actions-feature-flag}
       (data-editing.tu/with-temp-test-db!
         (let [body {:action "data-grid.row/delete"
                     :scope  {:table-id (mt/id :products)}
@@ -263,7 +267,7 @@
      ["Gaming Laptops" 3]]]])
 
 (deftest simple-delete-with-self-referential-children-test
-  (mt/with-premium-features #{:actions}
+  (mt/with-premium-features #{actions-feature-flag}
     (data-editing.tu/with-actions-temp-db self-referential-categories
       (let [body {:action "data-grid.row/delete"
                   :scope  {:table-id (mt/id :category)}
@@ -322,7 +326,7 @@
 ;; TODO let's keep this test setup, but track our current behavior with no smarts
 (deftest mutual-recursion-delete-test
   (mt/test-drivers data-editing-drivers
-    (mt/with-premium-features #{:actions}
+    (mt/with-premium-features #{actions-feature-flag}
       (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        (sql.tx/add-fk-sql driver/*driver*
@@ -363,7 +367,7 @@
                   (is (= 1 (count remaining-teams)))))))))))
 
 (deftest editing-allowed-test
-  (mt/with-premium-features #{:actions}
+  (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
       (testing "40x returned if user/database not configured for editing"
         (let [test-endpoints (fn [flags status-code]
@@ -410,11 +414,9 @@
               (is (= expected (error-or-ok response))))))))))
 
 (deftest coercion-test
-  (mt/with-premium-features #{:actions}
+  (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
-      (let [create! #(create-rows! %1 %2)
-            update! #(update-rows! %1 %2)
-            always-lossy #{:Coercion/UNIXNanoSeconds->DateTime
+      (let [always-lossy #{:Coercion/UNIXNanoSeconds->DateTime
                            :Coercion/UNIXMicroSeconds->DateTime
                            :Coercion/ISO8601->Date
                            :Coercion/ISO8601->Time}
@@ -435,7 +437,7 @@
                             (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
                             (testing "create"
                               (let [row                {:o input}
-                                    {outputs :outputs} (create! table-id [row])
+                                    {outputs :outputs} (create-rows! table-id [row])
                                     qp-state           (get-qp-state)
                                     _                  (is (= 1 (count outputs)))]
                                 (when-not (lossy? coercion-strategy)
@@ -443,9 +445,9 @@
                                   (is (= input (:o (first qp-state))) "the qp value should be the same as the input"))
                                 (is (= expected (:o (first (get-db-state)))))))
                             (testing "update"
-                              (let [[{id :id}]         (map :row (:outputs (create! table-id [{:o nil}])))
+                              (let [[{id :id}]         (map :row (:outputs (create-rows! table-id [{:o nil}])))
                                     _ (is (some? id))
-                                    {outputs :outputs} (update! table-id [{:id id, :o input}])
+                                    {outputs :outputs} (update-rows! table-id [{:id id, :o input}])
                                     [qp-row] (filter (comp #{id} :id) (get-qp-state))]
                                 (is (= 1 (count outputs)))
                                 (is (some? qp-row))
@@ -482,7 +484,7 @@
              (run! #(apply do-test %)))))))
 
 (deftest field-values-invalidated-test
-  (mt/with-premium-features #{:actions}
+  (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
         (let [field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
@@ -518,7 +520,7 @@
 ;; data-editing (keep this to control whether the data-grid.row actions are callable?)
 
 (deftest execute-form-built-in-table-action-test
-  (mt/with-premium-features #{:actions}
+  (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
                                                      :text      [:text]
