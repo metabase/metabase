@@ -50,3 +50,21 @@ describe("parseConnectionUri", () => {
     expect(result).toBeNull();
   });
 });
+
+describe("snowflake", () => {
+  it("should parse a connection with a password", () => {
+    const connectionUri = `jdbc:snowflake://db.snowflake.com:3333/?db=maindb&warehouse=mainwarehouse`;
+    const result = parseConnectionUri(connectionUri);
+    expect(result).toEqual(
+      expect.objectContaining({
+        host: "db.snowflake.com",
+        port: "3333",
+        protocol: "snowflake",
+        searchParams: {
+          db: "maindb",
+          warehouse: "mainwarehouse",
+        },
+      }),
+    );
+  });
+});

@@ -3,9 +3,42 @@ import { useEffect, useState } from "react";
 import { Textarea } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
-import { parseConnectionUri } from "./parseConnectionUri";
+import { type UriFields, parseConnectionUri } from "./parseConnectionUri";
 
-const supportedEngines = new Set(["PostgreSQL"]);
+function setSnowflakeValues(
+  parsedValues: UriFields,
+  setFieldValue: (field: string, value: string) => void,
+) {
+  const { db, warehouse } = parsedValues.searchParams;
+  setFieldValue("details.account", parsedValues.host);
+  setFieldValue("details.db", db);
+  setFieldValue("details.user", parsedValues.username);
+  setFieldValue("details.warehouse", warehouse);
+  if (parsedValues.password) {
+    setFieldValue("details.use-password", parsedValues.password);
+    setFieldValue("details.password", parsedValues.password);
+  }
+}
+
+function setDatabaseValue(
+  parsedValues: UriFields,
+  setFieldValue: (field: string, value: string) => void,
+) {
+  switch (parsedValues.protocol) {
+    case "postgresql":
+      setFieldValue("details.host", parsedValues.host);
+      setFieldValue("details.port", parsedValues.port);
+      setFieldValue("details.dbname", parsedValues.database);
+      setFieldValue("details.user", parsedValues.username);
+      setFieldValue("details.password", parsedValues.password);
+      break;
+    case "snowflake":
+      setSnowflakeValues(parsedValues, setFieldValue);
+      break;
+  }
+}
+
+const supportedEngines = new Set(["PostgreSQL", "Snowflake"]);
 export function DatabaseConnectionStringField({
   setFieldValue,
   engine,
@@ -17,11 +50,7 @@ export function DatabaseConnectionStringField({
   useEffect(() => {
     const parsedValues = parseConnectionUri(connectionString);
     if (parsedValues) {
-      setFieldValue("details.host", parsedValues.host);
-      setFieldValue("details.port", parsedValues.port);
-      setFieldValue("details.dbname", parsedValues.database);
-      setFieldValue("details.user", parsedValues.username);
-      setFieldValue("details.password", parsedValues.password);
+      setDatabaseValue(parsedValues, setFieldValue);
     }
   }, [connectionString, setFieldValue]);
 
