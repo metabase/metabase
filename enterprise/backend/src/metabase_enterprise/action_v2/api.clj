@@ -34,7 +34,6 @@
   "All the various ways of referring to an action with the v2 APIs."
   [:or ::api-action-id ::api-action-expression])
 
-;; TODO Regret this name, let's rename it to something like ::action-expression once it's pure data.
 (mr/def ::action-expression
   "The internal representation used by our APIs, after we've parsed the relevant ids and fetched their configuration."
   ;; Expected extensions:
@@ -72,39 +71,21 @@
    mapping))
 
 (defn- augment-params
-  [{:keys [dashcard-id param-map] :as _action} input params]
-  ;; TODO don't fetch the row-data from the db if we only need columns that we already have, i.e. they are in the pk
-  (let [row (delay (let [{:keys [table_id]} (actions/cached-value
-                                             [:dashcard-viz dashcard-id]
-                                             #(t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))]
-                     (if-not table_id
-                       ;; this is not an Editable, it must be a question - so we use the client-side row
-                       (update-keys input name)
-                       ;; TODO batch fetching all these rows, across all inputs
-                       (let [fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table_id)
-                             pk-fields (filter #(= :type/PK (:semantic_type %)) fields)
-                             ;; TODO we could restrict which fields we fetch in future
-                             [row]     (data-editing/query-db-rows table_id pk-fields [input])
-                             _         (api/check-404 row)]
-                         ;; TODO it would be more robust to use field-ids instead of names in the configuration
-                         (update-keys row name)))))]
-    (if-not param-map
-      (merge input params)
-      (reduce-kv
-       (fn [acc k v]
-         (let [override (when-not (:visible v) (get params k))]
-           (case (:sourceType v)
-             ;; I don't think the FE can send a value for ask-user, but our tests do it...
-             "ask-user" (assoc acc k (if (contains? params k) override (:value v)))
-             "constant" (assoc acc k (or override (:value v)))
-             ;; Hack for getting partially mapped data for /configure
-             "row-data" (if-not (seq input)
-                          acc
-                          (assoc acc k (or override (get @row (:sourceValueTarget v)))))
-             ;; no mapping? omit the key
-             nil acc)))
-       {}
-       param-map))))
+  [{:keys [param-map] :as _action} input params]
+  (if-not param-map
+    (merge input params)
+    (reduce-kv
+     (fn [acc k v]
+       (let [override (when-not (:visible v) (get params k))]
+         (case (:sourceType v)
+           ;; It seems like misconfiguration to configure a default :value for "ask-user", but some tests do it.
+           "ask-user" (assoc acc k (if (contains? params k) override (:value v)))
+           "constant" (assoc acc k (or override (:value v)))
+           "row-data" (throw (ex-info "Row data mappings are not yet supported" {:status-code 501}))
+           ;; no mapping? omit the key
+           nil acc)))
+     {}
+     param-map)))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
   (let [mapping (hydrate-mapping mapping)
