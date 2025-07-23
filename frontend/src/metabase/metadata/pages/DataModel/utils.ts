@@ -15,11 +15,14 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
       : params.schemaId,
     tableId: Urls.extractEntityId(params.tableId),
     fieldId: Urls.extractEntityId(params.fieldId),
+    sectionId: params.sectionId === "transform" ? "transform" : undefined,
+    transformId: Urls.extractEntityId(params.transformId),
   };
 }
 
 export function getUrl(params: ParsedRouteParams): string {
-  const { databaseId, schemaName, tableId, fieldId } = params;
+  const { databaseId, schemaName, tableId, fieldId, sectionId, transformId } =
+    params;
   const schemaId = `${databaseId}:${schemaName}`;
 
   if (
@@ -37,6 +40,14 @@ export function getUrl(params: ParsedRouteParams): string {
 
   if (databaseId != null && schemaName != null) {
     return `/admin/datamodel/database/${databaseId}/schema/${schemaId}`;
+  }
+
+  if (databaseId != null && sectionId != null && transformId != null) {
+    return `/admin/datamodel/database/${databaseId}/${sectionId}/${transformId}`;
+  }
+
+  if (databaseId != null && sectionId != null) {
+    return `/admin/datamodel/database/${databaseId}/${sectionId}`;
   }
 
   if (databaseId != null) {

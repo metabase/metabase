@@ -87,6 +87,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
             component={DataModel}
           />
+          <Route path="database/:databaseId/:sectionId" component={DataModel} />
+          <Route
+            path="database/:databaseId/:sectionId/:transformId"
+            component={DataModel}
+          />
           <Route component={DataModel}>
             <Route path="segments" component={SegmentListApp} />
             <Route path="segment/create" component={SegmentApp} />

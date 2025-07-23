@@ -2,9 +2,10 @@ import type {
   CreateTransformRequest,
   Transform,
   TransformId,
+  UpdateTransformRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { EnterpriseApi } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -14,7 +15,7 @@ import {
   tag,
 } from "./tags";
 
-export const transformApi = Api.injectEndpoints({
+export const transformApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listTransforms: builder.query<Transform[], void>({
       query: (params) => ({
@@ -32,15 +33,6 @@ export const transformApi = Api.injectEndpoints({
       providesTags: (transform) =>
         transform ? provideTransformTags(transform) : [],
     }),
-    createTransform: builder.mutation<Transform, CreateTransformRequest>({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/transform",
-        body,
-      }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("transform"), tag("transform")]),
-    }),
     executeTransform: builder.mutation<Transform, TransformId>({
       query: (id) => ({
         method: "POST",
@@ -52,6 +44,24 @@ export const transformApi = Api.injectEndpoints({
           tag("field"),
           tag("field-values"),
         ]),
+    }),
+    createTransform: builder.mutation<Transform, CreateTransformRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/transform",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform"), tag("transform")]),
+    }),
+    updateTransform: builder.mutation<Transform, UpdateTransformRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/transform/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform"), tag("transform")]),
     }),
     deleteTransform: builder.mutation<Transform, TransformId>({
       query: (id) => ({
@@ -66,8 +76,10 @@ export const transformApi = Api.injectEndpoints({
 
 export const {
   useListTransformsQuery,
+  useLazyListTransformsQuery,
   useGetTransformQuery,
-  useCreateTransformMutation,
   useExecuteTransformMutation,
+  useCreateTransformMutation,
+  useUpdateTransformMutation,
   useDeleteTransformMutation,
 } = transformApi;

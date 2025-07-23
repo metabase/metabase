@@ -39,6 +39,7 @@ export function getSemanticTypeError(
         const parentField = fieldsByName[parentName];
         const href = getUrl({
           databaseId: table.db_id,
+          sectionId: undefined,
           schemaName: table.schema,
           tableId: table.id,
           fieldId: getRawTableFieldId(field),

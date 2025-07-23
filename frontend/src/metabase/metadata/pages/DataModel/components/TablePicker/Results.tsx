@@ -36,6 +36,7 @@ export function Results({
   onSelectedIndexChange,
 }: Props) {
   const [activeTableId, setActiveTableId] = useState(path.tableId);
+  const [activeTransformId, setActiveTransformId] = useState(path.transformId);
   const ref = useRef<HTMLDivElement>(null);
 
   const virtual = useVirtualizer({
@@ -102,7 +103,10 @@ export function Results({
             parent,
             disabled,
           } = item;
-          const isActive = type === "table" && value?.tableId === activeTableId;
+          const isActive =
+            (type === "table" && value?.tableId === activeTableId) ||
+            (type === "transform" && value?.transformId === activeTransformId);
+          const canBeSelected = type === "table" || type === "transform";
           const parentIndex = items.findIndex((item) => item.key === parent);
           const children = items.filter((item) => item.parent === key);
           const hasTableChildren = children.some(
@@ -122,6 +126,11 @@ export function Results({
 
             if (type === "table") {
               setActiveTableId(value?.tableId);
+              setActiveTransformId(undefined);
+            }
+            if (type === "transform") {
+              setActiveTableId(undefined);
+              setActiveTransformId(value?.transformId);
             }
           };
 
@@ -190,7 +199,8 @@ export function Results({
               justify="space-between"
               gap="sm"
               ref={virtual.measureElement}
-              className={cx(S.item, S[type], {
+              className={cx(S.item, {
+                [S.selectable]: canBeSelected,
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
               })}

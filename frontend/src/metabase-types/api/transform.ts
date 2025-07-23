@@ -1,4 +1,3 @@
-import type { DatabaseId } from "./database";
 import type { DatasetQuery } from "./query";
 
 export type TransformId = number;
@@ -6,8 +5,10 @@ export type TransformId = number;
 export type Transform = {
   id: TransformId;
   name: string;
+  description: string | null;
   source: TransformSource;
   target: TransformTarget;
+  schedule: string | null;
 };
 
 export type TransformSource = {
@@ -17,7 +18,6 @@ export type TransformSource = {
 
 export type TransformTarget = {
   type: "table";
-  database: DatabaseId;
   schema: string;
   table: string;
 };
@@ -26,4 +26,13 @@ export type CreateTransformRequest = {
   name: string;
   source: TransformSource;
   target: TransformTarget;
+};
+
+export type UpdateTransformRequest = {
+  id: TransformId;
+  name?: string;
+  description?: string | null;
+  source?: TransformSource;
+  target?: TransformTarget;
+  schedule?: string | null;
 };

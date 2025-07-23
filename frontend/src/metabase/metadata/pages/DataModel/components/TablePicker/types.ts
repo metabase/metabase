@@ -3,6 +3,7 @@ import type {
   SchemaName,
   Table,
   TableId,
+  TransformId,
 } from "metabase-types/api";
 
 export type NodeKey = string;
@@ -11,9 +12,17 @@ export type TreePath = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName;
   tableId?: TableId;
+  sectionId?: "transform";
+  transformId?: TransformId;
 };
 
-export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode;
+export type TreeNode =
+  | RootNode
+  | DatabaseNode
+  | SchemaNode
+  | TableNode
+  | TransformNode
+  | TransformListNode;
 
 export type RootNode = {
   type: "root";
@@ -28,7 +37,7 @@ export type DatabaseNode = {
   label: string;
   key: NodeKey;
   value: { databaseId: DatabaseId };
-  children: SchemaNode[];
+  children: (SchemaNode | TransformListNode)[];
 };
 
 export type SchemaNode = {
@@ -49,11 +58,38 @@ export type TableNode = {
   disabled?: boolean;
 };
 
+export type TransformNode = {
+  type: "transform";
+  key: NodeKey;
+  label: string;
+  value: {
+    databaseId: DatabaseId;
+    sectionId: "transform";
+    transformId: TransformId;
+  };
+  children: [];
+};
+
+export type TransformListNode = {
+  type: "transform-list";
+  key: NodeKey;
+  label: string;
+  value: { databaseId: DatabaseId; sectionId: "transform" };
+  children: TransformNode[];
+};
+
 export type DatabaseItem = Omit<DatabaseNode, "children">;
 export type SchemaItem = Omit<SchemaNode, "children">;
 export type TableItem = Omit<TableNode, "children">;
+export type TransformItem = Omit<TransformNode, "children">;
+export type TransformListItem = Omit<TransformListNode, "children">;
 
-export type Item = DatabaseItem | SchemaItem | TableItem;
+export type Item =
+  | DatabaseItem
+  | SchemaItem
+  | TableItem
+  | TransformItem
+  | TransformListItem;
 
 export type ItemType = Item["type"];
 
