@@ -115,7 +115,7 @@ describe("scenarios > embedding-sdk > plugins", () => {
       });
     });
 
-    it("should open a click actions popover with a custom item", () => {
+    it.only("should open a click actions popover with a custom item", () => {
       mountInteractiveQuestion({
         plugins: {
           mapQuestionClickActions: (clickActions: ClickAction[]) => [

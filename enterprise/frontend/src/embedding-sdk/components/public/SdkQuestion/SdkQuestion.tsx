@@ -76,13 +76,16 @@ export type DrillThroughQuestionProps = Omit<
  * @category InteractiveQuestion
  */
 export type SdkQuestionProps = SdkQuestionProviderProps &
-  SdkQuestionDefaultViewProps;
+  SdkQuestionDefaultViewProps &
+  Omit<SdkQuestionProviderProps, "componentPlugins"> & {
+    plugins?: SdkQuestionProviderProps["componentPlugins"];
+  };
 
 export const _SdkQuestion = ({
   questionId,
   options,
   deserializedCard,
-  componentPlugins: plugins,
+  plugins,
   onNavigateBack,
   children = null,
   onBeforeSave,

@@ -5,6 +5,7 @@ import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import {
   type OnCreateOptions,
   useCreateQuestion,
@@ -125,6 +126,7 @@ export const SdkQuestionProvider = ({
         getEmbeddingMode({
           question,
           queryMode: EmbeddingSdkMode,
+          plugins: plugins as InternalMetabasePluginsConfig,
         })
       );
     });
