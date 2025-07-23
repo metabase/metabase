@@ -8,7 +8,7 @@ import { isNotNull } from "metabase/lib/types";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { Box, Collapse, DelayGroup, Icon, Stack, Text } from "metabase/ui";
+import { Box, Collapse, DelayGroup, Icon, Stack, Text, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import FilterSidesheetS from "./FilterHeaderButton.module.css";
@@ -56,15 +56,30 @@ export function InlineFilterPicker({
   onClose: _onClose,
 }: InlineFilterPickerProps) {
   const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
+  const [searchText, setSearchText] = useState("");
 
   const sections = useMemo(() => {
     try {
-      return getSections({ query, stageIndexes });
+      const allSections = getSections({ query, stageIndexes });
+      
+      if (!searchText.trim()) {
+        return allSections;
+      }
+
+      // Filter sections and items based on search text
+      const searchLower = searchText.toLowerCase();
+      return allSections.map(section => ({
+        ...section,
+        items: section.items?.filter(item => 
+          item.displayName.toLowerCase().includes(searchLower) ||
+          item.name.toLowerCase().includes(searchLower)
+        ) || []
+      })).filter(section => (section.items?.length || 0) > 0);
     } catch (error) {
       console.error("Error getting sections:", error);
       return [];
     }
-  }, [query, stageIndexes]);
+  }, [query, stageIndexes, searchText]);
 
   const handleFilterChange = (
     column: Lib.ColumnMetadata,
@@ -97,13 +112,35 @@ export function InlineFilterPicker({
   const getFieldKey = (item: ColumnListItem) => 
     `${item.stageIndex}-${item.name}`;
 
-  if (sections.length === 0) {
+  const hasNoResults = sections.length === 0;
+  const emptyMessage = searchText.trim() 
+    ? t`No fields match "${searchText}"`
+    : t`No filterable fields available`;
+
+  if (hasNoResults) {
     return (
       <div className={FilterSidesheetS.filterSidesheetContent}>
         <DelayGroup>
           <Stack gap="md" p="md">
+            <TextInput
+              placeholder={t`Search fields...`}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              leftSection={<Icon name="search" size={16} />}
+              rightSection={
+                searchText && (
+                  <Icon 
+                    name="close" 
+                    size={16} 
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSearchText("")}
+                  />
+                )
+              }
+              mb="sm"
+            />
             <Text ta="center" c="var(--mb-color-text-medium)">
-              {t`No filterable fields available`}
+              {emptyMessage}
             </Text>
           </Stack>
         </DelayGroup>
@@ -115,6 +152,23 @@ export function InlineFilterPicker({
     <div className={FilterSidesheetS.filterSidesheetContent}>
       <DelayGroup>
         <Stack gap="xs" p="md">
+          <TextInput
+            placeholder={t`Search fields...`}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            leftSection={<Icon name="search" size={16} />}
+            rightSection={
+              searchText && (
+                <Icon 
+                  name="close" 
+                  size={16} 
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setSearchText("")}
+                />
+              )
+            }
+            mb="sm"
+          />
           {sections.map((section, sectionIndex) => (
             <Box key={sectionIndex}>
               {section.name && (
