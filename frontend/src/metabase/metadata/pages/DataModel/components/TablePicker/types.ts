@@ -11,9 +11,15 @@ export type TreePath = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName;
   tableId?: TableId;
+  sectionId?: "transform";
 };
 
-export type TreeNode = RootNode | DatabaseNode | SchemaNode | TableNode;
+export type TreeNode =
+  | RootNode
+  | DatabaseNode
+  | SchemaNode
+  | TableNode
+  | TransformListNode;
 
 export type RootNode = {
   type: "root";
@@ -28,7 +34,7 @@ export type DatabaseNode = {
   label: string;
   key: NodeKey;
   value: { databaseId: DatabaseId };
-  children: SchemaNode[];
+  children: (SchemaNode | TransformListNode)[];
 };
 
 export type SchemaNode = {
@@ -49,11 +55,20 @@ export type TableNode = {
   disabled?: boolean;
 };
 
+export type TransformListNode = {
+  type: "transform-list";
+  key: NodeKey;
+  label: string;
+  value: { databaseId: DatabaseId; sectionId: "transform" };
+  children: [];
+};
+
 export type DatabaseItem = Omit<DatabaseNode, "children">;
 export type SchemaItem = Omit<SchemaNode, "children">;
 export type TableItem = Omit<TableNode, "children">;
+export type TransformListItem = Omit<TransformListNode, "children">;
 
-export type Item = DatabaseItem | SchemaItem | TableItem;
+export type Item = DatabaseItem | SchemaItem | TableItem | TransformListItem;
 
 export type ItemType = Item["type"];
 

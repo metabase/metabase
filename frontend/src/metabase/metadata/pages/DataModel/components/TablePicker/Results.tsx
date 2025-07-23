@@ -190,7 +190,8 @@ export function Results({
               justify="space-between"
               gap="sm"
               ref={virtual.measureElement}
-              className={cx(S.item, S[type], {
+              className={cx(S.item, {
+                [S.table]: type === "table",
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
               })}

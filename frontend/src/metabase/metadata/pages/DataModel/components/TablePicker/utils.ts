@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDeepCompareEffect, useLatest } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -24,6 +25,7 @@ import type {
   RootNode,
   SchemaNode,
   TableNode,
+  TransformListNode,
   TreeNode,
   TreePath,
 } from "./types";
@@ -33,12 +35,14 @@ const CHILD_TYPES = {
   database: "schema",
   schema: "table",
   table: null,
+  "transform-list": null,
 } as const;
 
 export const TYPE_ICONS: Record<ItemType, IconName> = {
   table: "table2",
   schema: "folder",
   database: "database",
+  "transform-list": "add_data",
 };
 
 export function hasChildren(type: ItemType): boolean {
@@ -198,13 +202,20 @@ export function useTableLoader(path: TreePath) {
           children:
             database.value.databaseId !== databaseId
               ? database.children
-              : schemas.map((schema) => ({
-                  ...schema,
-                  children:
-                    schema.value.schemaName !== schemaName
-                      ? schema.children
-                      : tables,
-                })),
+              : [
+                  node<TransformListNode>({
+                    type: "transform-list",
+                    label: t`Transforms`,
+                    value: { databaseId, sectionId: "transform" },
+                  }),
+                  ...schemas.map((schema) => ({
+                    ...schema,
+                    children:
+                      schema.value.schemaName !== schemaName
+                        ? schema.children
+                        : tables,
+                  })),
+                ],
         })),
       );
       setTree((current) => {
@@ -270,9 +281,10 @@ export function useSearch(query: string) {
         tree.children.push(databaseNode);
       }
 
-      let schemaNode = databaseNode.children.find((node) => {
-        return node.type === "schema" && node.value.schemaName === tableSchema;
-      });
+      let schemaNode = databaseNode.children.find(
+        (node): node is SchemaNode =>
+          node.type === "schema" && node.value.schemaName === tableSchema,
+      );
       if (!schemaNode) {
         schemaNode = node<SchemaNode>({
           type: "schema",
@@ -317,13 +329,15 @@ export function useSearch(query: string) {
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
-  const { databaseId, schemaName, tableId } = path;
+  const { databaseId, schemaName, tableId, sectionId } = path;
 
   useEffect(() => {
     // When the path changes, this means a user has navigated throught the browser back
     // button, ensure the path is completely expanded.
-    setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
-  }, [databaseId, schemaName, tableId]);
+    setState((state) =>
+      expandPath(state, { databaseId, schemaName, tableId, sectionId }),
+    );
+  }, [databaseId, schemaName, tableId, sectionId]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {
@@ -358,6 +372,12 @@ function expandPath(state: ExpandedState, path: TreePath): ExpandedState {
       ...path,
       tableId: undefined,
       schemaName: undefined,
+    })]: true,
+    [toKey({
+      ...path,
+      tableId: undefined,
+      schemaName: undefined,
+      sectionId: undefined,
     })]: true,
     [toKey({
       ...path,
@@ -492,8 +512,8 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
 /**
  * Create a unique key for a TreePath
  */
-function toKey({ databaseId, schemaName, tableId }: TreePath) {
-  return JSON.stringify([databaseId, schemaName, tableId]);
+function toKey({ databaseId, schemaName, tableId, sectionId }: TreePath) {
+  return JSON.stringify([databaseId, schemaName, tableId, sectionId]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
