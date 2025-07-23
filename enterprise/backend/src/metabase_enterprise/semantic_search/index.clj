@@ -4,12 +4,14 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase.models.interface :as mi]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
-   [next.jdbc :as jdbc])
+   [next.jdbc :as jdbc]
+   [toucan2.core :as t2])
   (:import
    [java.time LocalDate]
    [org.postgresql.util PGobject]))
@@ -244,35 +246,27 @@
     (when (seq conditions)
       (into [:and] conditions))))
 
-(defn- keyword-search-query
-  "Build a keyword search query using postgres full-text search."
-  [index search-context]
+(defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
-        search-string (:search-string search-context)
-        ts-search-expr (search/to-tsquery-expr search-string)
-        tsv-lang (search/tsv-language)
-        base-query {:select [[:id :id]
-                             [:model_id :model_id]
-                             [:model :model]
-                             [:content :content]
-                             [:verified :verified]
-                             [:metadata :metadata]
-                             [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, query) DESC)"] :keyword_rank]]
-                    :from   [(keyword (:table-name index))]
-                    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
-                    ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
-                    :join   [[[:raw "to_tsquery('"
-                               tsv-lang
-                               "', "
-                               [:lift ts-search-expr]
-                               ")"]
-                              :query] [:= 1 1]]
-                    :where  [:raw "text_search_vector @@ query"]
-                    :order-by [[:keyword_rank :asc]]
-                    :limit  100}]
-    (if filters
-      (update base-query :where #(into [:and] [% filters]))
-      base-query)))
+        ts-search-expr (search/to-tsquery-expr (:search-string search-context))
+        tsv-lang (search/tsv-language)]
+    {:select [[:id :id]
+              [:model_id :model_id]
+              [:model :model]
+              [:content :content]
+              [:verified :verified]
+              [:metadata :metadata]
+              [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, query) DESC)"] :keyword_rank]]
+     :from [(keyword (:table-name index))]
+     ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
+     ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
+     :join [[[:raw "to_tsquery('" tsv-lang "', " [:lift ts-search-expr] ")"]
+             :query] [:= 1 1]]
+     :where (if (seq filters)
+              (into [:and [:raw "text_search_vector @@ query"]] [filters])
+              [:raw "text_search_vector @@ query"])
+     :order-by [[:keyword_rank :asc]]
+     :limit 100}))
 
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity."
@@ -348,6 +342,18 @@
   [row]
   (update row :metadata decode-pgobject))
 
+(defn- filter-read-permitted
+  "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
+  [docs]
+  (let [doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
+        t2-instances  (for [[t2-model docs] (group-by doc->t2-model docs)
+                            t2-instance     (t2/select t2-model :id [:in (map :id docs)])]
+                        t2-instance)
+        doc->t2       (comp (u/index-by (juxt :id t2/model) t2-instances)
+                            (fn [doc]
+                              [(:id doc) (doc->t2-model doc)]))]
+    (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) docs)))
+
 (defn query-index
   "Query the index for documents similar to the search string."
   [db index search-context]
@@ -360,7 +366,8 @@
                             (map decode-metadata)
                             (map legacy-input-with-score))
             reducible (jdbc/plan db (sql-format-quoted query))]
-        (transduce xform conj [] reducible)))))
+        (-> (transduce xform conj [] reducible)
+            filter-read-permitted)))))
 
 (comment
   (keyword-search-query index {:search-string "dog"})
