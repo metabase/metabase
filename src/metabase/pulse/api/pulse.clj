@@ -344,7 +344,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [width]} :- [:map
-                      [:width {:optional true} [:maybe ms/PositiveInt]]]]
+                       [:width {:optional true} [:maybe ms/PositiveInt]]]]
   (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)
         width  (or width preview-card-width)
