@@ -148,8 +148,6 @@ result_metadata:
   ident: LMqtaUMyPJJMZqYYeSRbs
   name: name
   nfc_path: null
-  options:
-    metabase.query-processor.middleware.add-dimension-projections/new-field-dimension-id: 19
   parent_id: null
   position: 4
   semantic_type: type/Name
