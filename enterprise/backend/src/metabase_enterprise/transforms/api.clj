@@ -86,7 +86,7 @@
         db (get-in source [:query :database])
         {driver :engine :as database} (t2/select-one :model/Database db)]
     (transforms.execute/execute
-     {:db db
+     {:db-ref db
       :driver driver
       :sql (compile-source source)
       :output-table (qualified-table-name driver target)
