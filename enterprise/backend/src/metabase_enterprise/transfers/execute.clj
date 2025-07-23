@@ -107,4 +107,5 @@
     (execute {:input-table input-table
               :output-db-ref destination_database
               :output-table-name destination_table
-              :overwrite? overwrite?})))
+              :overwrite? overwrite?}))
+  :ok)

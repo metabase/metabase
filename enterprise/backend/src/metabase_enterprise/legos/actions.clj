@@ -46,7 +46,8 @@
       :driver driver
       :sql query
       :output-table (qualified-table-name driver schema table)
-      :overwrite? true})))
+      :overwrite? true}))
+  :ok)
 
 (mr/def ::plan
   [:map
