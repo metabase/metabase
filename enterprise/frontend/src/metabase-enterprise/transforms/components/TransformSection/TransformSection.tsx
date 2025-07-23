@@ -15,6 +15,7 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  useExecuteTransformMutation,
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
@@ -43,6 +44,8 @@ type TransformSettingsProps = {
 
 function TransformSettings({ transform, schemas }: TransformSettingsProps) {
   const [updateTransform] = useUpdateTransformMutation();
+  const [executeTransform, { isLoading: isExecuting }] =
+    useExecuteTransformMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
@@ -151,6 +154,16 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
     }
   };
 
+  const handleExecute = async () => {
+    const { error } = await executeTransform(transform.id);
+
+    if (error) {
+      sendErrorToast("Failed to run transform");
+    } else {
+      sendSuccessToast("Transform run successfully");
+    }
+  };
+
   return (
     <Stack flex={1} p="xl" align="center">
       <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
@@ -202,7 +215,9 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
           </Stack>
         </Card>
         <Group>
-          <Button>{t`Run now`}</Button>
+          <Button loading={isExecuting} onClick={handleExecute}>
+            {t`Run now`}
+          </Button>
           <Button>{t`Delete`}</Button>
         </Group>
       </Stack>
