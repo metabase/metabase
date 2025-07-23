@@ -1,8 +1,8 @@
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useTimeout } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Group, Icon, Stack, Textarea } from "metabase/ui";
+import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
 import { type UriFields, parseConnectionUri } from "./parseConnectionUri";
@@ -50,38 +50,99 @@ export function DatabaseConnectionStringField({
   engine: Engine | undefined;
 }) {
   const [connectionString, setConnectionString] = useState("");
-  const [opened, handlers] = useDisclosure(false);
+  const [opened, { open, close }] = useDisclosure(false);
+  const { start: delayedClose, clear } = useTimeout(
+    () => close(),
+    FEEDBACK_TIMEOUT,
+  );
 
   useEffect(() => {
     const parsedValues = parseConnectionUri(connectionString);
     if (parsedValues) {
       setDatabaseValue(parsedValues, setFieldValue);
-      handlers.open();
+      open();
+      delayedClose();
+
+      return () => {
+        clear();
+      };
     }
-  }, [connectionString, setFieldValue, handlers]);
+    close();
+  }, [connectionString, setFieldValue, open, delayedClose, close, clear]);
 
   if (!supportedEngines.has(engine?.["driver-name"] ?? "")) {
     return null;
   }
 
-  const description = t`You can use a connection string to pre-fill the details below.`;
-  const successMessage = (
-    <Group gap="xs">
-      <Icon name="check_filled" style={{ color: "var(--mb-color-success)" }} />
-      {t`Connection string parsed successfully.`}
-    </Group>
+  return (
+    <Textarea
+      inputWrapperOrder={["label", "input", "description", "error"]}
+      label="Connection string (optional)"
+      description={<ConnectionStringDescription opened={opened} />}
+      value={connectionString}
+      onChange={(e) => setConnectionString(e.target.value)}
+      mb="md"
+    />
+  );
+}
+
+const FEEDBACK_TIMEOUT = 2000;
+const TRANSITION_DURATION = 250;
+
+function ConnectionStringDescription({ opened }: { opened: boolean }) {
+  const defaultDescription = (
+    <Transition
+      mounted={!opened}
+      transition="fade-right"
+      duration={TRANSITION_DURATION}
+      timingFunction="ease"
+      exitDelay={0}
+    >
+      {(styles) => (
+        <Group style={styles} top={0} pos="absolute" h="lg">
+          {t`You can use a connection string to pre-fill the details below.`}
+        </Group>
+      )}
+    </Transition>
   );
 
+  const successMessage = (
+    <Transition
+      mounted={opened}
+      transition="fade-right"
+      duration={TRANSITION_DURATION}
+      timingFunction="ease"
+    >
+      {(styles) => (
+        <Text
+          style={styles}
+          pos="absolute"
+          top={0}
+          c="success"
+          fw="bold"
+          fz="sm"
+        >
+          <Group gap="xs">
+            <Icon
+              name="check_filled"
+              style={{ color: "var(--mb-color-success)" }}
+            />
+            {t`Connection details pre-filled below.`}
+          </Group>
+        </Text>
+      )}
+    </Transition>
+  );
   return (
-    <Stack gap={0}>
-      <Textarea
-        inputWrapperOrder={["label", "input", "description", "error"]}
-        label="Connection string (optional)"
-        description={opened ? successMessage : description}
-        value={connectionString}
-        onChange={(e) => setConnectionString(e.target.value)}
-        mb="md"
-      />
-    </Stack>
+    <Group
+      h="lg"
+      pos="relative"
+      style={{
+        justifyContent: "flex-start",
+      }}
+    >
+      {defaultDescription}
+      {successMessage}
+    </Group>
   );
 }
