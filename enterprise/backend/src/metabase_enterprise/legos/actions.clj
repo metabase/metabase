@@ -56,7 +56,8 @@
   "Execute an entire plan."
   [plan]
   (doseq [step (:steps plan)]
-    (execute! step)))
+    (execute! step))
+  :ok)
 
 (defn hippie-parse
   "Do a very hippie style parsing of the data."
