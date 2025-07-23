@@ -286,10 +286,12 @@
   "Ensure `a-query` has a cached metadata provider (needed so we can use the general `cached-value` and `cache-value!`
   facilities; wrap the current metadata in one that adds caching if needed."
   [a-query]
-  (cond-> a-query
-    (and (:lib/metadata a-query)
-         (not (lib.metadata.protocols/cached-metadata-provider? (:lib/metadata a-query))))
-    (update :lib/metadata lib.metadata.cached-provider/cached-metadata-provider)))
+  (let [mp         (:lib/metadata a-query)
+        cached-mp? (and mp
+                        (lib.metadata.protocols/cached-metadata-provider? mp)
+                        (lib.metadata.protocols/has-cache? mp))]
+    (cond-> a-query
+      (and mp (not cached-mp?)) (update :lib/metadata lib.metadata.cached-provider/cached-metadata-provider))))
 
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an

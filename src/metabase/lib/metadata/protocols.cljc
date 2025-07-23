@@ -159,7 +159,11 @@
   (cached-value [cached-metadata-provider k not-found]
     "Fetch a general cached value stored by [[cache-value!]] with the key `k`.")
   (cache-value! [cached-metadata-provider k v]
-    "Store a general cached value `v` under the key `k`."))
+                "Store a general cached value `v` under the key `k`.")
+  (has-cache? [cached-metadata-provider]
+   "Whether this metadata provider actually has a cache or not. (Some metadata providers like
+  ComposedMetadataProvider implement this method but can only cache stuff if one of the providers they wrap is a cached
+  metadata provider.)"))
 
 (defn cached-metadata-provider?
   "Whether `x` is a valid [[CachedMetadataProvider]]."

@@ -46,10 +46,10 @@
     (store-in-cache! cache ks (fetch-thunk))))
 
 (defn- cached-value [cache k not-found]
-  (get @cache [::cached-value k] not-found))
+  (-> @cache ::cached-value (get k not-found)))
 
 (defn- cache-value! [cache k v]
-  (swap! cache assoc [::cached-value k] v)
+  (swap! cache assoc-in [::cached-value k] v)
   nil)
 
 (defn- database [cache metadata-provider]
@@ -143,6 +143,8 @@
     (cached-value cache k not-found))
   (cache-value! [_this k v]
     (cache-value! cache k v))
+  (has-cache? [_this]
+    true)
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

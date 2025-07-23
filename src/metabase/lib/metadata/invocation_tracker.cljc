@@ -67,6 +67,8 @@
     (lib.metadata.protocols/cached-value metadata-provider k not-found))
   (cache-value! [_this k v]
     (lib.metadata.protocols/cache-value! metadata-provider k v))
+  (has-cache? [_this]
+    (lib.metadata.protocols/has-cache? metadata-provider))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
