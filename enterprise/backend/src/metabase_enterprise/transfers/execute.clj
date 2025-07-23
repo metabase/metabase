@@ -38,7 +38,7 @@
 
     (-> (sql.helpers/create-table (keyword output-table-name))
         (sql.helpers/with-columns (for [{:keys [name pg-type]} fields]
-                                    [[:raw name] pg-type]))
+                                    [(keyword name) pg-type]))
         (->> (sql.qp/format-honeysql :postgres))
         (->> (transforms.execute/execute-query :postgres output-db-ref)))
     fields))
@@ -70,7 +70,7 @@
                        data)
         query (-> (sql.helpers/insert-into (keyword output-table-name))
                   (as-> query (apply sql.helpers/columns query (map (fn [{:keys [name]}]
-                                                                      [:raw name])
+                                                                      (keyword name))
                                                                     fields)))
                   (sql.helpers/values cast-data)
                   (->> (sql.qp/format-honeysql :postgres)))]
