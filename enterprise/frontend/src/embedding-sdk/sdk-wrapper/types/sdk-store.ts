@@ -1,7 +1,7 @@
-export type MetabaseProviderStoreInitializationStatus =
+export type MetabaseProviderPropsStoreInitState =
   | "uninitialized"
   | "initialized";
 
-export type MetabaseProviderStoreInitializationEvent = {
-  status: MetabaseProviderStoreInitializationStatus;
+export type MetabaseProviderPropsStoreInitEvent = {
+  status: MetabaseProviderPropsStoreInitState;
 };

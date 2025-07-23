@@ -1,4 +1,4 @@
-import { useMetabaseProviderStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 
 type SpinnerProps = {
@@ -50,7 +50,7 @@ const Spinner = ({ size = "1.5rem", color = "#509EE3" }: SpinnerProps) => {
 };
 
 export const Loader = ({ className, style }: CommonStylingProps) => {
-  const props = useMetabaseProviderStore();
+  const props = useMetabaseProviderPropsStore();
 
   if (!props) {
     return null;
