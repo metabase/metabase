@@ -4,17 +4,23 @@ import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
+import { useUpdateSettingsMutation } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { Box, Button, Card, Group, Stack } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedNavigation } from "../hooks";
 
+import { AntiAbuseMessage } from "./AntiAbuseMessage";
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
 const SdkIframeEmbedSetupContent = () => {
   const { currentStep } = useSdkIframeEmbedSetupContext();
+  const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
+  const embeddingSdkEnabled = useSetting("enable-embedding-sdk");
+  const [updateSettings] = useUpdateSettingsMutation();
 
   const {
     handleNext,
@@ -24,6 +30,13 @@ const SdkIframeEmbedSetupContent = () => {
     isLastStep,
     StepContent,
   } = useSdkIframeEmbedNavigation();
+
+  const handleAcceptAntiAbuseTerms = async () => {
+    await updateSettings({
+      "show-simple-embed-terms": false,
+      "enable-embedding-sdk": true,
+    });
+  };
 
   return (
     <Box className={S.Container}>
@@ -62,6 +75,10 @@ const SdkIframeEmbedSetupContent = () => {
           </Stack>
         </Card>
       </Box>
+
+      {showSimpleEmbedTerms && !embeddingSdkEnabled && (
+        <AntiAbuseMessage onAccept={handleAcceptAntiAbuseTerms} />
+      )}
     </Box>
   );
 };
