@@ -10,6 +10,7 @@ import {
   useLazyListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
@@ -83,6 +84,9 @@ export function useTableLoader(path: TreePath) {
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
   const [fetchTransforms, transforms] =
     PLUGIN_TRANSFORMS.useLazyListTransforms();
+  const canAccessTransforms = useSelector(
+    PLUGIN_TRANSFORMS.canAccessTransforms,
+  );
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
@@ -118,6 +122,10 @@ export function useTableLoader(path: TreePath) {
       databaseId: DatabaseId | undefined,
       sectionId: SectionId | undefined,
     ) => {
+      if (!canAccessTransforms) {
+        return [];
+      }
+
       if (databaseId === undefined || sectionId !== "transform") {
         return [];
       }
@@ -141,7 +149,7 @@ export function useTableLoader(path: TreePath) {
         }),
       );
     },
-    [fetchTransforms, transformsRef],
+    [fetchTransforms, transformsRef, canAccessTransforms],
   );
 
   const getTables = useCallback(
@@ -245,12 +253,16 @@ export function useTableLoader(path: TreePath) {
             database.value.databaseId !== databaseId
               ? database.children
               : [
-                  node<TransformListNode>({
-                    type: "transform-list",
-                    label: t`Transforms`,
-                    value: { databaseId, sectionId: "transform" },
-                    children: transforms,
-                  }),
+                  ...(canAccessTransforms
+                    ? [
+                        node<TransformListNode>({
+                          type: "transform-list",
+                          label: t`Transforms`,
+                          value: { databaseId, sectionId: "transform" },
+                          children: transforms,
+                        }),
+                      ]
+                    : []),
                   ...schemas.map((schema) => ({
                     ...schema,
                     children:
@@ -266,7 +278,7 @@ export function useTableLoader(path: TreePath) {
         return _.isEqual(current, merged) ? current : merged;
       });
     },
-    [getDatabases, getSchemas, getTables, getTransforms],
+    [getDatabases, getSchemas, getTables, getTransforms, canAccessTransforms],
   );
 
   useDeepCompareEffect(() => {
