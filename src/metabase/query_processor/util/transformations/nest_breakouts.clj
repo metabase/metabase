@@ -8,6 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -143,9 +144,10 @@
                            breakouts)
           explicit-order-bys (vec (:order-by stage))
           explicit-order-by-exprs (set (for [[_dir _opts col-ref] explicit-order-bys]
-                                         col-ref))
+                                         (lib.schema.util/remove-lib-uuids col-ref)))
           order-bys (into explicit-order-bys
-                          (comp (remove explicit-order-by-exprs)
+                          (comp (map lib.schema.util/remove-lib-uuids)
+                                (remove explicit-order-by-exprs)
                                 (map (fn [expr]
                                        (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))
                           breakout-exprs)]
