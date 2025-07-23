@@ -15,7 +15,6 @@ export { InteractiveDashboard } from "./sdk-wrapper/components/public/dashboard/
 export { StaticDashboard } from "./sdk-wrapper/components/public/dashboard/StaticDashboard";
 export { InteractiveQuestion } from "./sdk-wrapper/components/public/SdkQuestion";
 export { StaticQuestion } from "./sdk-wrapper/components/public/StaticQuestion";
-// eslint-disable-next-line no-literal-metabase-strings -- Export
 export { MetabaseProvider } from "./sdk-wrapper/components/public/MetabaseProvider";
 export { MetabotQuestion } from "./sdk-wrapper/components/public/MetabotQuestion";
 
