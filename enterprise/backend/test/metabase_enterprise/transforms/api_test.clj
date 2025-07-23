@@ -6,10 +6,6 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest list-transforms-test
-  (mt/test-drivers (mt/normal-drivers)
-    (mt/user-http-request :crowberto :get 200 "ee/transform")))
-
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/user-http-request :crowberto :post 200 "ee/transform"
@@ -26,21 +22,24 @@
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers)
-    (let [body {:name "Gadget Products"
-                :description "Desc"
-                :source {:type "query"
-                         :query {:database (mt/id)
-                                 :type "native",
-                                 :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
-                                          :template-tags {}}}}
-                :target {:type "table"
-                         ;;:schema "transforms"
-                         :table "gadget_products"}}
-          _ (mt/user-http-request :crowberto :post 200 "ee/transform" body)
-          list-resp (mt/user-http-request :crowberto :get 200 (str "ee/transform?database_id=" (mt/id)))]
-      (is (seq list-resp))
-      (is (every? #(= (mt/id) (:database_id %) (-> % :source :query :database))
-                  list-resp)))))
+    (testing "Can list without query parameters"
+      (mt/user-http-request :crowberto :get 200 "ee/transform"))
+    (testing "Can list with query parameters"
+      (let [body {:name "Gadget Products"
+                  :description "Desc"
+                  :source {:type "query"
+                           :query {:database (mt/id)
+                                   :type "native",
+                                   :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                            :template-tags {}}}}
+                  :target {:type "table"
+                           ;;:schema "transforms"
+                           :table "gadget_products"}}
+            _ (mt/user-http-request :crowberto :post 200 "ee/transform" body)
+            list-resp (mt/user-http-request :crowberto :get 200 (str "ee/transform?database_id=" (mt/id)))]
+        (is (seq list-resp))
+        (is (every? #(= (mt/id) (:database_id %) (-> % :source :query :database))
+                    list-resp))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers)
