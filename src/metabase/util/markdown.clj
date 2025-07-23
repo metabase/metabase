@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.system.core :as system]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.markdown.question-link :as ql])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
                              Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
@@ -25,10 +26,10 @@
 ;;; |                                              Markdown parsing                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private parser
+(def parser
   "An instance of a Flexmark parser"
   (let [options (.. (MutableDataSet.)
-                    (set Parser/EXTENSIONS [(AutolinkExtension/create)]))]
+                    (set Parser/EXTENSIONS [(AutolinkExtension/create) (ql/create)]))]
     (.build (Parser/builder options))))
 
 (def ^:private node-to-tag-mapping

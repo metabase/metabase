@@ -494,6 +494,62 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v56.2025-07-22T12:01:03
+      author: edpaget
+      comment: Create report_card_mapping table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: report_card_mapping
+      changes:
+        - createTable:
+            tableName: report_card_mapping
+            remarks: Maps original cards to new cards for report document versions
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: report_document_version_id
+                  remarks: Referenced report document version
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_document_version
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_card_mapping_version_id
+                    deleteCascade: true
+              - column:
+                  name: original_card_id
+                  remarks: Original card being mapped
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_card_mapping_original_card_id
+                    deleteCascade: true
+              - column:
+                  name: new_card_id
+                  remarks: New card that replaces the original
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_card_mapping_new_card_id
+                    deleteCascade: true
+      rollback:
+        - dropTable:
+            tableName: report_card_mapping
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

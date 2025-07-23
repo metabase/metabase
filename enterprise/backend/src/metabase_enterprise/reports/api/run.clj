@@ -3,14 +3,14 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.reports.impl :as reports.impl]
    [metabase-enterprise.reports.models.report-run :as reports.m.run]
-   [metabase-enterprise.reports.models.report-run-card-data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.middleware.cache.impl :as impl]
+   [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -49,45 +49,7 @@
                                                           :user_id api/*current-user-id*})
         cards-to-run (t2/select :model/Card :report_document_version_id report-version-id)]
 
-    ;; TODO(edpaget): async?
-    ;; Run each card using the query processor
-    (try
-      (doseq [card cards-to-run]
-        ;; TODO(edpaget): encrypt
-        (impl/do-with-serialization
-         (fn [in-fn result-fn]
-           (let [capture-rff (fn capture-rff [metadata]
-                               (in-fn (assoc metadata
-                                             :cache-version 3
-                                             :last-ran (t/zoned-date-time)))
-                               (fn
-                                 ([] {:data metadata})
-                                 ([result]
-                                  (in-fn (if (map? result)
-                                           (->
-                                            (m/dissoc-in result [:data :rows])
-                                            (m/dissoc-in [:json_query :lib/metadata]))
-                                           {}))
-                                  result)
-                                 ([result row]
-                                  (in-fn row)
-                                  result)))
-                 make-run (fn [qp _]
-                            (fn [query info]
-                              (qp (assoc query :info info) capture-rff)))]
-             (qp.card/process-query-for-card
-              (:id card) :api
-              :make-run make-run
-              :context :report))
-           (t2/insert! :model/ReportRunCardData
-                       {:run_id run-id
-                        :card_id (:id card)
-                        :data (result-fn)}))))
-
-      (t2/update! :model/ReportRun run-id {:status :finished})
-      (catch Exception e
-        (log/error e "Error running report" {:report-id report-id :version-id report-version-id :run-id run-id})
-        (t2/update! :model/ReportRun run-id {:status :errored})))
+    (reports.impl/snapshot-cards cards-to-run report-id report-version-id run-id)
 
     (first (t2/hydrate [(t2/select-one :model/ReportRun :id run-id)] :user))))
 
@@ -148,7 +110,7 @@
   "Deserialize the results stored in ReportRunCardData into a response format"
   [^bytes serialized-bytes rff]
   (when serialized-bytes
-    (impl/with-reducible-deserialized-results [[metadata reducible-rows] (ByteArrayInputStream. serialized-bytes)]
+    (cache.impl/with-reducible-deserialized-results [[metadata reducible-rows] (ByteArrayInputStream. serialized-bytes)]
       (when metadata
         (qp.pipeline/*reduce* (results-rff rff) metadata reducible-rows)))))
 
@@ -173,6 +135,8 @@
                                                             [:card-id pos-int?]]
    _query-params
    _body-params]
+
+  ;; TODO: make this happen via join
   ;; Verify the report version exists
   (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
 
@@ -199,6 +163,7 @@
                                                      [:card-id pos-int?]]
    _query-params
    _body-params]
+  ;; TODO: make this happen via join
   ;; Verify the report version exists
   (api/check-404 (t2/exists? :model/ReportVersion :id report-version-id :report_id report-id))
 
