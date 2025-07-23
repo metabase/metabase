@@ -365,7 +365,7 @@
 
           (testing "should return the saved card data"
             (let [response (mt/user-http-request :crowberto
-                                                 :get 200
+                                                 :get 202
                                                  (format "ee/report/%d/version/%d/run/%d/card/%d"
                                                          report-id version-id run-id card-id))]
               ;; Verify the response has the expected structure
@@ -425,7 +425,7 @@
 
           (testing "should return data from the most recent run"
             (let [response (mt/user-http-request :crowberto
-                                                 :get 200
+                                                 :get 202
                                                  (format "ee/report/%d/version/%d/run/latest/card/%d"
                                                          report-id version-id card-id))]
               ;; Verify the response structure
@@ -436,7 +436,7 @@
 
               ;; Verify it's actually from the latest run by comparing with direct access
               (let [direct-response (mt/user-http-request :crowberto
-                                                          :get 200
+                                                          :get 202
                                                           (format "ee/report/%d/version/%d/run/%d/card/%d"
                                                                   report-id version-id run2-id card-id))]
                 (is (= response direct-response)))))
@@ -483,7 +483,7 @@
 
           (testing "should return pivot card data for specific run"
             (let [response #p (mt/user-http-request :crowberto
-                                                    :get 200
+                                                    :get 202
                                                     (format "ee/report/%d/version/%d/run/%d/card/%d"
                                                             report-id version-id run-id pivot-card-id))]
               ;; Verify pivot data structure
@@ -497,7 +497,7 @@
 
           (testing "should return pivot card data for latest run"
             (let [response (mt/user-http-request :crowberto
-                                                 :get 200
+                                                 :get 202
                                                  (format "ee/report/%d/version/%d/run/latest/card/%d"
                                                          report-id version-id pivot-card-id))]
               ;; Verify pivot data structure
