@@ -11,9 +11,11 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
+import type { SectionId } from "../../types";
 import { getUrl as getUrl_ } from "../../utils";
 
 import type {
@@ -26,6 +28,7 @@ import type {
   SchemaNode,
   TableNode,
   TransformListNode,
+  TransformNode,
   TreeNode,
   TreePath,
 } from "./types";
@@ -35,26 +38,29 @@ const CHILD_TYPES = {
   database: "schema",
   schema: "table",
   table: null,
-  "transform-list": null,
+  transform: null,
+  "transform-list": "transform",
 } as const;
 
 export const TYPE_ICONS: Record<ItemType, IconName> = {
   table: "table2",
   schema: "folder",
   database: "database",
+  transform: "refresh_downstream",
   "transform-list": "add_data",
 };
 
 export function hasChildren(type: ItemType): boolean {
-  return type !== "table";
+  return type !== "table" && type !== "transform";
 }
 
 export function getUrl(value: TreePath) {
   return getUrl_({
-    fieldId: undefined,
-    tableId: undefined,
     databaseId: undefined,
+    sectionId: undefined,
     schemaName: undefined,
+    tableId: undefined,
+    fieldId: undefined,
     ...value,
   });
 }
@@ -74,6 +80,7 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
+  const [fetchTransforms] = PLUGIN_TRANSFORMS.useFetchTransforms();
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
@@ -102,6 +109,31 @@ export function useTableLoader(path: TreePath) {
       ) ?? []
     );
   }, [fetchDatabases, databasesRef]);
+
+  const getTransforms = useCallback(
+    async (
+      databaseId: DatabaseId | undefined,
+      sectionId: SectionId | undefined,
+    ) => {
+      if (databaseId === undefined || sectionId !== "transform") {
+        return [];
+      }
+
+      const response = await fetchTransforms();
+      return response?.data?.map((transform) =>
+        node<TransformNode>({
+          type: "transform",
+          label: transform.name,
+          value: {
+            databaseId,
+            sectionId: "transform",
+            transformId: transform.id,
+          },
+        }),
+      );
+    },
+    [fetchTransforms],
+  );
 
   const getTables = useCallback(
     async (
@@ -190,10 +222,11 @@ export function useTableLoader(path: TreePath) {
   const load = useCallback(
     async function (path: TreePath) {
       const { databaseId, schemaName } = path;
-      const [databases, schemas, tables] = await Promise.all([
+      const [databases, schemas, tables, transforms] = await Promise.all([
         getDatabases(),
         getSchemas(path.databaseId),
         getTables(path.databaseId, path.schemaName),
+        getTransforms(path.databaseId, path.sectionId),
       ]);
 
       const newTree: TreeNode = rootNode(
@@ -207,6 +240,7 @@ export function useTableLoader(path: TreePath) {
                     type: "transform-list",
                     label: t`Transforms`,
                     value: { databaseId, sectionId: "transform" },
+                    children: transforms,
                   }),
                   ...schemas.map((schema) => ({
                     ...schema,
@@ -223,7 +257,7 @@ export function useTableLoader(path: TreePath) {
         return _.isEqual(current, merged) ? current : merged;
       });
     },
-    [getDatabases, getSchemas, getTables],
+    [getDatabases, getSchemas, getTables, getTransforms],
   );
 
   useDeepCompareEffect(() => {
@@ -377,12 +411,6 @@ function expandPath(state: ExpandedState, path: TreePath): ExpandedState {
       ...path,
       tableId: undefined,
       schemaName: undefined,
-      sectionId: undefined,
-    })]: true,
-    [toKey({
-      ...path,
-      tableId: undefined,
-      schemaName: undefined,
       databaseId: undefined,
     })]: true,
   };
@@ -473,6 +501,9 @@ export function flatten(
 
 function sort(nodes: TreeNode[]): TreeNode[] {
   return Array.from(nodes).sort((a, b) => {
+    if (a.type === "transform-list" || b.type === "transform-list") {
+      return a.type === "transform-list" ? -1 : 1;
+    }
     return a.label.localeCompare(b.label);
   });
 }
@@ -512,8 +543,20 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
 /**
  * Create a unique key for a TreePath
  */
-function toKey({ databaseId, schemaName, tableId, sectionId }: TreePath) {
-  return JSON.stringify([databaseId, schemaName, tableId, sectionId]);
+function toKey({
+  databaseId,
+  schemaName,
+  tableId,
+  sectionId,
+  transformId,
+}: TreePath) {
+  return JSON.stringify([
+    databaseId,
+    schemaName,
+    tableId,
+    sectionId,
+    transformId,
+  ]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;

@@ -79,6 +79,7 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -787,6 +788,23 @@ export const PLUGIN_SMTP_OVERRIDE = {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
-export const PLUGIN_TRANSFORMS = {
-  NewQueryTransformPage: PluginPlaceholder,
+export type UseFetchTransformsData = {
+  data?: Transform[];
+};
+
+export type UseFetchTransformsResult = [() => Promise<UseFetchTransformsData>];
+
+export type NewTransformFromQueryModalProps = {
+  question: Question;
+  onClose: () => void;
+};
+
+export type TransformsPlugin = {
+  useFetchTransforms(): UseFetchTransformsResult;
+  NewTransformFromQueryModal: ComponentType<NewTransformFromQueryModalProps>;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  useFetchTransforms: () => [() => Promise.resolve({})],
+  NewTransformFromQueryModal: PluginPlaceholder,
 };

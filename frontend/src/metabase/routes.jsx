@@ -16,7 +16,6 @@ import {
   BrowseSchemas,
   BrowseTables,
 } from "metabase/browse";
-import { BrowseTransforms } from "metabase/browse/transforms";
 import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
@@ -308,7 +307,6 @@ export const getRoutes = (store) => {
             <IndexRedirect to="/browse/models" />
             <Route path="metrics" component={BrowseMetrics} />
             <Route path="models" component={BrowseModels} />
-            <Route path="transforms" component={BrowseTransforms} />
             <Route path="databases" component={BrowseDatabases} />
             <Route path="databases/:slug" component={BrowseSchemas} />
             <Route

@@ -12,6 +12,7 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
@@ -23,7 +24,6 @@ import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionM
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import { NewTransformModal } from "metabase/transforms/components/NewTransformModal";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -340,9 +340,8 @@ export function QueryModals({
       );
     case MODAL_TYPES.NEW_TRANSFORM:
       return (
-        <NewTransformModal
-          query={question.query()}
-          opened
+        <PLUGIN_TRANSFORMS.NewTransformFromQueryModal
+          question={question}
           onClose={onCloseModal}
         />
       );
