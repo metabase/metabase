@@ -367,89 +367,6 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v56.2025-07-22T12:00:00
-      author: edpaget
-      comment: Create report_run table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: report_run
-      changes:
-        - createTable:
-            tableName: report_run
-            remarks: Report runs table
-            columns:
-              - column:
-                  name: id
-                  remarks: Unique ID
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: version_id
-                  remarks: Referenced report version
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: report_document_version
-                    referencedColumnNames: id
-                    foreignKeyName: fk_report_run_version_id
-                    deleteCascade: true
-              - column:
-                  name: created_at
-                  remarks: The timestamp of when the run was created
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  name: status
-                  remarks: Status of the report run
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: user_id
-                  remarks: User who initiated this run
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_report_run_user_id
-
-  - changeSet:
-      id: v56.2025-07-22T12:01:00
-      author: edpaget
-      comment: add report_document_version_id column to report_card
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: report_document_version_id
-                  remarks: Referenced report document version
-                  type: int
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v56.2025-07-22T12:01:01
-      author: edpaget
-      comment: add foreign key constraint for report_document_version_id in report_card
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: report_document_version_id
-            referencedTableName: report_document_version
-            referencedColumnNames: id
-            constraintName: fk_report_card_document_version_id
-            onDelete: CASCADE
-
-  - changeSet:
       id: v56.2025-07-22T12:01:02
       author: edpaget
       comment: Create report_run_card_data table
@@ -468,15 +385,23 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: run_id
-                  remarks: Referenced report run
+                  name: report_id
+                  remarks: report this snapshot was created for
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: report_document
+                    referencedColumnNames: id
+                    foreignKeyName: fk_report_version_report_id
+              - column:
+                  name: user_id
+                  remarks: User who created this version
                   type: int
                   constraints:
                     nullable: false
-                    referencedTableName: report_run
+                    referencedTableName: core_user
                     referencedColumnNames: id
-                    foreignKeyName: fk_report_run_card_data_run_id
-                    deleteCascade: true
+                    foreignKeyName: fk_report_version_user_id
               - column:
                   name: card_id
                   remarks: Referenced card run
