@@ -119,8 +119,9 @@ export function EmbeddingSdkSettings() {
           <Group align="flex-start" gap="lg">
             <Flex direction="column" gap="md" style={{ flex: 1 }}>
               <EmbeddingToggle
-                label={t`SDK Embedding`}
+                label={t`Embedding SDK for React`}
                 settingKey="enable-embedding-sdk"
+                labelPosition="right"
               />
 
               {isSimpleEmbedFeatureEnabled && (
@@ -131,9 +132,7 @@ export function EmbeddingSdkSettings() {
                     settingKey="enable-embedding-simple"
                   />
 
-                  <Badge size="xs" color="blue" variant="outline">
-                    {t`Beta`}
-                  </Badge>
+                  <Badge size="sm">{t`Beta`}</Badge>
                 </Group>
               )}
             </Flex>
@@ -186,8 +185,8 @@ export function EmbeddingSdkSettings() {
             placeholder="https://*.example.com"
             description={
               isEmbeddingAvailable
-                ? t`Enter the origins for the websites or apps where you want to allow embedding, separated by a space. These origins apply to both SDK and iframe embedding. Localhost is automatically included. Changes will take effect within one minute.`
-                : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and Enter the origins for the websites or apps where you want to allow SDK embedding.`
+                ? t`Enter the origins for the websites or apps where you want to allow embedding, separated by a space. These origins apply to both SDK and simple embedding. Localhost is automatically included. Changes will take effect within one minute.`
+                : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and enter the origins for the websites or apps where you want to allow SDK and simple embedding.`
             }
             inputType="text"
             disabled={!canEditSdkOrigins}
