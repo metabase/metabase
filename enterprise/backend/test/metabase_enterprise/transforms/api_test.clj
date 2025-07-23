@@ -54,7 +54,11 @@
                          ;;:schema "transforms"
                          :table "gadget_products"}}
           resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
-      (is (=? (assoc body :database_id (mt/id))
+      (is (=? (assoc body
+                     :database_id (mt/id)
+                     :table {:name "gadget_products"
+                             :id pos-int?
+                             :db_id (mt/id)})
               (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp))))))))
 
 (deftest put-transforms-test

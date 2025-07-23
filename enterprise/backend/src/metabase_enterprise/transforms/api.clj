@@ -69,12 +69,16 @@
   (case query-type
     "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
 
+(defn- target-table
+  [database-id target]
+  (t2/select-one :model/Table
+                 :db_id database-id
+                 :schema (:schema target)
+                 :name (:table target)))
+
 (defn- sync-table!
   [database target]
-  (let [table (or (t2/select-one :model/Table
-                                 :db_id (:id database)
-                                 :schema (:schema target)
-                                 :name (:table target))
+  (let [table (or (target-table (:id database) target)
                   (sync/create-table! database {:schema (:schema target)
                                                 :name (:table target)}))]
     (sync/sync-table! table)))
@@ -122,7 +126,9 @@
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/Transform id)))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        database-id (-> transform :source :query :database)]
+    (assoc transform :table (target-table database-id (:target transform)))))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
