@@ -201,8 +201,9 @@
        (-> (sql.helpers/create-index
             [(keyword fts-index-name) :if-not-exists]
             [(keyword table-name) :using-gin [:raw "text_search_vector"]])
-           sql-format-quoted))) (catch Exception e
-                                  (throw (ex-info "Failed to create index table" {} e)))))
+           sql-format-quoted)))
+    (catch Exception e
+      (throw (ex-info "Failed to create index table" {} e)))))
 
 (comment
   (def embedding-model {:provider "ollama"
@@ -314,7 +315,7 @@
   embedding distance."
   [row]
   (-> (get-in row [:metadata :legacy_input])
-      (assoc :score (- 1.0 (:distance row 1.0)))))
+      (assoc :score (:rrf_rank row 1.0))))
 
 ;; TODO: can the query return unqualified keys directly?
 (defn- unqualify-keys
