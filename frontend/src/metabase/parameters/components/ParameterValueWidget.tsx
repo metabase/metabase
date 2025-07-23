@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
@@ -52,7 +52,6 @@ export type ParameterValueWidgetProps = {
   enableRequiredBehavior?: boolean;
   mimicMantine?: boolean;
   isSortable?: boolean;
-  variant?: "default" | "subtle";
   prefix?: ReactNode;
 } & Partial<PopoverProps>;
 
@@ -73,7 +72,6 @@ export const ParameterValueWidget = ({
   setParameterValueToDefault,
   setValue,
   value,
-  variant = "default",
   prefix,
   ...popoverProps
 }: ParameterValueWidgetProps) => {
@@ -86,8 +84,6 @@ export const ParameterValueWidget = ({
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
-  const showTypeIcon =
-    !isEditing && !hasValue && !isFocused && !(variant === "subtle");
 
   const [isOpen, { close, toggle }] = useDisclosure();
 
@@ -198,6 +194,13 @@ export const ParameterValueWidget = ({
     }
   };
 
+  const typeIcon = useMemo(() => {
+    const showTypeIcon = !isEditing && !isFocused && !(hasValue && noPopover);
+    return showTypeIcon ? (
+      <Icon name={parameterTypeIcon} className={S.parameterIcon} size={16} />
+    ) : null;
+  }, [hasValue, isEditing, isFocused, noPopover, parameterTypeIcon]);
+
   if (noPopover) {
     return (
       <Sortable
@@ -208,18 +211,11 @@ export const ParameterValueWidget = ({
       >
         <ParameterValueWidgetTrigger
           className={cx(S.noPopover, className)}
-          variant={variant}
           ariaLabel={parameter.name}
           hasValue={hasValue}
         >
-          {showTypeIcon && (
-            <Icon
-              name={parameterTypeIcon}
-              className={cx(CS.mr1, CS.flexNoShrink)}
-              size={16}
-            />
-          )}
-          {prefix}
+          {typeIcon}
+          <div className={S.Prefix}>{prefix}</div>
           <ParameterDropdownWidget
             parameter={parameter}
             parameters={parameters}
@@ -276,20 +272,11 @@ export const ParameterValueWidget = ({
               className={className}
               ariaLabel={placeholder}
               mimicMantine={mimicMantine}
-              variant={variant}
             >
-              {showTypeIcon && (
-                <Icon
-                  name={parameterTypeIcon}
-                  className={cx(CS.mr1, CS.flexNoShrink)}
-                  size={16}
-                />
-              )}
+              {typeIcon}
               {prefix && <div className={S.Prefix}>{prefix}</div>}
               <div
-                className={cx(CS.mr1, {
-                  [S[variant]]: variant,
-                })}
+                className={CS.mr1}
                 style={
                   isStringParameter(parameter) ? { maxWidth: "190px" } : {}
                 }

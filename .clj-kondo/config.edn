@@ -810,4 +810,9 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
 
   general-qp-and-driver-test-namespaces
   {:linters
-   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}
+   {:discouraged-var
+    {metabase.test/with-column-remappings      {:message "Use metabase.lib.test-util/remap-metadata-provider instead of with-column-remappings in QP tests"}
+     metabase.test.util/with-column-remappings {:message "Use metabase.lib.test-util/remap-metadata-provider instead of with-column-remappings in QP tests"}}
+
+    :metabase/disallow-hardcoded-driver-names-in-tests
+    {:level :warning}}}}}

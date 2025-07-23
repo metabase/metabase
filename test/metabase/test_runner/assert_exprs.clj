@@ -8,7 +8,6 @@
    [clojure.test :as t]
    [clojure.walk :as walk]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [medley.core :as m]
    [metabase.test-runner.assert-exprs.malli-equals]
    [methodical.core :as methodical]))
 
@@ -24,44 +23,19 @@
        form))
    form))
 
-(declare ^:private strip-generated-idents)
-
-(defn- drop-idents-on-joins
-  [joins original-joins generated-join-idents]
-  ;; Recursively strip generated idents off the inner queries of joins!
-  (let [joins (map strip-generated-idents joins original-joins)]
-    (if (seq generated-join-idents)
-      (map-indexed (fn [i join]
-                     (cond-> join
-                       (generated-join-idents i) (dissoc :ident)))
-                   joins)
-      joins)))
-
-(defn- strip-generated-idents
-  "Walk the query's stages, looking in the metadata of each stage for `:generated-idents`.
-
-  That metadata contains sets of keys which were generated in `:aggregation-idents` etc."
-  [inner-query original]
-  (let [modified (if-let [{:generated-paths/keys [aggregation-idents
-                                                  breakout-idents
-                                                  expression-idents
-                                                  join-idents]}      (-> original meta :generated-idents)]
-                   (-> inner-query
-                       (m/update-existing :aggregation-idents #(m/remove-keys aggregation-idents %))
-                       (m/update-existing :breakout-idents    #(m/remove-keys breakout-idents %))
-                       (m/update-existing :expression-idents  #(m/remove-keys expression-idents %))
-                       (m/update-existing :joins              drop-idents-on-joins (:joins original) join-idents))
-                   inner-query)]
-    (cond-> modified
-      (:source-query modified) (update :source-query strip-generated-idents (:source-query original)))))
+(defn- remove-idents [form]
+  (walk/postwalk
+   (fn [form]
+     (cond-> form
+       (map? form) (dissoc :ident :aggregation-idents :breakout-idents :expression-idents)))
+   form))
 
 (defn query=-report
   "Impl for [[t/assert-expr]] `query=`."
   [message expected actual]
   (let [expected (derecordize expected)
-        actual   (-> (derecordize actual)
-                     (m/update-existing :query strip-generated-idents (:query expected)))
-        expected (m/update-existing expected :query strip-generated-idents (:query expected))
+        actual   (remove-idents (derecordize actual))
+        expected (remove-idents expected)
         pass?    (= expected actual)]
     (merge
      {:type     (if pass? :pass :fail)
@@ -87,15 +61,16 @@
 
 (methodical/defmethod =?/=?-diff [:mbql-query :mbql-query]
   [expected actual]
-  (let [actual   (m/update-existing actual   :query strip-generated-idents (:query expected))
-        expected (m/update-existing expected :query strip-generated-idents (:query expected))]
+  (let [actual   (remove-idents actual)
+        expected (remove-idents expected)]
     (=?/=?-diff (vary-meta expected dissoc :type) (vary-meta actual dissoc :type))))
 
 (methodical/defmethod =?/=?-diff [:mbql-query :default]
   [expected actual]
-  (let [expected (m/update-existing expected :query strip-generated-idents (:query expected))]
+  (let [expected (remove-idents expected)]
     (=?/=?-diff (vary-meta expected dissoc :type) (vary-meta actual dissoc :type))))
 
 (methodical/defmethod =?/=?-diff [:default :mbql-query]
   [expected actual]
-  (=?/=?-diff expected (vary-meta actual dissoc :type)))
+  (let [actual (remove-idents actual)]
+    (=?/=?-diff expected (vary-meta actual dissoc :type))))
