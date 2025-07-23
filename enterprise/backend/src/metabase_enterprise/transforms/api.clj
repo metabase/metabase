@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -49,11 +50,14 @@
   [{:keys [source target] :as _transform}]
   (let [db-id (-> source :query :database)
         database (t2/select-one :model/Database db-id)
-        driver (:engine database)
-        needle ((juxt :schema :table) target)
-        normalize-fn (juxt :schema :name)]
-    (some #(= (normalize-fn %) needle)
-          (:tables (driver/describe-database driver database)))))
+        driver (:engine database)]
+    (try
+      (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
+          :fields
+          seq
+          boolean)
+      (catch Exception e
+        (not (driver/table-known-to-not-exist? driver e))))))
 
 (defn- delete-target-table!
   [{:keys [source target] :as _transform}]
