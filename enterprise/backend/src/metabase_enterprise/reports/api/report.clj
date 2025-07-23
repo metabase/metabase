@@ -4,6 +4,7 @@
             [metabase.api.macros :as api.macros]
             [metabase.api.routes.common :refer [+auth]]
             [metabase.models.interface :as mi]
+            [metabase.util.log :as log]
             [metabase.util.malli.schema :as ms]
             [toucan2.core :as t2]))
 
@@ -16,12 +17,18 @@
               [:report.created_at :created_at]
               [:report.updated_at :updated_at]]
    :from     [[(t2/table-name :model/Report) :report]]
-   :join     [[(t2/table-name :model/ReportVersion) :ver] [:= :report.current_version_id :ver.id]]
+   :join     [[(t2/table-name :model/ReportVersion) :ver] [:= :report.id :ver.report_id]]
    :order-by [[:report.id :asc]]
    :where    where-clause})
 
-(defn- get-report [id]
-  (api/check-404 (t2/query-one (report-query [:= :report.id id]))))
+(defn- get-report [id version]
+  (api/check-404 (t2/query-one (report-query (if (some? version)
+                                               [:and
+                                                [:= :report.id id]
+                                                [:= :version_identifier version]]
+                                               [:and
+                                                [:= :report.id id]
+                                                [:= :report.current_version_id :ver.id]])))))
 
 (api.macros/defendpoint :get "/"
   "Gets existing `Reports`."
@@ -48,24 +55,23 @@
                       _ (t2/select-one :conn conn :model/Report :id report-id)
                       _ (t2/select-one :conn conn :model/ReportVersion :report_id report-id)
                       _ (t2/update! :conn conn :model/Report report-id {:current_version_id report-version-id})]
-                  report-id))))
+                  report-id)) nil))
 
 (api.macros/defendpoint :get "/:report-id"
   "Returns an existing Report by ID."
-  [{:keys [report-id]} :- [:map
-                           [:report-id ms/PositiveInt]]]
-
-  (get-report report-id))
+  [{:keys [report-id]} :- [:map [:report-id ms/PositiveInt]]
+   {:keys [version]} :- [:map [:version {:optional true} ms/PositiveInt]]]
+  (get-report report-id version))
 
 (api.macros/defendpoint :put "/:report-id"
   "Updates an existing `Report`."
   [{:keys [report-id]} :- [:map
                            [:report-id ms/PositiveInt]]
-   _query-params
+   {:keys [version]}
    body :- [:map
             [:name :string]
             [:document :string]]]
-  (let [existing-report (get-report report-id)]
+  (let [existing-report (get-report report-id nil)]
     (get-report (t2/with-transaction [conn]
                   (let [new-report-version-id (t2/insert-returning-pk! :conn conn :model/ReportVersion
                                                                        {:report_id          report-id
@@ -76,7 +82,7 @@
                         _ (t2/update! :conn conn :model/Report report-id {:name               (:name body)
                                                                           :current_version_id new-report-version-id
                                                                           :updated_at         (mi/now)})]
-                    report-id)))))
+                    report-id)) nil)))
 
 (api.macros/defendpoint :get "/:report-id/versions"
   "Returns the versions of a given report."

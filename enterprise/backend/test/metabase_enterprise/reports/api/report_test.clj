@@ -44,21 +44,41 @@
 (deftest get-report-test
   (testing "GET /api/ee/report/id"
     (mt/with-temp [:model/Report {report-id :id} {:name "Test Report"}
+                   :model/ReportVersion {} {:report_id          report-id
+                                            :document           "Doc 1"
+                                            :version_identifier 1}
                    :model/ReportVersion {version-id :id} {:report_id          report-id
-                                                          :document           "Initial Doc"
-                                                          :version_identifier 1}]
+                                                          :document           "Doc 2"
+                                                          :version_identifier 2}]
       (t2/update! :model/Report report-id {:current_version_id version-id})
 
-      (testing "should get an existing report"
+      (testing "should get the latest version when no version specified"
         (let [result (mt/user-http-request :crowberto
                                            :get 200 (format "ee/report/%s" report-id))]
           (is (partial= {:name     "Test Report"
-                         :document "Initial Doc"
+                         :document "Doc 2"
+                         :version  2} result))
+          result))
+      (testing "should get the 1st version when specified"
+        (let [result (mt/user-http-request :crowberto
+                                           :get 200 (format "ee/report/%s?version=1" report-id))]
+          (is (partial= {:name     "Test Report"
+                         :document "Doc 1"
                          :version  1} result))
-          result))))
-  (testing "should return 404 for non-existent report"
-    (mt/user-http-request :crowberto
-                          :get 404 "ee/report/99999")))
+          result))
+      (testing "should get the 2nd version when specified"
+        (let [result (mt/user-http-request :crowberto
+                                           :get 200 (format "ee/report/%s?version=2" report-id))]
+          (is (partial= {:name     "Test Report"
+                         :document "Doc 2"
+                         :version  2} result))
+          result))
+      (testing "should return 404 for non-existent report"
+        (mt/user-http-request :crowberto
+                              :get 404 "ee/report/99999"))
+      (testing "should return 404 for non-existent report versions"
+        (mt/user-http-request :crowberto
+                              :get 404 (format "ee/report/%s?version=3" report-id))))))
 
 (deftest get-reports-test
   (testing "GET /api/ee/report"
@@ -102,11 +122,11 @@
 
       (testing "should get all versions of a report"
         (let [result (mt/user-http-request :crowberto
-                                           :get 200 (format "ee/report/%s/versions" report-id))]
+                                           :get 200 (str "ee/report/%s/versions" report-id))]
           (is (partial= [{:document "Doc 1" :version 1 :content_type "text/markdown" :parent_version_id nil}
                          {:document "Doc 2" :version 2 :content_type "text/markdown" :parent_version_id v1}
                          {:document "Doc 3" :version 3 :content_type "text/markdown" :parent_version_id v2}] result))
-          result))))
-  (testing "should return 404 for non-existent report"
-    (mt/user-http-request :crowberto
-                          :get 404 "ee/report/99999/versions")))
+          result))
+      (testing "should return 404 for non-existent report"
+        (mt/user-http-request :crowberto
+                              :get 404 "ee/report/99999/versions")))))
