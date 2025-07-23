@@ -67,7 +67,9 @@
 (def db-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
           :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db)
+          :db                      (if tx/*use-routing-details*
+                                     (tx/db-test-env-var :redshift :db-routing)
+                                     (tx/db-test-env-var :redshift :db))
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
@@ -75,7 +77,15 @@
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
-  @db-connection-details)
+  {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+   :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+   :db                      (if tx/*use-routing-details*
+                              (tx/db-test-env-var :redshift :db-routing)
+                              (tx/db-test-env-var :redshift :db))
+   :user                    (tx/db-test-env-var-or-throw :redshift :user)
+   :password                (tx/db-test-env-var-or-throw :redshift :password)
+   :schema-filters-type     "inclusion"
+   :schema-filters-patterns (str "spectrum," (unique-session-schema))})
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -193,7 +203,9 @@
   [driver]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
-   (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   (sql-jdbc.conn/connection-details->spec driver  (if tx/*use-routing-details*
+                                                     (tx/dbdef->connection-details driver)
+                                                     @db-connection-details))
    {:write? true}
    (fn [conn]
      (delete-old-schemas! conn)
@@ -278,11 +290,13 @@
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
      (sql-jdbc.execute/do-with-connection-with-options
       driver
-      (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
       {:write? false}
       (fn [^java.sql.Connection conn]
         (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
+                                     #_catalog        (if tx/*use-routing-details*
+                                                        (tx/db-test-env-var :redshift :db-routing)
+                                                        (tx/db-test-env-var :redshift :db))
                                      #_schema-pattern session-schema
                                      #_table-pattern  table-name
                                      #_types          (into-array String ["TABLE"]))]

@@ -48,6 +48,14 @@
   :type           :string
   :database-local :only)
 
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -312,7 +320,9 @@
 (defn database-display-name-for-driver
   "Get the name for a test dataset for a driver, e.g. `test-data` for `:postgres` is `test-data (postgres)`."
   [driver database-name]
-  (format "%s (%s)" database-name (u/qualified-name driver)))
+  (if *use-routing-details*
+    (format "%s-routing (%s)" database-name (u/qualified-name driver))
+    (format "%s (%s)" database-name (u/qualified-name driver))))
 
 (mu/defmethod metabase-instance DatabaseDefinition :- [:maybe :map]
   [{:keys [database-name]} :- [:map [:database-name :string]]
@@ -1151,11 +1161,3 @@
     (format "DEV: %s %s"
             (str t/*testing-vars*)
             (:user env/env))))
-
-(def ^:dynamic *use-routing-details*
-  "Used to decide if routing details should be used for a db."
-  false)
-
-(def ^:dynamic *use-routing-dataset*
-  "Used to override the dataset name for routing tests."
-  false)
