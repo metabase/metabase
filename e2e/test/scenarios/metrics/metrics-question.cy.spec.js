@@ -115,7 +115,7 @@ describe("scenarios > metrics > question", () => {
       .click();
     cy.findByTestId("sidebar-content")
       .findByTestId("pinned-dimensions")
-      .findByLabelText("Created At")
+      .findByLabelText("Created At: Month")
       .findByText("by month")
       .realHover()
       .click();

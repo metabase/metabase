@@ -1142,7 +1142,7 @@ describe("issue 49882", () => {
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
 
     H.enterCustomColumnDetails({
-      formula: `[Produ${selectProductVendor}`,
+      formula: `[Product Rati${selectProductVendor}`,
       blur: false,
     });
 
