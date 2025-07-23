@@ -29,6 +29,9 @@
 (def ^:private execute-bulk-url "/ee/action-v2/execute-bulk")
 (def ^:private execute-form-url "/ee/action-v2/execute-form")
 
+;; TODO rather introduce a new driver feature e.g. data-editing and use that
+(def ^:private data-editing-drivers #{:postgres :h2 :mysql})
+
 ;; TODO make non-bulk versions, and DRY up  bit
 
 (defn create-rows!
@@ -70,7 +73,7 @@
 
 (deftest table-operations-via-action-execute-test
   (mt/with-premium-features #{:actions}
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
         (testing "Initially the table is empty"
           (is (= [] (table-rows table-id))))
@@ -126,7 +129,7 @@
 
 (deftest table-operations-via-action-execute-with-compound-pk-test
   (mt/with-premium-features #{:actions}
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
                                                      :id_2   'auto-inc-type
                                                      :name  [:text]
@@ -318,7 +321,7 @@
 
 ;; TODO let's keep this test setup, but track our current behavior with no smarts
 (deftest mutual-recursion-delete-test
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers data-editing-drivers
     (mt/with-premium-features #{:actions}
       (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -361,7 +364,7 @@
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:actions}
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers data-editing-drivers
       (testing "40x returned if user/database not configured for editing"
         (let [test-endpoints (fn [flags status-code]
                                (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
@@ -408,7 +411,7 @@
 
 (deftest coercion-test
   (mt/with-premium-features #{:actions}
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers data-editing-drivers
       (let [create! #(create-rows! %1 %2)
             update! #(update-rows! %1 %2)
             always-lossy #{:Coercion/UNIXNanoSeconds->DateTime
@@ -480,8 +483,7 @@
 
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{:actions}
-    ;; TODO test MYSQL
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
         (let [field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
               _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
@@ -517,7 +519,7 @@
 
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{:actions}
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
                                                      :text      [:text]
                                                      :int       [:int]
