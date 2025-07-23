@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { NameDescriptionInput } from "metabase/metadata/components/NameDescriptionInput";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { TransformSectionProps } from "metabase/plugins";
@@ -23,19 +24,24 @@ import { SCHEDULE_OPTIONS } from "./constants";
 
 export function TransformSection({ transformId }: TransformSectionProps) {
   const { data: transform } = useGetTransformQuery(transformId);
+  const databaseId = transform?.source?.query?.database;
+  const { data: schemas } = useListDatabaseSchemasQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
 
-  if (!transform) {
+  if (transform == null || schemas == null) {
     return null;
   }
 
-  return <TransformSettings transform={transform} />;
+  return <TransformSettings transform={transform} schemas={schemas} />;
 }
 
 type TransformSettingsProps = {
   transform: Transform;
+  schemas: string[];
 };
 
-function TransformSettings({ transform }: TransformSettingsProps) {
+function TransformSettings({ transform, schemas }: TransformSettingsProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -177,7 +183,7 @@ function TransformSettings({ transform }: TransformSettingsProps) {
             <Select
               label={t`The schema where this table should go`}
               value={transform.target.schema}
-              data={[]}
+              data={schemas}
               onChange={handleTargetSchemaChange}
             />
           </Stack>
