@@ -10,6 +10,9 @@ export interface UriFields {
 
 export function parseConnectionUri(connectionUri: string): UriFields | null {
   try {
+    const url = connectionUri.startsWith("jdbc:")
+      ? new URL(connectionUri.slice(5))
+      : new URL(connectionUri);
     const {
       hostname,
       port,
@@ -18,7 +21,7 @@ export function parseConnectionUri(connectionUri: string): UriFields | null {
       password,
       protocol,
       searchParams,
-    } = new URL(connectionUri);
+    } = url;
 
     const searchParamsObject = Object.fromEntries(
       Array.from(searchParams.entries()).map(([key, value]) => [
