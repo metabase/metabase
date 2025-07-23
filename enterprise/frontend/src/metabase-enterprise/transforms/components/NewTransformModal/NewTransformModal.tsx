@@ -4,6 +4,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -65,9 +66,11 @@ const NEW_TRANSFORM_SCHEMA = Yup.object().shape({
 
 function NewTransformForm({ name, query }: NewTransformFormProps) {
   const databaseId = Lib.databaseID(query);
-  const { data: schemas } = useListDatabaseSchemasQuery(
-    databaseId ? { id: databaseId } : skipToken,
-  );
+  const {
+    data: schemas = [],
+    isLoading,
+    error,
+  } = useListDatabaseSchemasQuery(databaseId ? { id: databaseId } : skipToken);
   const [createTransform] = useCreateTransformMutation();
   const dispatch = useDispatch();
 
@@ -82,8 +85,8 @@ function NewTransformForm({ name, query }: NewTransformFormProps) {
     dispatch(push(getTransformUrl(transform)));
   };
 
-  if (!schemas) {
-    return null;
+  if (isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
