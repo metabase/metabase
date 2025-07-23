@@ -225,7 +225,7 @@ export function Results({
               onFocus={() => onSelectedIndexChange?.(index)}
             >
               <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
-                <Flex align="flex-start" gap="xs" w="100%">
+                <Flex align="center" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
                     {hasChildren(type) && (
                       <Icon

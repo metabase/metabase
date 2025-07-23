@@ -646,5 +646,6 @@ function loadingItem(
     parent: parent?.type === "root" ? undefined : parent?.key,
     isLoading: true,
     key: Math.random().toString(),
+    disabled: true,
   };
 }
