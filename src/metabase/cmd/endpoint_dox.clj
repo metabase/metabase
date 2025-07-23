@@ -35,6 +35,6 @@
          openapi-object                 (openapi-object)]
      (with-open [w (java.io.FileWriter. output-file)]
        (.write w before)
-       (json/encode-to openapi-object  w {:pretty true})
+       (json/encode-to openapi-object w {:pretty true})
        (.write w after)))
    (println "Done.")))
