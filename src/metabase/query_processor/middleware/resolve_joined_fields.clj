@@ -110,6 +110,7 @@
       true
       add-join-alias-to-fields-if-needed*)))
 
+;;; TODO (Cam 7/23/25) -- give this a better name that makes its actual purpose a little clearer
 (defn resolve-joined-fields
   "Add `:join-alias` info to `:field` clauses where needed."
   [query]
