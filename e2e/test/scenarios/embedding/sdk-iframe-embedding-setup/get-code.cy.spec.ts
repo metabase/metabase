@@ -111,7 +111,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Existing Metabase Session").should("be.checked");
-      codeBlock().should("contain", "useExistingUserSession: true");
+      codeBlock().should("contain", '"useExistingUserSession": true');
     });
   });
 
