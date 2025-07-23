@@ -9,7 +9,7 @@ export const _InteractiveQuestion = (props: InteractiveQuestionProps) => {
   return <SdkQuestion {...props} />;
 };
 
-const InteractiveQuestion = withPublicComponentWrapper(
+export const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
   BackButton: typeof SdkQuestion.BackButton;
