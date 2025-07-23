@@ -248,8 +248,7 @@
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
-        ;; TODO: what's the right syntax here for the tsquery?
-        ts-search-expr (str/replace (search/to-tsquery-expr (:search-string search-context)) "'" "")
+        ts-search-expr (search/to-tsquery-expr (:search-string search-context))
         tsv-lang (search/tsv-language)]
     {:select [[:id :id]
               [:model_id :model_id]
