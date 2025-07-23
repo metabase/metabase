@@ -3,12 +3,10 @@ import { useSearchParam } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-
-import S from "./SdkIframeEmbedSetup.module.css";
+import { getEmbedCustomElementSnippet } from "../utils/embed-snippet";
 
 declare global {
   interface Window {
@@ -19,9 +17,10 @@ declare global {
 export const SdkIframeEmbedPreview = () => {
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
 
-  const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
+  const { settings, isEmbedSettingsLoaded, experience } =
+    useSdkIframeEmbedSetupContext();
 
-  const embedJsRef = useRef<MetabaseEmbed | null>(null);
+  const embedRef = useRef<MetabaseEmbedElement>(null);
   const localeOverride = useSearchParam("locale");
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
@@ -36,20 +35,30 @@ export const SdkIframeEmbedPreview = () => {
         document.body.appendChild(script);
 
         script.onload = () => {
-          const { MetabaseEmbed } = window["metabase.embed"];
-
-          embedJsRef.current = new MetabaseEmbed({
-            ...settings,
-
-            target: "#iframe-embed-container",
-            iframeClassName: S.EmbedPreviewIframe,
+          const { defineMetabaseConfig } = window["metabase.embed"];
+          defineMetabaseConfig({
+            instanceUrl: "http://localhost:3000",
             useExistingUserSession: true,
-            instanceUrl,
-
             ...(localeOverride ? { locale: localeOverride } : {}),
           });
+          setIsConfigureLoaded(true);
 
-          embedJsRef.current.addEventListener("ready", () =>
+          const wrapperDiv = document.getElementById("iframe-embed-container");
+          if (!wrapperDiv) {
+            console.error("#iframe-embed-container not found");
+            return;
+          }
+
+          wrapperDiv.innerHTML = getEmbedCustomElementSnippet({
+            settings,
+            experience,
+            id: "custom-element-id",
+          });
+
+          const customElement = document.getElementById("custom-element-id");
+          embedRef.current = customElement as unknown;
+
+          embedRef.current.addEventListener("ready", () =>
             setIsIframeLoaded(true),
           );
         };
@@ -58,18 +67,18 @@ export const SdkIframeEmbedPreview = () => {
       }
 
       return () => {
-        embedJsRef.current?.destroy();
+        embedRef.current?.destroy?.();
         scriptRef.current?.remove();
       };
     },
 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are synced via useEffect below
-    [isEmbedSettingsLoaded],
+    [isEmbedSettingsLoaded, experience],
   );
 
   useEffect(() => {
-    if (embedJsRef.current && isIframeLoaded) {
-      embedJsRef.current.updateSettings({
+    if (embedRef.current) {
+      embedRef.current.updateSettings({
         // Clear the existing experiences.
         // This is necessary as `updateSettings` merges new settings with existing ones.
         template: undefined,
@@ -84,8 +93,8 @@ export const SdkIframeEmbedPreview = () => {
   }, [settings, isIframeLoaded]);
 
   return (
-    <div>
-      <Box id="iframe-embed-container" data-iframe-loaded={isIframeLoaded} />
+    <div style={{ width: "100%", height: "100%" }} id="iframe-embed-container">
+      {/* this is populated from the useEffect so that we can share `getEmbedCustomElementSnippet` with the code snippet on the left */}
     </div>
   );
 };

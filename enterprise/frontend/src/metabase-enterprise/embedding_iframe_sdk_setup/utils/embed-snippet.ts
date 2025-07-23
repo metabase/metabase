@@ -25,6 +25,28 @@ export function getEmbedSnippet({
   instanceUrl: string;
   experience: SdkIframeEmbedSetupExperience;
 }): string {
+  // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+  return `<script src="${instanceUrl}/app/embed.js"></script>
+
+<script>
+  const { defineMetabaseConfig } = window["metabase.embed"];
+  defineMetabaseConfig({
+    ${getMetabaseConfigSnippet(settings, instanceUrl)}
+  });
+</script>
+
+${getEmbedCustomElementSnippet({ settings, experience })}`;
+}
+
+export function getEmbedCustomElementSnippet({
+  settings,
+  experience,
+  id,
+}: {
+  settings: SdkIframeEmbedSetupSettings;
+  experience: SdkIframeEmbedSetupExperience;
+  id?: string;
+}): string {
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
     .with("chart", () => "metabase-question")
@@ -36,17 +58,7 @@ export function getEmbedSnippet({
     ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
-  // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-  return `<script src="${instanceUrl}/app/embed.js"></script>
-
-<script>
-  const { defineMetabaseConfig } = window["metabase.embed"];
-  defineMetabaseConfig({
-    ${getMetabaseConfigSnippet(settings, instanceUrl)}
-  });
-</script>
-
-<${elementName} ${attributes}></${elementName}>`;
+  return `<${elementName} ${attributes} ${id ? `id="${id}"` : ""}></${elementName}>`;
 }
 
 // Convert camelCase keys to lower-dash-case for web components
