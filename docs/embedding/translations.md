@@ -1,5 +1,6 @@
 ---
 title: Translate embedded dashboards and questions
+summary: Upload a translation dictionary to translate embedded dashboards and questions into different languages. Translate both Metabase content and data.
 ---
 
 # Translate embedded dashboards and questions
