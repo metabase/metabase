@@ -16,7 +16,10 @@ export const getEmbedSidebar = () => cy.findByRole("complementary");
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
+export const visitNewEmbedPage = ({
+  locale,
+  dismissEmbedTerms = true,
+}: { locale?: string; dismissEmbedTerms?: boolean } = {}) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
   const params = new URLSearchParams();
@@ -27,19 +30,21 @@ export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
 
   cy.visit("/embed-iframe?" + params);
 
-  cy.log("simple embedding terms card should be shown");
-  cy.findByTestId("simple-embed-terms-card").within(() => {
-    cy.findByText("First, some legalese.").should("be.visible");
+  if (dismissEmbedTerms) {
+    cy.log("simple embedding terms card should be shown");
+    cy.findByTestId("simple-embed-terms-card").within(() => {
+      cy.findByText("First, some legalese.").should("be.visible");
 
-    cy.findByText(
-      "When using simple embedding, each end user should have their own Metabase account.",
-    ).should("be.visible");
+      cy.findByText(
+        "When using simple embedding, each end user should have their own Metabase account.",
+      ).should("be.visible");
 
-    cy.findByText("Got it").should("be.visible").click();
-  });
+      cy.findByText("Got it").should("be.visible").click();
+    });
 
-  cy.log("simple embedding terms card should be dismissed");
-  cy.findByTestId("simple-embed-terms-card").should("not.exist");
+    cy.log("simple embedding terms card should be dismissed");
+    cy.findByTestId("simple-embed-terms-card").should("not.exist");
+  }
 
   cy.wait("@dashboard");
 
@@ -70,8 +75,12 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 };
 
 type NavigateToStepOptions =
-  | { experience: "exploration"; resourceName?: never }
-  | ({ experience: "dashboard" | "chart" } & (
+  | {
+      experience: "exploration";
+      dismissEmbedTerms?: boolean;
+      resourceName?: never;
+    }
+  | ({ experience: "dashboard" | "chart"; dismissEmbedTerms?: boolean } & (
       | { resourceName: string; skipResourceSelection?: never }
       | { skipResourceSelection: true }
     ));
@@ -81,7 +90,7 @@ export const navigateToEntitySelectionStep = (
 ) => {
   const { experience } = options;
 
-  visitNewEmbedPage();
+  visitNewEmbedPage({ dismissEmbedTerms: options.dismissEmbedTerms });
 
   cy.log("select an experience");
 
