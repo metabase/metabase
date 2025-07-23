@@ -1,5 +1,6 @@
 ---
 title: Joining data
+summary: Learn how to combine data from different tables using joins. We'll show you how to pick tables, match columns, and choose the right join type.
 redirect_from:
   - /docs/latest/users-guide/join
 ---
@@ -60,15 +61,16 @@ For example, let's say you have a table of reviews, and want to add a column tha
 
 You could first calculate the average rating, then join the result to the reviews table on `1=1`.
 
-To enter a constant as a join key:
+![Join with custom expression](../images/join-with-custom-expression.png)
+
+To use a custom expression as a join key:
 
 1. Click on one of the join keys.
 2. Select **custom expression**.
-3. Enter `1` (or any other constant) and click **Done**.
+3. Enter your expression (including a constant like `1`.
+4. Click **Done**.
 
-![Join with custom expression](../images/join-with-custom-expression.png)
-
-The join keys don't have to be constants, you can also define a key with a [custom expression](./expressions-list.md).
+See a [list of expressions](./expressions-list.md).
 
 ## Further reading
 
