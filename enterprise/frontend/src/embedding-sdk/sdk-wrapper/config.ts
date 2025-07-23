@@ -3,8 +3,7 @@ export const SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_DASH_CASED =
 export const SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED =
   "embeddingSdkBundle";
 
-export const SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME =
-  "metabase-embedding-sdk-loading";
+export const SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME = "sdk-bundle-script-loading";
 
 export const SDK_BUNDLE_LOADING_ERROR_MESSAGE =
   // eslint-disable-next-line no-literal-metabase-strings -- error message
@@ -13,5 +12,5 @@ export const SDK_BUNDLE_LOADING_ERROR_MESSAGE =
   "        `authConfig.metabaseInstanceUrl` is correct and that the Metabase\n" +
   "        instance is reachable.";
 
-export const METABASE_PROVIDER_STORE_INITIALIZATION_EVENT_NAME =
-  "metabase-embedding-sdk-provider-store-initialization";
+export const METABASE_PROVIDER_PROPS_STORE_INIT_EVENT_NAME =
+  "metabase-provider-props-store-init";

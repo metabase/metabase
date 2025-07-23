@@ -1,13 +1,13 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-import { MetabaseProviderStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-store";
+import { MetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-props-store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 
 export function useLazySelector<TSelected>(
   selector: ((state: SdkStoreState) => TSelected) | null | undefined,
 ): TSelected | null {
   const getSnapshot = useCallback((): TSelected | null => {
-    const store = MetabaseProviderStore.getInstance()?.getSdkStore();
+    const store = MetabaseProviderPropsStore.getInstance()?.getSdkStore();
 
     if (!store || !selector) {
       return null;
@@ -18,7 +18,7 @@ export function useLazySelector<TSelected>(
 
   const subscribe = useCallback(
     (callback: () => void) => {
-      const store = MetabaseProviderStore.getInstance()?.getSdkStore();
+      const store = MetabaseProviderPropsStore.getInstance()?.getSdkStore();
 
       if (!store || !selector) {
         return () => {};
