@@ -1,19 +1,24 @@
+import { useMemo } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
+  FormSelect,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { useDispatch } from "metabase/lib/redux";
 import type { NewTransformModalProps } from "metabase/plugins";
 import { Flex, Modal, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import * as Lib from "metabase-lib";
-import type { CreateTransformRequest } from "metabase-types/api";
+import type { CreateTransformRequest, Transform } from "metabase-types/api";
 
 export function NewTransformModal({
   question,
@@ -31,7 +36,10 @@ export function NewTransformModal({
           </Flex>
         </Modal.Header>
         <Modal.Body>
-          <NewTransformForm query={question.query()} onClose={onClose} />
+          <NewTransformForm
+            name={question.displayName() ?? ""}
+            query={question.query()}
+          />
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
@@ -39,8 +47,8 @@ export function NewTransformModal({
 }
 
 type NewTransformFormProps = {
+  name: string;
   query: Lib.Query;
-  onClose: () => void;
 };
 
 type NewTransformSettings = {
@@ -50,30 +58,52 @@ type NewTransformSettings = {
 };
 
 const NEW_TRANSFORM_SCHEMA = Yup.object().shape({
-  name: Yup.string().required(Errors.required).default(""),
-  schema: Yup.string().required(Errors.required).default(""),
-  table: Yup.string().required(Errors.required).default(""),
+  name: Yup.string().required(Errors.required),
+  schema: Yup.string().required(Errors.required),
+  table: Yup.string().required(Errors.required),
 });
 
-function NewTransformForm({ query, onClose }: NewTransformFormProps) {
+function NewTransformForm({ name, query }: NewTransformFormProps) {
+  const databaseId = Lib.databaseID(query);
+  const { data: schemas } = useListDatabaseSchemasQuery(
+    databaseId ? { id: databaseId } : skipToken,
+  );
   const [createTransform] = useCreateTransformMutation();
+  const dispatch = useDispatch();
+
+  const initialValues = useMemo(
+    () => ({ name, schema: schemas ? schemas[0] : "", table: "" }),
+    [name, schemas],
+  );
 
   const handleSubmit = async (settings: NewTransformSettings) => {
-    await createTransform(getRequest(query, settings)).unwrap();
-    onClose();
+    const request = getRequest(query, settings);
+    const transform = await createTransform(request).unwrap();
+    dispatch(push(getTransformUrl(transform)));
   };
+
+  if (!schemas) {
+    return null;
+  }
 
   return (
     <FormProvider
-      initialValues={NEW_TRANSFORM_SCHEMA.getDefault()}
+      initialValues={initialValues}
       validationSchema={NEW_TRANSFORM_SCHEMA}
       onSubmit={handleSubmit}
     >
       <Form>
         <Stack>
-          <FormTextInput name="name" label={t`Name`} />
-          <FormTextInput name="schema" label={t`Schema`} />
-          <FormTextInput name="table" label={t`Table`} />
+          <FormTextInput name="name" label={t`Name`} autoFocus />
+          <FormTextInput
+            name="table"
+            label={t`What should the generated table be called in the database?`}
+          />
+          <FormSelect
+            name="schema"
+            label={t`The schema where this table should go`}
+            data={schemas}
+          />
           <FormErrorMessage />
           <Flex justify="end">
             <FormSubmitButton variant="filled" />
@@ -100,4 +130,8 @@ function getRequest(
       table: settings.table,
     },
   };
+}
+
+function getTransformUrl(transform: Transform) {
+  return `/admin/datamodel/database/${transform.source.query.database}/transform/${transform.id}`;
 }
