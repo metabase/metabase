@@ -10,6 +10,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -384,23 +385,94 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Column .*TAX.* not found"
                                     (qp/process-query query))))))))))
 
-(deftest self-join-with-external-remapping-test
+(deftest ^:parallel self-join-with-external-remapping-test
   (testing "Should handle self joins with external remapping (#60444)"
-    (mt/with-driver :h2
-      (mt/with-temp [:model/Dimension _ {:field_id (mt/id :orders :user_id)
-                                         :name "User ID"
-                                         :type :external
-                                         :human_readable_field_id (mt/id :people :email)}]
-        (let [query (mt/mbql-query orders
-                      {:joins [{:source-table $$orders
-                                :alias "j"
-                                :condition
-                                [:= $id &j.orders.product_id]
-                                :fields :all}]})]
-          ;; should return 20 columns and 37320 rows
-          (mt/with-native-query-testing-context query
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"column number mismatch"
-                                  (-> query qp/process-query mt/rows count)))))))))
+    ;; see https://metaboat.slack.com/archives/C0645JP1W81/p1753208898063419 for further discussion
+    (let [mp      (lib.tu/remap-metadata-provider
+                   (mt/application-database-metadata-provider (mt/id))
+                   (mt/id :orders :user_id) (mt/id :people :email))
+          query   (lib/query
+                   mp
+                   (mt/mbql-query orders
+                     {:joins    [{:source-table $$orders
+                                  :alias        "j"
+                                  :condition    [:= $id &j.orders.product_id]
+                                  :fields       :all}]
+                      :order-by [[:asc $id]
+                                 ;; should actually end up sorting by people.email
+                                 ;; instead, [[metabase.query-processor.middleware.add-remaps]] should replace this
+                                 ;; clause.
+                                 [:asc $user_id]
+                                 [:asc $product_id]
+                                 [:asc $total]]
+                      :limit    2}))
+          results (qp/process-query query)]
+      ;; should return 20 columns and 37320 rows
+      (mt/with-native-query-testing-context query
+        (is (= 20
+               (count (mt/cols results))))
+        (is (= ["ID"
+                "USER_ID"
+                "PRODUCT_ID"
+                "SUBTOTAL"
+                "TAX"
+                "TOTAL"
+                "DISCOUNT"
+                "CREATED_AT"
+                "QUANTITY"
+                "j__ID"
+                "j__USER_ID"
+                "j__PRODUCT_ID"
+                "j__SUBTOTAL"
+                "j__TAX"
+                "j__TOTAL"
+                "j__DISCOUNT"
+                "j__CREATED_AT"
+                "j__QUANTITY"
+                "PEOPLE__via__USER_ID__EMAIL"
+                "j__EMAIL"]
+               (map :lib/desired-column-alias (mt/cols results))))
+        (is (= [[1                      ; <= orders.id
+                 1                      ; <= orders.user-id
+                 14                     ; <= orders.product-id
+                 37.65
+                 2.07
+                 39.72
+                 nil
+                 "2019-02-11T21:40:27.892Z"
+                 2
+                 14296                  ; <= (joined) orders.id
+                 1902                   ; <= (joined) orders.user-id
+                 1                      ; <= (joined) orders.product-id == orders.id
+                 44.19
+                 0.0
+                 44.19
+                 nil
+                 "2019-11-21T19:38:22.102Z"
+                 22
+                 "borer-hudson@yahoo.com" ; <= orders.user-id --[remap]--> people.email (email of People row with ID = 1)
+                 "jace-kihn@yahoo.com"]   ; <= (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1945)
+                [1
+                 1
+                 14
+                 37.65
+                 2.07
+                 39.72
+                 nil
+                 "2019-02-11T21:40:27.892Z"
+                 2
+                 14129
+                 1874
+                 1
+                 44.19
+                 2.21
+                 46.4
+                 nil
+                 "2019-04-01T02:13:37.084Z"
+                 2
+                 "borer-hudson@yahoo.com"
+                 "christop.schulist@gmail.com"]]
+               (mt/rows results)))))))
 
 (deftest multi-stage-with-external-remapping-test
   (testing "Should handle multiple stages with external remapping (#60587)"
