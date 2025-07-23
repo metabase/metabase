@@ -81,7 +81,8 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
-  const [fetchTransforms, transforms] = PLUGIN_TRANSFORMS.useFetchTransforms();
+  const [fetchTransforms, transforms] =
+    PLUGIN_TRANSFORMS.useLazyListTransforms();
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);

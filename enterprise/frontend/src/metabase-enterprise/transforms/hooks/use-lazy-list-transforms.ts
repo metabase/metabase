@@ -1,7 +1,7 @@
-import type { UseFetchTransformsResult } from "metabase/plugins";
+import type { UseLazyListTransformsResult } from "metabase/plugins";
 import { useLazyListTransformsQuery } from "metabase-enterprise/api";
 
-export function useFetchTransforms(): UseFetchTransformsResult {
+export function useLazyListTransforms(): UseLazyListTransformsResult {
   const [fetchTransforms, fetchState] = useLazyListTransformsQuery();
   return [fetchTransforms, fetchState];
 }

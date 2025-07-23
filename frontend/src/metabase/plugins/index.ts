@@ -789,18 +789,18 @@ export const PLUGIN_SMTP_OVERRIDE = {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
-export type UseFetchTransformsData = {
+export type UseLazyListTransformsData = {
   data?: Transform[];
 };
 
-export type UseFetchTransformsState = {
+export type UseLazyListTransformsState = {
   isFetching: boolean;
   isError: boolean;
 };
 
-export type UseFetchTransformsResult = [
-  () => Promise<UseFetchTransformsData>,
-  UseFetchTransformsState,
+export type UseLazyListTransformsResult = [
+  () => Promise<UseLazyListTransformsData>,
+  UseLazyListTransformsState,
 ];
 
 export type NewTransformModalProps = {
@@ -814,17 +814,19 @@ export type TransformSectionProps = {
 };
 
 export type TransformsPlugin = {
-  useFetchTransforms: () => UseFetchTransformsResult;
+  canAccessTransforms: (state: State) => boolean;
+  useLazyListTransforms: () => UseLazyListTransformsResult;
   TransformSection: ComponentType<TransformSectionProps>;
   NewTransformModal: ComponentType<NewTransformModalProps>;
 };
 
-function fetchTransforms(): Promise<UseFetchTransformsData> {
+function fetchTransforms(): Promise<UseLazyListTransformsData> {
   return Promise.resolve({});
 }
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  useFetchTransforms: () => [
+  canAccessTransforms: () => false,
+  useLazyListTransforms: () => [
     fetchTransforms,
     { isFetching: false, isError: false },
   ],
