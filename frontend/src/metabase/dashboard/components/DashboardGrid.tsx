@@ -244,6 +244,17 @@ const DashboardGrid = forwardRef<
     }
   }, [dashboard, getDashcardCountByCardId]);
 
+  // Initialize visibleCardIds when dashboard first becomes available
+  useEffect(() => {
+    if (dashboard && visibleCardIds.size === 0) {
+      const newVisibleCardIds = getVisibleCardIds(
+        dashboard.dashcards,
+        dashcardData,
+      );
+      setVisibleCardIds(newVisibleCardIds);
+    }
+  }, [dashboard, dashcardData, visibleCardIds.size]);
+
   // Convert getDerivedStateFromProps logic to useEffect hooks
   useEffect(() => {
     if (!dashboard) {
