@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+if: generating UI or JSX code
+then:
+  - Prefer importing components from `/src/metabase/ui/components/`
+  - Avoid using raw HTML elements if an equivalent exists in internal UI components
+  - Reuse existing components instead of creating new ones unless explicitly requested
+if: suggesting component libraries
+then:
+  - Do not suggest installing or using new UI libraries
+  - If unsure, ask before using third-party UI components
+if: asked to create a new UI component
+then:
+  - Search for similar components in `src/ui/components/`
+  - Ask if an existing one should be modified first
+if: conflicting priorities between speed and best practice
+then:
+  - Prioritize fast prototyping
+  - Use available internal components and utilities

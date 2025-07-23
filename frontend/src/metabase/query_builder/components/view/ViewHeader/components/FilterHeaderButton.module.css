@@ -1,0 +1,31 @@
+.filterSidesheetContent {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Target the sidesheet modal content */
+.filterSidesheet :global([data-testid="sidesheet"]) {
+  background-color: white !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24) !important;
+}
+
+/* Target the modal content directly */
+.filterSidesheet :global(.mantine-Modal-content) {
+  background-color: white !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24) !important;
+}
+
+/* Disable transition animations - target the slideLeft animation specifically */
+.filterSidesheet :global([data-testid="sidesheet"]) {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+}
+
+/* Disable all transitions and animations */
+.filterSidesheet :global(.mantine-Modal-content) {
+  transition: none !important;
+  animation: none !important;
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+} 
