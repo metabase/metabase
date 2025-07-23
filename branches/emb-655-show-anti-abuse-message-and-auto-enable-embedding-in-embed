@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "3df17fd3a84992d20e2e1931d4ae0a0a3cc47083"
+  },
+  "upstream": {
+    "branch": "emb-655-show-anti-abuse-message-and-auto-enable-embedding-in-embed"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 61375,
+        "gqlID": "PR_kwDOAczgH86gTo3M"
+      }
+    }
   }
 }
