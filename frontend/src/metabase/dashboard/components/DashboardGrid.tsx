@@ -168,6 +168,12 @@ const DashboardGrid = forwardRef<
     null,
   );
 
+  // Helper function for counting dashcards by card ID (defined early to be used in useState)
+  const getDashcardCountByCardId = useCallback(
+    (cards: BaseDashboardCard[]) => _.countBy(cards, "card_id"),
+    [],
+  );
+
   // Initialize state using useState hooks
   const initialVisibleCardIds = useMemo(
     () =>
@@ -214,12 +220,6 @@ const DashboardGrid = forwardRef<
     isEditing,
     selectedTabId,
   });
-
-  // Helper function for counting dashcards by card ID
-  const getDashcardCountByCardId = useCallback(
-    (cards: BaseDashboardCard[]) => _.countBy(cards, "card_id"),
-    [],
-  );
 
   // Convert componentDidMount and componentWillUnmount to useEffect
   useEffect(() => {
