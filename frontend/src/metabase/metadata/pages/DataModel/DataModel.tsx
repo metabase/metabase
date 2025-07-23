@@ -38,7 +38,7 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId, transformId } =
+  const { databaseId, fieldId, schemaName, tableId, sectionId, transformId } =
     parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
@@ -112,6 +112,8 @@ export const DataModel = ({ children, location, params }: Props) => {
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={tableId}
+          sectionId={sectionId}
+          transformId={transformId}
         />
 
         <Box className={S.footer} mx="xl" py="sm">

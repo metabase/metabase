@@ -1,6 +1,8 @@
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import { NameDescriptionInput } from "metabase/metadata/components/NameDescriptionInput";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { TransformSectionProps } from "metabase/plugins";
@@ -15,6 +17,7 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  useDeleteTransformMutation,
   useExecuteTransformMutation,
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -46,6 +49,10 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const [executeTransform, { isLoading: isExecuting }] =
     useExecuteTransformMutation();
+  const [deleteTransform, { isLoading: isDeleting }] =
+    useDeleteTransformMutation();
+  const dispatch = useDispatch();
+
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
@@ -164,6 +171,17 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
     }
   };
 
+  const handleDelete = async () => {
+    const { error } = await deleteTransform(transform.id);
+
+    if (error) {
+      sendErrorToast("Failed to delete transform");
+    } else {
+      sendSuccessToast("Transform deleted");
+      dispatch(push("/admin/datamodel"));
+    }
+  };
+
   return (
     <Stack flex={1} p="xl" align="center">
       <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
@@ -218,7 +236,9 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
           <Button loading={isExecuting} onClick={handleExecute}>
             {t`Run now`}
           </Button>
-          <Button>{t`Delete`}</Button>
+          <Button loading={isDeleting} onClick={handleDelete}>
+            {t`Delete`}
+          </Button>
         </Group>
       </Stack>
     </Stack>
