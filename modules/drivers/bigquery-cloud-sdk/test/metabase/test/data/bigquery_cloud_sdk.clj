@@ -70,15 +70,16 @@
   hook to do so (from this test extension namespace), so instead we will rely on each run cleaning up outdated,
   transient datasets via the [[transient-dataset-outdated?]] mechanism."
   ^String [database-name :- :string]
-  (let [s (normalize-name database-name)]
-    (str "v4_" s "__transient_" (dataset-timestamp))))
+  (if tx/*use-routing-dataset*
+    "metabase_routing_dataset"
+    (let [s (normalize-name database-name)]
+      (str "v4_" s "__transient_" (dataset-timestamp)))))
 
 (defn- test-db-details []
-  (reduce
-   (fn [acc env-var]
-     (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
-   {}
-   [:project-id :service-account-json]))
+  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+   :service-account-json (if tx/*use-routing-details*
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)
+                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json))})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."

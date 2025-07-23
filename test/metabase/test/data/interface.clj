@@ -1104,3 +1104,11 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
+
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)
