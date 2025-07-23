@@ -85,6 +85,7 @@ const SdkIframeEmbedSetupContent = () => {
       <Box className={S.PreviewPanel}>
         <Card p="md" h="100%">
           <Stack h="100%">
+            {/** Only show the embed preview once the embedding is auto-enabled, or already enabled. */}
             {embeddingSdkEnabled && <SdkIframeEmbedPreview />}
           </Stack>
         </Card>
