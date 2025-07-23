@@ -2,12 +2,6 @@ import { t } from "ttag";
 
 export const SCHEDULE_OPTIONS = [
   {
-    value: "",
-    get label() {
-      return t`Never`;
-    },
-  },
-  {
     value: "0 0 0/1 * * ? *",
     get label() {
       return t`Every hour`;

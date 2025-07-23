@@ -78,6 +78,54 @@ function TransformSettings({ transform }: TransformSettingsProps) {
     }
   };
 
+  const handleTargetTableChange = async (table: string) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      target: {
+        ...transform.target,
+        table,
+      },
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform table`);
+    } else {
+      sendSuccessToast(t`Transform table updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          target: transform.target,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
+  const handleTargetSchemaChange = async (schema: string | null) => {
+    if (schema == null) {
+      return;
+    }
+
+    const { error } = await updateTransform({
+      id: transform.id,
+      target: {
+        ...transform.target,
+        schema,
+      },
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform table schema`);
+    } else {
+      sendSuccessToast(t`Transform table schema updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          target: transform.target,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   return (
     <Stack flex={1} p="xl" align="center">
       <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
@@ -103,12 +151,15 @@ function TransformSettings({ transform }: TransformSettingsProps) {
             <TextInputBlurChange
               label={t`What should the generated table be called in the database?`}
               value={transform.target.table}
-              onBlurChange={() => undefined}
+              onBlurChange={(event) =>
+                handleTargetTableChange(event.target.value)
+              }
             />
-            <TextInputBlurChange
+            <Select
               label={t`The schema where this table should go`}
               value={transform.target.schema}
-              onBlurChange={() => undefined}
+              data={[]}
+              onChange={handleTargetSchemaChange}
             />
           </Stack>
         </Card>
@@ -118,7 +169,9 @@ function TransformSettings({ transform }: TransformSettingsProps) {
             <Select
               label={t`How often should this transform run?`}
               data={SCHEDULE_OPTIONS}
-              value={transform.schedule ?? ""}
+              value={transform.schedule}
+              placeholder={t`Never, I'll do this manually if I need to`}
+              clearable
             />
           </Stack>
         </Card>
