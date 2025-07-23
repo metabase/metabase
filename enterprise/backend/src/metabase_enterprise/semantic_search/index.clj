@@ -283,7 +283,7 @@
                              [[:raw (str "row_number() OVER (ORDER BY embedding <=> " embedding-literal " ASC)")] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
                     ;; TODO: parameterize max cosine distance
-                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] 0.55]
+                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] 0.40]
                     :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
@@ -367,6 +367,8 @@
                             (map decode-metadata)
                             (map legacy-input-with-score))
             reducible (jdbc/plan db (sql-format-quoted query))]
+        (comment
+          (jdbc/execute! db (sql-format-quoted query)))
         (-> (transduce xform conj [] reducible)
             filter-read-permitted)))))
 
