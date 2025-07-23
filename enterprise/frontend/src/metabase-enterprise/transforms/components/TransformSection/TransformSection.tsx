@@ -30,45 +30,51 @@ type TransformSettingsProps = {
 
 function TransformSettings({ transform }: TransformSettingsProps) {
   return (
-    <Stack
-      flex={1}
-      p="xl"
-      gap="lg"
-      bg="accent-gray-light"
-      data-testid="transform-section"
-    >
-      <NameDescriptionInput
-        name={transform.name}
-        nameIcon="refresh_downstream"
-        nameMaxLength={254}
-        namePlaceholder={t`Give this transform a name`}
-        description=""
-        descriptionPlaceholder={t`Give this transform a description`}
-        onNameChange={() => undefined}
-        onDescriptionChange={() => undefined}
-      />
-      <Card p="xl" shadow="none" withBorder>
-        <Stack px="sm" gap="xl">
-          <Stack gap="sm">
-            <Title order={4}>{t`Generated table settings`}</Title>
-            <Text c="text-secondary">{t`Each transform creates a table in this database.`}</Text>
+    <Stack flex={1} p="xl" align="center">
+      <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
+        <NameDescriptionInput
+          name={transform.name}
+          nameIcon="refresh_downstream"
+          nameMaxLength={254}
+          namePlaceholder={t`Give this transform a name`}
+          description=""
+          descriptionPlaceholder={t`Give this transform a description`}
+          onNameChange={() => undefined}
+          onDescriptionChange={() => undefined}
+        />
+        <Card p="xl" shadow="none" withBorder>
+          <Stack gap="xl">
+            <Group justify="space-between">
+              <Stack gap="sm">
+                <Title order={4}>{t`Generated table settings`}</Title>
+                <Text c="text-secondary">{t`Each transform creates a table in this database.`}</Text>
+              </Stack>
+              <Button>{t`Go to this table`}</Button>
+            </Group>
+            <TextInputBlurChange
+              label={t`What should the generated table be called in the database?`}
+              value={transform.target.table}
+              onBlurChange={() => undefined}
+            />
+            <TextInputBlurChange
+              label={t`The schema where this table should go`}
+              value={transform.target.schema}
+              onBlurChange={() => undefined}
+            />
           </Stack>
-          <TextInputBlurChange
-            label={t`What should the generated table be called in the database?`}
-            value={transform.target.table}
-            onBlurChange={() => undefined}
-          />
-          <TextInputBlurChange
-            label={t`The schema where this table should go`}
-            value={transform.target.schema}
-            onBlurChange={() => undefined}
-          />
-        </Stack>
-      </Card>
-      <Group>
-        <Button>{t`Run now`}</Button>
-        <Button>{t`Delete`}</Button>
-      </Group>
+        </Card>
+        <Card p="xl" shadow="none" withBorder>
+          <Stack gap="xl">
+            <Group justify="space-between">
+              <Title order={4}>{t`Schedule`}</Title>
+              <Button>{t`Run now`}</Button>
+            </Group>
+          </Stack>
+        </Card>
+        <Group>
+          <Button>{t`Delete`}</Button>
+        </Group>
+      </Stack>
     </Stack>
   );
 }
