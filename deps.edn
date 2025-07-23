@@ -250,7 +250,8 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    djblue/portal                {:mvn/version "0.59.1"}                    ; ui for inspecting values
+    dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
+    djblue/portal                {:mvn/version "0.59.2"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:sha "1fe839cfa48549e21b89c6418c747895eda7e7bc"} ; test runner
     io.github.tonsky/clj-reload  {:mvn/version "0.9.7"}                     ; reloader
