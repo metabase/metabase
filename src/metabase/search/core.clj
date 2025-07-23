@@ -46,7 +46,12 @@
 
  [search.spec
   spec
-  define-spec])
+  define-spec]
+
+ [search.util
+  tsv-language
+  to-tsquery-expr
+  weighted-tsvector])
 
 (defmethod analytics/known-labels :metabase-search/index-updates
   [_]

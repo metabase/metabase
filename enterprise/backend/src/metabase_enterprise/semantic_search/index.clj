@@ -4,15 +4,12 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.embedding :as embedding]
-   [metabase.models.interface :as mi]
-   [metabase.search.appdb.specialization.postgres :as postgres-spec]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id]
-   [next.jdbc :as jdbc]
-   [toucan2.core :as t2])
+   [next.jdbc :as jdbc])
   (:import
    [java.time LocalDate]
    [org.postgresql.util PGobject]))
@@ -80,9 +77,9 @@
    :embedding           [:raw (format-embedding embedding-vec)]
    :content             searchable_text
    :text_search_vector [:||
-                        (postgres-spec/weighted-tsvector "A" (:name doc))
+                        (search/weighted-tsvector "A" (:name doc))
                         ;; TODO: :searchable_text contains the doc's name which we don't want for B weighted results
-                        (postgres-spec/weighted-tsvector "B" (:searchable_text doc ""))]
+                        (search/weighted-tsvector "B" (:searchable_text doc ""))]
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
@@ -244,16 +241,16 @@
   [index search-context]
   (let [filters (search-filters search-context)
         search-string (:search-string search-context)
-        ts-search-vector (str/replace (postgres-spec/to-tsquery-expr search-string) "'" "")
+        ts-search-vector (str/replace (search/to-tsquery-expr search-string) "'" "")
         base-query {:select [[:id :id]
                              [:model_id :model_id]
                              [:model :model]
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
-                             [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, to_tsquery('" (postgres-spec/tsv-language) "', '" ts-search-vector "')) DESC)"] :keyword_rank]]
+                             [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, to_tsquery('" (search/tsv-language) "', '" ts-search-vector "')) DESC)"] :keyword_rank]]
                     :from   [(keyword (:table-name index))]
-                    :where  [:raw (str  "text_search_vector @@ to_tsquery('" (postgres-spec/tsv-language) "', '" ts-search-vector "')")]
+                    :where  [:raw (str  "text_search_vector @@ to_tsquery('" (search/tsv-language) "', '" ts-search-vector "')")]
                     :order-by [[:keyword_rank :asc]]
                     :limit  100}]
     (if filters
@@ -333,18 +330,6 @@
   [row]
   (update row :metadata decode-pgobject))
 
-(defn- filter-read-permitted
-  "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
-  [docs]
-  (let [doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        t2-instances  (for [[t2-model docs] (group-by doc->t2-model docs)
-                            t2-instance     (t2/select t2-model :id [:in (map :id docs)])]
-                        t2-instance)
-        doc->t2       (comp (u/index-by (juxt :id t2/model) t2-instances)
-                            (fn [doc]
-                              [(:id doc) (doc->t2-model doc)]))]
-    (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) docs)))
-
 (defn query-index
   "Query the index for documents similar to the search string."
   [db index search-context]
@@ -357,8 +342,7 @@
                             (map decode-metadata)
                             (map legacy-input-with-score))
             reducible (jdbc/plan db (sql-format-quoted query))]
-        (-> (transduce xform conj [] reducible)
-            #_(filter-read-permitted))))))
+        (transduce xform conj [] reducible)))))
 
 (comment
   (keyword-search-query index {:search-string "dog"})
