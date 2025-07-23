@@ -392,7 +392,7 @@ databaseChangeLog:
                     nullable: true
                     referencedTableName: report_document
                     referencedColumnNames: id
-                    foreignKeyName: fk_report_version_report_id
+                    foreignKeyName: fk_report_run_card_data_report_id
               - column:
                   name: user_id
                   remarks: User who created this version
@@ -401,7 +401,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: core_user
                     referencedColumnNames: id
-                    foreignKeyName: fk_report_version_user_id
+                    foreignKeyName: fk_report_run_card_data_version_user_id
               - column:
                   name: card_id
                   remarks: Referenced card run
