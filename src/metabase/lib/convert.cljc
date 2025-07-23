@@ -635,9 +635,15 @@
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
            (let [inner-query (chain-stages base {:top-level? false})]
-             ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
-             ;; it all in `:source-query` (QUE-1566)
-             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :fields :source-metadata}))
+             (if (or
+                  ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then
+                  ;; we need to wrap it all in `:source-query` (QUE-1566)
+                  (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :fields :source-metadata}))
+                  ;; if the last stage has `:fields` and they differ from the `:fields` in join then we need to use
+                  ;; `:source-query` (QUE-1603)
+                  (and (:fields inner-query)
+                       (:fields base)
+                       (not= (:fields inner-query) (:fields base))))
                {:source-query inner-query}
                inner-query)))))
 

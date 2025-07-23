@@ -1445,3 +1445,24 @@
                                                     :legacy (#'lib.convert/stage-metadata->legacy-metadata {:columns columns}))))]
               (is (=? (assoc-in {:stages [{} {}]} mbql-5-path (expected-shapes :lib))
                       (lib.convert/->pMBQL query))))))))))
+
+(deftest ^:parallel join-with-fields-in-last-stage-to-legacy-test
+  (testing "converting a join whose last stage has :fields to legacy should not stomp on join :field (QUE-1603)"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1
+                             :joins        [{:lib/type :mbql/join
+                                             :alias    "J"
+                                             :stages   [{:lib/type     :mbql.stage/mbql
+                                                         :source-table 2
+                                                         :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                                                                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
+                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]}]}]}]
+      (is (= {:type  :query
+              :query {:source-table 1
+                      :joins        [{:alias        "J"
+                                      :source-query {:source-table 2
+                                                     :fields       [[:field 1 nil]
+                                                                    [:field 2 nil]]}
+                                      :fields       [[:field 1 {:join-alias "J"}]]}]}}
+             (lib.convert/->legacy-MBQL query))))))
