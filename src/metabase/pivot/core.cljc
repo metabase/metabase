@@ -18,12 +18,14 @@
      [x]
      (js->clj (js/JSON.parse x))))
 
-(defn- json-roundtrip
-  "Round-trips a value to JSON and back in Clojure to ensure it can be used as a key with consistent type.
+(defn- ensure-consistent-type
+  "Convert Clojure value that may have ambigous type into canonical type to ensure it can be used as a key.
   Does nothing in CLJS."
   [x]
   #?(:cljs x
-     :clj (json/decode (json/encode x))))
+     :clj (cond (integer? x) (int x) ;; Handles BigInteger
+                (decimal? x) (double x) ;; Handles BigDecimal
+                :else x)))
 
 (defn- pivot-group-column?
   "Is the given column the pivot-grouping column?"
