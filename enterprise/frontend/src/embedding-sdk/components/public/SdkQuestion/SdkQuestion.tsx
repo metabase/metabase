@@ -84,7 +84,7 @@ export const _SdkQuestion = ({
   deserializedCard,
   componentPlugins: plugins,
   onNavigateBack,
-  children,
+  children = null,
   onBeforeSave,
   onSave,
   onRun,
@@ -92,7 +92,7 @@ export const _SdkQuestion = ({
   entityTypes,
   targetCollection,
   initialSqlParameters,
-  withDownloads,
+  withDownloads = false,
   targetDashboardId,
   backToDashboard,
   getClickActionMode,
@@ -103,8 +103,8 @@ export const _SdkQuestion = ({
   className,
   style,
   title,
-  withResetButton,
-  withChartTypeSelector,
+  withResetButton = true,
+  withChartTypeSelector = true,
 }: SdkQuestionProps): JSX.Element | null => (
   <SdkQuestionProvider
     questionId={questionId}

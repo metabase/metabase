@@ -1,19 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ComponentProps, useState } from "react";
+import { useState } from "react";
 
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import {
+  SdkQuestion,
+  type SdkQuestionProps,
+} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Modal, Stack } from "metabase/ui";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
-type InteractiveQuestionComponentProps = ComponentProps<
-  typeof InteractiveQuestion
->;
-
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/SaveQuestionForm",
-  component: InteractiveQuestion,
+  component: SdkQuestion,
   parameters: {
     layout: "fullscreen",
   },
@@ -21,7 +20,7 @@ export default {
 };
 
 export const Default = {
-  render(args: InteractiveQuestionComponentProps) {
+  render(args: SdkQuestionProps) {
     const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
 
     const [isBeforeSaveCalled, setBeforeSaveCalled] = useState(false);
