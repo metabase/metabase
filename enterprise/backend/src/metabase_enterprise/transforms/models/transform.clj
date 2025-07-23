@@ -15,6 +15,18 @@
   {:source mi/transform-json
    :target mi/transform-json})
 
+(t2/define-before-insert :model/Transform
+  [transform]
+  (let [source-db (-> transform :source :query :database)]
+    (cond-> transform
+      (pos-int? source-db) (assoc :database_id source-db))))
+
+(t2/define-before-update :model/Transform
+  [transform]
+  (let [source-db (-> (t2/changes transform) :source :query :database)]
+    (cond-> transform
+      (pos-int? source-db) (assoc :database_id source-db))))
+
 (comment
 
   (t2/insert-returning-pk! :model/Transform {:name "Gadget Products"
