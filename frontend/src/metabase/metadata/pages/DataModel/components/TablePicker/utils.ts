@@ -371,15 +371,21 @@ export function useSearch(query: string) {
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
-  const { databaseId, schemaName, tableId, sectionId } = path;
+  const { databaseId, schemaName, tableId, sectionId, transformId } = path;
 
   useEffect(() => {
     // When the path changes, this means a user has navigated throught the browser back
     // button, ensure the path is completely expanded.
     setState((state) =>
-      expandPath(state, { databaseId, schemaName, tableId, sectionId }),
+      expandPath(state, {
+        databaseId,
+        schemaName,
+        tableId,
+        sectionId,
+        transformId,
+      }),
     );
-  }, [databaseId, schemaName, tableId, sectionId]);
+  }, [databaseId, schemaName, tableId, sectionId, transformId]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {
@@ -404,6 +410,27 @@ export function useExpandedState(path: TreePath) {
 
 // Returns a new state object with all the nodes along the path expanded.
 function expandPath(state: ExpandedState, path: TreePath): ExpandedState {
+  if (path.sectionId != null) {
+    return {
+      ...state,
+      [toKey({
+        ...path,
+        transformId: undefined,
+      })]: true,
+      [toKey({
+        ...path,
+        transformId: undefined,
+        sectionId: undefined,
+      })]: true,
+      [toKey({
+        ...path,
+        transformId: undefined,
+        sectionId: undefined,
+        databaseId: undefined,
+      })]: true,
+    };
+  }
+
   return {
     ...state,
     [toKey({
