@@ -1,4 +1,59 @@
-import { findPageBreakCandidates, getPageBreaks } from "./save-dashboard-pdf";
+import {
+  findPageBreakCandidates,
+  getPageBreaks,
+  saveDashboardPdf,
+} from "./save-dashboard-pdf";
+
+describe("saveDashboardPdf filename formatting", () => {
+  it("should format the filename without timezone", () => {
+    // Mock Date to a fixed value
+    const RealDate = Date;
+    global.Date = class extends RealDate {
+      constructor() {
+        super();
+        return new RealDate("2025-07-23T15:30:00");
+      }
+    } as DateConstructor;
+
+    // We need to extract the filename logic, so let's call the function and intercept the save
+    let savedFileName = "";
+    const originalSave = window.URL.createObjectURL;
+    window.URL.createObjectURL = () => "blob:url";
+    const originalSaveFn = (window as any).saveAs;
+    (window as any).saveAs = (blob: any, fileName: string) => {
+      savedFileName = fileName;
+    };
+
+    // Patch document.querySelector to avoid DOM errors
+    const originalQuerySelector = document.querySelector;
+    document.querySelector = () =>
+      ({
+        querySelector: () => ({
+          offsetWidth: 100,
+          offsetHeight: 100,
+          getBoundingClientRect: () => ({ top: 0, bottom: 100, height: 100 }),
+          append: () => {},
+          removeChild: () => {},
+          appendChild: () => {},
+        }),
+      }) as any;
+
+    // Call the function (it will error before saving, but we only care about the filename)
+    saveDashboardPdf({
+      selector: "#fake",
+      dashboardName: "TestDash",
+      includeBranding: false,
+    }).catch(() => {});
+
+    expect(savedFileName.startsWith("TestDash 2025-07-23 15:30")).toBe(true);
+
+    // Restore mocks
+    global.Date = RealDate;
+    window.URL.createObjectURL = originalSave;
+    (window as any).saveAs = originalSaveFn;
+    document.querySelector = originalQuerySelector;
+  });
+});
 
 describe("save-dashboard-pdf", () => {
   describe("findPageBreakCandidates", () => {

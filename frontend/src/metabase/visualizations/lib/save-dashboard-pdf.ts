@@ -162,7 +162,17 @@ export const saveDashboardPdf = async ({
   includeBranding,
 }: SavePdfProps) => {
   const now = new Date();
-  const formattedDateTime = now.toISOString().slice(0, 16).replace("T", " ");
+  // Use Intl.DateTimeFormat for locale formatting, exclude timezone for filename
+  const dateTimeFormatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  // Format: 2025-07-23, 15:30
+  const formattedDateTime = dateTimeFormatter.format(now).replace(",", "");
   const originalFileName = `${dashboardName} ${formattedDateTime}.pdf`;
   const fileName = includeBranding
     ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
