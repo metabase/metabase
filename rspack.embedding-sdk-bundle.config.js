@@ -29,6 +29,9 @@ const {
 const {
   CopyJsFromTmpDirectoryPlugin,
 } = require("./frontend/build/shared/rspack/copy-js-from-tmp-directory-plugin");
+const {
+  getBannerOptions,
+} = require("./frontend/build/shared/rspack/get-banner-options");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
@@ -143,9 +146,7 @@ const config = {
     new rspack.optimize.LimitChunkCountPlugin({
       maxChunks: 1,
     }),
-    new rspack.BannerPlugin({
-      banner: LICENSE_TEXT,
-    }),
+    new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({

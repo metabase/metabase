@@ -16,6 +16,9 @@ const {
 } = require("./frontend/build/shared/constants");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
+const {
+  getBannerOptions,
+} = require("./frontend/build/shared/rspack/get-banner-options");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -292,9 +295,7 @@ const config = {
       chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
-    new rspack.BannerPlugin({
-      banner: LICENSE_TEXT,
-    }),
+    new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
