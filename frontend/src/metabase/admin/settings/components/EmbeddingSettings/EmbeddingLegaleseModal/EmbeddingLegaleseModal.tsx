@@ -75,7 +75,7 @@ const getTitle = (key: SettingKey) =>
     .with(
       "enable-embedding-simple",
       () =>
-        t`When using the new iframe embedding, each end user should have their own Metabase account.`,
+        t`When using simple embedding, each end user should have their own Metabase account.`,
     )
     .exhaustive();
 
