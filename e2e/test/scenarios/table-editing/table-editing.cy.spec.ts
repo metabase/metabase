@@ -3,13 +3,14 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > table-editing", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
 
+    H.setTokenFeatures("all");
     setTableEditingEnabledForDB(SAMPLE_DB_ID);
 
     cy.intercept("GET", "/api/database").as("getDatabases");
@@ -190,13 +191,121 @@ describe("scenarios > table-editing", () => {
         expect(body.outputs[0].op).to.equal("updated");
         expect(body.outputs[0].row.QUANTITY).to.equal(123);
       });
+
+      H.undoToast().findByText("Successfully updated").should("be.visible");
     });
 
-    // describe("should allow inline cell editing", () => {
-    //   [].forEach((cellType) => {
-    //     it(`should allow to edit a cell with type ${cellType}`, () => {});
-    //   });
-    // });
+    describe("inline cell editing", () => {
+      const cases = [
+        {
+          table: "Orders",
+          dataType: "number",
+          column: "TAX",
+          value: 123,
+        },
+        {
+          table: "Orders",
+          dataType: "date",
+          column: "CREATED_AT",
+          value: "8 May 2024",
+        },
+        {
+          table: "Orders",
+          dataType: "FK",
+          column: "PRODUCT_ID",
+          value: 5,
+        },
+        {
+          table: "Products",
+          dataType: "string",
+          column: "TITLE",
+          value: "Some new product",
+        },
+      ];
+
+      cases.forEach(({ dataType, column, value, table }) => {
+        it(`should allow to edit a cell with type ${dataType}`, () => {
+          if (table === "Products") {
+            cy.visit(
+              `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
+            );
+          }
+
+          // Locate the table and the specific cell to edit
+          cy.findByTestId("table-root")
+            .findAllByRole("row")
+            .eq(1) // Select the second row (index 1)
+            .within(() => {
+              cy.get(`[data-column-id='${column}']`).as("targetCell").click({
+                scrollBehavior: false,
+              }); // Activate inline editing
+            });
+
+          if (dataType === "number" || dataType === "string") {
+            // Edit the cell value
+            cy.get("@targetCell")
+              .find("input") // Assuming the cell becomes an input field
+              .type(`{selectAll}{backspace}${value}`, {
+                scrollBehavior: false,
+              }) // Enter the new value
+              .blur(); // Trigger the save action by blurring the input
+          } else if (dataType === "date") {
+            H.popover().findByLabelText(value).click();
+
+            cy.get("@targetCell").find("input").first().blur();
+          } else if (dataType === "FK" || dataType === "category") {
+            H.popover().findByText(value).click();
+          }
+
+          if (dataType !== "date") {
+            // dates are harder to check due to formatting, so we don't check api specifically
+            cy.wait("@updateTableData").then(({ response: { body } }) => {
+              expect(body.outputs[0].op).to.equal("updated");
+              expect(body.outputs[0].row[column]).to.equal(value);
+            });
+          }
+
+          H.undoToast().findByText("Successfully updated").should("be.visible");
+        });
+      });
+
+      it("should not allow to edit PK cells", () => {
+        cy.findByTestId("table-root")
+          .findAllByRole("row")
+          .eq(1)
+          .within(() => {
+            cy.get("[data-column-id='ID']")
+              .as("targetCell")
+              .click({
+                scrollBehavior: false,
+              })
+              .find("input")
+              .should("not.exist");
+          });
+      });
+
+      it("should handle errors", () => {
+        cy.findByTestId("table-root")
+          .findAllByRole("row")
+          .eq(1)
+          .within(() => {
+            cy.get("[data-column-id='TAX']")
+              .as("targetCell")
+              .click({
+                scrollBehavior: false,
+              })
+              .find("input")
+              .type("{selectAll}{backspace}aaa", {
+                scrollBehavior: false,
+              }) // Enter the new value
+              .blur(); // Trigger the save action by blurring the input
+          });
+
+        H.undoToast()
+          .findByText("Couldn't save table changes")
+          .should("be.visible");
+      });
+    });
   });
 });
 

@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { HeadBreadcrumbs } from "metabase/query_builder/components/view/ViewHeader/components"; // TODO: we should not use query builder components
-import type { DataSourcePart } from "metabase/query_builder/components/view/ViewHeader/components/QuestionDataSource/utils"; // TODO: we should not use query builder components
-import { ViewHeading } from "metabase/query_builder/components/view/ViewSection"; // TODO: we should not use query builder components
+import { HeadBreadcrumbs } from "metabase/query_builder/components/view/ViewHeader/components";
+import type { DataSourcePart } from "metabase/query_builder/components/view/ViewHeader/components/QuestionDataSource/utils";
+import { ViewHeading } from "metabase/query_builder/components/view/ViewSection";
 import type { Database, Table } from "metabase-types/api";
 
 import { getTableViewUrl } from "../urls";
