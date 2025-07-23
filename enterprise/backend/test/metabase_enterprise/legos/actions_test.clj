@@ -54,11 +54,11 @@ query: SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'
 steps:
   - lego: transform
     database: %d
-    table: TABLEA
+    table: TABLE_A
     query: SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'
   - lego: transform
     database: %d
     table: TABLEB
-    query: SELECT *, average(RATING) as AR FROM TABLEA GROUP BY DATE_TRUNC('month', CREATED_AT)
+    query: SELECT DATE_TRUNC('month', CREATED_AT) as month, avg(RATING) as AR FROM \"TABLE_A\" GROUP BY DATE_TRUNC('month', CREATED_AT)
 
 " (mt/id) (mt/id))))))))
