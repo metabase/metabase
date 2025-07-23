@@ -173,18 +173,22 @@
         (dissoc :ident))))
 
 (mr/def ::options
-  [:map
-   {:default {}
-    :decode/normalize normalize-options-map}
-   [:lib/uuid ::uuid]
-   ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
-   [:base-type      {:optional true} [:maybe ::base-type]]
-   [:effective-type {:optional true} [:maybe ::base-type]]
-   ;; these two different types are currently both stored under one key, but maybe one day we can fix this.
-   [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
-   [:database-type  {:optional true} [:maybe ::non-blank-string]]
-   [:name           {:optional true} [:maybe ::non-blank-string]]
-   [:display-name   {:optional true} [:maybe ::non-blank-string]]])
+  [:and
+   [:map
+    {:default          {}
+     :decode/normalize normalize-options-map}
+    [:lib/uuid ::uuid]
+    ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
+    [:base-type      {:optional true} [:maybe ::base-type]]
+    [:effective-type {:optional true} [:maybe ::base-type]]
+    ;; these two different types are currently both stored under one key, but maybe one day we can fix this.
+    [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
+    [:database-type  {:optional true} [:maybe ::non-blank-string]]
+    [:name           {:optional true} [:maybe ::non-blank-string]]
+    [:display-name   {:optional true} [:maybe ::non-blank-string]]]
+   [:fn
+    {:error/message ":ident is deprecated and should not be included in options maps"}
+    (complement :ident)]])
 
 (mr/def ::external-op
   [:map

@@ -114,7 +114,7 @@
   [:fn
    {:error/message "values must be distinct ignoring uuids"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate values ignoring uuids in: " (pr-str value)))}
+                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))}
    (comp u/empty-or-distinct? remove-lib-uuids)])
 
 (defn distinct-ignoring-uuids

@@ -437,29 +437,33 @@
                               (lib/append-stage)
                               (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                               (lib/replace-clause 0 (second breakouts) (meta/field-metadata :venues :price))
-                              (lib/breakouts 0)))))
-    (testing "should ignore duplicate breakouts"
-      (let [id-column    (meta/field-metadata :venues :id)
-            price-column (meta/field-metadata :venues :price)
-            query        (-> (lib.tu/venues-query)
-                             (lib/breakout id-column)
-                             (lib/breakout price-column))
-            breakouts    (lib/breakouts query)]
-        (is (= query (lib/replace-clause query (first breakouts) price-column)))))
-    ;; TODO: This is working around an edge case in legacy MBQL where a breakout would get its `:effective-type`
-    ;; set incorrectly, which led to should-be separate breakouts with identical field refs. This special handling
-    ;; should be removed if the legacy issue is no longer a factor.
-    (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
-      (let [base-query  (lib/query meta/metadata-provider (meta/table-metadata :people))
-            column      (meta/field-metadata :people :birth-date)
-            query       (-> base-query
-                            (lib/breakout (lib/with-temporal-bucket column :year))
-                            (lib/breakout (lib/with-temporal-bucket column :month)))
-            query       (->> query
-                             (lib.query/->legacy-MBQL)
-                             (lib/query meta/metadata-provider))]
-        (is (= query (lib/replace-clause query (first breakouts)
-                                         (lib/with-temporal-bucket column :month))))))))
+                              (lib/breakouts 0)))))))
+
+(deftest ^:parallel replace-clause-breakout-test-2
+  (testing "should ignore duplicate breakouts"
+    (let [id-column    (meta/field-metadata :venues :id)
+          price-column (meta/field-metadata :venues :price)
+          query        (-> (lib.tu/venues-query)
+                           (lib/breakout id-column)
+                           (lib/breakout price-column))
+          breakouts    (lib/breakouts query)]
+      (is (= query
+             (lib/replace-clause query (first breakouts) price-column))))))
+
+(deftest ^:parallel replace-clause-breakout-test-3
+  (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
+    (let [base-query  (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column      (meta/field-metadata :people :birth-date)
+          query       (-> base-query
+                          (lib/breakout (lib/with-temporal-bucket column :year))
+                          (lib/breakout (lib/with-temporal-bucket column :month)))
+          query       (->> query
+                           (lib.query/->legacy-MBQL)
+                           (lib/query meta/metadata-provider))]
+      (is (= query
+             (lib/replace-clause query
+                                 (first (lib/breakouts query))
+                                 (lib/with-temporal-bucket column :month)))))))
 
 (deftest ^:parallel replace-clause-fields-test
   (let [query (-> (lib.tu/venues-query)
@@ -863,7 +867,7 @@
                                                          {:base-type :type/BigInteger
                                                           :effective-type :type/BigInteger
                                                           :join-alias "alias_2"}
-                                                         (meta/id :venues :id)]]]
+                                                         (meta/id :users :id)]]],
                                           :alias "alias_2"}]
                                  :filters [[:>
                                             {}

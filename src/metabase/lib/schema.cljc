@@ -209,7 +209,13 @@
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
-   [:ref ::stage.valid-refs]])
+   [:ref ::stage.valid-refs]
+   (into [:and]
+         (map (fn [k]
+                [:fn
+                 {:error/message (str k " is deprecated and should not be used")}
+                 (complement k)]))
+         [:aggregation-idents :breakout-idents :expression-idents])])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type

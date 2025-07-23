@@ -98,8 +98,9 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000000"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63401]]]))
+         63401]]])))
 
+(deftest ^:parallel distinct-ignoring-uuids-schema-test-2
   (testing "non-distinct values ignoring uuids"
     (are [x] (mr/explain ::lib.schema.util/distinct-ignoring-uuids x)
       [1 2 1 3]
@@ -118,8 +119,9 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000001"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63400]]]))
+         63400]]])))
 
+(deftest ^:parallel distinct-ignoring-uuids-schema-test-3
   (testing "humanized error message"
     (is (= ["Duplicate values ignoring uuids in: [{:a 1} {:a 1}]"]
            (me/humanize (mr/explain ::lib.schema.util/distinct-ignoring-uuids

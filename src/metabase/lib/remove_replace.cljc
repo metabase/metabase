@@ -12,6 +12,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -265,13 +267,13 @@
         new-query
         query))))
 
-(mu/defn remove-clause :- :metabase.lib.schema/query
+(mu/defn remove-clause :- ::lib.schema/query
   "Removes the `target-clause` from the stage specified by `stage-number` of `query`.
   If `stage-number` is not specified, the last stage is used."
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     target-clause]
    (remove-clause query -1 target-clause))
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     stage-number :- :int
     target-clause]
    (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
@@ -339,7 +341,7 @@
     (let [t (lib.metadata.calculation/type-of query stage-number expression)]
       (lib.options/update-options expression assoc :effective-type t))))
 
-(def ^:private expression-validator (mr/validator :metabase.lib.schema.expression/expression))
+(def ^:private expression-validator (mr/validator ::lib.schema.expression/expression))
 
 (defn- expression-replacement?
   "Returns if `an-expression` and `new-expression` are both expressions."
@@ -420,11 +422,11 @@
                   (dissoc &match :effective-type))]
     (not (lib.equality/= a-conds b-conds))))
 
-(mu/defn- replace-expression-removing-erroneous-parts :- :metabase.lib.schema/query
-  [unmodified-query :- :metabase.lib.schema/query
+(mu/defn- replace-expression-removing-erroneous-parts :- ::lib.schema/query
+  [unmodified-query :- ::lib.schema/query
    stage-number     :- :int
-   target           :- :metabase.lib.schema.expression/expression
-   replacement      :- :metabase.lib.schema.expression/expression]
+   target           :- ::lib.schema.expression/expression
+   replacement      :- ::lib.schema.expression/expression]
   (mu/disable-enforcement
     (let [location (find-location unmodified-query stage-number target)
           query (loop [query (tweak-expression unmodified-query stage-number target replacement)]
@@ -459,15 +461,13 @@
           (if (and (not= new-name (:alias join))
                    (conditions-changed-for-aliases? (:alias join) (:conditions join)
                                                     (:alias old-join) (:conditions old-join)))
-            ;; TODO: This is pretty ugly and specific; this is an example of how hopelessly coupled and intricate
-            ;; this namespace is.
-            (rename-join query stage-number join)
+            (rename-join query stage-number join new-name)
             query))
         query))))
 
 (declare replace-join)
 
-(mu/defn replace-clause :- :metabase.lib.schema/query
+(mu/defn replace-clause :- ::lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage specified by `stage-number`.
   If `stage-number` is not specified, the last stage is used.
 
@@ -479,11 +479,11 @@
   but the *identity* of the clause is retained. That means the `:ident` of the `target-clause` is always retained,
   even if the `new-clause` has a different one! If you want to drop the old clause and replace it, that's
   [[remove-clause]] plus adding the new one with [[lib.expression/expression]] and similar."
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     target-clause
     new-clause]
    (replace-clause query -1 target-clause new-clause))
-  ([query :- :metabase.lib.schema/query
+  ([query :- ::lib.schema/query
     stage-number :- :int
     target-clause
     new-clause]
@@ -522,7 +522,7 @@
             (replace-join-alias old-name unique-name)))
       stage)))
 
-(defn- join-spec->clause
+(defn- join-spec->index
   [query stage-number join-spec]
   (if (integer? join-spec)
     join-spec
@@ -533,7 +533,7 @@
                 idx))
             (m/indexed (:joins (lib.util/query-stage query stage-number)))))))
 
-(mu/defn rename-join :- :metabase.lib.schema/query
+(mu/defn rename-join :- ::lib.schema/query
   "Rename the join specified by `join-spec` in `query` at `stage-number` to `new-name`.
   The join can be specified either by itself (as returned by [[joins]]), by its alias
   or by its index in the list of joins as returned by [[joins]].
@@ -544,11 +544,11 @@
   ([query join-spec new-name]
    (rename-join query -1 join-spec new-name))
 
-  ([query        :- :metabase.lib.schema/query
+  ([query        :- ::lib.schema/query
     stage-number :- :int
-    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
-    new-name     :- :metabase.lib.schema.common/non-blank-string]
-   (if-let [idx (join-spec->clause query stage-number join-spec)]
+    join-spec    :- [:or ::lib.schema.join/join ::lib.schema.join/alias :int]
+    new-name     :- ::lib.schema.join/alias]
+   (if-let [idx (join-spec->index query stage-number join-spec)]
      (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
      query)))
 
@@ -613,7 +613,7 @@
   (or (= (:alias join) join-alias)
       (field-clause-with-join-alias? join join-alias)))
 
-(mu/defn remove-join :- :metabase.lib.schema/query
+(mu/defn remove-join :- ::lib.schema/query
   "Remove the join specified by `join-spec` in `query` at `stage-number`.
   The join can be specified either by itself (as returned by [[joins]]), by its alias
   or by its index in the list of joins as returned by [[joins]].
@@ -623,9 +623,9 @@
   ([query join-spec]
    (remove-join query -1 join-spec))
 
-  ([query        :- :metabase.lib.schema/query
+  ([query        :- ::lib.schema/query
     stage-number :- :int
-    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]]
+    join-spec    :- [:or ::lib.schema.join/join :string :int]]
    (try
      (update-joins query stage-number join-spec (fn [joins join-alias]
                                                   (not-empty (filterv #(not (dependent-join? % join-alias))
@@ -638,7 +638,7 @@
                (remove-join stage-number join-spec))
            (throw e)))))))
 
-(mu/defn replace-join :- :metabase.lib.schema/query
+(mu/defn replace-join :- ::lib.schema/query
   "Replace the join specified by `join-spec` in `query` at `stage-number` with `new-join`.
   If `new-join` is nil, the join is removed as if by [[remove-join]].
   The join can be specified either by itself (as returned by [[joins]]), by its alias
@@ -649,9 +649,9 @@
   ([query join-spec new-join]
    (replace-join query -1 join-spec new-join))
 
-  ([query        :- :metabase.lib.schema/query
+  ([query        :- ::lib.schema/query
     stage-number :- :int
-    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
+    join-spec    :- [:or ::lib.schema.join/join :string :int]
     new-join]
    (if (nil? new-join)
      (remove-join query stage-number join-spec)
@@ -712,15 +712,15 @@
       (lib.util/update-query-stage stage-number update :joins
                                    (partial mapv #(normalize-fields-for-join query stage-number removed-location %))))))
 
-(mu/defn normalize-fields-clauses :- :metabase.lib.schema/query
+(mu/defn normalize-fields-clauses :- ::lib.schema/query
   "Check all the `:fields` clauses in the query - on the stages and any joins - and drops them if they are equal to the
   defaults.
   - For stages, if the `:fields` list is identical to the default fields for this stage.
   - For joins, replace it with `:all` if it's all the fields that are in the join by default.
   - For joins, remove it if the list is empty (the default for joins is no fields)."
-  ([query :- :metabase.lib.schema/query]
+  ([query :- ::lib.schema/query]
    (normalize-fields-clauses query nil))
-  ([query            :- :metabase.lib.schema/query
+  ([query            :- ::lib.schema/query
     removed-location :- [:maybe [:sequential :any]]]
    (reduce #(normalize-fields-for-stage %1 %2 removed-location)
            query
