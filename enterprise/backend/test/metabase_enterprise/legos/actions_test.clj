@@ -2,33 +2,42 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.legos.actions :as legos.actions]
-   [metabase.test :as mt]
-   [metabase.util.json :as json]
-   [metabase.util.yaml :as yaml]))
+   [metabase.test :as mt]))
 
 (deftest execute-transform-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing "execute transform edn"
+    (testing "execute transform literal"
       (is (legos.actions/execute! {:lego "transform"
                                    :database (mt/id)
                                    :table "TARGET_TABLE"
                                    :query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"})))
 
+    (testing "execute transform edn"
+      (is (legos.actions/execute!
+           (legos.actions/hippie-parse
+            (format
+             "
+{:lego \"transform\",
+ :database %d,
+ :table \"TARGET_TABLE\",
+ :query \"SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'\"
+}"
+             (mt/id))))))
+
     (testing "execute transform json"
       (is (legos.actions/execute!
-           (json/decode (format "
+           (legos.actions/hippie-parse (format "
 {
   \"lego\": \"transform\",
   \"database\": %d,
   \"table\": \"TARGET_TABLE\",
   \"query\": \"SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'\"
 }
-" (mt/id))
-                        keyword))))
+" (mt/id))))))
 
     (testing "execute transform yaml"
       (is (legos.actions/execute!
-           (yaml/parse-string
+           (legos.actions/hippie-parse
             (format "
 lego: transform
 database: %d
@@ -40,7 +49,7 @@ query: SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'
   (mt/test-drivers (mt/normal-drivers)
     (testing "executing a plan!"
       (is (legos.actions/execute-plan!
-           (yaml/parse-string
+           (legos.actions/hippie-parse
             (format "
 steps:
   - lego: transform
