@@ -179,7 +179,7 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
         />
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">
-            <Group justify="space-between">
+            <Group justify="space-between" align="start">
               <Stack gap="sm">
                 <Title order={4}>{t`Generated table settings`}</Title>
                 <Text c="text-secondary">{t`Each transform creates a table in this database.`}</Text>
