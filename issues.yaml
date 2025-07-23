@@ -1,0 +1,37 @@
+steps:
+  - lego: transfer
+    source_database: 72
+    source_table: gh_issue
+    destination_database: 71
+    destination_table: all_issues
+    overwrite?: true
+  - lego: transform
+    database: 71
+    table: bugs
+    query: SELECT * FROM all_issues WHERE is_bug = true
+  - lego: transform
+    database: 71
+    table: closed_bugs
+    query: SELECT * FROM bugs WHERE state = 'closed'
+  - lego: transform
+    database: 71
+    table: time_to_close_bugs
+    query: SELECT *, closed_at - created_at as time_to_close FROM closed_bugs
+  - lego: transform
+    database: 71
+    table: median_time_bugs_by_team
+    query: |
+      SELECT feature_cluster,
+             count(*),
+             extract(days from avg(time_to_close)) as days_to_close
+      FROM time_to_close_bugs
+      GROUP BY feature_cluster
+  - lego: transform
+    database: 71
+    table: median_time_bugs_by_month
+    query: |
+      SELECT DATE_TRUNC('month', created_at) AS created_at,
+             count(*) as count,
+             extract(days from avg(time_to_close)) as days_to_close
+      FROM time_to_close_bugs
+      GROUP BY DATE_TRUNC('month', created_at)
