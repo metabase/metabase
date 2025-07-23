@@ -74,7 +74,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- :some]
    (available-binning-strategies-method query stage-number x)))
 
 (mu/defn default-auto-bin :- ::lib.schema.binning/binning-option

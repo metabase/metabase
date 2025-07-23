@@ -852,8 +852,8 @@
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
-  {:exec-args {:only ["test/mbql"
-                      "test/metabase/lib"
+  {:exec-args {:only ["test/metabase/lib"
+                      "test/metabase/lib_be"
                       "test/metabase/legacy_mbql"
                       "test/metabase/driver"
                       "test/metabase/query_processor"

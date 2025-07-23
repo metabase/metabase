@@ -27,13 +27,18 @@
 
 (def Field
   "A field in a join, either `:metabase.lib.schema.metadata/column` or a `:field` ref."
-  [:or
-   [:ref ::lib.schema.metadata/column]
-   [:ref :mbql.clause/field]])
+  [:multi
+   {:dispatch map?}
+   [true  [:ref ::lib.schema.metadata/column]]
+   [false [:ref :mbql.clause/field]]])
 
 (def FieldOrPartialJoin
   "A field or a partial join."
-  [:or Field PartialJoin])
+  [:multi
+   {:dispatch :lib/type}
+   [:metadata/column [:ref ::lib.schema.metadata/column]]
+   [:mbql/join       PartialJoin]
+   [nil              :mbql.clause/field]])
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."
