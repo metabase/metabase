@@ -8,9 +8,9 @@ import { getWindow } from "./get-window";
 
 export type MetabaseProviderPropsToStore = Omit<
   InternalMetabaseProviderProps,
-  "children" | "store"
+  "children" | "reduxStore"
 > & {
-  store?: InternalMetabaseProviderProps["store"];
+  reduxStore?: InternalMetabaseProviderProps["reduxStore"];
 };
 
 /**
@@ -89,12 +89,12 @@ export class MetabaseProviderPropsStore {
     this.listeners.forEach((listener) => listener());
   }
 
-  public setSdkStore(store: Store<SdkStoreState, Action>): void {
-    this.update("store", store);
+  public setReduxStore(reduxStore: Store<SdkStoreState, Action>): void {
+    this.update("reduxStore", reduxStore);
   }
 
-  public getSdkStore() {
-    return this.props.store;
+  public getReduxStore() {
+    return this.props.reduxStore;
   }
 
   // -- useSyncExternalStore compatibility --

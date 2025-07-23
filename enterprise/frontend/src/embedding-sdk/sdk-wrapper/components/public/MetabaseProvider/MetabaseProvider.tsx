@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo } from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
@@ -17,28 +17,20 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   children,
   ...props
 }: MetabaseProviderProps) {
+  useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
   const { isLoading } = useWaitForSdkBundle();
 
-  const store = useMemo(
-    () =>
-      !isLoading ? getWindow()?.MetabaseEmbeddingSDK?.getSdkStore() : undefined,
-    [isLoading],
-  );
-
-  useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
-
+  const reduxStore = isLoading
+    ? null
+    : getWindow()?.MetabaseEmbeddingSDK?.getSdkStore();
   const Component = isLoading
     ? null
     : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
 
   return (
-    <MetabaseProviderInner store={store} props={props}>
+    <MetabaseProviderInner reduxStore={reduxStore} props={props}>
       {({ initialized }) =>
-        initialized && Component ? (
-          <Component {...props}>{children}</Component>
-        ) : (
-          children
-        )
+        initialized && Component ? <Component>{children}</Component> : children
       }
     </MetabaseProviderInner>
   );
