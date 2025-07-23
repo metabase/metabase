@@ -1,5 +1,6 @@
 import type {
   CreateTransformRequest,
+  ListTransformsRequest,
   Transform,
   TransformId,
   UpdateTransformRequest,
@@ -17,11 +18,10 @@ import {
 
 export const transformApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listTransforms: builder.query<Transform[], void>({
-      query: (params) => ({
+    listTransforms: builder.query<Transform[], ListTransformsRequest>({
+      query: () => ({
         method: "GET",
         url: "/api/ee/transform",
-        params,
       }),
       providesTags: (transforms = []) => provideTransformListTags(transforms),
     }),

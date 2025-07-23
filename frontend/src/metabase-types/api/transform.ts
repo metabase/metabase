@@ -1,3 +1,5 @@
+import type { DatabaseId } from "metabase-types/api/database";
+
 import type { DatasetQuery } from "./query";
 
 export type TransformId = number;
@@ -20,6 +22,10 @@ export type TransformTarget = {
   type: "table";
   schema: string;
   table: string;
+};
+
+export type ListTransformsRequest = {
+  database_id?: DatabaseId;
 };
 
 export type CreateTransformRequest = {

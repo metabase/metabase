@@ -130,13 +130,20 @@ export function useTableLoader(path: TreePath) {
         return [];
       }
 
-      if (transformsRef.current.isError) {
+      const newArgs = {
+        database_id: databaseId,
+      };
+
+      if (
+        transformsRef.current.isError &&
+        _.isEqual(transformsRef.current.originalArgs, newArgs)
+      ) {
         // Do not refetch when this call failed previously.
         // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
         return [];
       }
 
-      const response = await fetchTransforms();
+      const response = await fetchTransforms(newArgs, true);
       return response?.data?.map((transform) =>
         node<TransformNode>({
           type: "transform",

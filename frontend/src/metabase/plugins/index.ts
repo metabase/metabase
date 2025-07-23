@@ -71,6 +71,7 @@ import type {
   Group,
   GroupPermissions,
   GroupsPermissions,
+  ListTransformsRequest,
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
@@ -794,12 +795,16 @@ export type UseLazyListTransformsData = {
 };
 
 export type UseLazyListTransformsState = {
+  originalArgs?: ListTransformsRequest;
   isFetching: boolean;
   isError: boolean;
 };
 
 export type UseLazyListTransformsResult = [
-  () => Promise<UseLazyListTransformsData>,
+  (
+    args: ListTransformsRequest,
+    preferCacheValue?: boolean,
+  ) => Promise<UseLazyListTransformsData>,
   UseLazyListTransformsState,
 ];
 
