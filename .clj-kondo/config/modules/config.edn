@@ -1841,7 +1841,17 @@
            models
            permissions
            query-processor
+           sync
            util}}
+
+  enterprise/transfers
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms.api
+           metabase-enterprise.transforms.init}
+   :uses #{driver
+           query-processor
+           util
+           transforms}}
 
   enterprise/upload-management
   {:team "Admin Webapp"

@@ -1,18 +1,19 @@
 (ns metabase-enterprise.transforms.api
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.sync.core :as sync]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (mr/def ::transform-source
   [:map
@@ -40,35 +41,63 @@
              :table "gadget_products"}}]
   -)
 
-;; TODO add driver specific quoting
 (defn- qualified-table-name
-  [{:keys [schema table]}]
-  (cond->> table
-    schema (str schema ".")))
+  [driver {:keys [schema table]}]
+  (cond->> (driver/escape-alias driver table)
+    (string? schema) (str (driver/escape-alias driver schema) ".")))
 
 (defn- target-table-exists?
   [{:keys [source target] :as _transform}]
-  (let [database (-> source :query :database)
-        driver (t2/select-one-fn :engine :model/Database database)]
-    (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
-        :fields
-        seq
-        boolean)))
+  (let [db-id (-> source :query :database)
+        database (t2/select-one :model/Database db-id)
+        driver (:engine database)
+        needle ((juxt :schema :table) target)
+        normalize-fn (juxt :schema :name)]
+    (some #(= (normalize-fn %) needle)
+          (:tables (driver/describe-database driver database)))))
 
 (defn- delete-target-table!
   [{:keys [source target] :as _transform}]
   (let [database (-> source :query :database)
         driver (t2/select-one-fn :engine :model/Database database)]
-    (driver/drop-table! driver database (qualified-table-name target))))
+    (driver/drop-table! driver database (qualified-table-name driver target))))
 
 (defn- delete-target-table-by-id!
   [transform-id]
   (delete-target-table! (t2/select-one :model/Transform transform-id)))
 
+(defn- compile-source [{query-type :type :as source}]
+  (case query-type
+    "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
+
+(defn- sync-table!
+  [database target]
+  (let [table (or (t2/select-one :model/Table
+                                 :db_id (:id database)
+                                 :schema (:schema target)
+                                 :name (:table target))
+                  (sync/create-table! database {:schema (:schema target)
+                                                :name (:table target)}))]
+    (sync/sync-table! table)))
+
+(defn- exec-transform
+  [transform]
+  (let [{:keys [source target]} transform
+        db (get-in source [:query :database])
+        {driver :engine :as database} (t2/select-one :model/Database db)]
+    (transforms.execute/execute
+     {:db db
+      :driver driver
+      :sql (compile-source source)
+      :output-table (qualified-table-name driver target)
+      :overwrite? true})
+    (sync-table! database target)))
+
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
    _query-params]
+  (api/check-superuser)
   (t2/select :model/Transform))
 
 (api.macros/defendpoint :post "/"
@@ -78,18 +107,21 @@
                                              [:name :string]
                                              [:source ::transform-source]
                                              [:target ::transform-target]]]
+  (api/check-superuser)
   (when (target-table-exists? body)
     (api/throw-403))
-  (let [id (t2/insert-returning-pk! :model/Transform {:name name
-                                                      :source source
-                                                      :target target})]
-    (t2/select-one :model/Transform id)))
+  (let [transform (t2/insert-returning-instance! :model/Transform {:name name
+                                                                   :source source
+                                                                   :target target})]
+    (exec-transform transform)
+    transform))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "get transform" id)
-  (t2/select-one :model/Transform id))
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Transform id)))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map
@@ -100,20 +132,27 @@
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (log/info "put transform" id)
-  (let [old (t2/select-one-fn :target :model/Transform id)
-        new (merge old body)]
-    (when (not= (select-keys (:target old) [:schema :table])
-                (select-keys (:target new) [:schema :table]))
-      (when (target-table-exists? new)
-        (api/throw-403))
+  (api/check-superuser)
+  (let [old (t2/select-one :model/Transform id)
+        new (merge old body)
+        target-fields #(-> % :target (select-keys [:schema :table]))
+        query-fields #(select-keys % [:source :target])]
+    (when (and (not= (target-fields old) (target-fields new))
+               (target-table-exists? new))
+      (api/throw-403))
+    (when (not= (query-fields new) (query-fields old))
       (delete-target-table! old)))
-  (t2/select-one :model/Transform id))
+  (t2/update! :model/Transform id body)
+  (let [transform (t2/select-one :model/Transform id)]
+    (exec-transform transform)
+    transform))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
-  #_(delete-target-table-by-id! id)
+  (api/check-superuser)
+  (delete-target-table-by-id! id)
   (t2/delete! :model/Transform id)
   nil)
 
@@ -121,28 +160,15 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
+  (api/check-superuser)
   (delete-target-table-by-id! id))
-
-(defn- compile-source [{query-type :type :as source}]
-  (case query-type
-    "query" (:query (qp.compile/compile-with-inline-parameters (:query source)))))
 
 (api.macros/defendpoint :post "/:id/execute"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
-  (let [{:keys [_name source target]} (t2/select-one :model/Transform id)
-        db (get-in source [:query :database])
-        {driver :engine} (t2/select-one :model/Database db)]
-    (when (not= (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db)
-                :query-builder-and-native)
-      (api/throw-403))
-    (transforms.execute/execute
-     {:db db
-      :driver driver
-      :sql (compile-source source)
-      :output-table (qualified-table-name target)
-      :overwrite? true})))
+  (api/check-superuser)
+  (exec-transform (t2/select-one :model/Transform id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

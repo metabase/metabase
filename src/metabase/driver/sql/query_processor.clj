@@ -2075,13 +2075,11 @@
 
 (defmethod driver/compile-transform :sql
   [driver {:keys [sql output-table]}]
-  (first
-   (format-honeysql driver
-                    {:select [:*]
-                     :from [[[:raw (str "(" sql ")")] (str (random-uuid))]]
-                     :into output-table})))
+  (format-honeysql driver
+                   {:select [:*]
+                    :from [[[:raw (str "(" sql ")")] (str (random-uuid))]]
+                    :into output-table}))
 
-(defmethod driver/drop-transform :sql
+(defmethod driver/compile-drop-table :sql
   [driver table]
-  (first
-   (format-honeysql driver {:drop-table [:if-exists table]})))
+  (format-honeysql driver {:drop-table [:if-exists table]}))
