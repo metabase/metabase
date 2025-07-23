@@ -817,52 +817,57 @@
               (client/client :post "/auth/sso/logout" req-options)
               (is (not (t2/exists? :model/Session :key_hashed session-key-hashed))))))))))
 
-(deftest saml-embedding-sdk-integration-returns-idp-url-tests
-  (testing "should return IdP URL and method info when embedding SDK header is present"
-    (with-other-sso-types-disabled!
-      (with-saml-default-setup!
-        (let [result (client/client-real-response
-                      :get 200 "/auth/sso"
-                      {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
-                                                   "origin" "example.com"}}})]
-          (is (partial= {:status 200
-                         :body {:method "saml"}
-                         :headers {"Content-Type" "application/json"}}
-                        result))
-          (is (str/starts-with? (-> result :body :url) default-idp-uri)))))))
+(def ^:private token-auth-client-whitelist ["embedding-sdk-react" "custom-app-backend"])
 
-(deftest saml-embedding-sdk-integration-includes-origin-tests
-  (testing "should include origin in the redirect URL when embedding SDK header is present with origin"
-    (with-other-sso-types-disabled!
-      (with-saml-default-setup!
-        (let [result (client/client-real-response
-                      :get 200 "/auth/sso"
-                      {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
-                                                   "origin" "https://app.example.com"}}})
-              origin (-> (get-in result [:body :url])
-                         uri->params-map
-                         :RelayState
-                         u/decode-base64
-                         uri->params-map
-                         :origin)]
-          (is (= "https://app.example.com" origin)))))))
-
-(deftest saml-embedding-sdk-integration-includes-token-tests
-  (mt/with-temporary-setting-values [sdk-encryption-validation-key "1FlZMdousOLX9d3SSL+KuWq2+l1gfKoFM7O4ZHqKjTgabo7QdqP8US2bNPN+PqisP1QOKvesxkxOigIrvvd5OQ=="]
-    (testing "should include token in the redirect URL when embedding SDK header is present with origin"
+(deftest saml-embedding-sdk-integration-returns-idp-url-whitelist-tests
+  (doseq [client token-auth-client-whitelist]
+    (testing (str "should return IdP URL and method info when whitelisted header '" client "' is present")
       (with-other-sso-types-disabled!
         (with-saml-default-setup!
           (let [result (client/client-real-response
                         :get 200 "/auth/sso"
-                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
+                        {:request-options {:headers {"x-metabase-client" client
+                                                     "origin" "example.com"}}})]
+            (is (partial= {:status 200
+                           :body {:method "saml"}
+                           :headers {"Content-Type" "application/json"}}
+                          result))
+            (is (str/starts-with? (-> result :body :url) default-idp-uri))))))))
+
+(deftest saml-embedding-sdk-integration-includes-origin-whitelist-tests
+  (doseq [client token-auth-client-whitelist]
+    (testing (str "should include origin in the redirect URL when whitelisted header '" client "' is present with origin")
+      (with-other-sso-types-disabled!
+        (with-saml-default-setup!
+          (let [result (client/client-real-response
+                        :get 200 "/auth/sso"
+                        {:request-options {:headers {"x-metabase-client" client
                                                      "origin" "https://app.example.com"}}})
-                token (-> (get-in result [:body :url])
-                          uri->params-map
-                          :RelayState
-                          u/decode-base64
-                          uri->params-map
-                          :token)]
-            (is (not (nil? token)))))))))
+                origin (-> (get-in result [:body :url])
+                           uri->params-map
+                           :RelayState
+                           u/decode-base64
+                           uri->params-map
+                           :origin)]
+            (is (= "https://app.example.com" origin))))))))
+
+(deftest saml-embedding-sdk-includes-token-whitelist-tests
+  (mt/with-temporary-setting-values [sdk-encryption-validation-key "1FlZMdousOLX9d3SSL+KuWq2+l1gfKoFM7O4ZHqKjTgabo7QdqP8US2bNPN+PqisP1QOKvesxkxOigIrvvd5OQ=="]
+    (doseq [client token-auth-client-whitelist]
+      (testing (str "should include token in the redirect URL when whitelisted header '" client "' is present with origin")
+        (with-other-sso-types-disabled!
+          (with-saml-default-setup!
+            (let [result (client/client-real-response
+                          :get 200 "/auth/sso"
+                          {:request-options {:headers {"x-metabase-client" client
+                                                       "origin" "https://app.example.com"}}})
+                  token (-> (get-in result [:body :url])
+                            uri->params-map
+                            :RelayState
+                            u/decode-base64
+                            uri->params-map
+                            :token)]
+              (is (not (nil? token))))))))))
 
 (deftest saml-embedding-sdk-integration-no-embedding-tests
   (testing "should redirect to IdP when no embedding SDK header is present"

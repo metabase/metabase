@@ -31,6 +31,9 @@
    [:sso_source       [:enum :saml :jwt]]
    [:login_attributes [:maybe :map]]])
 
+(def ^:private token-auth-client-whitelist
+  #{"embedding-sdk-react" "custom-app-backend"})
+
 (defn- maybe-throw-user-provisioning
   [user-provisioning-type]
   (when (not user-provisioning-type)
@@ -125,7 +128,7 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
-(defn is-embedding-sdk-header?
-  "Check if the client has indicated it is from the react embedding sdk"
+(defn is-token-auth-flow-header?
+  "Check if the client has indicated it is using a whitelisted header"
   [request]
-  (= (get-in request [:headers "x-metabase-client"]) "embedding-sdk-react"))
+  (contains? token-auth-client-whitelist (get-in request [:headers "x-metabase-client"])))

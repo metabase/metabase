@@ -4,29 +4,30 @@
    [metabase.internal-stats.util :as u]
    [toucan2.core :as t2]))
 
+(def ^:private embedding-clients-set #{"embedding-sdk-react" "custom-app-backend"})
+
 (def ^:private query-execution-statistics
-  [:model/QueryExecution
-   [(u/count-case [:= :embedding_client "embedding-sdk-react"]) :sdk_embed]
-   [(u/count-case [:and [:= :embedding_client "embedding-iframe"]
-                   [:!= :executor_id nil]])
-    :interactive_embed]
-   [(u/count-case [:and [:= :embedding_client "embedding-iframe"]
-                   [:= :executor_id nil]])
-    :static_embed]
-   [(u/count-case [:and
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-sdk-react"]]
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-iframe"]]
-                   [:like :context "public-%"]])
-    :public_link]
-   [(u/count-case [:and
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-sdk-react"]]
-                   [:or [:= :embedding_client nil]
-                    [:!= :embedding_client "embedding-iframe"]]
-                   [:not [:like :context "public-%"]]])
-    :internal]])
+  (let [embedding-clients embedding-clients-set]
+    [:model/QueryExecution
+     [(u/count-case [:in :embedding_client embedding-clients]) :sdk_embed]
+     [(u/count-case [:and [:= :embedding_client "embedding-iframe"]
+                     [:!= :executor_id nil]])
+      :interactive_embed]
+     [(u/count-case [:and [:= :embedding_client "embedding-iframe"]
+                     [:= :executor_id nil]])
+      :static_embed]
+     [(u/count-case [:and
+                     [:or [:= :embedding_client nil]
+                      [:not-in :embedding_client embedding-clients]
+                      [:!= :embedding_client "embedding-iframe"]]
+                     [:like :context "public-%"]])
+      :public_link]
+     [(u/count-case [:and
+                     [:or [:= :embedding_client nil]
+                      [:not-in :embedding_client embedding-clients]
+                      [:!= :embedding_client "embedding-iframe"]]
+                     [:not [:like :context "public-%"]]])
+      :internal]]))
 
 (defn query-executions-all-time-and-last-24h
   "Calculate query executions for the entire available history and over the last 24 hours from now."

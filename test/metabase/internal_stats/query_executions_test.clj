@@ -7,6 +7,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+(def ^:private embedding-clients ["embedding-sdk-react" "custom-app-backend"])
+
 (def ^:private query-execution-defaults
   {:hash         (qp.util/query-hash {})
    :running_time 1
@@ -26,6 +28,7 @@
       (mt/with-temp [:model/User           u {}
                      :model/QueryExecution _ one-year-ago-defaults
                      :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-sdk-react")
+                     :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "custom-app-backend")
                      :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc one-year-ago-defaults
@@ -35,6 +38,7 @@
                      :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-csv-download)
                      :model/QueryExecution _ query-execution-defaults
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
+                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "custom-app-backend")
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
@@ -72,7 +76,7 @@
       (mt/with-temp [:model/User           u {}
                      :model/QueryExecution _ yesterday-defaults
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-sdk-react")
-                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
+                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "custom-app-backend")
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc yesterday-defaults
                                                     :embedding_client "embedding-iframe"
@@ -81,11 +85,12 @@
                      :model/QueryExecution _ (assoc yesterday-defaults :context :public-csv-download)
                      :model/QueryExecution _ query-execution-defaults
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
+                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "custom-app-backend")
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
                      :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
-        (is (= {:query_executions_sdk_embed 1,
+        (is (= {:query_executions_sdk_embed 2,
                 :query_executions_interactive_embed 1,
                 :query_executions_static_embed 2,
                 :query_executions_public_link 2,

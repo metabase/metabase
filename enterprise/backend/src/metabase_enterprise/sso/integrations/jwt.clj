@@ -140,7 +140,7 @@
   [{{:keys [jwt redirect]} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (let [jwt-data (when jwt (session-data jwt request))
-        is-sdk? (sso-utils/is-embedding-sdk-header? request)]
+        is-sdk? (sso-utils/is-token-auth-flow-header? request)]
     (cond
       (and is-sdk? (not (embed.settings/enable-embedding-sdk))) (throw-embedding-disabled)
       (and is-sdk? jwt (token-utils/has-token request)) (generate-response-token (:session jwt-data) (:jwt-data jwt-data))

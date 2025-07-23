@@ -8,6 +8,8 @@
    [metabase.util :as u]
    [ring.mock.request :as ring.mock]))
 
+(def ^:private embedding-clients [@#'sdk/embedding-sdk-client @#'sdk/embedding-iframe-client "custom-app-backend"])
+
 (defn- wonk-case [s]
   (str/join (for [char s]
               (let [f (if (rand-nth [true false]) u/upper-case-en u/lower-case-en)]
@@ -41,39 +43,25 @@
     nil
     "1.1.1"))
 
-(deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
-  (mt/with-prometheus-system! [_ system]
-    ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
-    (let [request (mock-request {:client @#'sdk/embedding-sdk-client})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
-      (good request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "200"})))
-      (bad request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "400"})))
-      (exception request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "400"})))
-      (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "500"}))))))
-
-(deftest embeding-mw-bumps-metrics-with-iframe-client-header
-  (mt/with-prometheus-system! [_ system]
-    ;; X-Metabase-Client header == "embedding-iframe" => iframe context
-    (let [request (mock-request {:client @#'sdk/embedding-iframe-client})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
-      (good request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
-      (bad request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "400"})))
-      (exception request identity identity)
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "400"})))
-      (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "500"}))))))
+(deftest embeding-mw-bumps-metrics-for-all-embedding-clients
+  (let [client-metrics [{:client "embedding-sdk-react" :metric :metabase-sdk/response}
+                        {:client "embedding-iframe" :metric :metabase-embedding-iframe/response}
+                        {:client "custom-app-backend" :metric :metabase-custom-app-backend/response}]]
+    (doseq [{:keys [client metric]} client-metrics]
+      (mt/with-prometheus-system! [_ system]
+        (let [request (mock-request {:client client})
+              good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
+              bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
+              exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+          (good request identity identity)
+          (is (= 1.0 (mt/metric-value system metric {:status "200"})))
+          (bad request identity identity)
+          (is (= 1.0 (mt/metric-value system metric {:status "200"})))
+          (is (= 1.0 (mt/metric-value system metric {:status "400"})))
+          (exception request identity identity)
+          (is (= 1.0 (mt/metric-value system metric {:status "200"})))
+          (is (= 1.0 (mt/metric-value system metric {:status "400"})))
+          (is (= 1.0 (mt/metric-value system metric {:status "500"}))))))))
 
 (deftest embeding-mw-does-not-bump-metrics-with-random-sdk-header
   (let [prometheus-standin (atom {})]

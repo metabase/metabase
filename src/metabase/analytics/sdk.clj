@@ -41,20 +41,29 @@
 
 (def ^:private embedding-sdk-client "embedding-sdk-react")
 (def ^:private embedding-iframe-client "embedding-iframe")
+(def ^:private custom-app-backend-client "custom-app-backend")
+(def ^:private embedding-clients #{embedding-sdk-client embedding-iframe-client custom-app-backend-client})
 
 (defn- track-sdk-response
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
-  (case sdk-client
-    "embedding-sdk-react"    (prometheus/inc! :metabase-sdk/response {:status (str status)})
-    "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
+  (cond
+    (= sdk-client embedding-sdk-client)
+    (prometheus/inc! :metabase-sdk/response {:status (str status)})
+
+    (= sdk-client embedding-iframe-client)
+    (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
+
+    (= sdk-client custom-app-backend-client)
+    (prometheus/inc! :metabase-custom-app-backend/response {:status (str status)})
+
+    :else
     (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn- embedding-context?
   "Should we track this request as being made by an embedding client?"
   [client]
-  (or (= client embedding-sdk-client)
-      (= client embedding-iframe-client)))
+  (contains? embedding-clients client))
 
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."

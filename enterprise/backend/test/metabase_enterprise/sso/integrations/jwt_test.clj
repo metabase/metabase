@@ -556,100 +556,103 @@
           #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
 
-(deftest jwt-token-test
-  (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"
-    (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
-        (let [result (client/client-real-response
-                      :get 200 "/auth/sso"
-                      {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})]
-          (is (partial= {:url (sso-settings/jwt-identity-provider-uri)
-                         :method "jwt"}
-                        (:body result)))
-          (is (not (nil? (get-in result [:body :hash]))))))))
+(def ^:private token-auth-client-whitelist ["embedding-sdk-react" "custom-app-backend"])
 
-  (testing "should return a session token when a JWT token and sdk headers are passed"
-    (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
-        (let [jwt-iat-time (buddy-util/now)
-              jwt-exp-time (+ (buddy-util/now) 3600)
-              jwt-payload  (jwt/sign
-                            {:email      "rasta@metabase.com"
-                             :first_name "Rasta"
-                             :last_name  "Toucan"
-                             :extra      "keypairs"
-                             :are        "also present"
-                             :iat        jwt-iat-time
-                             :exp        jwt-exp-time}
-                            default-jwt-secret)
-              result (client/client-real-response :get 200 "/auth/sso"
-                                                  {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
-                                                                               "x-metabase-sdk-jwt-hash" (token-utils/generate-token)}}}
-                                                  :jwt jwt-payload)]
-          (is
-           (=?
-            {:id  (mt/malli=? ms/UUIDString)
-             :iat jwt-iat-time
-             :exp jwt-exp-time}
-            (:body result)))))))
+(deftest jwt-token-whitelist-test
+  (doseq [client token-auth-client-whitelist]
+    (testing (str "should return IdP URL when whitelisted header '" client "' is present but no JWT token is provided")
+      (with-jwt-default-setup!
+        (mt/with-temporary-setting-values [enable-embedding-sdk true]
+          (let [result (client/client-real-response
+                        :get 200 "/auth/sso"
+                        {:request-options {:headers {"x-metabase-client" client}}})]
+            (is (partial= {:url (sso-settings/jwt-identity-provider-uri)
+                           :method "jwt"}
+                          (:body result)))
+            (is (not (nil? (get-in result [:body :hash]))))))))
 
-  (testing "should not return a session token when jwt is not configured"
-    (mt/with-temporary-setting-values
-      [jwt-enabled true
-       jwt-identity-provider-uri nil
-       jwt-shared-secret nil]
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
-        (let [jwt-iat-time (buddy-util/now)
-              jwt-exp-time (+ (buddy-util/now) 3600)
-              jwt-payload  (jwt/sign
-                            {:email      "rasta@metabase.com"
-                             :first_name "Rasta"
-                             :last_name  "Toucan"
-                             :extra      "keypairs"
-                             :are        "also present"
-                             :iat        jwt-iat-time
-                             :exp        jwt-exp-time}
-                            default-jwt-secret)
-              result       (client/client-real-response :get 400 "/auth/sso"
-                                                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
-                                                        :jwt   jwt-payload)]
-          (is result nil)))))
+    (testing (str "should return a session token when a JWT token and whitelisted header '" client "' are passed")
+      (with-jwt-default-setup!
+        (mt/with-temporary-setting-values [enable-embedding-sdk true]
+          (let [jwt-iat-time (buddy-util/now)
+                jwt-exp-time (+ (buddy-util/now) 3600)
+                jwt-payload  (jwt/sign
+                              {:email      "rasta@metabase.com"
+                               :first_name "Rasta"
+                               :last_name  "Toucan"
+                               :extra      "keypairs"
+                               :are        "also present"
+                               :iat        jwt-iat-time
+                               :exp        jwt-exp-time}
+                              default-jwt-secret)
+                result (client/client-real-response :get 200 "/auth/sso"
+                                                    {:request-options {:headers {"x-metabase-client" client
+                                                                                 "x-metabase-sdk-jwt-hash" (token-utils/generate-token)}}}
+                                                    :jwt jwt-payload)]
+            (is
+             (=?
+              {:id  (mt/malli=? ms/UUIDString)
+               :iat jwt-iat-time
+               :exp jwt-exp-time}
+              (:body result)))))))
 
-  (testing "should not return a session token when embedding is disabled"
-    (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk false]
-        (let [jwt-iat-time (buddy-util/now)
-              jwt-exp-time (+ (buddy-util/now) 3600)
-              jwt-payload  (jwt/sign
-                            {:email      "rasta@metabase.com"
-                             :first_name "Rasta"
-                             :last_name  "Toucan"
-                             :extra      "keypairs"
-                             :are        "also present"
-                             :iat        jwt-iat-time
-                             :exp        jwt-exp-time}
-                            default-jwt-secret)
-              result       (client/client-real-response :get 402 "/auth/sso"
-                                                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
-                                                        :jwt   jwt-payload)]
-          (is result nil)))))
+    (testing (str "should not return a session token when jwt is not configured and whitelisted header '" client "' is present")
+      (mt/with-temporary-setting-values
+        [jwt-enabled true
+         jwt-identity-provider-uri nil
+         jwt-shared-secret nil]
+        (mt/with-temporary-setting-values [enable-embedding-sdk true]
+          (let [jwt-iat-time (buddy-util/now)
+                jwt-exp-time (+ (buddy-util/now) 3600)
+                jwt-payload  (jwt/sign
+                              {:email      "rasta@metabase.com"
+                               :first_name "Rasta"
+                               :last_name  "Toucan"
+                               :extra      "keypairs"
+                               :are        "also present"
+                               :iat        jwt-iat-time
+                               :exp        jwt-exp-time}
+                              default-jwt-secret)
+                result       (client/client-real-response :get 400 "/auth/sso"
+                                                          {:request-options {:headers {"x-metabase-client" client}}}
+                                                          :jwt   jwt-payload)]
+            (is result nil)))))
 
-  (testing "should not return a session token when token=false"
-    (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding-sdk true]
-        (let [jwt-iat-time (buddy-util/now)
-              jwt-exp-time (+ (buddy-util/now) 3600)
-              jwt-payload  (jwt/sign
-                            {:email      "rasta@metabase.com"
-                             :first_name "Rasta"
-                             :last_name  "Toucan"
-                             :extra      "keypairs"
-                             :are        "also present"
-                             :iat        jwt-iat-time
-                             :exp        jwt-exp-time}
-                            default-jwt-secret)
-              result       (client/client-real-response :get 302 "/auth/sso"
-                                                        {:request-options {:redirect-strategy :none}}
-                                                        :return_to default-redirect-uri
-                                                        :jwt       jwt-payload)]
-          (is result nil))))))
+    (testing (str "should not return a session token when embedding is disabled and whitelisted header '" client "' is present")
+      (with-jwt-default-setup!
+        (mt/with-temporary-setting-values [enable-embedding-sdk false]
+          (let [jwt-iat-time (buddy-util/now)
+                jwt-exp-time (+ (buddy-util/now) 3600)
+                jwt-payload  (jwt/sign
+                              {:email      "rasta@metabase.com"
+                               :first_name "Rasta"
+                               :last_name  "Toucan"
+                               :extra      "keypairs"
+                               :are        "also present"
+                               :iat        jwt-iat-time
+                               :exp        jwt-exp-time}
+                              default-jwt-secret)
+                result       (client/client-real-response :get 402 "/auth/sso"
+                                                          {:request-options {:headers {"x-metabase-client" client}}}
+                                                          :jwt   jwt-payload)]
+            (is result nil)))))
+
+    (testing (str "should not return a session token when token=false and whitelisted header '" client "' is present")
+      (with-jwt-default-setup!
+        (mt/with-temporary-setting-values [enable-embedding-sdk true]
+          (let [jwt-iat-time (buddy-util/now)
+                jwt-exp-time (+ (buddy-util/now) 3600)
+                jwt-payload  (jwt/sign
+                              {:email      "rasta@metabase.com"
+                               :first_name "Rasta"
+                               :last_name  "Toucan"
+                               :extra      "keypairs"
+                               :are        "also present"
+                               :iat        jwt-iat-time
+                               :exp        jwt-exp-time}
+                              default-jwt-secret)
+                result       (client/client-real-response :get 302 "/auth/sso"
+                                                          {:request-options {:redirect-strategy :none}}
+                                                          :return_to default-redirect-uri
+                                                          :jwt       jwt-payload)]
+            (is result nil))))))
