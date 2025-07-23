@@ -9,6 +9,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
+import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/visualizations/lib/image-exports";
 
 import LegendActions from "../LegendActions";
 
@@ -88,14 +89,21 @@ export const LegendCaption = ({
         DashboardS.fullscreenNormalText,
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
-        CS.h3,
+
+        // html2canvas doesn't support `text-overflow: ellipsis` (#45499) https://github.com/niklasvh/html2canvas/issues/324
+        SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS,
       )}
       href={hasTitleMenuItems ? undefined : href}
       onClick={hasTitleMenuItems ? undefined : onSelectTitle}
       onFocus={handleFocus}
       onMouseEnter={handleMouseEnter}
     >
-      <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
+      <Ellipsified
+        data-testid="legend-caption-title"
+        className={SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS}
+      >
+        {title}
+      </Ellipsified>
       {title && hasTitleMenuItems && (
         <Icon
           style={{ flexShrink: 0, marginRight: 10 }}
@@ -121,23 +129,24 @@ export const LegendCaption = ({
       ) : (
         titleElement
       )}
+      {hasInfoTooltip && description && !shouldHideDescription(width) && (
+        <Tooltip
+          label={
+            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+              {description}
+            </Markdown>
+          }
+          maw="22em"
+        >
+          <LegendDescriptionIcon
+            name="info"
+            className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+            mt="3px"
+            mr="md"
+          />
+        </Tooltip>
+      )}
       <LegendRightContent>
-        {hasInfoTooltip && description && !shouldHideDescription(width) && (
-          <Tooltip
-            label={
-              <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                {description}
-              </Markdown>
-            }
-            maw="22em"
-          >
-            <LegendDescriptionIcon
-              name="info"
-              className={cx(CS.hoverChild, CS.hoverChildSmooth)}
-              mt="2px"
-            />
-          </Tooltip>
-        )}
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
       </LegendRightContent>
     </LegendCaptionRoot>

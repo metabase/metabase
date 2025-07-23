@@ -21,7 +21,7 @@ describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
     cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
@@ -1725,7 +1725,7 @@ describe("scenarios > embedding > full app - jwt sso integration", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     // enable interactive embedding
     H.updateSetting("enable-embedding-interactive", true);
     H.updateSetting("embedding-app-origins-interactive", "http://localhost:*");

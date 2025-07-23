@@ -10,8 +10,7 @@ const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest();
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ signOut: true });
   });
 
   it("can find the embed.js file", () => {
@@ -91,7 +90,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     });
 
     frame.within(() => {
-      cy.findByText("2000 Zeilen").should("exist");
+      cy.findByText("2,000 Zeilen").should("exist");
     });
   });
 
@@ -181,6 +180,34 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     cy.log("5. assert that the iframe source has not changed");
     cy.get("@originalSrc").then((originalSrc) => {
       cy.get("iframe").invoke("attr", "src").should("eq", originalSrc);
+    });
+  });
+
+  it("fires ready event after iframe is loaded", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+      onVisitPage: () => {
+        cy.window().then((win) => {
+          // @ts-expect-error -- this is within the iframe
+          win.embed.addEventListener("ready", () => {
+            win.document.body.setAttribute("data-iframe-is-ready", "true");
+          });
+        });
+      },
+    });
+
+    cy.log("ready event should not be fired before the page loads");
+    cy.get("body").should("not.have.attr", "data-iframe-is-ready", "true");
+
+    cy.wait("@getCardQuery");
+
+    cy.log("ready event should be fired after the page loads");
+    cy.get("iframe").should("be.visible");
+    cy.get("body").should("have.attr", "data-iframe-is-ready", "true");
+
+    cy.log("iframe content should now be loaded");
+    frame.within(() => {
+      H.assertSdkInteractiveQuestionOrdersUsable();
     });
   });
 

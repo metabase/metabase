@@ -469,7 +469,7 @@ describe("scenarios > notebook > link to data source", () => {
 
     describe("sandboxing", () => {
       beforeEach(() => {
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP_ID]: {

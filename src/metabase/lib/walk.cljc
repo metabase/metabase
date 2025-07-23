@@ -221,3 +221,17 @@
    & args]
   (let [{:keys [query stage-number]} (query-for-path query stage-path)]
     (apply f query stage-number args)))
+
+(mu/defn previous-path :- [:maybe ::path]
+  "Return to the previous stage or join, if there is one; if not, returns `nil`."
+  [path :- ::path]
+  (when (pos-int? (last path))
+    (conj (vec (butlast path)) (dec (last path)))))
+
+(mu/defn next-path :- [:maybe ::path]
+  "Return to the next stage or join, if there is one; if not, returns `nil`."
+  [query :- ::lib.schema/query
+   path  :- ::path]
+  (let [num-stages-or-joins (count (get-in query (butlast path)))]
+    (when (< (inc (last path)) num-stages-or-joins)
+      (conj (vec (butlast path)) (inc (last path))))))

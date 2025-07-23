@@ -113,7 +113,7 @@ describe("issue 30235", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {

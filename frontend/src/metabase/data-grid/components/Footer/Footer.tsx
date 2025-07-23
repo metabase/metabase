@@ -2,6 +2,7 @@ import type { Table } from "@tanstack/react-table";
 import cx from "classnames";
 import { msgid, ngettext } from "ttag";
 
+import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { FOOTER_HEIGHT } from "metabase/data-grid/constants";
 import { PaginationFooter } from "metabase/visualizations/components/PaginationFooter/PaginationFooter";
 
@@ -22,6 +23,7 @@ export const Footer = <TData,>({
   className,
   style,
 }: FooterProps<TData>) => {
+  const formatNumber = useNumberFormatter();
   const wrapperAttributes = {
     "data-testid": "table-footer",
     className: cx(S.root, className),
@@ -52,7 +54,11 @@ export const Footer = <TData,>({
     return (
       <div {...wrapperAttributes}>
         <span className={S.rowsCount}>
-          {ngettext(msgid`${total} row`, `${total} rows`, total)}
+          {ngettext(
+            msgid`${formatNumber(total)} row`,
+            `${formatNumber(total)} rows`,
+            total,
+          )}
         </span>
       </div>
     );

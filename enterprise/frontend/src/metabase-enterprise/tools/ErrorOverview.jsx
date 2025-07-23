@@ -5,7 +5,7 @@ import _ from "underscore";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import CS from "metabase/css/core/index.css";
 import { CardApi } from "metabase/services";
 

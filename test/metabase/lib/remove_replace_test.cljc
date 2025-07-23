@@ -1,10 +1,11 @@
 (ns metabase.lib.remove-replace-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   #?(:cljs [metabase.test-runner.assert-exprs.approximately-equal])
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -513,15 +514,19 @@
       (is (=? (map lib.options/ident aggregations)
               (map lib.options/ident replaced-aggregations))))
     (testing "replacing with dependent should cascade keeping valid parts"
-      (is (=? {:stages [{:aggregation [[:max {} [:field {} (meta/id :venues :price)]]
-                                       (second aggregations)]
-                         :expressions [[:aggregation {:lib/expression-name "expr"} string?]]}
-                        {:filters [[:= {} [:field {} "max"] 1]]}]}
-              (-> query
-                  (as-> <> (lib/expression <> "expr" (lib/aggregation-ref <> 0)))
-                  (lib/append-stage)
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
-                  (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price)))))))
+      (let [query' (-> query
+                       (as-> <> (lib/aggregate <> (lib/with-expression-name (lib/aggregation-ref <> 0) "expr")))
+                       (lib/append-stage)
+                       (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
+                       (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price))))
+            agg0-id (get-in query' [:stages 0 :aggregation 0 1 :lib/uuid])]
+        (is (=? {:stages [{:aggregation [[:max {:lib/uuid string?} [:field {} (meta/id :venues :price)]]
+                                         (second aggregations)
+                                         [:aggregation {:name "expr", :display-name "expr"} string?]]}
+                          {:filters [[:= {} [:field {} "max"] 1]]}]}
+                query'))
+        (is (string? agg0-id))
+        (is (= agg0-id (get-in query' [:stages 0 :aggregation 2 2])))))
     (testing "replacing with dependent should cascade removing invalid parts"
       (binding [lib.schema.expression/*suppress-expression-type-check?* false]
         (is (=? {:stages [{:aggregation [[:sum {} [:field {} (meta/id :products :id)]]
@@ -1155,7 +1160,7 @@
                                 :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           product-card (:products (lib.tu/mock-cards))
           [orders-id orders-product-id] (lib/join-condition-lhs-columns base-query product-card nil nil)
-          [products-id] (lib/join-condition-rhs-columns base-query product-card orders-product-id nil)
+          [products-id] (lib/join-condition-rhs-columns base-query product-card (lib/ref orders-product-id) nil)
           query (lib/join base-query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))
           [join] (lib/joins query)
           new-clause (lib.join/with-join-alias
@@ -1703,16 +1708,47 @@
           (is (= ["Products" "Products_II"]
                  (map :alias (lib/joins new-query)))))))))
 
+(deftest ^:parallel replaced-join-gets-updated-alias-even-with-fks-to-same-field-test
+  (testing "replaced join gets replaced alias even if the replaced fk points to the same field (#40676)"
+    (let [orig-query (-> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+                         (lib/join (lib/join-clause (meta/table-metadata :ic/accounts)
+                                                    [(lib/= (meta/field-metadata :ic/reports :created-by)
+                                                            (meta/field-metadata :ic/accounts :id))])))
+          [orig-join] (lib/joins orig-query)
+          ;; This simulates how the FE updates the join via lib/with-join-conditions and lib/replace-clause.
+          new-query  (lib/replace-clause orig-query orig-join (lib/with-join-conditions
+                                                               orig-join
+                                                               [(lib/= (meta/field-metadata :ic/reports :updated-by)
+                                                                       (meta/field-metadata :ic/accounts :id))]))
+          [new-join] (lib/joins new-query)
+          id->breakout-name (fn [query id]
+                              (->> query
+                                   lib/breakoutable-columns
+                                   (m/find-first #(= id (:id %)))
+                                   (lib/display-info query)
+                                   :long-display-name))
+          orig-name  (id->breakout-name orig-query (meta/id :ic/accounts :name))
+          new-name   (id->breakout-name new-query (meta/id :ic/accounts :name))]
+      (testing "join gets correct join alias"
+        (is (= "IC Accounts - Created By" (:alias orig-join)))
+        (is (= "IC Accounts - Updated By" (:alias new-join))))
+      (testing "breakoutable columns have correct long display name"
+        (is (= "IC Accounts - Created By → Name" orig-name))
+        (is (= "IC Accounts - Updated By → Name" new-name))))))
+
 (deftest ^:parallel stale-clauses-test-unrelated-refs-are-stable
   (testing "deleting eg. an aggregation should not break a downstream ref to a breakout (#59441)"
     (let [base1  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                      (lib/join (meta/table-metadata :products))
                      (lib/aggregate (lib/count))
                      (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
-          cols   (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          cols   (m/index-by :lib/desired-column-alias
+                             (into []
+                                   (lib.field.util/add-source-and-desired-aliases-xform base1)
+                                   (lib/breakoutable-columns base1)))
           base2  (-> base1
-                     (lib/breakout (get cols "Products__CATEGORY"))             ; Explicitly joined
-                     (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE"))   ; Implicitly joined
+                     (lib/breakout (get cols "Products__CATEGORY"))           ; Explicitly joined
+                     (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE")) ; Implicitly joined
                      lib/append-stage)
           [category] (lib/visible-columns base2)
           ;; Adding an expression based on one of the breakouts.
@@ -1733,7 +1769,11 @@
                                         (lib/join (meta/table-metadata :products))
                                         (lib/aggregate (lib/count))
                                         (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
-          cols                      (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          cols                      (m/index-by
+                                     :lib/desired-column-alias
+                                     (into []
+                                           (lib.field.util/add-source-and-desired-aliases-xform base1)
+                                           (lib/breakoutable-columns base1)))
           base2                     (-> base1
                                         (lib/breakout (get cols "Products__CATEGORY"))             ; Explicitly joined
                                         (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE"))   ; Implicitly joined

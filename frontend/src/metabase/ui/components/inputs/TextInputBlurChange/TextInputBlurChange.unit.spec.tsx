@@ -5,16 +5,30 @@ import { cleanup, render, screen } from "__support__/ui";
 import type { TextInputBlurChangeProps } from "./TextInputBlurChange";
 import { TextInputBlurChange } from "./TextInputBlurChange";
 
-describe("InputBlurChange", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+function setup({
+  value = "",
+  placeholder = "Type some text",
+  normalize,
+}: Partial<TextInputBlurChangeProps> = {}) {
+  const onChange = jest.fn();
+  const onBlurChange = jest.fn((e) => e.target.value);
 
+  render(
+    <TextInputBlurChange
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+      onBlurChange={onBlurChange}
+      normalize={normalize}
+    />,
+  );
+
+  return { placeholder, value, onBlurChange, onChange };
+}
+
+describe("TextInputBlurChange", () => {
   it('should trigger "onBlurChange" on input blur', async () => {
-    const {
-      props: { placeholder },
-      mocks: { onBlurChange },
-    } = setup();
+    const { placeholder, onBlurChange } = setup();
 
     const inputEl = screen.getByPlaceholderText(placeholder);
     inputEl.focus();
@@ -31,10 +45,7 @@ describe("InputBlurChange", () => {
   });
 
   it('should trigger "onBlurChange" on component unmount', async () => {
-    const {
-      props: { placeholder },
-      mocks: { onBlurChange },
-    } = setup();
+    const { placeholder, onBlurChange } = setup();
 
     await userEvent.type(screen.getByPlaceholderText(placeholder), "test");
 
@@ -55,27 +66,3 @@ describe("InputBlurChange", () => {
     expect(input.value).toEqual(normalizedValue);
   });
 });
-
-function setup({
-  value = "",
-  placeholder = "Type some texto",
-  normalize,
-}: Partial<TextInputBlurChangeProps> = {}) {
-  const onChange = jest.fn();
-  const onBlurChange = jest.fn((e) => e.target.value);
-
-  render(
-    <TextInputBlurChange
-      value={value}
-      placeholder={placeholder}
-      onChange={onChange}
-      onBlurChange={onBlurChange}
-      normalize={normalize}
-    />,
-  );
-
-  return {
-    props: { value, placeholder },
-    mocks: { onChange, onBlurChange },
-  };
-}

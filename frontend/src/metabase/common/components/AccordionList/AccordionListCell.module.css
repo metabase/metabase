@@ -25,3 +25,10 @@
     color: inherit;
   }
 }
+
+.sticky {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  background: var(--mb-color-bg-white);
+}

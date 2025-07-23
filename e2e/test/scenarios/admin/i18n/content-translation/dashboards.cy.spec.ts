@@ -35,7 +35,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
 
         H.restore();
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("bleeding-edge");
 
         uploadTranslationDictionaryViaAPI([
           ...germanFieldNames,
@@ -177,7 +177,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("bleeding-edge");
       uploadTranslationDictionaryViaAPI(translations);
       cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
         enable_embedding: true,

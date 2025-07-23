@@ -1,6 +1,7 @@
 (ns metabase.lib.normalize
   (:require
    [malli.core :as mc]
+   [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
@@ -43,7 +44,9 @@
   "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
   this way."
   [error]
-  (log/warnf "Error normalizing pMBQL:\n%s" (u/pprint-to-str error))
+  (log/warnf "Error normalizing pMBQL: %s\n%s"
+             (pr-str (me/humanize (:explain error)))
+             (u/pprint-to-str (dissoc error :explain)))
   (:value error))
 
 (def ^:private ^:dynamic *error-fn*

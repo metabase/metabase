@@ -149,7 +149,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(ORDERS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
       H.switchToColumnsList();
       // Shouldn't this be automatic though?
       H.selectColumnFromColumnsList(ORDERS_COUNT_BY_CREATED_AT.name, "Count");
@@ -187,9 +187,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
       H.assertWellItemsCount({ vertical: 2 });
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.assertWellItemsCount({ vertical: 3 });
     });
 
@@ -219,10 +219,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     );
 
     H.modal().within(() => {
-      H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name);
-      H.switchToColumnsList();
-
       H.selectVisualization("area");
 
       H.assertDataSourceColumnSelected(
@@ -237,19 +233,26 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
         "Product → Category",
       );
+    });
+  });
 
-      H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
-        "Count",
-      );
-      H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
-        "Created At: Month",
-      );
-      H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
-        "Category",
-      );
+  it("should preserve default colors (VIZ-1211)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+
+    H.sidebar().within(() => {
+      cy.findByRole("menuitem", {
+        name: ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+      }).click();
+    });
+
+    H.showDashcardVisualizerModal(1, {
+      isVisualizerCard: false,
+    });
+
+    H.modal().within(() => {
+      H.chartPathWithFillColor("#509EE3").should("have.length", 4);
     });
   });
 
@@ -277,7 +280,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       assertDataSourceColumnSelected("Average of Quantity", false);
       assertDataSourceColumnSelected("Created At: Year");
       assertDataSourceColumnSelected("Product → Category", false);
-      H.chartPathWithFillColor("#88BF4D").should("have.length", 5);
+      H.chartPathWithFillColor("#509EE3").should("have.length", 5);
       H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
 
@@ -344,7 +347,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.addDataset(Q2_NAME);
+        H.selectDataset(Q2_NAME);
         H.switchToColumnsList();
 
         H.verticalWell().within(() => {
@@ -447,7 +450,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       H.modal().within(() => {
         cy.button("Add more data").click();
-        H.addDataset(Q2_NAME);
+        H.selectDataset(Q2_NAME);
         cy.button("Done").click();
 
         H.verticalWell().within(() => {
@@ -583,7 +586,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         .should("have.length", 2);
 
       H.editDashboard();
-      H.showDashcardVisualizerModal(0);
+      H.showDashcardVisualizerModal(0, {
+        isVisualizerCard: false,
+      });
 
       H.modal().within(() => {
         cy.findAllByTestId("legend-item").should("have.length", 2);

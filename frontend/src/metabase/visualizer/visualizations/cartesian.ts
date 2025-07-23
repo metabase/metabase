@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import type { Draft } from "immer";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import {
   getDefaultDimensionFilter,
@@ -213,6 +214,18 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
+/**
+ * Returns a slot where the column can be added to a cartesian chart,
+ * or undefined if no suitable slot is found.
+ *
+ * @param state the current state of the visualizer
+ * @param settings the computed visualization settings
+ * @param datasets the selected datasets
+ * @param dataSourceColumns the current data source columns (not used )
+ * @param column the column to find a slot for
+ * @returns a string representing the slot where the column should be added,
+ *          or undefined if no suitable slot is found.
+ */
 export function findColumnSlotForCartesianChart(
   state: Pick<
     VisualizerVizDefinitionWithColumns,
@@ -224,8 +237,8 @@ export function findColumnSlotForCartesianChart(
   column: DatasetColumn,
 ) {
   if (state.display === "scatter") {
-    const metrics = settings["graph.metrics"] ?? [];
-    const dimensions = settings["graph.dimensions"] ?? [];
+    const metrics = settings["graph.metrics"]?.filter(isNotNull) ?? [];
+    const dimensions = settings["graph.dimensions"]?.filter(isNotNull) ?? [];
     const bubble = settings["scatter.bubble"];
 
     const couldBeMetric = getDefaultMetricFilter("scatter")(column);
@@ -239,12 +252,15 @@ export function findColumnSlotForCartesianChart(
       return "scatter.bubble";
     }
   } else {
+    const metrics = settings["graph.metrics"] ?? [];
+
     if (isDimension(column) && !isMetric(column)) {
       // Filtering out nulls as computed 'graph.dimensions' can be `[null]` sometimes
       const ownDimensions =
         state.settings["graph.dimensions"] ??
         settings["graph.dimensions"]?.filter(Boolean) ??
         [];
+
       if (ownDimensions.length === 0) {
         return "graph.dimensions";
       } else {
@@ -257,6 +273,13 @@ export function findColumnSlotForCartesianChart(
         });
         if (isCompatibleWithUsedColumns) {
           return "graph.dimensions";
+        }
+
+        // No breakout when there are more than one metric
+        if (ownDimensions.length > 0 && metrics.length > 1) {
+          if (!isDate(column)) {
+            return undefined;
+          }
         }
 
         // Handles potential new dimensions that are not yet used in a chart

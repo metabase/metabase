@@ -50,4 +50,4 @@ Here are the IP addresses we use in each region.
 
 ## Changing regions
 
-To change regions, check out [Changing which region your Metabase is hosted in](./change-region).
+To change regions, check out [Changing which region your Metabase is hosted in](./change-region.md).

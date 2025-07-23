@@ -1,3 +1,4 @@
+import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import {
   getLegendTitles,
   getMapUrl,
@@ -42,6 +43,10 @@ describe("getLegendTitles", () => {
 
   describe("getMapUrl", () => {
     describe("when using the embedding SDK", () => {
+      beforeEach(async () => {
+        await mockIsEmbeddingSdk();
+      });
+
       const setup = ({ sdkMetabaseInstanceUrl }) => {
         return getMapUrl(
           { builtin: true, url: "api/geojson/world.json" },

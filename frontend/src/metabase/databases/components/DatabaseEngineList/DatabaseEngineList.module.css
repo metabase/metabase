@@ -1,0 +1,46 @@
+.search {
+  width: 100%;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+}
+
+.options {
+  padding: 0;
+  margin-bottom: var(--mantine-spacing-sm);
+  border-radius: var(--default-border-radius);
+  border: 1px solid var(--mb-color-border);
+  overflow: hidden;
+
+  .option {
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-radius: 0;
+    cursor: pointer;
+    display: flex;
+    height: 2.5rem;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--mb-color-border);
+    }
+
+    &:hover,
+    &[data-combobox-selected="true"] {
+      background-color: var(--mb-color-background-hover);
+      color: inherit;
+    }
+  }
+}
+
+.noResultsIcon {
+  background-color: var(--mb-color-bg-medium);
+  border-radius: 100%;
+  color: var(--mb-color-text-medium);
+}
+
+.sampleDbIndicator {
+  height: 2.5rem;
+  background-color: var(--mb-color-background-info);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-sm);
+}
