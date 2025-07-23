@@ -1,3 +1,4 @@
+import { Placeholder } from "@tiptap/extension-placeholder";
 import {
   EditorContent,
   type Editor as TiptapEditor,
@@ -6,6 +7,7 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import type React from "react";
 import { useEffect } from "react";
+import { t } from "ttag";
 
 import { Box } from "metabase/ui";
 
@@ -19,6 +21,7 @@ import {
 } from "./extensions/MarkdownExtensions";
 import { QuestionEmbed } from "./extensions/QuestionEmbed";
 import { QuestionStaticNode } from "./extensions/QuestionStatic/QuestionStatic";
+import { SmartLinkEmbed } from "./extensions/SmartLink";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -36,12 +39,20 @@ export const Editor: React.FC<EditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Placeholder.configure({
+        placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
+      }),
       QuestionEmbed.configure({
         HTMLAttributes: {
           class: "question-embed",
         },
       }),
       QuestionStaticNode,
+      SmartLinkEmbed.configure({
+        HTMLAttributes: {
+          class: "smart-link",
+        },
+      }),
       MarkdownSerializer,
     ],
     content,

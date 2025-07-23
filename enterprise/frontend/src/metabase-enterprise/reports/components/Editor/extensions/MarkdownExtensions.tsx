@@ -49,6 +49,8 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
             : `{{card:${questionId}:${snapshotId}}}`;
         } else if (child.type.name === "questionStatic") {
           paragraphContent += `{{static-card:${child.attrs.questionName}:series-${child.attrs.series}:viz-${child.attrs.viz}:display-${child.attrs.display}}}`;
+        } else if (child.type.name === "smartLink") {
+          paragraphContent += `{{link:${child.attrs.url}:${child.attrs.text}:${child.attrs.icon}}}`;
         }
       });
       // Every paragraph gets standard spacing, empty or not
@@ -76,6 +78,8 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
         : `{{card:${questionId}:${snapshotId}}}\n\n`;
     } else if (node.type.name === "questionStatic") {
       markdown += `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}\n\n`;
+    } else if (node.type.name === "smartLink") {
+      markdown += `{{link:${node.attrs.url}:${node.attrs.text}:${node.attrs.icon}}}\n\n`;
     } else if (node.type.name === "codeBlock") {
       markdown += `\`\`\`${node.attrs.language || ""}\n${node.textContent}\n\`\`\`\n\n`;
     } else {
@@ -110,6 +114,9 @@ export function parseMarkdownToHTML(markdown: string): string {
         return token;
       },
     )
+    .replace(/{{link:([^:]+):([^:]+):(\w+)}}/g, (_match, url, text, icon) => {
+      return `<span data-type="smart-link" data-url="${url}" data-text="${text}" data-icon="${icon}"></span>`;
+    })
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
     .replace(/^# (.*$)/gim, "<h1>$1</h1>")

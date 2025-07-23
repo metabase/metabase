@@ -111,3 +111,11 @@
 .editorContent :global(.ProseMirror:focus) {
   outline: none;
 }
+
+.editorContent :global(p.is-empty:first-child:before) {
+  color: var(--mb-color-text-light);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

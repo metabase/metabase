@@ -16,6 +16,7 @@ import {
 } from "metabase/search/components/SearchResult";
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
 import { Box, Group, Icon, Popover } from "metabase/ui";
+import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
 import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 import type {
   RecentItem,
@@ -26,6 +27,8 @@ import type {
 import { fetchReportQuestionData } from "../../reports.slice";
 
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
+
+type InsertionMode = "mention" | "embed";
 
 interface SearchResultsFooterProps {
   isSelected?: boolean;
@@ -77,6 +80,7 @@ export const QuestionMentionPlugin = ({
   const [mentionRange, setMentionRange] = useState<{
     from: number;
     to: number;
+    mode: InsertionMode;
   } | null>(null);
   const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(
     null,
@@ -97,20 +101,7 @@ export const QuestionMentionPlugin = ({
 
     const updateHandler = () => {
       const { $from } = editor.state.selection;
-      const text = $from.nodeBefore?.text || "";
-
-      // Check if we're typing after @
-      if (text && text.endsWith("@")) {
-        const from = $from.pos - 1;
-        setMentionRange({ from, to: $from.pos });
-
-        // Get cursor position
-        const coords = editor.view.coordsAtPos(from);
-        setAnchorPos({ x: coords.left, y: coords.bottom });
-
-        setShowPopover(true);
-        setQuery("");
-      } else if (mentionRange && showPopover) {
+      if (mentionRange && showPopover) {
         // Check if we're still in mention mode
         const currentText = editor.state.doc.textBetween(
           mentionRange.from,
@@ -118,13 +109,43 @@ export const QuestionMentionPlugin = ({
           "",
         );
 
-        if (currentText.startsWith("@")) {
+        if (currentText.startsWith("/") || currentText.startsWith("@")) {
           setQuery(currentText.slice(1));
-          setMentionRange({ from: mentionRange.from, to: $from.pos });
+          setMentionRange({
+            from: mentionRange.from,
+            to: $from.pos,
+            mode: mentionRange.mode,
+          });
         } else {
           setShowPopover(false);
           setMentionRange(null);
         }
+      }
+
+      const text = $from.nodeBefore?.text || "";
+      const getInsertionMode = (): InsertionMode | null => {
+        // Check if we're typing after @
+        if (text.endsWith("@")) {
+          return "mention";
+        }
+        // Check if we're typing after "/" and it's the start of the paragraph
+        if (text.trimStart() === "/") {
+          return "embed";
+        }
+        return null;
+      };
+
+      const mode = getInsertionMode();
+      if (mode) {
+        const from = $from.pos - 1;
+        setMentionRange({ from, to: $from.pos, mode });
+
+        // Get cursor position
+        const coords = editor.view.coordsAtPos(from);
+        setAnchorPos({ x: coords.left, y: coords.bottom });
+
+        setShowPopover(true);
+        setQuery("");
       }
     };
 
@@ -167,32 +188,52 @@ export const QuestionMentionPlugin = ({
     }
 
     const wrappedItem = Search.wrapEntity(item, dispatch);
+    const insertPosition = mentionRange.from;
 
-    try {
-      const snapshot = await createSnapshot({
-        card_id: wrappedItem.id,
-      }).unwrap();
+    if (mentionRange.mode === "embed") {
+      try {
+        const snapshot = await createSnapshot({
+          card_id: wrappedItem.id,
+        }).unwrap();
 
-      dispatch(
-        fetchReportQuestionData({
-          cardId: snapshot.card_id,
-          snapshotId: snapshot.snapshot_id,
-        }),
-      );
+        dispatch(
+          fetchReportQuestionData({
+            cardId: snapshot.card_id,
+            snapshotId: snapshot.snapshot_id,
+          }),
+        );
+        editor
+          .chain()
+          .focus()
+          .deleteRange(mentionRange)
+          .insertContentAt(insertPosition, {
+            type: "questionEmbed",
+            attrs: {
+              snapshotId: snapshot.snapshot_id,
+              questionId: snapshot.card_id,
+              questionName: wrappedItem.name,
+              model: wrappedItem.model,
+            },
+          })
+          .setTextSelection(insertPosition + 1)
+          .run();
 
-      const insertPosition = mentionRange.from;
-
+        setShowPopover(false);
+        setMentionRange(null);
+      } catch (error) {
+        console.error("Failed to create snapshot:", error);
+      }
+    } else if (mentionRange.mode === "mention") {
       editor
         .chain()
         .focus()
         .deleteRange(mentionRange)
         .insertContentAt(insertPosition, {
-          type: "questionEmbed",
+          type: "smartLink",
           attrs: {
-            snapshotId: snapshot.snapshot_id,
-            questionId: snapshot.card_id,
-            questionName: wrappedItem.name,
-            model: wrappedItem.model,
+            url: `/question/${wrappedItem.id}`,
+            text: wrappedItem.name,
+            icon: getSearchIconName(wrappedItem),
           },
         })
         .setTextSelection(insertPosition + 1)
@@ -200,8 +241,6 @@ export const QuestionMentionPlugin = ({
 
       setShowPopover(false);
       setMentionRange(null);
-    } catch (error) {
-      console.error("Failed to create snapshot:", error);
     }
   };
 
@@ -276,11 +315,7 @@ export const QuestionMentionPlugin = ({
       {modal === "question-picker" && (
         <QuestionPickerModal
           onChange={async (item) => {
-            await handleSelect({
-              id: item.id,
-              model: item.model,
-              name: item.name,
-            });
+            await handleSelect(item);
             setModal(null);
           }}
           onClose={() => setModal(null)}
