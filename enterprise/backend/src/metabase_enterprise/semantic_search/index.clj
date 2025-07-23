@@ -248,7 +248,8 @@
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
-        ts-search-expr (search/to-tsquery-expr (:search-string search-context))
+        ;; TODO: what's the right syntax here for the tsquery?
+        ts-search-expr (str/replace (search/to-tsquery-expr (:search-string search-context)) "'" "")
         tsv-lang (search/tsv-language)]
     {:select [[:id :id]
               [:model_id :model_id]
@@ -282,7 +283,7 @@
                              [[:raw (str "row_number() OVER (ORDER BY embedding <=> " embedding-literal " ASC)")] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
                     ;; TODO: parameterize max cosine distance
-                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] 0.35]
+                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] 0.55]
                     :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
@@ -377,9 +378,9 @@
   (def embed (embedding/get-embedding embedding-model "cat"))
   (semantic-search-query index embed {:search-string "cat"})
   (sql-format-quoted (semantic-search-query index embed {:search-string "cat"}))
-  (jdbc/execute! db (sql-format-quoted (semantic-search-query index embed {:search-string "cat"})))
+  (jdbc/execute! db (sql-format-quoted (semantic-search-query index embed {:search-string "content"})))
 
-  (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed {:search-string "cat"})))
+  (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed {:search-string "perso"})))
 
   (query-index db index {:search-string "cat"}))
 
