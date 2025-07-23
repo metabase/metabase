@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transfers.execute
   (:require [honey.sql.helpers :as sql.helpers]
             [metabase-enterprise.transforms.execute :as transforms.execute]
+            [metabase.driver :as driver]
             [metabase.driver.postgres :as pg]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor :as qp]
