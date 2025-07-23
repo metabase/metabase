@@ -59,6 +59,25 @@ function TransformSettings({ transform }: TransformSettingsProps) {
     }
   };
 
+  const handleDescriptionChange = async (description: string) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      description,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform description`);
+    } else {
+      sendSuccessToast(t`Transform description updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          description: transform.description,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   return (
     <Stack flex={1} p="xl" align="center">
       <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
@@ -70,7 +89,7 @@ function TransformSettings({ transform }: TransformSettingsProps) {
           description=""
           descriptionPlaceholder={t`Give this transform a description`}
           onNameChange={handleNameChange}
-          onDescriptionChange={() => undefined}
+          onDescriptionChange={handleDescriptionChange}
         />
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">
