@@ -251,9 +251,9 @@
   :ai-sql-generation)
 
 ; the "-feature" suffix avoids name collision with the setting getter
-; TODO: rename the feature token name to `:embedding-simple` before beta
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
-  "Should we allow users to embed the SDK in iframes?"
+  "Should we enable simple embedding features?"
+  ; TODO: rename the feature token name to `:embedding-simple` before beta!
   :embedding-iframe-sdk)
 
 (define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?

@@ -53,6 +53,7 @@
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
+  enable-embedding-simple-feature?
   enable-llm-autodescription?
   enable-metabot-v3?
   enable-official-collections?
