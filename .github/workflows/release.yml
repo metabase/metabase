@@ -17,8 +17,6 @@ on:
         options:
           - none
           - latest
-          - beta
-          - nightly
         required: true
         default: 'none'
       auto:
@@ -41,8 +39,6 @@ on:
         # options:
         #   - none
         #   - latest
-        #   - beta
-        #   - nightly
         required: true
         default: 'none'
       auto:
