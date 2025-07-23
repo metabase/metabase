@@ -11,6 +11,7 @@ const setup = (opts: Omit<SetupOpts, "hasEnterprisePlugins"> = {}) =>
 describe("EmbeddingSdkOptionCard (OSS)", () => {
   it("should display the correct title and badges", async () => {
     await setup();
+
     expect(screen.getByText("Embedded Analytics SDK")).toBeInTheDocument();
     expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
@@ -18,6 +19,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
 
   it("should show 'Try it out' button", async () => {
     await setup();
+
     expect(screen.getByText("Try it out")).toBeInTheDocument();
   });
 
@@ -27,9 +29,8 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
       isEmbeddingSimpleEnabled: false,
     });
 
-    const icon = screen.getByTestId("sdk-icon") ?? screen.querySelector("svg");
+    const icon = screen.getByTestId("sdk-icon");
     expect(icon).toBeInTheDocument();
-    // Check that the icon has disabled styling (using secondary color)
     expect(icon).toHaveAttribute("fill", "none");
   });
 
@@ -39,7 +40,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
       isEmbeddingSimpleEnabled: false,
     });
 
-    const icon = screen.getByTestId("sdk-icon") ?? screen.querySelector("svg");
+    const icon = screen.getByTestId("sdk-icon");
     expect(icon).toBeInTheDocument();
   });
 
@@ -49,7 +50,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
       isEmbeddingSimpleEnabled: true,
     });
 
-    const icon = screen.getByTestId("sdk-icon") ?? screen.querySelector("svg");
+    const icon = screen.getByTestId("sdk-icon");
     expect(icon).toBeInTheDocument();
   });
 
@@ -59,7 +60,7 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
       isEmbeddingSimpleEnabled: true,
     });
 
-    const icon = screen.getByTestId("sdk-icon") ?? screen.querySelector("svg");
+    const icon = screen.getByTestId("sdk-icon");
     expect(icon).toBeInTheDocument();
   });
 });
