@@ -12,6 +12,9 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -328,8 +331,13 @@
     (->> (map vector cols replaced-cols)
          (filter #(not= (first %) (second %))))))
 
-(defn- next-stage-replacement
-  [query next-stage-number [col replaced-col]]
+(mu/defn- next-stage-replacement
+  [query              :- :map
+   next-stage-number  :- :int
+   [col replaced-col] :- [:tuple
+                          [:map
+                           [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]
+                          :map]]
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
     (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
@@ -574,14 +582,19 @@
                                   query-after
                                   query-before
                                   stage-number
-                                  (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
+                                  (mu/fn [column :- [:map
+                                                     [:id                   ::lib.schema.id/field]
+                                                     [::lib.join/join-alias ::lib.schema.join/alias]]]
+                                    [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at the next stage as well
     (if-let [stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
       (remove-matching-missing-columns
        query-without-local-refs
        query-before
        stage-number
-       (fn [column] [:field {} (:lib/desired-column-alias column)]))
+       (mu/fn [column :- [:map
+                          [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]
+         [:field {} (:lib/desired-column-alias column)]))
       query-without-local-refs)))
 
 (defn- join-spec->alias

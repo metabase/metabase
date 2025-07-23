@@ -127,7 +127,7 @@
   (if-let [field-ids (lib.util.match/match x
                        [:field
                         (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                        (id :guard integer? pos?)]
+                        (id :guard pos-int?)]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]
     ;; "pre-warm" the metadata provider

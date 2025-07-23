@@ -99,9 +99,9 @@
   "Runs the provided function with cleaning of queries disabled.
 
   This is preferred over directly cleaning the query."
-  [f]
+  [thunk]
   (binding [*clean-query* false]
-    (f)))
+    (thunk)))
 
 (defn- clean [almost-query]
   (if-not *clean-query*

@@ -41,7 +41,10 @@
                                            :query       x}))))]
     (cons first-stage more)))
 
-(mu/defn normalize-card-query :- ::lib.schema.metadata/card
+(mu/defn normalize-card-query :- [:merge
+                                  ::lib.schema.metadata/card
+                                  [:map
+                                   [:dataset-query ::lib.schema/query]]]
   "Convert Card's query (`:datasaet-query`) to pMBQL as needed; splice in stage metadata and some extra keys."
   [metadata-providerable   :- ::lib.schema.metadata/metadata-providerable
    {card-id :id, :as card} :- ::lib.schema.metadata/card]
