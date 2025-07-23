@@ -140,7 +140,7 @@
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
-   (ensure-legacy #'resolve-joins/resolve-joins)
+   (ensure-pmbql #'resolve-joins/resolve-joins)
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
    (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
