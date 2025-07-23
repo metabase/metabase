@@ -44,7 +44,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   // Update editor content when content prop changes
   useEffect(() => {
-    if (editor && content) {
+    if (editor) {
       editor.commands.setMarkdown(content);
     }
   }, [editor, content]);

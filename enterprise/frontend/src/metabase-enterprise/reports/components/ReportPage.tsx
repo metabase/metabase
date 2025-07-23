@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
@@ -18,6 +19,7 @@ import {
 import {
   useCreateReportMutation,
   useGetReportQuery,
+  useGetReportVersionsQuery,
   useUpdateReportMutation,
 } from "metabase-enterprise/api";
 
@@ -36,8 +38,10 @@ import { downloadFile, getDownloadableMarkdown } from "./exports";
 
 export const ReportPage = ({
   params: { id: reportId },
+  location,
 }: {
   params: { id?: number | "new" };
+  location?: { query?: { version?: string } };
 }) => {
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
@@ -49,13 +53,20 @@ export const ReportPage = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const [createReport] = useCreateReportMutation();
   const [updateReport] = useUpdateReportMutation();
+  const [sendToast] = useToast();
+
+  const selectedVersion = location?.query?.version
+    ? Number(location.query.version)
+    : undefined;
+
   const { data: report, isLoading: isReportLoading } = useGetReportQuery(
-    reportId && reportId !== "new" ? reportId : skipToken,
+    reportId && reportId !== "new"
+      ? { id: reportId, version: selectedVersion }
+      : skipToken,
   );
 
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
-  const [sendToast] = useToast();
 
   // Centralized data loading for question embeds
   const questionIds = useMemo(
@@ -94,22 +105,34 @@ export const ReportPage = ({
       document: markdown as string,
     };
     (async () => {
-      const result = await (report?.id
-        ? updateReport({ ...newReportData, id: report.id }).unwrap()
-        : createReport(newReportData).then((response) => {
-            // replace state with the report id
-            if (response.data) {
-              dispatch(replace(`/report/${response.data.id}`));
-            }
-          }));
+      try {
+        const result = await (report?.id
+          ? updateReport({ ...newReportData, id: report.id }).then(
+              (response) => {
+                if (response.data) {
+                  dispatch(
+                    push(
+                      `/report/${response.data.id}?version=${response.data.version}`,
+                    ),
+                  );
+                }
+                return response.data;
+              },
+            )
+          : createReport(newReportData).then((response) => {
+              // replace state with the report id
+              if (response.data) {
+                dispatch(replace(`/report/${response.data.id}`));
+              }
+              return response.data;
+            }));
 
-      if (!result?.error) {
         sendToast({
           message: report?.id
             ? t`Report v${result?.version} saved`
             : t`Report created`,
         });
-      } else {
+      } catch (error) {
         sendToast({ message: t`Error saving report`, icon: "warning" });
       }
     })();
@@ -225,17 +248,17 @@ export const ReportPage = ({
                   placeholder={t`New report`}
                   className={styles.titleInput}
                 />
-                <Text c="text-light" fw="bold">
-                  {report?.version ? `v${report.version}` : null}
-                </Text>
+                <VersionSelect
+                  reportId={reportId}
+                  currentVersion={report?.version}
+                />
               </Box>
               <Box
                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
               >
-                <Button variant="filled" onClick={handleSave} size="md">
+                <Button onClick={handleSave} variant="filled">
                   {t`Save`}
                 </Button>
-
                 <Menu position="bottom-end">
                   <Menu.Target>
                     <ActionIcon
@@ -259,6 +282,14 @@ export const ReportPage = ({
                       disabled={isDownloading}
                     >
                       {isDownloading ? t`Downloading...` : t`Download`}
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<Icon name="refresh" />}
+                      onClick={() => {
+                        /* TODO */
+                      }}
+                    >
+                      {t`Refresh all data`}
                     </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
@@ -296,3 +327,79 @@ export const ReportPage = ({
     </Box>
   );
 };
+
+function VersionSelect({
+  reportId,
+  currentVersion,
+}: {
+  reportId?: number | "new";
+  currentVersion?: number;
+}) {
+  const dispatch = useDispatch();
+
+  const { data: versions, isLoading } = useGetReportVersionsQuery(
+    reportId && reportId !== "new" ? { id: reportId } : skipToken,
+  );
+
+  const handleVersionSelect = useCallback(
+    (version: number) => {
+      if (reportId && reportId !== "new") {
+        dispatch(replace(`/report/${reportId}?version=${version}`));
+      }
+    },
+    [reportId, dispatch],
+  );
+
+  if (!currentVersion) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <Flex>
+        <Loader size="xs" />
+      </Flex>
+    );
+  }
+
+  if (!versions || versions.length === 0) {
+    return (
+      <Flex>
+        <Text c="text-light" fw="bold">
+          {currentVersion ? `v${currentVersion}` : null}
+        </Text>
+      </Flex>
+    );
+  }
+
+  return (
+    <Flex>
+      <Menu position="right-start">
+        <Menu.Target>
+          <Text c="text-light" fw="bold" style={{ cursor: "pointer" }}>
+            {currentVersion ? `v${currentVersion}` : null}
+            <Icon name="chevrondown" ml="sm" size="10px" mt="xs" />
+          </Text>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {versions.map((version) => (
+            <Menu.Item
+              key={version.version}
+              onClick={() => handleVersionSelect(version.version)}
+              rightSection={
+                version.version === currentVersion ? (
+                  <Icon name="check_filled" c="text-medium" />
+                ) : null
+              }
+            >
+              {`v${version.version} `}
+              <Text size="sm" c="text-light">
+                {formatDateTimeWithUnit(version.created_at, "hour")}
+              </Text>
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    </Flex>
+  );
+}

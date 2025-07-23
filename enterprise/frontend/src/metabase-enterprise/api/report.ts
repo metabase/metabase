@@ -1,16 +1,17 @@
-import type { Report, ReportId } from "metabase-types/api";
+import type { Report, ReportId, ReportVersions } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { idTag } from "./tags";
 
 export const reportApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getReport: builder.query<Report, ReportId>({
-      query: (id) => ({
+    getReport: builder.query<Report, { id: ReportId; version?: number }>({
+      query: ({ id, version }) => ({
         method: "GET",
         url: `/api/ee/report/${id}`,
+        params: { version },
       }),
-      providesTags: (result, error, id) =>
+      providesTags: (result, error, { id }) =>
         !error ? [idTag("report", id)] : [],
     }),
     createReport: builder.mutation<Report, Pick<Report, "name" | "document">>({
@@ -31,7 +32,15 @@ export const reportApi = EnterpriseApi.injectEndpoints({
         body: report,
       }),
       invalidatesTags: (_, error, { id }) =>
-        !error ? [idTag("report", id)] : [],
+        !error ? [idTag("report", id), idTag("report-versions", id)] : [],
+    }),
+    getReportVersions: builder.query<ReportVersions, { id: ReportId }>({
+      query: ({ id }) => ({
+        method: "GET",
+        url: `/api/ee/report/${id}/versions`,
+      }),
+      providesTags: (result, error, { id }) =>
+        !error ? [idTag("report-versions", id)] : [],
     }),
   }),
 });
@@ -40,4 +49,5 @@ export const {
   useGetReportQuery,
   useCreateReportMutation,
   useUpdateReportMutation,
+  useGetReportVersionsQuery,
 } = reportApi;
