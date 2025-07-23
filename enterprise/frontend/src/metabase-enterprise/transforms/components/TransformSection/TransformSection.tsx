@@ -126,6 +126,25 @@ function TransformSettings({ transform }: TransformSettingsProps) {
     }
   };
 
+  const handleScheduleChange = async (schedule: string | null) => {
+    const { error } = await updateTransform({
+      id: transform.id,
+      schedule,
+    });
+
+    if (error) {
+      sendErrorToast(t`Failed to update transform schedule`);
+    } else {
+      sendSuccessToast(t`Transform schedule updated`, async () => {
+        const { error } = await updateTransform({
+          id: transform.id,
+          schedule: transform.schedule,
+        });
+        sendUndoToast(error);
+      });
+    }
+  };
+
   return (
     <Stack flex={1} p="xl" align="center">
       <Stack gap="lg" w="100%" maw="50rem" data-testid="transform-section">
@@ -172,6 +191,7 @@ function TransformSettings({ transform }: TransformSettingsProps) {
               value={transform.schedule}
               placeholder={t`Never, I'll do this manually if I need to`}
               clearable
+              onChange={handleScheduleChange}
             />
           </Stack>
         </Card>
