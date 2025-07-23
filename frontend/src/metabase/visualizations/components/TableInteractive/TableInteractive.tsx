@@ -522,10 +522,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             // Add sticky class if freezeFirstColumn is enabled
             [S.freezeFirstColumn]: freezeFirstColumn && columnIndex === 0,
           }),
-        // Add data-testid for sticky first column cell in test env only
-        ...(process.env.NODE_ENV === "test" &&
-        freezeFirstColumn &&
-        columnIndex === 0
+        // Add data-testid for sticky first column cell
+        ...(freezeFirstColumn && columnIndex === 0
           ? { "data-testid": "sticky-first-column" }
           : {}),
         // Remove the custom cell renderer entirely for non-minibar columns

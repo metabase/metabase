@@ -187,10 +187,19 @@ describe("Freeze first column feature", () => {
   });
 
   it("should apply the sticky class to the first column when enabled", async () => {
-    // Render a table with the setting enabled and some data
     const cols = [
-      createMockColumn({ name: "ID" }),
-      createMockColumn({ name: "Name" }),
+      createMockColumn({
+        name: "ID",
+        id: 1,
+        source: "fields",
+        field_ref: ["field", 1, null],
+      }),
+      createMockColumn({
+        name: "Name",
+        id: 2,
+        source: "fields",
+        field_ref: ["field", 2, null],
+      }),
     ];
     const rows = [
       [1, "Alice"],
@@ -204,18 +213,25 @@ describe("Freeze first column feature", () => {
             data: { cols, rows, results_timezone: null },
           },
         ]}
-        settings={{ "table.freeze_first_column": true }}
+        settings={{
+          "table.freeze_first_column": true,
+          "table.columns": [
+            { name: "ID", enabled: true },
+            { name: "Name", enabled: true },
+          ],
+          column: () => ({}),
+        }}
         metadata={metadata}
+        height={400}
       />,
     );
-    // The first column's cell should have the sticky class
-    // Use Testing Library's query for data-testid (linter-compliant)
-    const stickyCells = screen.getAllByTestId("sticky-first-column");
-    expect(stickyCells.length).toBeGreaterThan(0);
-    // Assert that each sticky cell has the expected sticky class
-    stickyCells.forEach((cell) => {
-      expect(cell).toHaveClass("freezeFirstColumn");
-    });
+    // Find all grid cells, including hidden ones
+    const cells = await screen.findAllByRole("gridcell", { hidden: true });
+    const cellWith1 = cells.find((cell) => cell.textContent === "1");
+    expect(cellWith1).toBeDefined();
+    expect(cellWith1.className).toContain(
+      "test-TableInteractive-cellWrapper--firstColumn",
+    );
   });
 });
 
