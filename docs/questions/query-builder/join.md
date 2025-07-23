@@ -52,6 +52,24 @@ You can join tables on comparison conditions like:
 
 ![Join operators](../images/join-operator.png)
 
+## Joins with custom expressions
+
+Sometimes people want to join data using constant values or relative dates or some other custom conditions.
+
+For example, let's say you have a table of reviews, and want to add a column that includes the average rating for all products.
+
+You could first calculate the average rating, then join the result to the reviews table on `1=1`.
+
+To enter a constant as a join key:
+
+1. Click on one of the join keys.
+2. Select **custom expression**.
+3. Enter `1` (or any other constant) and click **Done**.
+
+![Join with custom expression](../images/join-with-custom-expression.png)
+
+The join keys don't have to be constants, you can also define a key with a [custom expression](./expressions-list.md).
+
 ## Further reading
 
 - [Joins in Metabase][join]
