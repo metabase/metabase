@@ -63,11 +63,11 @@ You could first calculate the average rating, then join the result to the review
 
 ![Join with custom expression](../images/join-with-custom-expression.png)
 
-To use a custom expression as a join key:
+To use a custom expression to define a join key:
 
 1. Click on one of the join keys.
 2. Select **custom expression**.
-3. Enter your expression (including a constant like `1`.
+3. Enter your expression (including a constant like `1`).
 4. Click **Done**.
 
 See a [list of expressions](./expressions-list.md).
