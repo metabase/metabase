@@ -46,7 +46,7 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
             fieldId={parameter.field_id}
             searchFieldId={parameter.human_readable_field_id}
             isNullable={parameter.nullable}
-            withCreateNew
+            withCreateNew={!parameter.human_readable_field_id}
           />
         );
       }
