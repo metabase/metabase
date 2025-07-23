@@ -5,13 +5,13 @@ import type { Section as BaseSection } from "metabase/common/components/Accordio
 import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { isNotNull } from "metabase/lib/types";
-import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { Box, Collapse, DelayGroup, Icon, Stack, Text, TextInput } from "metabase/ui";
+import { Box, DelayGroup, Flex, Icon, Stack, Text, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import FilterSidesheetS from "./FilterHeaderButton.module.css";
+import { InlineFieldFilter } from "./InlineFieldFilter";
 
 type ColumnListItem = {
   name: string;
@@ -55,7 +55,6 @@ export function InlineFilterPicker({
   onChange,
   onClose: _onClose,
 }: InlineFilterPickerProps) {
-  const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set());
   const [searchText, setSearchText] = useState("");
 
   const sections = useMemo(() => {
@@ -96,21 +95,6 @@ export function InlineFilterPicker({
     onChange(newQuery, { run: true });
     // Don't close the sidesheet when applying segments - let users add multiple filters
   };
-
-  const toggleFieldExpansion = (fieldKey: string) => {
-    setExpandedFields(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(fieldKey)) {
-        newSet.delete(fieldKey);
-      } else {
-        newSet.add(fieldKey);
-      }
-      return newSet;
-    });
-  };
-
-  const getFieldKey = (item: ColumnListItem) => 
-    `${item.stageIndex}-${item.name}`;
 
   const hasNoResults = sections.length === 0;
   const emptyMessage = searchText.trim() 
@@ -208,59 +192,39 @@ export function InlineFilterPicker({
                   );
                 }
 
-                const fieldKey = getFieldKey(item);
-                const isExpanded = expandedFields.has(fieldKey);
-
                 return (
-                  <Box key={itemIndex}>
+                  <Box key={itemIndex} mb="24px">
                     <Box
-                      p="sm"
                       style={{
                         border: '1px solid var(--mb-color-border)',
-                        borderRadius: isExpanded ? '6px 6px 0 0' : '6px',
-                        borderBottom: isExpanded ? 'none' : '1px solid var(--mb-color-border)',
-                        cursor: 'pointer',
-                        backgroundColor: isExpanded ? 'var(--mb-color-bg-light)' : 'white',
+                        borderRadius: '6px',
+                        backgroundColor: 'var(--mb-color-bg-white)',
+                        padding: '16px',
                       }}
-                      onClick={() => toggleFieldExpansion(fieldKey)}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <QueryColumnInfoIcon
-                          query={query}
-                          stageIndex={item.stageIndex}
-                          column={item.column}
-                          size={18}
-                        />
-                        <span style={{ flex: 1 }}>{item.displayName}</span>
-                        <Icon 
-                          name={isExpanded ? "chevronup" : "chevrondown"} 
-                          size={12} 
-                        />
-                      </div>
+                      <Flex align="center" gap="md" wrap="wrap">
+                        <Flex align="center" gap="xs" style={{ minWidth: '120px' }}>
+                          <QueryColumnInfoIcon
+                            query={query}
+                            stageIndex={item.stageIndex}
+                            column={item.column}
+                            size={18}
+                          />
+                          <Text fw="500" size="sm">
+                            {item.displayName}
+                          </Text>
+                        </Flex>
+                        
+                        <Box style={{ flex: 1, minWidth: '200px' }}>
+                          <InlineFieldFilter
+                            query={query}
+                            stageIndex={item.stageIndex}
+                            column={item.column}
+                            onChange={handleFilterChange(item.column, item.stageIndex)}
+                          />
+                        </Box>
+                      </Flex>
                     </Box>
-                    
-                    <Collapse in={isExpanded}>
-                      <Box
-                        p="md"
-                        style={{
-                          border: '1px solid var(--mb-color-border)',
-                          borderTop: 'none',
-                          borderRadius: '0 0 6px 6px',
-                          backgroundColor: 'var(--mb-color-bg-white)',
-                        }}
-                      >
-                        <FilterPickerBody
-                          autoFocus={false}
-                          query={query}
-                          stageIndex={item.stageIndex}
-                          column={item.column}
-                          isNew
-                          withAddButton
-                          withSubmitButton={false}
-                          onChange={handleFilterChange(item.column, item.stageIndex)}
-                        />
-                      </Box>
-                    </Collapse>
                   </Box>
                 );
               })}
