@@ -133,7 +133,6 @@ const DashboardGrid = forwardRef<
   HTMLDivElement,
   DashboardGridForwardedRefProps
 >(function DashboardGrid({ width = 0, ...restProps }, ref) {
-  // Get context values that were previously passed as props
   const {
     dashboard,
     selectedTabId,
@@ -145,7 +144,6 @@ const DashboardGrid = forwardRef<
     onUpdateDashCardVisualizationSettings,
   } = useDashboardContext();
 
-  // Get Redux props from restProps
   const {
     dashcards,
     dashcardData,
@@ -168,13 +166,11 @@ const DashboardGrid = forwardRef<
     null,
   );
 
-  // Helper function for counting dashcards by card ID (defined early to be used in useState)
   const getDashcardCountByCardId = useCallback(
     (cards: BaseDashboardCard[]) => _.countBy(cards, "card_id"),
     [],
   );
 
-  // Initialize state using useState hooks
   const initialVisibleCardIds = useMemo(
     () =>
       dashboard
@@ -214,14 +210,12 @@ const DashboardGrid = forwardRef<
     | undefined
   >(undefined);
 
-  // Use ref to track last props for comparison (replacement for _lastProps state)
   const lastPropsRef = useRef<LastProps>({
     dashboard: dashboard!,
     isEditing,
     selectedTabId,
   });
 
-  // Convert componentDidMount and componentWillUnmount to useEffect
   useEffect(() => {
     // In order to skip the initial cards animation we must let the grid layout calculate
     // the initial card positions. The timer is necessary to enable animation only
@@ -235,16 +229,14 @@ const DashboardGrid = forwardRef<
         clearTimeout(_pauseAnimationTimerRef.current);
       }
     };
-  }, []); // Empty dependency array means this runs once on mount and cleanup on unmount
+  }, []);
 
-  // Convert componentDidUpdate to useEffect
   useEffect(() => {
     if (dashboard) {
       setDashcardCountByCardId(getDashcardCountByCardId(dashboard.dashcards));
     }
   }, [dashboard, getDashcardCountByCardId]);
 
-  // Initialize visibleCardIds when dashboard first becomes available
   useEffect(() => {
     if (dashboard && visibleCardIds.size === 0) {
       const newVisibleCardIds = getVisibleCardIds(
@@ -255,7 +247,6 @@ const DashboardGrid = forwardRef<
     }
   }, [dashboard, dashcardData, visibleCardIds.size]);
 
-  // Convert getDerivedStateFromProps logic to useEffect hooks
   useEffect(() => {
     if (!dashboard) {
       return;
@@ -723,12 +714,10 @@ const DashboardGrid = forwardRef<
     renderGridItem,
   ]);
 
-  // Early return if no dashboard
   if (!dashboard) {
     return null;
   }
 
-  // Main render return
   return (
     <Flex
       align="center"
