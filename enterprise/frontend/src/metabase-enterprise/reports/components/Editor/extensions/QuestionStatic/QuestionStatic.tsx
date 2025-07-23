@@ -1,0 +1,194 @@
+import { Node, mergeAttributes, nodePasteRule } from "@tiptap/core";
+import {
+  type NodeViewProps,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
+import { memo } from "react";
+import { t } from "ttag";
+
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
+import { Box, Loader, Text } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { createMockCard } from "metabase-types/api/mocks";
+
+import styles from "../QuestionEmbed/QuestionEmbedNode.module.css";
+
+export const STATIC_QUESTION_REGEX =
+  /{{static-card(?::(?!series-)(?!viz-)(?!display-)([^}:]+))(?::series-([^:]+))(?::viz-([^:]+))(?::display-([^:]+))}}/g;
+
+export interface QuestionEmbedAttributes {
+  questionId: number;
+  questionName: string;
+  customName?: string;
+  model: string;
+}
+export const QuestionStaticNode = Node.create<{
+  HTMLAttributes: Record<string, any>;
+}>({
+  name: "questionStatic",
+  group: "block",
+  atom: true,
+  draggable: true,
+  selectable: true,
+
+  addAttributes() {
+    return {
+      questionName: {
+        parseHTML: (element) => element.getAttribute("data-question-name"),
+      },
+      series: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-series"),
+      },
+      viz: {
+        default: {},
+        parseHTML: (element) => element.getAttribute("data-viz"),
+      },
+      display: {
+        default: {},
+        parseHTML: (element) => element.getAttribute("data-display"),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'div[data-type="question-static"]',
+      },
+    ];
+  },
+
+  renderText({ node }) {
+    return `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}`;
+  },
+
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      "div",
+      mergeAttributes(
+        HTMLAttributes,
+        {
+          "data-type": "question-static",
+          "data-question-name": node.attrs.questionName,
+          "data-series": node.attrs.series,
+          "data-viz": node.attrs.viz,
+          "data-display": node.attrs.display,
+        },
+        this.options.HTMLAttributes,
+      ),
+      `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}`,
+    ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(QuestionStaticComponent);
+  },
+
+  addPasteRules() {
+    return [
+      nodePasteRule({
+        find: STATIC_QUESTION_REGEX,
+        type: this.type,
+        getAttributes(match) {
+          const [_match, questionName, series, viz, display] = match;
+          return {
+            questionName,
+            series,
+            viz,
+            display,
+          };
+        },
+      }),
+    ];
+  },
+});
+
+export const QuestionStaticComponent = memo(
+  ({ node, selected }: NodeViewProps) => {
+    const seriesData = JSON.parse(b64hash_to_utf8(node.attrs.series));
+    const viz = JSON.parse(b64hash_to_utf8(node.attrs.viz));
+
+    const { questionName, display } = node.attrs;
+
+    const error = !seriesData;
+
+    if (error) {
+      return (
+        <NodeViewWrapper className={styles.embedWrapper}>
+          <Box className={styles.errorContainer}>
+            <Text color="error">{t`Failed to load question: {questionName}`}</Text>
+          </Box>
+        </NodeViewWrapper>
+      );
+    }
+
+    return (
+      <NodeViewWrapper className={styles.embedWrapper}>
+        <Box
+          className={`${styles.questionEmbed} ${selected ? styles.selected : ""}`}
+        >
+          {questionName && (
+            <Box className={styles.questionHeader}>
+              <Box
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.5rem",
+                }}
+              >
+                <Text
+                  size="md"
+                  c="text-dark"
+                  fw={700}
+                  style={{ cursor: "pointer", flex: 1 }}
+                >
+                  {`${questionName} - Static`}
+                </Text>
+              </Box>
+            </Box>
+          )}
+          {seriesData ? (
+            <Box className={styles.questionResults}>
+              <Visualization
+                rawSeries={[
+                  {
+                    data: seriesData,
+                    card: createMockCard({
+                      name: questionName,
+                      display,
+                      visualization_settings: viz,
+                    }),
+                  },
+                ]}
+                isEditing={false}
+                isDashboard={false}
+              />
+            </Box>
+          ) : (
+            <Box className={styles.loadingContainer}>
+              <Loader size="sm" />
+              <Text>Loading results...</Text>
+            </Box>
+          )}
+        </Box>
+      </NodeViewWrapper>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison function to prevent re-renders
+    // Only re-render if these specific props change
+    return (
+      prevProps.node.attrs.questionId === nextProps.node.attrs.questionId &&
+      prevProps.node.attrs.questionName === nextProps.node.attrs.questionName &&
+      prevProps.node.attrs.customName === nextProps.node.attrs.customName &&
+      prevProps.node.attrs.series === nextProps.node.attrs.series &&
+      prevProps.node.attrs.viz === nextProps.node.attrs.viz &&
+      prevProps.selected === nextProps.selected
+    );
+  },
+);
+
+QuestionStaticComponent.displayName = "QuestionStaticComponent";

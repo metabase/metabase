@@ -3,6 +3,7 @@ import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { memo, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { utf8_to_b64url } from "metabase/lib/encoding";
 import { useSelector } from "metabase/lib/redux";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -175,6 +176,36 @@ export const QuestionEmbedComponent = memo(
       }
     };
 
+    const handleCopyStaticQuestion = () => {
+      if (rawSeries && card) {
+        const markdown = `{{static-card:${card.name}:series-${utf8_to_b64url(JSON.stringify(rawSeries[0].data))}:viz-${utf8_to_b64url(JSON.stringify(card.visualization_settings))}:display-${card.display}}}`;
+
+        navigator.clipboard.writeText(markdown);
+      }
+    };
+
+    const handleReplaceStaticQuestion = () => {
+      const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
+
+      if (typeof pos === "number" && card && rawSeries) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from: pos, to: pos + node.nodeSize })
+          .deleteSelection()
+          .insertContent({
+            type: "questionStatic",
+            attrs: {
+              questionName: card.name,
+              series: utf8_to_b64url(JSON.stringify(rawSeries[0].data)),
+              viz: utf8_to_b64url(JSON.stringify(card.visualization_settings)),
+              display: card.display,
+            },
+          })
+          .run();
+      }
+    };
+
     if (isLoading) {
       return (
         <NodeViewWrapper className={styles.embedWrapper}>
@@ -284,6 +315,12 @@ export const QuestionEmbedComponent = memo(
                       )}
                       <Menu.Item onClick={handleReplaceQuestion}>
                         {t`Replace question`}
+                      </Menu.Item>
+                      <Menu.Item onClick={handleCopyStaticQuestion}>
+                        {t`Copy Static Question Markdown`}
+                      </Menu.Item>
+                      <Menu.Item onClick={handleReplaceStaticQuestion}>
+                        {t`Replace With Static Question`}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
