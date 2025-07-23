@@ -70,4 +70,3 @@
       (testing "rollout is a decimal"
         (let [modified (update version-info :latest assoc :rollout 0.2)]
           (is (= modified (info modified {:current-major 51 :upgrade-threshold-value 25}))))))))
-
