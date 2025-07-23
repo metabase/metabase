@@ -76,10 +76,12 @@
    :official_collection official_collection
    :embedding           [:raw (format-embedding embedding-vec)]
    :content             searchable_text
-   :text_search_vector [:||
-                        (search/weighted-tsvector "A" (:name doc))
-                        ;; TODO: :searchable_text contains the doc's name which we don't want for B weighted results
-                        (search/weighted-tsvector "B" (:searchable_text doc ""))]
+   :text_search_vector (if (:name doc)
+                         [:||
+                          (search/weighted-tsvector "A" (:name doc))
+                          ;; TODO: :searchable_text contains the doc's name which we don't need to repeat for B-weighted results
+                          (search/weighted-tsvector "B" (:searchable_text doc ""))]
+                         (search/weighted-tsvector "A" (:searchable_text doc "")))
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
