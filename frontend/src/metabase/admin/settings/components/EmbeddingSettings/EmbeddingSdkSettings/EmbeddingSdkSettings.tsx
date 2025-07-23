@@ -10,9 +10,21 @@ import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
 import { isEEBuild } from "metabase/lib/utils";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
+  PLUGIN_EMBEDDING_SDK,
+} from "metabase/plugins";
 import { getLearnUrl } from "metabase/selectors/settings";
-import { Alert, Box, Button, Icon, Text } from "metabase/ui";
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Text,
+} from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
@@ -26,11 +38,21 @@ const utmTags = {
 };
 
 export function EmbeddingSdkSettings() {
-  const isEmbeddingAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
-  const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
   const isEE = isEEBuild();
 
-  const canEditSdkOrigins = isEmbeddingAvailable && isEmbeddingSdkEnabled;
+  const isReactSdkEnabled = useSetting("enable-embedding-sdk");
+  const isReactSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+
+  const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
+  const isSimpleEmbedFeatureEnabled =
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
+
+  const isEmbeddingAvailable =
+    isReactSdkFeatureEnabled || isSimpleEmbedFeatureEnabled;
+
+  const canEditSdkOrigins =
+    (isReactSdkFeatureEnabled && isReactSdkEnabled) ||
+    (isSimpleEmbedFeatureEnabled && isSimpleEmbedEnabled);
 
   const isHosted = useSetting("is-hosted?");
 
@@ -48,6 +70,7 @@ export function EmbeddingSdkSettings() {
     "https://metaba.se/sdk-quick-start",
     utmTags,
   );
+
   const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
 
   const SwitchBinariesLink = (
@@ -88,13 +111,56 @@ export function EmbeddingSdkSettings() {
     .otherwise(() => null);
 
   return (
-    <SettingsPageWrapper title={t`Embedding SDK`}>
+    <SettingsPageWrapper title={t`Embedded Analytics SDK`}>
       <UpsellDevInstances location="embedding-page" />
+
       <SettingsSection>
-        <EmbeddingToggle
-          label={t`Enable Embedded analytics SDK for React`}
-          settingKey="enable-embedding-sdk"
-        />
+        <Box>
+          <Group align="flex-start" gap="lg">
+            <Flex direction="column" gap="md" style={{ flex: 1 }}>
+              <EmbeddingToggle
+                label={t`SDK Embedding`}
+                settingKey="enable-embedding-sdk"
+              />
+
+              {isSimpleEmbedFeatureEnabled && (
+                <Group align="center" gap="sm">
+                  <EmbeddingToggle
+                    label={t`Simple Embedding`}
+                    labelPosition="right"
+                    settingKey="enable-embedding-simple"
+                  />
+
+                  <Badge size="xs" color="blue" variant="outline">
+                    {t`Beta`}
+                  </Badge>
+                </Group>
+              )}
+            </Flex>
+
+            <Box>
+              <SettingHeader
+                id="get-started"
+                title={
+                  isReactSdkFeatureEnabled
+                    ? t`Get started`
+                    : t`Try Embedded analytics SDK`
+                }
+                description={
+                  isReactSdkFeatureEnabled
+                    ? ""
+                    : t`Use the SDK with API keys for development.`
+                }
+              />
+
+              <Button
+                variant="outline"
+                component={ExternalLink}
+                href={quickStartUrl}
+              >{t`Check out the Quickstart`}</Button>
+            </Box>
+          </Group>
+        </Box>
 
         <Alert
           data-testid="sdk-settings-alert-info"
@@ -112,40 +178,22 @@ export function EmbeddingSdkSettings() {
         >
           <Text size="sm">{apiKeyBannerText}</Text>
         </Alert>
-        <Box>
-          <SettingHeader
-            id="get-started"
-            title={
-              isEmbeddingAvailable
-                ? t`Get started`
-                : t`Try Embedded analytics SDK`
-            }
-            description={
-              isEmbeddingAvailable
-                ? ""
-                : t`Use the SDK with API keys for development.`
-            }
-          />
-          <Button
-            variant="outline"
-            component={ExternalLink}
-            href={quickStartUrl}
-          >{t`Check out the Quickstart`}</Button>
-        </Box>
+
         <Box>
           <AdminSettingInput
             name="embedding-app-origins-sdk"
-            title={t`Cross-Origin Resource Sharing (CORS)`}
+            title={t`Authorized Origins`}
             placeholder="https://*.example.com"
             description={
               isEmbeddingAvailable
-                ? t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included. Changes will take effect within one minute.`
+                ? t`Enter the origins for the websites or apps where you want to allow embedding, separated by a space. These origins apply to both SDK and iframe embedding. Localhost is automatically included. Changes will take effect within one minute.`
                 : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and Enter the origins for the websites or apps where you want to allow SDK embedding.`
             }
             inputType="text"
             disabled={!canEditSdkOrigins}
           />
         </Box>
+
         {isEmbeddingAvailable && isHosted && (
           <Box>
             <SettingHeader
@@ -163,6 +211,7 @@ export function EmbeddingSdkSettings() {
             >{t`Request version pinning`}</Button>
           </Box>
         )}
+
         <Text data-testid="sdk-documentation">
           {jt`Check out the ${(
             <ExternalLink key="sdk-doc" href={documentationUrl}>
