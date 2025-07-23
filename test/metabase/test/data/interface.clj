@@ -11,6 +11,7 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
    [mb.hawk.hooks]
@@ -407,7 +408,7 @@
 
 (defmethod create-and-grant-roles! ::test-extensions
   [_driver _details _roles _db-user _default-role]
-  nil)
+  (ex-info (format "Creating roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defmulti drop-roles!
   "Drops the given roles, and drops the database user if necessary"
@@ -417,7 +418,7 @@
 
 (defmethod drop-roles! ::test-extensions
   [_driver _details _roles _db-user]
-  nil)
+  (ex-info (format "Dropping roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defn with-temp-roles-fn!
   "Creates the given roles and permissions for the database user, and drops them after execution"
@@ -437,6 +438,44 @@
      ~roles
      ~db-user
      ~default-role
+     (fn [] ~@body)))
+
+(defmulti create-db-user!
+  "Creates a database user."
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-db-user! ::test-extensions
+  [_driver _details _db-user]
+  (ex-info (format "Creating a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defmulti drop-db-user-if-exists!
+  "Drops the database user if it exists"
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-db-user-if-exists! ::test-extensions
+  [driver _details _db-user]
+  (ex-info (format "Dropping a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defn with-temp-db-user-fn!
+  "Creates the given user with the default public key and drops it after execution."
+  [driver details db-user f]
+  (try
+    (create-db-user! driver details db-user)
+    (f)
+    (finally
+      (drop-db-user-if-exists! driver details db-user))))
+
+(defmacro with-temp-db-user!
+  "Creates the given user drops it after execution."
+  [driver details db-user & body]
+  `(with-temp-db-user-fn!
+     ~driver
+     ~details
+     ~db-user
      (fn [] ~@body)))
 
 (defmulti dbdef->connection-details
@@ -584,9 +623,9 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmulti field-reference
-  "Generate a sql fragment that references a particular field"
-  {:arglists `([driver field-id])}
+(defmulti make-alias
+  "Makes an alias for a given column"
+  {:arglists '([driver alias])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -1100,3 +1139,23 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
+
+(defn tracking-access-note
+  "Generic tracking access note"
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s %s"
+            (str t/*testing-vars*)
+            (get env/env :github-actor)
+            (get env/env :github-head-ref))
+    (format "DEV: %s %s"
+            (str t/*testing-vars*)
+            (:user env/env))))
+
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)

@@ -18,6 +18,7 @@ export function BooleanFilterPicker({
   filter,
   isNew,
   withAddButton,
+  withSubmitButton,
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
@@ -64,6 +65,7 @@ export function BooleanFilterPicker({
         isNew={isNew}
         isValid
         withAddButton={withAddButton}
+        withSubmitButton={withSubmitButton}
         onAddButtonClick={handleAddButtonClick}
       />
     </Box>

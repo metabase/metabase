@@ -1,4 +1,5 @@
-import type { ComponentProps } from "react";
+import cx from "classnames";
+import { type ComponentProps, forwardRef } from "react";
 
 import {
   setEditingParameter,
@@ -7,50 +8,57 @@ import {
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
-import {
-  getDashboardComplete,
-  getEditingParameter,
-  getIsEditing,
-  getIsNightMode,
-  getTabHiddenParameterSlugs,
-} from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { Parameter } from "metabase-types/api";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { useDispatch } from "metabase/lib/redux";
+import { ParametersList } from "metabase/parameters/components/ParametersList";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
-import { ParametersList } from "../../../parameters/components/ParametersList";
-
-interface DashboardParameterListProps
+export interface DashboardParameterListProps
   extends Pick<
     ComponentProps<typeof ParametersList>,
-    "widgetsVariant" | "widgetsWithinPortal" | "vertical"
+    | "widgetsWithinPortal"
+    | "widgetsPopoverPosition"
+    | "vertical"
+    | "hasTestIdProps"
   > {
-  parameters: Array<Parameter & { value: unknown }>;
+  className?: string;
+  parameters: UiParameter[];
   isSortable?: boolean;
-  isFullscreen: boolean;
 }
 
-export function DashboardParameterList({
-  parameters,
-  isSortable = true,
-  isFullscreen,
-  widgetsVariant,
-  widgetsWithinPortal,
-  vertical,
-}: DashboardParameterListProps) {
-  const dashboard = useSelector(getDashboardComplete);
-  const editingParameter = useSelector(getEditingParameter);
-  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
-  const isEditing = useSelector(getIsEditing);
-  const isNightMode = useSelector(getIsNightMode);
-  const shouldRenderAsNightMode = isNightMode && isFullscreen;
+export const DashboardParameterList = forwardRef<
+  HTMLDivElement,
+  DashboardParameterListProps
+>(function DashboardParameterList(
+  {
+    className,
+    parameters,
+    isSortable = true,
+    widgetsWithinPortal,
+    widgetsPopoverPosition,
+    vertical,
+    hasTestIdProps = true,
+  },
+  ref,
+) {
   const dispatch = useDispatch();
+
+  const {
+    editingParameter,
+    shouldRenderAsNightMode,
+    isFullscreen,
+    isEditing,
+    dashboard,
+    hideParameters,
+  } = useDashboardContext();
 
   return (
     <ParametersList
-      className={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME}
+      ref={ref}
+      className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
       editingParameter={editingParameter}
-      hideParameters={hiddenParameterSlugs}
+      hideParameters={hideParameters}
       dashboard={dashboard}
       isSortable={isSortable}
       isFullscreen={isFullscreen}
@@ -63,9 +71,10 @@ export function DashboardParameterList({
         dispatch(setParameterValueToDefault(id))
       }
       enableParameterRequiredBehavior
-      widgetsVariant={widgetsVariant}
       widgetsWithinPortal={widgetsWithinPortal}
+      widgetsPopoverPosition={widgetsPopoverPosition}
       vertical={vertical}
+      hasTestIdProps={hasTestIdProps}
     />
   );
-}
+});

@@ -511,3 +511,33 @@
                   field-after-second-sync (t2/select-one :model/Field :table_id table-id :name "something")]
               (is (= :normal (:visibility_type field-after-second-sync))
                   "Second sync should preserve manually set :normal visibility_type"))))))))
+
+(deftest user-set-fks-are-preserved-by-sync-test
+  (testing "Check that sync-table! doesn't remove user-set FKs during normal sync operations"
+    (with-test-db
+      (doseq [statement ["CREATE TABLE \"flocks\" (\"id\" INTEGER PRIMARY KEY, \"example_bird_name\" VARCHAR);"
+                         (str "INSERT INTO \"flocks\" (\"id\", \"example_bird_name\") VALUES "
+                              "(1, 'Marshawn Finch'),  "
+                              "(2, 'Steven Seagull'), "
+                              "(3, 'Colin Fowl');")]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (sync/sync-database! (mt/db))
+
+      (let [tables (t2/select-pks-set :model/Table :db_id (mt/id))
+            birds-example-name-field (t2/select-one :model/Field :name "example_name" :table_id [:in tables])
+            flocks-example-bird-name-field (t2/select-one :model/Field :name "example_bird_name" :table_id [:in tables])]
+
+        (testing "should not have FK relationship"
+          (is (nil? (:fk_target_field_id flocks-example-bird-name-field)))
+          (is (not= :type/FK (:semantic_type flocks-example-bird-name-field))))
+
+        (t2/update! :model/Field (u/the-id flocks-example-bird-name-field)
+                    {:semantic_type :type/FK
+                     :fk_target_field_id (u/the-id birds-example-name-field)})
+
+        (testing "after sync, user-set FK is preserved"
+          (sync/sync-database! (mt/db))
+
+          (let [field-after-sync (t2/select-one :model/Field :id (u/the-id flocks-example-bird-name-field))]
+            (is (= :type/FK (:semantic_type field-after-sync)))
+            (is (= (u/the-id birds-example-name-field) (:fk_target_field_id field-after-sync)))))))))

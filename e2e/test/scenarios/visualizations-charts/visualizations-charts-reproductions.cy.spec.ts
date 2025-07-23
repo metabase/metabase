@@ -95,7 +95,7 @@ describe("issue 45255", () => {
   });
 });
 
-describe("issue 49874", () => {
+describe("issue 49874, 48847", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -127,12 +127,15 @@ describe("issue 49874", () => {
       cy.findByText("Sum of Total").should("be.visible");
     });
 
+    H.chartGridLines().should("exist");
+
     H.chartPathWithFillColor("#88BF4D").first().realHover();
 
     H.echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("not.exist");
     });
+    H.chartGridLines().should("exist");
 
     H.chartPathWithFillColor("#98D9D9").first().realHover();
 
@@ -140,6 +143,7 @@ describe("issue 49874", () => {
       cy.findByText("Sum of Quantity").should("not.exist");
       cy.findByText("Sum of Total").should("be.visible");
     });
+    H.chartGridLines().should("exist");
   });
 });
 
@@ -435,5 +439,59 @@ describe("issue 59671", () => {
       index: 0,
     });
     H.visualize();
+  });
+});
+
+describe("issue 59830", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when saved dimension settings refer to a non-existent column (metabase#59830)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        aggregation: [["count"], ["avg", ["field", ORDERS.TOTAL, null]]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["DOES_NOT_EXIST"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
+
+describe("issue 54755", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show an empty state when no dimensions are available (metabase#54755)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": [],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
   });
 });

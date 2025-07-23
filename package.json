@@ -27,9 +27,9 @@
     "@juggle/resize-observer": "^3.4.0",
     "@lezer/highlight": "^1.2.1",
     "@lezer/lr": "^1.4.2",
-    "@mantine/core": "^7.17.0",
-    "@mantine/dates": "^7.17.0",
-    "@mantine/hooks": "^7.17.0",
+    "@mantine/core": "^8.0.2",
+    "@mantine/dates": "^8.0.2",
+    "@mantine/hooks": "^8.0.2",
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^2.5.0",
     "@snowplow/browser-tracker": "^3.1.6",
@@ -181,7 +181,6 @@
     "@testing-library/cypress": "^10.0.2",
     "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.0.0",
-    "@testing-library/react-hooks": "^8.0.0",
     "@testing-library/user-event": "^14.5.2",
     "@types/babel__core": "^7.20.4",
     "@types/babel__preset-env": "^7.9.5",
@@ -302,7 +301,7 @@
     "mutationobserver-shim": "^0.3.7",
     "mysql2": "^3.9.8",
     "node-fetch": "2.6.7",
-    "node-polyfill-webpack-plugin": "^3.0.0",
+    "node-polyfill-webpack-plugin": "4.0.0",
     "null-loader": "^4.0.1",
     "open": "^10.1.0",
     "open-cli": "^8.0.0",
@@ -343,7 +342,6 @@
     "typedoc-plugin-mdn-links": "^5.0.1",
     "typedoc-plugin-merge-modules": "^7.0.0",
     "typedoc-plugin-redirect": "^1.2.0",
-    "typescript-plugin-css-modules": "^5.1.0",
     "web-streams-polyfill": "^4.1.0",
     "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
@@ -377,6 +375,7 @@
     "fetch-mock/path-to-regexp": "3.3.0"
   },
   "scripts": {
+    "mage": "./bin/mage",
     "build": "yarn build:cljs && yarn build:js",
     "build-embedding-sdk": "yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:sdk && yarn build-embedding-sdk-cli && yarn embedding-sdk:fixup-types-imports",
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js",
@@ -477,7 +476,7 @@
     "type-check-pure": "tsc --noEmit",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
-    "generate:expression-parser": "lezer-generator frontend/src/metabase-lib/v1/expressions/tokenizer/grammar.lezer -o frontend/src/metabase-lib/v1/expressions/tokenizer/lezer.js",
+    "generate:expression-parser": "lezer-generator frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.js",
     "cloud:dev": "yarn && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && yarn concurrently -n 'FE,BE' -c 'blue,green' 'yarn build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
   },
   "lint-staged": {
@@ -508,6 +507,9 @@
     ],
     "+(.storybook|.storybook-sdk)/**/*.{js,jsx,ts,tsx,css}": [
       "prettier --write"
+    ],
+    "**/*": [
+      "./bin/mage -token-scan"
     ]
   },
   "browserslist": [

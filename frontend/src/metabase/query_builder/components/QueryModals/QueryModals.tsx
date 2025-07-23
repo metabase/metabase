@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import { AddToDashSelectDashModal } from "metabase/common/components/AddToDashSelectDashModal";
 import Modal from "metabase/common/components/Modal";
 import QuestionSavedModal from "metabase/common/components/QuestionSavedModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -28,6 +27,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
+import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
 import { MoveQuestionModal } from "../MoveQuestionModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };

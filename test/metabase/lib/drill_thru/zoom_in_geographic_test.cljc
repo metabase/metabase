@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
@@ -560,17 +559,14 @@
                                   :column-ref (lib/ref state-col)
                                   :value      "MN"}]}
         drills     (lib/available-drill-thrus query -1 context)
-        [join]     (lib/joins query)
         zoom-in    (m/find-first #(= (:type %) :drill-thru/zoom-in.geographic) drills)]
     (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru
              :type      :drill-thru/zoom-in.geographic
              :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
              :column    state-col
-             :latitude  {:column    (update (meta/field-metadata :people :latitude)
-                                            :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
+             :latitude  {:column    (meta/field-metadata :people :latitude)
                          :bin-width 1}
-             :longitude {:column    (update (meta/field-metadata :people :longitude)
-                                            :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
+             :longitude {:column    (meta/field-metadata :people :longitude)
                          :bin-width 1}}
             zoom-in))
     (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :people :state)] "MN"]]

@@ -86,6 +86,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
           openldap: true
+          snowplow: true
           postgres: ${{ inputs.qa_db == 'sql' }}
           mysql: ${{ inputs.qa_db == 'sql' }}
           mongo: ${{ inputs.qa_db == 'mongo' }}
@@ -105,8 +106,6 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
       - name: Generate database snapshots

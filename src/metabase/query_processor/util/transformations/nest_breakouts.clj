@@ -43,6 +43,8 @@
                       lib.util/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
+;;; TODO (Cam 7/7/25) -- update this to use [[metabase.lib.field.util/update-keys-for-col-from-previous-stage]] instead
+;;; of its own weird bespoke version of the same thing.
 (mu/defn- update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
   "Force a `[:field {} <name>]` ref. Must manually escape field refs here, since `escape-join-aliases` mw is already run."
   [col :- ::lib.schema.metadata/column]
@@ -58,7 +60,8 @@
                                   ;; for other columns: remove temporal type, it should be nil anyway but remove it to
                                   ;; be safe.
                                   nil))
-      (lib/with-binning nil)))
+      (lib/with-binning nil)
+      (dissoc :lib/expression-name)))
 
 (defn- copy-ident [to from]
   (lib.options/update-options to m/assoc-some :ident (lib.options/ident from)))

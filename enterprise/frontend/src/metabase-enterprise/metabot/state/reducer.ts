@@ -3,45 +3,53 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory, MetabotStateContext } from "metabase-types/api";
+import type { MetabotHistory } from "metabase-types/api";
+
+import { TOOL_CALL_MESSAGES } from "../constants";
 
 import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
 import { createMessageId } from "./utils";
 
-export type MetabotAgentChatMessage =
-  | { id: string; role: "agent"; message: string; type: "reply" }
-  | { id: string; role: "agent"; message: string; type: "error" };
-
-export type MetabotUserChatMessage = {
+export type MetabotChatMessage = {
   id: string;
-  role: "user";
+  role: "user" | "agent";
   message: string;
 };
 
-export type MetabotChatMessage =
-  | MetabotAgentChatMessage
-  | MetabotUserChatMessage;
+export type MetabotErrorMessage = {
+  type: "message" | "alert";
+  message: string;
+};
+
+export type MetabotToolCall = {
+  id: string;
+  name: string;
+  message: string | undefined;
+  status: "started" | "ended";
+};
 
 export interface MetabotState {
   useStreaming: boolean;
   isProcessing: boolean;
   conversationId: string;
   messages: MetabotChatMessage[];
+  errorMessages: MetabotErrorMessage[];
   visible: boolean;
   history: MetabotHistory;
   state: any;
-  activeToolCall: { id: string; name: string } | undefined;
+  toolCalls: MetabotToolCall[];
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
-  useStreaming: false,
+  useStreaming: true,
   isProcessing: false,
   conversationId: uuid(),
   messages: [],
+  errorMessages: [],
   visible: false,
   history: [],
   state: {},
-  activeToolCall: undefined,
+  toolCalls: [],
 });
 
 export const metabot = createSlice({
@@ -53,43 +61,67 @@ export const metabot = createSlice({
     },
     addUserMessage: (
       state,
-      action: PayloadAction<Omit<MetabotUserChatMessage, "role">>,
+      action: PayloadAction<Omit<MetabotChatMessage, "role">>,
     ) => {
       const { id, message } = action.payload;
 
-      const lastMessage = _.last(state.messages);
-      if (lastMessage?.role === "agent" && lastMessage?.type === "error") {
-        state.messages.pop();
-      }
-
+      state.errorMessages = [];
       state.messages.push({ id, role: "user", message });
+
       if (state.useStreaming) {
         state.history.push({ id, role: "user", content: message });
       }
     },
     addAgentMessage: (
       state,
-      action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
+      action: PayloadAction<Omit<MetabotChatMessage, "id" | "role">>,
     ) => {
+      state.toolCalls = [];
       state.messages.push({
         id: createMessageId(),
         role: "agent",
         message: action.payload.message,
-        type: action.payload.type,
       });
     },
-    setStateContext: (state, action: PayloadAction<MetabotStateContext>) => {
-      state.state = action.payload;
+    addAgentErrorMessage: (
+      state,
+      action: PayloadAction<MetabotErrorMessage>,
+    ) => {
+      state.errorMessages.push(action.payload);
+    },
+    addAgentTextDelta: (state, action: PayloadAction<string>) => {
+      const hasToolCalls = state.toolCalls.length > 0;
+      const lastMessage = _.last(state.messages);
+      const canAppend = !hasToolCalls && lastMessage?.role === "agent";
+
+      if (canAppend) {
+        lastMessage!.message = lastMessage!.message + action.payload;
+      } else {
+        state.messages.push({
+          id: createMessageId(),
+          role: "agent",
+          message: action.payload,
+        });
+      }
+
+      state.toolCalls = hasToolCalls ? [] : state.toolCalls;
     },
     toolCallStart: (
       state,
       action: PayloadAction<{ toolCallId: string; toolName: string }>,
     ) => {
       const { toolCallId, toolName } = action.payload;
-      state.activeToolCall = { id: toolCallId, name: toolName };
+      state.toolCalls.push({
+        id: toolCallId,
+        name: toolName,
+        message: TOOL_CALL_MESSAGES[toolName],
+        status: "started",
+      });
     },
-    toolCallEnd: (state) => {
-      state.activeToolCall = undefined;
+    toolCallEnd: (state, action: PayloadAction<{ toolCallId: string }>) => {
+      state.toolCalls = state.toolCalls.map((tc) =>
+        tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
+      );
     },
     // NOTE: this reducer fn should be made smarter if/when we want to have
     // metabot's `state` object be able to remove / forget values. currently
@@ -97,22 +129,24 @@ export const metabot = createSlice({
     // so if / when this becomes expected, we'll need to do some extra work here
     // NOTE: this doesn't work in non-streaming contexts right now
     rewindStateToMessageId: (state, { payload: id }: PayloadAction<string>) => {
-      if (state.useStreaming) {
-        const messageIndex = state.messages.findLastIndex((m) => id === m.id);
-        const historyIndex = state.history.findLastIndex((h) => id === h.id);
-        if (historyIndex > -1 && messageIndex > -1) {
-          state.isProcessing = false;
-          state.messages = state.messages.slice(0, messageIndex);
-          state.history = state.history.slice(0, historyIndex);
-        }
+      state.isProcessing = false;
+      const messageIndex = state.messages.findLastIndex((m) => id === m.id);
+      if (messageIndex > -1) {
+        state.messages = state.messages.slice(0, messageIndex);
+      }
+
+      const historyIndex = state.history.findLastIndex((h) => id === h.id);
+      if (state.useStreaming && historyIndex > -1) {
+        state.history = state.history.slice(0, historyIndex);
       }
     },
     resetConversation: (state) => {
       state.messages = [];
+      state.errorMessages = [];
       state.history = [];
       state.state = {};
       state.isProcessing = false;
-      state.activeToolCall = undefined;
+      state.toolCalls = [];
       state.conversationId = uuid();
     },
     resetConversationId: (state) => {
@@ -131,23 +165,22 @@ export const metabot = createSlice({
       // streamed response handlers
       .addCase(sendStreamedAgentRequest.pending, (state) => {
         state.isProcessing = true;
+        state.errorMessages = [];
       })
       .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
-        state.history = [
-          ...state.history,
-          ...(action.payload?.history?.slice() ?? []),
-        ];
+        state.history = action.payload?.history?.slice() ?? [];
         state.state = { ...(action.payload?.state ?? {}) };
-        state.activeToolCall = undefined;
+        state.toolCalls = [];
         state.isProcessing = false;
       })
       .addCase(sendStreamedAgentRequest.rejected, (state) => {
-        state.activeToolCall = undefined;
+        state.toolCalls = [];
         state.isProcessing = false;
       })
       // non-streamed response handlers
       .addCase(sendAgentRequest.pending, (state) => {
         state.isProcessing = true;
+        state.errorMessages = [];
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         state.history = action.payload?.history?.slice() ?? [];

@@ -5,6 +5,7 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
+import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { IconName } from "metabase/ui";
 import {
@@ -19,8 +20,8 @@ import {
 } from "metabase-types/store/mocks";
 
 import { DashboardHeaderButtonRow } from "./DashboardHeaderButtonRow";
-import { DASHBOARD_ACTION } from "./action-buttons";
 import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
+import { DASHBOARD_ACTION } from "./dashboard-action-keys";
 
 const DASHBOARD_EXPECTED_DATA_MAP: Record<
   DashboardActionKey,
@@ -99,6 +100,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "expand",
     tooltip: null,
   },
+  DOWNLOAD_PDF: {
+    icon: "download",
+    tooltip: "Download as PDF",
+  },
 };
 
 const setup = ({
@@ -154,18 +159,21 @@ const setup = ({
     <Route
       path="*"
       component={() => (
-        <MockDashboardContext>
+        <MockDashboardContext
+          refreshPeriod={null}
+          onRefreshPeriodChange={jest.fn()}
+          setRefreshElapsedHook={jest.fn()}
+          isFullscreen={isFullscreen}
+          onFullscreenChange={jest.fn()}
+          hasNightModeToggle={hasNightModeToggle}
+          onNightModeChange={jest.fn()}
+          isNightMode={isNightMode}
+          downloadsEnabled={{ pdf: false }}
+          dashboardActions={DASHBOARD_APP_ACTIONS}
+        >
           <DashboardHeaderButtonRow
             canResetFilters
             onResetFilters={jest.fn()}
-            refreshPeriod={null}
-            onRefreshPeriodChange={jest.fn()}
-            setRefreshElapsedHook={jest.fn()}
-            isFullscreen={isFullscreen}
-            onFullscreenChange={jest.fn()}
-            hasNightModeToggle={hasNightModeToggle}
-            onNightModeChange={jest.fn()}
-            isNightMode={isNightMode}
             isPublic={isPublic}
             isAnalyticsDashboard={isAnalyticsDashboard}
           />

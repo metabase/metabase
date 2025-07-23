@@ -57,13 +57,7 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
       CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
-      CYPRESS_IS_EMBEDDING_SDK: ${{ inputs.name == 'embedding-sdk' }}
-      mongo: ${{ inputs.name == 'mongo' }}
-      postgres: ${{ inputs.name != 'mongo' }}
-      mysql: ${{ inputs.name != 'mongo' }}
-      openldap: true
-      maildev: true
-      webhook: true
+      CYPRESS_IS_EMBEDDING_SDK: "${{ inputs.name == 'embedding-sdk' }}"
     steps:
       - uses: actions/checkout@v4
 
@@ -73,11 +67,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
-          openldap: ${{ env.openldap }}
-          postgres: ${{ env.postgres }}
-          mysql: ${{ env.mysql }}
-          mongo: ${{ env.mongo }}
-          webhook: ${{ env.webhook }}
+          openldap: true
+          webhook: true
+          snowplow: true
+          postgres: ${{ inputs.name != 'mongo' }}
+          mysql: ${{ inputs.name != 'mongo' }}
+          mongo: ${{ inputs.name == 'mongo' }}
 
       - name: Run Embedding SDK Storybook
         if: inputs.name == 'embedding-sdk'
@@ -112,9 +107,6 @@ jobs:
       - name: Get failed specs
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
-
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
