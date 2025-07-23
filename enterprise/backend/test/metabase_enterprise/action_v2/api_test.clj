@@ -29,6 +29,8 @@
 (def ^:private execute-bulk-url "/ee/action-v2/execute-bulk")
 (def ^:private execute-form-url "/ee/action-v2/execute-form")
 
+;; TODO make non-bulk versions, and DRY up  bit
+
 (defn create-rows!
   ([table-id rows]
    (create-rows! table-id 200 rows))
@@ -64,7 +66,8 @@
     (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-bulk-url))
     (mt/assert-has-premium-feature-error "Action" (mt/user-http-request :crowberto :post 402 execute-form-url))))
 
-;; To Chris: I'm trying to get this tests passed
+;; TODO have a similar test to this next one, but for single execution (which data apps will use)
+
 (deftest table-operations-via-action-execute-test
   (mt/with-premium-features #{:actions}
     (mt/test-drivers #{:h2 :postgres}
@@ -188,6 +191,7 @@
                    {:op "deleted", :table-id table-id, :row {:id_1 2, :id_2 2}}}
                  (set
                   (:outputs
+                   ;; TODO use the helpers for all of these
                    (mt/user-http-request :crowberto :post 200 execute-bulk-url
                                          {:action "data-grid.row/delete"
                                           :scope  {:table-id table-id}
@@ -402,12 +406,11 @@
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected (error-or-ok response))))))))))
 
-;; TODO this needs to be updated to use the execute api
 (deftest coercion-test
   (mt/with-premium-features #{:actions}
     (mt/test-drivers #{:h2 :postgres}
-      (let [create! #(mt/user-http-request :crowberto :post execute-bulk-url {:action :data-grid.row/create, :scope {:table-id %1}, :inputs %2})
-            update! #(mt/user-http-request :crowberto :post execute-bulk-url {:action :data-grid.row/update, :scope {:table-id %1}, :inputs %2})
+      (let [create! #(create-rows! %1 %2)
+            update! #(update-rows! %1 %2)
             always-lossy #{:Coercion/UNIXNanoSeconds->DateTime
                            :Coercion/UNIXMicroSeconds->DateTime
                            :Coercion/ISO8601->Date
@@ -448,6 +451,10 @@
                                   (is (= input (:o qp-row))))
                                 (is (= expected (:o (first (get-db-state)))))))))))]
 
+        ;; TODO have this fail if there are gaps in our testing
+        ;;      ... and then fill in the gaps :-D
+        ;;     (we can ignore driver specific types outside of Postgres and MySQL)
+
         ;;    type     coercion                                     input                          database
         (->> [:text    nil                                          "a"                            "a"
               :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:00Z"         "20250325143400"
@@ -473,6 +480,7 @@
 
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{:actions}
+    ;; TODO test MYSQL
     (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
         (let [field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
@@ -488,6 +496,7 @@
                                :timeout-ms  1000
                                :interval-ms 1})
                       @last-res)))]
+          ;; TODO this can flake sometimes, not sure why (left over state from other tests?)
           (is (= [] (field-values)))
 
           (create! [{:n "a"}])
