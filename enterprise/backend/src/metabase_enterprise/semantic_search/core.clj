@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]
    [next.jdbc :as jdbc]))
 
 (defenterprise supported?
@@ -30,10 +31,13 @@
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (when-not @semantic.db/data-source (semantic.db/init-db!))
   (let [documents (vec document-reducible)]
+    (log/info "semantic-search.core/update-index! called with" (count documents) "documents: " documents)
+    (when-not @semantic.db/data-source (semantic.db/init-db!))
     (when (seq documents)
-      (semantic.index/upsert-index! @semantic.db/data-source (get-active-index) documents))))
+      (let [active-index (get-active-index)]
+        (semantic.index/create-index-table! @semantic.db/data-source active-index {:force-reset? false})
+        (semantic.index/upsert-index! @semantic.db/data-source (get-active-index) documents)))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
@@ -47,6 +51,7 @@
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents _opts]
+  (log/info "semantic-search.core/init! called")
   (let [db           (semantic.db/init-db!)
         active-index (get-active-index)]
     (jdbc/with-transaction [tx db]

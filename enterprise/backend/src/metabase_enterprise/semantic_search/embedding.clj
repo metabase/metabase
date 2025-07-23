@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
@@ -205,19 +206,31 @@
   a map from text to embedding for each batch."
   [embedding-model texts process-fn]
   (when (seq texts)
-    (let [{:keys [model-name provider]} embedding-model]
-      (if (= "openai" provider)
-        ;; For OpenAI, use token-aware batching and stream processing
-        (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)]
-          (run! (fn [batch-texts]
-                  (let [embeddings (openai-get-embeddings-batch model-name batch-texts)
-                        text-embedding-map (zipmap batch-texts embeddings)]
-                    (process-fn text-embedding-map)))
-                batches))
-        ;; For other providers, process all at once (existing behavior)
-        (let [embeddings (get-embeddings-batch embedding-model texts)
-              text-embedding-map (zipmap texts embeddings)]
-          (process-fn text-embedding-map))))))
+    (let [timer (u/start-timer)
+          {:keys [model-name provider]} embedding-model
+          text-count (count texts)]
+      (log/info "semantic-search.embedding/process-embeddings-streaming started with" text-count "texts using provider:" provider "model:" model-name)
+      (try
+        (if (= "openai" provider)
+          ;; For OpenAI, use token-aware batching and stream processing
+          (let [batches (create-batches (semantic-settings/openai-max-tokens-per-batch) count-tokens texts)
+                batch-count (count batches)]
+            (log/info "Processing" batch-count "batches for OpenAI provider")
+            (run! (fn [batch-texts]
+                    (let [batch-timer (u/start-timer)
+                          embeddings (openai-get-embeddings-batch model-name batch-texts)
+                          text-embedding-map (zipmap batch-texts embeddings)
+                          batch-duration (u/since-ms batch-timer)]
+                      (log/info "Processed OpenAI batch with" (count batch-texts) "texts in" batch-duration "ms")
+                      (process-fn text-embedding-map)))
+                  batches))
+          ;; For other providers, process all at once (existing behavior)
+          (let [embeddings (get-embeddings-batch embedding-model texts)
+                text-embedding-map (zipmap texts embeddings)]
+            (process-fn text-embedding-map)))
+        (finally
+          (let [total-duration (u/since-ms timer)]
+            (log/info "semantic-search.embedding/process-embeddings-streaming completed" text-count "texts in" total-duration "ms")))))))
 
 (comment
   ;; Configuration:

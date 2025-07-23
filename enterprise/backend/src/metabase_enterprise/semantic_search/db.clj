@@ -40,6 +40,7 @@
   "Initialize c3p0 connection pool for semantic search database.
    Requires MB_PGVECTOR_DB_URL environment variable."
   []
+  (log/info "semantic-search.db/init-db! called")
   (let [db-config   (build-db-config)
         unpooled-ds (jdbc/get-datasource db-config)
         pooled-ds   (DataSources/pooledDataSource
