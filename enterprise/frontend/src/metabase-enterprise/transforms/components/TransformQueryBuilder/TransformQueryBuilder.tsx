@@ -42,7 +42,7 @@ export function TransformQueryBuilder({
   };
 
   return (
-    <Box flex={1}>
+    <Box flex={1} h="100%" bg="white">
       <Group px="xl" pt="xl" justify="end">
         <Button onClick={() => onSave(query)}>{t`Save`}</Button>
         <Button onClick={onCancel}>{t`Cancel`}</Button>
