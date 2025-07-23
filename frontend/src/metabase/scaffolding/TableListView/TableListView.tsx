@@ -5,15 +5,24 @@ import {
   useGetAdhocQueryQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import { Button, Card, Group, Image, Stack, Text, Title } from "metabase/ui";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  Button,
+  Card,
+  Group,
+  Image,
+  Select,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import {
   isAvatarURL,
   isEmail,
   isEntityName,
   isImageURL,
 } from "metabase-lib/v1/types/utils/isa";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { StructuredDatasetQuery } from "metabase-types/api";
 
 interface RouteParams {
   id: string;
@@ -100,7 +109,7 @@ export const TableListView = ({ params }: Props) => {
     }
   }, [columns]);
 
-  if (!table || !dataset) {
+  if (!table || !dataset || !columns) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -140,7 +149,7 @@ export const TableListView = ({ params }: Props) => {
                 )}
 
                 <Group justify="space-between">
-                  <Text fw={500}>{row[nameColumnIndex]}</Text>
+                  <Text fw="bold">{row[nameColumnIndex]}</Text>
                 </Group>
 
                 {descriptionColumnIndex !== -1 && (
@@ -153,7 +162,54 @@ export const TableListView = ({ params }: Props) => {
           })}
         </Stack>
 
-        {isEditing && <Stack>Settings</Stack>}
+        {isEditing && (
+          <Stack>
+            <Select
+              label="Name"
+              clearable
+              data={columns.map((column, index) => ({
+                label: column.display_name,
+                value: String(column.id),
+                index,
+              }))}
+              placeholder="Select a column"
+              value={String(columns[nameColumnIndex]?.id)}
+              onChange={(value, option) => {
+                setNameColumnIndex(option ? option.index : -1);
+              }}
+            />
+
+            <Select
+              label="Description"
+              clearable
+              data={columns.map((column, index) => ({
+                label: column.display_name,
+                value: String(column.id),
+                index,
+              }))}
+              placeholder="Select a column"
+              value={String(columns[descriptionColumnIndex]?.id)}
+              onChange={(value, option) => {
+                setDescriptionColumnIndex(option ? option.index : -1);
+              }}
+            />
+
+            <Select
+              label="Image"
+              clearable
+              data={columns.map((column, index) => ({
+                label: column.display_name,
+                value: String(column.id),
+                index,
+              }))}
+              placeholder="Select a column"
+              value={String(columns[imageColumnIndex]?.id)}
+              onChange={(value, option) => {
+                setImageColumnIndex(option ? option.index : -1);
+              }}
+            />
+          </Stack>
+        )}
       </Group>
     </Stack>
   );
