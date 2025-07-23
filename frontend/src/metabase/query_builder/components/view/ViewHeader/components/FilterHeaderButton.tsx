@@ -8,7 +8,6 @@ import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { updateQuestion } from "metabase/query_builder/actions";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -18,15 +17,7 @@ import type { QueryBuilderMode } from "metabase-types/store";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 import FilterSidesheetS from "./FilterHeaderButton.module.css";
-
-// Custom wrapper that applies styling and expands content width
-function CustomMultiStageFilterPicker(props: any) {
-  return (
-    <div className={FilterSidesheetS.filterSidesheetContent}>
-      <MultiStageFilterPicker {...props} />
-    </div>
-  );
-}
+import { InlineFilterPicker } from "./InlineFilterPicker";
 
 interface FilterHeaderButtonProps {
   className?: string;
@@ -104,9 +95,18 @@ export function FilterHeaderButton({
           withOverlay={false}
           data-testid="filter-sidesheet"
         >
-          <CustomMultiStageFilterPicker
-            query={query}
-            canAppendStage={question.display() !== "pivot"}
+          <InlineFilterPicker
+            query={useMemo(() => {
+              return question.display() !== "pivot"
+                ? Lib.ensureFilterStage(question.query())
+                : question.query();
+            }, [question])}
+            stageIndexes={useMemo(() => {
+              const adjustedQuery = question.display() !== "pivot"
+                ? Lib.ensureFilterStage(question.query())
+                : question.query();
+              return Lib.stageIndexes(adjustedQuery);
+            }, [question])}
             onChange={handleQueryChange}
             onClose={close}
           />
