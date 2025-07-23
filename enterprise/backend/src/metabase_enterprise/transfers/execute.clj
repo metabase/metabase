@@ -1,11 +1,13 @@
 (ns metabase-enterprise.transfers.execute
   (:require [honey.sql.helpers :as sql.helpers]
+            [metabase-enterprise.legos.core :as legos]
             [metabase-enterprise.transforms.execute :as transforms.execute]
             [metabase.driver :as driver]
             [metabase.driver.postgres :as pg]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor :as qp]
             [metabase.query-processor.compile :as qp.compile]
+            [metabase.util.malli.registry :as mr]
             [toucan2.core :as t2]))
 
 (def ^:private type-map
@@ -89,3 +91,19 @@
                     :output-db-ref output-db-ref
                     :output-table-name output-table-name
                     :fields fields}))))
+
+(mr/def ::transfer
+  [:map
+   [:lego [:= "transfer"]]
+   [:source_table :int]
+   [:destination_database :int]
+   [:destination_table :string]
+   [:overwrite? :bool]])
+
+(defmethod legos/execute! :transfer
+  [{:keys [source_table destination_database destination_table overwrite?]}]
+  (let [input-table (t2/select-one :model/Table source_table)]
+    (execute {:input-table input-table
+              :output-db-ref destination_database
+              :output-table-name destination_table
+              :overwrite? overwrite?})))
