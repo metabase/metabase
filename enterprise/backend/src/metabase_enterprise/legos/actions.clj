@@ -1,7 +1,7 @@
 (ns metabase-enterprise.legos.actions
   (:require
    [clojure.edn :as edn]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.driver :as driver]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -41,12 +41,13 @@
 (defmethod execute! :transform
   [{:keys [database schema table query]}]
   (let [{driver :engine} (t2/select-one :model/Database database)]
-    (transforms.execute/execute
+    (transforms/execute!
      {:db-ref database
       :driver driver
       :sql query
       :output-table (qualified-table-name driver schema table)
-      :overwrite? true})))
+      :overwrite? true}))
+  :ok)
 
 (mr/def ::plan
   [:map
