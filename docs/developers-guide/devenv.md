@@ -21,6 +21,8 @@ yarn dev
 
 This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
 
+To use any other database beside the default ones please take a look at [Building Drivers](#building-drivers) further down in this document.
+
 ### Frontend
 
 Metabase depends on third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.

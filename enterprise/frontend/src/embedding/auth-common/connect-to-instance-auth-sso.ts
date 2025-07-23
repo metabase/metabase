@@ -5,19 +5,26 @@ export async function connectToInstanceAuthSso(
   url: string,
   {
     headers,
-    authMethod,
-  }: { headers?: Record<string, string>; authMethod?: MetabaseAuthMethod } = {},
+    preferredAuthMethod,
+  }: {
+    headers?: Record<string, string>;
+    preferredAuthMethod?: MetabaseAuthMethod;
+  } = {},
 ) {
-  if (authMethod && authMethod !== "jwt" && authMethod !== "saml") {
+  if (
+    preferredAuthMethod &&
+    preferredAuthMethod !== "jwt" &&
+    preferredAuthMethod !== "saml"
+  ) {
     throw MetabaseError.INVALID_AUTH_METHOD({
-      method: authMethod,
+      method: preferredAuthMethod,
     });
   }
 
-  const ssoUrl = new URL("/auth/sso", url);
+  const ssoUrl = new URL(`${url}/auth/sso`);
 
-  if (authMethod) {
-    ssoUrl.searchParams.set("preferred_method", authMethod);
+  if (preferredAuthMethod) {
+    ssoUrl.searchParams.set("preferred_method", preferredAuthMethod);
   }
 
   try {

@@ -124,13 +124,6 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("DWH Upload", () => {
-    it("should not render DWH Upload section", () => {
-      setup({ user: createMockUser({ is_superuser: true }) });
-      expect(screen.queryByTestId("dwh-upload")).not.toBeInTheDocument();
-    });
-  });
-
   describe("browse databases link", () => {
     it("should render", async () => {
       await setup();
@@ -364,6 +357,35 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.getByRole("treeitem", { name: /Our analytics/i }),
       ).toHaveAttribute("aria-selected", "false");
+    });
+  });
+
+  describe("Personal Collections", () => {
+    it("non-admin should see not other users personal collections", async () => {
+      await setup({});
+
+      expect(
+        screen.queryByText(/Other users' personal collections/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("admin should see other users personal collections if there other users", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+      });
+      expect(
+        await screen.findByText(/Other users' personal collections/i),
+      ).toBeInTheDocument();
+    });
+
+    it("admin not should see other users personal collections if there no other users", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        activeUsersCount: 1,
+      });
+      expect(
+        screen.queryByText(/Other users' personal collections/i),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -8,7 +8,6 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "appleby",
         "uladzimirdev",
         "wzimrin",
         "ericnormand",
@@ -40,7 +39,8 @@
         "oisincoveney",
         "npretto",
         "heypoom",
-        "sanex3339"
+        "sanex3339",
+        "lorem--ipsum"
       ]
     },
     {
@@ -51,7 +51,6 @@
         "piranha",
         "crisptrutski",
         "deniskaber",
-        "wotbrew",
         "spalt08",
         "stasgavrylov"
       ]
@@ -63,7 +62,6 @@
         "npfitz",
         "johnswanson",
         "rafpaf",
-        "sloansparger",
         "iethree",
         "nvoxland",
         "fraserdrops",
@@ -76,9 +74,6 @@
       "members": [
         "alxnddr",
         "kulyk",
-        "tsplude",
-        "lorem--ipsum",
-        "noahmoss",
         "bpander"
       ]
     },
@@ -94,13 +89,26 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
-        "somtom"
+        "appleby",
+        "noahmoss",
+        "retro",
+        "sloansparger",
+        "somtom",
+        "wotbrew",
+        "tsplude"
       ]
     },
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
       "members": ["nemanjaglumac", "chodorowicz"]
+    },
+    {
+      "name": "Cloud",
+      "label": "cloud",
+      "members": [
+        "filipesilva"
+      ]
     }
   ]
 }

@@ -102,10 +102,6 @@
   white-space: pre-wrap;
 }
 
-.textMeasure {
-  max-width: 620px;
-}
-
 .breakAnywhere {
   line-break: anywhere;
 }

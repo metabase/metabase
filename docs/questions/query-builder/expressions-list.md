@@ -460,7 +460,7 @@ Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
 ### date
 
-> Not available for Oracle or the non-JDBC Apache Druid driver.
+> Unavailable for Oracle or the non-JDBC Apache Druid driver.
 
 - When used on a string, converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format. If the string contains time, the time part is truncated.
 - When used on a datetime value, truncates datetime to a date.
@@ -583,7 +583,7 @@ Related: [notEmpty](#notempty), [isNull](#isnull).
 
 ### integer
 
-> Not available for the non-JDBC Apache Druid driver.
+>  Only available for BigQuery, ClickHouse, MySQL, PostgreSQL, Amazon Redshift, and Snowflake.
 
 - Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
 - Converts a floating point value by rounding it to an integer.
@@ -733,7 +733,7 @@ Related: [regexExtract](#regexextract), [replace](#replace).
 
 ### text
 
-> Not available for the non-JDBC Druid driver
+> Unavailable for the non-JDBC Druid driver
 
 Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
 
@@ -905,7 +905,7 @@ Syntax: `relativeDateTime(number, text)`
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
-`relativeDateTime` can only be used as part of a conditional expression.
+Note that `relativeDateTime()` will truncate the result to the unit specified as its argument.
 
 Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
 

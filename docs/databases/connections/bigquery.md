@@ -163,6 +163,8 @@ There aren't (yet) any model features available for BigQuery.
 
 ## Database routing
 
+Database routing for BigQuery works between BigQuery **projects** with identical schemas.
+
 See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone

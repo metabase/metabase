@@ -588,7 +588,7 @@
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                       meta/metadata-provider
-                                      {:cards [(assoc ((lib.tu/mock-cards) :orders)
+                                      {:cards [(assoc (:orders (lib.tu/mock-cards))
                                                       :id 1
                                                       :dataset-query (lib.tu.macros/mbql-query orders
                                                                        {:filter      [:between $total 30 60]

@@ -37,14 +37,14 @@ import type {
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
-  computeTimeseriesDataInverval,
+  computeTimeseriesDataInterval,
   getTimeSeriesIntervalDuration,
   getTimezoneOrOffset,
   minTimeseriesUnit,
   normalizeDate,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
+import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
@@ -762,7 +762,7 @@ function getNumericXAxisModel(
 
   const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
   const interval =
-    column.binning_info?.bin_width ?? computeNumericDataInverval(xValues);
+    column.binning_info?.bin_width ?? computeNumericDataInterval(xValues);
 
   const formatter = (value: RowValue) =>
     String(
@@ -855,7 +855,7 @@ export function getXAxisModel(
 
   const histogramInterval = isHistogram
     ? (column.binning_info?.bin_width ??
-      computeNumericDataInverval(
+      computeNumericDataInterval(
         dataset.map((datum) => datum[X_AXIS_DATA_KEY]),
       ))
     : undefined;
@@ -933,7 +933,7 @@ function getTimeSeriesXAxisInfo(
     rawSeries,
     showWarning,
   );
-  const interval = computeTimeseriesDataInverval(xValues, unit) ?? DAY_INTERVAL;
+  const interval = computeTimeseriesDataInterval(xValues, unit) ?? DAY_INTERVAL;
 
   const range = getXAxisDateRangeFromSortedXAxisValues(xValues);
 

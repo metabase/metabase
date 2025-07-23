@@ -5,6 +5,7 @@ import type {
   Dashboard,
   DashboardId,
   DashboardQueryMetadata,
+  FieldId,
   GetPublicDashboard,
 } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
@@ -57,4 +58,13 @@ export function setupListPublicDashboardsEndpoint(
   publicDashboards: GetPublicDashboard[],
 ) {
   fetchMock.get("path:/api/dashboard/public", publicDashboards);
+}
+
+export function setupValidFilterFieldsEndpoint(
+  filteringIdsByFilteredId: Record<FieldId, FieldId[]>,
+) {
+  fetchMock.get(
+    "path:/api/dashboard/params/valid-filter-fields",
+    filteringIdsByFilteredId,
+  );
 }

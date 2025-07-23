@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 
@@ -22,7 +22,11 @@ export const UpsellWhitelabel = ({ source }: { source: string }) => {
   // Even though getDocsUrl allows to pass utm params as one of the props,
   // the product requirement is to keep them in sync with the primary CTA.
   // That's why we're using useUpsellLink hook again here.
-  const url = useUpsellLink({ url: docsUrl, campaign: "whitelabel", source });
+  const url = useUpsellLink({
+    url: docsUrl,
+    campaign: "whitelabel",
+    location: source,
+  });
 
   if (isWhitelabeled) {
     return null;

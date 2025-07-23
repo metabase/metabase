@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.pre-alias-aggregations
   (:require
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.query-processor.middleware.annotate :as annotate]))
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.util.malli :as mu]))
 
 (defn- ag-name [inner-query ag-clause]
   (driver/escape-alias driver/*driver* (annotate/aggregation-name inner-query ag-clause)))
@@ -29,9 +31,9 @@
     joins
     (update :joins (partial mapv pre-alias-aggregations-in-inner-query))))
 
-(defn pre-alias-aggregations
+(mu/defn pre-alias-aggregations :- ::mbql.s/Query
   "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
-  [{query-type :type, :as query}]
+  [{query-type :type, :as query} :- ::mbql.s/Query]
   (if-not (= query-type :query)
     query
     (update query :query pre-alias-aggregations-in-inner-query)))

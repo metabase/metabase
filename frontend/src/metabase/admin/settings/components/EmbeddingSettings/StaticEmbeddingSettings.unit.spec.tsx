@@ -7,6 +7,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -31,6 +32,11 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
   fetchMock.get("path:/api/util/random_token", {
     token: "fake-token",
   });
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-dev_instances",
+    value: true,
+  });
 
   renderWithProviders(<StaticEmbeddingSettings />);
 
@@ -42,13 +48,13 @@ describe("StaticEmbeddingSettings", () => {
     await setup({ enabled: true });
 
     expect(
-      await screen.findByText("Enable Static embedding"),
+      await screen.findByText("Enable static embedding"),
     ).toBeInTheDocument();
   });
 
   it("should toggle static embedding on", async () => {
     await setup({ enabled: false });
-    const toggle = await screen.findByText("Enable Static embedding");
+    const toggle = await screen.findByText("Enable static embedding");
 
     await userEvent.click(toggle);
     const puts = await findRequests("PUT");
@@ -68,7 +74,7 @@ describe("StaticEmbeddingSettings", () => {
   it("should hide embeddable dashboards and cards when embedding is disabled", async () => {
     await setup({ enabled: false });
     expect(
-      await screen.findByText("Enable Static embedding"),
+      await screen.findByText("Enable static embedding"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Manage embeds")).not.toBeInTheDocument();
   });

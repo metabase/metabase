@@ -1,7 +1,5 @@
 ---
 title: "Interactive embedding quickstart"
-redirect_from:
-  - /learn/customer-facing-analytics/interactive-embedding-quick-start
 ---
 
 # Interactive embedding quickstart

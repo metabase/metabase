@@ -229,8 +229,7 @@
             (is (=? {:type  :query
                      :query {:source-table ["my-db" nil "customers"]
                              :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
-                             :aggregation  [[:count]]
-                             :aggregation-idents {0 string?}}
+                             :aggregation  [[:count]]}
                      :database "my-db"}
                     (:dataset_query card)))))
 
@@ -262,8 +261,7 @@
               (is (=? {:type     :query
                        :query    {:source-table (:id @table1d)
                                   :filter       [:>= [:field (:id @field1d) nil] 18]
-                                  :aggregation  [[:count]]
-                                  :aggregation-idents {0 string?}}
+                                  :aggregation  [[:count]]}
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
@@ -762,7 +760,7 @@
           field3d    (atom nil)]
 
       (testing "serializing the original database, table, field and fieldvalues"
-        (mt/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db!
           (reset! db1s     (ts/create! :model/Database :name "my-db"))
           (reset! table1s  (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1s)))
           (reset! field1s  (ts/create! :model/Field :name "STATE" :table_id (:id @table1s)))
@@ -799,7 +797,7 @@
                           set)))))))
 
       (testing "deserializing finds existing FieldValues properly"
-        (mt/with-empty-h2-app-db
+        (mt/with-empty-h2-app-db!
           ;; A different database and tables, so the IDs don't match.
           (reset! db2d    (ts/create! :model/Database :name "other-db"))
           (reset! table2d (ts/create! :model/Table    :name "ORDERS" :db_id (:id @db2d)))
@@ -846,7 +844,7 @@
         table1s    (atom nil)]
 
     (testing "loading a bare card"
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (reset! db1s    (ts/create! :model/Database :name "my-db"))
         (reset! table1s (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (ts/create! :model/Field :name "STATE" :table_id (:id @table1s))
@@ -891,7 +889,7 @@
         card1s     (atom nil)
         extracted  (atom nil)]
     (testing "snippets referenced by native cards must be deserialized"
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (reset! db1s      (ts/create! :model/Database :name "my-db"))
         (reset! table1s   (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (reset! snippet1s (ts/create! :model/NativeQuerySnippet :name "some snippet"))
@@ -926,7 +924,7 @@
 
 (deftest snippet-with-unique-name
   (testing "Snippets with the same name should be replaced/removed on deserialization"
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (let [unique-name "some snippet"
             snippet     (ts/create! :model/NativeQuerySnippet :name unique-name)
             id1         (u/generate-nano-id)
@@ -1145,7 +1143,7 @@
           (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))
 
 (deftest tx-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (let [coll       (ts/create! :model/Collection :name "coll")
           card       (ts/create! :model/Card :name "card" :collection_id (:id coll))
           serialized (atom {})]
@@ -1227,7 +1225,7 @@
         logs-extract (fn [re logs]
                        (keep #(rest (re-find re %))
                              (map :message logs)))]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Collection coll {:name "coll"}
                      :model/Card       c1   {:name "card1" :collection_id (:id coll)}
                      :model/Card       c2   {:name "card2" :collection_id (:id coll)}
@@ -1258,7 +1256,7 @@
                 (is (= 1 (count (:errors report))))
                 (is (= 3 (count (:seen report)))))
               (is (= [["Failed to read file for Collection does-not-exist"]]
-                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}$"
+                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}\n"
                                    (messages)))))))))))
 
 (deftest with-dbs-works-as-expected-test
@@ -1366,7 +1364,7 @@
                              (serdes/entity-id (name model) e))))))))))))))
 
 (deftest identically-named-fields-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (let [db (ts/create! :model/Database :name "mydb")
           t  (ts/create! :model/Table :name "table" :db_id (:id db))
           f1 (ts/create! :model/Field :name "field" :table_id (:id t))
@@ -1400,7 +1398,7 @@
              (t2/select-one-fn :description :model/Field (:id f3)))))))
 
 (deftest blank-eid-creates-new-entity-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (let [coll       (ts/create! :model/Collection :name "mycoll")
           [coll-ser] (serdes.extract/extract {:targets [["Collection" (:id coll)]]})
           new-coll   (assoc coll-ser :entity_id nil)

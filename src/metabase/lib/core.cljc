@@ -28,14 +28,16 @@
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
+   [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.swap :as lib.swap]
@@ -68,14 +70,15 @@
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
-         lib.metadata.ident/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
+         metabase.lib.options/keep-me
          lib.order-by/keep-me
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
+         metabase.lib.schema.util/keep-me
          lib.segment/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
@@ -85,9 +88,9 @@
 
 (shared.ns/import-fns
  [lib.aggregation
+  aggregable-columns
   aggregate
   aggregation-clause
-  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations
@@ -196,6 +199,7 @@
   lower
   offset
   text
+  today
   split-part
   integer
   float]
@@ -306,21 +310,6 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
- [lib.metadata.ident
-  add-model-ident
-  assert-idents-present!
-  explicitly-joined-ident
-  implicit-join-clause-ident
-  implicitly-joined-ident
-  model-ident
-  native-ident
-  placeholder-card-entity-id-for-adhoc-query
-  remove-model-ident
-  replace-placeholder-idents
-  valid-basic-ident?
-  valid-model-ident?
-  valid-native-ident?
-  valid-native-model-ident?]
  [lib.native
   engine
   extract-template-tags
@@ -337,6 +326,9 @@
   with-native-extras
   with-native-query
   with-template-tags]
+ [metabase.lib.options
+  options
+  update-options]
  [lib.order-by
   change-direction
   order-by
@@ -345,6 +337,8 @@
   orderable-columns]
  [lib.normalize
   normalize]
+ [lib.parse
+  parse]
  [lib.query
   ->query
   can-preview
@@ -368,6 +362,8 @@
   rename-join
   replace-clause
   replace-join]
+ [metabase.lib.schema.util
+  ref-distinct-key]
  [lib.segment
   available-segments]
  [lib.stage
@@ -388,6 +384,10 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  fresh-uuids
   normalized-query-type
+  previous-stage
+  previous-stage-number
   query-stage
-  source-table-id])
+  source-table-id
+  update-query-stage])

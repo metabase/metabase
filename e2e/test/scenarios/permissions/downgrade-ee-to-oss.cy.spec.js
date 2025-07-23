@@ -10,7 +10,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   // we have a case where users may be downgraded for not paying but then will sort out billing and upgrade back to EE again.
@@ -31,7 +31,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       cy.button("Yes").click();
     });
 
-    H.setTokenFeatures("none").then(() => {
+    H.deleteToken().then(() => {
       cy.reload();
 
       H.assertPermissionTable([["Sample Database", "No"]]);
@@ -48,7 +48,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
         cy.button("Yes").click();
       });
 
-      H.setTokenFeatures("all").then(() => {
+      H.activateToken("pro-self-hosted").then(() => {
         cy.reload();
 
         H.assertPermissionTable([
@@ -107,7 +107,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
     });
 
     // downgrade to OSS
-    H.setTokenFeatures("none");
+    H.deleteToken();
     cy.reload();
 
     H.assertPermissionTable([
@@ -134,7 +134,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
     });
 
     // upgrade back to EE
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.reload();
 
     H.assertPermissionTable([

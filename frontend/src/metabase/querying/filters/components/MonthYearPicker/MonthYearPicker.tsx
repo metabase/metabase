@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import type { MonthYearPickerValue } from "metabase/querying/filters/types";
 import { Box, type DateValue, MonthPicker } from "metabase/ui";
 
@@ -13,10 +15,12 @@ export function MonthYearPicker({ value, onChange }: MonthYearPickerProps) {
     if (!value) {
       return;
     }
+    const dateValue = dayjs.utc(value);
+
     onChange({
       type: "month",
-      year: value.getFullYear(),
-      month: value.getMonth() + 1,
+      year: dateValue.year(),
+      month: dateValue.month() + 1,
     });
   };
 

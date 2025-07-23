@@ -37,6 +37,7 @@
   define-premium-feature
   development-mode?
   enable-advanced-permissions?
+  enable-ai-entity-analysis?
   enable-ai-sql-fixer?
   enable-ai-sql-generation?
   enable-any-sso?
@@ -44,6 +45,7 @@
   enable-cache-granular-controls?
   enable-collection-cleanup?
   enable-config-text-file?
+  enable-content-translation?
   enable-content-verification?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?

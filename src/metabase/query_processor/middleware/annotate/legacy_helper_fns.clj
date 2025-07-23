@@ -48,5 +48,9 @@
   (let [expected-cols (requiring-resolve 'metabase.query-processor.middleware.annotate/expected-cols)
         mlv2-query    (lib/query
                        (qp.store/metadata-provider)
-                       legacy-query)]
+                       ;; if this query has a `:native` query added to it already then remove that so we don't get
+                       ;; schema validation errors
+                       (cond-> legacy-query
+                         ((every-pred :native :query) legacy-query)
+                         (dissoc :native)))]
     (expected-cols mlv2-query initial-cols)))

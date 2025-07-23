@@ -7,7 +7,11 @@
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that.
   Tech debt issue: #39363"
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
    [mb.hawk.hooks]
@@ -111,6 +115,14 @@
 (defmethod get-dataset-definition DatabaseDefinition
   [this]
   this)
+
+(defn- hash-dataset*
+  [^DatabaseDefinition db-def]
+  (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) (get-dataset-definition db-def))))))
+
+(def hash-dataset
+  "Provides a consistent hash for the DatabaseDefinition"
+  (memoize/ttl hash-dataset*))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Registering Test Extensions                                           |
@@ -396,7 +408,7 @@
 
 (defmethod create-and-grant-roles! ::test-extensions
   [_driver _details _roles _db-user _default-role]
-  nil)
+  (ex-info (format "Creating roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defmulti drop-roles!
   "Drops the given roles, and drops the database user if necessary"
@@ -406,7 +418,7 @@
 
 (defmethod drop-roles! ::test-extensions
   [_driver _details _roles _db-user]
-  nil)
+  (ex-info (format "Dropping roles hasn't been implemented or is not supported for %s" driver) {}))
 
 (defn with-temp-roles-fn!
   "Creates the given roles and permissions for the database user, and drops them after execution"
@@ -426,6 +438,44 @@
      ~roles
      ~db-user
      ~default-role
+     (fn [] ~@body)))
+
+(defmulti create-db-user!
+  "Creates a database user."
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-db-user! ::test-extensions
+  [_driver _details _db-user]
+  (ex-info (format "Creating a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defmulti drop-db-user-if-exists!
+  "Drops the database user if it exists"
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-db-user-if-exists! ::test-extensions
+  [driver _details _db-user]
+  (ex-info (format "Dropping a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defn with-temp-db-user-fn!
+  "Creates the given user with the default public key and drops it after execution."
+  [driver details db-user f]
+  (try
+    (create-db-user! driver details db-user)
+    (f)
+    (finally
+      (drop-db-user-if-exists! driver details db-user))))
+
+(defmacro with-temp-db-user!
+  "Creates the given user drops it after execution."
+  [driver details db-user & body]
+  `(with-temp-db-user-fn!
+     ~driver
+     ~details
+     ~db-user
      (fn [] ~@body)))
 
 (defmulti dbdef->connection-details
@@ -454,6 +504,17 @@
 (defmethod dataset-already-loaded? ::test-extensions
   [_driver _dbdef]
   false)
+
+(defmulti track-dataset
+  "Track the creation or the usage of the database.
+   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
+  {:arglists '([driver dbdef]) :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod track-dataset ::test-extensions
+  [_driver _dbdef]
+  nil)
 
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
@@ -553,6 +614,18 @@
   `field-name`."
   {:arglists '([driver table-name field-name]
                [driver table-name field-name sample-value])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti arbitrary-select-query
+  "Generate a native query that selects some arbitrary sql from the top 2 rows from a Table with `table-name`"
+  {:arglists `([driver table-name to-insert])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti make-alias
+  "Makes an alias for a given column"
+  {:arglists '([driver alias])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -1066,3 +1139,23 @@
   (defmethod driver/database-supports? [driver :test/column-impersonation]
     [_driver _feature _database]
     false))
+
+(defn tracking-access-note
+  "Generic tracking access note"
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s %s"
+            (str t/*testing-vars*)
+            (get env/env :github-actor)
+            (get env/env :github-head-ref))
+    (format "DEV: %s %s"
+            (str t/*testing-vars*)
+            (:user env/env))))
+
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)

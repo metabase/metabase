@@ -12,7 +12,7 @@
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -357,18 +357,19 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(mu/defn- get-database
+(mu/defn get-database
+  "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
   ([id] (get-database id {}))
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
-            include-mirror-databases?]}
+            include-destination-databases?]}
     :- [:map
         [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
-        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
-         database               (api/check-404 (if include-mirror-databases?
+         database               (api/check-404 (if include-destination-databases?
                                                  (t2/select-one :model/Database :id id)
                                                  (t2/select-one :model/Database :id id :router_database_id nil)))
          router-db-id           (:router_database_id database)]
@@ -380,10 +381,10 @@
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
   ([id :- ms/PositiveInt
-    {:keys [include-mirror-databases?]}
+    {:keys [include-destination-databases?]}
     :- [:map
-        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
-   (api/check-404 (if (and include-mirror-databases? api/*is-superuser?*)
+        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+   (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (t2/exists? :model/Database :id id)
                     (t2/exists? :model/Database :id id :router_database_id nil)))))
 
@@ -425,7 +426,7 @@
    (get-database id {:include include
                      :include-editable-data-model? include_editable_data_model
                      :exclude-uneditable-details? exclude_uneditable_details
-                     :include-mirror-databases? true})
+                     :include-destination-databases? true})
    {:include include
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
@@ -971,9 +972,13 @@
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one :model/Database :id id)]
+          ;; the details in db and existing-database have been normalized so they are the same here
+          ;; we need to pass through details-changed? which is calculated before detail normalization
+          ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
           (events/publish-event! :event/database-update {:object db
                                                          :user-id api/*current-user-id*
-                                                         :previous-object existing-database})
+                                                         :previous-object existing-database
+                                                         :details-changed? details-changed?})
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules
@@ -1008,7 +1013,7 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [h2/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true]
                     (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
                   nil
                   (catch Throwable e
@@ -1111,9 +1116,10 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (get-database id {:exclude-uneditable-details? true})]
+  (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (mi/can-write? db)))
+                       (and (mi/can-write? db)
+                            (mi/can-read? db))))
     (->> db
          (driver/syncable-schemas (:engine db))
          (vec)
@@ -1244,7 +1250,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (if-let [err-map (test-database-connection engine details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))

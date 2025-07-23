@@ -13,13 +13,16 @@
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes]
    [metabase-enterprise.billing.api.routes]
+   [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
+   [metabase-enterprise.email.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
-   [metabase-enterprise.query-reference-validation.api]
+   [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.serialization.api]
@@ -36,18 +39,20 @@
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
-   :collection-cleanup         (deferred-tru "Collection Cleanup")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
+   :collection-cleanup         (deferred-tru "Collection Cleanup")
+   :content-translation        (deferred-tru "Content translation")
    :etl-connections            (deferred-tru "ETL Connections")
+   :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
-   :query-reference-validation (deferred-tru "Query Reference Validation")
    :scim                       (deferred-tru "SCIM configuration")
    :serialization              (deferred-tru "Serialization")
    :upload-management          (deferred-tru "Upload Management")
-   :database-routing           (deferred-tru "Database Routing")})
+   :database-routing           (deferred-tru "Database Routing")
+   :cloud-custom-smtp          (deferred-tru "Custom SMTP")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -68,25 +73,31 @@
 (def ^:private ee-routes-map
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
-  {"/advanced-permissions"       (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-entity-analysis"         (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
-   "/ai-sql-fixer"               (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
-   "/ai-sql-generation"          (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
-   "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
-   "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
-   "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
-                                     (premium-handler :attached-dwh)
-                                     (premium-handler :etl-connections))
-   "/database-routing"           (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
-   "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
-   "/metabot-v3"                 (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
-   "/metabot-tools"              metabase-enterprise.metabot-v3.tools.api/routes
-   "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
-   "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
-   "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
-   "/stale"                      (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
-   "/upload-management"          (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
+  {"/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
+   "/ai-entity-analysis"           (premium-handler metabase-enterprise.ai-entity-analysis.api/routes :ai-entity-analysis)
+   "/ai-sql-fixer"                 (premium-handler metabase-enterprise.ai-sql-fixer.api/routes :ai-sql-fixer)
+   "/ai-sql-generation"            (premium-handler metabase-enterprise.ai-sql-generation.api/routes :ai-sql-generation)
+   "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
+   "/autodescribe"                 (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
+   "/billing"                      metabase-enterprise.billing.api.routes/routes
+   "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
+   "/database-replication"         (-> database-replication.api/routes ;; database-replication requires all these features.
+                                       (premium-handler :attached-dwh)
+                                       (premium-handler :etl-connections)
+                                       (premium-handler :etl-connections-pg))
+   "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
+   "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
+                                       (premium-handler :attached-dwh)
+                                       (premium-handler :etl-connections))
+   "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/metabot-tools"                metabase-enterprise.metabot-v3.tools.api/routes
+   "/metabot-v3"                   (premium-handler metabase-enterprise.metabot-v3.api/routes :metabot-v3)
+   "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
+   "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

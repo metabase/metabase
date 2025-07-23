@@ -119,7 +119,9 @@
 
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
-(def ^:private ^:dynamic *query-caching-min-ttl* 1)
+(def ^:private ^:dynamic *query-caching-min-ttl*
+  "Set this to zero to prevent flakes - we don't want a query to slip under the wire here."
+  0)
 
 (defn ^:private ttl-strategy []
   {:type             :ttl
@@ -345,7 +347,6 @@
             (is (true?
                  (boolean (#'cache/is-cacheable? query)))
                 "Query should be cacheable")
-
             (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
               (let [original-result (qp/process-query query)
                     ;; clear any existing values in the `save-chan`

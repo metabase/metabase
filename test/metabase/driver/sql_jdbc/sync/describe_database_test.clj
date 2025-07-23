@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql ResultSet Connection)))
+   (java.sql ResultSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,16 +59,27 @@
 
 (deftest fast-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-           (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) (mt/db) nil nil))
-                (map :name)
-                sort)))))
+         (sql-jdbc.execute/do-with-connection-with-options
+          (or driver/*driver* :h2)
+          (mt/db)
+          nil
+          (fn [^java.sql.Connection conn]
+            ;; We have to mock this to make it work with all DBs
+            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
+              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
+                   (map :name)
+                   sort)))))))
 
 (deftest post-filtered-active-tables-test
   (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 (mt/db) nil nil))
-              (map :name)
-              sort))))
+         (sql-jdbc.execute/do-with-connection-with-options
+          :h2
+          (mt/db)
+          nil
+          (fn [^java.sql.Connection conn]
+            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
+                 (map :name)
+                 sort))))))
 
 (deftest describe-database-test
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
@@ -193,11 +204,11 @@
 
 (deftest have-select-privilege?-test
   (testing "checking select privilege works with and without auto commit (#36040)"
-    (let [default-have-select-privilege?
+    (let [default-have-slect-privilege?
           #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
       (mt/test-drivers (into #{}
-                             (filter default-have-select-privilege?)
+                             (filter default-have-slect-privilege?)
                              (descendants driver/hierarchy :sql-jdbc))
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
@@ -240,26 +251,3 @@
                  (set (keys field-name->field))))
           (is (= (get-in field-name->field ["humanraceid" :id])
                  (get-in field-name->field ["race\\id" :fk_target_field_id]))))))))
-
-(deftest resilient-to-conn-close?-test
-  (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
-    (let [have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
-          default-have-select-privilege? #(identical? have-select-privilege? (get-method sql-jdbc.sync.interface/have-select-privilege? %))
-          jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc) (get-method driver/describe-database %))]
-      (mt/test-drivers (into #{}
-                             (comp (filter default-have-select-privilege?)
-                                   (filter jdbc-describe-database)
-                                   (filter #(not (driver/database-supports? % :table-privileges nil))))
-                             (descendants driver/hierarchy :sql-jdbc))
-        (let [closed-first (volatile! nil)
-              all-tables (driver/describe-database driver/*driver* (mt/id))]
-          (with-redefs [sql-jdbc.sync.interface/have-select-privilege?
-                        (fn [driver ^Connection conn schema tbl-name]
-                          (when-not @closed-first
-                            (vreset! closed-first tbl-name)
-                            (.close conn))
-                          (have-select-privilege? driver conn schema tbl-name))]
-            (let [table-names #(->> % :tables (map :name) set)
-                  all-tables-sans-first (table-names (driver/describe-database driver/*driver* (mt/id)))]
-              (is (or (= (-> all-tables table-names (disj @closed-first)) all-tables-sans-first)
-                      (= (-> all-tables table-names) all-tables-sans-first))))))))))

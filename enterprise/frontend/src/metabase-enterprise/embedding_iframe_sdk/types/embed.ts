@@ -1,22 +1,38 @@
-import type { Query } from "history";
-
 import type {
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk";
+import type { MetabaseError } from "embedding-sdk/errors";
+import type { MetabaseAuthMethod } from "embedding-sdk/types";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
-export type SdkIframeEmbedTagMessage = {
-  type: "metabase.embed.iframeReady";
-};
+export type SdkIframeEmbedTagMessage =
+  | { type: "metabase.embed.iframeReady" }
+  | { type: "metabase.embed.requestSessionToken" };
 
 /** Events that the sdk embed route listens for */
-export type SdkIframeEmbedMessage = {
-  type: "metabase.embed.setSettings";
-  data: SdkIframeEmbedSettings;
-};
+export type SdkIframeEmbedMessage =
+  | {
+      type: "metabase.embed.setSettings";
+      data: SdkIframeEmbedSettings;
+    }
+  | {
+      type: "metabase.embed.submitSessionToken";
+      data: {
+        authMethod: MetabaseAuthMethod;
+        sessionToken: MetabaseEmbeddingSessionToken;
+      };
+    }
+  | {
+      type: "metabase.embed.reportAuthenticationError";
+      data: {
+        error: MetabaseError<string, unknown>;
+      };
+    };
 
 // --- Embed Option Interfaces ---
 
@@ -28,7 +44,7 @@ export interface DashboardEmbedOptions {
   withDownloads?: boolean;
 
   // parameters
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
   hiddenParameters?: string[];
 
   // incompatible options
@@ -89,17 +105,21 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
-type SdkIframeEmbedBaseSettings = {
-  apiKey: string;
+export type SdkIframeEmbedBaseSettings = {
+  apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
+  preferredAuthMethod?: MetabaseAuthMethod;
+
+  /** Whether we should use the existing user session (i.e. admin user's cookie) */
+  useExistingUserSession?: boolean;
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 };
 
-type SdkIframeEmbedTemplateSettings =
+export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
@@ -115,3 +135,16 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+export type SdkIframeEmbedEvent = { type: "ready" };
+
+export type SdkIframeEmbedEventHandler = () => void;
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;

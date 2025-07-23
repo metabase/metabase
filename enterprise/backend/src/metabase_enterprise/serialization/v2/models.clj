@@ -5,6 +5,7 @@
   "Schema model types"
   ["Database"
    "Field"
+   "FieldUserSettings"
    "Segment"
    "Table"
    "Channel"])
@@ -36,6 +37,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotEntity"
+   "MetabotPrompt"
    "TimelineEvent"])
 
 (def excluded-models
@@ -51,6 +53,7 @@
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
+   "ContentTranslation"
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
@@ -77,7 +80,6 @@
    "PulseChannelRecipient"
    "Query"
    "QueryAction"
-   "QueryAnalysis"
    "QueryCache"
    "QueryExecution"
    "QueryField"

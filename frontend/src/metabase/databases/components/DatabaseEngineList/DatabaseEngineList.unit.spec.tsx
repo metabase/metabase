@@ -111,6 +111,37 @@ describe("DatabaseEngineList", () => {
     expect(screen.queryByText("MySQL")).not.toBeInTheDocument();
   });
 
+  it("should allow keyboard navigation", async () => {
+    const { onSelect } = setup();
+
+    const searchInput = screen.getByPlaceholderText("Search databases");
+    await userEvent.click(searchInput);
+
+    const [mysql, postgres, sqlServer] = screen.getAllByRole("option");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(mysql).toHaveAttribute("aria-selected", "true");
+    expect(mysql).toHaveAttribute("data-combobox-selected", "true");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(mysql).not.toHaveAttribute("aria-selected");
+    expect(mysql).not.toHaveAttribute("data-combobox-selected");
+    expect(postgres).toHaveAttribute("aria-selected", "true");
+    expect(postgres).toHaveAttribute("data-combobox-selected", "true");
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(postgres).not.toHaveAttribute("aria-selected");
+    expect(postgres).not.toHaveAttribute("data-combobox-selected");
+    expect(sqlServer).toHaveAttribute("aria-selected", "true");
+    expect(sqlServer).toHaveAttribute("data-combobox-selected", "true");
+
+    // Pressing enter should submit the selected option
+    await userEvent.keyboard("{Enter}");
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith("sqlserver");
+  });
+
   it("should show no results message when search has no matches", async () => {
     setup();
 

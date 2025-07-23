@@ -43,7 +43,7 @@
   provider (and cache) with a new one. This is reset to false after the QP store is replaced the first time.
 
   We use this in production in exactly one place and don't expect to use it more: to enable 'router databases' that
-  redirect users to a mirror database based on a user attribute, we swap out the metadata provider immediately before
+  redirect users to a destination database based on a user attribute, we swap out the metadata provider immediately before
   the query processor executes the query against the driver. But generally speaking we should never need to use this
   in production."
   false)
@@ -62,6 +62,9 @@
    v]
   (swap! *store* assoc-in ks v))
 
+;;; TODO (Cam 7/7/25) -- now that we use cached metadata providers consistently and cached metadata providers support
+;;; general value caching we should use those facilities instead. We can remove the bespoke logic here and
+;;; use the stuff in [[metabase.lib.metadata.cache]] instead going forward
 (mu/defn miscellaneous-value
   "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
   ([ks]

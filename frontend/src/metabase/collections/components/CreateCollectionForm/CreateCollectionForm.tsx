@@ -5,13 +5,13 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import Button from "metabase/common/components/Button";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import Button from "metabase/core/components/Button";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import { FormFooter } from "metabase/core/components/FormFooter";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormTextArea from "metabase/core/components/FormTextArea";
+import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import { FormFooter } from "metabase/common/components/FormFooter";
+import FormInput from "metabase/common/components/FormInput";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import FormTextArea from "metabase/common/components/FormTextArea";
 import Collections, {
   DEFAULT_COLLECTION_COLOR_ALIAS,
 } from "metabase/entities/collections";

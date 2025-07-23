@@ -1,3 +1,6 @@
-export function isValidOptionItem(optionItem: any, filter: string): boolean {
-  return String(optionItem).toLowerCase().includes(filter);
+export function optionItemEqualsFilter(
+  optionItem: any,
+  filter: string,
+): boolean {
+  return String(optionItem) === filter;
 }

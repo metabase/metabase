@@ -49,7 +49,8 @@
   [source-query :- mbql.s/MBQLQuery]
   (try
     (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query source-query)]
-      (for [col (lib/returned-columns mlv2-query)]
+      (for [col (lib/returned-columns mlv2-query)
+            :when-not (:remapped_from col)]
         (-> col
             (assoc ::super-neat 1234)
             (update :lib/desired-column-alias #(or % (lib.join.util/desired-alias mlv2-query col))))))
@@ -64,7 +65,14 @@
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                     native-source-query->metadata
-                    mbql-source-query->metadata) source-query)]
+                    mbql-source-query->metadata) source-query)
+        metadata (when metadata
+                   (let [unique-name-fn (mbql.u/unique-name-generator)]
+                     (for [col  metadata
+                           :let [original-name ((some-fn :lib/original-name :name) col)]]
+                       (assoc col
+                              :lib/original-name     original-name
+                              :lib/deduplicated-name (unique-name-fn original-name)))))]
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 
@@ -91,11 +99,14 @@
      source-query-has-source-metadata? :source-metadata
      :as                               source-query} :source-query
     :keys                                            [source-metadata]}]
-  (and source-query
-       (or (not source-metadata)
-           (legacy-source-metadata-without-field-ref? source-metadata))
-       (or (not native-source-query?)
-           source-query-has-source-metadata?)))
+  (let [source-metadata source-metadata]
+    (and source-query
+         (let [valid-source-metadata? (and source-metadata
+                                           (not (legacy-source-metadata-without-field-ref? source-metadata)))]
+           (not valid-source-metadata?))
+         (or (not native-source-query?)
+             source-query-has-source-metadata?
+             (:qp/stage-is-from-source-card source-query)))))
 
 (defn- maybe-add-source-metadata [x]
   (if (and (map? x) (should-add-source-metadata? x))

@@ -299,7 +299,7 @@ describe("scenarios > visualizations > bar chart", () => {
       it(`should drill-through correctly when stacking - development-mode: ${devMode}`, () => {
         cy.intercept("/api/session/properties", (req) => {
           req.continue((res) => {
-            res.body["token-features"]["development-mode"] = devMode;
+            res.body["token-features"].development_mode = devMode;
           });
         });
         H.visitQuestionAdhoc({
@@ -671,22 +671,20 @@ describe("scenarios > visualizations > bar chart", () => {
     H.assertEChartsTooltip({
       rows: [
         {
-          color: "#A989C5",
-          name: "blue",
-          value: "-16",
-          secondaryValue: "-200.00 %",
-        },
-        {
           color: "#F9D45C",
           name: "yellow",
           value: "8",
           secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "8" },
         {
-          name: "Total",
-          value: "-8",
-          secondaryValue: "-100.00 %",
+          color: "#A989C5",
+          name: "blue",
+          value: "-16",
+          secondaryValue: "-100 %",
         },
+        { name: "Total negative", value: "-16" },
+        { name: "Total", value: "-8" },
       ],
     });
     H.echartsTriggerBlur();
@@ -695,22 +693,20 @@ describe("scenarios > visualizations > bar chart", () => {
     H.assertEChartsTooltip({
       rows: [
         {
-          color: "#A989C5",
-          name: "blue",
-          value: "-7",
-          secondaryValue: "-350.00 %",
-        },
-        {
           color: "#F9D45C",
           name: "yellow",
           value: "5",
-          secondaryValue: "250.00 %",
+          secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "5" },
         {
-          name: "Total",
-          value: "-2",
-          secondaryValue: "-100.00 %",
+          color: "#A989C5",
+          name: "blue",
+          value: "-7",
+          secondaryValue: "-100 %",
         },
+        { name: "Total negative", value: "-7" },
+        { name: "Total", value: "-2" },
       ],
     });
     H.echartsTriggerBlur();
@@ -722,19 +718,17 @@ describe("scenarios > visualizations > bar chart", () => {
           color: "#A989C5",
           name: "blue",
           value: "2",
-          secondaryValue: "Infinity %",
+          secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "2" },
         {
           color: "#F9D45C",
           name: "yellow",
           value: "-2",
-          secondaryValue: "-Infinity %",
+          secondaryValue: "-100 %",
         },
-        {
-          name: "Total",
-          value: "0",
-          secondaryValue: "NaN %",
-        },
+        { name: "Total negative", value: "-2" },
+        { name: "Total", value: "0" },
       ],
     });
     H.echartsTriggerBlur();
@@ -746,19 +740,77 @@ describe("scenarios > visualizations > bar chart", () => {
           color: "#A989C5",
           name: "blue",
           value: "3",
-          secondaryValue: "300.00 %",
+          secondaryValue: "100 %",
         },
+        { name: "Total positive", value: "3" },
         {
           color: "#F9D45C",
           name: "yellow",
           value: "-2",
-          secondaryValue: "-200.00 %",
+          secondaryValue: "-100 %",
+        },
+        { name: "Total negative", value: "-2" },
+        { name: "Total", value: "1" },
+      ],
+    });
+    H.echartsTriggerBlur();
+  });
+
+  it("should correctly show tool-tips when stacked bar charts contain multiple positive and multiple negative segments (#47596)", () => {
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(
+      {
+        name: "47596",
+        native: {
+          query: `${[
+            "select date '2024-05-21' AS created_at, 'cat1' AS category, 2 as v",
+            "select date '2024-05-21', 'cat2', -1",
+            "select date '2024-05-21', 'cat3', 1",
+            "select date '2024-05-21', 'cat4', -1",
+          ].join(" union all ")} order by created_at`,
+        },
+
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+          "graph.metrics": ["V"],
+          "stackable.stack_type": "stacked",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.chartPathWithFillColor("#F9D45C").eq(0).realHover();
+    H.assertEChartsTooltip({
+      rows: [
+        {
+          color: "#EF8C8C",
+          name: "cat1",
+          value: "2",
+          secondaryValue: "66.67 %",
         },
         {
-          name: "Total",
+          color: "#F2A86F",
+          name: "cat3",
           value: "1",
-          secondaryValue: "100 %",
+          secondaryValue: "33.33 %",
         },
+        { name: "Total positive", value: "3" },
+        {
+          color: "#98D9D9",
+          name: "cat4",
+          value: "-1",
+          secondaryValue: "-50.00 %",
+        },
+        {
+          color: "#F9D45C",
+          name: "cat2",
+          value: "-1",
+          secondaryValue: "-50.00 %",
+        },
+        { name: "Total negative", value: "-2" },
+        { name: "Total", value: "1" },
       ],
     });
     H.echartsTriggerBlur();

@@ -36,6 +36,7 @@
 /coverage
 /crate-*
 /cypress
+cypress.env.json
 /deploy/artifacts/*
 /docs/**/node_modules
 /docs/**/package.json
@@ -146,5 +147,8 @@ llm-payloads
 .aider*
 /config.yml
 CLAUDE.local.md
+.claude/settings.local.json
 
 .eslintcache
+
+/logs

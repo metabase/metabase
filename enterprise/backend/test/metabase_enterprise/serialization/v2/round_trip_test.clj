@@ -144,7 +144,7 @@
         temp-dir     (temp-dir "serialization_test")
         output-dir   (.toFile (.resolve temp-dir "serialization_output"))]
     (try
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (delete-dir-contents! dev-inspect-dir)
 
         (load-extract! source-dir output-dir)
@@ -185,7 +185,7 @@
   []
   (let [temp-dir   (temp-dir "serialization_test")
         output-dir (.toFile (.resolve temp-dir "serialization_output"))]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (load-extract! source-dir output-dir))
     (delete-dir-contents! source-dir)
     (Files/move (.toPath output-dir)

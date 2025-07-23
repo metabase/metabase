@@ -16,6 +16,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -389,17 +390,19 @@
                                            :dashboard_id       dash-id
                                            :parameter_mappings [{:parameter_id "__ID__"
                                                                  :card_id      orders-card-id
-                                                                 :target       [:dimension (mt/$ids orders $product_id)]}]}]
-      (is (=? {"__ID__" [{:id                 (mt/id :orders :product_id)
+                                                                 :target       [:dimension (mt/$ids orders $user_id)]}]}]
+      (is (=? {"__ID__" [{:id                 (mt/id :orders :user_id)
                           :semantic_type      :type/FK
-                          :fk_target_field_id (mt/id :products :id)
-                          :target             {:id (mt/id :products :id)}}]}
+                          :fk_target_field_id (mt/id :people :id)
+                          :target             {:id (mt/id :people :id)
+                                               :name_field {:id (mt/id :people :name)}}}]}
               (:param_fields (mt/with-test-user :crowberto
                                (#'api.dashboard/get-dashboard dash-id))))))))
 
 (deftest last-used-parameter-value-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters true]
       (mt/dataset test-data
         (mt/with-column-remappings [orders.user_id people.name]
           (mt/as-admin
@@ -453,6 +456,54 @@
                                                  {:parameters [{:id "a" :value nil :default ["default value"]}]})))
                 (is (= {:a nil}
                        (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))))))))))
+
+(deftest last-used-parameter-value-disabled-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters false]
+      (mt/dataset test-data
+        (mt/with-column-remappings [orders.user_id people.name]
+          (mt/as-admin
+            (mt/with-temp
+              [:model/Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :parameters [{:name    "Name", :slug "name", :id "a" :type :string/contains
+                                                                    :default ["default_value"]}]}
+               :model/Dashboard {dashboard-b-id :id} {:name       "Test Dashboard"
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :parameters [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
+               :model/Card {card-id :id} {:database_id   (mt/id)
+                                          :query_type    :native
+                                          :name          "test question"
+                                          :creator_id    (mt/user->id :crowberto)
+                                          :dataset_query {:type     :native
+                                                          :native   {:query "SELECT COUNT(*) FROM people WHERE {{name}}"
+                                                                     :template-tags
+                                                                     {"name" {:name         "Name"
+                                                                              :display-name "name"
+                                                                              :id           "_name_"
+                                                                              :type         :dimension
+                                                                              :dimension    [:field (mt/id :people :name) nil]
+                                                                              :widget-type  :string/contains}}}
+                                                          :database (mt/id)}}
+               :model/DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                         :card_id            card-id
+                                                         :dashboard_id       dashboard-a-id}
+               :model/DashboardCard {dashcard-b-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                         :card_id            card-id
+                                                         :dashboard_id       dashboard-b-id}]
+              (testing "User's set parameter is not saved when saving is disabled"
+                ;; api request mimicking a user setting a parameter value
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-b-id dashcard-b-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["new value"]}]})))
+                (is (= {:dashboard-a nil
+                        :dashboard-b nil}
+                       {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
+                        :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))}))))))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
@@ -642,6 +693,20 @@
         [:model/Dashboard {dash-id :id} {:collection_id (:id crowberto-personal-coll)}]
         (is (= (assoc crowberto-personal-coll :is_personal true :effective_location "/")
                (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
+
+(deftest dashboard-entity-id-test
+  (testing "Dashboard endpoints accept entity IDs"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-entity-id :entity_id}
+                   {:name "Test Dashboard"}]
+      (with-dashboards-in-readable-collection! [dashboard-id]
+
+        (testing "GET /api/dashboard/:id works with entity ID"
+          (is (=? {:name "Test Dashboard"}
+                  (dashboard-response (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-entity-id))))))
+
+        (testing "GET /api/dashboard/:id/query_metadata works with entity ID"
+          (is (map? (mt/user-http-request :rasta :get 200
+                                          (str "dashboard/" dashboard-entity-id "/query_metadata")))))))))
 
 (deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
@@ -2282,6 +2347,7 @@
                 :row                        0
                 :series                     []
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :created_at                 true
                 :updated_at                 true}
@@ -2291,6 +2357,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
@@ -2315,6 +2382,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     [{:name                   "Series Card"
                                               :description            nil
@@ -2330,6 +2398,7 @@
                 :col                        1
                 :row                        3
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
@@ -2962,6 +3031,45 @@
                  3
                  (mt/user-http-request :rasta :get 200 (chain-filter-values-url dash-id "__ID__")))))))))
 
+(deftest can-filter-on-series-params
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp
+      [:model/Card          _ (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
+                                     {:database_id (mt/id)
+                                      :table_id    (mt/id :categories)})
+       :model/Dashboard     dashboard {:parameters [{:name "Category"
+                                                     :slug "category"
+                                                     :id   "_CATEGORY_"
+                                                     :type "category"}]}
+       :model/Card          card {:database_id   (mt/id)
+                                  :table_id      (mt/id :venues)
+                                  :dataset_query (mt/mbql-query venues)}
+       :model/Card          model {:database_id   (mt/id)
+                                   :table_id      (mt/id :products)
+                                   :dataset_query (mt/mbql-query products)}
+       :model/Card          card2 {:database_id   (mt/id)
+                                   :table_id      (mt/id :venues)
+                                   :dataset_query (-> (lib/query mp (lib.metadata/card mp (:id model)))
+                                                      lib.convert/->legacy-MBQL)}
+       :model/DashboardCard dashcard {:card_id            (:id card)
+                                      :dashboard_id       (:id dashboard)
+                                      :parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                            :card_id      (:id card2)
+                                                            :target       [:dimension [:field "CATEGORY" {:base-type :type/Text}] {:stage-number 0}]}]}
+       :model/DashboardCardSeries _ {:card_id (:id card2)
+                                     :dashboardcard_id (:id dashcard)
+                                     :position 0}]
+      ;; make sure we have a clean start
+      (field-values/clear-field-values-for-field! (mt/id :categories :name))
+      (testing "Can get field values for parameters tied to series #58328"
+        (is (= {:values          [["Doohickey"] ["Gadget"] ["Gizmo"]]
+                :has_more_values false}
+               (->> (chain-filter-values-url
+                     (:id dashboard)
+                     "_CATEGORY_")
+                    (mt/user-http-request :rasta :get 200)
+                    (chain-filter-test/take-n-values 3))))))))
+
 (deftest block-data-should-not-expose-field-values
   (testing "block data perms should not allow access to field values (private#196)"
     (when config/ee-available?
@@ -3427,6 +3535,39 @@
             (is (= "You don't have permissions to do that."
                    (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
                                                   :filtered [%venues.price] :filtering [%categories.name]))))))))))
+
+(deftest uuid-id-column-is-not-implicitly-remapped-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                    :test/uuids-in-create-table-statements
+                                    :test/dynamic-dataset-loading)
+    (testing "Values for uuid fields are searched using test pattern (#59020)"
+      (mt/dataset
+        uuid-dogs
+        (mt/with-temp
+          [:model/Card          card      {:dataset_query (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :dogs)))
+                                                                (lib.convert/->legacy-MBQL)))}
+           :model/Dashboard     dashboard {:parameters [{:name      "Text"
+                                                         :slug      "text"
+                                                         :id        "_text_"
+                                                         :type      "string/="
+                                                         :sectionId "string"
+                                                         :default   ["Doohickey"]}]}
+           :model/DashboardCard _dashcard {:parameter_mappings     [{:parameter_id "_text_"
+                                                                     :card_id      (:id card)
+                                                                     :target
+                                                                     [:dimension [:field (mt/id :dogs :id) nil]]}]
+                                           :card_id                (:id card)
+                                           :visualization_settings {}
+                                           :dashboard_id           (:id dashboard)}]
+          (is (=? {:values [["27e164bc-54f8-47a0-a85a-9f0e90dd7667"]
+                            ["3a0c0508-6b00-40ff-97f6-549666b2d16b"]]}
+                  (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
+                                                                (:id dashboard)
+                                                                "_text_"
+                                                              ;; a0 is part of first 2 rows of queried table
+                                                                "a0")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
@@ -4986,6 +5127,155 @@
            (set (keys (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
     (is (= (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
            (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))))))
+
+(deftest dashboard-update-preserves-unchanged-parameter-cards-test
+  (testing "PUT /api/dashboard/:id preserves parameter cards when parameters are unchanged"
+    (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created"
+          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Dashboard update with unchanged parameters preserves parameter cards"
+          (let [original-param-cards (t2/select :model/ParameterCard
+                                                :parameterized_object_type "dashboard"
+                                                :parameterized_object_id dashboard-id)]
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:name "Updated Dashboard Name"
+                                   :description "New description"})
+
+            (let [updated-param-cards (t2/select :model/ParameterCard
+                                                 :parameterized_object_type "dashboard"
+                                                 :parameterized_object_id dashboard-id)]
+              (is (= (count original-param-cards) (count updated-param-cards)))
+              (is (= (set (map :id original-param-cards))
+                     (set (map :id updated-param-cards)))))))))))
+
+(deftest dashboard-update-with-same-parameters-preserves-parameter-cards-test
+  (testing "PUT /api/dashboard/:id preserves parameter cards when parameters list is identical"
+    (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id}}
+                                                                     {:name                 "Static List"
+                                                                      :slug                 "static_list"
+                                                                      :id                   "_STATIC_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "static-list"
+                                                                      :values_source_config {:values ["A" "B" "C"]}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created for card-sourced parameters only"
+          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Dashboard update with identical parameters preserves parameter cards"
+          (let [original-param-cards (t2/select :model/ParameterCard
+                                                :parameterized_object_type "dashboard"
+                                                :parameterized_object_id dashboard-id)
+                original-parameters (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:parameters original-parameters
+                                   :description "Updated description"})
+
+            (let [updated-param-cards (t2/select :model/ParameterCard
+                                                 :parameterized_object_type "dashboard"
+                                                 :parameterized_object_id dashboard-id)]
+              (is (= (count original-param-cards) (count updated-param-cards)))
+              (is (= (set (map :id original-param-cards))
+                     (set (map :id updated-param-cards)))))))))))
+
+(deftest dashboard-update-mixed-parameter-changes-test
+  (testing "PUT /api/dashboard/:id correctly handles mix of unchanged and changed parameters"
+    (mt/with-temp [:model/Card {source-card-id-1 :id} {:database_id   (mt/id)
+                                                       :table_id      (mt/id :categories)
+                                                       :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Card {source-card-id-2 :id} {:database_id   (mt/id)
+                                                       :table_id      (mt/id :venues)
+                                                       :dataset_query (mt/mbql-query venues {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id-1}}
+                                                                     {:name                 "Venue"
+                                                                      :slug                 "venue"
+                                                                      :id                   "_VENUE_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id-1}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created"
+          (is (= 2 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Update with one parameter unchanged, one parameter changed"
+          (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                {:parameters [{:name                 "Category"
+                                               :slug                 "category"
+                                               :id                   "_CATEGORY_"
+                                               :type                 "category"
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id source-card-id-1}}
+                                              {:name                 "Venue"
+                                               :slug                 "venue"
+                                               :id                   "_VENUE_"
+                                               :type                 "category"
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id source-card-id-2}}]})
+
+          (let [param-cards (t2/select :model/ParameterCard
+                                       :parameterized_object_type "dashboard"
+                                       :parameterized_object_id dashboard-id)]
+            (is (= 2 (count param-cards)))
+            (is (= #{source-card-id-1 source-card-id-2}
+                   (set (map :card_id param-cards))))))))))
+
+(deftest dashboard-update-no-parameters-field-preserves-parameter-cards-test
+  (testing "PUT /api/dashboard/:id preserves parameter cards when parameters field is not included in update"
+    (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created"
+          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Dashboard update without parameters field preserves parameter cards"
+          (let [original-param-cards (t2/select :model/ParameterCard
+                                                :parameterized_object_type "dashboard"
+                                                :parameterized_object_id dashboard-id)]
+            ;; Update dashboard without including parameters field
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:name "Updated Name"
+                                   :description "Updated description"
+                                   :cache_ttl 3600})
+
+            (let [updated-param-cards (t2/select :model/ParameterCard
+                                                 :parameterized_object_type "dashboard"
+                                                 :parameterized_object_id dashboard-id)]
+              (is (= (count original-param-cards) (count updated-param-cards)))
+              (is (= (set (map :id original-param-cards))
+                     (set (map :id updated-param-cards)))))))))))
 
 (deftest ^:parallel previous-stage-test
   (testing "binding parameters to different stages is handled correctly"

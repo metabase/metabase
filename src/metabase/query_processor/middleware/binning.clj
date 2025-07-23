@@ -5,12 +5,13 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.card :as lib.card]
-   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -64,6 +65,22 @@
   [:map
    [:name :string]])
 
+;;; TODO (Cam 6/12/25) -- Mega HACK -- we should be using higher-level Lib methods that return metadata with
+;;; desired aliases in the first place instead of trying to calculate it ourselves.
+(defn- add-desired-column-aliases [cols]
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (for [col cols]
+      (assoc col :lib/desired-column-alias (unique-name-fn
+                                            (lib.join.util/desired-alias
+                                             (qp.store/metadata-provider)
+                                             ;; add in join alias info just for desired column alias purposes.
+                                             (merge
+                                              ;; this is an even bigger MEGA HACK -- why does our 'source metadata' lose
+                                              ;; the join alias information ??
+                                              (when-let [source-alias (:source-alias col)]
+                                                {:metabase.lib.join/join-alias source-alias})
+                                              col)))))))
+
 (mu/defn- matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
   [field-name      :- ::lib.schema.common/non-blank-string
    source-metadata :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
@@ -73,23 +90,12 @@
       (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
                       {:field field-name})))
     ;; try to find field in source-metadata with matching name
-    (let [mlv2-metadatas (if (every? #(= (:lib/type %) :metadata/column) source-metadata)
-                           source-metadata
-                           (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata))
-          mlv2-metadatas (for [col mlv2-metadatas]
-                           (let [col (merge col
-                                            (when-not (:metabase.lib.join/join-alias col)
-                                              (when-let [join-alias (lib.util.match/match-one (:field-ref col)
-                                                                      [:field _id-or-name opts]
-                                                                      (:join-alias opts))]
-                                                {:metabase.lib.join/join-alias join-alias})))]
-                             (update col :lib/desired-column-alias #(or % (lib.join.util/desired-alias (qp.store/metadata-provider) col)))))]
+    (let [mlv2-metadatas (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)
+          mlv2-metadatas (cond-> mlv2-metadatas
+                           (not (every? :lib/desired-column-alias mlv2-metadatas)) add-desired-column-aliases)
+          field-ref      [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]]
       (or
-       (lib.equality/find-matching-column
-        [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]
-        mlv2-metadatas)
-       (println "(pr-str field-name):" (pr-str field-name))                                       ; NOCOMMIT
-       (println "(u/pprint-to-str mlv2-metadatas):" (metabase.util/pprint-to-str mlv2-metadatas)) ; NOCOMMIT
+       (lib.field.resolution/resolve-column-in-metadata (qp.store/metadata-provider) field-ref mlv2-metadatas)
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
                             (pr-str field-name))
                        {:field field-name, :resolved-metadata mlv2-metadatas}))))))

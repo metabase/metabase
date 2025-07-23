@@ -7,7 +7,7 @@ import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import S from "metabase/components/List/List.module.css";
+import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
 import { FIELD_SEMANTIC_TYPES_MAP } from "metabase/lib/core";
 import { SemanticTypePicker } from "metabase/metadata/components";
@@ -61,7 +61,11 @@ const Field = ({
           <div className={F.fieldType}>
             {isEditing ? (
               <SemanticTypePicker
+                comboboxProps={{
+                  width: 300,
+                }}
                 field={field}
+                fw="bold"
                 value={semanticType}
                 onChange={(value) => {
                   formField.semantic_type.onChange({

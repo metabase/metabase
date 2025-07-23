@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { CopyButton } from "metabase/components/CopyButton";
+import { CopyButton } from "metabase/common/components/CopyButton";
 import { Button, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";

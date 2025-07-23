@@ -1,18 +1,19 @@
-import _ from "underscore";
-
 import type {
+  DeleteSuggestedMetabotPromptRequest,
   MetabotAgentRequest,
   MetabotAgentResponse,
   MetabotApiEntity,
   MetabotEntity,
   MetabotId,
   MetabotInfo,
-  MetabotPromptSuggestions,
   PaginationRequest,
   PaginationResponse,
+  SuggestedMetabotPromptsRequest,
+  SuggestedMetabotPromptsResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
+import { idTag } from "./tags";
 
 export const metabotApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -41,16 +42,14 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
       providesTags: ["metabot-entities-list"],
       transformResponse: (
         response: { items: MetabotApiEntity[] } & PaginationResponse,
-      ) => {
+      ) => ({
+        ...response,
         // transform model_id to id in items
-        return {
-          ...response,
-          items: response.items.map((item) => ({
-            ..._.omit(item, "model_id"),
-            id: item.model_id,
-          })),
-        };
-      },
+        items: response.items.map(({ model_id: id, ...item }) => ({
+          ...item,
+          id,
+        })),
+      }),
     }),
     updateMetabotEntities: builder.mutation<
       void,
@@ -64,7 +63,10 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/metabot-v3/metabot/${id}/entities`,
         body: { items: entities },
       }),
-      invalidatesTags: ["metabot-entities-list"],
+      invalidatesTags: (_, error, { id }) =>
+        !error
+          ? ["metabot-entities-list", idTag("metabot-prompt-suggestions", id)]
+          : [],
     }),
     deleteMetabotEntities: builder.mutation<
       void,
@@ -78,13 +80,45 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/metabot-v3/metabot/${metabotId}/entities/${entityModel}/${entityId}`,
       }),
-      invalidatesTags: ["metabot-entities-list"],
+      invalidatesTags: (_, error, { metabotId }) =>
+        !error
+          ? [
+              "metabot-entities-list",
+              idTag("metabot-prompt-suggestions", metabotId),
+            ]
+          : [],
     }),
-    getSuggestedMetabotPrompts: builder.query<MetabotPromptSuggestions, void>({
-      query: () => ({
+    getSuggestedMetabotPrompts: builder.query<
+      SuggestedMetabotPromptsResponse,
+      SuggestedMetabotPromptsRequest
+    >({
+      query: ({ metabot_id, ...params }) => ({
         method: "GET",
-        url: "/api/ee/metabot-v3/v2/prompt-suggestions",
+        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions`,
+        params,
       }),
+      providesTags: (_, __, { metabot_id }) => [
+        idTag("metabot-prompt-suggestions", metabot_id),
+      ],
+    }),
+    deleteSuggestedMetabotPrompt: builder.mutation<
+      void,
+      DeleteSuggestedMetabotPromptRequest
+    >({
+      query: ({ metabot_id, prompt_id }) => ({
+        method: "DELETE",
+        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
+      }),
+      invalidatesTags: (_, error, { metabot_id }) =>
+        !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
+    }),
+    regenerateSuggestedMetabotPrompts: builder.mutation<void, MetabotId>({
+      query: (metabot_id) => ({
+        method: "POST",
+        url: `/api/ee/metabot-v3/metabot/${metabot_id}/prompt-suggestions/regenerate`,
+      }),
+      invalidatesTags: (_, error, metabot_id) =>
+        !error ? [idTag("metabot-prompt-suggestions", metabot_id)] : [],
     }),
   }),
 });
@@ -97,4 +131,6 @@ export const {
   useUpdateMetabotEntitiesMutation,
   useDeleteMetabotEntitiesMutation,
   useGetSuggestedMetabotPromptsQuery,
+  useDeleteSuggestedMetabotPromptMutation,
+  useRegenerateSuggestedMetabotPromptsMutation,
 } = metabotApi;

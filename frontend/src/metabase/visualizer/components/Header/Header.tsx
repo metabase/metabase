@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EditableText from "metabase/core/components/EditableText";
+import EditableText from "metabase/common/components/EditableText";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
@@ -90,10 +90,10 @@ export function Header({
       <div style={{ flexGrow: 1 }} />
 
       <Button.Group>
-        <Tooltip label={t`Back`}>
+        <Tooltip withinPortal={false} label={t`Undo`}>
           <Button
             size="sm"
-            aria-label={t`Back`}
+            aria-label={t`Undo`}
             disabled={!canUndo}
             onClick={undo}
             leftSection={
@@ -104,10 +104,10 @@ export function Header({
             }
           />
         </Tooltip>
-        <Tooltip label={t`Forward`}>
+        <Tooltip withinPortal={false} label={t`Redo`}>
           <Button
             size="sm"
-            aria-label={t`Forward`}
+            aria-label={t`Redo`}
             disabled={!canRedo}
             onClick={redo}
             leftSection={

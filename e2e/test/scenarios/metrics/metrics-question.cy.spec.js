@@ -115,7 +115,7 @@ describe("scenarios > metrics > question", () => {
       .click();
     cy.findByTestId("sidebar-content")
       .findByTestId("pinned-dimensions")
-      .findByLabelText("Created At")
+      .findByLabelText("Created At: Month")
       .findByText("by month")
       .realHover()
       .click();
@@ -145,7 +145,7 @@ describe("scenarios > metrics > question", () => {
     H.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Mar 1–31, 2024")
+      .findByText("Created At: Month is Mar 1–31, 2024")
       .should("be.visible");
     H.assertQueryBuilderRowCount(445);
   });

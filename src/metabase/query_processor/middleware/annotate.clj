@@ -1,15 +1,13 @@
 (ns metabase.query-processor.middleware.annotate
-  "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column.
-
-  TODO -- we should move most of this into a lib namespace -- Cam"
+  "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
@@ -18,30 +16,41 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.memoize :as u.memo]
    [potemkin :as p]))
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
-(mr/def ::legacy-source
-  [:enum :aggregation :fields :breakout :native])
-
-(mr/def ::super-broken-legacy-field-ref
-  mbql.s/Reference)
-
 (mr/def ::col
   [:map
-   [:source    {:optional true} ::legacy-source]
-   [:field-ref {:optional true} ::super-broken-legacy-field-ref]])
+   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
+   [:field_ref {:optional true} ::mbql.s/Reference]])
 
-(mr/def ::col-with-snake-cased-unqualified-keys
+(def ^:private ^{:arglists '([k])} key->qp-results-key
+  "Convert unnamespaced keys to snake case for traditional reasons; `:lib/` keys and the like can stay in kebab case
+  because you can't consume them in JS without using bracket notation anyway (and you probably shouldn't be doing it
+  in the first place) and it's a waste of CPU cycles to convert them back and forth between snake case and kebab case
+  anyway."
+  (u.memo/fast-memo
+   (fn [k]
+     (if (qualified-keyword? k)
+       k
+       (u/->snake_case_en k)))))
+
+(defn- update-result-col-key-casing [col]
+  (as-> col col
+    (update-keys col key->qp-results-key)
+    (m/update-existing col :binning_info update-keys key->qp-results-key)))
+
+(mr/def ::qp-results-cased-col
+  "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."
   [:and
    ::col
    [:fn
-    {:error/message "column where all unqualified keys are snake-cased"}
+    {:error/message "map with QP results casing rules for keys"}
     (fn [m]
       (every? (fn [k]
-                (or (qualified-keyword? k)
-                    (not (str/includes? k "-"))))
+                (= k (key->qp-results-key k)))
               (keys m)))]])
 
 (mr/def ::cols
@@ -51,27 +60,19 @@
   [:map
    [:cols {:optional true} ::cols]])
 
-(mu/defn- last-stage-type :- [:enum :mbql.stage/native :mbql.stage/mbql]
-  [query :- ::lib.schema/query]
-  (:lib/type (lib.util/query-stage query -1)))
+(defn lib-col->legacy-col
+  "Convert a Lib results metadata column to a legacy results metadata column:
 
-(defmulti add-column-info
-  "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  {:arglists '([query rff])}
-  (fn [query _rff]
-    (last-stage-type query)))
+  * Convert from all-kebab-case keys to legacy casing (simple keywords use snake case while
+  namespaced keywords remain in kebab case)
 
-(defn- snake-case-unqualified-keys [m]
-  (as-> m m
-    (update-keys m (fn [k]
-                     ;; only convert unqualified keywords to snake_case
-                     (cond-> k
-                       (simple-keyword? k) u/->snake_case_en)))
-    (m/update-existing m :binning_info snake-case-unqualified-keys)
-    ;; don't call this a `:metadata/column` since it's now in psuedo-legacy format
-    (dissoc m :lib/type)))
+  * Remove `:lib/type`"
+  [col]
+  (-> col
+      (dissoc :lib/type)
+      update-result-col-key-casing))
 
-(mu/defn expected-cols :- [:sequential ::col-with-snake-cased-unqualified-keys]
+(mu/defn expected-cols :- [:sequential ::qp-results-cased-col]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
@@ -83,22 +84,19 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (for [col (lib.metadata.result-metadata/expected-cols query initial-cols)]
-     (-> col
-         snake-case-unqualified-keys))))
+   (mapv lib-col->legacy-col (lib.metadata.result-metadata/returned-columns query initial-cols))))
 
-(mu/defmethod add-column-info :mbql.stage/mbql :- ::qp.schema/rff
-  [query :- ::lib.schema/query
-   rff   :- ::qp.schema/rff]
-  (mu/fn add-column-info-mbql-rff :- ::qp.schema/rf
-    [initial-metadata :- ::metadata]
-    (qp.debug/debug> (list `add-column-info query initial-metadata))
-    (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
-      (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
-      (rff metadata'))))
+(mu/defn- add-column-info-no-type-inference :- ::qp.schema/rf
+  [query            :- ::lib.schema/query
+   rff              :- ::qp.schema/rff
+   initial-metadata :- ::metadata]
+  (qp.debug/debug> (list `add-column-info query initial-metadata))
+  (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
+    (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
+    (rff metadata')))
 
 ;;;;
-;;;; NATIVE
+;;;; TYPE INFERENCE
 ;;;;
 
 (mu/defn base-type-inferer :- ::qp.schema/rf
@@ -123,20 +121,49 @@
    [(base-type-inferer metadata)]
    (fn combine [result base-types]
      (let [cols' (mapv (fn [col base-type]
-                         (assoc col :base_type base-type, :field_ref [:field (:name col) {:base-type base-type}]))
+                         (assoc col
+                                :base_type      base-type
+                                :effective_type base-type
+                                :field_ref      [:field (:name col) {:base-type base-type}]))
                        (:cols metadata)
                        base-types)]
        (rf (cond-> result
              (map? result)
              (assoc-in [:data :cols] cols')))))))
 
-(mu/defmethod add-column-info :mbql.stage/native :- ::qp.schema/rff
+(mu/defn- add-column-info-with-type-inference :- ::qp.schema/rf
+  [query            :- ::lib.schema/query
+   rff              :- ::qp.schema/rff
+   initial-metadata :- ::metadata]
+  (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
+    (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
+    (infer-base-type-xform metadata' (rff metadata'))))
+
+;;;;
+;;;; MIDDLEWARE
+;;;;
+
+(mu/defn- needs-type-inference?
+  [query                                       :- ::lib.schema/query
+   {initial-cols :cols, :as _initial-metadata} :- ::metadata]
+  (and (= (:lib/type (lib.util/query-stage query 0)) :mbql.stage/native)
+       (or (empty? initial-cols)
+           (every? (fn [col]
+                     (let [base-type ((some-fn :base-type :base_type) col)]
+                       (or (nil? base-type)
+                           (= base-type :type/*))))
+                   initial-cols))))
+
+(mu/defn add-column-info :- ::qp.schema/rff
+  "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
-  (fn add-column-info-native-rff [initial-metadata]
-    (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
-      (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
-      (infer-base-type-xform metadata' (rff metadata')))))
+  (mu/fn :- ::qp.schema/rf
+    [initial-metadata :- ::metadata]
+    (let [f (if (needs-type-inference? query initial-metadata)
+              add-column-info-with-type-inference
+              add-column-info-no-type-inference)]
+      (f query rff initial-metadata))))
 
 ;;;;
 ;;;; NONSENSE

@@ -395,8 +395,8 @@ jobs:
           # Please keep the value in sync with `inputs.branch`'s release branch
           npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable", "release-x.54.x": "54-stable", "release-x.55.x": "55-stable", "esbuild-main": "56-esbuild"}')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.54.x`) deployment
-        if: ${{ inputs.branch == 'release-x.54.x' }}
+      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
+        if: ${{ inputs.branch == 'release-x.55.x' }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest

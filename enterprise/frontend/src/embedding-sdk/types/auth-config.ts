@@ -14,9 +14,9 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
   /**
    * Which authentication method to use.
    * If both SAML and JWT are enabled at the same time,
-   * it defaults to SAML unless the authMethod is specified.
+   * it defaults to SAML unless the preferredAuthMethod is specified.
    */
-  authMethod?: "jwt";
+  preferredAuthMethod?: "jwt";
 
   /**
    * Specifies a function to fetch the refresh token.
@@ -34,9 +34,9 @@ export type MetabaseAuthConfigWithSaml = BaseMetabaseAuthConfig & {
   /**
    * Which authentication method to use.
    * If both SAML and JWT are enabled at the same time,
-   * it defaults to SAML unless the authMethod is specified.
+   * it defaults to SAML unless the preferredAuthMethod is specified.
    */
-  authMethod?: "saml";
+  preferredAuthMethod?: "saml";
   apiKey?: never;
   fetchRequestToken?: never;
 };
@@ -46,7 +46,7 @@ export type MetabaseAuthConfigWithSaml = BaseMetabaseAuthConfig & {
  */
 export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
-  authMethod?: never;
+  preferredAuthMethod?: never;
   fetchRequestToken?: never;
 };
 
@@ -59,6 +59,6 @@ export type MetabaseAuthConfig =
   | MetabaseAuthConfigWithSaml;
 
 export type MetabaseAuthMethod = Exclude<
-  MetabaseAuthConfig["authMethod"],
+  MetabaseAuthConfig["preferredAuthMethod"],
   undefined
 >;

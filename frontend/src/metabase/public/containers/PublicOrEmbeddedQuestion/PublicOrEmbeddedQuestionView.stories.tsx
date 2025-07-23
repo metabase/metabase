@@ -2,6 +2,7 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
+import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -13,6 +14,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
+import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
@@ -54,6 +56,26 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get(
+          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+          () =>
+            HttpResponse.json({
+              last_download_format: "csv",
+              last_table_download_format: "csv",
+            }),
+        ),
+        http.put(
+          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+          () =>
+            HttpResponse.json({
+              last_download_format: "csv",
+              last_table_download_format: "csv",
+            }),
+        ),
+      ],
+    },
   },
 };
 
@@ -82,7 +104,7 @@ const initialState = createMockState({
   }),
 });
 
-const store = getStore(publicReducers, initialState);
+const store = getStore(publicReducers, initialState, [Api.middleware]);
 
 const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = (args) => {
   return <PublicOrEmbeddedQuestionView {...args} />;
@@ -97,6 +119,7 @@ const defaultArgs: Partial<
   bordered: true,
   getParameters: () => [],
   setCard: () => {},
+  downloadsEnabled: { pdf: true, results: true },
   result: createMockDataset({
     data: createMockDatasetData({
       cols: [
@@ -130,7 +153,7 @@ export const LightThemeDownload = {
 
   args: {
     ...LightThemeDefault.args,
-    downloadsEnabled: true,
+    downloadsEnabled: { pdf: true, results: true },
   },
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
@@ -163,7 +186,7 @@ export const DarkThemeDownload = {
 
   args: {
     ...DarkThemeDefault.args,
-    downloadsEnabled: true,
+    downloadsEnabled: { pdf: true, results: true },
   },
 
   play: LightThemeDownload.play,

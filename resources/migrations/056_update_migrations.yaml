@@ -1,195 +1,205 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
+  # This exists because a v56 migration was backported to v55 without renaming the migration version
+  # this allows us to rename those migrations to v55 in master and the release v56 branches which ensure
+  # that downgrading or upgrading to v55 picks up the correct migrations needed to run v55 in all cases
   - changeSet:
-      id: v56.2025-05-19T16:46:48
+      id: v56.2025-06-05T16:48:48
       author: edpaget
-      comment: Add metabot table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: metabot
+      comment: Placeholder migration that makes sure the downgrade check doesn't fail
       changes:
+        - output:
+            message: Placeholder until other changesets
+            target: STDOUT
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:53
+      author: nvoxland
+      comment: Drop column query_table.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_table
+            constraintName: fk_query_table_analysis_id
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:54
+      author: nvoxland
+      comment: Drop column query_field.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_field
+            constraintName: fk_query_field_analysis_id
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:55
+      author: nvoxland
+      comment: Drop column query_table.analysis_id
+      changes:
+        - dropColumn:
+            tableName: query_table
+            columnName: analysis_id
+      rollback:
+        - addColumn:
+            tableName: query_table
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_analysis_id
+                    deleteCascade: true
+  - changeSet:
+      id: v56.2025-06-06T20:11:56
+      author: nvoxland
+      comment: Drop column query_field.analysis_id
+      changes:
+        - dropColumn:
+            tableName: query_field
+            columnName: analysis_id
+      rollback:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_analysis_id
+                    deleteCascade: true
+                    deleteCascadeForce: true
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:58
+      author: nvoxland
+      comment: Drop now-unused query_analysis table
+      changes:
+        - dropTable:
+            tableName: query_analysis
+      rollback:
         - createTable:
-            tableName: metabot
-            remarks: Metabot configuration
+            tableName: query_analysis
+            remarks: Parent node for query analysis records
             columns:
               - column:
                   name: id
+                  remarks: PK
                   type: int
                   autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: name
-                  type: varchar(254)
-                  remarks: The name of the metabot
+                  name: card_id
+                  remarks: referenced card
+                  type: int
                   constraints:
                     nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_analysis_card_id
+                    deleteCascade: true
               - column:
-                  name: description
-                  type: ${text.type}
-                  remarks: Description of the metabot
-                  constraints:
-                    nullable: true
-              - column:
-                  name: entity_id
-                  type: char(21)
-                  remarks: Random NanoID tag for unique identity
-                  constraints:
-                    nullable: true
-                    unique: true
-              - column:
-                  remarks: The timestamp of when the metabot was created
+                  remarks: The timestamp of when the analysis was created
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
-                  remarks: The timestamp of when the metabot was updated
+                  remarks: The timestamp of when the analysis was updated
                   name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+              - column:
+                  name: status
+                  type: ${text.type}
+                  remarks: running, failed, or completed
 
   - changeSet:
-      id: v56.2025-05-19T16:47:48
-      author: edpaget
-      comment: Add metabot entity table
+      id: v56.2025-06-13T15:00:00
+      author: rafpaf
+      comment: Create content translation table
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: metabot_entity
+                tableName: content_translation
       changes:
         - createTable:
-            tableName: metabot_entity
-            remarks: Entities associated with a metabot
+            tableName: content_translation
+            remarks: Content translations
             columns:
               - column:
                   name: id
+                  remarks: Unique ID
                   type: int
                   autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: metabot_id
-                  type: int
-                  remarks: The metabot this entity is associated with
+                  name: locale
+                  remarks: Locale
+                  type: varchar(5)
                   constraints:
                     nullable: false
               - column:
-                  name: model
-                  type: varchar(32)
-                  remarks: The type of model this entity references
+                  name: msgid
+                  remarks: The raw string
+                  type: ${text.type}
                   constraints:
                     nullable: false
               - column:
-                  name: model_id
-                  type: int
-                  remarks: The ID of the model this entity references
-                  constraints:
-                    nullable: false
-              - column:
-                  name: entity_id
-                  type: char(21)
-                  remarks: Random NanoID tag for unique identity
-                  constraints:
-                    nullable: true
-                    unique: true
-              - column:
-                  remarks: The timestamp of when the entity was created
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
+                  name: msgstr
+                  remarks: The translation
+                  type: ${text.type}
                   constraints:
                     nullable: false
 
   - changeSet:
-      id: v56.2025-05-19T16:48:48
-      author: edpaget
-      comment: Add index on metabot_entity.metabot_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabot_entity
-                indexName: idx_metabot_entity_metabot_id
+      id: v56.2025-07-07T08:02:43
+      author: johnswanson
+      comment: improve full names in usage analytics - update view `v_users`
       changes:
-        - createIndex:
-            tableName: metabot_entity
-            indexName: idx_metabot_entity_metabot_id
-            columns:
-              - column:
-                  name: metabot_id
-
-  - changeSet:
-      id: v56.2025-05-19T16:49:49
-      author: edpaget
-      comment: Add foreign key constraint on metabot_entity.metabot_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_metabot_entity_metabot_id
-                foreignKeyTableName: metabot_entity
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabot_entity
-            baseColumnNames: metabot_id
-            referencedTableName: metabot
-            referencedColumnNames: id
-            constraintName: fk_metabot_entity_metabot_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v56.2025-05-19T16:50:49
-      author: edpaget
-      comment: Create the default metabot instances
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: >-
-              SELECT COUNT(*) FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/users/v3/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/users/v3/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/users/v3/h2-users.sql
+            relativeToChangelogFile: true
       rollback:
-        - sql:
-            sql: >-
-              DELETE FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO metabot (
-                  name
-                  , description
-                  , entity_id
-                  , created_at
-                  , updated_at
-              ) VALUES (
-                  'Metabot'
-                  , 'Metabot instance for internal users.'
-                  , 'metabotmetabotmetabot'
-                  , now()
-                  , now()
-              );
-              INSERT INTO metabot (
-                  name
-                  , description
-                  , entity_id
-                  , created_at
-                  , updated_at
-              ) VALUES (
-                  'Embeddeded Metabot'
-                  , 'Metabot instance for embedded metabase users.'
-                  , 'embeddedmetabotmetabo'
-                  , now()
-                  , now()
-              );
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/users/v2/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/users/v2/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/users/v2/h2-users.sql
+            relativeToChangelogFile: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

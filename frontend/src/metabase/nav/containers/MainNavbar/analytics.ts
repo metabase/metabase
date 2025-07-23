@@ -16,7 +16,7 @@ export const trackAddDataModalOpened = (
   from: "getting-started" | "left-nav",
 ) => {
   trackSimpleEvent({
-    event: "data_add_clicked",
+    event: "data_add_modal_opened",
     triggered_from: from,
   });
 };

@@ -11,7 +11,6 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -117,7 +116,8 @@
 
 (defn- nest-source [inner-query]
   (let [filter-clause (:filter inner-query)
-        keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
+        keep-filter? (and filter-clause
+                          (nil? (lib.util.match/match-one filter-clause :expression)))
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions :expression-idents]) source
                  ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
                  ;; first place we already had to do perms checks to make sure the query we're transforming is itself
@@ -146,7 +146,7 @@
    expression  :- [:maybe ::mbql.s/FieldOrExpressionDef]]
   (when expression
     (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
-      (lib/type-of mlv2-query (lib.convert/->pMBQL expression)))))
+      (lib/type-of mlv2-query (lib/->pMBQL expression)))))
 
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
@@ -241,13 +241,10 @@
    (lib.util.match/match-one (concat breakouts aggregations order-bys)
      :expression)))
 
-(defn nest-expressions
-  "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
-  `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
-  tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [inner-query]
+(mu/defn- nest-expressions* :- ::mbql.s/SourceQuery
+  [inner-query :- ::mbql.s/SourceQuery]
   (let [{:keys [expressions expression-idents]
-         :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions)]
+         :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions*)]
     (if-not (should-nest-expressions? inner-query)
       inner-query
       (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
@@ -257,5 +254,13 @@
                                                            :expression-idents expression-idents)]
         (-> inner-query
             (dissoc :source-query :expressions :expression-idents)
-            (assoc :source-query source-query)
-            add/add-alias-info)))))
+            (assoc :source-query source-query))))))
+
+(mu/defn nest-expressions :- ::mbql.s/SourceQuery
+  "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
+  `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
+  tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
+  [inner-query :- ::mbql.s/SourceQuery]
+  (-> inner-query
+      nest-expressions*
+      add/add-alias-info))

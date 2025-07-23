@@ -1,9 +1,9 @@
 (ns metabase.driver.sql.ddl
   (:require
    [clojure.java.jdbc :as jdbc]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.sql.util :as sql.u]
-   [metabase.system.core :as system]))
+   [metabase.driver.sql.util :as sql.u]))
 
 (defn- quote-fn [driver]
   (fn quote [ident entity]
@@ -36,21 +36,21 @@
   [{driver :engine :as database}]
   (let [q (quote-fn driver)]
     (format "create schema %s"
-            (q :table (ddl.i/schema-name database (system/site-uuid))))))
+            (q :table (ddl.i/schema-name database (driver-api/site-uuid))))))
 
 (defn drop-schema-sql
   "SQL string to drop a schema suitable"
   [{driver :engine :as database}]
   (let [q (quote-fn driver)]
     (format "drop schema if exists %s"
-            (q :table (ddl.i/schema-name database (system/site-uuid))))))
+            (q :table (ddl.i/schema-name database (driver-api/site-uuid))))))
 
 (defn create-table-sql
   "Formats a create table statement within our own cache schema"
   [{driver :engine :as database} definition query]
   (let [q (quote-fn driver)]
     (format "create table %s.%s as %s"
-            (q :table (ddl.i/schema-name database (system/site-uuid)))
+            (q :table (ddl.i/schema-name database (driver-api/site-uuid)))
             (q :table (:table-name definition))
             query)))
 
@@ -59,5 +59,5 @@
   [{driver :engine :as database} table-name]
   (let [q (quote-fn driver)]
     (format "drop table if exists %s.%s"
-            (q :table (ddl.i/schema-name database (system/site-uuid)))
+            (q :table (ddl.i/schema-name database (driver-api/site-uuid)))
             (q :table table-name))))

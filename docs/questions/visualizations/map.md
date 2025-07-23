@@ -2,9 +2,6 @@
 title: Maps
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/maps
-  - /learn/basics/visualizing-data/maps
-  - /learn/visualization/maps
-  - /learn/metabase-basics/querying-and-dashboards/visualization/maps
 description: "Maps in Metabase allow you to visualize geographical data either using coordinates or by region. Metabase gives you three types of maps : pin map for unaggregated data, grid map for histograms, and region map for distributions by regions like countries or states. You can also create custom maps."
 ---
 
@@ -114,7 +111,7 @@ You can change the base color used for the region map, but you can't currently u
 
 ### World Map
 
-To visualize your results in the format of a map of the world broken out by country, your result must contain a column with [two-letter ISO country codes](https://www.metabase.com/glossary/country-code), like "US" or "BR", for example:
+To visualize your results in the format of a map of the world broken out by country, your result must contain a column with [two-letter ISO country codes](./country-codes.md), like "US" or "BR", or country names like "United States of America" or "Brazil". For example:
 
 | Country code | Metric |
 | ------------ | ------ |

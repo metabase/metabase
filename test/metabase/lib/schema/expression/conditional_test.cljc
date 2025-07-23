@@ -7,6 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.test-runner.assert-exprs.malli-equals]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (comment metabase.test-runner.assert-exprs.malli-equals/keep-me)
@@ -15,18 +16,42 @@
   (is (= ::expression/type.unknown
          (#'expression.conditional/best-return-type :type/Integer ::expression/type.unknown))))
 
-(defn- case-expr [& args]
-  (let [clause [:case
-                {:lib/uuid (str (random-uuid))}
-                (mapv (fn [arg]
-                        [[:= {:lib/uuid (str (random-uuid))} 1 1]
-                         arg])
-                      args)]]
-    (is (mr/validate :mbql.clause/case clause))
-    clause))
+(mu/defn- case-expr :- :mbql.clause/case
+  [& args]
+  [:case
+   {:lib/uuid (str (random-uuid))}
+   (mapv (fn [arg]
+           [[:= {:lib/uuid (str (random-uuid))} 1 1]
+            arg])
+         args)])
+
+(mu/defn- value-expr :- :mbql.clause/value
+  [effective-type x]
+  [:value {:lib/uuid       (str (random-uuid))
+           :effective-type effective-type
+           :base-type      effective-type}
+   x])
+
+(deftest ^:parallel case-schema-valid-test
+  (testing "schema validation for valid :case expressions"
+    (are [args] (true?
+                 (mr/validate :mbql.clause/case
+                              (into [:case {:lib/uuid (str (random-uuid))}] args)))
+      [[[true 1]] 1]
+      [[[true false]] false]
+      [[[true true]] true]
+      [[[true true]] true])))
+
+(deftest ^:parallel case-schema-invalid-test
+  (testing "schema validation for invalid :case expressions"
+    (are [args] (false?
+                 (mr/validate :mbql.clause/case
+                              (into [:case {:lib/uuid (str (random-uuid))}] args)))
+      [1]
+      [[] 1])))
 
 (deftest ^:parallel case-type-of-test
-  (testing "In MLv2, case expression's type is the first non-nil type of its values, same approach as in qp"
+  (testing "type-of logic for :case expressions"
     ;; In QP and MLv2: `expression/type-of-method :case`
     (are [expr expected] (= expected
                             (expression/type-of expr))
@@ -46,11 +71,8 @@
       (case-expr "2023-03-08" "05:13")
       :type/Text
 
-      ;; TODO -- seems like this should probably be `:type/DateTime` given that that's the most common ancestor but
-      ;; that stuff seems to be broken now, see https://metaboat.slack.com/archives/C0645JP1W81/p1749169799757029 --
-      ;; Cam
-      #_(case-expr "2023-03-08T06:15-07:00" [:field {:lib/uuid (str (random-uuid)), :base-type :type/DateTimeWithLocalTZ} 1])
-      #_:type/DateTime
+      (case-expr "2023-03-08T06:15-07:00" [:field {:lib/uuid (str (random-uuid)), :base-type :type/DateTimeWithLocalTZ} 1])
+      :type/DateTimeWithLocalTZ
 
       ;; This may also be broken now.
       (case-expr "2023-03-08T06:15" [:field {:lib/uuid (str (random-uuid)), :base-type :type/DateTimeWithLocalTZ} 1])
@@ -58,7 +80,27 @@
 
       ;; also broken because `:type/Float` is not the most common ancestor of `:type/Integer` and `:type/Float`.
       (case-expr 1 1.1)
-      :type/Float)))
+      :type/Float
+
+      ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+      ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+      (case-expr (value-expr :type/DateTimeWithTZ "2023-03-08T00:00:00Z")
+                 (value-expr :type/Date "2023-03-08"))
+      :type/DateTime)))
+
+(deftest ^:parallel coalesce-schema-valid-test
+  (testing "schema validation for valid :coalesce expressions"
+    (are [args] (true?
+                 (mr/validate :mbql.clause/coalesce
+                              (into [:coalesce {:lib/uuid (str (random-uuid))}] args)))
+      [1 2]
+      [1 2 3]
+      [1 [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} 1]]
+      ; TODO: this case should fail due to Time and Date not being compatible,
+      ; but until we have a better way to handle this, we just allow it and document
+      ; here as a test.
+      [(value-expr :type/Date "2023-03-08")
+       (value-expr :type/Time "15:03:55")])))
 
 (deftest ^:parallel coalesce-test
   (is (mr/validate
@@ -82,6 +124,28 @@
                                          {:base-type :type/Text, :lib/uuid "68443c43-f9de-45e3-9f30-8dfd5fef5af6"}
                                          (meta/id :venues :name)]
                                         "bar"]]}]})))
+
+(mu/defn- coalesce-expr :- :mbql.clause/coalesce
+  [not-nil-expr nil-expr]
+  [:coalesce
+   {:lib/uuid (str (random-uuid))}
+   not-nil-expr
+   nil-expr])
+
+(deftest ^:parallel coalesce-type-of-test
+  (testing "type-of logic for :coalesce expressions"
+    ;; In QP and MLv2: `expression/type-of-method :case`
+    (are [expr expected] (= expected
+                            (expression/type-of expr))
+
+      (coalesce-expr 1 1)
+      :type/Integer
+
+      ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+      ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+      (coalesce-expr (value-expr :type/DateTimeWithTZ "2023-03-08T00:00:00Z")
+                     (value-expr :type/Date "2023-03-08"))
+      :type/DateTime)))
 
 (deftest ^:parallel case-type-of-with-fields-only-test
   ;; Ideally expression/type-of should have enough information to determine the types of fields.

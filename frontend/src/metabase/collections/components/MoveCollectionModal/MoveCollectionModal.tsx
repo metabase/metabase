@@ -5,10 +5,10 @@ import type {
   MoveDestination,
   OnMoveWithSourceAndDestination,
 } from "metabase/collections/types";
-import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MoveModal } from "metabase/common/components/MoveModal";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import { useCollectionQuery } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { MoveModal } from "metabase/containers/MoveModal";
 import Collections from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

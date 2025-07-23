@@ -1,14 +1,17 @@
 (ns metabase.query-processor.streaming-test
   (:require
+   [clojure.core.async :as a]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
@@ -30,7 +33,12 @@
     (map? x) (m/dissoc-in [:data :results_metadata :checksum])))
 
 (defn- expected-results* [export-format query]
-  (maybe-remove-checksum (streaming.test-util/expected-results export-format (qp/process-query query))))
+  (let [results (-> (streaming.test-util/expected-results export-format (qp/process-query query))
+                    maybe-remove-checksum)]
+    (cond-> results
+      (map? results) (update-in [:data :cols] (fn [cols]
+                                                (for [col cols]
+                                                  (m/filter-keys simple-keyword? col)))))))
 
 (defn- basic-actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
@@ -113,23 +121,23 @@
                            "Longitude" "118.26100000° W",
                            "Price" 2.0}]
                          (basic-actual-results* export-format query)))
-            (is (= (expected-results* export-format query)
-                   (basic-actual-results* export-format query)))))))))
+            (is (=? (expected-results* export-format query)
+                    (basic-actual-results* export-format query)))))))))
 
 (defn- actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))
 
 (defn- compare-results [export-format query]
-  (is (= (expected-results* export-format query)
-         (cond-> (actual-results* export-format query)
-           (= export-format :api)
-           (dissoc :cached)))))
+  (is (=? (expected-results* export-format query)
+          (cond-> (actual-results* export-format query)
+            (= export-format :api)
+            (dissoc :cached)))))
 
 (deftest ^:parallel streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
     (compare-results :api (mt/mbql-query venues {:limit 5}))))
 
-(deftest utf8-test
+(deftest ^:parallel utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
   (doseq [export-format (disj qp.schema/export-formats :xlsx :csv)]
@@ -469,9 +477,17 @@
                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
                                              [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
                                             (xlsx-test/parse-xlsx-results results))))}})))]
-    (mt/with-column-remappings [venues.category_id categories.name]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (mt/id :categories :name))
       (testfn :external))
-    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (mapv first (mt/rows (qp/process-query
+                                                            (mt/mbql-query categories
+                                                              {:fields [$name], :order-by [[:asc $id]]})))))
       (testfn :internal))))
 
 (deftest join-export-test
@@ -662,3 +678,40 @@
            (@#'qp.streaming/export-column-order
             [{:name "Col1" :remapped_to "Col2"}, {:name "Col2" :remapped_from "Col1"}]
             nil)))))
+
+;; QP Nil Fix Tests
+;; These tests verify that query cancellation returns proper results instead of nil
+
+(deftest ^:parallel qp-pipeline-cancellation-test
+  (testing "QP pipeline functions return nil when cancelled and canceled? returns truthy"
+    (let [canceled-chan (a/promise-chan)
+          _ (a/>!! canceled-chan ::cancel)
+          query (mt/mbql-query venues {:limit 1})
+          mock-rff (constantly identity)]
+
+      (binding [qp.pipeline/*canceled-chan* canceled-chan]
+        (let [result (qp.pipeline/*run* query mock-rff)]
+          (is (nil? result) "Cancelled query returns nil")
+          (is (qp.pipeline/canceled?) "canceled? should return truthy when query is cancelled"))))))
+
+(deftest streaming-response-handles-cancellation-test
+  (testing "Streaming response handles cancellation gracefully without assertion errors"
+    (let [mock-qp-fn (fn [rff]
+                      ;; Simulate immediate cancellation
+                       (with-redefs [qp.pipeline/canceled? (constantly true)]
+                         (qp.pipeline/*run* (mt/mbql-query venues {:limit 1}) rff)))]
+
+      ;; Should not throw "QP unexpectedly returned nil" assertion error
+      (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
+          "Streaming response should handle cancellation without assertion error"))))
+
+(deftest streaming-response-handles-cancel-keyword-test
+  (testing "Streaming response handles nil + canceled? gracefully"
+    (let [mock-qp-fn (fn [_rff]
+                       ;; Return nil and set up canceled? to return truthy
+                       (with-redefs [qp.pipeline/canceled? (constantly ::cancel)]
+                         nil))]
+
+      ;; Should not throw any assertion errors
+      (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
+          "Streaming response should handle cancellation without assertion error"))))

@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
-import { waitForLoaderToBeRemoved } from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
@@ -101,7 +101,7 @@ describe("Auth Flow - JWT", () => {
 
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
-      authMethod: "jwt",
+      preferredAuthMethod: "jwt",
       fetchRequestToken: customFetchFunction,
     });
 
@@ -125,5 +125,53 @@ describe("Auth Flow - JWT", () => {
         "X-Metabase-Session": [MOCK_SESSION_TOKEN_ID],
       },
     });
+  });
+
+  it("should include the subpath when requesting the SSO endpoint", async () => {
+    // we can't use the usual mocks here as they use mocks that don't expect the subpath
+    const instanceUrlWithSubpath = `${MOCK_INSTANCE_URL}/subpath`;
+
+    fetchMock.mock(`${instanceUrlWithSubpath}/auth/sso`, {
+      status: 200,
+      body: { url: MOCK_JWT_PROVIDER_URI, method: "jwt" },
+    });
+
+    fetchMock.mock(`${MOCK_JWT_PROVIDER_URI}?response=json`, {
+      status: 200,
+      body: {
+        jwt: MOCK_VALID_JWT_RESPONSE,
+      },
+    });
+
+    fetchMock.mock(
+      `${instanceUrlWithSubpath}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,
+      {
+        status: 200,
+        body: {
+          id: MOCK_SESSION_TOKEN_ID,
+          user: { id: 1 },
+        },
+      },
+    );
+
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: instanceUrlWithSubpath,
+    });
+
+    renderWithProviders(
+      <MetabaseProvider authConfig={authConfig}>
+        <StaticQuestion questionId={1} />
+      </MetabaseProvider>,
+    );
+
+    await waitForLoaderToBeRemoved();
+
+    const expectedSsoUrl = `${instanceUrlWithSubpath}/auth/sso`;
+
+    // One call is for the initial "configuration", to know which sso method to use
+    // The second call is the actual "login"
+    expect(
+      fetchMock.calls((url) => url.startsWith(expectedSsoUrl)),
+    ).toHaveLength(2);
   });
 });

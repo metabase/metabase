@@ -47,7 +47,8 @@
                       "  PASSWORD CHARACTER VARYING\n"
                       ");\n")
                  normalize)
-             (-> (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5})
+             (-> (mt/with-current-user (mt/user->id :crowberto)
+                   (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5}))
                  normalize))))))
 
 (deftest ^:parallel no-used-table-test
@@ -73,5 +74,6 @@
                       "  password text\n"
                       ");\n")
                  normalize)
-             (-> (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5})
+             (-> (mt/with-current-user (mt/user->id :crowberto)
+                   (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5}))
                  normalize))))))

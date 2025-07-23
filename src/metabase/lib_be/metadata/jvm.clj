@@ -7,6 +7,7 @@
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -14,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
+   [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
@@ -35,13 +37,22 @@
   get a nice performance boost."
   (u.memo/fast-memo u/->kebab-case-en))
 
+(def ^:private metadata-type->schema
+  {:metadata/card ::lib.schema.metadata/card})
+
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
   metadata instance with `:lib/type` and `kebab-case` keys."
   [instance metadata-type]
-  (-> instance
-      (update-keys memoized-kebab-key)
-      (assoc :lib/type metadata-type)))
+  (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
+                    (fn [instance]
+                      (lib.normalize/normalize schema instance))
+                    identity)]
+    (-> instance
+        (update-keys memoized-kebab-key)
+        (assoc :lib/type metadata-type)
+        normalize
+        u.snake-hating-map/snake-hating-map)))
 
 ;;;
 ;;; Database

@@ -6,7 +6,7 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
@@ -69,7 +69,7 @@
                               (if (and (= model :model/Database) (nil? args))
                                 [(mt/db)]
                                 (apply t2/select model args)))]
-      (binding [h2/*allow-testing-h2-connections* true]
+      (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "status gauge resets"
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
@@ -81,7 +81,7 @@
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
     (with-redefs [quick-task/submit-task! (fn [task] (task))]
-      (binding [h2/*allow-testing-h2-connections* true]
+      (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "successes"
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]

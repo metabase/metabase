@@ -347,7 +347,7 @@
                                                              (swap! tables-fingerprinted inc)
                                                              (throw (CannotAcquireResourceException. "Unable to acquire resource")))
                       sync.fingerprint/*refingerprint?* true]
-          (is (=? (assoc (sync.fingerprint/empty-stats-map 0)
-                         :throwable #(instance? CannotAcquireResourceException %))
-                  (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
+          (is (= (assoc (sync.fingerprint/empty-stats-map 0)
+                        :failed-fingerprints 1)
+                 (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))

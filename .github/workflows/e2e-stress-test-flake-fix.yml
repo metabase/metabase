@@ -63,8 +63,10 @@ jobs:
       DISPLAY: ""
       QA_DB_ENABLED: ${{ contains(fromJSON('["sql", "mongo"]'), inputs.qa_db) }}
       CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == 'mongo' }}
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       MB_EDITION: ${{ inputs.mb_edition }}
@@ -84,6 +86,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
           openldap: true
+          snowplow: true
           postgres: ${{ inputs.qa_db == 'sql' }}
           mysql: ${{ inputs.qa_db == 'sql' }}
           mongo: ${{ inputs.qa_db == 'mongo' }}
@@ -103,8 +106,6 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-      - name: Run Snowplow micro
-        uses: ./.github/actions/run-snowplow-micro
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
       - name: Generate database snapshots

@@ -42,6 +42,11 @@
    :type     :query
    :query    query})
 
+(defn- remove-irrelevant-keys [col]
+  (as-> col col
+    (dissoc col :field_ref)
+    (m/filter-keys simple-keyword? col)))
+
 (defn- default-result-with-inner-query
   ([inner-query]
    (default-result-with-inner-query inner-query ::infer))
@@ -53,7 +58,7 @@
          result-metadata (not-empty (for [col (if (= metadata ::infer)
                                                 (qp.preprocess/query->expected-cols outer-query)
                                                 metadata)]
-                                      (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)))]
+                                      (remove-irrelevant-keys col)))]
      (cond-> outer-query
        result-metadata
        (assoc-in [:query :source-metadata] result-metadata)))))
@@ -176,9 +181,7 @@
                      (m/filter-keys simple-keyword? col)))
                   (assoc-in [:query :source-query :source-metadata]
                             (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                              (as-> col col
-                                (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)
-                                (m/filter-keys simple-keyword? col))))
+                              (remove-irrelevant-keys col)))
                   (assoc :info {:card-id 2}
                          :qp/source-card-id 2))
               (resolve-source-cards
@@ -195,7 +198,7 @@
                                    :limit        50}}]))
         card     (lib.metadata/card base 1)
         eid      (lib/random-ident)
-        metadata (mapv #(update % :ident lib/model-ident eid) (:result-metadata card))]
+        metadata (:result-metadata card)]
     (lib.tu/merged-mock-metadata-provider base {:cards [{:id              1
                                                          :type            :model
                                                          :entity-id       eid
@@ -252,10 +255,10 @@
   (qp.store/with-metadata-provider joins-metadata-provider
     (testing "Are `card__id` source tables resolved in `:joins`?"
       (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:source-query    {:source-table $$categories, :limit 100}
-                          :alias           "c"
-                          :condition       [:= $category-id [:field %categories.id {:join-alias "c"}]]
-                          :source-metadata joins-metadata}]})
+                {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
+                                         :source-metadata joins-metadata}
+                          :alias        "c"
+                          :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:joins [{:source-table "card__1"
@@ -281,11 +284,11 @@
     (testing "Are `card__id` source tables resolved in JOINs inside nested source queries?"
       (is (=? (lib.tu.macros/mbql-query venues
                 {:source-query {:source-table $$venues
-                                :joins        [{:source-query    {:source-table $$categories
-                                                                  :limit        100}
-                                                :alias           "c"
-                                                :condition       [:= $category-id [:field %categories.id {:join-alias "c"}]]
-                                                :source-metadata joins-metadata}]}})
+                                :joins        [{:source-query {:source-query    {:source-table $$categories
+                                                                                 :limit        100}
+                                                               :source-metadata joins-metadata}
+                                                :alias        "c"
+                                                :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:source-query
@@ -307,13 +310,13 @@
                                                   :result-metadata (qp.preprocess/query->expected-cols query)})]}))
     (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
       (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:alias           "c"
-                          :condition       [:= $category-id &c.$categories.id]
-                          :source-query    {:source-query    {:source-table $$categories
-                                                              :limit        100}
-                                            :source-metadata joins-metadata
-                                            :limit           200}
-                          :source-metadata (map #(select-keys % [:field_ref]) joins-metadata)}]})
+                {:joins [{:alias        "c"
+                          :condition    [:= $category-id &c.$categories.id]
+                          :source-query {:source-query    {:source-query    {:source-table $$categories
+                                                                             :limit        100}
+                                                           :source-metadata joins-metadata
+                                                           :limit           200}
+                                         :source-metadata [{} {}]}}]})
               (clean-metadata
                (resolve-source-cards
                 (lib.tu.macros/mbql-query venues
@@ -384,9 +387,7 @@
         (is (=? (assoc (lib.tu.macros/mbql-query nil
                          {:source-query    {:source-table (meta/id :venues)}
                           :source-metadata (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                                             (as-> col col
-                                                 (dissoc col :field_ref :metabase.lib.query/transformation_added_base_type)
-                                                 (m/filter-keys simple-keyword? col)))})
+                                             (remove-irrelevant-keys col))})
                        :info {:card-id Integer/MAX_VALUE}
                        :qp/source-card-id 1)
                 (resolve-source-cards query)))))))

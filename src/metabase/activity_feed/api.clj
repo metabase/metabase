@@ -78,7 +78,9 @@
                                              {:group-by  [:model :model_id]
                                               :where     [:and
                                                           [:= :context "view"]
-                                                          [:in :model #{"dashboard" "table"}]]
+                                                          [:in :model #{"dashboard" "table"}]
+                                                          [:or [:= :active true] [:= :active nil]]
+                                                          [:or [:= :archived false] [:= :archived nil]]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
                                               :limit     views-limit
                                               :left-join [[:report_dashboard :d]

@@ -1,6 +1,7 @@
 (ns metabase.lib.swap
   (:require
    [metabase.lib.options :as lib.options]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]))
 
@@ -40,5 +41,6 @@
         source-path (uuid-match stage source-clause)
         target-path (uuid-match stage target-clause)]
     (if (and source-path target-path)
-      (lib.util/update-query-stage query stage-number do-swap source-path target-path source-clause target-clause)
+      (let [swapped (lib.util/update-query-stage query stage-number do-swap source-path target-path source-clause target-clause)]
+        (lib.remove-replace/update-stale-references swapped stage-number query))
       query)))

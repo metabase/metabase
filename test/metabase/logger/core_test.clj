@@ -66,7 +66,7 @@
       (let [f (io/file filename)]
         (with-open [_ (logger/for-ns f 'metabase.logger.core-test {:additive false})]
           (log/info "just a test"))
-        (is (=? [#".*just a test$"]
+        (is (=? [#".*just a test.+"]
                 (line-seq (io/reader f))))))))
 
 (deftest fork-logs-test-2
@@ -76,7 +76,7 @@
         (log/info "just a test"))
       (log/info "this line is not going into our stream")
       (testing "We catched the line we needed and did not catch the other one"
-        (is (=? [#".*just a test$"]
+        (is (=? [#".*just a test.+"]
                 (line-seq (io/reader (.toByteArray baos)))))))))
 
 (deftest fork-logs-test-3
@@ -90,8 +90,8 @@
           (log/log 'metabase.unknown :info nil "separate test")
           (testing "Check that `for-ns` will skip non-specified namespaces"
             (log/log 'metabase.unknown2 :info nil "this one going into standard log")))
-        (is (=? [#".*just a test$"
-                 #".*separate test$"]
+        (is (=? [#".*just a test.+"
+                 #".*separate test.+"]
                 (line-seq (io/reader f))))))))
 
 (deftest level-enabled?-test

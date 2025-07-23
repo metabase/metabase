@@ -5,12 +5,12 @@ import _ from "underscore";
 
 import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { AdminContentTable } from "metabase/components/AdminContentTable";
-import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import UserAvatar from "metabase/components/UserAvatar";
-import Link from "metabase/core/components/Link";
+import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import Link from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import {
   getGroupNameLocalized,
@@ -485,7 +485,6 @@ export const GroupsListing = (props: GroupsListingProps) => {
 
   return (
     <AdminPaneLayout
-      title={t`Groups`}
       buttonText={isAdmin ? t`Create a group` : undefined}
       buttonAction={
         isShowingAddGroupRow ? undefined : onCreateAGroupButtonClicked
