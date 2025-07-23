@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin",
     "hash": "0772d6cd657a6504766fde6de4aa7da9cfd6cf50"
+  },
+  "upstream": {
+    "branch": "emb-643-add-the-new-iframe-embeds-setting-detail-page"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 61392,
+        "gqlID": "PR_kwDOAczgH86gWWQY"
+      }
+    }
   }
 }
