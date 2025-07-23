@@ -59,6 +59,6 @@ steps:
   - lego: transform
     database: %d
     table: TABLEB
-    query: SELECT *, average(RATING) as AR FROM TABLE_A GROUP BY DATE_TRUNC('month', CREATED_AT)
+    query: SELECT *, average(RATING) as AR FROM TABLEA GROUP BY DATE_TRUNC('month', CREATED_AT)
 
 " (mt/id) (mt/id))))))))

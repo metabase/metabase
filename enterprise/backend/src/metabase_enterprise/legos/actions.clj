@@ -42,7 +42,7 @@
   [{:keys [database schema table query]}]
   (let [{driver :engine} (t2/select-one :model/Database database)]
     (transforms.execute/execute
-     {:db database
+     {:db-ref database
       :driver driver
       :sql query
       :output-table (qualified-table-name driver schema table)
