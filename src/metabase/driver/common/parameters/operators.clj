@@ -86,6 +86,7 @@
         :binary   (opts-fn [(keyword (name param-type)) field' a b] options)
         :unary    (opts-fn [(keyword (name param-type)) field' a] options)
         :variadic (opts-fn (into [(keyword (name param-type)) field'] param-value) options)
+
         (throw (ex-info (format "Unrecognized operator: %s" param-type)
                         {:param-type param-type
                          :param-value param-value

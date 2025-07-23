@@ -58,9 +58,17 @@
                        :field-id    (last field)
                        :type        qp.error-type/invalid-parameter})))))
 
+;;; TODO (Cam 7/23/25) -- we should probably move this logic into [[metabase.lib.schema.parameter]] as normal
+;;; `:decode/normalize` logic
 (defn- normalize-param
   [param]
-  (lib/normalize ::lib.schema.parameter/parameter param))
+  (case (keyword (:type param))
+    :number/between
+    (let [[l u] (:value param)]
+      (cond-> param
+        (nil? u) (assoc :type :number/>=, :value [l])
+        (nil? l) (assoc :type :number/<=, :value [u])))
+    param))
 
 (mu/defn to-clause :- ::lib.schema.expression/boolean
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
