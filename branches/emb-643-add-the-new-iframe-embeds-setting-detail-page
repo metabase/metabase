@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin",
-    "hash": "fb62ed07300061945e4ed05d6fba00e9ca3c8b8d"
+    "hash": "a81c1d753cde1b4edb799c9cbfe0d5fb9ba83ec6"
   },
   "upstream": {
     "branch": "emb-643-add-the-new-iframe-embeds-setting-detail-page"
