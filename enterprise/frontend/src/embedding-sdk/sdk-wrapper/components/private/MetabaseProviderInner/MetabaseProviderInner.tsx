@@ -63,13 +63,13 @@ export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
 
   useEffect(() => {
     if (reduxStore && !reduxStoreInitialized) {
-      MetabaseProviderPropsStore.getInstance()?.setReduxStore(reduxStore);
+      MetabaseProviderPropsStore.getInstance()?.setProps({ reduxStore });
       setReduxStoreInitialized(true);
     }
   }, [reduxStore, reduxStoreInitialized]);
 
   useEffect(() => {
-    MetabaseProviderPropsStore.getInstance()?.updateProps(props);
+    MetabaseProviderPropsStore.getInstance()?.setProps(props);
   }, [props]);
 
   return <>{children({ initialized: initialized && reduxStoreInitialized })}</>;

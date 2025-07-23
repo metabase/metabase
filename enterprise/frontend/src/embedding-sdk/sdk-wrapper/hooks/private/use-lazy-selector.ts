@@ -8,7 +8,7 @@ export function useLazySelector<TSelected>(
 ): TSelected | null {
   const getSnapshot = useCallback((): TSelected | null => {
     const reduxStore =
-      MetabaseProviderPropsStore.getInstance()?.getReduxStore();
+      MetabaseProviderPropsStore.getInstance()?.props?.reduxStore;
 
     if (!reduxStore || !selector) {
       return null;
@@ -20,7 +20,7 @@ export function useLazySelector<TSelected>(
   const subscribe = useCallback(
     (callback: () => void) => {
       const reduxStore =
-        MetabaseProviderPropsStore.getInstance()?.getReduxStore();
+        MetabaseProviderPropsStore.getInstance()?.props?.reduxStore;
 
       if (!reduxStore || !selector) {
         return () => {};
