@@ -69,7 +69,7 @@ export function renderWithSDKProviders(
           <MetabaseProviderInternal
             {...props}
             {...sdkProviderProps}
-            store={store}
+            reduxStore={store}
           />
         </themeProviderContext.Provider>
       </MetabaseReduxProvider>
