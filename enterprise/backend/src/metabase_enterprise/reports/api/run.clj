@@ -8,9 +8,11 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -48,68 +50,36 @@
     ;; Run each card using the query processor
     (try
       (doseq [card cards-to-run]
-        (let [pivot? (= (:display card) :pivot)
-              ;; Capture the results using a custom reducing function
-              captured-result (atom nil)
-              captured-metadata (atom nil)
-              rows-buffer (volatile! [])
-
-              ;; Create a custom reducing function that captures results
-              capture-rf (fn capture-rf [metadata]
-                           (prn "HERE")
-                           (prn metadata)
-                           (reset! captured-metadata metadata)
-                           (fn
-                             ([] nil)
-                             ([result]
-                              ;; Store the final result
-                              (reset! captured-result result)
-                              result)
-                             ([acc row]
-                              ;; Accumulate rows
-                              (vswap! rows-buffer conj row)
-                              (if (map? acc)
-                                (update-in acc [:data :rows] (fnil conj []) row)
-                                acc))))]
-
-          ;; Run the query with our capturing reducing function
-          ;;
-          (prn (qp.card/process-query-for-card
-                (:id card) :api
-                :context :report
-                :qp qp.pivot/run-pivot-query))
-          (if pivot?
-            (qp.card/process-query-for-card
-             (:id card) :api
-             :context :report
-             :qp qp.pivot/run-pivot-query
-             :rff capture-rf)
-            (qp.card/process-query-for-card
-             (:id card) :api
-             :context :report
-             :rff capture-rf))
-
-          (prn rows-buffer)
-          ;; Save to ReportRunCardData
-          ;; TODO(edpaget): encrypt
-          (t2/insert! :model/ReportRunCardData
-                      {:run_id run-id
-                       :card_id (:id card)
-                       :data (impl/do-with-serialization
-                              (fn [in-fn result-fn]
-                                  ;; Add metadata with cache version
-                                (in-fn (assoc @captured-metadata
-                                              :cache-version 3
-                                              :last-ran (t/zoned-date-time)))
-                                  ;; Add all rows
-                                (doseq [row @rows-buffer]
-                                  (prn row)
-                                  (in-fn row))
-                                  ;; Add final metadata
-                                (when (map? @captured-result)
-                                  (in-fn (m/dissoc-in @captured-result [:data :rows])))
-                                  ;; Get the serialized bytes
-                                (result-fn)))})))
+        ;; TODO(edpaget): encrypt
+        (impl/do-with-serialization
+         (fn [in-fn result-fn]
+           (let [capture-rff (fn capture-rff [metadata]
+                               (in-fn (assoc metadata
+                                             :cache-version 3
+                                             :last-ran (t/zoned-date-time)))
+                               (fn
+                                 ([] {:data metadata})
+                                 ([result]
+                                  (in-fn (if (map? result)
+                                           (->
+                                            (m/dissoc-in result [:data :rows])
+                                            (m/dissoc-in [:json_query :lib/metadata]))
+                                           {}))
+                                  result)
+                                 ([result row]
+                                  (in-fn row)
+                                  result)))
+                 make-run (fn [qp _]
+                            (fn [query info]
+                              (qp (assoc query :info info) capture-rff)))]
+             (qp.card/process-query-for-card
+              (:id card) :api
+              :make-run make-run
+              :context :report))
+           (t2/insert! :model/ReportRunCardData
+                       {:run_id run-id
+                        :card_id (:id card)
+                        :data (result-fn)}))))
 
       (t2/update! :model/ReportRun run-id {:status :finished})
       (catch Exception e
@@ -140,7 +110,7 @@
 
   (let [latest-run (t2/select-one :model/ReportRun
                                   :version_id report-version-id
-                                  {:order-by [[:created_at :desc]]})]
+                                  {:order-by [[:created_at :desc] [:id :desc]]})]
     (api/check-404 latest-run)
     (first (t2/hydrate [latest-run] :user))))
 
@@ -229,7 +199,7 @@
   ;; Get the latest run for this version
   (let [latest-run (t2/select-one :model/ReportRun
                                   :version_id report-version-id
-                                  {:order-by [[:created_at :desc]]})]
+                                  {:order-by [[:created_at :desc] [:id :desc]]})]
     (api/check-404 latest-run)
 
     ;; Get the card data for the latest run

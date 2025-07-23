@@ -9,6 +9,8 @@
   (:import
    (java.io ByteArrayInputStream)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn with-reports-feature
@@ -37,16 +39,10 @@
 
 (deftest create-report-run-test
   (testing "POST /api/ee/report/:report-id/version/:report-version-id/run"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {table-id :id} {:db_id db-id}
-                   :model/Field {field-id :id} {:table_id table-id
-                                                :name "field"}
-                   :model/Report {report-id :id} {:name "Test Report"}
+    (mt/with-temp [:model/Report {report-id :id} {:name "Test Report"}
                    :model/ReportVersion {version-id :id} {:report_id report-id}
                    :model/Card {card-id :id} {:name "Test Card"
-                                              :dataset_query {:database db-id
-                                                              :type :query
-                                                              :query {:source-table table-id}}
+                                              :dataset_query (mt/mbql-query orders)
                                               :report_document_version_id version-id}]
 
       (testing "should create a new report run with in-progress status and save card data"
@@ -174,147 +170,147 @@
                               :get 404
                               (format "ee/report/%d/version/99999/run/latest" report-id))))))
 
-(deftest run-report-with-pivot-query-test
-  (testing "POST /api/ee/report/:report-id/version/:report-version-id/run with pivot table"
+(deftest run-report-with-regular-cards-test
+  (testing "POST /api/ee/report/:report-id/version/:report-version-id/run with regular cards"
     (mt/dataset test-data
-      (mt/with-temp [:model/Report {report-id :id} {:name "Test Report with Pivots"}
-                     :model/ReportVersion {version-id :id} {:report_id report-id}]
+      (mt/with-temp [:model/Report {report-id :id} {:name "Test Report with Regular Cards"}
+                     :model/ReportVersion {version-id :id} {:report_id report-id}
+                     :model/Card {card-id :id}
+                     {:name "Regular Card"
+                      :display :table
+                      :dataset_query (mt/mbql-query orders
+                                       {:aggregation [[:count]]
+                                        :limit 1})
+                      :report_document_version_id version-id}]
+        ;; Run the report
+        (let [response (mt/user-http-request :crowberto
+                                             :post 200
+                                             (format "ee/report/%d/version/%d/run" report-id version-id))]
+          ;; Verify the run completed successfully
+          (is (= "finished" (:status response)))
+          ;; Verify a run was created
+          (let [runs (t2/select :model/ReportRun :version_id version-id)]
+            (is (= 1 (count runs)))
+            (is (= :finished (:status (first runs))))
 
-        (testing "should handle regular non-pivot cards normally and save results"
-          (mt/with-temp [:model/Card {card-id :id}
-                         {:name "Regular Card"
-                          :display :table
-                          :dataset_query (mt/mbql-query orders
-                                           {:aggregation [[:count]]
-                                            :limit 1})
-                          :report_document_version_id version-id}]
-            ;; Run the report
-            (let [response (mt/user-http-request :crowberto
-                                                 :post 200
-                                                 (format "ee/report/%d/version/%d/run" report-id version-id))]
-              ;; Verify the run completed successfully
-              (is (= "finished" (:status response)))
-              ;; Verify a run was created
-              (let [runs (t2/select :model/ReportRun :version_id version-id)]
-                (is (= 1 (count runs)))
-                (is (= :finished (:status (first runs))))
+            ;; Verify card data was saved
+            (let [run-id (:id (first runs))
+                  card-data (t2/select-one :model/ReportRunCardData
+                                           :run_id run-id
+                                           :card_id card-id)]
+              (is (some? card-data))
+              (is (some? (:data card-data)))
 
-                ;; Verify card data was saved
-                (let [run-id (:id (first runs))
-                      card-data (t2/select-one :model/ReportRunCardData
-                                               :run_id run-id
-                                               :card_id card-id)]
-                  (is (some? card-data))
-                  (is (some? (:data card-data)))
+              ;; Verify the results contain expected data
+              (let [deserialized (deserialize-results (:data card-data))]
+                (is (seq deserialized))
+                ;; Should have metadata, rows, and final metadata
+                (is (>= (count deserialized) 2))))))))))
 
-                  ;; Verify the results contain expected data
-                  (let [deserialized (deserialize-results (:data card-data))]
-                    (is (seq deserialized))
-                    ;; Should have metadata, rows, and final metadata
-                    (is (>= (count deserialized) 2))))))))
+(deftest run-report-with-pivot-cards-test
+  (testing "POST /api/ee/report/:report-id/version/:report-version-id/run with pivot cards"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Report {report-id :id} {:name "Test Report with Pivot Cards"}
+                     :model/ReportVersion {version-id :id} {:report_id report-id}
+                     :model/Card {pivot-card-id :id}
+                     {:name "Pivot Card"
+                      :display :pivot
+                      :dataset_query (mt/mbql-query orders
+                                       {:aggregation [[:count]]
+                                        :breakout [$product_id->products.category
+                                                   $user_id->people.source]
+                                        :limit 5})
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows ["CATEGORY"]
+                                                :columns ["SOURCE"]
+                                                :values ["count"]}}
+                      :report_document_version_id version-id}]
+        ;; Run the report
+        (let [response (mt/user-http-request :crowberto
+                                             :post 200
+                                             (format "ee/report/%d/version/%d/run" report-id version-id))]
+          ;; Verify the run completed successfully
+          (is (= "finished" (:status response)))
+          ;; Verify a run was created
+          (let [runs (t2/select :model/ReportRun :version_id version-id)]
+            (is (= 1 (count runs)))
+            (is (= :finished (:status (first runs))))
 
-        (testing "should handle pivot cards successfully and save results"
-          ;; Clean up previous runs
-          (t2/delete! :model/ReportRun :version_id version-id)
+            ;; Verify pivot card data was saved
+            (let [run-id (:id (first runs))
+                  card-data (t2/select-one :model/ReportRunCardData
+                                           :run_id run-id
+                                           :card_id pivot-card-id)]
+              (is (some? card-data))
+              (is (some? (:data card-data)))
 
-          (mt/with-temp [:model/Card {pivot-card-id :id}
-                         {:name "Pivot Card"
-                          :display :pivot
-                          :dataset_query (mt/mbql-query orders
-                                           {:aggregation [[:count]]
-                                            :breakout [$product_id->products.category
-                                                       $user_id->people.source]
-                                            :limit 5})
-                          :visualization_settings {:pivot_table.column_split
-                                                   {:rows ["CATEGORY"]
-                                                    :columns ["SOURCE"]
-                                                    :values ["count"]}}
-                          :report_document_version_id version-id}]
-            ;; Run the report
-            (let [response (mt/user-http-request :crowberto
-                                                 :post 200
-                                                 (format "ee/report/%d/version/%d/run" report-id version-id))]
-              ;; Verify the run completed successfully
-              (is (= "finished" (:status response)))
-              ;; Verify a run was created
-              (let [runs (t2/select :model/ReportRun :version_id version-id)]
-                (is (= 1 (count runs)))
-                (is (= :finished (:status (first runs))))
+              ;; Verify the pivot results
+              (let [deserialized (deserialize-results (:data card-data))]
+                (is (seq deserialized))
+                (is (>= (count deserialized) 2))))))))))
 
-                ;; Verify pivot card data was saved
-                (let [run-id (:id (first runs))
-                      card-data (t2/select-one :model/ReportRunCardData
-                                               :run_id run-id
-                                               :card_id pivot-card-id)]
-                  (is (some? card-data))
-                  (is (some? (:data card-data)))
+(deftest run-report-with-mixed-card-types-test
+  (testing "POST /api/ee/report/:report-id/version/:report-version-id/run with multiple mixed card types"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Report {report-id :id} {:name "Test Report with Mixed Cards"}
+                     :model/ReportVersion {version-id :id} {:report_id report-id}
+                     :model/Card {regular-card-id :id}
+                     {:name "Regular Card"
+                      :display :table
+                      :dataset_query (mt/mbql-query products
+                                       {:aggregation [[:count]]
+                                        :breakout [$category]
+                                        :limit 2})
+                      :report_document_version_id version-id}
+                     :model/Card {pivot-card-id :id}
+                     {:name "Pivot Card"
+                      :display :pivot
+                      :dataset_query (mt/mbql-query orders
+                                       {:aggregation [[:sum $subtotal]]
+                                        :breakout [$product_id->products.category
+                                                   $created_at]
+                                        :limit 10})
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values ["sum"]}}
+                      :report_document_version_id version-id}
+                     :model/Card {another-regular-card-id :id}
+                     {:name "Another Regular Card"
+                      :display :bar
+                      :dataset_query (mt/mbql-query reviews
+                                       {:aggregation [[:avg $rating]]
+                                        :breakout [$product_id->products.category]
+                                        :limit 3})
+                      :report_document_version_id version-id}]
+        ;; Run the report with all three cards
+        (let [response (mt/user-http-request :crowberto
+                                             :post 200
+                                             (format "ee/report/%d/version/%d/run" report-id version-id))]
+          ;; Verify the run completed successfully
+          (is (= "finished" (:status response)))
+          ;; Verify a run was created
+          (let [runs (t2/select :model/ReportRun :version_id version-id)]
+            (is (= 1 (count runs)))
+            (is (= :finished (:status (first runs))))
 
-                  ;; Verify the pivot results
-                  (let [deserialized (deserialize-results (:data card-data))]
-                    (is (seq deserialized))
-                    (is (>= (count deserialized) 2))))))))
+            ;; Verify all three cards have saved data
+            (let [run-id (:id (first runs))
+                  all-card-data (t2/select :model/ReportRunCardData :run_id run-id)]
+              (is (= 3 (count all-card-data)))
 
-        (testing "should handle multiple cards with mixed display types and save all results"
-          ;; Clean up previous runs
-          (t2/delete! :model/ReportRun :version_id version-id)
+              ;; Verify each card's data
+              (doseq [card-data all-card-data]
+                (is (some? (:data card-data)))
+                (is (instance? (Class/forName "[B") (:data card-data)))
 
-          (mt/with-temp [:model/Card {regular-card-id :id}
-                         {:name "Regular Card"
-                          :display :table
-                          :dataset_query (mt/mbql-query products
-                                           {:aggregation [[:count]]
-                                            :breakout [$category]
-                                            :limit 2})
-                          :report_document_version_id version-id}
-                         :model/Card {pivot-card-id :id}
-                         {:name "Pivot Card"
-                          :display :pivot
-                          :dataset_query (mt/mbql-query orders
-                                           {:aggregation [[:sum $subtotal]]
-                                            :breakout [$product_id->products.category
-                                                       $created_at]
-                                            :limit 10})
-                          :visualization_settings {:pivot_table.column_split
-                                                   {:rows ["CATEGORY"]
-                                                    :columns ["CREATED_AT"]
-                                                    :values ["sum"]}}
-                          :report_document_version_id version-id}
-                         :model/Card {another-regular-card-id :id}
-                         {:name "Another Regular Card"
-                          :display :bar
-                          :dataset_query (mt/mbql-query reviews
-                                           {:aggregation [[:avg $rating]]
-                                            :breakout [$product_id->products.category]
-                                            :limit 3})
-                          :report_document_version_id version-id}]
-            ;; Run the report with all three cards
-            (let [response (mt/user-http-request :crowberto
-                                                 :post 200
-                                                 (format "ee/report/%d/version/%d/run" report-id version-id))]
-              ;; Verify the run completed successfully
-              (is (= "finished" (:status response)))
-              ;; Verify a run was created
-              (let [runs (t2/select :model/ReportRun :version_id version-id)]
-                (is (= 1 (count runs)))
-                (is (= :finished (:status (first runs))))
+                ;; Verify we can deserialize each result
+                (let [deserialized (deserialize-results (:data card-data))]
+                  (is (seq deserialized))
+                  (is (>= (count deserialized) 2))))))
 
-                ;; Verify all three cards have saved data
-                (let [run-id (:id (first runs))
-                      all-card-data (t2/select :model/ReportRunCardData :run_id run-id)]
-                  (is (= 3 (count all-card-data)))
-
-                  ;; Verify each card's data
-                  (doseq [card-data all-card-data]
-                    (is (some? (:data card-data)))
-                    (is (instance? (Class/forName "[B") (:data card-data)))
-
-                    ;; Verify we can deserialize each result
-                    (let [deserialized (deserialize-results (:data card-data))]
-                      (is (seq deserialized))
-                      (is (>= (count deserialized) 2))))))
-
-              ;; All cards should have been processed without errors
-              (is (= 3 (count (t2/select :model/Card :report_document_version_id version-id)))))))))))
+          ;; All cards should have been processed without errors
+          (is (= 3 (count (t2/select :model/Card :report_document_version_id version-id)))))))))
 
 (deftest error-handling-test
   (testing "POST /api/ee/report/:report-id/version/:report-version-id/run handles errors gracefully"
@@ -324,9 +320,6 @@
                    :model/ReportVersion {version-id :id} {:report_id report-id}
                    ;; Create a card with an invalid query that will fail
                    :model/Card {card-id :id} {:name "Bad Card"
-                                              :dataset_query {:database db-id
-                                                              :type :query
-                                                              :query {:source-table 999999}} ; Non-existent table
                                               :report_document_version_id version-id}]
 
       (testing "should mark run as errored when query execution fails"
@@ -420,16 +413,11 @@
                                         report-id version-id card-id)))
 
         ;; Run the report multiple times
-        (let [run1-response (mt/user-http-request :crowberto
-                                                  :post 200
-                                                  (format "ee/report/%d/version/%d/run"
-                                                          report-id version-id))
-              run1-id (:id run1-response)
-
-              ;; Wait a bit and run again to ensure different timestamps
-              _ (Thread/sleep 100)
-
-              run2-response (mt/user-http-request :crowberto
+        (mt/user-http-request :crowberto
+                              :post 200
+                              (format "ee/report/%d/version/%d/run"
+                                      report-id version-id))
+        (let [run2-response (mt/user-http-request :crowberto
                                                   :post 200
                                                   (format "ee/report/%d/version/%d/run"
                                                           report-id version-id))
@@ -498,13 +486,13 @@
                                                     :get 200
                                                     (format "ee/report/%d/version/%d/run/%d/card/%d"
                                                             report-id version-id run-id pivot-card-id))]
-              (prn response)
               ;; Verify pivot data structure
               (is (map? response))
               (is (contains? response :data))
               (is (contains? (:data response) :rows))
               (is (contains? (:data response) :cols))
               ;; Pivot queries typically have specific column structure
+              (is (seq (get-in response [:data :rows])))
               (is (seq (get-in response [:data :cols])))))
 
           (testing "should return pivot card data for latest run"
@@ -517,4 +505,3 @@
               (is (contains? response :data))
               (is (contains? (:data response) :rows))
               (is (contains? (:data response) :cols)))))))))
-
