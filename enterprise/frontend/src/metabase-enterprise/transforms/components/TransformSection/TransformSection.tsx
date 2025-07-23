@@ -15,6 +15,8 @@ import {
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
+import { SCHEDULE_OPTIONS } from "./constants";
+
 export function TransformSection({ transformId }: TransformSectionProps) {
   const { data: transform } = useGetTransformQuery(transformId);
 
@@ -66,14 +68,16 @@ function TransformSettings({ transform }: TransformSettingsProps) {
         </Card>
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">
-            <Group justify="space-between">
-              <Title order={4}>{t`Schedule`}</Title>
-              <Button>{t`Run now`}</Button>
-            </Group>
-            <Select label={t`How often should this transform run?`} />
+            <Title order={4}>{t`Schedule`}</Title>
+            <Select
+              label={t`How often should this transform run?`}
+              data={SCHEDULE_OPTIONS}
+              value={transform.schedule ?? ""}
+            />
           </Stack>
         </Card>
         <Group>
+          <Button>{t`Run now`}</Button>
           <Button>{t`Delete`}</Button>
         </Group>
       </Stack>
