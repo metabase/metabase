@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "split-embed-settings",
-    "hash": "3441035d2daa3f0c11d6fe19d15a6b82cf3eb24c"
+    "name": "master",
+    "hash": "3df17fd3a84992d20e2e1931d4ae0a0a3cc47083"
   },
   "upstream": {
     "branch": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin"
