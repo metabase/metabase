@@ -434,10 +434,10 @@
                                      ;; this test to fail based on shuffling the order of these joined fields, just
                                      ;; edit the expectation to match the new order.
                                      ;; Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                                      PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY]
+                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
+                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
                          :from      [ORDERS]
                          :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID

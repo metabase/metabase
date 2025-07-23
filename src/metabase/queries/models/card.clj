@@ -685,11 +685,18 @@
   card)
 
 ;; Schema upgrade: 21 to 22 ==========================================================================================
+;; Two bugs during development of the field refs overhaul resulted in bad `:ident`s being saved into
+;; `:result_metadata` in certain cases.
+;; - Early on, some old "field__Database__Schema__TableName__FieldName" idents got saved for models.
+;; - A bug in #56244 computed bad idents given a fresh column (like an aggregation) while the source was a model.
+;; To avoid both of these issues, the upgrade to 22 simply discards any old idents.
 ;;
-;; This originally added a new `:ident` to result metadata. Now that idents have been removed entirely, this is a no-op.
+;; NOTE: the idents project was ultimately abandoned and `:ident` and `:model/inner_ident` are no longer populated or
+;; used.
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
-  card)
+  (update card :result_metadata (fn [cols]
+                                  (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
 (mu/defn- upgrade-card-schema-to-latest :- [:map
                                             [:result_metadata {:optional true} [:maybe
