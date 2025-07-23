@@ -294,6 +294,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", 'theme: {"brand":"#FF0000"}');
+
+    codeBlock().should("contain", '"theme": {');
+    codeBlock().should("contain", '"colors": {');
+    codeBlock().should("contain", '"brand": "#FF0000"');
   });
 });
