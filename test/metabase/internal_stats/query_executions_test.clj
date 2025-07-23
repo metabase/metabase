@@ -7,8 +7,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(def ^:private embedding-clients ["embedding-sdk-react" "custom-app-backend"])
-
 (def ^:private query-execution-defaults
   {:hash         (qp.util/query-hash {})
    :running_time 1
@@ -77,6 +75,7 @@
                      :model/QueryExecution _ yesterday-defaults
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-sdk-react")
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "custom-app-backend")
+                     :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc yesterday-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc yesterday-defaults
                                                     :embedding_client "embedding-iframe"
