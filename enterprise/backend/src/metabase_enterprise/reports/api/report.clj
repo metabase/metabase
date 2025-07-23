@@ -1,29 +1,33 @@
 (ns metabase-enterprise.reports.api.report
-  (:require [metabase.api.common :as api]
+  (:require [clojure.set :as set]
+            [metabase.api.common :as api]
             [metabase.api.macros :as api.macros]
             [metabase.api.routes.common :refer [+auth]]
             [metabase.models.interface :as mi]
             [metabase.util.malli.schema :as ms]
             [toucan2.core :as t2]))
 
+(defn- report-query [where-clause]
+  {:select   [:report.id
+              :name
+              :document
+              :content_type
+              [:version_identifier :version]
+              [:report.created_at :created_at]
+              [:report.updated_at :updated_at]]
+   :from     [[(t2/table-name :model/Report) :report]]
+   :join     [[(t2/table-name :model/ReportVersion) :ver] [:= :report.current_version_id :ver.id]]
+   :order-by [[:report.id :asc]]
+   :where    where-clause})
+
 (defn- get-report [id]
-  (api/check-404 (t2/query-one {:select [:report.id
-                                         :name
-                                         :document
-                                         :content_type
-                                         [:version_identifier :version]
-                                         [:report.created_at :created_at]
-                                         [:report.updated_at :updated_at]]
-                                :from   [[(t2/table-name :model/Report) :report]]
-                                :join   [[(t2/table-name :model/ReportVersion) :ver] [:= :report.current_version_id :ver.id]]
-                                :where  [:= :report.id id]})))
+  (api/check-404 (t2/query-one (report-query [:= :report.id id]))))
 
-(api.macros/defendpoint :get "/:report-id"
-  "Returns an existing Report by ID."
-  [{:keys [report-id]} :- [:map
-                           [:report-id ms/PositiveInt]]]
-
-  (get-report report-id))
+(api.macros/defendpoint :get "/"
+  "Gets existing `Reports`."
+  [_route-params
+   _query-params]
+  (t2/query (report-query [:= 1 1])))
 
 (api.macros/defendpoint :post "/"
   "Create a new `Report`."
@@ -46,6 +50,13 @@
                       _ (t2/update! :conn conn :model/Report report-id {:current_version_id report-version-id})]
                   report-id))))
 
+(api.macros/defendpoint :get "/:report-id"
+  "Returns an existing Report by ID."
+  [{:keys [report-id]} :- [:map
+                           [:report-id ms/PositiveInt]]]
+
+  (get-report report-id))
+
 (api.macros/defendpoint :put "/:report-id"
   "Updates an existing `Report`."
   [{:keys [report-id]} :- [:map
@@ -66,6 +77,17 @@
                                                                           :current_version_id new-report-version-id
                                                                           :updated_at         (mi/now)})]
                     report-id)))))
+
+(api.macros/defendpoint :get "/:report-id/versions"
+  "Returns the versions of a given report."
+  [{:keys [report-id]} :- [:map
+                           [:report-id ms/PositiveInt]]]
+  (api/check-404 (t2/exists? :model/Report :id report-id))
+  (map #(-> %
+            (select-keys [:id :document :content_type :version_identifier :user_id :created_at :parent_version_id])
+            (set/rename-keys {:version_identifier :version
+                              :user_id            :creator}))
+       (t2/select :model/ReportVersion :report_id report-id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/report/` routes."
