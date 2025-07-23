@@ -1,8 +1,11 @@
 (ns metabase-enterprise.legos.actions
   (:require
+   [clojure.edn :as edn]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.driver :as driver]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (defn- dispatch-execute [& [lego]]
@@ -69,3 +72,21 @@
   [plan]
   (doseq [step (:steps plan)]
     (execute! step)))
+
+(defn hippie-parse
+  "Do a very hippie style parsing of the data."
+  [data-string]
+  (try
+    (yaml/parse-string data-string)
+    (catch Exception e-yaml
+      (try
+        (json/decode data-string keyword)
+        (catch Exception e-json
+          (try
+            (edn/read-string data-string)
+            (catch Exception e-edn
+              (throw (ex-info "Cannot parse as yaml, json, or edn. Failing."
+                              {:data-string data-string
+                               :yaml-error e-yaml
+                               :json-error e-json
+                               :edn-error  e-edn})))))))))
