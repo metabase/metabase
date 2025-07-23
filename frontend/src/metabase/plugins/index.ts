@@ -794,6 +794,7 @@ export type UseFetchTransformsData = {
 };
 
 export type UseFetchTransformsState = {
+  isFetching: boolean;
   isError: boolean;
 };
 

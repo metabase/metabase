@@ -103,16 +103,16 @@
 (api.macros/defendpoint :post "/"
   [_route-params
    _query-params
-   {:keys [name source target] :as body} :- [:map
-                                             [:name :string]
-                                             [:source ::transform-source]
-                                             [:target ::transform-target]]]
+   body :- [:map
+            [:name :string]
+            [:description {:optional true} [:maybe :string]]
+            [:source ::transform-source]
+            [:target ::transform-target]]]
   (api/check-superuser)
   (when (target-table-exists? body)
     (api/throw-403))
-  (let [transform (t2/insert-returning-instance! :model/Transform {:name name
-                                                                   :source source
-                                                                   :target target})]
+  (let [transform (t2/insert-returning-instance!
+                   :model/Transform (select-keys body [:name :description :source :target]))]
     (exec-transform transform)
     transform))
 
@@ -129,6 +129,7 @@
    _query-params
    body :- [:map
             [:name {:optional true} :string]
+            [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
             [:target {:optional true} ::transform-target]]]
   (log/info "put transform" id)
