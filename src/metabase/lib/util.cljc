@@ -277,22 +277,23 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(def LegacyOrPMBQLQuery
-  "Schema for a map that is either a legacy query OR a pMBQL query."
+(mr/def ::legacy-or-mbql-5-query
+  "Schema for a map that is either a legacy query OR a MBQL 5 query."
   [:or
    [:map
     {:error/message "legacy query"}
     [:type [:enum :native :query]]]
    [:map
-    {:error/message "pMBQL query"}
+    {:error/message "MBQL 5 query"}
     [:lib/type [:= :mbql/query]]]])
 
-(mu/defn pipeline
+(mu/defn pipeline :- [:map
+                      [:lib/type [:= :mbql/query]]]
   "Ensure that a `query` is in the general shape of a pMBQL query. This doesn't walk the query and fix everything! The
   goal here is just to make sure we have `:stages` in the correct place and the like. See [[metabase.lib.convert]] for
   functions that actually ensure all parts of the query match the pMBQL schema (they use this function as part of that
   process.)"
-  [query :- LegacyOrPMBQLQuery]
+  [query :- ::legacy-or-mbql-5-query]
   (if (= (:lib/type query) :mbql/query)
     query
     (case (:type query)
@@ -345,7 +346,7 @@
 (mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
-  [query        :- LegacyOrPMBQLQuery
+  [query        :- ::legacy-or-mbql-5-query
    stage-number :- :int]
   (let [{:keys [stages], :as query} (pipeline query)]
     (get (vec stages) (canonical-stage-index query stage-number))))
@@ -362,7 +363,7 @@
     (apply f stage args)
 
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
-  [query        :- LegacyOrPMBQLQuery
+  [query        :- ::legacy-or-mbql-5-query
    stage-number :- :int
    f & args]
   (let [{:keys [stages], :as query} (pipeline query)
@@ -372,7 +373,7 @@
 
 (mu/defn drop-later-stages :- ::lib.schema/query
   "Drop any stages in the `query` that come after `stage-number`."
-  [query        :- LegacyOrPMBQLQuery
+  [query        :- ::legacy-or-mbql-5-query
    stage-number :- :int]
   (cond-> (pipeline query)
     (not (last-stage? query stage-number))

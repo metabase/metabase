@@ -90,10 +90,7 @@
 
 (defn- remove-namespaced-options [options]
   (when options
-    (not-empty (into {}
-                     (remove (fn [[k _]]
-                               (qualified-keyword? k)))
-                     options))))
+    (not-empty (m/filter-keys simple-keyword? options))))
 
 (defn normalize-clause
   "Normalize a `:field`/`:expression`/`:aggregation` clause by removing extra info so it can serve as a key for
