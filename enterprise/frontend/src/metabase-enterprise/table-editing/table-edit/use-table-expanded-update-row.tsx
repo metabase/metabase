@@ -10,12 +10,16 @@ import {
 } from "../api/types";
 
 import { useActionFormDescription } from "./use-table-action-form-description";
-import type { TableRowUpdateHandler } from "./use-table-crud";
+import type {
+  TableRowDeleteHandler,
+  TableRowUpdateHandler,
+} from "./use-table-crud";
 
 type UseTableExpandedUpdateRowProps = {
   datasetData?: DatasetData;
   scope: TableEditingActionScope;
   handleRowUpdate: TableRowUpdateHandler;
+  handleRowDelete: TableRowDeleteHandler;
 };
 
 export type ExpandedRow = {
@@ -27,6 +31,7 @@ export function useTableExpandedUpdateRow({
   datasetData,
   scope,
   handleRowUpdate,
+  handleRowDelete,
 }: UseTableExpandedUpdateRowProps) {
   const [expandedRow, setExpandedRow] = useState<ExpandedRow | null>(null);
 
@@ -66,6 +71,14 @@ export function useTableExpandedUpdateRow({
     [expandedRow, handleRowUpdate],
   );
 
+  const handleExpandedRowDelete = useCallback(() => {
+    if (!expandedRow) {
+      return Promise.resolve(false);
+    }
+
+    return handleRowDelete(expandedRow.input);
+  }, [expandedRow, handleRowDelete]);
+
   const { data: formDescription } = useActionFormDescription({
     actionId: TableActionId.UpdateRow,
     scope,
@@ -75,6 +88,7 @@ export function useTableExpandedUpdateRow({
     expandedRow,
     handleExpandRow,
     handleExpandedRowUpdate,
+    handleExpandedRowDelete,
     closeExpandedRow,
     formDescription,
   };

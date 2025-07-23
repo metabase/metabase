@@ -19,6 +19,10 @@
   overflow-y: scroll;
 }
 
+.modalBodyLoader {
+  grid-column: 1 / -1;
+}
+
 .modalBodyEditing {
   max-height: calc(100vh - (var(--modal-y-offset) * 2) - rem(80) /* header */);
 }

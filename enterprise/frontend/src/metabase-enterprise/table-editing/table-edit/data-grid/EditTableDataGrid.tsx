@@ -108,11 +108,15 @@ export const EditTableDataGrid = ({
       },
 
       // Overrides theme constants and default bg
-      bodyCell: {
-        backgroundColor: undefined,
+      styles: {
+        bodyCell: {
+          backgroundColor: undefined,
+        },
       },
-      cell: {
-        backgroundColor: "",
+      theme: {
+        cell: {
+          backgroundColor: "",
+        },
       },
     }),
     [],

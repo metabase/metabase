@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   ParameterActionInput,
   type ParameterActionInputProps,
-} from "../inputs/ParameterActionInput";
+} from "../../inputs/ParameterActionInput";
 
 export function ModalParameterActionInput(props: ParameterActionInputProps) {
   const { parameter, ...rest } = props;

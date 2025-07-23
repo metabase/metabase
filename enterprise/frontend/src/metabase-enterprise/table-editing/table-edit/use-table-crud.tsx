@@ -14,10 +14,7 @@ import type {
 } from "../api/types";
 
 import { useTableEditingToastController } from "./toasts/use-table-editing-toast-controller";
-import type {
-  OptimisticUpdatePatchResult,
-  TableEditingStateUpdateStrategy,
-} from "./use-table-state-update-strategy";
+import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 
 type UseTableCRUDProps = {
   scope: TableEditingActionScope;
@@ -28,9 +25,13 @@ type UseTableCRUDProps = {
 export type TableRowUpdateHandler = (props: {
   input: RowCellsWithPkValue;
   params: RowCellsWithPkValue;
-  optimisticUpdate?: boolean;
-  onDismissError?: () => void;
+  shouldPerformOptimisticUpdate?: boolean;
 }) => Promise<boolean>;
+
+export type TableRowDeleteHandler = (
+  input: RowCellsWithPkValue,
+  cascadeDelete?: boolean,
+) => Promise<boolean>;
 
 export const useTableCRUD = ({
   scope,
@@ -50,13 +51,11 @@ export const useTableCRUD = ({
     async ({
       inputs,
       params,
-      optimisticUpdate,
-      onDismissError,
+      shouldPerformOptimisticUpdate,
     }: {
       inputs: RowCellsWithPkValue[];
       params: RowCellsWithPkValue;
-      optimisticUpdate?: boolean;
-      onDismissError?: () => void;
+      shouldPerformOptimisticUpdate?: boolean;
     }) => {
       if (!datasetData) {
         console.warn(
@@ -65,14 +64,13 @@ export const useTableCRUD = ({
         return false;
       }
 
-      let patchResult: OptimisticUpdatePatchResult | void;
-      if (optimisticUpdate) {
+      if (shouldPerformOptimisticUpdate) {
         const updatedRows = inputs.map((input) => ({
           ...input,
           ...params,
         }));
 
-        patchResult = stateUpdateStrategy.onRowsUpdated(updatedRows);
+        stateUpdateStrategy.onRowsUpdated(updatedRows);
       }
 
       try {
@@ -89,10 +87,7 @@ export const useTableCRUD = ({
 
           toastController.showSuccessToast(t`Successfully updated`);
         } else {
-          toastController.showErrorToast(response.error, () => {
-            patchResult?.revert();
-            onDismissError?.();
-          });
+          toastController.showErrorToast(response.error);
         }
 
         return !response.error;
@@ -106,12 +101,11 @@ export const useTableCRUD = ({
   );
 
   const handleRowUpdate = useCallback<TableRowUpdateHandler>(
-    async ({ input, params, optimisticUpdate, onDismissError }) => {
+    async ({ input, params, shouldPerformOptimisticUpdate }) => {
       return handleRowUpdateBulk({
         inputs: [input],
         params,
-        optimisticUpdate,
-        onDismissError,
+        shouldPerformOptimisticUpdate,
       });
     },
     [handleRowUpdateBulk],

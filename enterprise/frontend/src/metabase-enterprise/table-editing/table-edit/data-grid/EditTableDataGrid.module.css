@@ -9,10 +9,6 @@
     background-color: var(--mb-base-color-blue-10);
   }
 
-  &:hover .cellWithUpdateFail {
-    background-color: var(--mb-base-color-dubloon-5);
-  }
-
   &:hover .tableHeaderCell {
     /* Draggable hover highlight for `SortableHeader` */
     box-shadow: none;
@@ -28,6 +24,10 @@
   --cell-hover-bg-color: var(--mb-base-color-orion-5);
 
   background-color: var(--mb-base-color-orion-5);
+
+  & .tableRow {
+    background-color: transparent;
+  }
 }
 
 .tableHeaderCell {
@@ -62,16 +62,4 @@
 .sortIndicator {
   flex-shrink: 0;
   margin-left: 0.25rem;
-}
-
-.readonlyCell {
-  color: var(--mb-color-text-disabled);
-  cursor: not-allowed;
-}
-
-.cellWithUpdateFail {
-  background-color: var(--mb-base-color-dubloon-5);
-  outline: 2px solid var(--mb-base-color-dubloon-30);
-  outline-offset: -2px;
-  border-radius: 0.25rem;
 }

@@ -11,13 +11,14 @@ import type { TableEditingActionScope } from "../api/types";
 import { TableHeader } from "../common/TableHeader";
 import { getRowCountMessage } from "../common/getRowCountMessage";
 import { useCloseNavbarOnMount } from "../common/use-close-navbar-on-mount";
-import { TableActionFormModal } from "../modals/TableActionFormModal";
 import { isDatabaseTableEditingEnabled } from "../settings";
 
 import S from "./EditTableDataContainer.module.css";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditTableDataGrid } from "./data-grid/EditTableDataGrid";
+import { CreateRowActionFormModal } from "./modals/CreateRowActionFormModal";
+import { UpdateRowActionFormModal } from "./modals/UpdateRowActionFormModal";
 import { useEditTableData } from "./use-edit-table-data";
 import { useEditTableLoadingOverlay } from "./use-edit-table-loading-overlay";
 import { useTableCreateRow } from "./use-table-create-row";
@@ -80,12 +81,18 @@ export const EditTableDataContainer = ({
     stateUpdateStrategy,
   });
 
-  const { isInserting, isUpdating, handleRowCreate, handleRowUpdate } =
-    useTableCRUD({
-      scope,
-      datasetData,
-      stateUpdateStrategy,
-    });
+  const {
+    isInserting,
+    isUpdating,
+    isDeleting,
+    handleRowCreate,
+    handleRowUpdate,
+    handleRowDelete,
+  } = useTableCRUD({
+    scope,
+    datasetData,
+    stateUpdateStrategy,
+  });
 
   const loadingOverlayProps = useEditTableLoadingOverlay({
     isDatasetLoading: isLoading,
@@ -105,9 +112,15 @@ export const EditTableDataContainer = ({
     expandedRow,
     handleExpandRow,
     handleExpandedRowUpdate,
+    handleExpandedRowDelete,
     closeExpandedRow,
     formDescription: updateFormDescription,
-  } = useTableExpandedUpdateRow({ scope, datasetData, handleRowUpdate });
+  } = useTableExpandedUpdateRow({
+    scope,
+    datasetData,
+    handleRowUpdate,
+    handleRowDelete,
+  });
 
   if (database && !isDatabaseTableEditingEnabled(database)) {
     return (
@@ -165,9 +178,7 @@ export const EditTableDataContainer = ({
         </Flex>
       )}
 
-      <TableActionFormModal
-        title={t`Create a new record`}
-        submitButtonText={t`Create`}
+      <CreateRowActionFormModal
         opened={isCreateRowModalOpen}
         description={createFromDescription}
         onClose={closeCreateRowModal}
@@ -175,15 +186,15 @@ export const EditTableDataContainer = ({
         isLoading={isInserting}
       />
 
-      <TableActionFormModal
-        title={t`Update a record`}
-        submitButtonText={t`Save`}
+      <UpdateRowActionFormModal
         opened={!!expandedRow}
         initialValues={expandedRow?.params}
         description={updateFormDescription}
         onClose={closeExpandedRow}
         onSubmit={handleExpandedRowUpdate}
+        onDelete={handleExpandedRowDelete}
         isLoading={isUpdating}
+        isDeleting={isDeleting}
       />
     </Stack>
   );

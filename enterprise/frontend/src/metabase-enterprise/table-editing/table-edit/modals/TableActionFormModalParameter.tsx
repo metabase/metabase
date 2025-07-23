@@ -6,7 +6,7 @@ import { Group, Icon, type IconName, Text } from "metabase/ui";
 import {
   TableActionFormInputType,
   type TableActionFormParameter,
-} from "../api/types";
+} from "../../api/types";
 
 import S from "./TableActionFormModal.module.css";
 
