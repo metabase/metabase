@@ -342,6 +342,7 @@ export function QueryModals({
       return (
         <PLUGIN_TRANSFORMS.NewTransformModal
           question={question}
+          opened
           onClose={onCloseModal}
         />
       );

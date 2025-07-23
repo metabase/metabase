@@ -804,6 +804,7 @@ export type UseFetchTransformsResult = [
 
 export type NewTransformModalProps = {
   question: Question;
+  opened: boolean;
   onClose: () => void;
 };
 
