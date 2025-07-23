@@ -1,57 +1,74 @@
-import {
-  findPageBreakCandidates,
-  getPageBreaks,
-  saveDashboardPdf,
-} from "./save-dashboard-pdf";
+import { findPageBreakCandidates, getPageBreaks } from "./save-dashboard-pdf";
 
 describe("saveDashboardPdf filename formatting", () => {
-  it("should format the filename without timezone", () => {
-    // Mock Date to a fixed value
-    const RealDate = Date;
-    global.Date = class extends RealDate {
-      constructor() {
-        super();
-        return new RealDate("2025-07-23T15:30:00");
+  it("should format the filename without timezone", async () => {
+    // Arrange: fixed date and minimal DOM
+    const fixedDate = new Date("2025-07-23T15:30:00");
+    // Minimal DOM structure for selector and gridNode
+    const gridNode = document.createElement("div");
+    gridNode.className = "react-grid-layout";
+    // Set required properties for the test
+    Object.defineProperty(gridNode, "offsetWidth", { value: 100 });
+    Object.defineProperty(gridNode, "offsetHeight", { value: 100 });
+    document.body.appendChild(gridNode);
+    // Patch document.querySelector to return our gridNode
+    const originalQuerySelector = document.querySelector;
+    document.querySelector = (selector: string) => {
+      if (selector === "#fake") {
+        return { querySelector: () => gridNode } as any;
       }
-    } as DateConstructor;
-
-    // We need to extract the filename logic, so let's call the function and intercept the save
-    let savedFileName = "";
-    const originalSave = window.URL.createObjectURL;
-    window.URL.createObjectURL = () => "blob:url";
-    const originalSaveFn = (window as any).saveAs;
-    (window as any).saveAs = (blob: any, fileName: string) => {
-      savedFileName = fileName;
+      return originalQuerySelector.call(document, selector);
     };
 
-    // Patch document.querySelector to avoid DOM errors
-    const originalQuerySelector = document.querySelector;
-    document.querySelector = () =>
-      ({
-        querySelector: () => ({
-          offsetWidth: 100,
-          offsetHeight: 100,
-          getBoundingClientRect: () => ({ top: 0, bottom: 100, height: 100 }),
-          append: () => {},
-          removeChild: () => {},
-          appendChild: () => {},
-        }),
-      }) as any;
+    // Patch jspdf to intercept the save
+    let savedFileName = "";
+    jest.resetModules();
+    jest.doMock("jspdf", () => {
+      return {
+        __esModule: true,
+        default: jest.fn().mockImplementation(() => ({
+          addPage: jest.fn(),
+          deletePage: jest.fn(),
+          setFillColor: jest.fn(),
+          rect: jest.fn(),
+          addImage: jest.fn(),
+          link: jest.fn(),
+          save: (fileName: string) => {
+            savedFileName = fileName;
+          },
+        })),
+      };
+    });
 
-    // Call the function (it will error before saving, but we only care about the filename)
-    saveDashboardPdf({
+    // Patch html2canvas to return a dummy canvas
+    jest.doMock("html2canvas-pro", () => ({
+      __esModule: true,
+      default: async () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 100;
+        canvas.height = 100;
+        const ctx = canvas.getContext("2d");
+        ctx && ctx.fillRect(0, 0, 100, 100);
+        return canvas;
+      },
+    }));
+
+    // Act
+    const { saveDashboardPdf } = await import("./save-dashboard-pdf");
+    await saveDashboardPdf({
       selector: "#fake",
       dashboardName: "TestDash",
       includeBranding: false,
-    }).catch(() => {});
+      now: fixedDate,
+    });
 
-    expect(savedFileName.startsWith("TestDash 2025-07-23 15:30")).toBe(true);
+    // Assert
+    expect(savedFileName).toMatch(/^TestDash 2025-07-23[ ,]15:30/);
 
-    // Restore mocks
-    global.Date = RealDate;
-    window.URL.createObjectURL = originalSave;
-    (window as any).saveAs = originalSaveFn;
+    // Cleanup
     document.querySelector = originalQuerySelector;
+    document.body.removeChild(gridNode);
+    jest.resetModules();
   });
 });
 

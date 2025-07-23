@@ -160,8 +160,9 @@ export const saveDashboardPdf = async ({
   selector,
   dashboardName,
   includeBranding,
-}: SavePdfProps) => {
-  const now = new Date();
+  now: injectedNow,
+}: SavePdfProps & { now?: Date }) => {
+  const now = injectedNow || new Date();
   // Use Intl.DateTimeFormat for locale formatting, exclude timezone for filename
   const dateTimeFormatter = new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
