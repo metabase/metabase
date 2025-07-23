@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import {
+  MetabaseProviderPropsStore,
   type MetabaseProviderPropsToStore,
-  MetabaseProviderStore,
-} from "embedding-sdk/sdk-shared/lib/metabase-provider-store";
+} from "embedding-sdk/sdk-shared/lib/metabase-provider-props-store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 
 type Props = {
@@ -43,7 +43,7 @@ export function MetabaseProviderInner({ store, props, children }: Props) {
     incrementProvidersCount();
 
     if (shouldInitialize()) {
-      MetabaseProviderStore.initialize(props);
+      MetabaseProviderPropsStore.initialize(props);
     } else {
       console.warn(
         // eslint-disable-next-line no-literal-metabase-strings -- Warning message
@@ -57,7 +57,7 @@ export function MetabaseProviderInner({ store, props, children }: Props) {
       decrementProvidersCount();
 
       if (shouldCleanup()) {
-        MetabaseProviderStore.cleanup();
+        MetabaseProviderPropsStore.cleanup();
       }
     };
     // eslint-disable-next-line -- Run on mount only
@@ -65,13 +65,13 @@ export function MetabaseProviderInner({ store, props, children }: Props) {
 
   useEffect(() => {
     if (store && !sdkStoreInitialized) {
-      MetabaseProviderStore.getInstance()?.setSdkStore(store);
+      MetabaseProviderPropsStore.getInstance()?.setSdkStore(store);
       setSdkStoreInitialized(true);
     }
   }, [store, sdkStoreInitialized]);
 
   useEffect(() => {
-    MetabaseProviderStore.getInstance()?.updateProps(props);
+    MetabaseProviderPropsStore.getInstance()?.updateProps(props);
   }, [props]);
 
   return <>{children({ initialized: initialized && sdkStoreInitialized })}</>;

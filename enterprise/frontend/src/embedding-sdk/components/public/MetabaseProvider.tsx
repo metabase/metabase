@@ -5,7 +5,7 @@ import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
 import { useInitData } from "embedding-sdk/hooks";
-import { MetabaseProviderStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-store";
+import { MetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/metabase-provider-props-store";
 import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
@@ -168,7 +168,8 @@ export const MetabaseProvider = memo(function MetabaseProvider(
   const storeRef = useRef<Store<SdkStoreState, Action> | null>(null);
 
   if (!storeRef.current) {
-    const existingStore = MetabaseProviderStore.getInstance()?.getSdkStore();
+    const existingStore =
+      MetabaseProviderPropsStore.getInstance()?.getSdkStore();
 
     storeRef.current = existingStore ?? getSdkStore();
   }
