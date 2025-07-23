@@ -4,7 +4,6 @@ import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 
 import {
-  EmbeddingIframeSdkOptionCard,
   EmbeddingSdkOptionCard,
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
@@ -20,7 +19,6 @@ export function EmbeddingSettingsPage() {
       <StaticEmbeddingOptionCard />
       <InteractiveEmbeddingOptionCard />
       <EmbeddingSdkOptionCard />
-      <EmbeddingIframeSdkOptionCard />
     </SettingsPageWrapper>
   );
 }

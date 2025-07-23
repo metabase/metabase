@@ -1,1 +1,0 @@
-export { EmbeddingIframeSdkOptionCard } from "./EmbeddingIframeSdkOptionCard";
