@@ -402,6 +402,10 @@ class MetabaseEmbedElement extends HTMLElement {
     ];
   }
 
+  updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
+    this._embed?.updateSettings(settings);
+  }
+
   // Property <-> attribute reflection for complex settings
   /**
    * An array of parameter ids that will be passed to the embedded dashboard.
