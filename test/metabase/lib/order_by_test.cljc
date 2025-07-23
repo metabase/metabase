@@ -812,11 +812,18 @@
       (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]
                                     [:asc {} [:field {} (meta/id :venues :name)]]]}]}
               query))
-      (let [query' (-> query
-                       ;; should be a no-op
-                       (lib/order-by (meta/field-metadata :venues :id)))]
-        (is (= query
-               query'))))))
+      (testing "ignore duplicate order by with same direction"
+        (let [query' (-> query
+                         ;; should be a no-op
+                         (lib/order-by (meta/field-metadata :venues :id)))]
+          (is (= query
+                 query'))))
+      (testing "ignore duplicate order by with different direction"
+        (let [query' (-> query
+                         ;; should be a no-op
+                         (lib/order-by (meta/field-metadata :venues :id) :desc))]
+          (is (= query
+                 query')))))))
 
 (deftest ^:parallel orderable-columns-display-info-test
   (let [query (lib.tu/venues-query)]

@@ -73,6 +73,11 @@
    (-> (order-by-clause-method orderable)
        (with-direction (or direction :asc)))))
 
+(defn- order-by-distinct-key
+  "Key for determining whether two order bys are distinct of not for purposes of ignoring duplicates in [[order-by]]."
+  [[_dir _opts expr]]
+  (lib.schema.util/remove-randomized-idents expr))
+
 (mu/defn order-by
   "Add an MBQL order-by clause (i.e., `:asc` or `:desc`) from something that you can theoretically sort by -- maybe a
   Field, or `:field` clause, or expression of some sort, etc.
@@ -92,12 +97,15 @@
    (let [stage-number              (or stage-number -1)
          new-order-by              (cond-> (order-by-clause-method orderable)
                                      direction (with-direction direction))
-         new-order-by-distinct-key (lib.schema.util/remove-randomized-idents new-order-by)]
-     ;; don't add the new order by if a duplicate already exists (QUE-1604)
+
+         new-order-by-distinct-key (order-by-distinct-key new-order-by)]
+     ;; don't add the new order by if a duplicate already exists. Ignore duplicate order bys with different
+     ;; directions, since it doesn't make sense to sort by X ascending and THEN sort by X descending... the second
+     ;; sort won't change anything. (QUE-1604)
      (lib.util/update-query-stage
       query stage-number update :order-by
       (fn [order-bys]
-        (if (some #(= (lib.schema.util/remove-randomized-idents %) new-order-by-distinct-key)
+        (if (some #(= (order-by-distinct-key %) new-order-by-distinct-key)
                   order-bys)
           order-bys
           (conj (vec order-bys) new-order-by)))))))
