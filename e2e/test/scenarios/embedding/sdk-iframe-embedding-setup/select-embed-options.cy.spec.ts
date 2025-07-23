@@ -63,7 +63,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
+    codeBlock().should("contain", 'drills="false"');
   });
 
   it("toggles downloads for dashboard", () => {
@@ -93,7 +93,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
+    codeBlock().should("contain", 'with-downloads="true"');
   });
 
   it("toggles dashboard title for dashboards", () => {
@@ -123,7 +123,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
+    codeBlock().should("contain", 'with-title="false"');
   });
 
   it("toggles drill-through for charts", () => {
@@ -161,7 +161,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
+    codeBlock().should("contain", 'drills="false"');
   });
 
   it("toggles downloads for charts", () => {
@@ -195,7 +195,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
+    codeBlock().should("contain", 'with-downloads="true"');
   });
 
   it("toggles chart title for charts", () => {
@@ -223,7 +223,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
+    codeBlock().should("contain", 'with-title="false"');
   });
 
   it("toggles save button for exploration", () => {
@@ -256,7 +256,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isSaveEnabled": false');
+    codeBlock().should("contain", 'is-save-enabled="false"');
   });
 
   it("can change brand color", () => {
@@ -294,6 +294,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
+
+    codeBlock().should("contain", '"theme": {');
+    codeBlock().should("contain", '"colors": {');
     codeBlock().should("contain", '"brand": "#FF0000"');
   });
 });
