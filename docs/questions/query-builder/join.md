@@ -70,6 +70,19 @@ To use a custom expression to define a join key:
 3. Enter your expression (including a constant like `1`).
 4. Click **Done**.
 
+Another example: Let's say you have:
+ 
+ - A `customers` table that stores names under `first_name` and `last_name`
+ - An `accounts` table stores first and last names in a single column, `full_name`.
+ 
+You could join those tables using a custom expression. The join key for the `customers` table would look something like:
+
+```
+concat([first_name], " ", [last_name])
+```
+
+And the join key for the `accounts` table would simply be the `full_name` column.
+
 See a [list of expressions](./expressions-list.md).
 
 ## Further reading
