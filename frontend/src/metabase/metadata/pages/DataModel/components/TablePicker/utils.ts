@@ -277,6 +277,7 @@ export function useTableLoader(path: TreePath) {
     // we need to manually call the lazy RTK hooks, so that the the updated table
     // is refetched here. We detect this modification with tables.isFetching.
     tables.isFetching,
+    transforms.isFetching,
   ]);
 
   return { tree, reload: load };
