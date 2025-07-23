@@ -16,7 +16,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
+import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import {
   type SdkDashboardDisplayProps,
@@ -294,14 +294,14 @@ const SdkDashboardInner = ({
       {match(finalRenderMode)
         .with("question", () => (
           <SdkDashboardStyledWrapperWithRef className={className} style={style}>
-            <InteractiveAdHocQuestion
+            <SdkAdHocQuestion
               // `adhocQuestionUrl` would have value if renderMode is "question"
               questionPath={adhocQuestionUrl!}
               onNavigateBack={onNavigateBackToDashboard}
               {...drillThroughQuestionProps}
             >
               {AdHocQuestionView && <AdHocQuestionView />}
-            </InteractiveAdHocQuestion>
+            </SdkAdHocQuestion>
           </SdkDashboardStyledWrapperWithRef>
         ))
         .with("dashboard", () => (

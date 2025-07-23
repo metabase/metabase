@@ -7,12 +7,12 @@ import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
 import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
 
-interface InteractiveAdHocQuestionProps {
+interface SdkAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
   onNavigateBack: () => void;
 }
 
-export const InteractiveAdHocQuestion = ({
+export const SdkAdHocQuestion = ({
   questionPath,
   withResetButton = true,
   title,
@@ -31,7 +31,7 @@ export const InteractiveAdHocQuestion = ({
   withDownloads = false,
   initialSqlParameters,
   onNavigateBack,
-}: InteractiveAdHocQuestionProps &
+}: SdkAdHocQuestionProps &
   Pick<
     SdkQuestionProps,
     | "withResetButton"
