@@ -804,6 +804,20 @@
           (is (= "Venues, Sorted by expr ascending"
                  (lib/describe-query updated-query))))))))
 
+(deftest ^:parallel order-by-ignore-duplicates-test
+  (testing "lib/order-by should ignore the new order by if a duplicate already exists (QUE-1604)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/order-by (meta/field-metadata :venues :id))
+                    (lib/order-by (meta/field-metadata :venues :name)))]
+      (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]
+                                    [:asc {} [:field {} (meta/id :venues :name)]]]}]}
+              query))
+      (let [query' (-> query
+                       ;; should be a no-op
+                       (lib/order-by (meta/field-metadata :venues :id)))]
+        (is (= query
+               query'))))))
+
 (deftest ^:parallel orderable-columns-display-info-test
   (let [query (lib.tu/venues-query)]
     (is (=? [{:semantic-type          :type/PK

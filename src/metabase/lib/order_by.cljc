@@ -11,6 +11,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.i18n :as i18n]
@@ -88,11 +89,18 @@
     stage-number :- [:maybe :int]
     orderable    :- some?
     direction    :- [:maybe [:enum :asc :desc]]]
-   (let [stage-number (or stage-number -1)
-         new-order-by (cond-> (order-by-clause-method orderable)
-                        direction (with-direction direction))]
-     (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
-                                                                        (conj (vec order-bys) new-order-by))))))
+   (let [stage-number              (or stage-number -1)
+         new-order-by              (cond-> (order-by-clause-method orderable)
+                                     direction (with-direction direction))
+         new-order-by-distinct-key (lib.schema.util/remove-randomized-idents new-order-by)]
+     ;; don't add the new order by if a duplicate already exists (QUE-1604)
+     (lib.util/update-query-stage
+      query stage-number update :order-by
+      (fn [order-bys]
+        (if (some #(= (lib.schema.util/remove-randomized-idents %) new-order-by-distinct-key)
+                  order-bys)
+          order-bys
+          (conj (vec order-bys) new-order-by)))))))
 
 (mu/defn order-bys :- [:maybe ::lib.schema.order-by/order-bys]
   "Get the order-by clauses in a query."
