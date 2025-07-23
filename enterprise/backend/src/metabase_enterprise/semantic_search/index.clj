@@ -57,8 +57,14 @@
       [:unique [:composite :model :model_id]]]]))
 
 (defn- format-embedding
-  "Formats the embedding vector for SQL insertion."
+  "Formats and validates the embedding vector for SQL insertion."
   [embedding]
+  ;; Validate all values are numeric as a safe-guard against malformed/malicious embeddings
+  (doseq [value embedding]
+    (when-not (number? value)
+      (throw (ex-info "Embedding contains non-numeric value"
+                      {:invalid-value value
+                       :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
 (defn- doc->db-record
@@ -279,12 +285,10 @@
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
-                             [[:raw "row_number() OVER (ORDER BY embedding <=> embedding_param ASC)"] :semantic_rank]]
+                             [[:raw (str "row_number() OVER (ORDER BY embedding <=> " embedding-literal " ASC)")] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
-                    ;; Using a join to parameterize the embedding vector similar to tsvector approach
-                    :join   [[[:lift embedding-literal] :embedding_param] [:= 1 1]]
                     ;; TODO: parameterize max cosine distance
-                    :where [:<= [:raw "embedding <=> embedding_param"] 0.35]
+                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] 0.35]
                     :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
