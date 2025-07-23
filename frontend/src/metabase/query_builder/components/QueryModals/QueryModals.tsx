@@ -340,7 +340,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.NEW_TRANSFORM:
       return (
-        <PLUGIN_TRANSFORMS.NewTransformFromQueryModal
+        <PLUGIN_TRANSFORMS.NewTransformModal
           question={question}
           onClose={onCloseModal}
         />

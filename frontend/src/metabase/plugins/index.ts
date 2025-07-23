@@ -80,6 +80,7 @@ import type {
   Timeline,
   TimelineEvent,
   Transform,
+  TransformId,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -801,17 +802,23 @@ export type UseFetchTransformsResult = [
   UseFetchTransformsState,
 ];
 
-export type NewTransformFromQueryModalProps = {
+export type NewTransformModalProps = {
   question: Question;
   onClose: () => void;
 };
 
+export type TransformSectionProps = {
+  transformId: TransformId;
+};
+
 export type TransformsPlugin = {
   useFetchTransforms(): UseFetchTransformsResult;
-  NewTransformFromQueryModal: ComponentType<NewTransformFromQueryModalProps>;
+  TransformSection: ComponentType<TransformSectionProps>;
+  NewTransformModal: ComponentType<NewTransformModalProps>;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   useFetchTransforms: () => [() => Promise.resolve({}), { isError: false }],
-  NewTransformFromQueryModal: PluginPlaceholder,
+  TransformSection: PluginPlaceholder,
+  NewTransformModal: PluginPlaceholder,
 };

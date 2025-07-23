@@ -12,6 +12,7 @@ import {
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import S from "./DataModel.module.css";
@@ -37,13 +38,16 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId, transformId } =
+    parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
+  const isTransforms = transformId != null;
+  const isTables = !isSegments && !isTransforms;
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -117,7 +121,11 @@ export const DataModel = ({ children, location, params }: Props) => {
 
       {isSegments && children}
 
-      {!isSegments && (
+      {isTransforms && (
+        <PLUGIN_TRANSFORMS.TransformSection transformId={transformId} />
+      )}
+
+      {isTables && (
         <>
           {databaseId != null &&
             tableId == null &&

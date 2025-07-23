@@ -75,7 +75,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <IndexRedirect to="database" />
           <Route path="database" component={DataModel} />
           <Route path="database/:databaseId" component={DataModel} />
-          <Route path="database/:databaseId/:sectionId" component={DataModel} />
           <Route
             path="database/:databaseId/schema/:schemaId"
             component={DataModel}
@@ -86,6 +85,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+            component={DataModel}
+          />
+          <Route path="database/:databaseId/:sectionId" component={DataModel} />
+          <Route
+            path="database/:databaseId/:sectionId/:transformId"
             component={DataModel}
           />
           <Route component={DataModel}>

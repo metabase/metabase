@@ -40,7 +40,6 @@ import type {
   Task,
   Timeline,
   TimelineEvent,
-  Transform,
   UserInfo,
   WritebackAction,
 } from "metabase-types/api";
@@ -604,18 +603,6 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
 
 export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
   return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
-}
-
-export function provideTransformTags(
-  transform: Transform,
-): TagDescription<TagType>[] {
-  return [idTag("transform", transform.id)];
-}
-
-export function provideTransformListTags(
-  transforms: Transform[],
-): TagDescription<TagType>[] {
-  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
 }
 
 export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
