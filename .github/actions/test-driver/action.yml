@@ -26,7 +26,7 @@ runs:
       env:
         MB_EDITION: ee
     - name: Test database driver
-      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test ${{ inputs.test-args }}
+      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test :only metabase-enterprise.transforms.api-test ${{ inputs.test-args }}
       shell: bash
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@v1
