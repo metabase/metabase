@@ -6,7 +6,7 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
   softReloadCard,
@@ -73,6 +73,13 @@ export const QuestionMoreActionsMenu = ({
   const hasDataPermissions =
     underlyingQuestion != null &&
     Lib.queryDisplayInfo(underlyingQuestion.query()).isEditable;
+  const canAccessTransforms = useSelector(
+    PLUGIN_TRANSFORMS.canAccessTransforms,
+  );
+  const canCreateTransform =
+    underlyingQuestion != null &&
+    underlyingQuestion.isSaved() &&
+    canAccessTransforms;
 
   const reload = () => dispatch(softReloadCard());
 
@@ -153,7 +160,7 @@ export const QuestionMoreActionsMenu = ({
         {t`Turn into a model`}
       </Menu.Item>
     ),
-    hasDataPermissions && (
+    canCreateTransform && (
       <Menu.Item
         key="transform"
         leftSection={<Icon name="function" />}
