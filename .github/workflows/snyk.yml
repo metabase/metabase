@@ -2,9 +2,9 @@ name: "Snyk"
 
 on:
   push:
-    # branches:
-      # - 'master'
-      # - 'release-**'
+    branches:
+      - 'master'
+      - 'release-**'
     paths:
       - '**/deps.edn'
       - '**/package.json'
@@ -13,12 +13,11 @@ on:
   schedule:
     - cron: '0 5 * * *'
 
-
 jobs:
-  monitor:
-    # don't run this workflow on a cron for forks
+  # Generate pom.xml files for all Maven projects
+  generate-poms:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    name: Generate Snyk report
+    name: Generate pom.xml files
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -26,286 +25,576 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: 'snyk'
-      - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
         run: .github/scripts/write-poms.sh
-      
-      # Main Metabase project (yarn.lock)
-      - name: Run snyk - Main Frontend (yarn)
+      - name: Upload pom files
+        uses: actions/upload-artifact@v4
+        with:
+          name: pom-files
+          path: |
+            pom.xml
+            modules/drivers/*/pom.xml
+
+  # Main Frontend
+  main-frontend:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Main Frontend (yarn)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=yarn.lock --package-manager=yarn --sarif-file-output=snyk-main-frontend.sarif
-      - name: Upload Main Frontend results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-main-frontend.sarif
           category: main-frontend-yarn
-      
-      # Main Metabase project (pom.xml)
-      - name: Run snyk - Main Backend (maven)
+
+  # Main Backend
+  main-backend:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Main Backend (maven)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=pom.xml --package-manager=maven --sarif-file-output=snyk-main-backend.sarif
-      - name: Upload Main Backend results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-main-backend.sarif
           category: main-backend-maven
 
-      # Embedding SDK template
-      - name: Run snyk - Embedding SDK Template
+  # Embedding SDK Template
+  embedding-sdk:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Embedding SDK Template
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=bin/embedding-sdk/templates/yarn.lock --package-manager=yarn --sarif-file-output=snyk-embedding-sdk.sarif
-      - name: Upload Embedding SDK results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-embedding-sdk.sarif
           category: embedding-sdk-template
 
-      # E2E test apps
-      - name: Run snyk - Angular 20 Host App
+  # E2E Angular Host App
+  e2e-angular:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: E2E Angular 20 Host App
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=e2e/embedding-sdk-host-apps/angular-20-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-angular.sarif
-      - name: Upload Angular E2E results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-e2e-angular.sarif
           category: e2e-angular-host
 
-      - name: Run snyk - Next 15 App Router
+  # E2E Next.js App Router
+  e2e-next-app:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: E2E Next 15 App Router
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=e2e/embedding-sdk-host-apps/next-15-app-router-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-next-app.sarif
-      - name: Upload Next App Router results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-e2e-next-app.sarif
           category: e2e-next-app-router
 
-      - name: Run snyk - Next 15 Pages Router
+  # E2E Next.js Pages Router
+  e2e-next-pages:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: E2E Next 15 Pages Router
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=e2e/embedding-sdk-host-apps/next-15-pages-router-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-next-pages.sarif
-      - name: Upload Next Pages Router results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-e2e-next-pages.sarif
           category: e2e-next-pages-router
 
-      - name: Run snyk - Vite 6 Host App
+  # E2E Vite Host App
+  e2e-vite:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: E2E Vite 6 Host App
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=e2e/embedding-sdk-host-apps/vite-6-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-vite.sarif
-      - name: Upload Vite E2E results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-e2e-vite.sarif
           category: e2e-vite-host
 
-      # Release helper
-      - name: Run snyk - Release Helper
+  # Release Helper
+  release-helper:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Release Helper
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=release/yarn.lock --package-manager=yarn --sarif-file-output=snyk-release.sarif
-      - name: Upload Release Helper results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-release.sarif
           category: release-helper
 
-      # Drivers
-      - name: Run snyk - Athena Driver
+  # Driver: Athena
+  driver-athena:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Athena
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/athena/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-athena.sarif
-      - name: Upload Athena Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-athena.sarif
           category: driver-athena
 
-      - name: Run snyk - BigQuery Cloud SDK Driver
+  # Driver: BigQuery Cloud SDK
+  driver-bigquery:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - BigQuery Cloud SDK
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/bigquery-cloud-sdk/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-bigquery.sarif
-      - name: Upload BigQuery Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-bigquery.sarif
           category: driver-bigquery-cloud-sdk
 
-      - name: Run snyk - ClickHouse Driver
+  # Driver: ClickHouse
+  driver-clickhouse:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - ClickHouse
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/clickhouse/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-clickhouse.sarif
-      - name: Upload ClickHouse Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-clickhouse.sarif
           category: driver-clickhouse
 
-      - name: Run snyk - Databricks Driver
+  # Driver: Databricks
+  driver-databricks:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Databricks
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/databricks/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-databricks.sarif
-      - name: Upload Databricks Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-databricks.sarif
           category: driver-databricks
 
-      - name: Run snyk - Druid Driver
+  # Driver: Druid
+  driver-druid:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Druid
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/druid/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-druid.sarif
-      - name: Upload Druid Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-druid.sarif
           category: driver-druid
 
-      - name: Run snyk - Druid JDBC Driver
+  # Driver: Druid JDBC
+  driver-druid-jdbc:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Druid JDBC
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/druid-jdbc/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-druid-jdbc.sarif
-      - name: Upload Druid JDBC Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-druid-jdbc.sarif
           category: driver-druid-jdbc
 
-      - name: Run snyk - Hive-like Driver
+  # Driver: Hive-like
+  driver-hive-like:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Hive-like
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/hive-like/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-hive-like.sarif
-      - name: Upload Hive-like Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-hive-like.sarif
           category: driver-hive-like
 
-      - name: Run snyk - Mongo Driver
+  # Driver: Mongo
+  driver-mongo:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - MongoDB
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/mongo/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-mongo.sarif
-      - name: Upload Mongo Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-mongo.sarif
           category: driver-mongo
 
-      - name: Run snyk - Oracle Driver
+  # Driver: Oracle
+  driver-oracle:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Oracle
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/oracle/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-oracle.sarif
-      - name: Upload Oracle Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-oracle.sarif
           category: driver-oracle
 
-      - name: Run snyk - Presto JDBC Driver
+  # Driver: Presto JDBC
+  driver-presto-jdbc:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Presto JDBC
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/presto-jdbc/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-presto-jdbc.sarif
-      - name: Upload Presto JDBC Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-presto-jdbc.sarif
           category: driver-presto-jdbc
 
-      - name: Run snyk - Redshift Driver
+  # Driver: Redshift
+  driver-redshift:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Redshift
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/redshift/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-redshift.sarif
-      - name: Upload Redshift Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-redshift.sarif
           category: driver-redshift
 
-      - name: Run snyk - Snowflake Driver
+  # Driver: Snowflake
+  driver-snowflake:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Snowflake
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/snowflake/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-snowflake.sarif
-      - name: Upload Snowflake Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-snowflake.sarif
           category: driver-snowflake
 
-      - name: Run snyk - SparkSQL Driver
+  # Driver: SparkSQL
+  driver-sparksql:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - SparkSQL
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/sparksql/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-sparksql.sarif
-      - name: Upload SparkSQL Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-sparksql.sarif
           category: driver-sparksql
 
-      - name: Run snyk - SQLite Driver
+  # Driver: SQLite
+  driver-sqlite:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - SQLite
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/sqlite/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-sqlite.sarif
-      - name: Upload SQLite Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-sqlite.sarif
           category: driver-sqlite
 
-      - name: Run snyk - SQL Server Driver
+  # Driver: SQL Server
+  driver-sqlserver:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - SQL Server
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/sqlserver/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-sqlserver.sarif
-      - name: Upload SQL Server Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-sqlserver.sarif
           category: driver-sqlserver
 
-      - name: Run snyk - Starburst Driver
+  # Driver: Starburst
+  driver-starburst:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Starburst
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/starburst/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-starburst.sarif
-      - name: Upload Starburst Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-starburst.sarif
           category: driver-starburst
 
-      - name: Run snyk - Vertica Driver
+  # Driver: Vertica
+  driver-vertica:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: Driver - Vertica
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
         run: snyk test --file=modules/drivers/vertica/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-vertica.sarif
-      - name: Upload Vertica Driver results
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-driver-vertica.sarif
