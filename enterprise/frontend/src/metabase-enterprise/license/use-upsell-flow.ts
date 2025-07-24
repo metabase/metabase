@@ -52,7 +52,7 @@ export function useUpsellFlow({
     location,
   });
 
-  function openStoresTab() {
+  function openStoreTab() {
     const storeWindow = window.open(upsellLink, "_blank");
     if (storeWindow) {
       storeWindowRef.current = storeWindow;
@@ -100,7 +100,7 @@ export function useUpsellFlow({
   }
 
   return {
-    triggerUpsellFlow: openStoresTab,
+    triggerUpsellFlow: openStoreTab,
   };
 }
 

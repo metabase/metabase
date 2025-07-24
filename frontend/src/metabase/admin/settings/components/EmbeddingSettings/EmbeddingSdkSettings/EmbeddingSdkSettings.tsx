@@ -66,12 +66,12 @@ export function EmbeddingSdkSettings() {
   );
 
   const apiKeyBannerText = match({
-    needsTwoSwitchBinaries: !isEE,
+    needsToSwitchBinaries: !isEE,
     needsToUpgrade: !isEmbeddingAvailable,
     needsToImplementJwt: isEmbeddingAvailable,
   })
     .with(
-      { needsTwoSwitchBinaries: true },
+      { needsToSwitchBinaries: true },
       () =>
         jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink />)} and ${ImplementJwtLink}.`,
     )
