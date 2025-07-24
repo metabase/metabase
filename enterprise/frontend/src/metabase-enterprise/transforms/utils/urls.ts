@@ -5,7 +5,7 @@ export function transformListUrl() {
 }
 
 export function transformUrl(id: TransformId) {
-  return `/admin/datamodel/transform/${id}`;
+  return `/admin/datamodel/transforms/${id}`;
 }
 
 export function newTransformUrl() {
@@ -13,5 +13,5 @@ export function newTransformUrl() {
 }
 
 export function tableMetadataUrl({ id, db_id, schema }: Table) {
-  return `/admin/datamodel/database/${db_id}/schema/${db_id}:${schema}/table.${id}`;
+  return `/admin/datamodel/database/${db_id}/schema/${db_id}:${schema}/table/${id}`;
 }

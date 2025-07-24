@@ -27,7 +27,7 @@ export function TransformEmptyState({
             ? t`Transforms allow you to create a table based on your query and refresh it periodically on a schedule`
             : t`Select a transform to edit its query, schedule, and more.`
         }
-        action={t`Create a transform`}
+        action={isListEmptyState && t`Create a transform`}
         link={newTransformUrl()}
       />
     </Box>
