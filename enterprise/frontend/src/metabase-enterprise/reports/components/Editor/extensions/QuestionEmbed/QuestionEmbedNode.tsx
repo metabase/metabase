@@ -14,6 +14,7 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
+import { useCreateReportSnapshotMutation } from "../../../../../api/report";
 import {
   openVizSettingsSidebar,
   selectQuestion,
@@ -143,6 +144,7 @@ export const QuestionEmbedComponent = memo(
     const [editedTitle, setEditedTitle] = useState(customName || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
+    const [createReportSnapshot] = useCreateReportSnapshotMutation();
 
     const displayName = customName || card?.name || questionName;
     const isGuiQuestion = card?.dataset_query?.type !== "native";
@@ -242,6 +244,24 @@ export const QuestionEmbedComponent = memo(
         } catch (error) {
           console.error("Failed to navigate to question:", error);
         }
+      }
+    };
+
+    const handleRefreshSnapshot = async () => {
+      if (!card) {
+        return;
+      }
+
+      try {
+        const result = await createReportSnapshot({
+          card_id: questionId,
+        }).unwrap();
+
+        updateAttributes({
+          snapshotId: result.snapshot_id,
+        });
+      } catch (error) {
+        console.error("Failed to refresh snapshot:", error);
       }
     };
 
@@ -392,6 +412,9 @@ export const QuestionEmbedComponent = memo(
                       </Box>
                     </Menu.Target>
                     <Menu.Dropdown>
+                      <Menu.Item onClick={handleRefreshSnapshot}>
+                        {t`Refresh snapshot`}
+                      </Menu.Item>
                       <Menu.Item onClick={handleEditVisualizationSettings}>
                         {t`Edit Visualization`}
                       </Menu.Item>
