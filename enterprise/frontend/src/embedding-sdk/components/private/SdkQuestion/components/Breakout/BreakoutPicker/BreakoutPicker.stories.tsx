@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box } from "metabase/ui";
 
@@ -19,12 +19,12 @@ export const BreakoutPickerMainComponent = {
   render() {
     return (
       <Box p="lg">
-        <InteractiveQuestion questionId={QUESTION_ID}>
+        <SdkQuestion questionId={QUESTION_ID}>
           <Box>
             <BreakoutPicker />
-            <InteractiveQuestion.QuestionVisualization />
+            <SdkQuestion.QuestionVisualization />
           </Box>
-        </InteractiveQuestion>
+        </SdkQuestion>
       </Box>
     );
   },
