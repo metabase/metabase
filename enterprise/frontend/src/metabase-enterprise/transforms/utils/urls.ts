@@ -8,7 +8,7 @@ export function newTransformUrl() {
   return `${transformListUrl()}/new`;
 }
 
-export function newTransformFromQueryUrl() {
+export function newTransformQueryUrl() {
   return `${newTransformUrl()}/query`;
 }
 

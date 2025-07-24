@@ -4,11 +4,11 @@ import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import Question from "metabase-lib/v1/Question";
 
-import { NewTransformFromQueryModal } from "../../components/NewTransformFromQueryModal";
+import { NewTransformModal } from "../../components/NewTransformModal";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
 import { transformListUrl } from "../../utils/urls";
 
-export function NewTransformFromQueryPage() {
+export function NewTransformQueryPage() {
   const [query, setQuery] = useState(() => getInitialQuery());
   const [isOpened, setIsOpened] = useState(false);
   const dispatch = useDispatch();
@@ -33,7 +33,7 @@ export function NewTransformFromQueryPage() {
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />
-      <NewTransformFromQueryModal
+      <NewTransformModal
         query={query}
         isOpened={isOpened}
         onClose={handleCloseClick}
