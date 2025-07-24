@@ -85,8 +85,8 @@
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
   (if tx/*use-routing-details*
-    @db-connection-details
-    @db-routing-connection-details))
+    @db-routing-connection-details
+    @db-connection-details))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
