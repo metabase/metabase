@@ -4,6 +4,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
+import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
 import type { FlatItem, TreePath } from "./types";
@@ -13,21 +14,27 @@ const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32;
 const INDENT_OFFSET = 18;
 
+interface Props {
+  items: FlatItem[];
+  path: TreePath;
+  reload?: (path: TreePath) => void;
+  selectedIndex?: number;
+  toggle?: (key: string, value?: boolean) => void;
+  withMassToggle?: boolean;
+  onItemClick?: (path: TreePath) => void;
+  onSelectedIndexChange?: (index: number) => void;
+}
+
 export function Results({
   items,
-  toggle,
   path,
-  onItemClick,
+  reload,
   selectedIndex,
+  toggle,
+  withMassToggle,
+  onItemClick,
   onSelectedIndexChange,
-}: {
-  items: FlatItem[];
-  toggle?: (key: string, value?: boolean) => void;
-  path: TreePath;
-  onItemClick?: (path: TreePath) => void;
-  selectedIndex?: number;
-  onSelectedIndexChange?: (index: number) => void;
-}) {
+}: Props) {
   const [activeTableId, setActiveTableId] = useState(path.tableId);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -97,6 +104,10 @@ export function Results({
           } = item;
           const isActive = type === "table" && value?.tableId === activeTableId;
           const parentIndex = items.findIndex((item) => item.key === parent);
+          const children = items.filter((item) => item.parent === key);
+          const hasTableChildren = children.some(
+            (child) => child.type === "table",
+          );
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -203,7 +214,7 @@ export function Results({
               onClick={() => handleItemSelect()}
               onFocus={() => onSelectedIndexChange?.(index)}
             >
-              <Flex align="center" py="xs" mih={ITEM_MIN_HEIGHT} w="100%">
+              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
                     {hasChildren(type) && (
@@ -224,9 +235,17 @@ export function Results({
                     <Loading />
                   ) : (
                     <Box
-                      pl="sm"
                       className={S.label}
+                      c={
+                        type === "table" &&
+                        item.table &&
+                        item.table.visibility_type != null &&
+                        !isActive
+                          ? "text-secondary"
+                          : undefined
+                      }
                       data-testid="tree-item-label"
+                      pl="sm"
                     >
                       {label}
                     </Box>
@@ -234,13 +253,48 @@ export function Results({
                 </Flex>
               </Flex>
 
+              {withMassToggle &&
+                type === "database" &&
+                value?.databaseId !== undefined &&
+                hasTableChildren &&
+                !disabled && (
+                  <BulkTableVisibilityToggle
+                    className={S.massVisibilityToggle}
+                    tables={children.flatMap((child) =>
+                      child.type === "table" && child.table != null
+                        ? [child.table]
+                        : [],
+                    )}
+                    onUpdate={() => reload?.(value)}
+                  />
+                )}
+
+              {withMassToggle &&
+                type === "schema" &&
+                value?.schemaName !== undefined &&
+                hasTableChildren &&
+                !disabled && (
+                  <BulkTableVisibilityToggle
+                    className={S.massVisibilityToggle}
+                    tables={children.flatMap((child) =>
+                      child.type === "table" && child.table != null
+                        ? [child.table]
+                        : [],
+                    )}
+                    onUpdate={() => reload?.(value)}
+                  />
+                )}
+
               {type === "table" &&
                 value?.tableId !== undefined &&
                 item.table &&
                 !disabled && (
                   <TableVisibilityToggle
-                    className={S.visibilityToggle}
+                    className={cx(S.visibilityToggle, {
+                      [S.hidden]: item.table.visibility_type == null,
+                    })}
                     table={item.table}
+                    onUpdate={() => reload?.(value)}
                   />
                 )}
             </Flex>

@@ -28,6 +28,7 @@ import {
   type MetabotState,
   getHistory,
   getMetabotInitialState,
+  getMetabotState,
   metabotReducer,
 } from "./state";
 
@@ -502,6 +503,46 @@ describe("metabot-streaming", () => {
           (await lastReqBody(agentSpy))?.context,
         ),
       ).toEqual(true);
+    });
+  });
+
+  describe("convo state", () => {
+    it("should update the convo state on a successful request", async () => {
+      const { store } = setup();
+      // TODO: make enterprise store
+      const getState = () => getMetabotState(store.getState() as any);
+
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `2:{"type":"state","version":1,"value":{"queries":{}}}\n`;
+            // assert that state hasn't been updated mid-response
+            expect(getState()).toEqual({});
+            yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          })(),
+        ),
+      });
+
+      expect(getState()).toEqual({});
+      await enterChatMessage("Request");
+      expect(getState()).toEqual({ queries: {} });
+    });
+
+    it("should not update the convo state on a failed request", async () => {
+      const { store } = setup();
+      // TODO: make enterprise store
+      const getState = () => getMetabotState(store.getState() as any);
+
+      mockAgentEndpoint({
+        textChunks: [
+          `2:{"type":"state","version":1,"value":{"queries":{}}}`,
+          ...erroredResponse,
+        ],
+      });
+
+      expect(getState()).toEqual({});
+      await enterChatMessage("Request");
+      expect(getState()).toEqual({});
     });
   });
 

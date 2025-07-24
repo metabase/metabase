@@ -12142,6 +12142,20 @@ databaseChangeLog:
             path: instance_analytics_views/alerts/v3/h2-alerts.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v55.2025-07-21T10:00:00
+      author: ranquild
+      comment: Remove semantic_type when base_type is type/Boolean and semantic_type is type/Category
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: semantic_type
+                  value: NULL
+            where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
+      rollback: # not necessary
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
