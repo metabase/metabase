@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { uuid } from "metabase/lib/uuid";
 import type {
   Aggregation,
@@ -1178,7 +1179,6 @@ describe("scenarios > question > offset", () => {
     const segmentName = "Orders < 100";
     H.createSegment({
       name: segmentName,
-      // @ts-expect-error convert helper to ts
       description: "All orders with a total under $100.",
       table_id: ORDERS_ID,
       definition: {
@@ -1237,7 +1237,7 @@ describe("scenarios > question > offset", () => {
 
   it("should work with metrics (metabase#47854)", () => {
     const metricName = "Count of orders";
-    const ORDERS_SCALAR_METRIC: H.StructuredQuestionDetails = {
+    const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
       name: metricName,
       type: "metric",
       description: "A metric",

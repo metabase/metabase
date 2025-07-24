@@ -1,9 +1,13 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const questionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -27,7 +31,7 @@ const questionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetails =
+const multiStageQuestionWith2TemporalBreakoutsDetails: StructuredQuestionDetails =
   {
     name: "Test question",
     query: {
@@ -36,7 +40,7 @@ const multiStageQuestionWith2TemporalBreakoutsDetails: H.StructuredQuestionDetai
     },
   };
 
-const questionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -66,7 +70,7 @@ const questionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetails =
+const multiStageQuestionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails =
   {
     name: "Test question",
     query: {
@@ -75,7 +79,7 @@ const multiStageQuestionWith2NumBinsBreakoutsDetails: H.StructuredQuestionDetail
     },
   };
 
-const questionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": PEOPLE_ID,
@@ -105,7 +109,7 @@ const questionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const multiStageQuestionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetails =
+const multiStageQuestionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails =
   {
     name: "Test question",
     query: {
@@ -114,7 +118,7 @@ const multiStageQuestionWith2BinWidthBreakoutsDetails: H.StructuredQuestionDetai
     },
   };
 
-const questionWith5TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith5TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -154,7 +158,7 @@ const questionWith5TemporalBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const questionWith5NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
+const questionWith5NumBinsBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -208,7 +212,7 @@ const questionWith5NumBinsBreakoutsDetails: H.StructuredQuestionDetails = {
   },
 };
 
-const dashboardDetails: H.DashboardDetails = {
+const dashboardDetails: DashboardDetails = {
   parameters: [
     {
       id: "1",
@@ -360,7 +364,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -430,7 +434,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name,
           bucket2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           columnPattern: RegExp;
           bucketLabel: string;
           bucket1Name: string;
@@ -560,7 +564,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -607,7 +611,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails,
           columnNamePattern,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           columnNamePattern: RegExp;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
@@ -773,7 +777,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           expression1,
           expression2,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           expression1: string;
           expression2: string;
         }) {
@@ -897,7 +901,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -959,7 +963,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -1050,7 +1054,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1117,7 +1121,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1222,7 +1226,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -1282,7 +1286,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -1382,7 +1386,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           tableColumn1Name,
           tableColumn2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           queryColumn1Name: string;
           queryColumn2Name: string;
           tableColumn1Name: string;
@@ -1476,7 +1480,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
@@ -1542,7 +1546,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue,
           column2MaxValue,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column1MinValue: number;
           column1MaxValue: number;
@@ -1635,7 +1639,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1705,7 +1709,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column1Name,
           column2Name,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           column1Name: string;
           column2Name: string;
         }) {
@@ -1797,7 +1801,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails,
           columnName,
         }: {
-          questionDetails: H.StructuredQuestionDetails;
+          questionDetails: StructuredQuestionDetails;
           columnName: string;
         }) {
           H.createQuestion(questionDetails).then(({ body: card }) => {
