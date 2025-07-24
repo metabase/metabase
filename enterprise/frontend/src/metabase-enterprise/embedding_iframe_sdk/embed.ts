@@ -517,7 +517,7 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
   "with-title",
   "with-downloads",
-  "is-drill-through-enabled",
+  "drills",
   "initial-parameters",
   "hidden-parameters",
 ]);
@@ -525,7 +525,7 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "question-id",
   "with-title",
   "with-downloads",
-  "is-drill-through-enabled",
+  "drills",
   "initial-sql-parameters",
 ]);
 

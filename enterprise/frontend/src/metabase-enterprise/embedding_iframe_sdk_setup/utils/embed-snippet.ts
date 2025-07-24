@@ -92,13 +92,6 @@ export function transformEmbedSettingsToAttributes(
       continue;
     }
 
-    // TODO: rename the setting field to `drills` to match the attribute name
-    // transform isDrillThroughEnabled to drills
-    if (key === "isDrillThroughEnabled") {
-      attributes.push(`drills=${formatAttributeValue(value)}`);
-      continue;
-    }
-
     const attributeName = toDashCase(key);
     attributes.push(`${attributeName}=${formatAttributeValue(value)}`);
   }

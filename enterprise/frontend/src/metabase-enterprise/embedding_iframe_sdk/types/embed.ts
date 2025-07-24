@@ -44,7 +44,7 @@ export type SdkIframeEmbedMessage =
 export interface DashboardEmbedOptions {
   dashboardId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 
@@ -60,7 +60,7 @@ export interface DashboardEmbedOptions {
 export interface QuestionEmbedOptions {
   questionId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 

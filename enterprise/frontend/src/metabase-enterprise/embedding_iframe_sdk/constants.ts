@@ -29,14 +29,14 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withDownloads",
     "initialParameters",
     "hiddenParameters",
-    "isDrillThroughEnabled",
+    "drills",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
     "withTitle",
     "withDownloads",
     "initialSqlParameters",
-    "isDrillThroughEnabled",
+    "drills",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [
     "template",

@@ -159,11 +159,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       getIframeContent().findByLabelText("Download as PDF").should("not.exist");
     });
 
-    it("should enable drill-through when is-drill-through-enabled is true", () => {
+    it("should enable drill-through when drills is true", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" is-drill-through-enabled />
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills />
       `);
 
       getIframeContent()
@@ -176,11 +176,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         .should("be.visible");
     });
 
-    it("should disable drill-through when is-drill-through-enabled is false", () => {
+    it("should disable drill-through when drills is false", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" is-drill-through-enabled="false" />
+      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills="false" />
       `);
 
       getIframeContent()
@@ -248,11 +248,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       getIframeContent().findByLabelText("download icon").should("not.exist");
     });
 
-    it("should enable drill-through when is-drill-through-enabled is true", () => {
+    it("should enable drill-through when drills is true", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" is-drill-through-enabled />
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills />
       `);
 
       getIframeContent()
@@ -265,11 +265,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         .should("be.visible");
     });
 
-    it("should disable drill-through when is-drill-through-enabled is false", () => {
+    it("should disable drill-through when drills is false", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" is-drill-through-enabled="false" />
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
       `);
 
       getIframeContent()

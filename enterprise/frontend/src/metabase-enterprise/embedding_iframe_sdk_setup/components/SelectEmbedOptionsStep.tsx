@@ -35,8 +35,7 @@ export const SelectEmbedOptionsStep = () => {
   );
 
   const isDashboardOrInteractiveQuestion =
-    settings.dashboardId ||
-    (settings.questionId && settings.isDrillThroughEnabled);
+    settings.dashboardId || (settings.questionId && settings.drills);
 
   return (
     <Stack gap="md">
@@ -48,10 +47,8 @@ export const SelectEmbedOptionsStep = () => {
           {isQuestionOrDashboardEmbed && (
             <Checkbox
               label={t`Allow users to drill through on data points`}
-              checked={settings.isDrillThroughEnabled}
-              onChange={(e) =>
-                updateSettings({ isDrillThroughEnabled: e.target.checked })
-              }
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
             />
           )}
 
