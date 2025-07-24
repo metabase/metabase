@@ -103,27 +103,26 @@
                (actions.scope/hydrate-scope {:table-id table-id})))))))
 
 (deftest normalize-test
-  (mt/with-premium-features #{:table-data-editing}
-    (testing "normalize with various scopes"
-      (is (= {:type        :dashcard
-              :dashcard-id 2}
-             (actions.scope/normalize-scope {:dashboard-id  1
-                                             :dashcard-id   2
-                                             :collection-id 5})))
+  (testing "normalize with various scopes"
+    (is (= {:type        :dashcard
+            :dashcard-id 2}
+           (actions.scope/normalize-scope {:dashboard-id  1
+                                           :dashcard-id   2
+                                           :collection-id 5})))
 
-      (is (= {:type         :dashboard
-              :dashboard-id 1}
-             (actions.scope/normalize-scope {:dashboard-id  1
-                                             :collection-id 5})))
+    (is (= {:type         :dashboard
+            :dashboard-id 1}
+           (actions.scope/normalize-scope {:dashboard-id  1
+                                           :collection-id 5})))
 
-      (is (= {:type     :model
-              :model-id 7}
-             (actions.scope/normalize-scope {:model-id      7
-                                             :table-id      4
-                                             :collection-id 5
-                                             :database-id   6})))
+    (is (= {:type     :model
+            :model-id 7}
+           (actions.scope/normalize-scope {:model-id      7
+                                           :table-id      4
+                                           :collection-id 5
+                                           :database-id   6})))
 
-      (is (= {:type     :table
-              :table-id 4}
-             (actions.scope/normalize-scope {:table-id    4
-                                             :database-id 6}))))))
+    (is (= {:type     :table
+            :table-id 4}
+           (actions.scope/normalize-scope {:table-id    4
+                                           :database-id 6})))))

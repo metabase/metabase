@@ -13,6 +13,7 @@
 (setting/defsetting database-enable-table-editing
   (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
   :default false
+  :feature :table-data-editing
   :type :boolean
   :visibility :public
   :database-local :only
