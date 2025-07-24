@@ -26,6 +26,7 @@ import {
 
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
+import { ColumnExtension } from "./extensions/Columns/Columns";
 import {
   MarkdownSerializer,
   serializeToMarkdown,
@@ -80,6 +81,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       MarkdownSerializer,
+      ColumnExtension,
     ],
     content,
     autofocus: true,
