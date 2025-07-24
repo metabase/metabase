@@ -552,24 +552,6 @@
   [join]
   (query->source-table-id {:type :query, :query join}))
 
-(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
-  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
-  already being used in another order-by clause, this function does nothing."
-  [inner-query     :- mbql.s/MBQLQuery
-   [dir orderable] :- ::mbql.s/OrderBy]
-  (let [existing-orderables (into #{}
-                                  (map (fn [[_dir orderable]]
-                                         orderable))
-                                  (:order-by inner-query))
-        ;; Remove any :ident the orderable might have had. `:ident` in the options of a ref is for clauses that
-        ;; create columns, eg. breakouts; it's not referring to another clause by ident.
-        orderable           (m/update-existing orderable 2 #(not-empty (dissoc % :ident)))]
-    (if (existing-orderables orderable)
-      ;; Field already referenced, nothing to do
-      inner-query
-      ;; otherwise add new clause at the end
-      (update inner-query :order-by (comp vec distinct conj) [dir orderable]))))
-
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
