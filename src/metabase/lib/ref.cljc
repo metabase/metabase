@@ -6,9 +6,10 @@
    [metabase.util.malli :as mu]))
 
 ;;; TODO (Cam 6/12/25) -- update `ref-method` to take an options map instead of needing a dynamic variable for stuff
-;;; like this.
+;;; like this. Or just add some sort of options key to the metadata.
 (def ^:dynamic *ref-style*
   "The style of field ref to generate -- either the default MLv2-style (`:ref.style/default`) or the broken legacy style
+
   returned by the QP results (`:ref.style/broken-legacy-qp-results`). These broken refs are mostly generated for
   compatibility with legacy viz settings maps that used them as keys."
   :ref.style/default)
