@@ -108,7 +108,7 @@ const connectionStringRegexes = {
       "(?<protocol>snowflake)://" +
       userPass +
       host +
-      "(?:/(?<database>[^/?#]*))?" +
+      "(?:/(?<database>[^/?#]*)?)?" +
       params +
       "$",
     "i",
