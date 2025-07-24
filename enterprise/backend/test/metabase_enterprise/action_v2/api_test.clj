@@ -40,18 +40,18 @@
 
 (defn create-rows!
   ([table-id rows]
-   (create-rows! table-id 200 rows))
-  ([table-id response-code rows]
-   (mt/user-http-request :crowberto :post response-code execute-bulk-url
+   (create-rows! table-id :crowberto 200 rows))
+  ([table-id user response-code rows]
+   (mt/user-http-request user :post response-code execute-bulk-url
                          {:action :data-grid.row/create
                           :scope  {:table-id table-id}
                           :inputs rows})))
 
 (defn- update-rows!
   ([table-id rows]
-   (update-rows! table-id 200 rows))
-  ([table-id response-code rows & [params]]
-   (mt/user-http-request :crowberto :post response-code execute-bulk-url
+   (update-rows! table-id :crowberto 200 rows))
+  ([table-id user response-code rows & [params]]
+   (mt/user-http-request user :post response-code execute-bulk-url
                          (cond->
                           {:action :data-grid.row/update
                            :scope  {:table-id table-id}
@@ -60,9 +60,9 @@
 
 (defn- delete-rows!
   ([table-id rows]
-   (delete-rows! table-id 200 rows))
-  ([table-id response-code rows]
-   (mt/user-http-request :crowberto :post response-code execute-bulk-url
+   (delete-rows! table-id :crowberto 200 rows))
+  ([table-id user response-code rows]
+   (mt/user-http-request user :post response-code execute-bulk-url
                          {:action :data-grid.row/delete
                           :scope  {:table-id table-id}
                           :inputs rows})))
@@ -381,15 +381,11 @@
                                    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings settings}
                                      {:settings settings
                                       :user     user
-                                      :responses {:create (create-rows! table-id status-code [{:name "Pidgey" :song "Car alarms"}])
-                                                  :update (update-rows! table-id status-code [{:id 1 :song "Join us now and share the software"}])
-                                                  :delete (delete-rows! table-id status-code [{:id 1}])}}))))
+                                      :responses {:create (create-rows! table-id user status-code [{:name "Pidgey" :song "Car alarms"}])
+                                                  :update (update-rows! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
+                                                  :delete (delete-rows! table-id user status-code [{:id 1}])}}))))
 
-              error-or-ok
-              (fn [res]
-                (if (:message res)
-                  [(:message res) (-> res :data :status-code)]
-                  :ok))
+              error-or-ok    (fn [res] (if (string? res) res (:message res :ok)))
 
               ;; Shorthand config notation
               ;; :a == action-editing should not affect result
@@ -404,13 +400,11 @@
                #{:s :d}    :ok
                #{:s :a :d} :ok]]
           (doseq [[flags expected] (partition 2 tests)
-                  :let [expected-status-code              (if (sequential? expected)
-                                                            (last expected)
-                                                            200)
+                  :let [[expected-msg expected-status-code] (if (sequential? expected) expected [expected 200])
                         {:keys [settings user responses]} (test-endpoints flags expected-status-code)]
-                  [verb  response] responses]
+                  [verb response] responses]
             (testing (format "%s user: %s, settings: %s" verb user settings)
-              (is (= expected (error-or-ok response))))))))))
+              (is (= expected-msg (error-or-ok response))))))))))
 
 (deftest coercion-test
   (mt/with-premium-features #{actions-feature-flag}
