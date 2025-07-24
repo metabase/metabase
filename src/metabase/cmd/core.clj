@@ -296,6 +296,20 @@
       (log/error e "ERROR EXECUTING LEGO PLAN.")
       (system-exit! 1))))
 
+(defn ^:command run-multi-plan
+  "Run a lego from a set of files."
+  [filename]
+  (classloader/require 'metabase-enterprise.legos.actions)
+  (try
+    (let [data ((resolve 'metabase-enterprise.legos.actions/hippie-parse) (slurp filename))
+          data ((resolve 'metabase-enterprise.legos.actions/hydrate-plan) data)]
+      ((resolve 'metabase-enterprise.legos.actions/execute-plan!) data)
+      (log/info "Lego plan executed.")
+      (system-exit! 0))
+    (catch Throwable e
+      (log/error e "ERROR EXECUTING LEGO PLAN.")
+      (system-exit! 1))))
+
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
 (defn- arg-list-count-ok? [arg-list arg-count]

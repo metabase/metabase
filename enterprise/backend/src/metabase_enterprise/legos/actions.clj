@@ -16,10 +16,19 @@
   {:added "0.55.0" :arglists '([lego])}
   #'dispatch-execute)
 
+(defmulti hydrate
+  "Hydrate a lego description with a file."
+  {:added "0.55.0" :arglists '([lego])}
+  #'dispatch-execute)
+
 (defmethod execute! :default
   [lego]
   (throw (ex-info (str "legos.actions/execute! is not implemented for " (:lego lego))
                   {:lego lego})))
+
+(defmethod hydrate :default
+  [lego]
+  lego)
 
 (mr/def ::lego
   [:map
@@ -49,6 +58,10 @@
       :overwrite? true}))
   :ok)
 
+(defmethod hydrate :transform
+  [lego]
+  (update lego :query slurp))
+
 (mr/def ::plan
   [:map
    [:steps [:+ ::lego]]])
@@ -62,6 +75,11 @@
     (execute! step))
   (println "Done!")
   :ok)
+
+(defn hydrate-plan
+  "Hydrate a plan."
+  [plan]
+  (assoc plan :steps (mapv hydrate (:steps plan))))
 
 (defn hippie-parse
   "Do a very hippie style parsing of the data."
