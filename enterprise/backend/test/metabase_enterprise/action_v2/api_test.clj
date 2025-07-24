@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.api]
+   [metabase-enterprise.action-v2.coerce :as coerce]
    [metabase-enterprise.action-v2.test-util :as data-editing.tu]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
@@ -406,6 +407,19 @@
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected-msg (error-or-ok response))))))))))
 
+(defn- check-coercion-fn-coverage
+  ([test-cases]
+   (check-coercion-fn-coverage #{} test-cases))
+  ([exclusions test-cases]
+   (let [covered-fns  (into #{} (keep second) test-cases)
+         expected-fns (descendants :Coercion/*)
+         [unknown missing] (clojure.data/diff covered-fns expected-fns)]
+     (testing "There are no unnecessary transformations (or stale keywords)"
+       (is (empty? unknown)))
+     (testing "All expected coercion options are tested"
+       (is (= exclusions missing))))
+   test-cases))
+
 (deftest coercion-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
@@ -474,6 +488,7 @@
               ;; seconds component does not work properly here, lost by qp output, bug in existing code?
               #_#_#_#_:text :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:42Z"     "20250325143442"]
              (partition 4)
+             (check-coercion-fn-coverage @#'coerce/unimplemented-coercion-functions)
              (run! #(apply do-test %)))))))
 
 (deftest field-values-invalidated-test
