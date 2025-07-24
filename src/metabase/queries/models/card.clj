@@ -1261,7 +1261,7 @@
   [dataset-query-str]
   (when dataset-query-str
     (lib.metadata.jvm/with-metadata-provider-cache
-      (let [dataset-query     (json/decode+kw dataset-query-str)
+      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
             metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
             lib-query         (lib/query metadata-provider dataset-query)
             columns           (lib/returned-columns lib-query)]
