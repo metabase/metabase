@@ -41,7 +41,7 @@ export function TransformListPage({ params }: TransformListPageProps) {
           <TransformList transforms={transforms} transformId={transformId} />
         </LoadingAndErrorWrapper>
       </Flex>
-      {transform && (
+      {transformId != null && transform != null && (
         <Flex
           className={S.column}
           direction="column"

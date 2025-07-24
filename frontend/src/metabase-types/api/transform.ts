@@ -10,7 +10,7 @@ export type Transform = {
   source: TransformSource;
   target: TransformTarget;
   schedule: string | null;
-  table: Table | null;
+  table?: Table | null;
 };
 
 export type TransformSource = {
