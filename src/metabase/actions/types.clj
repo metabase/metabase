@@ -46,8 +46,7 @@
     [:map {:closed true}
      [:type                         [:enum :table]]
      [:table-id                     ms/PositiveInt]
-     [:database-id                  ::fk-or-missing-id]
-     [:rest-api    {:optional true} [:enum :table]]]]
+     [:database-id                  ::fk-or-missing-id]]]
    ;; card - unified type that handles both with and without table cases
    [:card
     [:map {:closed true}
@@ -73,15 +72,5 @@
      [:type                           [:enum :dashcard]]
      [:dashcard-id                    ms/PositiveInt]
      [:dashboard-id                   ::fk-or-missing-id]
-     [:collection-id                  ::fk-or-missing-id]
-     [:card-id       {:optional true} ::fk-or-missing-id]
-     [:table-id      {:optional true} ::fk-or-missing-id]
-     [:database-id   {:optional true} ::fk-or-missing-id]]]
-   ;; for now, webhooks can only point at tables, not editables
-   [:webhook
-    [:map {:closed false}
-     [:type        [:enum :webhook]]
-     [:webhook-id  ms/PositiveInt]
-     [:table-id    ::fk-or-missing-id]
-     [:database-id ::fk-or-missing-id]]]
+     [:collection-id                  ::fk-or-missing-id]]]
    [:unknown any?]])
