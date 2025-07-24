@@ -9,6 +9,8 @@ import { useEffect } from "react";
 
 import { Box } from "metabase/ui";
 
+import type { QuestionRef } from "../../reports.slice";
+
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import {
@@ -17,12 +19,6 @@ import {
 } from "./extensions/MarkdownExtensions";
 import { QuestionEmbed } from "./extensions/QuestionEmbed";
 import { QuestionStaticNode } from "./extensions/QuestionStatic/QuestionStatic";
-
-export interface QuestionRef {
-  id: number;
-  name: string;
-  snapshotId?: number;
-}
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;

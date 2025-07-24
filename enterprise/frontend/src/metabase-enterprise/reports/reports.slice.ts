@@ -10,6 +10,13 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+
+export interface QuestionRef {
+  id: number;
+  name?: string;
+  snapshotId?: number;
+}
+
 export interface ReportsState {
   cards: Record<CardId, Card>;
   datasets: Record<number, Dataset>;
@@ -18,6 +25,7 @@ export interface ReportsState {
   selectedQuestionId: CardId | null;
   isSidebarOpen: boolean;
   modifiedVisualizationSettings: Record<CardId, boolean>;
+  questionRefs: QuestionRef[];
 }
 
 const initialState: ReportsState = {
@@ -28,6 +36,7 @@ const initialState: ReportsState = {
   selectedQuestionId: null,
   isSidebarOpen: false,
   modifiedVisualizationSettings: {},
+  questionRefs: [],
 };
 
 export const fetchReportCard = createAsyncThunk<Card, CardId>(
@@ -155,6 +164,40 @@ const reportsSlice = createSlice({
     ) => {
       delete state.modifiedVisualizationSettings[action.payload];
     },
+    setQuestionRefs: (state, action: PayloadAction<QuestionRef[]>) => {
+      state.questionRefs = action.payload;
+    },
+    updateQuestionRef: (
+      state,
+      action: PayloadAction<{ questionId: CardId; snapshotId: number }>,
+    ) => {
+      const { questionId, snapshotId } = action.payload;
+      const index = state.questionRefs.findIndex(
+        (ref) => ref.id === questionId,
+      );
+      if (index !== -1) {
+        state.questionRefs[index] = {
+          ...state.questionRefs[index],
+          snapshotId,
+        };
+      }
+    },
+    updateQuestionRefs: (
+      state,
+      action: PayloadAction<Array<{ questionId: CardId; snapshotId: number }>>,
+    ) => {
+      action.payload.forEach(({ questionId, snapshotId }) => {
+        const index = state.questionRefs.findIndex(
+          (ref) => ref.id === questionId,
+        );
+        if (index !== -1) {
+          state.questionRefs[index] = {
+            ...state.questionRefs[index],
+            snapshotId,
+          };
+        }
+      });
+    },
     resetReports: () => initialState,
   },
   extraReducers: (builder) => {
@@ -223,6 +266,9 @@ export const {
   updateVizSettings,
   updateVisualizationType,
   clearModifiedVisualizationSettings,
+  setQuestionRefs,
+  updateQuestionRef,
+  updateQuestionRefs,
   resetReports,
 } = reportsSlice.actions;
 

@@ -1,18 +1,20 @@
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import { Box, Stack, Text } from "metabase/ui";
+
+import { getEnrichedQuestionRefs } from "../selectors";
 
 import styles from "./ReportPage.module.css";
 
 interface UsedContentSidebarProps {
-  questionRefs: Array<{ id: number; name: string }>;
   onQuestionClick: (questionId: number) => void;
 }
 
 export const UsedContentSidebar = ({
-  questionRefs,
   onQuestionClick,
 }: UsedContentSidebarProps) => {
+  const questionRefs = useSelector(getEnrichedQuestionRefs);
   return (
     <Box
       style={{
@@ -29,7 +31,7 @@ export const UsedContentSidebar = ({
           {questionRefs.length === 0 ? (
             <Text c="text.2">{t`No questions embedded yet`}</Text>
           ) : (
-            <Stack gap="md">
+            <Stack gap="sm">
               {questionRefs.map((ref) => (
                 <Box
                   key={ref.id}

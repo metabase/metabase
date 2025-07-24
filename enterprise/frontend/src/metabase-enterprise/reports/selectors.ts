@@ -65,3 +65,21 @@ export const getHasModifiedVisualizationSettings = createSelector(
   (reportsState, cardId) =>
     reportsState?.modifiedVisualizationSettings?.[cardId] ?? false,
 );
+
+export const getQuestionRefs = createSelector(
+  getReportsState,
+  (reports) => reports?.questionRefs ?? [],
+);
+
+export const getEnrichedQuestionRefs = createSelector(
+  [getReportsState],
+  (reports) => {
+    const questionRefs = reports?.questionRefs ?? [];
+    const cards = reports?.cards ?? {};
+
+    return questionRefs.map((ref) => ({
+      ...ref,
+      name: ref.name || cards[ref.id]?.name || `Question ${ref.id}`,
+    }));
+  },
+);

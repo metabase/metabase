@@ -3,6 +3,8 @@ import {
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
 
+import type { QuestionRef } from "../reports.slice";
+
 // Helper function to convert a question to PNG data URL using existing Metabase utilities
 export const convertQuestionToPng = async (
   questionId: number,
@@ -21,7 +23,7 @@ export const convertQuestionToPng = async (
 
 export const getDownloadableMarkdown = async (
   markdown: string,
-  questionRefs: any,
+  questionRefs: QuestionRef[],
 ): Promise<string> => {
   let processedMarkdown = markdown;
 
