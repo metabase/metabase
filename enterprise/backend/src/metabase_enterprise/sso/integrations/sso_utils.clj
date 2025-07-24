@@ -126,6 +126,7 @@
                        :redirect-url redirect-url})))))
 
 (defn is-embedding-sdk-header?
-  "Check if the client has indicated it is from the react embedding sdk"
+  "Check if the client has indicated it is from the react embedding sdk or simple embedding"
   [request]
-  (= (get-in request [:headers "x-metabase-client"]) "embedding-sdk-react"))
+  (contains? #{"embedding-sdk-react" "embedding-simple"}
+             (get-in request [:headers "x-metabase-client"])))
