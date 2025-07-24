@@ -238,8 +238,7 @@
    unique-key query stage-number x
    (assoc options
           ::display-name-style              *display-name-style*
-          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
-          ::ref-style                       lib.ref/*ref-style*)))
+          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*))))
 
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."

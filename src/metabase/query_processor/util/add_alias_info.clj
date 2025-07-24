@@ -54,6 +54,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -184,7 +185,9 @@
                                        ::lib.schema.id/table
                                        [:= ::source]]
   "Determine the appropriate `::source-table` alias for a `field-clause`."
-  [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
+  [{:keys [source-table source-query], :as inner-query}   :- [:map
+                                                              [::join-alias->escaped {:optional true} [:map-of ::lib.schema.join/alias ::lib.schema.join/alias]]]
+   [_ _id-or-name {:keys [join-alias]}, :as field-clause] :- mbql.s/field]
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
     (cond

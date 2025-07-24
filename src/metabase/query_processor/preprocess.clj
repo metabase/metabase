@@ -25,7 +25,7 @@
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
-   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
+   #_[metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
@@ -53,6 +53,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- middleware-fn-name [middleware-fn]
+  (if-let [fn-name (:name (meta middleware-fn))]
+    (if-let [fn-ns (:ns (meta middleware-fn))]
+      (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
+      fn-name)
+    middleware-fn))
+
 ;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
 ;;; flavor of MBQL it is written for.
@@ -64,10 +71,15 @@
 
 (defn- ^:deprecated ensure-legacy [middleware-fn]
   (-> (fn [query]
-        (let [query (cond-> query
-                      (:lib/type query) ->legacy)]
-          (vary-meta (middleware-fn query)
-                     assoc :converted-form query)))
+        (try
+          (let [query (cond-> query
+                        (:lib/type query) ->legacy)]
+            (vary-meta (middleware-fn query)
+                       assoc :converted-form query))
+          (catch Throwable e
+            (throw (ex-info (format "Error converting to legacy: %s" (ex-message e))
+                            {:query query, :middleware-fn (middleware-fn-name middleware-fn)}
+                            e)))))
       (with-meta (meta middleware-fn))))
 
 (mu/defn- ->mbql-5 :- ::lib.schema/query
@@ -81,9 +93,14 @@
 
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query]
-        (let [query (->mbql-5 query)]
-          (vary-meta (middleware-fn query)
-                     assoc :converted-form query)))
+        (try
+          (let [query (->mbql-5 query)]
+            (vary-meta (middleware-fn query)
+                       assoc :converted-form query))
+          (catch Throwable e
+            (throw (ex-info (format "Error converting to MBQL 5: %s" (ex-message e))
+                            {:query query, :middleware-fn (middleware-fn-name middleware-fn)}
+                            e)))))
       (with-meta (meta middleware-fn))))
 
 (def ^:private unconverted-property?
@@ -96,6 +113,19 @@
                  (unconverted-property? k) (assoc k v)))
              to
              from))
+
+;;; TODO -- this is broken and disables enforcement inside the middleware itself -- see QUE-1346
+(defn- ensure-pmbql-for-unclean-query
+  [middleware-fn]
+  (-> (fn [query]
+        (mu/disable-enforcement
+         (lib/without-cleaning
+          (fn []
+            (let [query' (-> (cond->> query
+                               (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
+                             (copy-unconverted-properties query))]
+              (-> query' middleware-fn ->legacy))))))
+      (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
   "Pre-processing middleware. Has the form
@@ -129,33 +159,27 @@
    ;; specific columns.
    (ensure-pmbql #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
-   (ensure-legacy #'qp.resolve-fields/resolve-fields)
+   ;; this middleware actually works with either pMBQL or legacy.
+   #'qp.resolve-fields/resolve-fields
    (ensure-legacy #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-pmbql #'resolve-joins/resolve-joins)
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
-   (ensure-legacy #'fix-bad-refs/fix-bad-references)
-   (ensure-pmbql #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
+   #_(ensure-legacy #'fix-bad-refs/fix-bad-references)
+   (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
    (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-pmbql #'auto-parse-filter-values/auto-parse-filter-values)
+   (ensure-pmbql-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-legacy #'limit/add-default-limit)
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)])
-
-(defn- middleware-fn-name [middleware-fn]
-  (if-let [fn-name (:name (meta middleware-fn))]
-    (if-let [fn-ns (:ns (meta middleware-fn))]
-      (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
-      fn-name)
-    middleware-fn))
 
 (mu/defn preprocess :- [:map
                         [:database ::lib.schema.id/database]]

@@ -1,6 +1,7 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -233,14 +234,14 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn- column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
+(mu/defn column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query           :- ::lib.schema/query
    stage-number    :- :int
    column-metadata :- ::lib.schema.metadata/column
    join-alias      :- ::lib.schema.common/non-blank-string]
   ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two keys for
-  ;; join aliases.
+  ;; join aliases. (QUE-1403)
   (let [column-metadata (assoc column-metadata
                                :source-alias            join-alias
                                :lib/original-join-alias join-alias)
@@ -251,6 +252,7 @@
                                                                    (dissoc column-metadata :join-alias :lib/original-join-alias :source-alias)))
                                    :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
+                            (cond-> (:lib/expression-name column-metadata) (set/rename-keys {:lib/expression-name :lib/original-expression-name}))
                             (with-join-alias join-alias))]
     (assert (= (lib.join.util/current-join-alias col) join-alias))
     col))

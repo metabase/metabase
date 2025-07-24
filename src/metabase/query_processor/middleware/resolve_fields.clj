@@ -45,9 +45,12 @@
         (comp cat (keep :id))
         (lib.util.match/match (:query query) {:source-metadata source-metadata} source-metadata)))
 
-(defn resolve-fields
+;;; TODO (Cam 7/24/25) -- rename this to `fetch-fields` or something
+(mu/defn resolve-fields :- [:map
+                            [:database ::lib.schema.id/database]]
   "Resolve all field referenced in the `query`, and store them in the QP Store."
-  [query]
+  [query :- [:map
+             [:database ::lib.schema.id/database]]]
   (let [ids (field-ids query)]
     (try
       (u/prog1 query

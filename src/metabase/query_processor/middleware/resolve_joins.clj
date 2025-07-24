@@ -8,7 +8,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.schema.util :as lib.schema.util]
+   [medley.core :as m]))
 
 (mu/defn- resolve-join :- ::lib.schema.join/join
   [query :- ::lib.schema/query
@@ -25,11 +27,12 @@
      (let [join-alias           (lib/current-join-alias join)
            join-last-stage-path (concat path [:stages (dec (count (:stages join)))])
            cols                 (lib.walk/apply-f-for-stage-at-path lib/returned-columns query join-last-stage-path)
-           fields               (mapv (fn [col]
-                                        (-> col
-                                            (lib/with-join-alias join-alias)
-                                            lib/ref))
-                                      cols)]
+           fields               (into
+                                 []
+                                 (comp (map #(lib/with-join-alias % join-alias))
+                                       (map lib/ref)
+                                       (m/distinct-by lib.schema.util/ref-distinct-key))
+                                 cols)]
        {:fields fields}))))
 
 (mu/defn- add-join-fields-to-stage :- [:maybe ::lib.schema/stage]
