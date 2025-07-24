@@ -119,3 +119,15 @@
   height: 0;
   pointer-events: none;
 }
+
+.img {
+  max-width: 80%;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+
+  &:global(.ProseMirror-selectednode) {
+    box-shadow: 0 0 0 1px var(--mb-color-brand);
+    border-radius: var(--mantine-radius-xs);
+  }
+}

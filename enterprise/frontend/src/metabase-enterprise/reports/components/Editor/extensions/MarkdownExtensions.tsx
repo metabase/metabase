@@ -77,6 +77,8 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
         index++;
       });
       markdown += "\n";
+    } else if (node.type.name === "image") {
+      markdown += `![${node.attrs.alt || ""}](${node.attrs.src})\n\n`;
     } else if (node.type.name === "questionEmbed") {
       const { questionId, snapshotId, customName } = node.attrs;
       markdown += customName
@@ -136,6 +138,10 @@ export function parseMarkdownToHTML(markdown: string): string {
       '<pre><code class="language-$1">$2</code></pre>',
     )
     .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi, `<a href="$2">$1</a>`)
+    .replace(
+      /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/gi,
+      `<img src="$2" alt="$1" />`,
+    )
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\n\n/g, "</p><p>")
     .replace(/^(?!<)/, "<p>")
