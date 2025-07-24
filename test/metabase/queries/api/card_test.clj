@@ -98,9 +98,8 @@
   ([db-or-id table-or-id]
    {:database (u/the-id db-or-id)
     :type     :query
-    :query    {:source-table       (u/the-id table-or-id)
-               :aggregation        [[:count]]
-               :aggregation-idents {0 (u/generate-nano-id)}}}))
+    :query    {:source-table (u/the-id table-or-id)
+               :aggregation  [[:count]]}}))
 
 (defn pmbql-count-query
   ([]
@@ -3394,7 +3393,6 @@
                                                                     :joins [{:fields       :all
                                                                              :source-table table-id
                                                                              :condition    [:= 1 2] ; field-ids don't matter
-                                                                             :ident        "DqJ2fSIeMkc31Hx_B1Ees"
                                                                              :alias        "SomeAlias"}]}})]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the table is not based on uploads, based_on_upload should be nil"

@@ -45,21 +45,18 @@
                      :name         "grandparent"
                      :display-name "Grandparent"
                      :id           (grandparent-parent-child-id :grandparent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         parent      {:lib/type     :metadata/column
                      :name         "parent"
                      :display-name "Parent"
                      :parent-id    (grandparent-parent-child-id :grandparent)
                      :id           (grandparent-parent-child-id :parent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         child       {:lib/type     :metadata/column
                      :name         "child"
                      :display-name "Child"
                      :parent-id    (grandparent-parent-child-id :parent)
                      :id           (grandparent-parent-child-id :child)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}]
     (lib.tu/mock-metadata-provider
      {:database meta/database
@@ -439,7 +436,6 @@
                                                  :condition    [:=
                                                                 [:field (meta/id :venues :category-id) nil]
                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]
-                                                 :ident        "khQz-1AxQ4MVUfynQFnUw"
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
@@ -1454,12 +1450,10 @@
                            (-> (meta/field-metadata :people col)
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
-      (is (=? (map #(dissoc % :ident)
-                   (sorted (concat order-cols join-cols)))
+      (is (=? (sorted (concat order-cols join-cols))
               (sorted (lib.metadata.calculation/returned-columns query))))
       (testing "visible-columns returns implicitly joinable People, but does not return two copies of Product.CATEGORY"
-        (is (=? (map #(dissoc % :ident)
-                     (sorted (concat order-cols join-cols implicit-cols)))
+        (is (=? (sorted (concat order-cols join-cols implicit-cols))
                 (sorted (lib.metadata.calculation/visible-columns query))))))))
 
 (deftest ^:parallel nested-query-implicit-join-fields-test
@@ -1631,7 +1625,6 @@
                             {:lib/type :metadata/column
                              :id 1
                              :name "search"
-                             :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                              :display-name "Search"
                              :base-type :type/Text})
                  lib/visible-columns
@@ -1646,7 +1639,6 @@
                            {:lib/type :metadata/column
                             :id 1
                             :name "num"
-                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Random number"
                             :base-type :type/Integer})
                 lib/visible-columns

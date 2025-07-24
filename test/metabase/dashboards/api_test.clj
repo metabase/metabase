@@ -3161,7 +3161,6 @@
                                                                                   {:query "SELECT category FROM products LIMIT 10;"})
                                                                  :type          :model}]
         (let [metadata (-> (:dataset_query native-card)
-                           (assoc-in [:info :card-entity-id] (:entity_id native-card))
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}

@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
-import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
@@ -15,6 +14,7 @@ import { useSaveQuestion } from "metabase/query_builder/containers/use-save-ques
 import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
 import type { SdkQuestionContextType, SdkQuestionProviderProps } from "./types";
@@ -46,9 +46,10 @@ export const SdkQuestionProvider = ({
   targetCollection,
   initialSqlParameters,
   withDownloads,
-  variant,
   targetDashboardId,
   backToDashboard,
+  getClickActionMode: userGetClickActionMode,
+  navigateToNewCard: userNavigateToNewCard,
 }: SdkQuestionProviderProps) => {
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -117,17 +118,20 @@ export const SdkQuestionProvider = ({
     return { ...globalPlugins, ...componentPlugins };
   }, [globalPlugins, componentPlugins]);
 
-  const mode = useMemo(() => {
-    return (
-      question &&
-      getEmbeddingMode({
-        question,
-        queryMode:
-          variant === "static" ? StaticQuestionSdkMode : EmbeddingSdkMode,
-        plugins: plugins as InternalMetabasePluginsConfig,
-      })
-    );
-  }, [question, variant, plugins]);
+  const getClickActionMode: ClickActionModeGetter =
+    userGetClickActionMode ??
+    (({ question }: { question: Question }) => {
+      return (
+        question &&
+        getEmbeddingMode({
+          question,
+          queryMode: EmbeddingSdkMode,
+          plugins: plugins as InternalMetabasePluginsConfig,
+        })
+      );
+    });
+
+  const mode = (question && getClickActionMode({ question })) ?? null;
 
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
@@ -139,7 +143,10 @@ export const SdkQuestionProvider = ({
     queryQuestion,
     replaceQuestion,
     updateQuestion,
-    navigateToNewCard,
+    navigateToNewCard:
+      userNavigateToNewCard !== undefined
+        ? userNavigateToNewCard
+        : navigateToNewCard,
     plugins,
     question,
     originalQuestion,
@@ -150,7 +157,6 @@ export const SdkQuestionProvider = ({
     isSaveEnabled,
     targetCollection,
     withDownloads,
-    variant,
     onRun,
     backToDashboard,
   };

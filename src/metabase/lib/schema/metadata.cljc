@@ -190,7 +190,9 @@
         ;; these busted "IDs"
         (as-> m (cond-> m
                   (and (:id m) (not (pos-int? (:id m))))
-                  (dissoc :id))))))
+                  (dissoc :id)))
+        ;; remove deprecated `:ident`
+        (dissoc :ident))))
 
 (mr/def ::column.validate-expression-source
   "Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it probably
