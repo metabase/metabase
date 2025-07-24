@@ -1,0 +1,116 @@
+name: Cache Bust on Dependency Changes
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'deps.edn'
+      - 'bb.edn'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'patches/**'
+      - 'shadow-cljs.edn'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'deps.edn'
+      - 'bb.edn'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'patches/**'
+      - 'shadow-cljs.edn'
+
+jobs:
+  detect-and-bust-caches:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need at least 2 commits to compare
+
+      - name: Detect changed dependency files
+        id: changes
+        run: |
+          echo "Detecting dependency file changes..."
+          
+          # Check what files changed in this push/PR
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          echo "Comparing $BASE_SHA..$HEAD_SHA"
+          
+          # Detect specific dependency changes
+          CHANGED_FILES=$(git diff --name-only $BASE_SHA..$HEAD_SHA || echo "")
+          echo "Changed files: $CHANGED_FILES"
+          
+          # Determine cache types to bust
+          CACHE_TYPES_TO_BUST=""
+          
+          # Check for Clojure dependency changes
+          if echo "$CHANGED_FILES" | grep -E "(deps\.edn|bb\.edn)" > /dev/null; then
+            echo "🔍 Clojure dependencies changed"
+            CACHE_TYPES_TO_BUST="${CACHE_TYPES_TO_BUST}clojure,"
+            echo "clojure_deps_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "clojure_deps_changed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check for Node.js dependency changes
+          if echo "$CHANGED_FILES" | grep -E "(package\.json|yarn\.lock|patches/)" > /dev/null; then
+            echo "🔍 Node.js dependencies changed"
+            CACHE_TYPES_TO_BUST="${CACHE_TYPES_TO_BUST}nodejs,"
+            echo "node_deps_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "node_deps_changed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check for Shadow CLJS config changes
+          if echo "$CHANGED_FILES" | grep -E "shadow-cljs\.edn" > /dev/null; then
+            echo "🔍 Shadow CLJS configuration changed"
+            echo "shadow_config_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "shadow_config_changed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # If dependencies changed, also bust unified caches
+          if [ -n "$CACHE_TYPES_TO_BUST" ]; then
+            CACHE_TYPES_TO_BUST="${CACHE_TYPES_TO_BUST}unified"
+          fi
+          
+          # Remove trailing comma
+          CACHE_TYPES_TO_BUST=$(echo "$CACHE_TYPES_TO_BUST" | sed 's/,$//')
+          echo "cache-types-to-bust=$CACHE_TYPES_TO_BUST" >> $GITHUB_OUTPUT
+          echo "📋 Cache types to bust: $CACHE_TYPES_TO_BUST"
+
+      - name: Bust caches
+        if: steps.changes.outputs.cache-types-to-bust != ''
+        uses: ./.github/actions/bust-cache
+        with:
+          cache-types: ${{ steps.changes.outputs.cache-types-to-bust }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          context: "Automatic Cache Bust"
+
+      - name: Show dependency changes
+        run: |
+          echo "## 🔍 Dependency Changes" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.changes.outputs.clojure_deps_changed }}" = "true" ]; then
+            echo "- Clojure: deps.edn, bb.edn" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.changes.outputs.node_deps_changed }}" = "true" ]; then
+            echo "- Node.js: package.json, yarn.lock, patches/" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.changes.outputs.shadow_config_changed }}" = "true" ]; then
+            echo "- Shadow CLJS: shadow-cljs.edn" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
