@@ -128,6 +128,7 @@ export const QuestionEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
     const { snapshotId, questionId, questionName, customName } = node.attrs;
     const dispatch = useDispatch();
+    const canWrite = editor.options.editable;
 
     const card = useSelector((state) => getReportCard(state, questionId));
     const rawSeries = useSelector((state) =>
@@ -373,18 +374,20 @@ export const QuestionEmbedComponent = memo(
                     >
                       {displayName}
                     </Text>
-                    <Icon
-                      name="pencil"
-                      size={14}
-                      color="var(--mb-color-text-medium)"
-                      className={styles.titleEditIcon}
-                      style={{ cursor: "pointer" }}
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        setEditedTitle(displayName);
-                        setIsEditingTitle(true);
-                      }}
-                    />
+                    {canWrite && (
+                      <Icon
+                        name="pencil"
+                        size={14}
+                        color="var(--mb-color-text-medium)"
+                        className={styles.titleEditIcon}
+                        style={{ cursor: "pointer" }}
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          setEditedTitle(displayName);
+                          setIsEditingTitle(true);
+                        }}
+                      />
+                    )}
                   </Box>
                 )}
                 {!isEditingTitle && (
@@ -412,24 +415,39 @@ export const QuestionEmbedComponent = memo(
                       </Box>
                     </Menu.Target>
                     <Menu.Dropdown>
-                      <Menu.Item onClick={handleRefreshSnapshot}>
+                      <Menu.Item
+                        onClick={handleRefreshSnapshot}
+                        disabled={!canWrite}
+                      >
                         {t`Refresh snapshot`}
                       </Menu.Item>
-                      <Menu.Item onClick={handleEditVisualizationSettings}>
+                      <Menu.Item
+                        onClick={handleEditVisualizationSettings}
+                        disabled={!canWrite}
+                      >
                         {t`Edit Visualization`}
                       </Menu.Item>
                       {isGuiQuestion && (
-                        <Menu.Item onClick={() => setIsModifyModalOpen(true)}>
+                        <Menu.Item
+                          onClick={() => setIsModifyModalOpen(true)}
+                          disabled={!canWrite}
+                        >
                           {t`Edit Query`}
                         </Menu.Item>
                       )}
-                      <Menu.Item onClick={handleReplaceQuestion}>
+                      <Menu.Item
+                        onClick={handleReplaceQuestion}
+                        disabled={!canWrite}
+                      >
                         {t`Replace question`}
                       </Menu.Item>
                       <Menu.Item onClick={handleCopyStaticQuestion}>
                         {t`Copy Static Question Markdown`}
                       </Menu.Item>
-                      <Menu.Item onClick={handleReplaceStaticQuestion}>
+                      <Menu.Item
+                        onClick={handleReplaceStaticQuestion}
+                        disabled={!canWrite}
+                      >
                         {t`Replace With Static Question`}
                       </Menu.Item>
                     </Menu.Dropdown>
@@ -452,7 +470,7 @@ export const QuestionEmbedComponent = memo(
                 />
               </Box>
               <Box className={styles.questionTimestamp}>
-                {t`Snapshot At:`}
+                {t`Snapshot at:`}
                 <DateTime value={rawSeries[0].started_at} />
               </Box>
             </>

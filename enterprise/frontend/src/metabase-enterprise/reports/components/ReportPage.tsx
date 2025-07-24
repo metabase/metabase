@@ -5,7 +5,7 @@ import { usePrevious } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
@@ -65,6 +65,12 @@ export const ReportPage = ({
       ? { id: reportId, version: selectedVersion }
       : skipToken,
   );
+
+  const { data: collection } = useGetCollectionQuery(
+    report?.collection_id ? { id: report.collection_id } : skipToken,
+  );
+
+  const canWrite = reportId === "new" ? true : !collection?.can_write;
 
   const {
     reportTitle,
@@ -144,7 +150,7 @@ export const ReportPage = ({
     );
   }, [reportTitle, reportId, report, currentEditorContent]);
 
-  const showSaveButton = hasUnsavedChanges();
+  const showSaveButton = hasUnsavedChanges() && canWrite;
 
   const handleSave = useCallback(
     async (collectionId?: CollectionId) => {
@@ -341,6 +347,7 @@ export const ReportPage = ({
                     setReportTitle(event.currentTarget.value)
                   }
                   placeholder={t`New report`}
+                  readOnly={!canWrite}
                   className={styles.titleInput}
                 />
                 <VersionSelect
@@ -390,6 +397,7 @@ export const ReportPage = ({
                     <Menu.Item
                       leftSection={<Icon name="refresh" />}
                       onClick={handleRefreshAllData}
+                      disabled={!canWrite}
                     >
                       {t`Refresh all data`}
                     </Menu.Item>
@@ -405,6 +413,7 @@ export const ReportPage = ({
                 onQuestionRefsChange={updateQuestionRefs}
                 onQuestionSelect={handleQuestionSelect}
                 content={reportContent}
+                editable={canWrite}
               />
             )}
           </Box>

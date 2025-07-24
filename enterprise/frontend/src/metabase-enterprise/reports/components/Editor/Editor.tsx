@@ -39,12 +39,14 @@ interface EditorProps {
   onQuestionRefsChange?: (refs: QuestionRef[]) => void;
   content: string;
   onQuestionSelect?: (questionId: number | null) => void;
+  editable?: boolean;
 }
 
 export const Editor: React.FC<EditorProps> = ({
   onEditorReady,
   onQuestionRefsChange,
   content = "",
+  editable = true,
   onQuestionSelect,
 }) => {
   const dispatch = useDispatch();
@@ -90,7 +92,9 @@ export const Editor: React.FC<EditorProps> = ({
         editor.commands as unknown as { setMarkdown: (content: string) => void }
       ).setMarkdown(content);
     }
-  }, [editor, content]);
+
+    editor.setEditable(editable);
+  }, [editor, content, editable]);
 
   // Track question references
   useEffect(() => {
