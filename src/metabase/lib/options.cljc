@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [uuid])
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -84,3 +85,16 @@
   "Get the `:lib/uuid` associated with something, e.g. an MBQL clause or join."
   [x]
   (:lib/uuid (options x)))
+
+(defn correct-effective-type
+  "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
+  `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
+  whatever.
+
+  Returns the original `:effective-type` if the special handling doesn't apply, even if it is nil."
+  [metadata-or-options]
+  (let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) metadata-or-options)]
+    (if (and temporal-unit
+             (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+      :type/Integer
+      (:effective-type metadata-or-options))))
