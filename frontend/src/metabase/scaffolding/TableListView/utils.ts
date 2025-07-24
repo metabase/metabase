@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Urls from "metabase/lib/urls";
 import {
   isAvatarURL,
   isEmail,
@@ -12,6 +13,21 @@ import type {
   StructuredDatasetQuery,
   Table,
 } from "metabase-types/api";
+
+import type { ParsedRouteParams, RouteParams } from "./types";
+
+export function parseRouteParams(
+  location: Location,
+  params: RouteParams,
+): ParsedRouteParams {
+  const searchParams = new URLSearchParams(location.search);
+  const page = searchParams.get("page");
+
+  return {
+    tableId: Urls.extractEntityId(params.tableId)!,
+    page: page ? parseInt(page, 10) : 0,
+  };
+}
 
 export function getExploreTableUrl(table: Table): string {
   const metadata = createMockMetadata({

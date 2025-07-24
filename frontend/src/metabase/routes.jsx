@@ -317,7 +317,7 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route path="table">
-            <Route path=":id" component={TableListView} />
+            <Route path=":tableId" component={TableListView} />
             <Route path=":tableId/detail/:rowId" component={TableDetailView} />
             <Route
               path=":tableId/detail/:rowId/edit"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -8,6 +9,8 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import {
   Button,
@@ -23,6 +26,7 @@ import {
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
+import type { RouteParams } from "./types";
 import {
   detectDescriptionColumn,
   detectImageColumn,
@@ -30,21 +34,23 @@ import {
   getExploreTableUrl,
   getRowCountQuery,
   getTableQuery,
+  parseRouteParams,
   renderValue,
 } from "./utils";
 
-interface RouteParams {
-  id: string;
-}
-
 interface Props {
+  location: Location;
   params: RouteParams;
 }
 
-export const TableListView = ({ params }: Props) => {
-  const tableId = parseInt(params.id, 10);
+const PAGE_SIZE = 10;
+
+export const TableListView = ({ location, params }: Props) => {
+  const dispatch = useDispatch();
+  const { page, tableId } = parseRouteParams(location, params);
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
+  // TODO: run paginated queries?
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getTableQuery(table) : undefined;
   }, [table]);
@@ -96,6 +102,9 @@ export const TableListView = ({ params }: Props) => {
     return <LoadingAndErrorWrapper loading />;
   }
 
+  const allRows = dataset.data.rows;
+  const paginatedRows = allRows.slice(PAGE_SIZE * page, PAGE_SIZE * (page + 1));
+
   return (
     <Stack gap="md" p="xl">
       <Group align="flex-start" justify="space-between">
@@ -109,7 +118,23 @@ export const TableListView = ({ params }: Props) => {
           )}
         </Stack>
 
-        <Group align="flex-start" gap="md">
+        <Group align="center" gap="md">
+          <PaginationControls
+            itemsLength={paginatedRows.length}
+            page={page}
+            pageSize={PAGE_SIZE}
+            onNextPage={() => {
+              dispatch(push(`/table/${tableId}?page=${page + 1}`));
+            }}
+            onPreviousPage={() => {
+              if (page === 1) {
+                dispatch(push(`/table/${tableId}`));
+              } else {
+                dispatch(push(`/table/${tableId}?page=${page - 1}`));
+              }
+            }}
+          />
+
           {!isSyncInProgress(table) && !isEditing && (
             <Button
               component={Link}
@@ -143,7 +168,7 @@ export const TableListView = ({ params }: Props) => {
 
       <Group align="flex-start" gap="xl">
         <Stack component="ul" gap="md" w={isEditing ? 500 : 1000}>
-          {dataset.data.rows.map((row, index) => {
+          {paginatedRows.map((row, index) => {
             return (
               <Card component="li" key={index}>
                 {imageColumnIndex !== -1 && (
@@ -159,19 +184,17 @@ export const TableListView = ({ params }: Props) => {
                   </Card.Section>
                 )}
 
-                <Group justify="space-between">
-                  <Link
-                    to={
-                      pkIndex != null
-                        ? `/table/${table.id}/detail/${row[pkIndex]}`
-                        : ""
-                    }
-                  >
-                    <Text fw="bold">
-                      {renderValue(row[nameColumnIndex], nameColumn)}
-                    </Text>
-                  </Link>
-                </Group>
+                <Link
+                  to={
+                    pkIndex != null
+                      ? `/table/${table.id}/detail/${row[pkIndex]}`
+                      : ""
+                  }
+                >
+                  <Text fw="bold">
+                    {renderValue(row[nameColumnIndex], nameColumn)}
+                  </Text>
+                </Link>
 
                 {descriptionColumn && (
                   <Text c="text-secondary" size="sm">
