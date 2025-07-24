@@ -7,6 +7,8 @@
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
+   [metabase.search.filter :as search.filter]
+   [metabase.search.ingestion :as ingestion]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -55,6 +57,9 @@
      [:archived :boolean [:default false]]
      [:verified :boolean]
      [:official_collection :boolean]
+     [:database_id :int]
+     [:collection_id :int]
+     [:display_type :text]
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
      [:text_search_vector :tsvector :not-null]
@@ -78,7 +83,7 @@
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
-                         last_editor_id archived verified official_collection legacy_input] :as doc}]
+                         last_editor_id archived verified official_collection database_id collection_id display_type legacy_input] :as doc}]
   {:model               model
    :model_id            id
    :creator_id          creator_id
@@ -88,6 +93,9 @@
    :archived            archived
    :verified            verified
    :official_collection official_collection
+   :database_id         database_id
+   :collection_id       collection_id
+   :display_type        display_type
    :embedding           [:raw (format-embedding embedding-vec)]
    :content             searchable_text
    :text_search_vector (if (:name doc)
@@ -288,7 +296,7 @@
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id filter-items-in-personal-collection current-user-id ids display-type]}]
   (let [conditions (filter some?
                            [(when (some? archived?)
                               [:= :archived archived?])
@@ -300,6 +308,17 @@
                               [:in :creator_id created-by])
                             (when (seq last-edited-by)
                               [:in :last_editor_id last-edited-by])
+                            (when table-db-id
+                              [:= :database_id table-db-id])
+                            (when filter-items-in-personal-collection
+                              (search.filter/personal-collections-where-clause
+                               {:filter-items-in-personal-collection filter-items-in-personal-collection
+                                :current-user-id current-user-id}
+                               :collection_id))
+                            (when (seq ids)
+                              [:in :model_id (map str ids)])
+                            (when (seq display-type)
+                              [:in :display_type display-type])
                             (when (and created-at (:start created-at) (:end created-at))
                               [:between :model_created_at
                                (LocalDate/parse (:start created-at))
