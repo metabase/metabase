@@ -1,3 +1,4 @@
+import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import {
   EditorContent,
@@ -10,6 +11,7 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
@@ -49,6 +51,11 @@ export const Editor: React.FC<EditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit,
+      Link.configure({
+        HTMLAttributes: {
+          class: CS.link,
+        },
+      }),
       Placeholder.configure({
         placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
       }),

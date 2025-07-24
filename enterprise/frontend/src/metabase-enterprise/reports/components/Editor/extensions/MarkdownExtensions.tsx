@@ -41,7 +41,13 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
       let paragraphContent = "";
       node.forEach((child) => {
         if (child.type.name === "text") {
-          paragraphContent += child.text;
+          let text = child.text;
+          child.marks.forEach((mark) => {
+            if (mark.type.name === "link") {
+              text = `[${text}](${mark.attrs.href})`;
+            }
+          });
+          paragraphContent += text;
         } else if (child.type.name === "questionEmbed") {
           const { questionId, snapshotId, customName } = child.attrs;
           paragraphContent += customName
@@ -129,6 +135,7 @@ export function parseMarkdownToHTML(markdown: string): string {
       /```(\w*)\n([\s\S]*?)```/g,
       '<pre><code class="language-$1">$2</code></pre>',
     )
+    .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi, `<a href="$2">$1</a>`)
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\n\n/g, "</p><p>")
     .replace(/^(?!<)/, "<p>")
