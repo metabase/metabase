@@ -45,7 +45,7 @@ There are two basic types of widgets you can add. The type of filter or paramete
    
    Go to where you want to add a filter and click the **filter icon**.
 3. Select a [filter type](#filter-and-parameter-types).
-4. [Connect your filter or parameter widget to dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards) to one or more dashboard cards. Only dashboard-level widgets can be connected to cards on multiple tabs.
+4. [Connect your filter or parameter widget to one or more dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards). Only dashboard-level widgets can be connected to cards on multiple tabs.
 5. [Configure your filter](#editing-a-filter).
 6. **Save** your changes.
 
@@ -133,7 +133,7 @@ You can choose from:
 
 ## Text or category filter
 
-A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
+A flexible filter type that will let you create either a dropdown menu or an input box to filter on any text or category field in your cards. Options include:
 
 - **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md#field-filter-variables).
 - **Is not**. Exclude one or more specific values.
