@@ -1,4 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import * as Urls from "metabase/lib/urls";
 import type { TransformListPageProps } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
@@ -7,7 +8,8 @@ import { TransformList } from "./TransformList";
 import S from "./TransformListPage.module.css";
 import { COLUMN_CONFIG } from "./constrants";
 
-export function TransformListPage(_props: TransformListPageProps) {
+export function TransformListPage({ params }: TransformListPageProps) {
+  const transformId = Urls.extractEntityId(params.transformId);
   const { data: transforms = [], isLoading, error } = useListTransformsQuery();
 
   return (
@@ -22,7 +24,7 @@ export function TransformListPage(_props: TransformListPageProps) {
         maw={COLUMN_CONFIG.list.max}
       >
         <LoadingAndErrorWrapper loading={isLoading} error={error}>
-          <TransformList transforms={transforms} />
+          <TransformList transforms={transforms} transformId={transformId} />
         </LoadingAndErrorWrapper>
       </Flex>
     </>
