@@ -677,9 +677,10 @@
                                         ;; We ignore the order of the fields in the lists, but need to make sure any
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
-                                        ;; Remove the randomized idents, which are of course not going to match.
+                                        ;; Remove the randomized idents, which are of course not going to match. These
+                                        ;; are deprecated and should no longer be populated
                                         (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
-      ;; Ignore :info since it contains the randomized :card-entity-id.
+      ;; Ignore :info since it contains the randomized :card-entity-id. (This is no longer populated either.)
       (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
@@ -690,7 +691,7 @@
     (lib.util/update-query-stage a-query -1
                                  #(-> %
                                       (assoc :fields (frequencies fields))
-                                      lib.schema.util/remove-randomized-idents))))
+                                      lib.schema.util/remove-lib-uuids))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
@@ -721,10 +722,10 @@
          (= (first x) (first y) :field))
     (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid and :ident values don't have to match.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't have to match.
     (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid :ident)
-          y (dissoc y :lib/uuid :ident)]
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
       (and (= (set (keys x)) (set (keys y)))
            (every? (fn [[k v]]
                      (query=* v (get y k)))

@@ -638,44 +638,49 @@
                                                                                                ::add/position      1}]
                                                         pivot-grouping    [:expression "pivot-grouping" {::add/desired-alias "pivot-grouping"
                                                                                                          ::add/position      2}]
+                                                        ;; TODO: The order here is not deterministic! It's coming
+                                                        ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
+                                                        ;; or [[metabase.query-processor.util.nest-query]], which walks
+                                                        ;; the query looking for refs in an arbitrary order, and returns
+                                                        ;; `m/distinct-by` over that random order. Changing the map keys
+                                                        ;; on the inner query can perturb this order; if you cause this
+                                                        ;; test to fail based on shuffling the order of these joined
+                                                        ;; fields, just edit the expectation to match the new order.
+                                                        ;; Tech debt issue: #39396
                                                         products-id       [:field %products.id {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                                 ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
                                                                                                 ::add/source-alias  "ID"
                                                                                                 ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__ID"
-                                                                                                ::add/position      3}]
+                                                                                                ::add/position      4}]
                                                         products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                                       ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
                                                                                                       ::add/source-alias  "CATEGORY"
                                                                                                       ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                                      ::add/position      4}]]
+                                                                                                      ::add/position      3}]]
                                                     {:source-table $$orders
                                                      :joins        [{:source-table $$products
                                                                      :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                                     :ident        "oJhVb8BtrfV9-KsWj5kKw"
                                                                      :condition    [:= product-id products-id]
                                                                      :strategy     :left-join
                                                                      :fk-field-id  %product-id}]
                                                      :expressions  {"pivot-grouping" [:abs 0]}
-                                                     :expression-idents {"pivot-grouping" "F_YdWocSQso_vOKlxhzR2"}
                                                      :fields       [product-id
                                                                     created-at
                                                                     pivot-grouping
-                                                                    products-id
-                                                                    products-category]})})))
+                                                                    products-category
+                                                                    products-id]})})))
                   (-> (lib.tu.macros/mbql-query orders
                         {:aggregation [[:aggregation-options [:count] {:name "count"}]]
                          :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
                                        !year.created-at
                                        [:expression "pivot-grouping"]]
                          :expressions {"pivot-grouping" [:abs 0]}
-                         :expression-idents {"pivot-grouping" "F_YdWocSQso_vOKlxhzR2"}
                          :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
                                        [:asc !year.created-at]
                                        [:asc [:expression "pivot-grouping"]]]
                          :joins       [{:source-table $$products
                                         :strategy     :left-join
                                         :alias        "PRODUCTS__via__PRODUCT_ID"
-                                        :ident        "oJhVb8BtrfV9-KsWj5kKw"
                                         :fk-field-id  %product-id
                                         :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]})
                       qp.preprocess/preprocess
@@ -882,21 +887,27 @@
                    [:expression
                     "double_total"
                     {::add/desired-alias "double_total", ::add/position 2}]
-                   [:field
-                    (meta/id :people :id)
-                    {:join-alias "p"
-                     ::add/source-table "p"
-                     ::add/source-alias "ID"
-                     ::add/desired-alias "p__ID"
-                     ::add/position 3}]
+                   ;; TODO: The order here is not deterministic! It's coming
+                   ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
+                   ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking for refs in an
+                   ;; arbitrary order, and returns `m/distinct-by` over that random order. Changing the map keys on the
+                   ;; inner query can perturb this order; if you cause this test to fail based on shuffling the order of
+                   ;; these joined fields, just edit the expectation to match the new order. Tech debt issue: #39396
                    [:field
                     (meta/id :people :created-at)
                     {:temporal-unit (symbol "nil #_\"key is not present.\"")
                      ::add/source-alias "CREATED_AT"
                      :join-alias "p"
                      ::add/desired-alias "p__CREATED_AT"
-                     ::add/position 4
-                     ::add/source-table "p"}]]}}
+                     ::add/position 3
+                     ::add/source-table "p"}]
+                   [:field
+                    (meta/id :people :id)
+                    {:join-alias "p"
+                     ::add/source-table "p"
+                     ::add/source-alias "ID"
+                     ::add/desired-alias "p__ID"
+                     ::add/position 4}]]}}
                 (->> (lib.tu.macros/mbql-query orders
                        {:expressions {"double_total" [:* $total 2]}
                         :breakout    [!hour-of-day.people.created-at
