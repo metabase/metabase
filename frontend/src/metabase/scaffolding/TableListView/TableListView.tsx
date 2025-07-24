@@ -15,6 +15,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import {
+  ActionIcon,
   Button,
   Card,
   Group,
@@ -34,6 +35,7 @@ import type {
 
 import { renderValue } from "../utils";
 
+import S from "./TableListView.module.css";
 import type { RouteParams } from "./types";
 import {
   detectDescriptionColumn,
@@ -254,27 +256,19 @@ export const TableListView = ({ location, params }: Props) => {
       </Group>
 
       <Group align="flex-start" gap="xl">
-        <Stack component="ul" gap="md" w={isEditing ? 500 : 1000}>
+        <Stack component="ul" gap="md" w={600}>
           {paginatedRows.map((row, index) => {
             return (
-              <Card component="li" key={index}>
+              <Card className={S.row} component="li" key={index}>
                 {imageColumnIndex !== -1 && (
                   <Card.Section mb="lg">
                     <Image alt={t`Image`} h={160} src={row[imageColumnIndex]} />
                   </Card.Section>
                 )}
 
-                <Link
-                  to={
-                    pkIndex != null
-                      ? `/table/${table.id}/detail/${row[pkIndex]}`
-                      : ""
-                  }
-                >
-                  <Text fw="bold">
-                    {renderValue(tc, row[nameColumnIndex], nameColumn)}
-                  </Text>
-                </Link>
+                <Text fw="bold">
+                  {renderValue(tc, row[nameColumnIndex], nameColumn)}
+                </Text>
 
                 {descriptionColumn && (
                   <Text c="text-secondary" size="sm">
@@ -285,6 +279,19 @@ export const TableListView = ({ location, params }: Props) => {
                     )}
                   </Text>
                 )}
+
+                <ActionIcon
+                  className={S.link}
+                  component={Link}
+                  to={
+                    pkIndex != null
+                      ? `/table/${table.id}/detail/${row[pkIndex]}`
+                      : ""
+                  }
+                  variant="outline"
+                >
+                  <Icon name="share" />
+                </ActionIcon>
               </Card>
             );
           })}

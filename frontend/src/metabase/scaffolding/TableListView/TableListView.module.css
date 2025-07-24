@@ -1,0 +1,9 @@
+.link {
+  position: absolute;
+  right: 1rem;
+  display: none;
+
+  .row:hover & {
+    display: block;
+  }
+}
