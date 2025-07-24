@@ -2814,6 +2814,49 @@
                 (first
                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
 
+(deftest in-report-cards-do-not-appear-in-collection-items
+  (testing "GET /api/collection/:id/items excludes cards with type :in_report"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card {normal-card-id :id} {:collection_id coll-id}
+                   :model/Card {in-report-card-id :id} {:collection_id coll-id :type :in_report}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+      (testing "Normal cards and dashboards appear, but in_report cards do not"
+        (is (= #{[normal-card-id "card"]
+                 [dash-id "dashboard"]}
+               (set (map (juxt :id :model)
+                         (:data (mt/user-http-request :rasta :get 200
+                                                      (str "collection/" coll-id "/items"))))))))
+      (testing "Even with show_dashboard_questions=true, in_report cards do not appear"
+        (is (= #{[normal-card-id "card"]
+                 [dash-id "dashboard"]}
+               (set (map (juxt :id :model)
+                         (:data (mt/user-http-request :rasta :get 200
+                                                      (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))))
+
+(deftest in-report-cards-do-not-appear-in-root-items
+  (testing "GET /api/collection/root/items excludes cards with type :in_report"
+    (mt/with-temp [:model/Card {normal-card-id :id} {:collection_id nil
+                                                     :name "Normal Root Card"}
+                   :model/Card {in-report-card-id :id} {:collection_id nil
+                                                        :type :in_report
+                                                        :name "In Report Root Card"}
+                   :model/Dashboard {dash-id :id} {:collection_id nil
+                                                   :name "Root Dashboard"}]
+      (testing "Normal cards and dashboards in root appear, but in_report cards do not"
+        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
+              root-test-items (filter #(#{normal-card-id dash-id in-report-card-id} (:id %))
+                                      (:data items))]
+          (is (= #{[normal-card-id "card"]
+                   [dash-id "dashboard"]}
+                 (set (map (juxt :id :model) root-test-items))))))
+      (testing "Even with show_dashboard_questions=true, in_report cards do not appear"
+        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items?show_dashboard_questions=true")
+              root-test-items (filter #(#{normal-card-id dash-id in-report-card-id} (:id %))
+                                      (:data items))]
+          (is (= #{[normal-card-id "card"]
+                   [dash-id "dashboard"]}
+                 (set (map (juxt :id :model) root-test-items)))))))))
+
 (deftest dashboard-questions-have-dashboard-hydrated
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id

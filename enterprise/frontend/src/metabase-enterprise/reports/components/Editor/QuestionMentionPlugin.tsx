@@ -175,7 +175,7 @@ export const QuestionMentionPlugin = ({
 
       dispatch(
         fetchReportQuestionData({
-          cardId: wrappedItem.id,
+          cardId: snapshot.card_id,
           snapshotId: snapshot.snapshot_id,
         }),
       );
@@ -190,7 +190,7 @@ export const QuestionMentionPlugin = ({
           type: "questionEmbed",
           attrs: {
             snapshotId: snapshot.snapshot_id,
-            questionId: wrappedItem.id,
+            questionId: snapshot.card_id,
             questionName: wrappedItem.name,
             model: wrappedItem.model,
           },

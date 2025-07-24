@@ -12,7 +12,7 @@
 
   Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it
   gradually."
-  #{:model :question :metric})
+  #{:model :question :metric :in_report})
 
 (mr/def ::card-type
   (into [:enum {:decode/json keyword

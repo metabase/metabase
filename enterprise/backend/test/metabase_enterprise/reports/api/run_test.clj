@@ -59,6 +59,7 @@
         ;; Verify card was created
         (let [card (t2/select-one :model/Card :id (:card_id response))]
           (is (some? card))
+          (is (= :in_report (:type card)))
           (is (= "Test Snapshot Card" (:name card)))
           (is (= (:id collection) (:collection_id card))))
 

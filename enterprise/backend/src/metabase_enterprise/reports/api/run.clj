@@ -9,12 +9,12 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.core :as queries]
-   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -34,7 +34,6 @@
    [:map
     [:report_id {:optional true} pos-int?]
     [:name                   ms/NonBlankString]
-    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
     [:dataset_query          ms/Map]
     ;; TODO: Make entity_id a NanoID regex schema?
     [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -88,6 +87,13 @@
     (catch Exception e
       (throw (ex-info "Error snapshoting card" {:card-id (:id card)} e)))))
 
+(defn- create-and-snapshot-card
+  [body]
+  (t2/with-transaction [_conn]
+    (let [{:keys [id] :as card} (queries/create-card! (assoc body :type :in_report) @api/*current-user*)
+          snapshot-id (snapshot-card card (:report_id body))]
+      {:snapshot_id snapshot-id :card_id id})))
+
 (api.macros/defendpoint :post "/" :- RunResource
   "Create a new card and and take a snapshot of the data in its query and return the snapshot id t
   TODO(edpaget): Parameters?"
@@ -97,12 +103,12 @@
   (if-let [card-id (:card_id body)]
     ;; TODO: check that is already a frozen report card
     (let [card (t2/select-one :model/Card :id card-id)]
+      (prn (:type card))
       (api/check-404 card)
-      {:snapshot_id (snapshot-card card (:report_id body)) :card_id card-id})
-    (t2/with-transaction [_conn]
-      (let [{:keys [id] :as card} (queries/create-card! body @api/*current-user*)
-            snapshot-id (snapshot-card card (:report_id body))]
-        {:snapshot_id snapshot-id :card_id id}))))
+      (if (= :in_report (:type card))
+        {:snapshot_id (snapshot-card card (:report_id body)) :card_id card-id}
+        (create-and-snapshot-card (assoc card :name (trs "Snapshot of {0}" (:name card))))))
+    (create-and-snapshot-card body)))
 
 (defn- results-rff
   [rff]

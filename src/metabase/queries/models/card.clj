@@ -477,7 +477,7 @@
         (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
         ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
         (and (api/column-will-change? :type card changes)
-             (not (contains? #{"question" :question} (:type changes))))
+             (not (contains? #{"question" :question "in_report" :in_report} (:type changes))))
         (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
@@ -504,7 +504,7 @@
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
-                     (not (contains? #{:question "question" nil} (:type card)))
+                     (not (contains? #{:question "question" :in_report "in_report" nil} (:type card)))
                      (some? (:collection_position card)))]
     (when invalid?
       (throw (ex-info (tru "Invalid dashboard-internal card")

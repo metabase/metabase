@@ -438,7 +438,8 @@
   [:enum
    :question
    :model
-   :metric])
+   :metric
+   :in_report])
 
 (mr/def ::type
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a

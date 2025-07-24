@@ -353,3 +353,64 @@
             transformed  (dashboard-card/from-parsed-json deserialized)]
         (is (= dashcard
                transformed))))))
+
+(deftest prevent-in-report-cards-from-being-added-to-dashboards-test
+  (testing "Cannot add a card with type :in_report to a dashboard"
+    (mt/with-temp [:model/Dashboard dashboard   {}
+                   :model/Card      normal-card  {:name "Normal Card" :type :question}
+                   :model/Card      report-card  {:name "Report Card" :type :in_report}]
+      (testing "Adding a normal card works fine"
+        (let [result (dashboard-card/create-dashboard-cards!
+                      [{:dashboard_id (:id dashboard)
+                        :card_id      (:id normal-card)
+                        :size_x       4
+                        :size_y       3
+                        :row          0
+                        :col          0}])]
+          (is (= 1 (count result)))
+          (is (= (:id normal-card) (:card_id (first result))))))
+
+      (testing "Adding an in_report card throws an exception"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cards with type 'in_report' cannot be added to dashboards"
+             (dashboard-card/create-dashboard-cards!
+              [{:dashboard_id (:id dashboard)
+                :card_id      (:id report-card)
+                :size_x       4
+                :size_y       3
+                :row          1
+                :col          0}]))))))
+
+  (testing "Cannot add multiple cards if any of them is type :in_report"
+    (mt/with-temp [:model/Dashboard dashboard    {}
+                   :model/Card      normal-card1  {:name "Normal Card 1" :type :question}
+                   :model/Card      normal-card2  {:name "Normal Card 2" :type :model}
+                   :model/Card      report-card1  {:name "Report Card 1" :type :in_report}
+                   :model/Card      report-card2  {:name "Report Card 2" :type "in_report"}]
+      (testing "Batch creation fails if any card is in_report type"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Cards with type 'in_report' cannot be added to dashboards"
+             (dashboard-card/create-dashboard-cards!
+              [{:dashboard_id (:id dashboard)
+                :card_id      (:id normal-card1)
+                :size_x       4
+                :size_y       3
+                :row          0
+                :col          0}
+               {:dashboard_id (:id dashboard)
+                :card_id      (:id report-card1)
+                :size_x       4
+                :size_y       3
+                :row          0
+                :col          4}
+               {:dashboard_id (:id dashboard)
+                :card_id      (:id normal-card2)
+                :size_x       4
+                :size_y       3
+                :row          0
+                :col          8}])))
+
+        ;; Verify that no cards were added due to transaction rollback
+        (is (= 0 (t2/count :model/DashboardCard :dashboard_id (:id dashboard))))))))

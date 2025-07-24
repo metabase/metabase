@@ -1100,3 +1100,20 @@
       (t2/update! :model/Card card-id {:name "Updated"
                                        :verified-result-metadata? true})
       (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))
+
+(deftest create-in-report-card-test
+  (testing "Can create a card with type :in_report"
+    (mt/with-temp [:model/Card card {:name "In Report Card"
+                                     :type :in_report
+                                     :dataset_query (mt/mbql-query venues)
+                                     :visualization_settings {}}]
+      (is (= :in_report (:type card)))
+      (is (= "In Report Card" (:name card)))))
+
+  (testing "Can create a card with type \"in_report\" (string format)"
+    (mt/with-temp [:model/Card card {:name "In Report Card String"
+                                     :type "in_report"
+                                     :dataset_query (mt/mbql-query venues)
+                                     :visualization_settings {}}]
+      (is (= :in_report (:type card)))
+      (is (= "In Report Card String" (:name card))))))
