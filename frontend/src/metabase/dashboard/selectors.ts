@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
@@ -511,9 +511,19 @@ export const getQuestionByCard = createCachedSelector(
 });
 
 export const getDashcardParameterMappingOptions = createCachedSelector(
-  [getQuestionByCard, getEditingParameter, getCard, getDashCard],
-  (question, parameter, card, dashcard) => {
-    return _getParameterMappingOptions(question, parameter, card, dashcard);
+  [getQuestionByCard, getEditingParameter, getCard, getDashCard, getDashcards],
+  (question, parameter, card, dashcard, dashcards) => {
+    const parameterDashcard =
+      parameter != null
+        ? findDashCardForInlineParameter(parameter.id, Object.values(dashcards))
+        : null;
+    return _getParameterMappingOptions(
+      question,
+      parameter,
+      card,
+      dashcard,
+      parameterDashcard,
+    );
   },
 )((state, props) => {
   return props.card.id ?? props.dashcard.id;

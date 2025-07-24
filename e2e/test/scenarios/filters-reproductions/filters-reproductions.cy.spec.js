@@ -899,15 +899,18 @@ describe("issue 31340", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept("GET", "/api/field/*/search/*").as("search");
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.PASSWORD,
+    });
 
-    cy.findByTestId("column-PASSWORD")
-      .findByDisplayValue("Password")
-      .type(`{selectAll}${LONG_COLUMN_NAME}`)
+    H.DataModel.FieldSection.getNameInput()
+      .focus()
+      .clear()
+      .type(LONG_COLUMN_NAME)
       .blur();
-
     cy.wait("@fieldUpdate");
 
     H.createQuestion(
@@ -1295,7 +1298,7 @@ describe("issue 45877", () => {
     };
 
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    cy.get("fieldset").should("contain", "Expected Invoice").click();
+    H.filterWidget().should("contain", "Expected Invoice").click();
     H.popover().within(() => {
       cy.findByPlaceholderText("Search the list").should("exist");
 
@@ -1313,7 +1316,7 @@ describe("issue 45877", () => {
     // We don't even have to run the query to reproduce this issue
     // so let's not waste time and resources doing so.
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    cy.get("fieldset").should("contain", "false").click();
+    H.filterWidget().should("contain", "false").click();
     H.popover().within(() => {
       cy.findAllByLabelText("true").should("have.length", 1);
       cy.findAllByLabelText("false")

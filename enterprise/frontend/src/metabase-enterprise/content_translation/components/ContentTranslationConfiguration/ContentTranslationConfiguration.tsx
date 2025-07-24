@@ -11,8 +11,8 @@ import {
 } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";
@@ -115,42 +115,34 @@ export const ContentTranslationConfiguration = () => {
   );
 
   return (
-    <SettingsSection title={t`Localizing user-generated content`}>
-      <Stack
-        gap="sm"
-        maw="38rem"
-        aria-labelledby="content-translation-header"
-        data-testid="content-translation-configuration"
+    <ErrorBoundary>
+      <SettingsSection
+        title={t`Translate embedded dashboards and questions`}
+        data-testid={"content-translation-configuration"}
       >
-        <SettingHeader
-          id="content-translation-header"
-          description={
-            <>
-              <Stack gap="sm">
-                <DescriptionText>{t`You can upload a translation dictionary to handle user-generated strings, like dashboard names.`}</DescriptionText>
-                <DescriptionText>{t`The dictionary must be a CSV with these columns:`}</DescriptionText>
-                <List ms="sm" c="text-medium">
-                  <List.Item c="inherit">{t`Locale Code`}</List.Item>
-                  <List.Item c="inherit">{t`String`}</List.Item>
-                  <List.Item c="inherit">{t`Translation`}</List.Item>
-                </List>
-                <DescriptionText>{t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.`}</DescriptionText>
-                <DescriptionText>{t`Uploading a new dictionary will replace the existing dictionary.`}</DescriptionText>
-                <Markdown
-                  components={{
-                    em: ({ children }: { children: ReactNode }) => (
-                      <ExternalLink href={availableLocalesDocsUrl}>
-                        {children}
-                      </ExternalLink>
-                    ),
-                  }}
-                >
-                  {t`See a list of *supported locales*.`}
-                </Markdown>
-              </Stack>
-            </>
-          }
-        />
+        <Stack gap="sm">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+          <DescriptionText>{t`Upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).`}</DescriptionText>
+          <DescriptionText>{t`The dictionary must be a CSV with these columns:`}</DescriptionText>
+          <List ms="sm" c="text-medium">
+            <List.Item c="inherit">{t`Locale Code`}</List.Item>
+            <List.Item c="inherit">{t`String`}</List.Item>
+            <List.Item c="inherit">{t`Translation`}</List.Item>
+          </List>
+          <DescriptionText>{t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.`}</DescriptionText>
+          <DescriptionText>{t`Uploading a new dictionary will replace the existing dictionary.`}</DescriptionText>
+          <Markdown
+            components={{
+              em: ({ children }: { children: ReactNode }) => (
+                <ExternalLink href={availableLocalesDocsUrl}>
+                  {children}
+                </ExternalLink>
+              ),
+            }}
+          >
+            {t`See a list of *supported locales*.`}
+          </Markdown>
+        </Stack>
         <Group>
           <Button
             onClick={triggerDownload}
@@ -202,8 +194,9 @@ export const ContentTranslationConfiguration = () => {
             </List>
           </Stack>
         )}
-      </Stack>
-    </SettingsSection>
+        {/* </Stack> */}
+      </SettingsSection>
+    </ErrorBoundary>
   );
 };
 

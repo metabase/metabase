@@ -347,7 +347,7 @@ export const ExperimentalLayout = {
             </Flex>
             <Flex flex={1} w="100%" h="100%" style={{ overflow: "none" }}>
               <Box>
-                <SdkDashboard.ParameterList vertical />
+                <SdkDashboard.ParametersList vertical />
               </Box>
 
               <Box flex={1} style={{ overflowY: "scroll" }}>

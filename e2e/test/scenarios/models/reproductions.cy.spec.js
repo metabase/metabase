@@ -494,8 +494,6 @@ describe("issue 22518", () => {
 });
 
 describe.skip("issue 22519", () => {
-  const ratingDataModelUrl = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`;
-
   const questionDetails = {
     query: {
       "source-table": REVIEWS_ID,
@@ -509,7 +507,12 @@ describe.skip("issue 22519", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit(ratingDataModelUrl);
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+      fieldId: REVIEWS.REVIEWS,
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Don't cast").click();
@@ -536,16 +539,6 @@ describe(
   "filtering based on the remapped column name should result in a correct query (metabase#22715)",
   { tags: "@flaky" },
   () => {
-    function mapColumnTo({ table, column } = {}) {
-      cy.findByText("Database column this maps to")
-        .parent()
-        .contains("None")
-        .click();
-
-      H.popover().findByText(table).click();
-      H.popover().findByText(column).click();
-    }
-
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("PUT", "/api/card/*").as("updateModel");
@@ -567,20 +560,13 @@ describe(
 
         // Let's go straight to the model metadata editor
         cy.visit(`/model/${id}/metadata`);
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.findByText("Database column this maps to");
-        cy.wait(5000);
+        cy.findByText("Database column this maps to").should("be.visible");
 
         // The first column `ID` is automatically selected
-        mapColumnTo({ table: "Orders", column: "ID" });
-
+        H.mapColumnTo({ table: "Orders", column: "ID" });
         cy.findByText("ALIAS_CREATED_AT").click();
 
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.wait(5000);
-        mapColumnTo({ table: "Orders", column: "Created At" });
+        H.mapColumnTo({ table: "Orders", column: "Created At" });
 
         // Make sure the column name updated before saving
         cy.findByDisplayValue("Created At");
@@ -588,22 +574,19 @@ describe(
         cy.button("Save changes").click();
         cy.wait("@updateModel");
 
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
+        H.visitModel(id);
       });
     });
 
     it("when done through the column header action (metabase#22715-1)", () => {
       H.tableHeaderClick("Created At");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Today").click();
-
+      H.popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Today").click();
+      });
       cy.wait("@dataset");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Today").should("not.exist");
-
       cy.get("[data-testid=cell-data]")
         .should("have.length", 4)
         .and("contain", "Created At");
@@ -1688,15 +1671,16 @@ describe("issue 31663", () => {
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByPlaceholderText("Select a target").click();
-    H.popover().within(() => {
-      cy.findByText("Orders Model → ID").should("not.exist");
-      cy.findByText("Products Model → ID").should("not.exist");
+    H.popover().findByText("Orders Model → ID").should("not.exist");
+    H.popover().findByText("Products Model → ID").should("not.exist");
 
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible");
-    });
+    H.popover().findByText("Orders → ID").should("be.visible");
+    H.popover().findByText("People → ID").should("be.visible");
+    H.popover().findByText("Products → ID").should("be.visible");
+    H.popover()
+      .scrollTo("bottom")
+      .findByText("Reviews → ID")
+      .should("be.visible");
   });
 });
 

@@ -236,7 +236,6 @@
                                  :joins        [{:lib/type    :mbql/join
                                                  :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                  :alias       "CATEGORIES__via__CATEGORY_ID"
-                                                 :ident       "dJbULfDmVAyTENMCo7q1q"
                                                  :conditions  [[:=
                                                                 {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
                                                                 (lib.tu/field-clause :venues :category-id)
@@ -249,8 +248,7 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}
           metadata (lib/returned-columns query)]
-      (is (=? [(merge (-> (m/filter-vals some? (meta/field-metadata :categories :name))
-                          (dissoc :ident))
+      (is (=? [(merge (m/filter-vals some? (meta/field-metadata :categories :name))
                       {:display-name         "Name"
                        :lib/source           :source/joins
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
@@ -273,7 +271,6 @@
                            :stages      [{:lib/type    :mbql.stage/mbql
                                           :source-card 1}]
                            :alias       "checkins_by_user"
-                           :ident       "t3Xq_zGttWJ3xht4ROnWv"
                            :conditions  [[:=
                                           {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
                                           [:field
@@ -385,7 +382,6 @@
                                     :joins        [{:lib/type    :mbql/join
                                                     :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
                                                     :alias       join-alias
-                                                    :ident       "AMaECnokvRTFgTVDTbrKG"
                                                     :fields      [[:field
                                                                    {:join-alias join-alias
                                                                     :lib/uuid   "87ad4bf3-a00b-462a-b9cc-3dde44945d66"}
@@ -1076,10 +1072,6 @@
           contact-f-organization-id 130
           account-card-id 1000
           contact-card-id 1100
-
-          account-f-ident              (lib/random-ident)
-          contact-f-organization-ident (lib/random-ident)
-
           metadata-provider (lib.tu/mock-metadata-provider
                              {:database meta/database
                               :tables   [{:id   account-tab-id
@@ -1090,24 +1082,20 @@
                                           :name "contact"}]
                               :fields   [{:id account-f-id
                                           :name "account__id"
-                                          :ident account-f-ident
                                           :table-id account-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-id
                                           :name "organization__id"
-                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-account-id
                                           :name "organization__account_id"
-                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
                                           :fk-target-field-id account-f-id}
                                          {:id contact-f-organization-id
                                           :name "contact__organization_id"
-                                          :ident contact-f-organization-ident
                                           :table-id contact-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
@@ -1119,7 +1107,6 @@
                                         :database-id (:id meta/database)
                                         :result-metadata [{:id account-f-id
                                                            :name "account__id"
-                                                           :ident account-f-ident
                                                            :table-id account-tab-id
                                                            :base-type :type/Integer}]
                                         :dataset-query {:lib/type :mbql.stage/mbql
@@ -1132,7 +1119,6 @@
                                         :database-id (:id meta/database)
                                         :result-metadata [{:id contact-f-organization-id
                                                            :name "contact__organization_id"
-                                                           :ident contact-f-organization-ident
                                                            :table-id contact-tab-id
                                                            :base-type :type/Integer
                                                            :semantic-type :type/FK
@@ -1258,14 +1244,12 @@
                     :source-alias                 "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "ID"
-                    :lib/desired-column-alias     "Cat__ID"
                     :selected?                    id-selected?}
                    {:name                         "NAME"
                     :metabase.lib.join/join-alias "Cat"
                     :source-alias                 "Cat"
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
-                    :lib/desired-column-alias     "Cat__NAME"
                     :selected?                    name-selected?}]
                   cols))
           (testing `lib/display-info
@@ -1662,7 +1646,7 @@
               {:id (meta/id :orders :tax),     :display-name "Card → Tax" #_"Tax"}
               {:id (meta/id :products :vendor) :display-name "Card → Vendor"}]
              (map #(select-keys % [:id :display-name])
-                  (lib.join/join-fields-to-add-to-parent-stage query -1 join {:unique-name-fn (lib.util/unique-name-generator)})))))))
+                  (lib.join/join-fields-to-add-to-parent-stage query -1 join {})))))))
 
 (deftest ^:parallel remapping-in-joins-test
   (testing "explicitly joined columns with remaps are added after their join"
@@ -1724,7 +1708,7 @@
                 ["sum"   "Orders__sum"   "sum"   "Orders → Sum of Quantity"]]
                (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+                     query -1 join {:include-remaps? true}))))))))
 
 (deftest ^:parallel remapping-in-joins-test-3
   (testing "join-fields-to-add-to-parent-stage should include remapped columns"
@@ -1741,12 +1725,12 @@
                     :fields   [$title $category]}))
           join (first (lib/joins query -1))]
       (binding [lib.metadata.calculation/*display-name-style* :long]
-        (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
+        (is (= [["PRODUCT_ID" "Orders" "PRODUCT_ID" "Orders → Product ID"]
                 ;; should get added because it is a remap
-                ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
-               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                ["TITLE"      "Orders" "TITLE"      "Orders → Title"]]
+               (map (juxt :name :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+                     query -1 join {:include-remaps? true}))))))))
 
 (deftest ^:parallel remapping-in-joins-duplicates-test
   (testing "Remapped columns in joined source queries should not append duplicates (QUE-1410)"
@@ -1771,7 +1755,7 @@
                 ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
                (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
-                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+                     query -1 join {:include-remaps? true}))))))))
 
 (deftest ^:parallel calculate-sane-join-aliases-test
   (testing "Don't strip ID for names like 'X → ID'"

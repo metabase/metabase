@@ -116,11 +116,19 @@ export function searchColumnGroupItems(
   return groupItems
     .map((groupItem) => ({
       ...groupItem,
-      columnItems: groupItem.columnItems.filter((columnItem) =>
-        columnItem.displayName.toLowerCase().includes(searchString),
-      ),
+      columnItems: groupItem.columnItems.map((columnItem) => {
+        return {
+          ...columnItem,
+          isHidden: !columnItem.displayName
+            .toLowerCase()
+            .includes(searchString),
+        };
+      }),
     }))
-    .filter((groupItem) => groupItem.columnItems.length > 0);
+    .filter(
+      (groupItem) =>
+        groupItem.columnItems.filter((c) => !c.isHidden).length > 0,
+    );
 }
 
 export function toggleColumnInQuery(

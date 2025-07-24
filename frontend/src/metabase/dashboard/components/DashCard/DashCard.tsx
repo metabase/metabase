@@ -251,7 +251,7 @@ function DashCardInner({
     const authorityLevel = dashcard.collection_authority_level;
     if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
       const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      const iconSize = 14;
+      const iconSize = 16;
       return {
         name: opts.icon,
         color: opts.color ? color(opts.color) : undefined,
@@ -352,18 +352,15 @@ function DashCardInner({
             [S.hasHiddenBackground]: hasHiddenBackground,
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
             [S.isNightMode]: shouldRenderAsNightMode,
-            [S.isUsuallySlow]: isSlow === "usually-slow",
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
           },
           className,
         )}
         style={(theme) => {
           const { border } = theme.other.dashboard.card;
-
-          return {
-            "--slow-card-border-color": theme.fn.themeColor("accent4"),
-            ...(border && { border }),
-          };
+          if (border) {
+            return { border };
+          }
         }}
         ref={cardRootRef}
       >

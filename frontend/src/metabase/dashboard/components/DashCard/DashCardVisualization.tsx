@@ -3,9 +3,12 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
+import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
+import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
 import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
@@ -15,9 +18,11 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { duration } from "metabase/lib/formatting";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -35,10 +40,13 @@ import {
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
+import {
+  LEGEND_LABEL_FONT_SIZE,
+  LEGEND_LABEL_FONT_WEIGHT,
+} from "metabase/visualizations/components/legend/LegendCaption";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -64,7 +72,7 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/api";
 
-import { DashboardParameterList } from "../DashboardParameterList";
+import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
@@ -85,6 +93,20 @@ const DashCardLoadingView = ({
   expectedDuration,
   display,
 }: LoadingViewProps & { display?: CardDisplayType }) => {
+  const { url, showMetabaseLinks } = useLearnUrl(
+    "metabase-basics/administration/administration-and-operation/making-dashboards-faster",
+  );
+  const getPreamble = () => {
+    if (isSlow === "usually-fast") {
+      return t`This usually loads immediately, but is currently taking longer.`;
+    }
+    if (expectedDuration) {
+      return jt`This usually takes around ${(
+        <span className={CS.textNoWrap}>{duration(expectedDuration)}</span>
+      )}.`;
+    }
+  };
+
   return (
     <div
       data-testid="loading-indicator"
@@ -116,15 +138,22 @@ const DashCardLoadingView = ({
               <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
-                  <Text lh="1.5">
-                    {isSlow === "usually-slow"
-                      ? jt`This usually takes an average of ${(
-                          <span className={CS.textNoWrap}>
-                            {duration(expectedDuration ?? 0)}
-                          </span>
-                        )}, but is currently taking longer.`
-                      : t`This usually loads immediately, but is currently taking longer.`}
+                  <Text lh="1.5" mt={4}>
+                    {getPreamble()}{" "}
+                    {t`You can use caching to speed up question loading.`}
                   </Text>
+                  {showMetabaseLinks && (
+                    <Button
+                      mt={12}
+                      variant="subtle"
+                      size="compact-md"
+                      rightSection={<Icon name="external" />}
+                      component={ExternalLink}
+                      href={url}
+                    >
+                      {t`Making dashboards faster`}
+                    </Button>
+                  )}
                 </div>
               </HoverCard.Dropdown>
             </HoverCard>
@@ -205,6 +234,7 @@ export function DashCardVisualization({
     cardTitled,
     dashboard,
     dashcardMenu,
+    editingParameter,
     getClickActionMode,
     isEditing = false,
     shouldRenderAsNightMode,
@@ -446,6 +476,27 @@ export function DashCardVisualization({
     [dashcard, rawSeries, onOpenQuestion, isEditing],
   );
 
+  const cardTitle = useMemo(() => {
+    const settings = getComputedSettingsForSeries(series);
+    return settings["card.title"] ?? series?.[0].card.name ?? "";
+  }, [series]);
+
+  const fontFamily = useSelector((state) =>
+    getSetting(state, "application-font"),
+  );
+
+  const { shouldCollapseList, containerRef, parameterListRef } =
+    useResponsiveParameterList({
+      reservedWidth: measureTextWidth(cardTitle, {
+        family: fontFamily,
+        size: LEGEND_LABEL_FONT_SIZE,
+        weight: LEGEND_LABEL_FONT_WEIGHT,
+      }),
+
+      // Bigger buffer space to account for varying chart padding
+      bufferSpace: 100,
+    });
+
   const actionButtons = useMemo(() => {
     const result = series[0] as unknown as Dataset;
 
@@ -461,21 +512,21 @@ export function DashCardVisualization({
       return null;
     }
 
-    // We only show the titleMenuItems if the card has no title.
-    const settings = getComputedSettingsForSeries(
-      series,
-    ) as ComputedVisualizationSettings;
-    const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+    const effectiveParameters = editingParameter
+      ? inlineParameters.filter((param) => param.id === editingParameter.id)
+      : inlineParameters;
 
     return (
-      <Group mr="sm">
-        {inlineParameters.length > 0 && (
-          <DashboardParameterList
+      <Group>
+        {effectiveParameters.length > 0 && (
+          <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
-            parameters={inlineParameters}
+            triggerClassName={S.InlineParametersMenuTrigger}
+            parameters={effectiveParameters}
+            isCollapsed={shouldCollapseList}
             isSortable={false}
-            widgetsVariant="subtle"
             widgetsPopoverPosition="bottom-end"
+            ref={parameterListRef}
           />
         )}
         {!isEditing && (
@@ -485,23 +536,27 @@ export function DashCardVisualization({
             dashcard={dashcard}
             onEditVisualization={onEditVisualization}
             openUnderlyingQuestionItems={
-              onChangeCardAndRun && (title ? undefined : titleMenuItems)
+              onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
             }
           />
         )}
       </Group>
     );
   }, [
+    cardTitle,
     dashboard,
     dashcard,
     dashcardMenu,
     isEditing,
+    editingParameter,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
     question,
     series,
     titleMenuItems,
+    shouldCollapseList,
+    parameterListRef,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -513,51 +568,57 @@ export function DashCardVisualization({
   );
 
   return (
-    <Visualization
-      className={cx(CS.flexFull, {
-        [S.isNightMode]: shouldRenderAsNightMode,
-        [CS.overflowAuto]: visualizationOverlay,
-        [CS.overflowHidden]: !visualizationOverlay,
+    <div
+      className={cx(CS.flexFull, CS.fullHeight, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
-      dashboard={dashboard ?? undefined}
-      dashcard={dashcard}
-      rawSeries={series}
-      visualizerRawSeries={
-        isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
-      }
-      metadata={metadata}
-      mode={getClickActionMode}
-      getHref={getHref}
-      gridSize={gridSize}
-      totalNumGridCols={totalNumGridCols}
-      headerIcon={headerIcon}
-      expectedDuration={expectedDuration}
-      error={error?.message}
-      errorIcon={error?.icon}
-      showTitle={cardTitled}
-      canToggleSeriesVisibility={!isEditing}
-      isAction={isAction}
-      isDashboard
-      isSlow={isSlow}
-      isFullscreen={isFullscreen}
-      isNightMode={shouldRenderAsNightMode}
-      isEditing={isEditing}
-      isPreviewing={isPreviewing}
-      isEditingParameter={isEditingParameter}
-      isMobile={isMobile}
-      actionButtons={actionButtons}
-      replacementContent={visualizationOverlay}
-      getExtraDataForClick={getExtraDataForClick}
-      onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
-      onTogglePreviewing={onTogglePreviewing}
-      onChangeCardAndRun={onChangeCardAndRun}
-      onChangeLocation={onChangeLocation}
-      renderLoadingView={renderLoadingView}
-      token={token}
-      uuid={uuid}
-      titleMenuItems={titleMenuItems}
-      errorMessageOverride={visualizerErrMsg}
-    />
+      ref={containerRef}
+    >
+      <Visualization
+        className={cx(CS.flexFull, {
+          [S.isNightMode]: shouldRenderAsNightMode,
+          [CS.overflowAuto]: visualizationOverlay,
+          [CS.overflowHidden]: !visualizationOverlay,
+        })}
+        dashboard={dashboard ?? undefined}
+        dashcard={dashcard}
+        rawSeries={series}
+        visualizerRawSeries={
+          isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
+        }
+        metadata={metadata}
+        mode={getClickActionMode}
+        getHref={getHref}
+        gridSize={gridSize}
+        totalNumGridCols={totalNumGridCols}
+        headerIcon={headerIcon}
+        expectedDuration={expectedDuration}
+        error={error?.message}
+        errorIcon={error?.icon}
+        showTitle={cardTitled}
+        canToggleSeriesVisibility={!isEditing}
+        isAction={isAction}
+        isDashboard
+        isSlow={isSlow}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        isEditing={isEditing}
+        isPreviewing={isPreviewing}
+        isEditingParameter={isEditingParameter}
+        isMobile={isMobile}
+        actionButtons={actionButtons}
+        replacementContent={visualizationOverlay}
+        getExtraDataForClick={getExtraDataForClick}
+        onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+        onTogglePreviewing={onTogglePreviewing}
+        onChangeCardAndRun={onChangeCardAndRun}
+        onChangeLocation={onChangeLocation}
+        renderLoadingView={renderLoadingView}
+        token={token}
+        uuid={uuid}
+        titleMenuItems={titleMenuItems}
+        errorMessageOverride={visualizerErrMsg}
+      />
+    </div>
   );
 }

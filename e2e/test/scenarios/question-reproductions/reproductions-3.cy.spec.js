@@ -2,6 +2,7 @@ const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -645,7 +646,7 @@ describe("issue 33439", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Unsupported function convert-timezone");
+      cy.findByText("Unsupported function convertTimezone");
       cy.button("Done").should("be.disabled");
     });
   });
@@ -783,7 +784,7 @@ describe("issue 40064", () => {
       blur: true,
     });
     H.popover().within(() => {
-      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
+      cy.findByText("Unknown column: Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });
@@ -2630,13 +2631,15 @@ describe("issue 23449", () => {
 
   it("Remapped fields should work in a model (metabase#23449)", () => {
     cy.log("set the metadata for review");
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: SAMPLE_DATABASE.REVIEWS_ID,
+      fieldId: SAMPLE_DATABASE.REVIEWS.RATING,
+    });
 
-    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
-    cy.findAllByTestId("select-button").contains("Use original value").click();
-    cy.findByLabelText("Custom mapping").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
+    H.popover().findByText("Custom mapping").click();
 
     cy.findByDisplayValue("1").clear().type("A");
     cy.findByDisplayValue("2").clear().type("B");
@@ -2912,5 +2915,313 @@ describe("issue 33972", () => {
         .findByText("Showing first 2,000 rows")
         .should("exist");
     });
+  });
+});
+
+describe("Issue 33835", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+
+    H.queryWritableDB("DROP TABLE IF EXISTS orders");
+    H.queryWritableDB(
+      "CREATE TABLE IF NOT EXISTS orders (id INT PRIMARY KEY, total real, discount real)",
+    );
+    H.queryWritableDB(
+      "INSERT INTO orders (id, total, discount) VALUES (1, 100, 20)",
+    );
+
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "orders" });
+
+    H.startNewQuestion();
+    H.entityPickerModal().findByText("Writable Postgres12").click();
+    H.entityPickerModal().findByText("Orders").click();
+
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().within(() => {
+      cy.findByText(/Average of/).click();
+      cy.findByText("Total").click();
+    });
+
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Discount").click();
+
+    H.saveQuestion("Test Question", {
+      wrapId: true,
+      questionId: "questionId",
+      addToDashboard: false,
+    });
+  });
+
+  it("should be possible to remove an aggregation on a non-existent column (metabase#33835)", () => {
+    H.queryWritableDB("ALTER TABLE orders DROP COLUMN total");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByText("Average of Unknown Field")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+
+  it("should be possible to remove a breakout on a non-existent column (metabase#33835)", () => {
+    H.queryWritableDB("ALTER TABLE orders DROP COLUMN discount");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByText("Unknown Field: Auto binned")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+describe("Issue 42942", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.TOTAL,
+              {
+                "base-type": "type/Float",
+                binning: { strategy: "num-bins", "num-bins": 100 },
+              },
+            ],
+          ],
+        },
+      },
+    });
+  });
+
+  it("should adapt the filter widths when changing the filter value (metabase#42942)", () => {
+    H.openNotebook();
+
+    H.getNotebookStep("data").findByLabelText("Filter").click();
+
+    H.popover().within(() => {
+      cy.findByText("Total").click();
+      cy.findByPlaceholderText("Min").type("90");
+      cy.button("Add filter").click();
+    });
+    H.visualize();
+
+    H.chartPathWithFillColor("#509EE3").first().click();
+    H.popover().findByText("See these Orders").click();
+
+    cy.log(
+      "Filters should be applied correctly with the bin width from the chart",
+    );
+    H.queryBuilderFiltersPanel().findByText(
+      "Total is greater than or equal to 90",
+    );
+    H.queryBuilderFiltersPanel().findByText("Total is less than 90.75");
+  });
+});
+
+describe("Issue 48771", () => {
+  const MODEL_NAME = "M1";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion({
+      name: MODEL_NAME,
+      type: "model",
+      native: {
+        database: SAMPLE_DB_ID,
+        query: "SELECT 1 AS ID",
+      },
+    }).then(({ body: model }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          query: {
+            filter: [
+              ">=",
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              0.5,
+            ],
+            "source-query": {
+              database: SAMPLE_DB_ID,
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  "source-table": `card__${model.id}`,
+                  fields: "all",
+                  alias: MODEL_NAME,
+                  strategy: "left-join",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                    [
+                      "field",
+                      "ID",
+                      { "join-alias": MODEL_NAME, "base-type": "type/Integer" },
+                    ],
+                  ],
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [["field", ORDERS.CREATED_AT, null]],
+            },
+          },
+        },
+        { visitQuestion: true, wrapId: true },
+      );
+    });
+
+    cy.log("give nosql user access to root collection");
+    cy.updateCollectionGraph({
+      [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
+    });
+
+    cy.signOut();
+    cy.signIn("nosql");
+  });
+
+  it("should allow to add a filter after summary stage (metabase#48771)", () => {
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Count is greater than or equal to 0.5")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").clear().type("0.7");
+      cy.button("Update filter").click();
+    });
+    H.visualize();
+  });
+});
+
+describe("Issue 42817", () => {
+  const NATIVE_QUESTION_NAME = "NativeOrders";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion({
+      name: NATIVE_QUESTION_NAME,
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "SELECT ID, CREATED_AT FROM orders",
+      },
+    }).then(({ body: question }) => {
+      H.visitQuestionAdhoc({
+        display: "line",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                alias: NATIVE_QUESTION_NAME,
+                "source-table": `card__${question.id}`,
+                strategy: "left-join",
+                condition: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                    },
+                  ],
+                  [
+                    "field",
+                    "ID",
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": NATIVE_QUESTION_NAME,
+                    },
+                  ],
+                ],
+              },
+            ],
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+            ],
+            filter: [
+              "between",
+              [
+                "field",
+                "CREATED_AT",
+                {
+                  "base-type": "type/Date",
+                  "inherited-temporal-unit": "day",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+              "2023-06-23T00:00Z",
+              "2023-07-03T00:00Z",
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
+    H.echartsContainer().get("path[fill='#fff']").first().click();
+
+    H.popover().findByText("See this day by hour").click();
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+
+    H.echartsContainer().should("be.visible");
   });
 });

@@ -125,7 +125,7 @@ function UndoToast({
           {undo.icon && (
             <CardIcon
               name={undo.icon}
-              color="var(--mb-color-text-secondary-inverse)"
+              color={undo.iconColor ?? "var(--mb-color-text-secondary-inverse)"}
             />
           )}
           <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
@@ -134,6 +134,20 @@ function UndoToast({
           {undo.actions && undo.actions.length > 0 && (
             <UndoButton role="button" onClick={onUndo} to="">
               {undo.actionLabel ?? t`Undo`}
+            </UndoButton>
+          )}
+          {undo.extraAction && (
+            <UndoButton
+              role="button"
+              onClick={() => {
+                undo.extraAction?.action();
+                if (undo.canDismiss) {
+                  onDismiss();
+                }
+              }}
+              to=""
+            >
+              {undo.extraAction.label}
             </UndoButton>
           )}
           {undo.canDismiss && (

@@ -6,7 +6,7 @@ import {
   runQuestionOnNavigateSdk,
   runQuestionQuerySdk,
   updateQuestionSdk,
-} from "embedding-sdk/lib/interactive-question";
+} from "embedding-sdk/lib/sdk-question";
 import { useSdkDispatch } from "embedding-sdk/store";
 import type {
   LoadSdkQuestionParams,
@@ -46,7 +46,9 @@ export interface LoadQuestionHookResult {
    */
   replaceQuestion(question: Question): void;
 
-  navigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
+  navigateToNewCard:
+    | ((params: NavigateToNewCardParams) => Promise<void>)
+    | null;
 }
 
 export function useLoadQuestion({
@@ -55,6 +57,7 @@ export function useLoadQuestion({
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
   initialSqlParameters,
+  targetDashboardId,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
@@ -94,8 +97,9 @@ export function useLoadQuestion({
         loadQuestionSdk({
           options,
           deserializedCard,
-          questionId: questionId,
+          questionId,
           initialSqlParameters,
+          targetDashboardId,
         }),
       );
 
@@ -127,7 +131,14 @@ export function useLoadQuestion({
       setIsQuestionLoading(false);
       return {};
     }
-  }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
+  }, [
+    dispatch,
+    options,
+    deserializedCard,
+    questionId,
+    sqlParameterKey,
+    targetDashboardId,
+  ]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {

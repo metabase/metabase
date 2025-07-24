@@ -37,7 +37,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -193,10 +193,14 @@
   [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :datetime
-  [[_ field mode]]
-  (if (nil? mode)
+  [[_ field options]]
+  (if (empty? options)
     [:datetime (normalize-tokens field :ignore-path)]
-    [:datetime (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]))
+    [:datetime (normalize-tokens field :ignore-path)
+     (let [options (normalize-tokens options :ignore-path)]
+       (cond-> options
+         (contains? options :mode)
+         (update :mode lib.schema.expression.temporal/normalize-datetime-mode)))]))
 
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]
@@ -392,27 +396,37 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
-(defn- update-existing! [transient-map k f]
-  (if-some [v (get transient-map k)]
-    (assoc! transient-map k (f v))
-    transient-map))
-
-(defn normalize-source-metadata
+(mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
-  [metadata]
-  {:pre [(map? metadata)
-         #?(:clj  (instance? clojure.lang.IEditableCollection metadata)
-            :cljs (implements? cljs.core.IEditableCollection metadata))]}
-  (let [m (transient metadata)]
-    (-> (reduce #(update-existing! %1 %2 keyword) m
-                [:base_type :effective_type :semantic_type :visibility_type :source :unit
-                 ;; HACK ! Not even a legacy key, but now that we keep `:lib/` keys around we should normalize it just
-                 ;; so test results don't get kooky
-                 :lib/source])
-        (update-existing! :field_ref normalize-field-ref)
-        (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
-        (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))
-        persistent!)))
+  [metadata :- :map]
+  {:pre [(map? metadata)]}
+  (into (empty metadata)
+        (comp (remove (fn [[k _v]]
+                        (= k :ident))) ; ignore legacy `:ident` key
+              (map (fn [[k v]]
+                     (let [k (keyword k)
+                           k ((if (simple-keyword? k)
+                                u/->snake_case_en
+                                u/->kebab-case-en) k)
+                           _ (when (= k :fingerprint)
+                               (when-let [base-type (first (keys (:type v)))]
+                                 (assert (isa? base-type :type/*)
+                                         (str "BAD FINGERPRINT! " (pr-str v)))))
+                           v (case k
+                               (:base_type
+                                :effective_type
+                                :semantic_type
+                                :visibility_type
+                                :source
+                                :unit
+                                :lib/source) (keyword v)
+                               :field_ref    (normalize-field-ref v)
+                               :fingerprint  (#?(:clj perf/keywordize-keys :cljs walk/keywordize-keys) v)
+                               :binning_info (m/update-existing v :binning_strategy keyword)
+                               #_else
+                               v)]
+                       [k v]))))
+        metadata))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
@@ -425,12 +439,6 @@
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
-(defn- normalize-ident-index [index]
-  (cond
-    (string? index)  (parse-long index)
-    (keyword? index) (-> index name parse-long)
-    :else            index))
-
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -439,10 +447,7 @@
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation        normalize-ag-clause-tokens
-                     :aggregation-idents #(update-keys % normalize-ident-index)
-                     :breakout-idents    #(update-keys % normalize-ident-index)
                      :expressions        normalize-expressions-tokens
-                     :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
                      :order-by           normalize-order-by-tokens
                      :source-query       normalize-source-query
                      :source-metadata    {::sequence normalize-source-metadata}
@@ -452,6 +457,7 @@
    :info            {:metadata/model-metadata identity
                      ;; the original query that runs through qp.pivot should be ignored here entirely
                      :pivot/original-query    (fn [_] nil)
+                     :pivot/result-metadata   identity
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings  identity
                      :context                 maybe-normalize-token}
@@ -461,7 +467,12 @@
    :source-metadata {::sequence normalize-source-metadata}
    :viz-settings    maybe-normalize-token
    :create-row      normalize-actions-row
-   :update-row      normalize-actions-row})
+   :update-row      normalize-actions-row
+   ;;
+   ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
+   ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
+   :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+   identity})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.

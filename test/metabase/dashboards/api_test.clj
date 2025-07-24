@@ -694,6 +694,20 @@
         (is (= (assoc crowberto-personal-coll :is_personal true :effective_location "/")
                (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
 
+(deftest dashboard-entity-id-test
+  (testing "Dashboard endpoints accept entity IDs"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-entity-id :entity_id}
+                   {:name "Test Dashboard"}]
+      (with-dashboards-in-readable-collection! [dashboard-id]
+
+        (testing "GET /api/dashboard/:id works with entity ID"
+          (is (=? {:name "Test Dashboard"}
+                  (dashboard-response (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-entity-id))))))
+
+        (testing "GET /api/dashboard/:id/query_metadata works with entity ID"
+          (is (map? (mt/user-http-request :rasta :get 200
+                                          (str "dashboard/" dashboard-entity-id "/query_metadata")))))))))
+
 (deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
     (mt/with-temp
@@ -3147,7 +3161,6 @@
                                                                                   {:query "SELECT category FROM products LIMIT 10;"})
                                                                  :type          :model}]
         (let [metadata (-> (:dataset_query native-card)
-                           (assoc-in [:info :card-entity-id] (:entity_id native-card))
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}
