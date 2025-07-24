@@ -463,10 +463,6 @@
                                   (is (= input (:o qp-row))))
                                 (is (= expected (:o (first (get-db-state)))))))))))]
 
-        ;; TODO have this fail if there are gaps in our testing
-        ;;      ... and then fill in the gaps :-D
-        ;;     (we can ignore driver specific types outside of Postgres and MySQL)
-
         ;;    type     coercion                                     input                          database
         (->> [:text    nil                                          "a"                            "a"
               :text    :Coercion/YYYYMMDDHHMMSSString->Temporal     "2025-03-25T14:34:00Z"         "20250325143400"
