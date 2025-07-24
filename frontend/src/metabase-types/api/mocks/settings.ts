@@ -276,6 +276,7 @@ export const createMockSettings = (
   "jwt-attribute-email": null,
   "jwt-attribute-firstname": null,
   "jwt-attribute-lastname": null,
+  "jwt-attribute-tenant": null,
   "jwt-group-sync": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
