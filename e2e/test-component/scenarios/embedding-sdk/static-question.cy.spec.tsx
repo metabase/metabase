@@ -37,7 +37,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
       cy.findByText("Max of Quantity").should("be.visible");
 
       cy.log("should not show question title by default");
-      cy.findByText("47563").should("not.be.visible");
+      cy.findByText("47563").should("not.exist");
     });
   });
 
@@ -53,7 +53,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
     mountStaticQuestion({ title: "Acme Inc" });
 
     getSdkRoot().within(() => {
-      cy.findByText("47563").should("not.be.visible");
+      cy.findByText("47563").should("not.exist");
       cy.findByText("Acme Inc").should("be.visible");
     });
   });
