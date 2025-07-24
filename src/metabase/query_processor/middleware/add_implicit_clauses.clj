@@ -26,7 +26,7 @@
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (or (when (should-add-implicit-fields? stage)
-        (let [cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
+        (when-let [cols (not-empty (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path))]
           (assoc stage :fields (mapv lib/ref cols))))
       stage))
 

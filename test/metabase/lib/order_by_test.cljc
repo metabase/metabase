@@ -129,22 +129,17 @@
               (lib/order-by $q (lib/expression-ref $q "expr2"))
               (lib/order-bys $q))))))
 
-;; malli schemas for funcs are not enforced on cljs
-#?(:clj
-   (deftest ^:parallel duplicate-order-bys-test
-     (are [query] (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"Invalid output:.*Duplicate values ignoring uuids"
-                   query)
-       (-> (lib.tu/venues-query)
-           (lib/order-by (meta/field-metadata :venues :id))
-           (lib/order-by (meta/field-metadata :venues :id))
-           lib/order-bys)
-
-       (as-> (lib.tu/query-with-expression) $q
-         (lib/order-by $q (lib/expression-ref $q "expr"))
-         (lib/order-by $q (lib/expression-ref $q "expr"))
-         (lib/order-bys $q)))))
+(deftest ^:parallel duplicate-order-bys-test
+  (is (=? [[:asc {} [:field {} (meta/id :venues :id)]]]
+          (-> (lib.tu/venues-query)
+              (lib/order-by (meta/field-metadata :venues :id))
+              (lib/order-by (meta/field-metadata :venues :id))
+              lib/order-bys)))
+  (is (=? [[:asc {} [:expression {} "expr"]]]
+          (as-> (lib.tu/query-with-expression) $q
+            (lib/order-by $q (lib/expression-ref $q "expr"))
+            (lib/order-by $q (lib/expression-ref $q "expr"))
+            (lib/order-bys $q)))))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query the expected description was generated correctly.
