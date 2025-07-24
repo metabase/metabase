@@ -52,7 +52,14 @@
        ~@body)))
 
 (defn- make-query [category]
-  (:query (qp.compile/compile (mt/mbql-query products {:where [:= $category category]}))))
+  (let [q (if (= :clickhouse driver/*driver*)
+            (mt/mbql-query products {:where [:= $category category]
+                                     :expressions {"clickhouse_merge_table_id" $id}})
+            (mt/mbql-query products {:where [:= $category category]}))]
+    (:query (qp.compile/compile q))))
+(comment
+  (binding [driver/*driver* :clickhouse]
+    (make-query "Gadget")))
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
@@ -64,9 +71,12 @@
                                               :type "native",
                                               :native {:query (make-query "Gadget")
                                                        :template-tags {}}}}
+                             ;; for clickhouse (and other dbs where we do merge into), we will
+                             ;; want a primary key
+                             ;;:primary-key-column "id"
                              :target {:type "table"
-                                        ;; leave out schema for now
-                                        ;;:schema (str (rand-int 10000))
+                                      ;; leave out schema for now
+                                      ;;:schema (str (rand-int 10000))
                                       :table table-name}}))))
 
 (deftest list-transforms-test
