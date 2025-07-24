@@ -76,6 +76,8 @@ type SdkQuestionConfig = {
   onNavigateBack?: () => void;
 
   /**
+   * @internal
+   *
    * When provided, this dashboard will be used to navigate back to the dashboard from other view
    * instead of the state from Redux in `qb.parentDashboard.dashboardId`
    */
@@ -94,7 +96,14 @@ export type SdkQuestionProviderProps = PropsWithChildren<
   SdkQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
       questionId: SdkQuestionId | null;
+      /**
+       * @internal
+       */
       getClickActionMode?: ClickActionModeGetter | undefined;
+
+      /**
+       * @internal
+       */
       navigateToNewCard?: Nullable<LoadQuestionHookResult["navigateToNewCard"]>;
     }
 >;
