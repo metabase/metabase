@@ -40,16 +40,11 @@ dataset_query:
         - 0.5
       - name: Percentile 50
         display-name: Percentile 50
-    aggregation-idents:
-      0: aggregation_vsyV8w3Ucl-JGTgeS8bny@0__0
-      1: aggregation_vsyV8w3Ucl-JGTgeS8bny@0__1
     breakout:
     - - field
       - started_at
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
-    breakout-idents:
-      0: breakout_vsyV8w3Ucl-JGTgeS8bny@0__0
     filter:
     - and
     - - time-interval
