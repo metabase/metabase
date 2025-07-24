@@ -62,3 +62,18 @@
   justify-content: flex-end;
   gap: 0.25rem;
 }
+
+.titleContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.titleEditIcon {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.titleContainer:hover .titleEditIcon {
+  opacity: 1;
+}

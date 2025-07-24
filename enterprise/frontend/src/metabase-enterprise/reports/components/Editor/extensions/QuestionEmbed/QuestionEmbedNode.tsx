@@ -233,6 +233,18 @@ export const QuestionEmbedComponent = memo(
       dispatch(openVizSettingsSidebar(questionId));
     };
 
+    const handleTitleClick = () => {
+      if (card && metadata) {
+        try {
+          const question = new Question(card, metadata);
+          const url = getUrl(question, { includeDisplayIsLocked: true });
+          dispatch(push(url));
+        } catch (error) {
+          console.error("Failed to navigate to question:", error);
+        }
+      }
+    };
+
     // Handle drill-through navigation
     const handleChangeCardAndRun = useCallback(
       ({
@@ -331,18 +343,29 @@ export const QuestionEmbedComponent = memo(
                     }}
                   />
                 ) : (
-                  <Text
-                    size="md"
-                    color="text-dark"
-                    fw={700}
-                    onClick={() => {
-                      setEditedTitle(displayName);
-                      setIsEditingTitle(true);
-                    }}
-                    style={{ cursor: "pointer", flex: 1 }}
-                  >
-                    {displayName}
-                  </Text>
+                  <Box className={styles.titleContainer}>
+                    <Text
+                      size="md"
+                      color="text-dark"
+                      fw={700}
+                      onClick={handleTitleClick}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {displayName}
+                    </Text>
+                    <Icon
+                      name="pencil"
+                      size={14}
+                      color="var(--mb-color-text-medium)"
+                      className={styles.titleEditIcon}
+                      style={{ cursor: "pointer" }}
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        setEditedTitle(displayName);
+                        setIsEditingTitle(true);
+                      }}
+                    />
+                  </Box>
                 )}
                 {!isEditingTitle && (
                   <Menu withinPortal position="bottom-end">
