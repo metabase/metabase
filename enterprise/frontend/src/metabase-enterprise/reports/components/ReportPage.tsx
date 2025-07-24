@@ -208,6 +208,22 @@ export const ReportPage = ({
     reportId,
   ]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
+      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
+        event.preventDefault();
+        hasUnsavedChanges() && handleSave();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [hasUnsavedChanges, handleSave]);
+
   const handleToggleSidebar = useCallback(async () => {
     // If we're closing the sidebar with a selected question, commit any pending changes
     if (isSidebarOpen && selectedQuestionId) {
