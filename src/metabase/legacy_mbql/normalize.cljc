@@ -451,7 +451,11 @@
                      :order-by           normalize-order-by-tokens
                      :source-query       normalize-source-query
                      :source-metadata    {::sequence normalize-source-metadata}
-                     :joins              {::sequence normalize-join}}
+                     :joins              {::sequence normalize-join}
+                     ;;
+                     ;; HACK (see below)
+                     :metabase.query-processor.util.add-alias-info/join-alias->escaped
+                     identity}
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity
@@ -472,6 +476,10 @@
    ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
    ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
    :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+   identity
+   ;;
+   ;; Another HACK
+   :metabase.query-processor.util.add-alias-info/join-alias->escaped
    identity})
 
 (defn normalize-tokens
