@@ -309,17 +309,32 @@ export const ReportPage = ({
     <Box className={styles.reportPage}>
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
-          <Flex p="sm">
+          <Box
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 100,
+              display: "flex",
+              justifyContent: "flex-end",
+              padding: "0.5rem",
+              pointerEvents: "none",
+            }}
+          >
             <ActionIcon
               variant="subtle"
               size="md"
-              ml="auto"
               onClick={handleToggleSidebar}
               aria-label={isSidebarOpen ? t`Hide sidebar` : t`Show sidebar`}
+              style={{
+                pointerEvents: "auto",
+              }}
             >
-              <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
+              <Icon
+                name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"}
+                size={20}
+              />
             </ActionIcon>
-          </Flex>
+          </Box>
           <Box className={styles.documentContainer}>
             <Box className={styles.header} mt="xl" pt="xl">
               <Box>
