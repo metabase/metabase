@@ -3,8 +3,9 @@ import { P, match } from "ts-pattern";
 
 import {
   InteractiveDashboard,
-  MetabaseProvider,
+  InteractiveQuestion,
   SdkQuestion,
+  MetabaseProvider,
   StaticDashboard,
   StaticQuestion,
 } from "embedding-sdk/bundle";

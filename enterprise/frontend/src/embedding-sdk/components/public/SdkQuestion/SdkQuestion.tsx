@@ -84,7 +84,7 @@ export type SdkQuestionProps = SdkQuestionProviderProps &
 /**
  * @interface
  */
-export type InteractiveQuestionComponents = {
+export type SdkQuestionComponents = {
   BackButton: typeof BackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
@@ -175,7 +175,7 @@ export const _SdkQuestion = ({
 
 const SdkQuestion = withPublicComponentWrapper(
   _SdkQuestion,
-) as typeof _SdkQuestion & InteractiveQuestionComponents;
+) as typeof _SdkQuestion & SdkQuestionComponents;
 
 SdkQuestion.BackButton = BackButton;
 SdkQuestion.Filter = Filter;
