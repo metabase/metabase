@@ -15,6 +15,14 @@ const _SdkQuestion = createComponent(
  */
 export const SdkQuestion = _SdkQuestion as typeof _SdkQuestion &
   InteractiveQuestionComponents;
+
+/**
+ * A component that renders an interactive question.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 export const InteractiveQuestion = SdkQuestion;
 
 SdkQuestion.BackButton = createComponent(
