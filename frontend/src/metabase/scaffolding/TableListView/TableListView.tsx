@@ -20,6 +20,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import {
@@ -67,6 +68,7 @@ export const TableListView = ({ params }: Props) => {
   const nameColumn = columns[nameColumnIndex];
   const descriptionColumn = columns[descriptionColumnIndex];
   const imageColumn = columns[imageColumnIndex];
+  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
 
   useEffect(() => {
     if (!columns) {
@@ -158,9 +160,17 @@ export const TableListView = ({ params }: Props) => {
                 )}
 
                 <Group justify="space-between">
-                  <Text fw="bold">
-                    {renderValue(row[nameColumnIndex], nameColumn)}
-                  </Text>
+                  <Link
+                    to={
+                      pkIndex != null
+                        ? `/table/${table.id}/detail/${row[pkIndex]}`
+                        : ""
+                    }
+                  >
+                    <Text fw="bold">
+                      {renderValue(row[nameColumnIndex], nameColumn)}
+                    </Text>
+                  </Link>
                 </Group>
 
                 {descriptionColumn && (
