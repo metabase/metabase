@@ -42,39 +42,26 @@ export function getExploreTableUrl(table: Table): string {
   return ML_Urls.getUrl(question);
 }
 
-export function detectNameColumn(columns: DatasetColumn[]): number {
-  let nameColumnIndex = columns.findIndex((column) => isEntityName(column));
-
-  if (nameColumnIndex === -1) {
-    nameColumnIndex = columns.findIndex(
-      (column) => column.semantic_type === "type/Title",
-    );
-  }
-
-  if (nameColumnIndex === -1) {
-    nameColumnIndex = columns.findIndex((column) => isEmail(column));
-  }
-
-  return nameColumnIndex;
+export function detectNameColumn(columns: DatasetColumn[]) {
+  return (
+    columns.find((column) => isEntityName(column)) ||
+    columns.find((column) => column.semantic_type === "type/Title") ||
+    columns.find((column) => isEmail(column))
+  );
 }
 
 export function detectDescriptionColumn(columns: DatasetColumn[]) {
-  let descriptionColumnIndex = columns.findIndex(
-    (column) => column.semantic_type === "type/Description",
+  return (
+    columns.find((column) => column.semantic_type === "type/Description") ||
+    columns.find((column) => isEmail(column))
   );
-
-  if (descriptionColumnIndex === -1) {
-    descriptionColumnIndex = columns.findIndex((column) => isEmail(column));
-  }
-
-  return descriptionColumnIndex;
 }
 
 export function detectImageColumn(columns: DatasetColumn[]) {
-  let imageColumnIndex = columns.findIndex((column) => isAvatarURL(column));
+  let imageColumnIndex = columns.find((column) => isAvatarURL(column));
 
   if (imageColumnIndex === -1) {
-    imageColumnIndex = columns.findIndex((column) => isImageURL(column));
+    imageColumnIndex = columns.find((column) => isImageURL(column));
   }
 
   return imageColumnIndex;

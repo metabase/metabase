@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -7,6 +7,7 @@ import {
   skipToken,
   useGetAdhocQueryQuery,
   useGetTableQueryMetadataQuery,
+  useUpdateTableComponentSettingsMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -25,7 +26,11 @@ import {
   Title,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type {
+  ComponentSettings,
+  ListViewSettings,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
@@ -46,6 +51,29 @@ interface Props {
 }
 
 const PAGE_SIZE = 10;
+
+function getDefaultComponentSettings(): ComponentSettings {
+  return {
+    list_view: getDefaultListViewSettings(),
+    object_view: {},
+  };
+}
+
+function getDefaultListViewSettings(): ListViewSettings {
+  return {
+    slots: {
+      description: {
+        field_id: null,
+      },
+      name: {
+        field_id: null,
+      },
+      image: {
+        field_id: null,
+      },
+    },
+  };
+}
 
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
@@ -70,36 +98,89 @@ export const TableListView = ({ location, params }: Props) => {
     [dataset],
   );
 
+  const [updateTableComponentSettings] =
+    useUpdateTableComponentSettingsMutation();
+
   const [isEditing, setIsEditing] = useState(false);
-  const [nameColumnIndex, setNameColumnIndex] = useState(-1);
-  const [descriptionColumnIndex, setDescriptionColumnIndex] = useState(-1);
-  const [imageColumnIndex, setImageColumnIndex] = useState(-1);
+  const [settings, setSettings] = useState(
+    table?.component_settings ?? getDefaultComponentSettings(),
+  );
+  const slots = settings.list_view.slots;
+  const nameColumnIndex = columns.findIndex(
+    (column) => column.id === slots.name.field_id,
+  );
+  const descriptionColumnIndex = columns.findIndex(
+    (column) => column.id === slots.description.field_id,
+  );
+  const imageColumnIndex = columns.findIndex(
+    (column) => column.id === slots.image.field_id,
+  );
   const nameColumn = columns[nameColumnIndex];
   const descriptionColumn = columns[descriptionColumnIndex];
   const imageColumn = columns[imageColumnIndex];
   const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+
+  const updateSlots = useCallback(
+    (slots: Partial<ListViewSettings["slots"]>) => {
+      setSettings((settings) => ({
+        ...settings,
+        list_view: {
+          ...settings.list_view,
+          slots: {
+            ...settings.list_view.slots,
+            ...slots,
+          },
+        },
+      }));
+    },
+    [],
+  );
+
+  const handleSubmit = () => {
+    setIsEditing(false);
+
+    updateTableComponentSettings({ id: tableId, component_settings: settings });
+  };
+
+  useEffect(() => {
+    if (table?.component_settings) {
+      setSettings(table.component_settings);
+    }
+  }, [table]);
 
   useEffect(() => {
     if (!columns) {
       return;
     }
 
-    const nameColumnIndex = detectNameColumn(columns);
-    const descriptionColumnIndex = detectDescriptionColumn(columns);
-    const imageColumnIndex = detectImageColumn(columns);
+    const nameColumn = detectNameColumn(columns);
+    const descriptionColumn = detectDescriptionColumn(columns);
+    const imageColumn = detectImageColumn(columns);
 
-    if (nameColumnIndex !== -1) {
-      setNameColumnIndex(nameColumnIndex);
+    if (nameColumn) {
+      updateSlots({
+        name: {
+          field_id: nameColumn.id ?? null,
+        },
+      });
     }
 
-    if (descriptionColumnIndex !== -1) {
-      setDescriptionColumnIndex(descriptionColumnIndex);
+    if (descriptionColumn) {
+      updateSlots({
+        description: {
+          field_id: descriptionColumn.id ?? null,
+        },
+      });
     }
 
-    if (imageColumnIndex !== -1) {
-      setImageColumnIndex(imageColumnIndex);
+    if (imageColumn) {
+      updateSlots({
+        image: {
+          field_id: imageColumn.id ?? null,
+        },
+      });
     }
-  }, [columns]);
+  }, [columns, updateSlots]);
 
   if (!table || !dataset || !columns) {
     return <LoadingAndErrorWrapper loading />;
@@ -162,8 +243,9 @@ export const TableListView = ({ location, params }: Props) => {
           {isEditing && (
             <Button
               leftSection={<Icon name="check" />}
+              type="submit"
               variant="filled"
-              onClick={() => setIsEditing(false)}
+              onClick={handleSubmit}
             >
               {t`Save`}
             </Button>
@@ -220,11 +302,12 @@ export const TableListView = ({ location, params }: Props) => {
               label={t`Name`}
               placeholder={t`Select a column`}
               value={String(nameColumn?.id)}
-              onChange={(_value, option) => {
-                const customOption = option as unknown as {
-                  index: number;
-                } | null;
-                setNameColumnIndex(customOption ? customOption.index : -1);
+              onChange={(value) => {
+                updateSlots({
+                  name: {
+                    field_id: parseInt(value, 10),
+                  },
+                });
               }}
             />
 
@@ -238,13 +321,12 @@ export const TableListView = ({ location, params }: Props) => {
               label={t`Description`}
               placeholder={t`Select a column`}
               value={String(descriptionColumn?.id)}
-              onChange={(_value, option) => {
-                const customOption = option as unknown as {
-                  index: number;
-                } | null;
-                setDescriptionColumnIndex(
-                  customOption ? customOption.index : -1,
-                );
+              onChange={(value) => {
+                updateSlots({
+                  description: {
+                    field_id: parseInt(value, 10),
+                  },
+                });
               }}
             />
 
@@ -258,11 +340,12 @@ export const TableListView = ({ location, params }: Props) => {
               label={t`Image`}
               placeholder={t`Select a column`}
               value={String(imageColumn?.id)}
-              onChange={(_value, option) => {
-                const customOption = option as unknown as {
-                  index: number;
-                } | null;
-                setImageColumnIndex(customOption ? customOption.index : -1);
+              onChange={(value) => {
+                updateSlots({
+                  image: {
+                    field_id: parseInt(value, 10),
+                  },
+                });
               }}
             />
           </Stack>
