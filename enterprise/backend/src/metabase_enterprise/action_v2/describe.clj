@@ -45,7 +45,6 @@
   [{:keys [action-kw
            table-id
            param-map
-           dashcard-viz
            row-data]}]
   (when-not table-id
     (throw (ex-info "Must provide table-id" {:status-code 400})))
@@ -54,24 +53,22 @@
                                         (t2/hydrate :dimensions
                                                     :has_field_values
                                                     :values))
-        ;; it's a huge assumption that there's always dashcard-viz
-        ;; TODO: this should live in our configuration
-        dashcard-column-editable?   (or (some-> dashcard-viz :table.editableColumns set)
-                                        ;; columns are assumed editable if no dashcard-viz specialisation
-                                        (constantly true))
-        dashcard-sort               (zipmap (map :name (:table.columns dashcard-viz)) (range))
-        field-name->dashcard-column (u/index-by :name (:table.columns dashcard-viz))
+        ;; TODO get this from action configuration, when we add it, or inherit from table configuration
+        column-editable?            (constantly true)
+        ;; TODO get this from action configuration, when we add it, or inherit from table configuration
+        field->sort-idx             {}
         field-sort                  (zipmap (map :name fields) (range))
         sort-key                    (fn [{:keys [name]}]
-                                      (or (dashcard-sort name) ; prefer user defined sort in the dashcard
-                                          (+ (inc (count dashcard-sort))
+                                      (or (field->sort-idx name) ; prefer user defined sort in the dashcard
+                                          (+ (inc (count field->sort-idx))
                                              (field-sort name))))]
     {:title      (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
      :parameters (->> (for [field (sort-by sort-key fields)
                             :let [{field-values :values} field
                                   pk                     (= :type/PK (:semantic_type field))
                                   param-setting          (get param-map (keyword (:name field)))
-                                  dashcard-column        (field-name->dashcard-column (:name field))]
+                                  ;; TODO get this from action configuration, when we add it, or inherit from table conf
+                                  column-settings        nil]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
                                     (:table.row/create :data-grid.row/create) (not (:database_is_auto_increment field))
@@ -83,7 +80,7 @@
                             ;; row-actions can explicitly hide parameters
                             :when (not= "hidden" (:visibility param-setting))
                             ;; dashcard column context can hide parameters (if defined)
-                            :when (:enabled dashcard-column true)
+                            :when (:enabled column-settings true)
                             :let [required (or pk (:database_required field))]]
                         (u/remove-nils
                          ;; TODO yet another comment about how field id would be a better key, due to case issues
@@ -101,7 +98,7 @@
                                                                           false)
                           :database_default        (:database_default field)
                           :readonly                (or (= "readonly" (:visibility param-setting))
-                                                       (not (dashcard-column-editable? (:name field))))
+                                                       (not (column-editable? (:name field))))
                           ;; TODO oh dear, we need to worry about case sensitivity issue now (e.g. in tests)
                           ;; it would be much better if our mappings were based on field ids.
                           ;; probably not an issue in practice, because FE is writing the config AND calling execute-form
@@ -121,10 +118,6 @@
     (describe-table-action
      {:action-kw    (:action-kw action-def)
       :table-id     (:table-id partial-input)
-      :param-map    (:param-map action-def)
-      ;; TODO see how to remove
-      ;; tried commenting it out and no tests failed, so will leave this here as reference for now
-      ;; (also don't see any code that could ever populate this tho)
-      :dashcard-viz nil})
+      :param-map    (:param-map action-def)})
     :else
     (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :action-def action-def}))))
