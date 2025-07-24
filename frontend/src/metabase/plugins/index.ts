@@ -32,6 +32,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/common/components/Link";
+import type { CollectionItemListProps } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -786,5 +787,8 @@ export const PLUGIN_TENANTS = {
   isTenantCollection: (_collection: Collection) => false,
   PeopleNav: null as React.ReactElement | null,
   ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
+    null as React.ReactElement | null,
+  MainNavSharedCollections: PluginPlaceholder,
+  TenantCollectionItemList: (_props: CollectionItemListProps) =>
     null as React.ReactElement | null,
 };

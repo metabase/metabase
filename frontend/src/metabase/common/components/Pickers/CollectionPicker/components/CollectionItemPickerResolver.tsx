@@ -1,4 +1,5 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 
 import type { CollectionItemListProps } from "../types";
 
@@ -35,6 +36,21 @@ export const CollectionItemPickerResolver = ({
   if (query.id === PERSONAL_COLLECTIONS.id) {
     return (
       <PersonalCollectionsItemList
+        onClick={onClick}
+        selectedItem={selectedItem}
+        isFolder={isFolder}
+        isCurrentLevel={isCurrentLevel}
+        shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
+        options={options}
+      />
+    );
+  }
+
+  if (query.id === "tenant") {
+    return (
+      <PLUGIN_TENANTS.TenantCollectionItemList
+        query={query}
         onClick={onClick}
         selectedItem={selectedItem}
         isFolder={isFolder}
