@@ -38,7 +38,11 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}/execute`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("transform", id), listTag("table")]),
+        invalidateTags(error, [
+          idTag("transform", id),
+          listTag("table"),
+          listTag("field"),
+        ]),
     }),
     createTransform: builder.mutation<Transform, CreateTransformRequest>({
       query: (body) => ({
@@ -47,7 +51,11 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("transform")]),
+        invalidateTags(error, [
+          listTag("transform"),
+          listTag("table"),
+          listTag("field"),
+        ]),
     }),
     updateTransform: builder.mutation<Transform, UpdateTransformRequest>({
       query: ({ id, ...body }) => ({
@@ -56,7 +64,12 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+        invalidateTags(error, [
+          listTag("transform"),
+          idTag("transform", id),
+          listTag("table"),
+          listTag("field"),
+        ]),
     }),
     deleteTransform: builder.mutation<Transform, TransformId>({
       query: (id) => ({
@@ -64,7 +77,12 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+        invalidateTags(error, [
+          listTag("transform"),
+          idTag("transform", id),
+          listTag("table"),
+          listTag("field"),
+        ]),
     }),
   }),
 });
