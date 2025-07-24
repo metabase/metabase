@@ -66,7 +66,7 @@
   commons-codec/commons-codec               {:mvn/version "1.18.0"}             ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.20.0"}             ; Apache Commons -- useful IO util fns
   commons-net/commons-net                   {:mvn/version "3.11.1"}             ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
-  commons-validator/commons-validator       {:mvn/version "1.9.0"               ; Apache Commons -- useful validation util fns
+  commons-validator/commons-validator       {:mvn/version "1.10.0"               ; Apache Commons -- useful validation util fns
                                              :exclusions  [commons-beanutils/commons-beanutils
                                                            commons-digester/commons-digester
                                                            commons-logging/commons-logging]}
@@ -120,7 +120,7 @@
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.24.3"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.24.3"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.24.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.24.3"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.1"}             ; allows the commons-logging API to work with log4j 2
   org.apache.logging.log4j/log4j-jul        {:mvn/version "2.24.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
   {:mvn/version "2.24.3"}             ; allows the custom json logging format
@@ -177,7 +177,7 @@
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   ; NOTE: Postgres fix in 42.7.5 breaks liquibase on case-sensitive databases until https://github.com/liquibase/liquibase/pull/6755 is released
-  org.postgresql/postgresql                 {:mvn/version "42.7.5"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.7"}             ; Postgres driver
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
@@ -250,7 +250,8 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    djblue/portal                {:mvn/version "0.59.1"}                    ; ui for inspecting values
+    dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
+    djblue/portal                {:mvn/version "0.59.2"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:sha "1fe839cfa48549e21b89c6418c747895eda7e7bc"} ; test runner
     io.github.tonsky/clj-reload  {:mvn/version "0.9.7"}                     ; reloader

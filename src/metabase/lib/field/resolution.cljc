@@ -172,7 +172,6 @@
   #{:base-type
     :effective-type
     :display-name
-    :ident
     :metabase.lib.query/transformation-added-base-type
     :metabase.lib.field/original-effective-type
     :metabase.lib.field/original-temporal-unit})
@@ -217,7 +216,7 @@
 (defn- opts-fn-options
   "Preserve additional information that may have been added by QP middleware. Sometimes pre-processing middleware needs
   to add extra info to track things that it did (e.g.
-  the [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to track
+  the [[metabase.query-processor.middleware.add-remaps]] pre-processing middleware adds keys to track
   which Fields it adds or needs to remap, and then the post-processing middleware does the actual remapping based on
   that info)."
   [opts]

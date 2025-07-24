@@ -9,10 +9,14 @@ import type {
 } from "e2e/support/helpers";
 import type { DictionaryArray } from "metabase/i18n/types";
 
-import { germanFieldNames, germanFieldValues } from "./constants";
+import {
+  frenchBooleanTranslations,
+  germanFieldNames,
+  germanFieldValues,
+} from "./constants";
 import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ACCOUNTS, ACCOUNTS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
@@ -40,6 +44,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         uploadTranslationDictionaryViaAPI([
           ...germanFieldNames,
           ...germanFieldValues,
+          ...frenchBooleanTranslations,
         ]);
         H.snapshot("with-translations");
       });
@@ -160,6 +165,101 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           });
         },
       );
+
+      it("translates boolean content in filters and cards", () => {
+        const booleanFilter = {
+          name: "Boolean Filter",
+          slug: "boolean_filter",
+          id: "boolean-filter-id",
+          type: "boolean/=",
+          sectionId: "boolean",
+          default: true,
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "Boolean Question",
+            query: {
+              "source-table": ACCOUNTS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ACCOUNTS.TRIAL_CONVERTED,
+                  {
+                    "base-type": "type/Boolean",
+                  },
+                ],
+                [
+                  "field",
+                  ACCOUNTS.ACTIVE_SUBSCRIPTION,
+                  {
+                    "base-type": "type/Boolean",
+                  },
+                ],
+              ],
+            },
+          },
+          dashboardDetails: {
+            parameters: [booleanFilter],
+            enable_embedding: true,
+            embedding_params: {
+              [booleanFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 20,
+                parameter_mappings: [
+                  {
+                    card_id,
+                    parameter_id: booleanFilter.id,
+                    target: [
+                      "dimension",
+                      [
+                        "field",
+                        "ACTIVE_SUBSCRIPTION",
+                        {
+                          "base-type": "type/Boolean",
+                        },
+                      ],
+                      {
+                        "stage-number": 1,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              additionalHashOptions: {
+                locale: "fr",
+              },
+            },
+          );
+          cy.wait("@cardQuery");
+
+          H.filterWidget().contains("vrai");
+          cy.findByTestId("table-body").within(() => {
+            cy.findAllByText(/vrai/).should("have.length", 2);
+            cy.findAllByText(/true/).should("have.length", 0);
+          });
+        });
+      });
     });
   });
 
@@ -265,4 +365,6 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         .should("be.visible");
     });
   });
+
+  describe("Boolean content", () => {});
 });

@@ -70,7 +70,6 @@
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query products
                    {:expressions {"CATEGORY" [:concat [:field %category nil] "2"]}
-                    :expression-idents {"CATEGORY" "NasJJtjrlg_blZ_8ddjSx"}
                     :fields      [[:field %category nil]
                                   [:expression "CATEGORY"]]
                     :limit       1}))

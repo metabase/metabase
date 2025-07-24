@@ -12,7 +12,6 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -645,7 +644,6 @@
   by default."
   ([joinable]
    (-> (join-clause-method joinable)
-       (u/assoc-default :ident (lib.ident/random-ident))
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]
