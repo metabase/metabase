@@ -52,14 +52,21 @@
      [:official_collection :boolean]
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
+     [:text_search_vector :tsvector :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
       [:unique [:composite :model :model_id]]]]))
 
 (defn- format-embedding
-  "Formats the embedding vector for SQL insertion."
+  "Formats and validates the embedding vector for SQL insertion."
   [embedding]
+  ;; Validate all values are numeric as a safe-guard against malformed/malicious embeddings
+  (doseq [value embedding]
+    (when-not (number? value)
+      (throw (ex-info "Embedding contains non-numeric value"
+                      {:invalid-value value
+                       :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
 (defn- doc->db-record
@@ -77,6 +84,11 @@
    :official_collection official_collection
    :embedding           [:raw (format-embedding embedding-vec)]
    :content             searchable_text
+   :text_search_vector (if (:name doc)
+                         [:||
+                          (search/weighted-tsvector "A" (:name doc))
+                          (search/weighted-tsvector "B" (:searchable_text doc ""))]
+                         (search/weighted-tsvector "A" (:searchable_text doc "")))
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
@@ -123,7 +135,8 @@
         table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)]
     {:embedding-model embedding-model
      :table-name table-name
-     :index-name (str table-name "__hnsw_idx")}))
+     :embedding-index-name (str table-name "__hnsw_idx")
+     :fts-index-name (str table-name "__gin_idx")}))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
@@ -173,7 +186,7 @@
   force-reset? is true, drops and recreates the table if it exists."
   [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
-    (let [{:keys [embedding-model index-name table-name]} index
+    (let [{:keys [embedding-model embedding-index-name fts-index-name table-name]} index
           {:keys [vector-dimensions]}                     embedding-model]
       (log/info "Creating index table" table-name)
       (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
@@ -186,8 +199,14 @@
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [(keyword index-name) :if-not-exists]
+            [(keyword embedding-index-name) :if-not-exists]
             [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
+           sql-format-quoted))
+      (jdbc/execute!
+       connectable
+       (-> (sql.helpers/create-index
+            [(keyword fts-index-name) :if-not-exists]
+            [(keyword table-name) :using-gin [:raw "text_search_vector"]])
            sql-format-quoted)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {} e)))))
@@ -226,29 +245,86 @@
     (when (seq conditions)
       (into [:and] conditions))))
 
+(defn- keyword-search-query [index search-context]
+  (let [filters (search-filters search-context)
+        ts-search-expr (search/to-tsquery-expr (:search-string search-context))
+        tsv-lang (search/tsv-language)]
+    {:select [[:id :id]
+              [:model_id :model_id]
+              [:model :model]
+              [:content :content]
+              [:verified :verified]
+              [:metadata :metadata]
+              [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, query) DESC)"] :keyword_rank]]
+     :from [(keyword (:table-name index))]
+     ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
+     ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
+     :join [[[:raw "to_tsquery('" tsv-lang "', " [:lift ts-search-expr] ")"]
+             :query] [:= 1 1]]
+     :where (if (seq filters)
+              (into [:and [:raw "text_search_vector @@ query"]] [filters])
+              [:raw "text_search_vector @@ query"])
+     :order-by [[:keyword_rank :asc]]
+     :limit 100}))
+
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity."
   [index embedding search-context]
   (let [filters (search-filters search-context)
-        base-query {:select [[:model_id :model_id]
+        embedding-literal (format-embedding embedding)
+        max-cosine-distance 0.7
+        base-query {:select [[:id :id]
+                             [:model_id :model_id]
                              [:model :model]
                              [:content :content]
                              [:verified :verified]
-                             [[:raw (str "embedding <=> " (format-embedding embedding))] :distance]
-                             [:metadata :metadata]]
+                             [:metadata :metadata]
+                             [[:raw (str "embedding <=> " embedding-literal)] :semantic_score]
+                             [[:raw (str "row_number() OVER (ORDER BY embedding <=> " embedding-literal " ASC)")] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
-                    :order-by [[:distance :asc]]
+                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] max-cosine-distance]
+                    :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
-      (assoc base-query :where filters)
+      (update base-query :where #(into [:and] [% filters]))
       base-query)))
+
+(defn- hybrid-search-query
+  "Build a hybrid search query using vector + keyword based searches and reranking with RRF"
+  [index embedding search-context]
+  (let [semantic-results (semantic-search-query index embedding search-context)
+        keyword-results (keyword-search-query index search-context)
+        k 60
+        keyword-weight 0.51
+        semantic-weight 0.49
+        full-query {:with [[:vector_results semantic-results]
+                           [:text_results keyword-results]]
+                    :select [[[:coalesce :v.id :t.id] :id]
+                             [[:coalesce :v.model_id :t.model_id] :model_id]
+                             [[:coalesce :v.model :t.model] :model]
+                             [[:coalesce :v.content :t.content] :content]
+                             [[:coalesce :v.verified :t.verified] :verified]
+                             [[:coalesce :v.metadata :t.metadata] :metadata]
+                             [[:coalesce :v.semantic_rank -1] :semantic_rank]
+                             [[:coalesce :t.keyword_rank -1] :keyword_rank]
+                             [[:+
+                               [:* [:cast semantic-weight :float]
+                                [:coalesce [:/ 1.0 [:+ k [:. :v :semantic_rank]]] 0]]
+                               [:* [:cast keyword-weight :float]
+                                [:coalesce [:/ 1.0 [:+ k [:. :t :keyword_rank]]] 0]]]
+                              :rrf_rank]]
+                    :from [[:vector_results :v]]
+                    :full-join [[:text_results :t] [:= :v.id :t.id]]
+                    :order-by [[:rrf_rank :desc]]
+                    :limit 100}]
+    full-query))
 
 (defn- legacy-input-with-score
   "Fetches the legacy_input field from a result's metadata and attaches a score based on the
   embedding distance."
   [row]
   (-> (get-in row [:metadata :legacy_input])
-      (assoc :score (- 1.0 (:distance row 1.0)))))
+      (assoc :score (:rrf_rank row 1.0))))
 
 ;; TODO: can the query return unqualified keys directly?
 (defn- unqualify-keys
@@ -285,13 +361,35 @@
         search-string (:search-string search-context)]
     (when-not (str/blank? search-string)
       (let [embedding (embedding/get-embedding embedding-model search-string)
-            query     (semantic-search-query index embedding search-context)
+            query     (hybrid-search-query index embedding search-context)
             xform     (comp (map unqualify-keys)
                             (map decode-metadata)
                             (map legacy-input-with-score))
             reducible (jdbc/plan db (sql-format-quoted query))]
+        (comment
+          (jdbc/execute! db (sql-format-quoted query)))
         (-> (transduce xform conj [] reducible)
             filter-read-permitted)))))
+
+(comment
+  (def embedding-model (embedding/get-active-model))
+  (def index (default-index embedding-model))
+  (def search-ctx {:search-string "pasta"})
+  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx)))
+
+  (keyword-search-query index search-ctx)
+  (sql-format-quoted (keyword-search-query index search-ctx))
+  (jdbc/execute! db (sql-format-quoted (keyword-search-query index search-ctx)))
+
+  (semantic-search-query index embed search-ctx)
+  (sql/format (semantic-search-query index embed search-ctx))
+  (jdbc/execute! db (sql-format-quoted (semantic-search-query index embed search-ctx)))
+
+  (hybrid-search-query index embed search-ctx)
+  (sql-format-quoted (hybrid-search-query index embed search-ctx))
+  (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed search-ctx)))
+
+  (query-index db index search-ctx))
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
