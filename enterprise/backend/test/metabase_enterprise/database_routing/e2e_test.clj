@@ -211,13 +211,9 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod router-dataset-name :default
-  [_driver]
-  "db-router-data")
+(defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(defmethod router-dataset-name :redshift
-  [_driver]
-  "db-routing-data")
+(defmethod router-dataset-name :redshift [_driver] "db-routing-data")
 
 (defmulti routed-dataset-name
   "Name for routed dataset"
@@ -225,13 +221,9 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod routed-dataset-name :default
-  [_driver]
-  "db-routed-data")
+(defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(defmethod routed-dataset-name :redshift
-  [_driver]
-  "db-routing-data")
+(defmethod routed-dataset-name :redshift [_driver] "db-routing-data")
 
 (deftest db-routing-e2e-test
   ;; todo: this is to quickly get tests against all drivers right now. We probably want to make a
@@ -250,14 +242,14 @@
               (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
                                                  ["t"
                                                   [{:field-name "f", :base-type :type/Text}]
-                                                  [["original-foo"]
-                                                   ["original-bar"]]])
+                                                  [["router-foo"]
+                                                   ["router-bar"]]])
                 (let [router (mt/db)]
                   (wire-routing {:parent router :children [routed]})
                   (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
                                                           :user_attribute "db_name"}]
                     (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                      (is (= [[1 "original-foo"] [2 "original-bar"]]
+                      (is (= [[1 "router-foo"] [2 "router-bar"]]
                              (mt/with-current-user (mt/user->id :crowberto)
                                (mt/rows (mt/process-query (mt/query t))))))
                       (is (= [[1 "routed-foo"] [2 "routed-bar"]]
