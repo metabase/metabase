@@ -8,6 +8,10 @@ export function newTransformUrl() {
   return `${transformListUrl()}/new`;
 }
 
+export function newTransformFromQueryUrl() {
+  return `${newTransformUrl()}/query`;
+}
+
 export function transformUrl(id: TransformId) {
   return `${transformListUrl()}/${id}`;
 }
