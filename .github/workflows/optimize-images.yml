@@ -1,9 +1,9 @@
 name: Auto-Optimize Docs PNG Images
 
 on:
-  push:
-    paths:
-      - 'docs/**/*.png'
+  pull_request:
+    types:
+      - labeled
 
 jobs:
   optimize-images:
