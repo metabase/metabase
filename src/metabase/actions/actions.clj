@@ -158,13 +158,14 @@
 
 (defmulti handle-effects!*
   "Trigger bulk side effects in response to individual effects within actions, e.g. table row modified system events."
-  {:arglists '([effect-type context payloads]), :added "internal-tools"}
+  {:arglists '([effect-type context payloads])}
   (fn [effect-type _context _payloads]
     (keyword effect-type)))
 
 (defmethod handle-effects!* :default
   [effect-type _context _payloads]
-  (log/warnf "Ignoring effect type %s as no handler is defined" effect-type))
+  ;; Certain handler may only be defined based on premium features.
+  (log/warnf "Ignoring effect type %s as no handler is enabled" effect-type))
 
 (defn- handle-effects! [{:keys [effects] :as context}]
   (let [sans-effects (dissoc context :effects)]
