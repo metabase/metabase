@@ -151,7 +151,7 @@ export const TableListView = ({ location, params }: Props) => {
   }, [table]);
 
   useEffect(() => {
-    if (!columns) {
+    if (!columns || table?.component_settings) {
       return;
     }
 
@@ -182,7 +182,7 @@ export const TableListView = ({ location, params }: Props) => {
         },
       });
     }
-  }, [columns, updateSlots]);
+  }, [columns, updateSlots, table?.component_settings]);
 
   if (!table || !dataset || !columns) {
     return <LoadingAndErrorWrapper loading />;
