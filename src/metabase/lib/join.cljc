@@ -245,6 +245,10 @@
                                :source-alias            join-alias
                                :lib/original-join-alias join-alias)
         col             (-> (assoc column-metadata
+                                   :lib/original-display-name (or (:lib/original-display-name column-metadata)
+                                                                  (lib.metadata.calculation/display-name
+                                                                   query stage-number
+                                                                   (dissoc column-metadata :join-alias :lib/original-join-alias :source-alias)))
                                    :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
                             (with-join-alias join-alias))]
@@ -298,7 +302,7 @@
                                               (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                          (pr-str join-alias)
                                                          (pr-str field-ref)
-                                                         (u/pprint-to-str cols)))]
+                                                         (u/pprint-to-str (map :lib/desired-column-alias cols))))]
                          :when     match]
                      (assoc match :lib/source-uuid (lib.options/uuid field-ref))))
           ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
