@@ -1,21 +1,16 @@
-import dayjs from "dayjs";
-import { type KeyboardEvent, useCallback, useMemo, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { type KeyboardEvent, useCallback, useState } from "react";
 
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
 } from "metabase/lib/formatting/datetime-utils";
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import { DateInput } from "metabase/ui";
+import { DateTimePicker } from "metabase/ui";
 
 import type { TableActionInputSharedProps } from "./types";
-
-const DEFAULT_DATETIME_STYLE = `${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`;
+import { useDateValueWithoutTimezone } from "./use-date-value-without-timezone";
 
 export type TableActionInputDateTimeProps = TableActionInputSharedProps & {
-  isDateTime?: boolean;
-  dateStyle?: string;
   dateTimeStyle?: string;
   classNames?: {
     wrapper?: string;
@@ -23,41 +18,24 @@ export type TableActionInputDateTimeProps = TableActionInputSharedProps & {
   };
 };
 
+const DEFAULT_DATETIME_STYLE = `${DEFAULT_DATE_STYLE}, ${DEFAULT_TIME_STYLE}`;
+
 export const TableActionInputDateTime = ({
-  isDateTime,
-  dateStyle = DEFAULT_DATE_STYLE,
   dateTimeStyle = DEFAULT_DATETIME_STYLE,
   autoFocus,
   inputProps,
   initialValue,
   classNames,
   onChange,
-  onBlur,
   onEscape,
   onEnter,
+  onBlur,
 }: TableActionInputDateTimeProps) => {
-  const reportTimezone = useSelector((state) =>
-    getSetting(state, "report-timezone-long"),
-  );
+  const { localDate: initialValueWithoutTimezone, restoreTimezone } =
+    useDateValueWithoutTimezone(initialValue ?? null);
 
-  const { restoreTimezone, initialDate } = useMemo(
-    () => ({
-      initialDate: initialValue ?? null,
-      restoreTimezone: (date: string | null) => {
-        if (!date) {
-          return null;
-        }
-
-        return dayjs(date).tz(reportTimezone).format("YYYY-MM-DDTHH:mm:ssZ");
-      },
-    }),
-    [initialValue, reportTimezone],
-  );
-
-  const valueFormat = isDateTime ? dateTimeStyle : dateStyle;
-
-  const [value, setValue] = useState(initialDate);
-  const [isFocused, setFocused] = useState(false);
+  const [value, setValue] = useState(initialValueWithoutTimezone ?? null);
+  const [dropdownOpened, dropdownHandlers] = useDisclosure(autoFocus);
 
   const handleChange = useCallback(
     (value: string | null) => {
@@ -67,41 +45,50 @@ export const TableActionInputDateTime = ({
     [onChange, restoreTimezone],
   );
 
-  const handleFocus = useCallback(() => {
-    setFocused(true);
-  }, [setFocused]);
-
-  const handleBlur = useCallback(() => {
-    setFocused(false);
+  const handleSubmit = useCallback(() => {
     onBlur?.(restoreTimezone(value));
-  }, [value, onBlur, restoreTimezone]);
+    dropdownHandlers.close();
+  }, [value, onBlur, dropdownHandlers, restoreTimezone]);
 
   const handleKeyUp = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onEscape?.(restoreTimezone(value));
-      } else if (event.key === "Enter") {
+      if (event.key === "Enter") {
         onEnter?.(restoreTimezone(value));
+        dropdownHandlers.close();
       }
     },
-    [value, onEscape, onEnter, restoreTimezone],
+    [value, onEnter, dropdownHandlers, restoreTimezone],
   );
 
+  const handleDismiss = useCallback(() => {
+    onEscape?.(restoreTimezone(value));
+    dropdownHandlers.close();
+  }, [value, onEscape, dropdownHandlers, restoreTimezone]);
+
   return (
-    <DateInput
-      autoFocus={autoFocus}
+    <DateTimePicker
       value={value}
-      valueFormat={valueFormat}
+      valueFormat={dateTimeStyle}
       classNames={{
         wrapper: classNames?.wrapper,
         input: classNames?.dateTextInputElement,
       }}
-      // Keeps popover mounted when focused to improve time editing UX
-      popoverProps={{ opened: isFocused }}
+      onClick={dropdownHandlers.open}
+      submitButtonProps={{
+        variant: "light",
+        onClick: handleSubmit,
+      }}
+      popoverProps={{
+        opened: dropdownOpened,
+        onDismiss: handleDismiss,
+        styles: {
+          dropdown: {
+            "--popover-padding": "var(--mantine-spacing-md)",
+          },
+        },
+      }}
+      timePickerProps={{ format: "12h", onKeyUp: handleKeyUp }}
       onChange={handleChange}
-      onBlur={handleBlur}
-      onFocus={handleFocus}
-      onKeyUp={handleKeyUp}
       {...inputProps}
     />
   );
