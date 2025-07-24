@@ -27,7 +27,7 @@
 
 (defmulti default-mapping
   "Allow actions to dynamically generating a :mapping, in none has been configured."
-  {:arglists '([action-kw scope]), :added "0.57.0"}
+  {:arglists '([action-kw scope]), :added "0.56.0"}
   (fn [action-kw _scope]
     action-kw))
 
