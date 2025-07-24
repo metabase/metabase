@@ -21,7 +21,7 @@ import type { CreateTransformRequest, DatasetQuery } from "metabase-types/api";
 
 import { transformUrl } from "../../../utils/urls";
 
-type NewTransformFormProps = {
+type NewTransformFromQueryFormProps = {
   query: DatasetQuery;
 };
 
@@ -37,7 +37,9 @@ const NEW_TRANSFORM_SCHEMA = Yup.object().shape({
   table: Yup.string().required(Errors.required),
 });
 
-export function NewTransformForm({ query }: NewTransformFormProps) {
+export function NewTransformFromQueryForm({
+  query,
+}: NewTransformFromQueryFormProps) {
   const databaseId = query.database;
   const {
     data: schemas = [],
