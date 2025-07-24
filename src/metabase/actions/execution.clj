@@ -214,21 +214,16 @@
   [dashboard-id       :- ::lib.schema.id/dashboard
    dashcard-id        :- ::lib.schema.id/dashcard
    request-parameters :- [:maybe [:map-of :string :any]]]
-  (let [dashcard     (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
-        action-id    (:action_id dashcard)
-        table-action (-> dashcard :visualization_settings :table_action)]
-    (api/check-404 (or action-id table-action))
-    (if table-action
-      (let [{:keys [kind table_id]} table-action]
-        ;; avoiding snowplow for now, to avoid adding new actions into their schema
-        (execute-table-action! (keyword kind) table_id request-parameters))
-      (let [action (api/check-404 (action/select-action :id action-id :archived false))]
-        (analytics/track-event! :snowplow/action
-                                {:event     :action-executed
-                                 :source    :dashboard
-                                 :type      (:type action)
-                                 :action_id (:id action)})
-        (execute-action! action request-parameters)))))
+  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
+                                               :id dashcard-id
+                                               :dashboard_id dashboard-id))
+        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+    (analytics/track-event! :snowplow/action
+                            {:event     :action-executed
+                             :source    :dashboard
+                             :type      (:type action)
+                             :action_id (:id action)})
+    (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
   [action request-parameters]
