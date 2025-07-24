@@ -2,16 +2,17 @@ import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import type { TransformListPageProps } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Flex, rem } from "metabase/ui";
 import {
   useGetTransformQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
 
+import { TransformEmptyState } from "./TransformEmptyState";
 import { TransformList } from "./TransformList";
 import S from "./TransformListPage.module.css";
 import { TransformSettings } from "./TransformSettings";
-import { COLUMN_CONFIG } from "./constrants";
+import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constrants";
 
 export function TransformListPage({ params }: TransformListPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
@@ -25,6 +26,7 @@ export function TransformListPage({ params }: TransformListPageProps) {
     isLoading: isItemLoading,
     error: itemError,
   } = useGetTransformQuery(transformId ?? skipToken);
+  const isEmptyState = transforms.length > 0 && transformId == null;
 
   return (
     <>
@@ -54,6 +56,16 @@ export function TransformListPage({ params }: TransformListPageProps) {
           <LoadingAndErrorWrapper loading={isItemLoading} error={itemError}>
             {transform != null && <TransformSettings transform={transform} />}
           </LoadingAndErrorWrapper>
+        </Flex>
+      )}
+      {isEmptyState && (
+        <Flex
+          align="center"
+          flex="1"
+          justify="center"
+          miw={rem(EMPTY_STATE_MIN_WIDTH)}
+        >
+          <TransformEmptyState />
         </Flex>
       )}
     </>
