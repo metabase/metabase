@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -7,10 +8,12 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isSyncInProgress } from "metabase/lib/syncing";
 import {
   Button,
   Card,
   Group,
+  Icon,
   Image,
   Select,
   Stack,
@@ -23,6 +26,7 @@ import {
   detectDescriptionColumn,
   detectImageColumn,
   detectNameColumn,
+  getExploreTableUrl,
   getRowCountQuery,
   getTableQuery,
   renderValue,
@@ -46,7 +50,6 @@ export const TableListView = ({ params }: Props) => {
   const countQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getRowCountQuery(table) : undefined;
   }, [table]);
-
   const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
   const { data: countDataset } = useGetAdhocQueryQuery(
     countQuery ? countQuery : skipToken,
@@ -104,17 +107,36 @@ export const TableListView = ({ params }: Props) => {
           )}
         </Stack>
 
-        {!isEditing && (
-          <Button variant="outline" onClick={() => setIsEditing(true)}>
-            {t`Edit`}
-          </Button>
-        )}
+        <Group gap="md">
+          {!isSyncInProgress(table) && !isEditing && (
+            <Button
+              component={Link}
+              leftSection={<Icon name="insight" />}
+              to={getExploreTableUrl(table)}
+              variant="primary"
+            >{t`Explore results`}</Button>
+          )}
 
-        {isEditing && (
-          <Button variant="filled" onClick={() => setIsEditing(false)}>
-            {t`Save`}
-          </Button>
-        )}
+          {!isEditing && (
+            <Button
+              leftSection={<Icon name="pencil" />}
+              variant="outline"
+              onClick={() => setIsEditing(true)}
+            >
+              {t`Edit`}
+            </Button>
+          )}
+
+          {isEditing && (
+            <Button
+              leftSection={<Icon name="check" />}
+              variant="filled"
+              onClick={() => setIsEditing(false)}
+            >
+              {t`Save`}
+            </Button>
+          )}
+        </Group>
       </Group>
 
       <Group align="flex-start" gap="xl">

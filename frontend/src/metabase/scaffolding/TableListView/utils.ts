@@ -1,15 +1,31 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   isAvatarURL,
   isEmail,
   isEntityName,
   isImageURL,
 } from "metabase-lib/v1/types/utils/isa";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   DatasetColumn,
   RowValue,
   StructuredDatasetQuery,
   Table,
 } from "metabase-types/api";
+
+export function getExploreTableUrl(table: Table): string {
+  const metadata = createMockMetadata({
+    tables: table ? [table] : [],
+  });
+  const metadataTable = metadata?.table(table.id);
+  const question = metadataTable?.newQuestion();
+
+  if (!question) {
+    throw new Error("Unable to create question");
+  }
+
+  return ML_Urls.getUrl(question);
+}
 
 export function renderValue(value: RowValue, column: DatasetColumn): string {
   if (value === undefined) {
