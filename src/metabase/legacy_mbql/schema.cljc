@@ -1376,7 +1376,7 @@
     ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
     {:decode/normalize lib-normalize-legacy-column}
     [:base_type          ::lib.schema.common/base-type]
-    [:display_name       ::lib.schema.common/non-blank-string]
+    [:display_name       :string]
     [:name               :string]
     [:effective_type     {:optional true} ::lib.schema.common/base-type]
     [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
