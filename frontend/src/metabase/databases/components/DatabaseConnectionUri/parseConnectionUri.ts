@@ -5,7 +5,8 @@ export interface UriFields {
   username: string;
   password: string;
   protocol: string;
-  searchParams: Record<string, string>;
+  params: Record<string, string> | undefined;
+  path: string;
 }
 
 export function parseConnectionUri(connectionUri: string): UriFields | null {
@@ -37,7 +38,7 @@ export function parseConnectionUri(connectionUri: string): UriFields | null {
       username,
       password,
       protocol: protocol.slice(0, -1), // remove trailing colon
-      searchParams: searchParamsObject,
+      params: searchParamsObject,
     };
   } catch (error) {
     return null;

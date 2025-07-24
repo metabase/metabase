@@ -6,9 +6,15 @@ import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
 import { mapDatabaseValues } from "./databaseFieldMapper";
-import { parseConnectionUri } from "./parseConnectionUri";
+import { parseConnectionUriRegex } from "./parseConnectionRegex";
 
-const supportedEngines = new Set(["PostgreSQL", "Snowflake"]);
+const supportedEngines = new Set([
+  "PostgreSQL",
+  "Snowflake",
+  "BigQuery",
+  "ClickHouse",
+]);
+
 export function DatabaseConnectionStringField({
   setFieldValue,
   engine,
@@ -25,7 +31,7 @@ export function DatabaseConnectionStringField({
 
   useEffect(
     function handleConnectionStringChange() {
-      const parsedValues = parseConnectionUri(connectionString);
+      const parsedValues = parseConnectionUriRegex(connectionString);
       if (parsedValues) {
         const fieldsMap = mapDatabaseValues(parsedValues);
         fieldsMap.forEach((value, field) => setFieldValue(field, value));

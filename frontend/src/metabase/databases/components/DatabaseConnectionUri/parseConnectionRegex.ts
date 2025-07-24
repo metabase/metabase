@@ -1,10 +1,12 @@
+import type { UriFields } from "./parseConnectionUri";
+
 const jdbcPrefix = "(?<hasJdbcPrefix>jdbc:)?";
 const userPass = "(?:(?<username>[^:/?#]+)(?::(?<password>[^@/?#]*))?@)?";
 const host = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
 const params = "(?:\\?(?<params>.*))?";
+const path = "(?:/(?<path>[^/?#]*))?";
 
 const connectionStringRegexes = {
-  // PostgreSQL
   postgresql: new RegExp(
     "^" +
       jdbcPrefix +
@@ -17,7 +19,6 @@ const connectionStringRegexes = {
     "i",
   ),
 
-  // MySQL
   mysql: new RegExp(
     "^" +
       jdbcPrefix +
@@ -29,8 +30,6 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-
-  // Oracle (using Easy Connect syntax)
   oracle: new RegExp(
     "^" +
       jdbcPrefix +
@@ -42,13 +41,11 @@ const connectionStringRegexes = {
     "i",
   ),
 
-  // SQLite (file path)
   sqlite: new RegExp(
     "^" + jdbcPrefix + "(?<protocol>sqlite):///(?<filepath>.+)$",
     "i",
   ),
 
-  // MongoDB
   mongodb: new RegExp(
     "^" +
       jdbcPrefix +
@@ -113,20 +110,45 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
+  bigquery: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>bigquery)://" +
+      "([^;]*);(?<semicolonParams>.*)?;",
+    "i",
+  ),
+
+  clickhouse: new RegExp(
+    "^" + jdbcPrefix + "(?<protocol>clickhouse)://" + userPass + host + path,
+  ),
 };
 
-export function parseConnectionUriRegex(connectionUri: string) {
+export function parseConnectionUriRegex(
+  connectionUri: string,
+): UriFields | null {
   for (const regex of Object.values(connectionStringRegexes)) {
     const match = connectionUri.match(regex);
     if (match) {
       const params = match.groups?.params
         ? Object.fromEntries(new URLSearchParams(match.groups.params))
         : undefined;
+      const semicolonParams = match.groups?.semicolonParams
+        ? match.groups.semicolonParams.split(";").reduce(
+            (acc, param) => {
+              const [key, value] = param.split("=");
+              acc[key] = value;
+              return acc;
+            },
+            {} as Record<string, string>,
+          )
+        : undefined;
       return {
         ...match.groups,
-        params,
+        params: params ?? semicolonParams,
         hasJdbcPrefix: Boolean(match.groups?.hasJdbcPrefix),
       };
     }
   }
+
+  return null;
 }

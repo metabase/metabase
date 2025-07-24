@@ -193,3 +193,36 @@ describe("parseConnectionUriRegex - Snowflake", () => {
     );
   });
 });
+
+describe("parseConnectionUriRegex - BigQuery", () => {
+  it("should parse a BigQuery connection string", () => {
+    const connectionString =
+      "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "bigquery",
+        params: {
+          ProjectId: "MyBigQueryProject",
+          OAuthType: "1",
+        },
+      }),
+    );
+  });
+});
+
+describe("parseConnectionUriRegex - Clickhouse", () => {
+  it("should parse a Clickhouse connection string", () => {
+    const connectionString = "jdbc:clickhouse://127.0.0.1:8123/myDatabase";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "clickhouse",
+        host: "127.0.0.1",
+        port: "8123",
+        hasJdbcPrefix: true,
+        path: "myDatabase",
+      }),
+    );
+  });
+});
