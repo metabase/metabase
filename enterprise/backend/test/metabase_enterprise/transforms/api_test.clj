@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -49,21 +51,23 @@
     `(mt/with-model-cleanup [:model/Transform]
        ~@body)))
 
+(defn- make-query [category]
+  (:query (qp.compile/compile (mt/mbql-query products {:where [:= $category category]}))))
+
 (deftest create-transform-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
-      (let [query (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))]
-        (mt/user-http-request :crowberto :post 200 "ee/transform"
-                              {:name "Gadget Products"
-                               :source {:type "query"
-                                        :query {:database (mt/id)
-                                                :type "native",
-                                                :native {:query (:query query)
-                                                         :template-tags {}}}}
-                               :target {:type "table"
-                                      ;; leave out schema for now
-                                      ;;:schema (str (rand-int 10000))
-                                        :table table-name}})))))
+      (mt/user-http-request :crowberto :post 200 "ee/transform"
+                            {:name "Gadget Products"
+                             :source {:type "query"
+                                      :query {:database (mt/id)
+                                              :type "native",
+                                              :native {:query (make-query "Gadget")
+                                                       :template-tags {}}}}
+                             :target {:type "table"
+                                        ;; leave out schema for now
+                                        ;;:schema (str (rand-int 10000))
+                                      :table table-name}}))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
@@ -71,13 +75,12 @@
       (mt/user-http-request :crowberto :get 200 "ee/transform"))
     (testing "Can list with query parameters"
       (with-transform-cleanup! [table-name "gadget_products"]
-        (let [query (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))
-              body {:name "Gadget Products"
+        (let [body {:name "Gadget Products"
                     :description "Desc"
                     :source {:type "query"
                              :query {:database (mt/id)
                                      :type "native",
-                                     :native {:query (:query query)
+                                     :native {:query (make-query "Gadget")
                                               :template-tags {}}}}
                     :target {:type "table"
                              ;;:schema "transforms"
@@ -91,13 +94,12 @@
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
-      (let [query (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))
-            body {:name "Gadget Products"
+      (let [body {:name "Gadget Products"
                   :description "Desc"
                   :source {:type "query"
                            :query {:database (mt/id)
                                    :type "native",
-                                   :native {:query (:query query)
+                                   :native {:query (make-query "Gadget")
                                             :template-tags {}}}}
                   :target {:type "table"
                            ;;:schema "transforms"
@@ -113,14 +115,13 @@
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
-      (let [query (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))
-            query2 (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))
+      (let [query2 (make-query "None")
             resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
                                                          :type "native",
-                                                         :native {:query (:query query)
+                                                         :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
@@ -131,7 +132,7 @@
                  :source {:type "query"
                           :query {:database (mt/id)
                                   :type "native",
-                                  :native {:query (:query query2)
+                                  :native {:query query2
                                            :template-tags {}}}}
                  :target {:type "table"
                           :table table-name}}
@@ -141,19 +142,18 @@
                                        :source {:type "query"
                                                 :query {:database (mt/id)
                                                         :type "native",
-                                                        :native {:query (:query query2)
+                                                        :native {:query query2
                                                                  :template-tags {}}}}})))))))
 
 (deftest delete-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
-      (let [query (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))
-            resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+      (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
                                                          :type "native",
-                                                         :native {:query (:query query)
+                                                         :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
@@ -164,13 +164,12 @@
 (deftest delete-table-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
-      (let [query (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))
-            resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+      (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
                                                          :type "native",
-                                                         :native {:query (:query query)
+                                                         :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
