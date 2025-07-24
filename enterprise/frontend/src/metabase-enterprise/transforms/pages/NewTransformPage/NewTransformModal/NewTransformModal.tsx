@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Flex, Modal } from "metabase/ui";
 import type { DatasetQuery } from "metabase-types/api";
 
-import { NewTransformForm } from "../NewTransformForm";
+import { NewTransformForm } from "./NewTransformForm";
 
 type NewTransformModalProps = {
   query: DatasetQuery;
