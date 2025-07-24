@@ -426,6 +426,31 @@ describe("scenarios > admin > datamodel", () => {
               `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
+
+          cy.log("databases, schemas, and tables should be links");
+          TablePicker.getDatabase("Sample Database").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres12")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${WRITABLE_DB_ID}`,
+            );
+          TablePicker.getSchema("Domestic")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
+            );
+          TablePicker.getTable("Orders")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+            );
         });
 
         it("should allow to search for tables", () => {
