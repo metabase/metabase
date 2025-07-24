@@ -26,6 +26,13 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 /** list of active embeds, used to know which embeds to update when the global config changes */
 const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 
+// Stub of MetabaseEmbedElement to satisfy type requirements of helper utilities below.
+// The full custom elements are declared later in this file.
+class MetabaseEmbedElement extends HTMLElement {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  updateSettings(_settings: Partial<SdkIframeEmbedSettings>) {}
+}
+
 // Setup a proxy to watch for changes to window.metabaseConfig and update all
 // active embeds when the config changes. It also setups a setter for
 // window.metabaseConfig to re-create the proxy if the whole object is replaced,
@@ -417,296 +424,118 @@ const raiseError = (message: string) => {
   throw new MetabaseError("EMBED_ERROR", message);
 };
 
-const warn = (...messages: unknown[]) =>
-  console.warn("[metabase.embed.warning]", ...messages);
+function createCustomElement<Arr extends readonly string[]>(
+  tagName: string,
+  attributeNames: Arr,
+) {
+  class CustomEmbedElement extends HTMLElement {
+    private _embed: MetabaseEmbed | null = null;
 
-// BEGIN web-component wrapper for convenient usage via <metabase-embed> tag
-
-class MetabaseEmbedElement extends HTMLElement {
-  private _embed: MetabaseEmbed | null = null;
-
-  private _BUFFER_customClickHandler: ((number: number) => void) | null = null;
-
-  // Keep the observed attributes list small & explicit to avoid mistakes.
-  // Only attributes that map to settings are included.
-  static get observedAttributes() {
-    return [
-      "instance-url",
-      "dashboard-id",
-      "question-id",
-      "template",
-      "initial-collection",
-      "is-drill-through-enabled",
-      "with-downloads",
-      "with-title",
-      "use-existing-user-session",
-      "api-key",
-      "preferred-auth-method",
-      "iframe-class-name",
-      "initial-parameters",
-      "theme",
-    ];
-  }
-
-  updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-    this._embed?.updateSettings(settings);
-  }
-
-  // Property <-> attribute reflection for complex settings
-  /**
-   * An array of parameter ids that will be passed to the embedded dashboard.
-   *
-   * Example: element.initialParameters = ["param_1", "param_2"]
-   * This automatically serializes the value to JSON and sets the
-   * `initial-parameters` attribute so the attributeChangedCallback can handle
-   * updating the underlying embed instance.
-   */
-  get initialParameters(): Record<string, unknown> | undefined {
-    const attr = this.getAttribute("initial-parameters");
-    if (attr === null) {
-      return undefined;
-    }
-    try {
-      return JSON.parse(attr) as Record<string, unknown>;
-    } catch (error) {
-      console.error(
-        "[metabase.embed.error] Failed to parse initial-parameters attribute as JSON",
-        error,
-      );
-      return undefined;
-    }
-  }
-
-  set initialParameters(value: Record<string, unknown> | undefined) {
-    if (value === undefined) {
-      this.removeAttribute("initial-parameters");
-      return;
+    static get observedAttributes() {
+      return attributeNames as readonly string[];
     }
 
-    // Serialize to JSON for consistency with attribute parsing logic
-    this.setAttribute("initial-parameters", JSON.stringify(value));
-  }
-
-  get customClickHandler(): ((number: number) => void) | null {
-    return this._embed?.customClickHandler ?? null;
-  }
-
-  set customClickHandler(value: ((number: number) => void) | null) {
-    if (this._embed) {
-      this._embed.customClickHandler = value;
-    } else {
-      this._BUFFER_customClickHandler = value;
-    }
-  }
-
-  get theme(): Record<string, unknown> | undefined {
-    const attr = this.getAttribute("theme");
-    if (attr === null) {
-      return undefined;
-    }
-    try {
-      return JSON.parse(attr) as Record<string, unknown>;
-    } catch (error) {
-      console.error(
-        "[metabase.embed.error] Failed to parse theme attribute as JSON",
-        error,
-      );
-      return undefined;
-    }
-  }
-
-  set theme(value: Record<string, unknown> | undefined) {
-    if (value === undefined) {
-      this.removeAttribute("theme");
-      return;
-    }
-    this.setAttribute("theme", JSON.stringify(value));
-  }
-
-  connectedCallback() {
-    if (this._embed) {
-      return; // already initialised
+    updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
+      this._embed?.updateSettings(settings);
     }
 
-    // Gather settings from element attributes
-    const settings: Record<string, unknown> = {};
-    Array.from(this.attributes).forEach(({ name, value }) => {
-      const key = attributeToSettingKey(name);
-      settings[key] = parseAttributeValue(value);
-    });
+    connectedCallback() {
+      if (this._embed) {
+        // already initialised
+        return;
+      }
 
-    // BEGIN addition: apply global defaults
-    const globalConfig = (window as any).metabaseConfig as
-      | Partial<SdkIframeEmbedSettings>
-      | undefined;
-    if (globalConfig) {
-      Object.entries(globalConfig).forEach(([key, value]) => {
-        if (settings[key] === undefined) {
-          settings[key] = value;
+      const settings: Record<string, unknown> = window.metabaseConfig || {};
+
+      // Read element-specific attributes
+      attributeNames.forEach((attr) => {
+        const attrValue = this.getAttribute(attr as string);
+        if (attrValue !== null) {
+          const key = attributeToSettingKey(attr as string);
+          settings[key] = parseAttributeValue(attrValue);
         }
       });
-    }
-    // END addition
 
-    // Fallback: if no instanceUrl attribute on element, look for it on the embedding script tag.
-    if (!settings.instanceUrl) {
-      const scriptWithInstance = document.querySelector(
-        "script[data-metabase-instance-url]",
-      ) as HTMLScriptElement | null;
-
-      const attr = scriptWithInstance?.getAttribute(
-        "data-metabase-instance-url",
-      );
-
-      if (attr) {
-        settings.instanceUrl = attr;
+      if (!this.id) {
+        this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
       }
-    }
+      settings.target = `#${this.id}`;
 
-    // Fallback: global attribute for useExistingUserSession
-    if (settings.useExistingUserSession === undefined) {
-      const scriptWithUserSession = document.querySelector(
-        "script[data-metabase-use-existing-user-session]",
-      ) as HTMLScriptElement | null;
-
-      const attr = scriptWithUserSession?.getAttribute(
-        "data-metabase-use-existing-user-session",
-      );
-
-      if (attr !== null && attr !== undefined) {
-        settings.useExistingUserSession = parseAttributeValue(attr) as boolean;
-      }
-    }
-
-    // Default target is a selector string pointing to this element to avoid passing an
-    // HTMLElement (which cannot be cloned in postMessage payloads).
-    if (!this.id) {
-      // Ensure the element has an id we can reference.
-      this.id = `metabase-embed-${Math.random().toString(36).slice(2)}`;
-    }
-    settings.target = `#${this.id}`;
-
-    // Instantiate the SDK embed.
-    try {
-      this._embed = new MetabaseEmbed(
-        settings as unknown as SdkIframeEmbedTagSettings,
-      );
-
-      // Add click handler if one was set before the embed was created
-      if (this._BUFFER_customClickHandler) {
-        this._embed.customClickHandler = this._BUFFER_customClickHandler;
-      }
-
-      registerEmbed(this);
-    } catch (error) {
-      // Surface constructor errors for easier debugging.
-      console.error("[metabase.embed.error]", error);
-    }
-  }
-
-  disconnectedCallback() {
-    this._embed?.destroy();
-    this._embed = null;
-
-    unregisterEmbed(this);
-  }
-
-  attributeChangedCallback(
-    attrName: string,
-    oldVal: string | null,
-    newVal: string | null,
-  ) {
-    if (!this._embed || oldVal === newVal) {
-      return;
-    }
-
-    const key = attributeToSettingKey(attrName) as keyof SdkIframeEmbedSettings;
-
-    // Prevent updates to settings that are immutable after creation.
-    if (
-      (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
-    ) {
-      return;
-    }
-
-    const value = parseAttributeValue(newVal);
-    // Call updateSettings with a partial settings object.
-    try {
-      this._embed.updateSettings({
-        [key]: value,
-      } as Partial<SdkIframeEmbedSettings>);
-    } catch (error) {
-      console.error("[metabase.embed.error]", error);
-    }
-  }
-}
-
-// Register the custom element once in the current page context.
-if (typeof window !== "undefined" && !customElements.get("metabase-embed")) {
-  customElements.define("metabase-embed", MetabaseEmbedElement);
-}
-
-// BEGIN addition: <metabase-config> element to define global config via HTML tag
-class MetabaseConfigElement extends HTMLElement {
-  connectedCallback() {
-    const settings: Record<string, unknown> = {};
-    Array.from(this.attributes).forEach(({ name, value }) => {
-      const key = attributeToSettingKey(name);
-      settings[key] = parseAttributeValue(value);
-    });
-
-    try {
-      if (
-        typeof window !== "undefined" &&
-        (window as any).defineMetabaseConfig
-      ) {
-        (window as any).defineMetabaseConfig(
-          settings as Partial<SdkIframeEmbedSettings>,
+      try {
+        this._embed = new MetabaseEmbed(
+          settings as unknown as SdkIframeEmbedTagSettings,
         );
-      } else {
-        (window as any).metabaseConfig =
-          settings as Partial<SdkIframeEmbedSettings>;
+        registerEmbed(this as unknown as MetabaseEmbedElement);
+      } catch (error) {
+        console.error("[metabase.embed.error]", error);
       }
-    } catch (error) {
-      console.error("[metabase.embed.error]", error);
+    }
+
+    disconnectedCallback() {
+      this._embed?.destroy();
+      this._embed = null;
+      unregisterEmbed(this as unknown as MetabaseEmbedElement);
+    }
+
+    attributeChangedCallback(
+      attrName: string,
+      oldVal: string | null,
+      newVal: string | null,
+    ) {
+      if (!this._embed || oldVal === newVal) {
+        return;
+      }
+
+      const key = attributeToSettingKey(
+        attrName,
+      ) as keyof SdkIframeEmbedSettings;
+      if (
+        (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
+      ) {
+        return;
+      }
+
+      const value = parseAttributeValue(newVal);
+      try {
+        this._embed.updateSettings({
+          [key]: value,
+        } as Partial<SdkIframeEmbedSettings>);
+      } catch (error) {
+        console.error("[metabase.embed.error]", error);
+      }
     }
   }
+
+  if (typeof window !== "undefined" && !customElements.get(tagName)) {
+    customElements.define(tagName, CustomEmbedElement);
+  }
+
+  return CustomEmbedElement;
 }
 
-if (typeof window !== "undefined" && !customElements.get("metabase-config")) {
-  customElements.define("metabase-config", MetabaseConfigElement);
-}
-// END addition
+const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
+  "dashboard-id",
+  "with-title",
+  "with-downloads",
+  "is-drill-through-enabled",
+  "initial-parameters",
+  "hidden-parameters",
+]);
+const MetabaseQuestionElement = createCustomElement("metabase-question", [
+  "question-id",
+  "with-title",
+  "with-downloads",
+  "is-drill-through-enabled",
+  "initial-sql-parameters",
+]);
 
-// Register aliases for convenience without reusing the same constructor (required by the spec)
-if (typeof window !== "undefined") {
-  ["metabase-question", "metabase-dashboard"].forEach((tag) => {
-    if (!customElements.get(tag)) {
-      // Create a unique subclass so each tag has its own constructor reference.
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore – dynamically generated class name is fine.
-      customElements.define(tag, class extends MetabaseEmbedElement {});
-    }
-  });
-}
-
-// Expose the constructor on the global for backwards compatibility with previous SDK usage.
+// Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any)["metabase.embed"] = {
-    // Preserve any existing exports placed there earlier.
     ...(window as any)["metabase.embed"],
     MetabaseEmbed,
   };
 }
-// END web-component wrapper
 
-export { MetabaseEmbed, MetabaseEmbedElement };
-
-// todo:
-/**
- * - decide if we want to hoist up the shared configs not related to the individual embed
- * - decide how to define themes etc
- * - decide about plugins/callbacks
- * - what to do with initialParams etc
- */
+export { MetabaseEmbed, MetabaseDashboardElement, MetabaseQuestionElement };
