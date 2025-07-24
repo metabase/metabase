@@ -24,7 +24,11 @@ import {
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
-import { tableMetadataUrl, transformListUrl } from "../../../utils/urls";
+import {
+  tableMetadataUrl,
+  transformListUrl,
+  transformQueryUrl,
+} from "../../../utils/urls";
 
 import { SCHEDULE_OPTIONS } from "./constants";
 
@@ -194,8 +198,19 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
           >
             {t`Run now`}
           </Button>
+          <Button
+            component={Link}
+            to={transformQueryUrl(transform.id)}
+            leftSection={<Icon name="pencil_lines" />}
+          >
+            {t`Edit query`}
+          </Button>
           {transform.table && (
-            <Button component={Link} to={tableMetadataUrl(transform.table)}>
+            <Button
+              component={Link}
+              to={tableMetadataUrl(transform.table)}
+              leftSection={<Icon name="label" />}
+            >
               {t`Edit metadata`}
             </Button>
           )}

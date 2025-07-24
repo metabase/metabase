@@ -4,14 +4,18 @@ export function transformListUrl() {
   return "/admin/datamodel/transforms";
 }
 
-export function transformUrl(id: TransformId) {
-  return `/admin/datamodel/transforms/${id}`;
+export function newTransformUrl() {
+  return `${transformListUrl()}/new`;
 }
 
-export function newTransformUrl() {
-  return "/admin/datamodel/transforms/new";
+export function transformUrl(id: TransformId) {
+  return `${transformListUrl()}/${id}`;
+}
+
+export function transformQueryUrl(id: TransformId) {
+  return `${transformUrl(id)}/query`;
 }
 
 export function tableMetadataUrl({ id, db_id, schema }: Table) {
-  return `/admin/datamodel/database/${db_id}/schema/${db_id}:${schema}/table/${id}`;
+  return `/admin/datamodel/database/${db_id}/schema/${db_id}:${encodeURIComponent(schema)}/table/${id}`;
 }
