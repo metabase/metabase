@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-617-ability-to-showhide-title-in-staticquestion",
-    "hash": "6dddf84a1ee5f664405a663b0fa49de81d97a1f8"
+    "hash": "150c3a02f08c4da50b09a0a77413cbf06dcd5edd"
   },
   "upstream": {
     "branch": "emb-622-allow-toggling-question-title-in-iframe-embed-flow"
