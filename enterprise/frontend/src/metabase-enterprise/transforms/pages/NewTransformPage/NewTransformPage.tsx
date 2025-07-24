@@ -2,10 +2,8 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
-import { Box } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
-import { TransformHeader } from "../../components/TransformHeader";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
 import { transformListUrl } from "../../utils/urls";
 
@@ -29,15 +27,19 @@ export function NewTransformPage() {
   };
 
   return (
-    <Box flex="1 1 0" bg="bg-white">
-      <TransformHeader onSave={handleSaveClick} onCancel={handleCancelClick} />
-      <TransformQueryBuilder query={query} onChange={setQuery} />
+    <>
+      <TransformQueryBuilder
+        query={query}
+        onChange={setQuery}
+        onSave={handleSaveClick}
+        onCancel={handleCancelClick}
+      />
       <NewTransformModal
         query={query}
         isOpened={isOpened}
         onClose={handleCloseClick}
       />
-    </Box>
+    </>
   );
 }
 

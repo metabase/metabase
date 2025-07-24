@@ -4,11 +4,9 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
-import { TransformHeader } from "../../../components/TransformHeader";
 import { TransformQueryBuilder } from "../../../components/TransformQueryBuilder";
 import { transformUrl } from "../../../utils/urls";
 
@@ -20,7 +18,7 @@ export function TransformQuerySettings({
   transform,
 }: TransformQuerySettingsProps) {
   const [query, setQuery] = useState(transform.source.query);
-  const [updateTransform] = useUpdateTransformMutation();
+  const [updateTransform, { isLoading }] = useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
@@ -46,9 +44,12 @@ export function TransformQuerySettings({
   };
 
   return (
-    <Box flex="1 1 0" bg="bg-white">
-      <TransformHeader onSave={handleSave} onCancel={handleCancel} />
-      <TransformQueryBuilder query={query} onChange={setQuery} />
-    </Box>
+    <TransformQueryBuilder
+      query={query}
+      isSaving={isLoading}
+      onChange={setQuery}
+      onSave={handleSave}
+      onCancel={handleCancel}
+    />
   );
 }
