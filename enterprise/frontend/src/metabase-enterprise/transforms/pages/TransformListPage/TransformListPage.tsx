@@ -26,24 +26,28 @@ export function TransformListPage({ params }: TransformListPageProps) {
     isLoading: isItemLoading,
     error: itemError,
   } = useGetTransformQuery(transformId ?? skipToken);
-  const isEmptyState = transforms.length > 0 && transformId == null;
+  const isListEmptyState =
+    transforms.length === 0 && !isListLoading && listError == null;
+  const isItemEmptyState = transformId == null;
 
   return (
     <>
-      <Flex
-        className={S.column}
-        direction="column"
-        h="100%"
-        justify={listError ? "center" : undefined}
-        flex={COLUMN_CONFIG.list.flex}
-        miw={COLUMN_CONFIG.list.min}
-        maw={COLUMN_CONFIG.list.max}
-      >
-        <LoadingAndErrorWrapper loading={isListLoading} error={listError}>
-          <TransformList transforms={transforms} transformId={transformId} />
-        </LoadingAndErrorWrapper>
-      </Flex>
-      {transformId != null && (
+      {!isListEmptyState && (
+        <Flex
+          className={S.column}
+          direction="column"
+          h="100%"
+          justify={listError ? "center" : undefined}
+          flex={COLUMN_CONFIG.list.flex}
+          miw={COLUMN_CONFIG.list.min}
+          maw={COLUMN_CONFIG.list.max}
+        >
+          <LoadingAndErrorWrapper loading={isListLoading} error={listError}>
+            <TransformList transforms={transforms} transformId={transformId} />
+          </LoadingAndErrorWrapper>
+        </Flex>
+      )}
+      {!isItemEmptyState && (
         <Flex
           className={S.column}
           direction="column"
@@ -58,14 +62,14 @@ export function TransformListPage({ params }: TransformListPageProps) {
           </LoadingAndErrorWrapper>
         </Flex>
       )}
-      {isEmptyState && (
+      {(isListEmptyState || isItemEmptyState) && (
         <Flex
           align="center"
           flex="1"
           justify="center"
           miw={rem(EMPTY_STATE_MIN_WIDTH)}
         >
-          <TransformEmptyState />
+          <TransformEmptyState isListEmptyState={isListEmptyState} />
         </Flex>
       )}
     </>
