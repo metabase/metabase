@@ -22,14 +22,14 @@ type CronExpressionInputProps = Omit<FlexProps, "onChange"> & {
   value: string;
   onChange: (value: string) => void;
   onBlurChange: (value: string) => void;
-  showExplainer?: boolean;
+  getExplainMessage?: (cronExplanation: string) => string;
 };
 
 export function CronExpressionInput({
   onChange,
   onBlurChange,
   value,
-  showExplainer = true,
+  getExplainMessage,
   ...flexProps
 }: CronExpressionInputProps) {
   const [error, setError] = useState<string | null>(null);
@@ -73,8 +73,11 @@ export function CronExpressionInput({
         rightSection={<CronFormatTooltip />}
       />
 
-      {showExplainer && value && !error && (
-        <CustomScheduleExplainer cronExpression={value} />
+      {getExplainMessage && value && !error && (
+        <CustomScheduleExplainer
+          cronExpression={value}
+          getExplainMessage={getExplainMessage}
+        />
       )}
     </Flex>
   );
@@ -134,15 +137,16 @@ function CronFormatTooltip() {
 
 interface ScheduleExplanationProps {
   cronExpression: string;
+  getExplainMessage: (cronExplanation: string) => string;
 }
 
 function CustomScheduleExplainer({
   cronExpression,
+  getExplainMessage,
   ...props
 }: ScheduleExplanationProps & TextProps) {
   const explanation = useMemo(
-    () =>
-      t`We will refresh your models ${getScheduleExplanation(cronExpression)}`,
+    () => getScheduleExplanation(cronExpression),
     [cronExpression],
   );
 
@@ -150,5 +154,5 @@ function CustomScheduleExplainer({
     return null;
   }
 
-  return <Text {...props}>{explanation}</Text>;
+  return <Text {...props}>{getExplainMessage(explanation)}</Text>;
 }

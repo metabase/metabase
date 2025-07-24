@@ -64,9 +64,11 @@ export const ModelCachingScheduleWidget = ({
         {isCustom && customCronSchedule !== undefined && (
           <CronExpressionInput
             value={customCronSchedule}
+            getExplainMessage={(cronExplanation) =>
+              t`We will refresh your models ${cronExplanation}`
+            }
             onChange={setCustomCronSchedule}
             onBlurChange={onChange}
-            showExplainer
           />
         )}
       </Group>

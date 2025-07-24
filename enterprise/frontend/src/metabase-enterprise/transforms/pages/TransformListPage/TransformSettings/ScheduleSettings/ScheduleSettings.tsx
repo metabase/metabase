@@ -23,10 +23,10 @@ export function ScheduleSettings({
   onChange,
 }: ScheduleSettingsProps) {
   const [value, setValue] = useState(initialValue);
-  const optionValue = getOptionValue(value);
-  const [customValue, setCustomValue] = useState(() =>
+  const [cronExpression, setCronExpression] = useState(() =>
     value != null ? formatCronExpressionForUI(value) : "",
   );
+  const optionValue = getOptionValue(value);
   const [isCustom, setIsCustom] = useState(optionValue === CUSTOM_OPTION.value);
 
   const handleSelect = (newValue: string | null) => {
@@ -36,7 +36,7 @@ export function ScheduleSettings({
       onChange(null);
     } else if (newValue === CUSTOM_OPTION.value) {
       setValue(DEFAULT_SCHEDULE);
-      setCustomValue(formatCronExpressionForUI(DEFAULT_SCHEDULE));
+      setCronExpression(formatCronExpressionForUI(DEFAULT_SCHEDULE));
       setIsCustom(true);
       onChange(DEFAULT_SCHEDULE);
     } else {
@@ -56,8 +56,11 @@ export function ScheduleSettings({
       />
       {isCustom && (
         <CronExpressionInput
-          value={customValue}
-          onChange={setCustomValue}
+          value={cronExpression}
+          getExplainMessage={(cronExplanation) =>
+            t`We will refresh your transform ${cronExplanation}`
+          }
+          onChange={setCronExpression}
           onBlurChange={onChange}
         />
       )}

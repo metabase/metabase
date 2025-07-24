@@ -200,7 +200,6 @@ export const Schedule = ({
             schedule_type: "cron",
           })
         }
-        showExplainer={false}
       />
     );
 
