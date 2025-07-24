@@ -205,9 +205,6 @@
       (execute-custom-action! action request-parameters)
       (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
 
-(defn- execute-table-action! [action-kw table-id request-parameters]
-  (actions/perform-action! action-kw {:table-id table-id :row request-parameters} :policy :data-editing))
-
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
