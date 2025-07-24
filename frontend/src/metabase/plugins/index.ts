@@ -787,32 +787,12 @@ export const PLUGIN_SMTP_OVERRIDE = {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
-export type TransformListPageParams = {
-  transformId?: string;
-};
-
-export type TransformListPageProps = {
-  params: TransformListPageParams;
-};
-
-export type TransformQueryPageParams = {
-  transformId: string;
-};
-
-export type TransformQueryPageProps = {
-  params: TransformQueryPageParams;
-};
-
 export type TransformsPlugin = {
   canAccessTransforms: (state: State) => boolean;
-  NewTransformPage: ComponentType;
-  TransformListPage: ComponentType<TransformListPageProps>;
-  TransformQueryPage: ComponentType<TransformQueryPageProps>;
+  getTransformRoutes(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   canAccessTransforms: () => false,
-  TransformListPage: () => null,
-  NewTransformPage: () => null,
-  TransformQueryPage: () => null,
+  getTransformRoutes: () => null,
 };

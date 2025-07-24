@@ -7,35 +7,40 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import {
   QuestionPickerModal,
+  type QuestionPickerModel,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Button, Icon } from "metabase/ui";
 
-export interface FormModelPickerProps extends HTMLAttributes<HTMLDivElement> {
+export interface FormQuestionPickerProps
+  extends HTMLAttributes<HTMLDivElement> {
+  className?: string;
   name: string;
   title?: string;
   placeholder?: string;
-  className?: string;
+  pickerTitle?: string;
+  pickerModels?: QuestionPickerModel[];
   style?: React.CSSProperties;
 }
 
-export function FormModelPicker({
+export function FormQuestionPicker({
   className,
-  style,
   name,
   title,
-  placeholder = t`Select a model`,
-}: FormModelPickerProps) {
+  placeholder = t`Select a question`,
+  pickerTitle = t`Select a question`,
+  pickerModels = ["card"],
+  style,
+}: FormQuestionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
   const formFieldRef = useRef<HTMLDivElement>(null);
 
-  const isModelSelected = typeof value === "number";
-  const { data: model } = useGetCardQuery(
-    isModelSelected ? { id: value } : skipToken,
+  const isCardSelected = typeof value === "number";
+  const { data: card } = useGetCardQuery(
+    isCardSelected ? { id: value } : skipToken,
   );
-
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   return (
@@ -61,16 +66,16 @@ export function FormModelPicker({
             root: { "&:active": { transform: "none" } },
           }}
         >
-          {isModelSelected ? model?.name : placeholder}
+          {isCardSelected ? card?.name : placeholder}
         </Button>
       </FormField>
       {isPickerOpen && (
         <QuestionPickerModal
-          models={["dataset"]}
-          title={t`Select a model`}
-          value={model?.id ? getQuestionPickerValue(model) : undefined}
-          onChange={(newModel) => {
-            setValue(newModel.id);
+          title={pickerTitle}
+          models={pickerModels}
+          value={card?.id ? getQuestionPickerValue(card) : undefined}
+          onChange={(newCard) => {
+            setValue(newCard.id);
             setIsPickerOpen(false);
           }}
           onClose={() => setIsPickerOpen(false)}

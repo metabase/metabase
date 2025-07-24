@@ -8,7 +8,7 @@ import {
   cronToScheduleSettings,
   scheduleSettingsToCron,
 } from "metabase/admin/performance/utils";
-import { CronExpressionInput } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput";
+import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
 import { formatCronExpressionForUI } from "metabase/lib/cron";
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
 import { Box, Flex, type FlexProps } from "metabase/ui";
@@ -200,7 +200,6 @@ export const Schedule = ({
             schedule_type: "cron",
           })
         }
-        showExplainer={false}
       />
     );
 

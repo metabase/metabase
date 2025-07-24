@@ -3,19 +3,19 @@ import { t } from "ttag";
 import { Flex, Modal } from "metabase/ui";
 import type { DatasetQuery } from "metabase-types/api";
 
-import { NewTransformForm } from "../NewTransformForm";
+import { NewTransformFromQueryForm } from "./NewTransformFromQueryForm";
 
-type NewTransformModalProps = {
+type NewTransformFromQueryModalProps = {
   query: DatasetQuery;
   isOpened: boolean;
   onClose: () => void;
 };
 
-export function NewTransformModal({
+export function NewTransformFromQueryModal({
   query,
   isOpened,
   onClose,
-}: NewTransformModalProps) {
+}: NewTransformFromQueryModalProps) {
   return (
     <Modal.Root padding="2.5rem" opened={isOpened} onClose={onClose}>
       <Modal.Overlay />
@@ -27,7 +27,7 @@ export function NewTransformModal({
           </Flex>
         </Modal.Header>
         <Modal.Body>
-          <NewTransformForm query={query} />
+          <NewTransformFromQueryForm query={query} />
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>

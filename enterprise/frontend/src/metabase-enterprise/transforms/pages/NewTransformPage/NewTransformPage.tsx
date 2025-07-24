@@ -1,46 +1,29 @@
 import { useState } from "react";
-import { push } from "react-router-redux";
+import { Link } from "react-router";
+import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { Box } from "metabase/ui";
-import Question from "metabase-lib/v1/Question";
+import { Box, Button, Group } from "metabase/ui";
 
-import { TransformHeader } from "../../components/TransformHeader";
-import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
-import { transformListUrl } from "../../utils/urls";
-
-import { NewTransformModal } from "./NewTransformModal";
+import { NewTransformFromQuestionModal } from "../../components/NewTransformFromQuestionModal";
+import { newTransformFromQueryUrl } from "../../utils/urls";
 
 export function NewTransformPage() {
-  const [query, setQuery] = useState(() => getInitialQuery());
   const [isOpened, setIsOpened] = useState(false);
-  const dispatch = useDispatch();
-
-  const handleSaveClick = () => {
-    setIsOpened(true);
-  };
-
-  const handleCancelClick = () => {
-    dispatch(push(transformListUrl()));
-  };
-
-  const handleCloseClick = () => {
-    setIsOpened(false);
-  };
 
   return (
     <Box flex="1 1 0" bg="bg-white">
-      <TransformHeader onSave={handleSaveClick} onCancel={handleCancelClick} />
-      <TransformQueryBuilder query={query} onChange={setQuery} />
-      <NewTransformModal
-        query={query}
+      <Group>
+        <Button component={Link} to={newTransformFromQueryUrl()}>
+          {t`Use the notebook editor`}
+        </Button>
+        <Button
+          onClick={() => setIsOpened(true)}
+        >{t`Use an existing question or model`}</Button>
+      </Group>
+      <NewTransformFromQuestionModal
         isOpened={isOpened}
-        onClose={handleCloseClick}
+        onClose={() => setIsOpened(false)}
       />
     </Box>
   );
-}
-
-function getInitialQuery() {
-  return Question.create({ type: "query" }).datasetQuery();
 }

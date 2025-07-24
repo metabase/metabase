@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { useConfirmation } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { NameDescriptionInput } from "metabase/metadata/components/NameDescriptionInput";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -30,7 +31,7 @@ import {
   transformQueryUrl,
 } from "../../../utils/urls";
 
-import { SCHEDULE_OPTIONS } from "./constants";
+import { ScheduleSettings } from "./ScheduleSettings";
 
 type TransformSettingsProps = {
   transform: Transform;
@@ -47,6 +48,8 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
   const [deleteTransform, { isLoading: isDeleting }] =
     useDeleteTransformMutation();
   const dispatch = useDispatch();
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
@@ -165,15 +168,22 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
     }
   };
 
-  const handleDelete = async () => {
-    const { error } = await deleteTransform(transform.id);
+  const handleDelete = () => {
+    askConfirmation({
+      title: t`Delete this transform?`,
+      message: "Deleting a transform deletes a table associated with it.",
+      confirmButtonText: t`Delete`,
+      onConfirm: async () => {
+        const { error } = await deleteTransform(transform.id);
 
-    if (error) {
-      sendErrorToast("Failed to delete transform");
-    } else {
-      sendSuccessToast("Transform deleted");
-      dispatch(push(transformListUrl()));
-    }
+        if (error) {
+          sendErrorToast("Failed to delete transform");
+        } else {
+          sendSuccessToast("Transform deleted");
+          dispatch(push(transformListUrl()));
+        }
+      },
+    });
   };
 
   return (
@@ -250,12 +260,8 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">
             <Title order={4}>{t`Schedule`}</Title>
-            <Select
-              label={t`How often should this transform run?`}
-              data={SCHEDULE_OPTIONS}
+            <ScheduleSettings
               value={transform.schedule}
-              placeholder={t`Never, I'll do this manually if I need to`}
-              clearable
               onChange={handleScheduleChange}
             />
           </Stack>
@@ -266,6 +272,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
           </Button>
         </Group>
       </Stack>
+      {confirmationModal}
     </Stack>
   );
 }
