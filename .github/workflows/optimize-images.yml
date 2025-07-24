@@ -16,7 +16,6 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Install pngcrush and bc
-      if:
       run: |
         sudo apt-get update
         sudo apt-get install -y pngcrush bc
