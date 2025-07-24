@@ -56,8 +56,11 @@
 (defn execute-plan!
   "Execute an entire plan."
   [plan]
+  (println "Executing a plan.")
   (doseq [step (:steps plan)]
+    (println "Executing" (:lego step))
     (execute! step))
+  (println "Done!")
   :ok)
 
 (defn hippie-parse

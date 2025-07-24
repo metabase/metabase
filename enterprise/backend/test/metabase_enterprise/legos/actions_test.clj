@@ -96,6 +96,24 @@ overwrite?: true
 "
              (mt/id))))))))
 
+(comment
+
+  (testing "execute transfer json"
+    (legos.actions/execute!
+     (legos.actions/hippie-parse
+      (format
+       "
+lego: transform
+database: 71
+table: median_time_bugs_by_month
+query: |
+  SELECT DATE_TRUNC('month', created_at) AS created_at,
+             count(*) as count,
+             extract(days from avg(time_to_close)) as days_to_close
+  FROM time_to_close_bugs
+  GROUP BY DATE_TRUNC('month', created_at)
+")))))
+
 (deftest execute-plan-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "executing a plan!"
