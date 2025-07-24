@@ -47,7 +47,8 @@ function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
       ? [
           {
             ...table,
-            // FilterPickerBody crashes if table is not visible, so we pretend it is
+            // When table is hidden metabase-lib will give an empty list of columns for it.
+            // We need to pretend it is visible so that FilterPickerBody can know about it.
             visibility_type: null,
           },
         ]
