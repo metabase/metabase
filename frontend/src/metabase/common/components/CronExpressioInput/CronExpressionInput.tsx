@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { validateCronExpression } from "metabase/lib/cron";
+import {
+  getScheduleExplanation,
+  validateCronExpression,
+} from "metabase/lib/cron";
 import {
   Flex,
   type FlexProps,
   Icon,
   Text,
   TextInput,
+  type TextProps,
   Tooltip,
 } from "metabase/ui";
 
 import S from "./CronExpressionInput.module.css";
-import { CustomScheduleExplainer } from "./CustomScheduleExplainer";
 
 type CronExpressionInputProps = Omit<FlexProps, "onChange"> & {
   value: string;
@@ -127,4 +130,25 @@ function CronFormatTooltip() {
       <Icon name="info" className={S.infoIcon} />
     </Tooltip>
   );
+}
+
+interface ScheduleExplanationProps {
+  cronExpression: string;
+}
+
+function CustomScheduleExplainer({
+  cronExpression,
+  ...props
+}: ScheduleExplanationProps & TextProps) {
+  const explanation = useMemo(
+    () =>
+      t`We will refresh your models ${getScheduleExplanation(cronExpression)}`,
+    [cronExpression],
+  );
+
+  if (!explanation) {
+    return null;
+  }
+
+  return <Text {...props}>{explanation}</Text>;
 }
