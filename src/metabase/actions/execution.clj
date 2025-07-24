@@ -175,7 +175,7 @@
                           (= implicit-action :model.row/update)
                           (assoc :update-row row-parameters))]
     (binding [qp.perms/*card-id* model-id]
-      (actions/perform-action! implicit-action arg-map {:scope                              {:model-id model-id}
+      (actions/perform-action! implicit-action arg-map {:scope  {:model-id model-id}
                                                         :policy :model-action}))))
 
 (mu/defn execute-action!
