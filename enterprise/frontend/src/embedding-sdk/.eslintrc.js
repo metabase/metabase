@@ -52,4 +52,27 @@ module.exports = {
       },
     ],
   },
+  overrides: [
+    {
+      files: [
+        "sdk-wrapper/**/*.{ts,tsx,js,jsx}",
+        "sdk-shared/**/*.{ts,tsx,js,jsx}",
+      ],
+      excludedFiles: [
+        "**/*.spec.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx}",
+      ],
+      rules: {
+        "no-external-references-for-sdk-package-code": [
+          "error",
+          {
+            allowedPaths: [
+              path.join(__dirname, "sdk-wrapper"),
+              path.join(__dirname, "sdk-shared"),
+            ],
+          },
+        ],
+      },
+    },
+  ],
 };
