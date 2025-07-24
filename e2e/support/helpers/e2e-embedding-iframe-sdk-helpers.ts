@@ -1,3 +1,5 @@
+import { match } from "ts-pattern";
+
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
@@ -185,11 +187,23 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
   }
 }
 
-export const getNewEmbedScript = () => {
+export const getNewEmbedScriptTag = ({
+  loadType = "defer",
+}: {
+  loadType?: "sync" | "async" | "defer";
+} = {}) => {
+  const loadTypeAttribute = match(loadType)
+    .with("sync", () => "")
+    .with("async", () => "async")
+    .with("defer", () => "defer")
+    .exhaustive();
+
   return `
-    <script src="${EMBED_JS_PATH}"></script>
+    <script src="${EMBED_JS_PATH}" ${loadTypeAttribute}></script>
     <script>
-    // TODO: add the shimmed function to define settings
+      function defineMetabaseConfig(settings) {
+        window.metabaseConfig = settings;
+      }
     </script>
   `;
 };
@@ -203,7 +217,6 @@ export const getNewEmbedConfigurationScript = ({
 } = {}) => {
   return `
     <script>
-      const { defineMetabaseConfig } = window["metabase.embed"];
       defineMetabaseConfig({
         instanceUrl: "${instanceUrl}",
         theme: ${JSON.stringify(theme)},

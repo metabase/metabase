@@ -3,14 +3,15 @@ import { useSearchParam } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
-import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
+import type { MetabaseEmbedElement } from "metabase-enterprise/embedding_iframe_sdk/embed";
+import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getEmbedCustomElementSnippet } from "../utils/embed-snippet";
 
 declare global {
   interface Window {
-    "metabase.embed": { MetabaseEmbed: typeof MetabaseEmbed };
+    metabaseConfig: Partial<SdkIframeEmbedBaseSettings>;
   }
 }
 
@@ -20,7 +21,7 @@ export const SdkIframeEmbedPreview = () => {
   const { settings, isEmbedSettingsLoaded, experience } =
     useSdkIframeEmbedSetupContext();
 
-  const embedRef = useRef<MetabaseEmbedElement>(null);
+  const embedRef = useRef<MetabaseEmbedElement | null>(null);
   const localeOverride = useSearchParam("locale");
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
@@ -34,14 +35,16 @@ export const SdkIframeEmbedPreview = () => {
         script.src = `${instanceUrl}/app/embed.js`;
         document.body.appendChild(script);
 
+        const defineMetabaseConfig = (args: SdkIframeEmbedBaseSettings) => {
+          window.metabaseConfig = args;
+        };
+
         script.onload = () => {
-          const { defineMetabaseConfig } = window["metabase.embed"];
           defineMetabaseConfig({
             instanceUrl: "http://localhost:3000",
             useExistingUserSession: true,
             ...(localeOverride ? { locale: localeOverride } : {}),
           });
-          setIsConfigureLoaded(true);
 
           const wrapperDiv = document.getElementById("iframe-embed-container");
           if (!wrapperDiv) {
@@ -55,8 +58,10 @@ export const SdkIframeEmbedPreview = () => {
             id: "custom-element-id",
           });
 
-          const customElement = document.getElementById("custom-element-id");
-          embedRef.current = customElement as unknown;
+          const customElement = document.getElementById(
+            "custom-element-id",
+          ) as MetabaseEmbedElement;
+          embedRef.current = customElement;
 
           embedRef.current.addEventListener("ready", () =>
             setIsIframeLoaded(true),
@@ -67,7 +72,6 @@ export const SdkIframeEmbedPreview = () => {
       }
 
       return () => {
-        embedRef.current?.destroy?.();
         scriptRef.current?.remove();
       };
     },

@@ -23,15 +23,66 @@ import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 
-// BEGIN addition: global config & helper
-const _globalEmbedConfig: Partial<SdkIframeEmbedSettings> = {};
+/** list of active embeds, used to know which embeds to update when the global config changes */
+const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 
-export const defineMetabaseConfig = (
-  config: Partial<SdkIframeEmbedSettings>,
-) => {
-  Object.assign(_globalEmbedConfig, config);
+// Setup a proxy to watch for changes to window.metabaseConfig and update all
+// active embeds when the config changes. It also setups a setter for
+// window.metabaseConfig to re-create the proxy if the whole object is replaced,
+// for example if this script is loaded before the customer calls
+// `defineMetabaseConfig` in their code, which replaces the entire object.
+const setupConfigWatcher = () => {
+  const createProxy = (target: Record<string, unknown>) =>
+    new Proxy(target, {
+      set(obj, prop, value) {
+        obj[prop as string] = value;
+
+        _activeEmbeds.forEach((embedElement) => {
+          embedElement.updateSettings({ [prop as string]: value });
+        });
+        return true;
+      },
+    });
+
+  let currentConfig = (window as any).metabaseConfig || {};
+  let proxyConfig: Record<string, unknown> = createProxy(currentConfig);
+
+  Object.defineProperty(window, "metabaseConfig", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return proxyConfig;
+    },
+    set(newVal: Record<string, unknown>) {
+      currentConfig = newVal || {};
+      proxyConfig = createProxy(currentConfig);
+      updateAllEmbeds(currentConfig as Partial<SdkIframeEmbedSettings>);
+    },
+  });
+
+  // Trigger initial update if there was existing config
+  if (Object.keys(currentConfig).length > 0) {
+    updateAllEmbeds(currentConfig as Partial<SdkIframeEmbedSettings>);
+  }
 };
-// END addition
+
+export const updateAllEmbeds = (config: Partial<SdkIframeEmbedSettings>) => {
+  _activeEmbeds.forEach((embedElement) => {
+    embedElement.updateSettings(config);
+  });
+};
+
+const registerEmbed = (embed: MetabaseEmbedElement) => {
+  _activeEmbeds.add(embed);
+};
+
+const unregisterEmbed = (embed: MetabaseEmbedElement) => {
+  _activeEmbeds.delete(embed);
+};
+
+if (typeof window !== "undefined") {
+  setupConfigWatcher();
+}
 
 class MetabaseEmbed {
   static readonly VERSION = "1.1.0";
@@ -156,7 +207,6 @@ class MetabaseEmbed {
 
     this._validateEmbedSettings(this._settings);
     // don't remove this! it's for debug
-    console.log(">>>>>>this._settings", this._settings);
     this._sendMessage("metabase.embed.setSettings", this._settings);
   }
 
@@ -277,10 +327,6 @@ class MetabaseEmbed {
     }
 
     if (event.data.type === "metabase.embed.customClick") {
-      console.log(
-        "[internal] metabase.embed.customClick",
-        event.data.data.number,
-      );
       if (this.customClickHandler) {
         this.customClickHandler(event.data.data.number);
       }
@@ -446,14 +492,9 @@ class MetabaseEmbedElement extends HTMLElement {
   }
 
   set customClickHandler(value: ((number: number) => void) | null) {
-    console.log(
-      `!!!! setting customClickHandler, this._embed is ${this._embed}, value being passed is`,
-      value,
-    );
     if (this._embed) {
       this._embed.customClickHandler = value;
     } else {
-      console.log("embed is null, setting the buffer");
       this._BUFFER_customClickHandler = value;
     }
   }
@@ -475,7 +516,6 @@ class MetabaseEmbedElement extends HTMLElement {
   }
 
   set theme(value: Record<string, unknown> | undefined) {
-    console.log("setting theme", value);
     if (value === undefined) {
       this.removeAttribute("theme");
       return;
@@ -496,11 +536,16 @@ class MetabaseEmbedElement extends HTMLElement {
     });
 
     // BEGIN addition: apply global defaults
-    Object.entries(_globalEmbedConfig).forEach(([key, value]) => {
-      if (settings[key] === undefined) {
-        settings[key] = value;
-      }
-    });
+    const globalConfig = (window as any).metabaseConfig as
+      | Partial<SdkIframeEmbedSettings>
+      | undefined;
+    if (globalConfig) {
+      Object.entries(globalConfig).forEach(([key, value]) => {
+        if (settings[key] === undefined) {
+          settings[key] = value;
+        }
+      });
+    }
     // END addition
 
     // Fallback: if no instanceUrl attribute on element, look for it on the embedding script tag.
@@ -548,10 +593,11 @@ class MetabaseEmbedElement extends HTMLElement {
       );
 
       // Add click handler if one was set before the embed was created
-      console.log(" SETTING UP SOMETHING, THERE IS SOMETHING IN THE BUFFER");
       if (this._BUFFER_customClickHandler) {
         this._embed.customClickHandler = this._BUFFER_customClickHandler;
       }
+
+      registerEmbed(this);
     } catch (error) {
       // Surface constructor errors for easier debugging.
       console.error("[metabase.embed.error]", error);
@@ -561,6 +607,8 @@ class MetabaseEmbedElement extends HTMLElement {
   disconnectedCallback() {
     this._embed?.destroy();
     this._embed = null;
+
+    unregisterEmbed(this);
   }
 
   attributeChangedCallback(
@@ -608,7 +656,17 @@ class MetabaseConfigElement extends HTMLElement {
     });
 
     try {
-      defineMetabaseConfig(settings as Partial<SdkIframeEmbedSettings>);
+      if (
+        typeof window !== "undefined" &&
+        (window as any).defineMetabaseConfig
+      ) {
+        (window as any).defineMetabaseConfig(
+          settings as Partial<SdkIframeEmbedSettings>,
+        );
+      } else {
+        (window as any).metabaseConfig =
+          settings as Partial<SdkIframeEmbedSettings>;
+      }
     } catch (error) {
       console.error("[metabase.embed.error]", error);
     }
@@ -639,7 +697,6 @@ if (typeof window !== "undefined") {
     // Preserve any existing exports placed there earlier.
     ...(window as any)["metabase.embed"],
     MetabaseEmbed,
-    defineMetabaseConfig,
   };
 }
 // END web-component wrapper

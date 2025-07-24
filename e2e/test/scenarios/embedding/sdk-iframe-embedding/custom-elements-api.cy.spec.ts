@@ -29,7 +29,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   describe("<metabase-dashboard>", () => {
     it("should embed a dashboard with <metabase-dashboard dashboard-id='${number}'>", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
 
       ${H.getNewEmbedConfigurationScript({})}
 
@@ -65,7 +65,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           const dashboardId = card.dashboard_id;
 
           H.visitCustomHtmlPage(`
-          ${H.getNewEmbedScript()}
+          ${H.getNewEmbedScriptTag()}
           ${H.getNewEmbedConfigurationScript({})}
 
           <metabase-dashboard dashboard-id="${dashboardId}" initial-parameters='{"id": "123"}' hidden-parameters='["product_id"]' />
@@ -86,7 +86,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should respect the theme passed to the configuration function", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
 
       ${H.getNewEmbedConfigurationScript({
         theme: { colors: { brand: "#123456" } },
@@ -103,7 +103,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should show title when with-title is passed with no value", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title />
       `);
@@ -115,7 +115,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should show title when with-title is 'true'", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="true" />
       `);
@@ -127,7 +127,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should hide title when with-title is false", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="false" />
       `);
@@ -139,7 +139,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should show download button when with-downloads is true", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads />
       `);
@@ -151,7 +151,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should hide download button when with-downloads is false", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads="false" />
       `);
@@ -161,7 +161,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should enable drill-through when is-drill-through-enabled is true", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" is-drill-through-enabled />
       `);
@@ -178,7 +178,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should disable drill-through when is-drill-through-enabled is false", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" is-drill-through-enabled="false" />
       `);
@@ -197,7 +197,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   describe("<metabase-question>", () => {
     it("should embed a question with <metabase-question question-id='${number}'>", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
 
       ${H.getNewEmbedConfigurationScript()}
 
@@ -210,7 +210,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should show title when with-title is true", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title />
       `);
@@ -220,7 +220,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should hide title when with-title is false", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title="false" />
       `);
@@ -230,7 +230,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should show download button when with-downloads is true", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads />
       `);
@@ -240,7 +240,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should hide download button when with-downloads is false", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads="false" />
       `);
@@ -250,7 +250,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should enable drill-through when is-drill-through-enabled is true", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-question question-id="${ORDERS_QUESTION_ID}" is-drill-through-enabled />
       `);
@@ -267,7 +267,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
     it("should disable drill-through when is-drill-through-enabled is false", () => {
       H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScript()}
+      ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-question question-id="${ORDERS_QUESTION_ID}" is-drill-through-enabled="false" />
       `);
@@ -280,6 +280,53 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       getIframeContent()
         .findByText(/Filter by this value/)
         .should("not.exist");
+    });
+  });
+
+  describe("sync vs async vs defer script loading", () => {
+    (
+      [
+        {
+          loadType: "sync",
+        },
+        {
+          loadType: "async",
+        },
+        {
+          loadType: "defer",
+        },
+      ] as const
+    ).forEach(({ loadType }) => {
+      it(`should work correctly when the script is loaded ${loadType}`, () => {
+        H.visitCustomHtmlPage(`
+          ${H.getNewEmbedScriptTag({ loadType })}
+          ${H.getNewEmbedConfigurationScript({
+            theme: { colors: { brand: "#FF0000" } },
+          })}
+          <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" />
+
+          <button onclick="defineMetabaseConfig({ theme: { colors: { brand: '#00FF00' } } })">Change theme</button>
+        `);
+
+        cy.log("Check if the dashboard is loaded");
+        getIframeContent().should("contain", "Orders in a dashboard");
+
+        cy.log("Check that the initial theme is applied");
+
+        getIframeContent()
+          .findByText("User ID")
+          .should("have.css", "color", "rgb(255, 0, 0)");
+
+        cy.log(
+          "Check that calling defineMetabaseConfig after the initial load works",
+        );
+        // eslint-disable-next-line no-unscoped-text-selectors -- this is not the real app
+        cy.findByText("Change theme").click();
+
+        getIframeContent()
+          .findByText("User ID")
+          .should("have.css", "color", "rgb(0, 255, 0)");
+      });
     });
   });
 });
