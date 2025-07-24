@@ -376,9 +376,9 @@
   [thunk]
   (mt/dataset (mt/dataset-definition
                "dynamic-db"
-               ["metabase_users"
-                [{:field-name "name" :base-type :type/Text}]
-                [["mb_qnkhuat"]]])
+               [["metabase_users"
+                 [{:field-name "name" :base-type :type/Text}]
+                 [["mb_qnkhuat"]]]])
     (let [details (:details (mt/db))]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
