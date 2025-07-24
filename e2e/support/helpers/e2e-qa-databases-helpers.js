@@ -352,7 +352,7 @@ export function waitForSyncToFinish({
   tableAlias,
 }) {
   // 40 x 500ms (20s) should be plenty of time for the sync to finish.
-  if (iteration === 20) {
+  if (iteration === 40) {
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
