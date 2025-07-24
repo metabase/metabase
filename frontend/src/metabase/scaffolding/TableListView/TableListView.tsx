@@ -167,8 +167,10 @@ export const TableListView = ({ params }: Props) => {
               placeholder={t`Select a column`}
               value={String(nameColumn?.id)}
               onChange={(_value, option) => {
-                const customOption = option as unknown as { index: number };
-                setNameColumnIndex(customOption.index);
+                const customOption = option as unknown as {
+                  index: number;
+                } | null;
+                setNameColumnIndex(customOption ? customOption.index : -1);
               }}
             />
 
@@ -183,8 +185,12 @@ export const TableListView = ({ params }: Props) => {
               placeholder={t`Select a column`}
               value={String(descriptionColumn?.id)}
               onChange={(_value, option) => {
-                const customOption = option as unknown as { index: number };
-                setDescriptionColumnIndex(customOption.index);
+                const customOption = option as unknown as {
+                  index: number;
+                } | null;
+                setDescriptionColumnIndex(
+                  customOption ? customOption.index : -1,
+                );
               }}
             />
 
@@ -199,8 +205,10 @@ export const TableListView = ({ params }: Props) => {
               placeholder={t`Select a column`}
               value={String(imageColumn?.id)}
               onChange={(_value, option) => {
-                const customOption = option as unknown as { index: number };
-                setImageColumnIndex(customOption.index);
+                const customOption = option as unknown as {
+                  index: number;
+                } | null;
+                setImageColumnIndex(customOption ? customOption.index : -1);
               }}
             />
           </Stack>
