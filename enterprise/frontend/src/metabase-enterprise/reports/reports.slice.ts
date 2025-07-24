@@ -2,6 +2,7 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { reportApi } from "metabase-enterprise/api";
 import type {
   Card,
@@ -46,9 +47,10 @@ export const fetchReportCard = createAsyncThunk<Card, CardId>(
       cardApi.endpoints.getCard.initiate({ id: cardId }),
     );
     if (result.data != null) {
+      dispatch(loadMetadataForCard(result.data));
       return result.data;
     }
-    throw new Error("Failed to fetch card");
+    throw new Error(`Failed to fetch card with id: ${cardId}`);
   },
 );
 

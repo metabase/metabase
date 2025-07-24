@@ -1,13 +1,18 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import Question from "metabase-lib/v1/Question";
+import { getUrl } from "metabase-lib/v1/urls";
+import type { Card } from "metabase-types/api";
 
 import {
   openVizSettingsSidebar,
@@ -133,6 +138,7 @@ export const QuestionEmbedComponent = memo(
     const isLoadingDataset = useSelector((state) =>
       getIsLoadingDataset(state, snapshotId),
     );
+    const metadata = useSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(customName || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
@@ -226,6 +232,40 @@ export const QuestionEmbedComponent = memo(
       dispatch(selectQuestion(questionId));
       dispatch(openVizSettingsSidebar(questionId));
     };
+
+    // Handle drill-through navigation
+    const handleChangeCardAndRun = useCallback(
+      ({
+        nextCard,
+      }: {
+        nextCard: Card;
+        previousCard?: Card;
+        objectId?: number;
+      }) => {
+        if (!metadata) {
+          console.warn("Metadata not available for drill-through navigation");
+          return;
+        }
+
+        try {
+          // For drill-through, we need to ensure the card is treated as adhoc
+          // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
+          const adhocCard = { ...nextCard, id: null };
+          const question = new Question(adhocCard, metadata);
+          const url = getUrl(question, { includeDisplayIsLocked: true });
+          dispatch(push(url));
+        } catch (error) {
+          console.error("Failed to create question URL:", error);
+          // Fallback: navigate to a new question with the dataset_query
+          if (nextCard.dataset_query) {
+            const params = new URLSearchParams();
+            params.set("dataset_query", JSON.stringify(nextCard.dataset_query));
+            dispatch(push(`/question?${params.toString()}`));
+          }
+        }
+      },
+      [dispatch, metadata],
+    );
 
     if (isLoading) {
       return (
@@ -357,8 +397,12 @@ export const QuestionEmbedComponent = memo(
               <Box className={styles.questionResults}>
                 <Visualization
                   rawSeries={rawSeries}
+                  metadata={metadata}
+                  onChangeCardAndRun={handleChangeCardAndRun}
+                  getExtraDataForClick={() => ({})}
                   isEditing={false}
                   isDashboard={false}
+                  showTitle={false}
                 />
               </Box>
               <Box className={styles.questionTimestamp}>
