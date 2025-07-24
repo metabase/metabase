@@ -9,13 +9,7 @@ export const SimpleEmbedTermsCard = ({
 }: {
   onAccept?: () => void;
 }) => {
-  // eslint-disable-next-line no-literal-metabase-strings -- used in embed flow in main app
-  const message1 = t`When using simple embedding, each end user should have their own Metabase account.`;
-
-  const message2 = t`Sharing accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`;
-
-  // eslint-disable-next-line no-literal-metabase-strings -- used in embed flow in main app
-  const message3 = t`We consider shared accounts to be unfair usage. Fair usage involves giving each end user of the embedded analytics their own Metabase account.`;
+  const [message1, message2, message3] = getMessages();
 
   return (
     <Card
@@ -52,3 +46,13 @@ export const SimpleEmbedTermsCard = ({
     </Card>
   );
 };
+
+export const getMessages = () => [
+  // eslint-disable-next-line no-literal-metabase-strings -- used in embed flow in main app
+  t`When using simple embedding, each end user should have their own Metabase account.`,
+
+  t`Sharing accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`,
+
+  // eslint-disable-next-line no-literal-metabase-strings -- used in embed flow in main app
+  t`We consider shared accounts to be unfair usage. Fair usage involves giving each end user of the embedded analytics their own Metabase account.`,
+];
