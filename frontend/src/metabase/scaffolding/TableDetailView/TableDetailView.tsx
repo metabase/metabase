@@ -12,6 +12,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import { MetabaseApi } from "metabase/services";
 import { Box, Flex, Stack, Text } from "metabase/ui/components";
 import { ActionIcon, Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
@@ -22,7 +23,7 @@ import {
 } from "metabase/visualizations/components/ObjectDetail/ObjectDetailHeader.styled";
 import { Relationships } from "metabase/visualizations/components/ObjectDetail/ObjectRelationships";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type { ForeignKey, StructuredDatasetQuery } from "metabase-types/api";
 
 import { getTableQuery } from "../TableListView/utils";
 
@@ -50,6 +51,9 @@ export function TableDetailView(props: TableDetailViewProps) {
   }, [table]);
   const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
   const columns = dataset?.data?.results_metadata?.columns;
+  const [fkReferences, setFkReferences] = useState<
+    Record<number, { status: number; value: number }>
+  >({});
 
   const allColumnNames = columns ? columns.map((col) => col.name) : [];
   const [visibleColumns, setVisibleColumns] =
@@ -109,6 +113,68 @@ export function TableDetailView(props: TableDetailViewProps) {
     });
   }, [dispatch, rows, tableId, isEdit]);
 
+  useEffect(() => {
+    async function getFKCount(fk: ForeignKey) {
+      const databaseId = table?.db_id;
+      const tableId = fk.origin?.table_id;
+      if (
+        !tableId ||
+        !databaseId ||
+        !fk.origin ||
+        typeof currentRowIndex === "undefined"
+      ) {
+        return;
+      }
+
+      const info = {
+        status: 0,
+        value: null,
+      };
+
+      try {
+        const result = await MetabaseApi.dataset({
+          database: databaseId,
+          type: "query",
+          query: {
+            "source-table": tableId,
+            filter: [
+              "=",
+              ["field", fk.origin.id, { "base-type": "type/Integer" }],
+              Number(rowId),
+            ],
+            aggregation: [["count"]],
+          },
+        });
+        if (
+          result &&
+          result.status === "completed" &&
+          result.data.rows.length > 0
+        ) {
+          info["value"] = result.data.rows[0][0];
+        } else {
+          info["value"] = "Unknown";
+        }
+      } finally {
+        info["status"] = 1;
+      }
+
+      return info;
+    }
+
+    async function processFkReferences() {
+      const fkReferences = {};
+      for (let i = 0; i < foreignKeys.length; i++) {
+        const fk = foreignKeys[i];
+        const info = await getFKCount(fk);
+        fkReferences[fk.origin.id] = info;
+      }
+
+      setFkReferences(fkReferences);
+    }
+
+    processFkReferences();
+  }, [currentRowIndex, foreignKeys, rowId, table?.db_id]);
+
   if (!table || !dataset || !columns || fksLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
@@ -160,22 +226,25 @@ export function TableDetailView(props: TableDetailViewProps) {
           table={table}
         />
 
-        <ObjectDetailBody
-          data={dataset.data}
-          objectName={objectName}
-          zoomedRow={zoomedRow}
-          settings={settings}
-          hasRelationships={false}
-          tableForeignKeyReferences={[]}
-          onVisualizationClick={onVisualizationClick}
-          visualizationIsClickable={visualizationIsClickable}
-        />
-        <Box mt="xl">
-          <Relationships
+        <Flex>
+          <ObjectDetailBody
+            data={dataset.data}
             objectName={objectName}
-            tableForeignKeys={foreignKeys as any}
+            zoomedRow={zoomedRow}
+            settings={settings}
+            hasRelationships={false}
+            tableForeignKeyReferences={[]}
+            onVisualizationClick={onVisualizationClick}
+            visualizationIsClickable={visualizationIsClickable}
           />
-        </Box>
+          <Box>
+            <Relationships
+              objectName={objectName}
+              tableForeignKeys={foreignKeys as any}
+              tableForeignKeyReferences={fkReferences}
+            />
+          </Box>
+        </Flex>
       </Box>
       {isEdit && (
         <TableDetailViewSidebar

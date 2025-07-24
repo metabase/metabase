@@ -34,8 +34,12 @@ export function Relationships({
   const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
   const sortedForeignTables = tableForeignKeys.toSorted((a, b) =>
-    (a.origin?.table?.displayName?.() ?? "").localeCompare(
-      b.origin?.table?.displayName?.() ?? "",
+    (
+      a.origin?.table?.displayName?.() ??
+      a.origin?.table?.display_name ??
+      ""
+    ).localeCompare(
+      b.origin?.table?.displayName?.() ?? b.origin?.table?.display_name ?? "",
     ),
   );
 
@@ -93,7 +97,8 @@ function Relationship({
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
   const fkClickable = isLoaded && Boolean(fkCountInfo.value);
-  const originTableName = fk.origin?.table?.displayName?.() ?? "";
+  const originTableName =
+    fk.origin?.table?.displayName?.() ?? fk.origin?.table?.display_name ?? "";
 
   const relationName = inflect(originTableName, fkCountValue);
 
