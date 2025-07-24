@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import Question from "metabase-lib/v1/Question";
 
-import { NewTransformModal } from "../../components/NewTransformModal";
+import { NewTransformFromQueryModal } from "../../components/NewTransformFromQueryModal";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
 import { transformListUrl } from "../../utils/urls";
 
@@ -33,7 +33,7 @@ export function NewTransformFromQueryPage() {
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />
-      <NewTransformModal
+      <NewTransformFromQueryModal
         query={query}
         isOpened={isOpened}
         onClose={handleCloseClick}
