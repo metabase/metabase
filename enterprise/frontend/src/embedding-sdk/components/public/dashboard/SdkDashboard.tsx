@@ -118,37 +118,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
       | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
     >
-  > & {
-    onClick?: (number: number) => void;
-  };
-
-const ClickButton = ({ onClick }: { onClick?: (number: number) => void }) => {
-  const [number, setNumber] = useState(0);
-  return (
-    <button
-      style={{
-        padding: "8px",
-        borderRadius: "4px",
-        backgroundColor: "blue",
-        color: "white",
-      }}
-      onClick={() => {
-        setNumber(number + 1);
-        onClick?.(number + 1);
-        window.parent.postMessage(
-          {
-            type: "metabase.embed.customClick",
-            data: { number: number + 1 },
-          },
-          "*",
-        );
-      }}
-      // eslint-disable-next-line i18next/no-literal-string
-    >
-      Click me to simulate and event ({number})
-    </button>
-  );
-};
+  >;
 
 const SdkDashboardInner = ({
   dashboardId,

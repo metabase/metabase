@@ -12,8 +12,7 @@ import type { CollectionId } from "metabase-types/api";
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
   | { type: "metabase.embed.iframeReady" }
-  | { type: "metabase.embed.requestSessionToken" }
-  | { type: "metabase.embed.customClick"; data: { number: number } };
+  | { type: "metabase.embed.requestSessionToken" };
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
@@ -33,10 +32,6 @@ export type SdkIframeEmbedMessage =
       data: {
         error: MetabaseError<string, unknown>;
       };
-    }
-  | {
-      type: "metabase.embed.customClick";
-      data: { number: number };
     };
 
 // --- Embed Option Interfaces ---
@@ -141,11 +136,9 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   iframeClassName?: string;
 };
 
-export type SdkIframeEmbedEvent =
-  | { type: "ready" }
-  | { type: "click"; number: number };
+export type SdkIframeEmbedEvent = { type: "ready" };
 
-export type SdkIframeEmbedEventHandler = (event?: SdkIframeEmbedEvent) => void;
+export type SdkIframeEmbedEventHandler = () => void;
 
 /** Keys that can be used to update the embed settings */
 export type SdkIframeEmbedSettingKey =

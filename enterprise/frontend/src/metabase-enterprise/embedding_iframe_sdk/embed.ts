@@ -98,8 +98,6 @@ class MetabaseEmbed {
   private _isEmbedReady: boolean = false;
   private iframe: HTMLIFrameElement | null = null;
 
-  public customClickHandler: ((number: number) => void) | null = null;
-
   private _eventHandlers: Map<
     SdkIframeEmbedEvent["type"],
     Set<SdkIframeEmbedEventHandler>
@@ -331,12 +329,6 @@ class MetabaseEmbed {
 
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
-    }
-
-    if (event.data.type === "metabase.embed.customClick") {
-      if (this.customClickHandler) {
-        this.customClickHandler(event.data.data.number);
-      }
     }
   };
 

@@ -12,10 +12,8 @@ type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
 
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
-  onClick,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
-  onClick?: (number: number) => void;
 }): {
   embedSettings: SdkIframeEmbedSettings | null;
 } {
@@ -28,14 +26,13 @@ export function useSdkIframeEmbedEventBus({
         return;
       }
 
-      match(event.data)
-        .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
+      match(event.data).with(
+        { type: "metabase.embed.setSettings" },
+        ({ data }) => {
           setEmbedSettings(data);
           onSettingsChanged?.(data);
-        })
-        .with({ type: "metabase.embed.customClick" }, ({ data }) => {
-          onClick?.(data.number);
-        });
+        },
+      );
     };
 
     window.addEventListener("message", messageHandler);
