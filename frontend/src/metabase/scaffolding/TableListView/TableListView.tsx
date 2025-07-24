@@ -27,6 +27,8 @@ import {
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
+import { renderValue } from "../utils";
+
 import type { RouteParams } from "./types";
 import {
   detectDescriptionColumn,
@@ -36,7 +38,6 @@ import {
   getRowCountQuery,
   getTableQuery,
   parseRouteParams,
-  renderValue,
 } from "./utils";
 
 interface Props {
