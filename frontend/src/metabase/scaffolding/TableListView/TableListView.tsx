@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import {
@@ -47,6 +48,7 @@ const PAGE_SIZE = 10;
 
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
+  const tc = useTranslateContent();
   const { page, tableId } = parseRouteParams(location, params);
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
@@ -173,14 +175,7 @@ export const TableListView = ({ location, params }: Props) => {
               <Card component="li" key={index}>
                 {imageColumnIndex !== -1 && (
                   <Card.Section mb="lg">
-                    <Image
-                      alt={
-                        renderValue(row[nameColumnIndex], nameColumn) ??
-                        t`Image`
-                      }
-                      h={160}
-                      src={row[imageColumnIndex]}
-                    />
+                    <Image alt={t`Image`} h={160} src={row[imageColumnIndex]} />
                   </Card.Section>
                 )}
 
@@ -192,13 +187,14 @@ export const TableListView = ({ location, params }: Props) => {
                   }
                 >
                   <Text fw="bold">
-                    {renderValue(row[nameColumnIndex], nameColumn)}
+                    {renderValue(tc, row[nameColumnIndex], nameColumn)}
                   </Text>
                 </Link>
 
                 {descriptionColumn && (
                   <Text c="text-secondary" size="sm">
                     {renderValue(
+                      tc,
                       row[descriptionColumnIndex],
                       descriptionColumn,
                     )}

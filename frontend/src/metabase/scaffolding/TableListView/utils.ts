@@ -1,4 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { formatValue } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import {
   isAvatarURL,
@@ -43,12 +45,26 @@ export function getExploreTableUrl(table: Table): string {
   return ML_Urls.getUrl(question);
 }
 
-export function renderValue(value: RowValue, column: DatasetColumn): string {
+export function renderValue(
+  tc: ContentTranslationFunction,
+  value: RowValue,
+  column: DatasetColumn,
+) {
   if (value === undefined) {
     return "";
   }
 
-  return String(value);
+  if (!column) {
+    return String(value);
+  }
+
+  return formatValue(tc(value), {
+    ...column.settings,
+    column,
+    type: "cell",
+    jsx: true,
+    rich: true,
+  });
 }
 
 export function detectNameColumn(columns: DatasetColumn[]): number {
