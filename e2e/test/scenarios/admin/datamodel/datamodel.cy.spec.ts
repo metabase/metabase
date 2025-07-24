@@ -3256,6 +3256,25 @@ describe("scenarios > admin > datamodel", () => {
         .should("be.visible")
         .and("not.be.focused");
     });
+
+    it("should not crash when viewing filtering preview of a hidden table", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      TablePicker.getTable("Orders").button("Hide table").click();
+      cy.wait("@updateTable");
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible");
+      H.main().findByText("Something’s gone wrong").should("not.exist");
+    });
   });
 
   describe("Error handling", { tags: "@external" }, () => {
