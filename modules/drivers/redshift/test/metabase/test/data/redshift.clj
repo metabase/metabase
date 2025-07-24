@@ -67,9 +67,16 @@
 (def db-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
           :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (if tx/*use-routing-details*
-                                     (tx/db-test-env-var :redshift :db-routing)
-                                     (tx/db-test-env-var :redshift :db))
+          :db                      (tx/db-test-env-var :redshift :db)
+          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :password                (tx/db-test-env-var-or-throw :redshift :password)
+          :schema-filters-type     "inclusion"
+          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+
+(def db-routing-connection-details
+  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :db                      (tx/db-test-env-var :redshift :db-routing)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
@@ -203,9 +210,14 @@
   [driver]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
-   (sql-jdbc.conn/connection-details->spec driver  (if tx/*use-routing-details*
-                                                     (tx/dbdef->connection-details driver)
-                                                     @db-connection-details))
+   (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   {:write? true}
+   (fn [conn]
+     (delete-old-schemas! conn)
+     (create-session-schema! conn)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-routing-connection-details)
    {:write? true}
    (fn [conn]
      (delete-old-schemas! conn)
@@ -224,6 +236,11 @@
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+   {:write? true}
+   delete-session-schema!)
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-routing-connection-details)
    {:write? true}
    delete-session-schema!))
 

@@ -4,7 +4,6 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
-   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
@@ -210,34 +209,28 @@
   ;; few more nice helpers, and remove some of the above tests which are duplicative of the below.
   (mt/test-drivers (mt/normal-drivers-with-feature :database-routing)
     (mt/with-premium-features #{:database-routing}
-      (let [routed-data (mt/dataset-definition "db-routing-data"
-                                               ["t"
-                                                [{:field-name "f", :base-type :type/Text}]
-                                                [["routed-foo"]
-                                                 ["routed-bar"]]])
-            router-data (mt/dataset-definition "db-routing-data"
-                                               ["t"
-                                                [{:field-name "f", :base-type :type/Text}]
-                                                [["original-foo"]
-                                                 ["original-bar"]]])]
-        (binding [tx/*use-routing-dataset* true
-                  tx/*use-routing-details* true]
-          (tx/before-run driver/*driver*)
-          (mt/dataset routed-data
-            (let [routed (mt/db)]
-              (try
-                (binding [tx/*use-routing-details* false]
-                  (mt/dataset router-data
-                    (let [router (mt/db)]
-                      (wire-routing {:parent router :children [routed]})
-                      (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
-                                                              :user_attribute "db_name"}]
-                        (met/with-user-attributes! :rasta {"db_name" (:name routed)}
-                          (is (= [[1 "original-foo"] [2 "original-bar"]]
-                                 (mt/with-current-user (mt/user->id :crowberto)
-                                   (mt/rows (mt/process-query (mt/query t))))))
-                          (is (= [[1 "routed-foo"] [2 "routed-bar"]]
-                                 (mt/with-current-user (mt/user->id :rasta)
-                                   (mt/rows (mt/process-query (mt/query t)))))))))))
-                (finally (t2/delete! :model/Database :id (:id routed)))))))))))
-
+      (binding [tx/*use-routing-dataset* true
+                tx/*use-routing-details* true]
+        (mt/dataset (mt/dataset-definition "db-routing-data"
+                                           ["t"
+                                            [{:field-name "f", :base-type :type/Text}]
+                                            [["routed-foo"]
+                                             ["routed-bar"]]])
+          (let [routed (mt/db)]
+            (binding [tx/*use-routing-details* false]
+              (mt/dataset (mt/dataset-definition "db-routing-data"
+                                                 ["t"
+                                                  [{:field-name "f", :base-type :type/Text}]
+                                                  [["original-foo"]
+                                                   ["original-bar"]]])
+                (let [router (mt/db)]
+                  (wire-routing {:parent router :children [routed]})
+                  (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                          :user_attribute "db_name"}]
+                    (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                      (is (= [[1 "original-foo"] [2 "original-bar"]]
+                             (mt/with-current-user (mt/user->id :crowberto)
+                               (mt/rows (mt/process-query (mt/query t))))))
+                      (is (= [[1 "routed-foo"] [2 "routed-bar"]]
+                             (mt/with-current-user (mt/user->id :rasta)
+                               (mt/rows (mt/process-query (mt/query t)))))))))))))))))
