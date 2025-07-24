@@ -262,6 +262,16 @@
   (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order))
   {:success true})
 
+(api.macros/defendpoint :put "/:id/component_settings"
+  "Update the component_settings for a Table."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   component_settings :- [:maybe :map]]
+  (api/write-check (t2/select-one :model/Table id))
+  (t2/update! :model/Table id {:component_settings component_settings})
+  (t2/select-one :model/Table :id id))
+
 (mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map

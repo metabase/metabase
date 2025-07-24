@@ -12156,6 +12156,25 @@ databaseChangeLog:
             where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
       rollback: # not necessary
 
+  - changeSet:
+      id: v55.2025-07-24T10:16:47
+      author: metabase
+      comment: Add component_settings column to metabase_table for storing component settings
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: metabase_table
+              columnName: component_settings
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: component_settings
+                  type: ${text.type}
+                  remarks: JSON containing settings for displaying the table
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -470,6 +470,24 @@
       (mt/with-temp [:model/Table table]
         (mt/user-http-request :rasta :put 403 (format "table/%d" (u/the-id table)) {:display_name "Userz"})))))
 
+(deftest ^:parallel update-table-component_settings-test
+  (testing "PUT /api/table/:id/component_settings"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db)}]
+      (testing "Admin can update component_settings"
+        (let [viz-settings {:my-beautiful-settings true}
+              response (mt/user-http-request :crowberto :put 200
+                                             (format "table/%d/component_settings" (u/the-id table))
+                                             viz-settings)]
+          (is (= viz-settings (:component_settings response)))
+          (is (= viz-settings (t2/select-one-fn :component_settings :model/Table :id (u/the-id table))))))
+
+      (testing "Non-admin cannot update component_settings"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403
+                                     (format "table/%d/component_settings" (u/the-id table))
+                                     {:some "settings"})))))))
+
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
 ;; hidden -> not hidden at the spots marked below, twice total
 (deftest update-table-sync-test

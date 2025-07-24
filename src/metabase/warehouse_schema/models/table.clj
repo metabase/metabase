@@ -46,9 +46,10 @@
   #_(derive :hook/entity-id))
 
 (t2/deftransforms :model/Table
-  {:entity_type     mi/transform-keyword
-   :visibility_type mi/transform-keyword
-   :field_order     mi/transform-keyword})
+  {:entity_type        mi/transform-keyword
+   :visibility_type    mi/transform-keyword
+   :field_order        mi/transform-keyword
+   :component_settings mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
