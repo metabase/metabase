@@ -1,6 +1,6 @@
 const jdbcPrefix = "(?<hasJdbcPrefix>jdbc:)?";
 const userPass = "(?:(?<username>[^:/?#]+)(?::(?<password>[^@/?#]*))?@)?";
-const host = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)";
+const host = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
 const params = "(?:\\?(?<params>.*))?";
 
 const connectionStringRegexes = {
