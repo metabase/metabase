@@ -25,7 +25,12 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       dashboardId: ORDERS_DASHBOARD_ID,
     });
 
-    cy.wait("@getDashCardQuery");
+    cy.log("should use the embedding-simple client header");
+    cy.wait("@getDashCardQuery").then(({ request }) => {
+      expect(request?.headers?.["x-metabase-client"]).to.equal(
+        "embedding-simple",
+      );
+    });
 
     frame.within(() => {
       cy.findByText("Orders in a dashboard").should("be.visible");
