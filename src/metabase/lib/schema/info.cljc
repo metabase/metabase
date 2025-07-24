@@ -41,13 +41,13 @@
   #?(:clj bytes?
      :cljs :any))
 
-;;; Schema for query `:info` dictionary, which is used for informational purposes to record information about how a
-;;; query was executed in QueryExecution and other places. It is considered bad form for middleware to change its
-;;; behavior based on this information, don't do it!
-;;;
-;;; TODO - this schema is somewhat misleading because if you use a function
-;;; like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required
 (mr/def ::info
+  "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
+  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
+  based on this information, don't do it!
+
+  TODO - this schema is somewhat misleading because if you use a function
+  like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required"
   [:map
    ;; do not decode, since this should not get written to the app DB or come in from the REST API.
    {:decode/normalize identity}
@@ -59,8 +59,6 @@
    [:executed-by             {:optional true} [:maybe ::lib.schema.id/user]]
    [:action-id               {:optional true} [:maybe ::lib.schema.id/action]]
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
-   ;; NanoID for the card. Gets set on the client even for ad-hoc queries.
-   [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
