@@ -58,13 +58,10 @@ export function detectDescriptionColumn(columns: DatasetColumn[]) {
 }
 
 export function detectImageColumn(columns: DatasetColumn[]) {
-  let imageColumnIndex = columns.find((column) => isAvatarURL(column));
-
-  if (imageColumnIndex === -1) {
-    imageColumnIndex = columns.find((column) => isImageURL(column));
-  }
-
-  return imageColumnIndex;
+  return (
+    columns.find((column) => isAvatarURL(column)) ||
+    columns.find((column) => isImageURL(column))
+  );
 }
 
 export function getRowCountQuery(
