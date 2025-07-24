@@ -1,4 +1,4 @@
-(ns metabase-enterprise.action-v2.describe
+(ns metabase-enterprise.action-v2.execute-form
   (:require
    [metabase.api.common :as api]
    [metabase.util :as u]
@@ -106,7 +106,7 @@
                           :value                   (get row-data (:sourceValueTarget param-setting))}))
                       vec)}))
 
-(mu/defn describe-unified-action :- ::action-description
+(mu/defn describe-form :- ::action-description
   "Describe parameters of an unified action."
   [action-def scope partial-input]
   (cond

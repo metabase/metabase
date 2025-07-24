@@ -1,7 +1,7 @@
 (ns metabase-enterprise.action-v2.api
   (:require
    [clojure.walk :as walk]
-   [metabase-enterprise.action-v2.describe :as data-editing.describe]
+   [metabase-enterprise.action-v2.execute-form :as data-editing.execute-form]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as types]
    [metabase.api.macros :as api.macros]
@@ -159,7 +159,7 @@
   (let [scope         (actions/hydrate-scope scope)
         unified       (fetch-unified-action scope action)
         partial-input (first (apply-mapping-nested unified nil [input]))]
-    (data-editing.describe/describe-unified-action unified scope partial-input)))
+    (data-editing.execute-form/describe-form unified scope partial-input)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/action-v2 routes."
