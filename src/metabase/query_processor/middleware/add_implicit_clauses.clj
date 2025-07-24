@@ -9,15 +9,13 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn- should-add-implicit-fields?
-  "Whether we should add implicit Fields to this query. True if all of the following are true:
-
-  *  The query has no breakouts
-  *  The query has no aggregations
-  *  The query does not already have `:fields`"
+  "Whether we should add implicit `:fields` to a query stage."
   [{:keys        [fields]
     breakouts    :breakout
-    aggregations :aggregation} :- ::lib.schema/stage]
-  (and (empty? breakouts)
+    aggregations :aggregation
+    :as          stage} :- ::lib.schema/stage]
+  (and (= (:lib/type stage) :mbql.stage/mbql)
+       (empty? breakouts)
        (empty? aggregations)
        (empty? fields)))
 
@@ -82,32 +80,23 @@
    stage :- ::lib.schema/stage]
   ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
   ;; automatically ignore new ones that are reference Fields already in the order-by clause
-  (let [{breakouts :breakout, :as stage} (fix-order-by-field-refs query stage)
-        query'                           (reduce
-                                          (fn [query orderable]
-                                            (lib.walk/apply-f-for-stage-at-path
-                                             (fn [query stage-number]
-                                               (lib/order-by query stage-number (lib/fresh-uuids orderable) :asc))
-                                             query
-                                             path))
-                                          (assoc-in query path stage)
-                                          (when-not (has-window-function-aggregations? stage)
-                                            breakouts))]
-    ;; return updated stage
-    (get-in query' path)))
-
-(mu/defn- add-implicit-clauses-to-stage :- [:maybe ::lib.schema/stage]
-  [query :- ::lib.schema/query
-   path  :- ::lib.walk/path
-   stage :- ::lib.schema/stage]
-  (->> stage
-       (add-implicit-fields query path)
-       (add-implicit-breakout-order-by query path)))
+  (let [{breakouts :breakout, :as stage} (fix-order-by-field-refs query stage)]
+    (-> (lib.walk/apply-f-for-stage-at-path
+         (fn [query stage-number]
+           (reduce
+            (fn [query orderable]
+              (lib/order-by query stage-number (lib/fresh-uuids orderable) :asc))
+            query
+            (when-not (has-window-function-aggregations? stage)
+              breakouts)))
+         query
+         path)
+        (get-in (take-last 2 path)))))
 
 (mu/defn add-implicit-clauses :- ::lib.schema/query
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
   [query :- ::lib.schema/query]
-  (lib.walk/walk-stages
-   query
-   add-implicit-clauses-to-stage))
+  (-> query
+      (lib.walk/walk-stages add-implicit-fields)
+      (lib.walk/walk-stages add-implicit-breakout-order-by)))

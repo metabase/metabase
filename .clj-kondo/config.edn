@@ -171,6 +171,7 @@
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.lib.metadata.protocols/cache-value!
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!

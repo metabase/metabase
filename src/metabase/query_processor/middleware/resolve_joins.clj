@@ -10,7 +10,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
-(mu/defn- resolve-join :- [:maybe ::lib.schema.join/join]
+(mu/defn- resolve-join :- ::lib.schema.join/join
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    join  :- ::lib.schema.join/join]
@@ -36,7 +36,8 @@
   [query  :- ::lib.schema/query
    path   :- ::lib.walk/path
    stage  :- ::lib.schema/stage]
-  (when (seq (:fields stage))
+  (when (and (seq (:fields stage))
+             (seq (:joins stage)))
     (let [stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)
           new-cols   (drop (count (:fields stage)) stage-cols)]
       (update stage :fields (fn [fields]

@@ -328,31 +328,6 @@
               :order-by [[:asc $venues.name]]
               :limit    3})))))
 
-(deftest ^:parallel do-not-duplicate-columns-with-default-temporal-bucketing-test
-  (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"
-    (let [original-query {:fields [[:field (meta/id :orders :id) nil]
-                                   [:field (meta/id :people :birth-date) {:join-alias "P", :temporal-unit :default}]]}]
-      (doseq [temporal-unit           [nil :default]
-              base-type               [nil :type/Date]
-              effective-type          [nil :type/Date]
-              inherited-temporal-unit [nil :default]
-              ;; make sure random keys don't affect this either
-              nonsense-key            [nil 1337]
-              lib-key                 [nil "PRODUCTS"]
-              :let                    [opts (cond-> {:join-alias "P"}
-                                              temporal-unit           (assoc :temporal-unit temporal-unit)
-                                              base-type               (assoc :base-type base-type)
-                                              effective-type          (assoc :effective-type effective-type)
-                                              inherited-temporal-unit (assoc :inherited-temporal-unit inherited-temporal-unit)
-                                              nonsense-key            (assoc :nonsense-key nonsense-key)
-                                              lib-key                 (assoc :lib/nonsense-key lib-key))
-                                       clause [:field (meta/id :people :birth-date) opts]]]
-        (testing (pr-str clause)
-          (is (= original-query
-                 (resolve-joins/append-join-fields-to-fields
-                  original-query
-                  [clause]))))))))
-
 (deftest ^:parallel do-not-duplicate-columns-with-default-temporal-bucketing-e2e-test
   (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"
     (let [mp    (lib.tu/mock-metadata-provider
@@ -376,12 +351,10 @@
                                                        :fields       [&Products.products.price]}]
                                              :fields [$id]})}]})
           query (lib/query mp (lib.metadata/card mp 1))]
-      (is (=? (lib.tu.macros/$ids orders
-                [$id
-                 &People.people.longitude
-                 ;; the `:default` temporal unit gets removed somewhere
-                 &People.people.birth-date
-                 &Products.products.price])
+      (is (=? [[:field "ID" {:base-type :type/BigInteger}]
+               [:field "People__LONGITUDE" {:base-type :type/Float}]
+               [:field "People__BIRTH_DATE" {:base-type :type/Date}]
+               [:field "Products__PRICE" {:base-type :type/Float}]]
               (-> (qp.preprocess/preprocess query) :query :fields))))))
 
 ;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]

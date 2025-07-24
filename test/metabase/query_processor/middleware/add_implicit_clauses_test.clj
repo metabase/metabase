@@ -74,12 +74,6 @@
             (is (=? query
                     (add-implicit-breakout-order-by query)))))))))
 
-(defn- add-implicit-fields [inner-query]
-  (if (qp.store/initialized?)
-    (#'qp.add-implicit-clauses/add-implicit-fields inner-query)
-    (qp.store/with-metadata-provider meta/metadata-provider
-      (#'qp.add-implicit-clauses/add-implicit-fields inner-query))))
-
 (defn- add-implicit-fields
   ([inner-query]
    (add-implicit-fields meta/metadata-provider inner-query))
@@ -98,7 +92,7 @@
   (testing "We should add sorted implicit Fields for a query with no aggregations"
     (is (=? (:query
              (lib.tu.macros/mbql-query venues
-               {:fields [ ;; :type/PK Fields should get sorted first
+               {:fields [;; :type/PK Fields should get sorted first
                          [:field %id {}]
                          ;; followed by :type/Name Fields
                          [:field %name {}]
@@ -125,7 +119,7 @@
                          :base-type :type/Text}]})]
       (is (=? (:query
                (lib.tu.macros/mbql-query venues
-                 {:fields [ ;; all fields with lower positions should get sorted first according to rules above
+                 {:fields [;; all fields with lower positions should get sorted first according to rules above
                            [:field %id {}]
                            [:field %name {}]
                            [:field %category-id {}]

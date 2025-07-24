@@ -1,5 +1,6 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [metabase.config.core :as config]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -49,6 +50,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
@@ -120,7 +123,11 @@
    (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
-   (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
+   (ensure-pmbql #'qp.add-implicit-clauses/add-implicit-clauses)
+   ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
+   ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
+   ;; specific columns.
+   (ensure-pmbql #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
    (ensure-legacy #'qp.resolve-fields/resolve-fields)
    (ensure-legacy #'binning/update-binning-strategy)
@@ -165,19 +172,27 @@
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
-          ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
-          (u/prog1 (middleware-fn query)
-            (qp.debug/debug>
-              (when-not (= <> query)
-                (let [middleware-fn-name (middleware-fn-name middleware-fn)]
-                  (list middleware-fn-name '=> <>
-                        ^{:portal.viewer/default :portal.viewer/diff}
-                        [(or (-> <> meta :converted-form) query)
-                         <>]))))
-            ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
-            (when-not (map? <>)
-              (throw (ex-info (format "Middleware did not return a valid query.")
-                              {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp}))))
+          (let [start-ns (System/nanoTime)]
+            ;; in dev, log warnings if a piece of middleware takes a long time.
+            (u/prog1 (middleware-fn query)
+              (when config/is-dev?
+                (let [duration-ns (- (System/nanoTime) start-ns)]
+                  (when (> duration-ns (* 50 1000 1000)) ; 50 milliseconds
+                    (log/warn (u/format-color :red
+                                              "%s took %s"
+                                              (middleware-fn-name middleware-fn)
+                                              (u/format-nanoseconds duration-ns))))))
+              (qp.debug/debug>
+                (when-not (= <> query)
+                  (let [middleware-fn-name (middleware-fn-name middleware-fn)]
+                    (list middleware-fn-name '=> <>
+                          ^{:portal.viewer/default :portal.viewer/diff}
+                          [(or (-> <> meta :converted-form) query)
+                           <>]))))
+              ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
+              (when-not (map? <>)
+                (throw (ex-info (format "Middleware did not return a valid query.")
+                                {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn (middleware-fn-name middleware-fn)]
               (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))

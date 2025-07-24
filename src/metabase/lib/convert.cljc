@@ -624,7 +624,11 @@
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base     (cond-> (disqualify join)
-                   (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))
+                   (and *clean-query*
+                        (str/starts-with? (:alias join) legacy-default-join-alias)
+                        ;; added by [[metabase.query-processor.middleware.resolve-joins]]
+                        (not (:qp/keep-default-join-alias join)))
+                   (dissoc :alias))
         metadata (:lib/stage-metadata (last (:stages join)))]
     (merge (-> base
                (dissoc :stages :conditions)

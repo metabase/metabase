@@ -299,7 +299,7 @@
                                               (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                          (pr-str join-alias)
                                                          (pr-str field-ref)
-                                                         (u/pprint-to-str cols)))]
+                                                         (u/pprint-to-str (map :lib/desired-column-alias cols))))]
                          :when     match]
                      (assoc match :lib/source-uuid (lib.options/uuid field-ref))))
           ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`

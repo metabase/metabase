@@ -1320,10 +1320,18 @@
               m))]])
 
 (def ^:private NativeQuery:Common
-  [:map
-   [:template-tags {:optional true} [:ref ::TemplateTagMap]]
-   ;; collection (table) this query should run against. Needed for MongoDB
-   [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+  [:and
+   [:map
+    [:template-tags {:optional true} [:ref ::TemplateTagMap]]
+    ;; collection (table) this query should run against. Needed for MongoDB
+    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+   (let [disallowed-keys [:source-table :fields]]
+     (into [:and]
+           (mapv (fn [k]
+                   [:fn
+                    {:error/message (str k " is not allowed in a native inner query.")}
+                    #(core/not (contains? % k))])
+                 disallowed-keys)))])
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."
