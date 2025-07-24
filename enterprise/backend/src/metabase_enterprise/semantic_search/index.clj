@@ -87,7 +87,6 @@
    :text_search_vector (if (:name doc)
                          [:||
                           (search/weighted-tsvector "A" (:name doc))
-                          ;; TODO: :searchable_text contains the doc's name which we don't need to repeat for B-weighted results
                           (search/weighted-tsvector "B" (:searchable_text doc ""))]
                          (search/weighted-tsvector "A" (:searchable_text doc "")))
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
@@ -273,16 +272,17 @@
   [index embedding search-context]
   (let [filters (search-filters search-context)
         embedding-literal (format-embedding embedding)
+        max-cosine-distance 0.7
         base-query {:select [[:id :id]
                              [:model_id :model_id]
                              [:model :model]
                              [:content :content]
                              [:verified :verified]
                              [:metadata :metadata]
+                             [[:raw (str "embedding <=> " embedding-literal)] :semantic_score]
                              [[:raw (str "row_number() OVER (ORDER BY embedding <=> " embedding-literal " ASC)")] :semantic_rank]]
                     :from   [(keyword (:table-name index))]
-                    ;; TODO: parameterize max cosine distance
-                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] 0.40]
+                    :where [:<= [:raw (str "embedding <=> " embedding-literal)] max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]
                     :limit  100}]
     (if filters
@@ -290,13 +290,13 @@
       base-query)))
 
 (defn- hybrid-search-query
-  "Build a RRF search query using vector + keyword based search"
+  "Build a hybrid search query using vector + keyword based searches and reranking with RRF"
   [index embedding search-context]
   (let [semantic-results (semantic-search-query index embedding search-context)
         keyword-results (keyword-search-query index search-context)
         k 60
-        keyword-weight 0.5
-        semantic-weight 0.5
+        keyword-weight 0.51
+        semantic-weight 0.49
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
                     :select [[[:coalesce :v.id :t.id] :id]
@@ -309,9 +309,9 @@
                              [[:coalesce :t.keyword_rank -1] :keyword_rank]
                              [[:+
                                [:* [:cast semantic-weight :float]
-                                [:/ 1.0 [:+ k [:coalesce [:. :v :semantic_rank] 0]]]]
+                                [:coalesce [:/ 1.0 [:+ k [:. :v :semantic_rank]]] 0]]
                                [:* [:cast keyword-weight :float]
-                                [:/ 1.0 [:+ k [:coalesce [:. :t :keyword_rank] 0]]]]]
+                                [:coalesce [:/ 1.0 [:+ k [:. :t :keyword_rank]]] 0]]]
                               :rrf_rank]]
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
@@ -372,18 +372,24 @@
             filter-read-permitted)))))
 
 (comment
-  (keyword-search-query index {:search-string "dog"})
-  (sql-format-quoted (keyword-search-query index {:search-string "dog"}))
-  (jdbc/execute! db (sql-format-quoted (keyword-search-query index {:search-string "dog"})))
+  (def embedding-model (embedding/get-active-model))
+  (def index (default-index embedding-model))
+  (def search-ctx {:search-string "pasta"})
+  (def embed (embedding/get-embedding embedding-model (:search-string search-ctx)))
 
-  (def embed (embedding/get-embedding embedding-model "cat"))
-  (semantic-search-query index embed {:search-string "cat"})
-  (sql-format-quoted (semantic-search-query index embed {:search-string "cat"}))
-  (jdbc/execute! db (sql-format-quoted (semantic-search-query index embed {:search-string "content"})))
+  (keyword-search-query index search-ctx)
+  (sql-format-quoted (keyword-search-query index search-ctx))
+  (jdbc/execute! db (sql-format-quoted (keyword-search-query index search-ctx)))
 
-  (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed {:search-string "perso"})))
+  (semantic-search-query index embed search-ctx)
+  (sql/format (semantic-search-query index embed search-ctx))
+  (jdbc/execute! db (sql-format-quoted (semantic-search-query index embed search-ctx)))
 
-  (query-index db index {:search-string "cat"}))
+  (hybrid-search-query index embed search-ctx)
+  (sql-format-quoted (hybrid-search-query index embed search-ctx))
+  (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed search-ctx)))
+
+  (query-index db index search-ctx))
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
