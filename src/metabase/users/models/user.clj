@@ -119,8 +119,9 @@
                                 (when (:tenant_id user) (perms/all-external-users-group))
                                 (when superuser? (perms/admin-group))])]
       (perms/allow-changing-all-users-group-members
-        (perms/without-is-superuser-sync-on-add-to-admin-group
-         (perms/add-user-to-groups! user-id (map u/the-id groups)))))))
+        (perms/allow-changing-all-external-users-group-members
+         (perms/without-is-superuser-sync-on-add-to-admin-group
+          (perms/add-user-to-groups! user-id (map u/the-id groups))))))))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
