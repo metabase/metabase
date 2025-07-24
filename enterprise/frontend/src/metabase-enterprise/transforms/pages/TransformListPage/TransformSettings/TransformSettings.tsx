@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -7,7 +6,6 @@ import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { NameDescriptionInput } from "metabase/metadata/components/NameDescriptionInput";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { TransformSectionProps } from "metabase/plugins";
 import {
   Button,
   Card,
@@ -22,62 +20,35 @@ import {
 import {
   useDeleteTransformMutation,
   useExecuteTransformMutation,
-  useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
-import { TransformQueryBuilder } from "../TransformQueryBuilder";
+import {
+  tableMetadataUrl,
+  transformListUrl,
+  transformQueryUrl,
+} from "../../../utils/urls";
 
 import { SCHEDULE_OPTIONS } from "./constants";
 
-export function TransformSection({ transformId }: TransformSectionProps) {
-  const { data: transform } = useGetTransformQuery(transformId);
-  const databaseId = transform?.source?.query?.database;
-  const { data: schemas } = useListDatabaseSchemasQuery(
-    databaseId != null ? { id: databaseId } : skipToken,
-  );
-
-  if (transform == null || schemas == null) {
-    return null;
-  }
-
-  return <TransformSettings transform={transform} schemas={schemas} />;
-}
-
 type TransformSettingsProps = {
   transform: Transform;
-  schemas: string[];
 };
 
-function TransformSettings({ transform, schemas }: TransformSettingsProps) {
+export function TransformSettings({ transform }: TransformSettingsProps) {
+  const databaseId = transform.source?.query?.database;
+  const { data: schemas = [] } = useListDatabaseSchemasQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
   const [updateTransform] = useUpdateTransformMutation();
   const [executeTransform, { isLoading: isExecuting }] =
     useExecuteTransformMutation();
   const [deleteTransform, { isLoading: isDeleting }] =
     useDeleteTransformMutation();
   const dispatch = useDispatch();
-  const [isEditingQuery, setIsEditingQuery] = useState(false);
-
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-
-  const handleQueryChange = async (query: DatasetQuery) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      source: {
-        type: "query",
-        query,
-      },
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform query`);
-    } else {
-      sendSuccessToast(t`Transform query updated`);
-      setIsEditingQuery(false);
-    }
-  };
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateTransform({
@@ -201,19 +172,9 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
       sendErrorToast("Failed to delete transform");
     } else {
       sendSuccessToast("Transform deleted");
-      dispatch(push("/admin/datamodel"));
+      dispatch(push(transformListUrl()));
     }
   };
-
-  if (isEditingQuery) {
-    return (
-      <TransformQueryBuilder
-        query={transform.source.query}
-        onSave={handleQueryChange}
-        onCancel={() => setIsEditingQuery(false)}
-      />
-    );
-  }
 
   return (
     <Stack flex={1} p="xl" align="center">
@@ -230,18 +191,28 @@ function TransformSettings({ transform, schemas }: TransformSettingsProps) {
         />
         <Group justify="end">
           <Button
-            leftSection={<Icon name="pencil_lines" />}
-            onClick={() => setIsEditingQuery(true)}
-          >
-            {t`Edit query`}
-          </Button>
-          <Button
             loading={isExecuting}
             leftSection={<Icon name="play" />}
             onClick={handleExecute}
           >
             {t`Run now`}
           </Button>
+          <Button
+            component={Link}
+            to={transformQueryUrl(transform.id)}
+            leftSection={<Icon name="pencil_lines" />}
+          >
+            {t`Edit query`}
+          </Button>
+          {transform.table && (
+            <Button
+              component={Link}
+              to={tableMetadataUrl(transform.table)}
+              leftSection={<Icon name="label" />}
+            >
+              {t`Edit metadata`}
+            </Button>
+          )}
         </Group>
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">

@@ -41,6 +41,7 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_METABOT,
+  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -87,11 +88,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
             component={DataModel}
           />
-          <Route path="database/:databaseId/:sectionId" component={DataModel} />
-          <Route
-            path="database/:databaseId/:sectionId/:transformId"
-            component={DataModel}
-          />
           <Route component={DataModel}>
             <Route path="segments" component={SegmentListApp} />
             <Route path="segment/create" component={SegmentApp} />
@@ -99,6 +95,24 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             <Route
               path="segment/:id/revisions"
               component={RevisionHistoryApp}
+            />
+          </Route>
+          <Route component={DataModel}>
+            <Route
+              path="transforms"
+              component={PLUGIN_TRANSFORMS.TransformListPage}
+            />
+            <Route
+              path="transforms/new"
+              component={PLUGIN_TRANSFORMS.NewTransformPage}
+            />
+            <Route
+              path="transforms/:transformId"
+              component={PLUGIN_TRANSFORMS.TransformListPage}
+            />
+            <Route
+              path="transforms/:transformId/query"
+              component={PLUGIN_TRANSFORMS.TransformQueryPage}
             />
           </Route>
           <Redirect

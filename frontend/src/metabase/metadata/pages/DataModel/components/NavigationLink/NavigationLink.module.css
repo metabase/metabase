@@ -1,4 +1,4 @@
-.segmentsLink {
+.link {
   border-radius: 8px;
   cursor: pointer;
 
@@ -13,7 +13,7 @@
   }
 }
 
-.segmentsIcon {
+.icon {
   opacity: 0.5;
   flex-shrink: 0;
 }

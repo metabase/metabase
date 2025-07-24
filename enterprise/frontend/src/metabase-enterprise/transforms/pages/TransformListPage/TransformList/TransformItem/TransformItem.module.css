@@ -1,0 +1,9 @@
+.card {
+  overflow: visible; /* so that outline from focus state of inner <a /> is not cut off */
+
+  &:hover {
+    &:not(.active) {
+      background-color: var(--mb-color-background-light) !important;
+    }
+  }
+}

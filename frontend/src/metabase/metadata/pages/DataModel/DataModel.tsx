@@ -11,6 +11,7 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Box, Flex, Stack, rem } from "metabase/ui";
@@ -19,11 +20,11 @@ import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
+  NavigationLink,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
-  SegmentsLink,
   SyncOptionsModal,
   TableSection,
 } from "./components";
@@ -38,15 +39,19 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId, sectionId, transformId } =
-    parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
-  const isTransforms = transformId != null;
+  const isTransforms = location.pathname.startsWith(
+    "/admin/datamodel/transform",
+  );
+  const canAccessTransforms = useSelector(
+    PLUGIN_TRANSFORMS.canAccessTransforms,
+  );
   const isTables = !isSegments && !isTransforms;
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
@@ -112,20 +117,27 @@ export const DataModel = ({ children, location, params }: Props) => {
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={tableId}
-          sectionId={sectionId}
-          transformId={transformId}
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
+          {canAccessTransforms && (
+            <NavigationLink
+              label={t`Transforms`}
+              icon="refresh_downstream"
+              active={isTransforms}
+              to="/admin/datamodel/transforms"
+            />
+          )}
+          <NavigationLink
+            label={t`Segments`}
+            icon="pie"
+            active={isSegments}
+            to="/admin/datamodel/segments"
+          />
         </Box>
       </Stack>
 
-      {isSegments && children}
-
-      {isTransforms && (
-        <PLUGIN_TRANSFORMS.TransformSection transformId={transformId} />
-      )}
+      {(isSegments || isTransforms) && children}
 
       {isTables && (
         <>

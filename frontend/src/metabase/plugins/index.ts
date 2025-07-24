@@ -71,7 +71,6 @@ import type {
   Group,
   GroupPermissions,
   GroupsPermissions,
-  ListTransformsRequest,
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
@@ -80,8 +79,6 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
-  Transform,
-  TransformId,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -790,51 +787,32 @@ export const PLUGIN_SMTP_OVERRIDE = {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
-export type UseLazyListTransformsData = {
-  data?: Transform[];
+export type TransformListPageParams = {
+  transformId?: string;
 };
 
-export type UseLazyListTransformsState = {
-  originalArgs?: ListTransformsRequest;
-  isFetching: boolean;
-  isError: boolean;
+export type TransformListPageProps = {
+  params: TransformListPageParams;
 };
 
-export type UseLazyListTransformsResult = [
-  (
-    args: ListTransformsRequest,
-    preferCacheValue?: boolean,
-  ) => Promise<UseLazyListTransformsData>,
-  UseLazyListTransformsState,
-];
-
-export type NewTransformModalProps = {
-  question: Question;
-  opened: boolean;
-  onClose: () => void;
+export type TransformQueryPageParams = {
+  transformId: string;
 };
 
-export type TransformSectionProps = {
-  transformId: TransformId;
+export type TransformQueryPageProps = {
+  params: TransformQueryPageParams;
 };
 
 export type TransformsPlugin = {
   canAccessTransforms: (state: State) => boolean;
-  useLazyListTransforms: () => UseLazyListTransformsResult;
-  TransformSection: ComponentType<TransformSectionProps>;
-  NewTransformModal: ComponentType<NewTransformModalProps>;
+  NewTransformPage: ComponentType;
+  TransformListPage: ComponentType<TransformListPageProps>;
+  TransformQueryPage: ComponentType<TransformQueryPageProps>;
 };
-
-function fetchTransforms(): Promise<UseLazyListTransformsData> {
-  return Promise.resolve({});
-}
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   canAccessTransforms: () => false,
-  useLazyListTransforms: () => [
-    fetchTransforms,
-    { isFetching: false, isError: false },
-  ],
-  TransformSection: PluginPlaceholder,
-  NewTransformModal: PluginPlaceholder,
+  TransformListPage: () => null,
+  NewTransformPage: () => null,
+  TransformQueryPage: () => null,
 };

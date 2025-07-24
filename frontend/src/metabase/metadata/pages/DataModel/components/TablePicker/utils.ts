@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDeepCompareEffect, useLatest } from "react-use";
-import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -10,13 +9,10 @@ import {
   useLazyListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
-import type { SectionId } from "../../types";
 import { getUrl as getUrl_ } from "../../utils";
 
 import type {
@@ -28,8 +24,6 @@ import type {
   RootNode,
   SchemaNode,
   TableNode,
-  TransformListNode,
-  TransformNode,
   TreeNode,
   TreePath,
 } from "./types";
@@ -39,30 +33,24 @@ const CHILD_TYPES = {
   database: "schema",
   schema: "table",
   table: null,
-  transform: null,
-  "transform-list": "transform",
 } as const;
 
 export const TYPE_ICONS: Record<ItemType, IconName> = {
   table: "table2",
   schema: "folder",
   database: "database",
-  transform: "refresh_downstream",
-  "transform-list": "add_data",
 };
 
 export function hasChildren(type: ItemType): boolean {
-  return type !== "table" && type !== "transform";
+  return type !== "table";
 }
 
 export function getUrl(value: TreePath) {
   return getUrl_({
+    fieldId: undefined,
+    tableId: undefined,
     databaseId: undefined,
     schemaName: undefined,
-    tableId: undefined,
-    fieldId: undefined,
-    sectionId: undefined,
-    transformId: undefined,
     ...value,
   });
 }
@@ -82,15 +70,9 @@ export function useTableLoader(path: TreePath) {
   const [fetchDatabases, databases] = useLazyListDatabasesQuery();
   const [fetchSchemas, schemas] = useLazyListDatabaseSchemasQuery();
   const [fetchTables, tables] = useLazyListDatabaseSchemaTablesQuery();
-  const [fetchTransforms, transforms] =
-    PLUGIN_TRANSFORMS.useLazyListTransforms();
-  const canAccessTransforms = useSelector(
-    PLUGIN_TRANSFORMS.canAccessTransforms,
-  );
   const databasesRef = useLatest(databases);
   const schemasRef = useLatest(schemas);
   const tablesRef = useLatest(tables);
-  const transformsRef = useLatest(transforms);
 
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
@@ -116,48 +98,6 @@ export function useTableLoader(path: TreePath) {
       ) ?? []
     );
   }, [fetchDatabases, databasesRef]);
-
-  const getTransforms = useCallback(
-    async (
-      databaseId: DatabaseId | undefined,
-      sectionId: SectionId | undefined,
-    ) => {
-      if (!canAccessTransforms) {
-        return [];
-      }
-
-      if (databaseId === undefined || sectionId !== "transform") {
-        return [];
-      }
-
-      const newArgs = {
-        database_id: databaseId,
-      };
-
-      if (
-        transformsRef.current.isError &&
-        _.isEqual(transformsRef.current.originalArgs, newArgs)
-      ) {
-        // Do not refetch when this call failed previously.
-        // This is to prevent infinite data-loading loop as RTK query does not cache error responses.
-        return [];
-      }
-
-      const response = await fetchTransforms(newArgs, true);
-      return response?.data?.map((transform) =>
-        node<TransformNode>({
-          type: "transform",
-          label: transform.name,
-          value: {
-            databaseId,
-            sectionId: "transform",
-            transformId: transform.id,
-          },
-        }),
-      );
-    },
-    [fetchTransforms, transformsRef, canAccessTransforms],
-  );
 
   const getTables = useCallback(
     async (
@@ -246,11 +186,10 @@ export function useTableLoader(path: TreePath) {
   const load = useCallback(
     async function (path: TreePath) {
       const { databaseId, schemaName } = path;
-      const [databases, schemas, tables, transforms] = await Promise.all([
+      const [databases, schemas, tables] = await Promise.all([
         getDatabases(),
         getSchemas(path.databaseId),
         getTables(path.databaseId, path.schemaName),
-        getTransforms(path.databaseId, path.sectionId),
       ]);
 
       const newTree: TreeNode = rootNode(
@@ -259,25 +198,13 @@ export function useTableLoader(path: TreePath) {
           children:
             database.value.databaseId !== databaseId
               ? database.children
-              : [
-                  ...(canAccessTransforms
-                    ? [
-                        node<TransformListNode>({
-                          type: "transform-list",
-                          label: t`Transforms`,
-                          value: { databaseId, sectionId: "transform" },
-                          children: transforms,
-                        }),
-                      ]
-                    : []),
-                  ...schemas.map((schema) => ({
-                    ...schema,
-                    children:
-                      schema.value.schemaName !== schemaName
-                        ? schema.children
-                        : tables,
-                  })),
-                ],
+              : schemas.map((schema) => ({
+                  ...schema,
+                  children:
+                    schema.value.schemaName !== schemaName
+                      ? schema.children
+                      : tables,
+                })),
         })),
       );
       setTree((current) => {
@@ -285,7 +212,7 @@ export function useTableLoader(path: TreePath) {
         return _.isEqual(current, merged) ? current : merged;
       });
     },
-    [getDatabases, getSchemas, getTables, getTransforms, canAccessTransforms],
+    [getDatabases, getSchemas, getTables],
   );
 
   useDeepCompareEffect(() => {
@@ -297,7 +224,6 @@ export function useTableLoader(path: TreePath) {
     // we need to manually call the lazy RTK hooks, so that the the updated table
     // is refetched here. We detect this modification with tables.isFetching.
     tables.isFetching,
-    transforms.isFetching,
   ]);
 
   return { tree, reload: load };
@@ -344,10 +270,9 @@ export function useSearch(query: string) {
         tree.children.push(databaseNode);
       }
 
-      let schemaNode = databaseNode.children.find(
-        (node): node is SchemaNode =>
-          node.type === "schema" && node.value.schemaName === tableSchema,
-      );
+      let schemaNode = databaseNode.children.find((node) => {
+        return node.type === "schema" && node.value.schemaName === tableSchema;
+      });
       if (!schemaNode) {
         schemaNode = node<SchemaNode>({
           type: "schema",
@@ -392,21 +317,13 @@ export function useSearch(query: string) {
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
-  const { databaseId, schemaName, tableId, sectionId, transformId } = path;
+  const { databaseId, schemaName, tableId } = path;
 
   useEffect(() => {
     // When the path changes, this means a user has navigated throught the browser back
     // button, ensure the path is completely expanded.
-    setState((state) =>
-      expandPath(state, {
-        databaseId,
-        schemaName,
-        tableId,
-        sectionId,
-        transformId,
-      }),
-    );
-  }, [databaseId, schemaName, tableId, sectionId, transformId]);
+    setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
+  }, [databaseId, schemaName, tableId]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {
@@ -431,27 +348,6 @@ export function useExpandedState(path: TreePath) {
 
 // Returns a new state object with all the nodes along the path expanded.
 function expandPath(state: ExpandedState, path: TreePath): ExpandedState {
-  if (path.sectionId != null) {
-    return {
-      ...state,
-      [toKey({
-        ...path,
-        transformId: undefined,
-      })]: true,
-      [toKey({
-        ...path,
-        transformId: undefined,
-        sectionId: undefined,
-      })]: true,
-      [toKey({
-        ...path,
-        transformId: undefined,
-        sectionId: undefined,
-        databaseId: undefined,
-      })]: true,
-    };
-  }
-
   return {
     ...state,
     [toKey({
@@ -557,9 +453,6 @@ export function flatten(
 
 function sort(nodes: TreeNode[]): TreeNode[] {
   return Array.from(nodes).sort((a, b) => {
-    if (a.type === "transform-list" || b.type === "transform-list") {
-      return a.type === "transform-list" ? -1 : 1;
-    }
     return a.label.localeCompare(b.label);
   });
 }
@@ -599,20 +492,8 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
 /**
  * Create a unique key for a TreePath
  */
-function toKey({
-  databaseId,
-  schemaName,
-  tableId,
-  sectionId,
-  transformId,
-}: TreePath) {
-  return JSON.stringify([
-    databaseId,
-    schemaName,
-    tableId,
-    sectionId,
-    transformId,
-  ]);
+function toKey({ databaseId, schemaName, tableId }: TreePath) {
+  return JSON.stringify([databaseId, schemaName, tableId]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
@@ -646,6 +527,5 @@ function loadingItem(
     parent: parent?.type === "root" ? undefined : parent?.key,
     isLoading: true,
     key: Math.random().toString(),
-    disabled: true,
   };
 }
