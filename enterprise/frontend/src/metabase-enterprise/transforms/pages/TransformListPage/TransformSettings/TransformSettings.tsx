@@ -47,7 +47,6 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
   const [deleteTransform, { isLoading: isDeleting }] =
     useDeleteTransformMutation();
   const dispatch = useDispatch();
-
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
