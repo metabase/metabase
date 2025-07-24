@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -39,6 +39,9 @@ export const ReportPage = ({
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [currentEditorContent, setCurrentEditorContent] = useState<
+    string | null
+  >(null);
   const [createReport] = useCreateReportMutation();
   const [updateReport] = useUpdateReportMutation();
   const [sendToast] = useToast();
@@ -63,6 +66,58 @@ export const ReportPage = ({
 
   const { commitVisualizationChanges, refreshAllData } = useReportActions();
   const { handleQuestionClick } = useEditorActions();
+
+  useEffect(() => {
+    if (!editorInstance) {
+      return;
+    }
+
+    const handleUpdate = () => {
+      const content = editorInstance.storage.markdown?.getMarkdown() ?? "";
+      setCurrentEditorContent(content);
+    };
+
+    // Initialize with current content
+    const initialContent = editorInstance.storage.markdown?.getMarkdown() ?? "";
+    setCurrentEditorContent(initialContent);
+
+    editorInstance.on("update", handleUpdate);
+
+    return () => {
+      editorInstance.off("update", handleUpdate);
+    };
+  }, [editorInstance]);
+
+  // Initialize currentEditorContent when report loads
+  useEffect(() => {
+    if (report && currentEditorContent === null) {
+      setCurrentEditorContent(report.document || "");
+    }
+  }, [report, currentEditorContent]);
+
+  const hasUnsavedChanges = useCallback(() => {
+    // Don't show save button until content is initialized
+    if (currentEditorContent === null) {
+      return false;
+    }
+
+    const currentTitle = reportTitle.trim();
+
+    // For new reports, show Save if there's title or content
+    if (reportId === "new") {
+      return currentTitle.length > 0 || currentEditorContent.length > 0;
+    }
+
+    // For existing reports, check if title or content changed
+    const originalTitle = report?.name || "";
+    const originalContent = report?.document || "";
+
+    return (
+      currentTitle !== originalTitle || currentEditorContent !== originalContent
+    );
+  }, [reportTitle, reportId, report, currentEditorContent]);
+
+  const showSaveButton = hasUnsavedChanges();
 
   const handleSave = useCallback(async () => {
     if (!editorInstance) {
@@ -238,9 +293,11 @@ export const ReportPage = ({
               <Box
                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
               >
-                <Button onClick={handleSave} variant="filled">
-                  {t`Save`}
-                </Button>
+                {showSaveButton && (
+                  <Button onClick={handleSave} variant="filled">
+                    {t`Save`}
+                  </Button>
+                )}
                 <Menu position="bottom-end">
                   <Menu.Target>
                     <ActionIcon
