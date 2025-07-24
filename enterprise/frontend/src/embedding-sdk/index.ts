@@ -41,6 +41,7 @@ export type {
   EditableDashboardProps,
 } from "./components/public/dashboard";
 export {
+  type SdkQuestionProps,
   type InteractiveQuestionBackButtonProps,
   type InteractiveQuestionBreakoutDropdownProps,
   type InteractiveQuestionChartTypeDropdownProps,
