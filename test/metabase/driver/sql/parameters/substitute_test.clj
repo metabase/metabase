@@ -983,7 +983,7 @@
                   (mt/format-rows-by
                    [int]
                    (process-native
-                    :native     {:query         (format "SELECT COUNT(*) as c FROM %s WHERE {{last_login_date}}"
+                    :native     {:query         (format "SELECT COUNT(*) AS c FROM %s WHERE {{last_login_date}}"
                                                         (table-identifier :users))
                                  :template-tags {"last_login_date" {:name         "last_login_date"
                                                                     :display-name "Last Login Date"
