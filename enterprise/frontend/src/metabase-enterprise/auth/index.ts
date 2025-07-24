@@ -52,11 +52,12 @@ PLUGIN_AUTH_PROVIDERS.providers.push((providers) => {
 });
 
 if (hasPremiumFeature("disable_password_login")) {
-  PLUGIN_IS_PASSWORD_USER.push(
-    (user) =>
+  PLUGIN_IS_PASSWORD_USER.push((user) =>
+    Boolean(
       user.sso_source !== "google" &&
-      user.sso_source !== "ldap" &&
-      MetabaseSettings.isPasswordLoginEnabled(),
+        user.sso_source !== "ldap" &&
+        MetabaseSettings.isPasswordLoginEnabled(),
+    ),
   );
 }
 

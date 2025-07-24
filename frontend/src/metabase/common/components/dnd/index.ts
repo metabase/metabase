@@ -1,5 +1,7 @@
 // NOTE: we currently use object's `model` property for the drag type
-export function dragTypeForItem(item) {
+import type { CollectionItem } from "metabase-types/api";
+
+export function dragTypeForItem(item: CollectionItem) {
   return item.model;
 }
 

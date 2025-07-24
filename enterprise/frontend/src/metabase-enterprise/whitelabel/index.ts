@@ -17,6 +17,7 @@ import {
   getNoObjectIllustration,
   getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
+import type { SettingKey } from "metabase-types/api";
 
 import { LandingPageWidget } from "./components/LandingPageWidget";
 import LogoIcon from "./components/LogoIcon";
@@ -26,7 +27,7 @@ import { updateColors } from "./lib/whitelabel";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.getLandingPage = () =>
-    MetabaseSettings.get("landing-page");
+    MetabaseSettings.get("landing-page" as SettingKey) as string;
   PLUGIN_LANDING_PAGE.LandingPageWidget = LandingPageWidget;
 
   PLUGIN_WHITELABEL.WhiteLabelBrandingSettingsPage =

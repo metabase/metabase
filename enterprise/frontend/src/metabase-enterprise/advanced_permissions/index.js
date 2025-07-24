@@ -120,11 +120,13 @@ if (hasPremiumFeature("advanced_permissions")) {
 
   PLUGIN_REDUCERS.advancedPermissionsPlugin = advancedPermissionsSlice.reducer;
 
-  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
-    const impersonations = getImpersonations(state);
-    const impersonationGroupIds = impersonations.map((i) => `${i.group_id}`);
-    return [{ impersonations }, impersonationGroupIds];
-  });
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(
+    (state, data) => {
+      const impersonations = getImpersonations(state);
+      const impersonationGroupIds = impersonations.map((i) => `${i.group_id}`);
+      return [{ impersonations }, impersonationGroupIds];
+    },
+  );
 
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(
     (state) => getImpersonations(state).length > 0,
