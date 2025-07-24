@@ -67,7 +67,7 @@
 (def db-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
           :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var :redshift :db)
+          :db                      (tx/db-test-env-var-or-throw :redshift :db)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
@@ -76,7 +76,7 @@
 (def db-routing-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
           :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var :redshift :db-routing)
+          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
@@ -84,15 +84,9 @@
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
-  {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-   :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-   :db                      (if tx/*use-routing-details*
-                              (tx/db-test-env-var :redshift :db-routing)
-                              (tx/db-test-env-var :redshift :db))
-   :user                    (tx/db-test-env-var-or-throw :redshift :user)
-   :password                (tx/db-test-env-var-or-throw :redshift :password)
-   :schema-filters-type     "inclusion"
-   :schema-filters-patterns (str "spectrum," (unique-session-schema))})
+  (if tx/*use-routing-details*
+    @db-connection-details
+    @db-routing-connection-details))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
