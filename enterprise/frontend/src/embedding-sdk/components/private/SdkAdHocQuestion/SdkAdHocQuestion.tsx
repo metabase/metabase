@@ -1,24 +1,18 @@
 import { useMemo } from "react";
 
-import type { BaseInteractiveQuestionProps } from "embedding-sdk/components/public/SdkQuestion";
+import type { SdkQuestionProps } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
-import {
-  type QuestionMockLocationParameters,
-  SdkQuestionProvider,
-} from "../SdkQuestion/context";
-import {
-  InteractiveQuestionDefaultView,
-  type InteractiveQuestionDefaultViewProps,
-} from "../SdkQuestionDefaultView";
+import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
 
-interface InteractiveAdHocQuestionProps {
+interface SdkAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
   onNavigateBack: () => void;
 }
 
-export const InteractiveAdHocQuestion = ({
+export const SdkAdHocQuestion = ({
   questionPath,
   withResetButton = true,
   title,
@@ -37,9 +31,26 @@ export const InteractiveAdHocQuestion = ({
   withDownloads = false,
   initialSqlParameters,
   onNavigateBack,
-}: InteractiveAdHocQuestionProps &
-  Omit<BaseInteractiveQuestionProps, "questionId"> &
-  InteractiveQuestionDefaultViewProps) => {
+}: SdkAdHocQuestionProps &
+  Pick<
+    SdkQuestionProps,
+    | "withResetButton"
+    | "title"
+    | "plugins"
+    | "height"
+    | "width"
+    | "className"
+    | "style"
+    | "children"
+    | "onBeforeSave"
+    | "onSave"
+    | "entityTypes"
+    | "isSaveEnabled"
+    | "targetCollection"
+    | "withChartTypeSelector"
+    | "withDownloads"
+    | "initialSqlParameters"
+  >) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
     [questionPath],
@@ -56,7 +67,7 @@ export const InteractiveAdHocQuestion = ({
   }, [location.hash]);
 
   return (
-    <SdkQuestionProvider
+    <SdkQuestion
       questionId={questionId}
       options={options}
       deserializedCard={deserializedCard}
@@ -69,19 +80,16 @@ export const InteractiveAdHocQuestion = ({
       initialSqlParameters={initialSqlParameters}
       withDownloads={withDownloads}
       onNavigateBack={onNavigateBack}
+      height={height}
+      width={width}
+      className={className}
+      style={style}
+      title={title}
+      withResetButton={withResetButton}
+      withChartTypeSelector={withChartTypeSelector}
     >
-      {children ?? (
-        <InteractiveQuestionDefaultView
-          height={height}
-          width={width}
-          className={className}
-          style={style}
-          title={title}
-          withResetButton={withResetButton}
-          withChartTypeSelector={withChartTypeSelector}
-        />
-      )}
-    </SdkQuestionProvider>
+      {children}
+    </SdkQuestion>
   );
 };
 

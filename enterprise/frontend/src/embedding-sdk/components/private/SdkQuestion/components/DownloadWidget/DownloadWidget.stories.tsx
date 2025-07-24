@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, type PopoverProps } from "metabase/ui";
 
@@ -22,9 +22,9 @@ export const Default = {
   render(args: DownloadWidgetProps) {
     return (
       <Box p="lg">
-        <InteractiveQuestion questionId={QUESTION_ID}>
-          <InteractiveQuestion.DownloadWidget {...args} />
-        </InteractiveQuestion>
+        <SdkQuestion questionId={QUESTION_ID}>
+          <SdkQuestion.DownloadWidget {...args} />
+        </SdkQuestion>
       </Box>
     );
   },
@@ -34,9 +34,9 @@ export const Dropdown = {
   render(args: PopoverProps) {
     return (
       <Box p="lg">
-        <InteractiveQuestion withDownloads questionId={QUESTION_ID}>
-          <InteractiveQuestion.DownloadWidgetDropdown {...args} />
-        </InteractiveQuestion>
+        <SdkQuestion withDownloads questionId={QUESTION_ID}>
+          <SdkQuestion.DownloadWidgetDropdown {...args} />
+        </SdkQuestion>
       </Box>
     );
   },
