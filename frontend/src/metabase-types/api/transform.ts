@@ -1,4 +1,3 @@
-import type { DatabaseId } from "./database";
 import type { DatasetQuery } from "./query";
 import type { Table } from "./table";
 
@@ -23,10 +22,6 @@ export type TransformTarget = {
   type: "table";
   schema: string;
   table: string;
-};
-
-export type ListTransformsRequest = {
-  database_id?: DatabaseId;
 };
 
 export type CreateTransformRequest = {

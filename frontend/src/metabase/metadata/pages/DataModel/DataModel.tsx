@@ -120,12 +120,6 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <NavigationLink
-            label={t`Segments`}
-            icon="pie"
-            active={isSegments}
-            to="/admin/datamodel/segments"
-          />
           {canAccessTransforms && (
             <NavigationLink
               label={t`Transforms`}
@@ -134,6 +128,12 @@ export const DataModel = ({ children, location, params }: Props) => {
               to="/admin/datamodel/transforms"
             />
           )}
+          <NavigationLink
+            label={t`Segments`}
+            icon="pie"
+            active={isSegments}
+            to="/admin/datamodel/segments"
+          />
         </Box>
       </Stack>
 
