@@ -131,6 +131,6 @@
   (= (get-in request [:headers "x-metabase-client"]) "embedding-sdk-react"))
 
 (defn is-simple-embed-header?
-  "Check if the client has indicated it is from the react embedding sdk"
+  "Check if the client has indicated it is from simple embedding"
   [request]
   (= (get-in request [:headers "x-metabase-client"]) "embedding-simple"))
