@@ -6,12 +6,12 @@ import Button from "metabase/common/components/Button";
 import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import FormInput from "metabase/common/components/FormInput";
+import { FormQuestionPicker } from "metabase/common/components/FormQuestionPicker";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import FormTextArea from "metabase/common/components/FormTextArea";
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { FormModelPicker } from "metabase/models/containers/FormModelPicker";
 
 const ACTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -68,7 +68,12 @@ function CreateActionForm({
             placeholder={t`It's optional but oh, so helpful`}
             nullable
           />
-          <FormModelPicker name="model_id" title={t`Model it's saved in`} />
+          <FormQuestionPicker
+            name="model_id"
+            title={t`Model it's saved in`}
+            pickerTitle={t`Select a model`}
+            pickerModels={["dataset"]}
+          />
           <FormFooter>
             <FormErrorMessage inline />
             {!!onCancel && (
