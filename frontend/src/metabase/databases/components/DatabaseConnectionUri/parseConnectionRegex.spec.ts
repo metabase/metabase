@@ -226,3 +226,24 @@ describe("parseConnectionUriRegex - Clickhouse", () => {
     );
   });
 });
+
+describe("parseConnectionUriRegex - Clickhouse", () => {
+  it("should parse a Athena connection string", () => {
+    const connectionString =
+      "jdbc:awsathena://athena.us-east-1.amazonaws.com:443;User=EXAMPLEKEY;Password=EXAMPLESECRETKEY;S3OutputLocation=s3://example-bucket-name-us-east-1";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "awsathena",
+        host: "athena.us-east-1.amazonaws.com",
+        port: "443",
+        hasJdbcPrefix: true,
+        params: {
+          User: "EXAMPLEKEY",
+          Password: "EXAMPLESECRETKEY",
+          S3OutputLocation: "s3://example-bucket-name-us-east-1",
+        },
+      }),
+    );
+  });
+});

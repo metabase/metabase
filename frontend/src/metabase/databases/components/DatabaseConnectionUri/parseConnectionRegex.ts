@@ -1,4 +1,14 @@
-import type { UriFields } from "./parseConnectionUri";
+export interface RegexFields {
+  host?: string;
+  port?: string;
+  database?: string;
+  username?: string;
+  password?: string;
+  protocol?: string;
+  params?: Record<string, string> | undefined;
+  path?: string;
+  hasJdbcPrefix: boolean;
+}
 
 const jdbcPrefix = "(?<hasJdbcPrefix>jdbc:)?";
 const userPass = "(?:(?<username>[^:/?#]+)(?::(?<password>[^@/?#]*))?@)?";
@@ -121,11 +131,21 @@ const connectionStringRegexes = {
   clickhouse: new RegExp(
     "^" + jdbcPrefix + "(?<protocol>clickhouse)://" + userPass + host + path,
   ),
+
+  athena: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>awsathena)://" +
+      host +
+      "([^;]*);(?<semicolonParams>.*)?" +
+      "$",
+    "i",
+  ),
 };
 
 export function parseConnectionUriRegex(
   connectionUri: string,
-): UriFields | null {
+): RegexFields | null {
   for (const regex of Object.values(connectionStringRegexes)) {
     const match = connectionUri.match(regex);
     if (match) {

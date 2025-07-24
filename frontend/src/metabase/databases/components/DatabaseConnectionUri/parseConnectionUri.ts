@@ -6,7 +6,6 @@ export interface UriFields {
   password: string;
   protocol: string;
   params: Record<string, string> | undefined;
-  path: string;
 }
 
 export function parseConnectionUri(connectionUri: string): UriFields | null {

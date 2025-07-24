@@ -13,6 +13,7 @@ const supportedEngines = new Set([
   "Snowflake",
   "BigQuery",
   "ClickHouse",
+  "Amazon Athena",
 ]);
 
 export function DatabaseConnectionStringField({
