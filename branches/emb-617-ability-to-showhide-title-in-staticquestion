@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "3a7474eadc0dd15798c52e3abdebf7b5f8b18e85"
+    "hash": "aa7ced174f847b9914c0b7778e344fd20d0d30ed"
   },
   "upstream": {
     "branch": "emb-617-ability-to-showhide-title-in-staticquestion"
