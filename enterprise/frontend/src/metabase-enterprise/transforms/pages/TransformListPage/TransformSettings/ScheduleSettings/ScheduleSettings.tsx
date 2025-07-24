@@ -58,7 +58,7 @@ export function ScheduleSettings({
         <CronExpressionInput
           value={cronExpression}
           getExplainMessage={(cronExplanation) =>
-            t`We will refresh your transform ${cronExplanation}`
+            t`We will run your transform ${cronExplanation}`
           }
           onChange={setCronExpression}
           onBlurChange={onChange}
