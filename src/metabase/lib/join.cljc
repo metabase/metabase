@@ -246,6 +246,10 @@
                                :source-alias            join-alias
                                :lib/original-join-alias join-alias)
         col             (-> (assoc column-metadata
+                                   :lib/original-display-name (or (:lib/original-display-name column-metadata)
+                                                                  (lib.metadata.calculation/display-name
+                                                                   query stage-number
+                                                                   (dissoc column-metadata :join-alias :lib/original-join-alias :source-alias)))
                                    :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
                             (with-join-alias join-alias))]

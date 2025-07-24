@@ -253,15 +253,16 @@
                                                   :alias        "Q"}]
                                   :limit        1})))
                   fields     #{%orders.discount %products.title %people.source}]
-              (is (= [{:display_name "Discount"
-                       :field_ref    [:field %orders.discount nil]}
-                      {:display_name "Products → Title"
-                       :field_ref    [:field %products.title nil]}
-                      {:display_name "Q → Source"
-                       :field_ref    [:field %people.source {:join-alias "Q"}]}]
-                     (->> (:cols (add-column-info base-query {}))
-                          (filter #(fields (:id %)))
-                          (map #(select-keys % [:display_name :field_ref]))))))))))))
+              (is (=? [{:display_name "Discount"
+                        :field_ref    [:field "DISCOUNT" {}]}
+                       {:display_name "Products → Title"
+                        :field_ref    [:field "Products__TITLE" {}]}
+                       ;; TODO (Cam 7/23/25) -- ideally this would be using a field name ref.
+                       {:display_name "Q → Source"
+                        :field_ref    [:field %people.source {:join-alias "Q"}]}]
+                      (->> (:cols (add-column-info base-query {}))
+                           (filter #(fields (:id %)))
+                           (map #(select-keys % [:display_name :field_ref]))))))))))))
 
 (deftest ^:parallel col-info-for-joined-fields-from-card-test
   (testing "Has the correct display names for joined fields from cards (#14787)"
