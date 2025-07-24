@@ -589,7 +589,7 @@
   and would thus be returned by this function.
 
   Columns from joins, expressions, and implicitly joinable columns are included automatically by default;
-  see [[VisibleColumnsOptions]] for the options for disabling these columns."
+  see `::visible-columns.options` for the options for disabling these columns."
   ([query]
    (visible-columns query (lib.util/query-stage query -1)))
 

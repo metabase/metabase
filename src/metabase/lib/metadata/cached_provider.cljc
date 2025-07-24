@@ -43,7 +43,9 @@
   (if-some [cached-value (get-in @cache ks)]
     (when-not (= cached-value ::nil)
       cached-value)
-    (store-in-cache! cache ks (fetch-thunk))))
+    (do
+      (log/debugf "Cache miss: %s" (pr-str ks))
+      (store-in-cache! cache ks (fetch-thunk)))))
 
 (defn- cached-value [cache k not-found]
   (-> @cache ::cached-value (get k not-found)))
@@ -59,12 +61,13 @@
   (when (seq ids)
     (log/tracef "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
     (let [metadata-cache (get @cache metadata-type)]
-      (when-not (every? #(contains? metadata-cache %) ids)
+      (if (every? #(contains? metadata-cache %) ids)
+        (log/trace "Found all items in cache")
         (let [existing-ids (set (keys metadata-cache))
               missing-ids  (set/difference (set ids) existing-ids)]
           (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
           (when (seq missing-ids)
-            (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
+            (log/debugf "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
             (let [fetched-metadatas (lib.metadata.protocols/metadatas uncached-provider metadata-type missing-ids)
                   fetched-ids       (map :id fetched-metadatas)
                   unfetched-ids     (set/difference (set missing-ids) (set fetched-ids))]
