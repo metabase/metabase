@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -13,12 +14,13 @@ import { ActionIcon, Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import { ObjectDetailBody } from "metabase/visualizations/components/ObjectDetail/ObjectDetailBody";
 import {
-  CloseButton,
   ObjectDetailHeaderWrapper,
   ObjectIdLabel,
 } from "metabase/visualizations/components/ObjectDetail/ObjectDetailHeader.styled";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { StructuredDatasetQuery } from "metabase-types/api";
+
+import { getTableQuery } from "../TableListView/utils";
 
 interface TableDetailViewProps {
   params: {
@@ -36,17 +38,7 @@ export function TableDetailView(props: TableDetailViewProps) {
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
-    if (!table) {
-      return undefined;
-    }
-
-    return {
-      database: table.db_id,
-      query: {
-        "source-table": table.id,
-      },
-      type: "query",
-    };
+    return table ? getTableQuery(table) : undefined;
   }, [table]);
   const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
   const columns = dataset?.data?.results_metadata?.columns;
@@ -115,6 +107,7 @@ export function TableDetailView(props: TableDetailViewProps) {
             isEdit={isEdit}
             onEditClick={handleEditClick}
             onCloseClick={handleCloseClick}
+            table={table}
           />
         </Flex>
         <ObjectDetailBody
@@ -163,26 +156,31 @@ function ObjectDetailHeader({
   isEdit,
   onEditClick,
   onCloseClick,
-}: ObjectDetailHeaderProps): JSX.Element {
+  table,
+}: ObjectDetailHeaderProps & { table: any }): JSX.Element {
   return (
     <ObjectDetailHeaderWrapper className={CS.Grid}>
-      <div className={CS.GridCell}>
+      <Box className={CS.GridCell} m="auto">
         <h2 className={CS.p3}>
           {objectName}
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
-      </div>
+      </Box>
 
       <Flex align="center" gap="0.5rem" p="1rem">
         {canZoom && (
           <>
             <Button
+              size="sx"
+              variant="subtle"
               data-testid="view-previous-object-detail"
               disabled={!canZoomPreviousRow}
               onClick={viewPreviousObjectDetail}
               leftSection={<Icon name="chevronup" />}
             />
             <Button
+              size="sx"
+              variant="subtle"
               data-testid="view-next-object-detail"
               disabled={!canZoomNextRow}
               onClick={viewNextObjectDetail}
@@ -192,19 +190,44 @@ function ObjectDetailHeader({
         )}
 
         {isEdit && (
-          <CloseButton>
+          <>
             <Button
+              variant="brand"
               data-testid="object-detail-close-button"
               onClick={onCloseClick}
-              leftSection={<Icon name="close" />}
-            />
-          </CloseButton>
+            >{t`Save`}</Button>
+            <Button
+              variant="subtle"
+              color="error"
+              data-testid="object-detail-close-button"
+              onClick={onCloseClick}
+            >{t`Discard changes`}</Button>
+          </>
         )}
         {!isEdit && (
           <Button size="md" variant="light" onClick={onEditClick} ml="md">
             {t`Edit`}
           </Button>
         )}
+        <Flex p="md" gap="md">
+          <Button
+            component={Link}
+            to={`/reference/databases/${table.db_id}/tables/${table.id}`}
+            variant="brand"
+            data-testid="table-reference-link"
+          >
+            {t`View table reference`}
+          </Button>
+
+          <Button
+            component={Link}
+            to={`/table/${table.id}`}
+            variant="brand"
+            data-testid="table-link"
+          >
+            {t`View table`}
+          </Button>
+        </Flex>
       </Flex>
     </ObjectDetailHeaderWrapper>
   );
