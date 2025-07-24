@@ -29,21 +29,284 @@ jobs:
       - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
         run: .github/scripts/write-poms.sh
-      - name: Run snyk main project
+      
+      # Main Metabase project (yarn.lock)
+      - name: Run snyk - Main Frontend (yarn)
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
-        run: snyk test --all-projects --exclude="modules" --sarif-file-output=snyk-main.sarif
-      - name: Upload result to GitHub Code Scanning
+        run: snyk test --file=yarn.lock --package-manager=yarn --sarif-file-output=snyk-main-frontend.sarif
+      - name: Upload Main Frontend results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: snyk-main.sarif
-      - name: Run snyk drivers
+          sarif_file: snyk-main-frontend.sarif
+          category: main-frontend-yarn
+      
+      # Main Metabase project (pom.xml)
+      - name: Run snyk - Main Backend (maven)
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
-        run: cd modules && snyk test --all-projects --sarif-file-output=snyk-drivers.sarif
-      - name: Upload result to GitHub Code Scanning
+        run: snyk test --file=pom.xml --package-manager=maven --sarif-file-output=snyk-main-backend.sarif
+      - name: Upload Main Backend results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: modules/snyk-drivers.sarif
+          sarif_file: snyk-main-backend.sarif
+          category: main-backend-maven
+
+      # Embedding SDK template
+      - name: Run snyk - Embedding SDK Template
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=bin/embedding-sdk/templates/yarn.lock --package-manager=yarn --sarif-file-output=snyk-embedding-sdk.sarif
+      - name: Upload Embedding SDK results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-embedding-sdk.sarif
+          category: embedding-sdk-template
+
+      # E2E test apps
+      - name: Run snyk - Angular 20 Host App
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=e2e/embedding-sdk-host-apps/angular-20-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-angular.sarif
+      - name: Upload Angular E2E results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-e2e-angular.sarif
+          category: e2e-angular-host
+
+      - name: Run snyk - Next 15 App Router
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=e2e/embedding-sdk-host-apps/next-15-app-router-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-next-app.sarif
+      - name: Upload Next App Router results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-e2e-next-app.sarif
+          category: e2e-next-app-router
+
+      - name: Run snyk - Next 15 Pages Router
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=e2e/embedding-sdk-host-apps/next-15-pages-router-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-next-pages.sarif
+      - name: Upload Next Pages Router results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-e2e-next-pages.sarif
+          category: e2e-next-pages-router
+
+      - name: Run snyk - Vite 6 Host App
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=e2e/embedding-sdk-host-apps/vite-6-host-app/package-lock.json --package-manager=npm --sarif-file-output=snyk-e2e-vite.sarif
+      - name: Upload Vite E2E results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-e2e-vite.sarif
+          category: e2e-vite-host
+
+      # Release helper
+      - name: Run snyk - Release Helper
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=release/yarn.lock --package-manager=yarn --sarif-file-output=snyk-release.sarif
+      - name: Upload Release Helper results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-release.sarif
+          category: release-helper
+
+      # Drivers
+      - name: Run snyk - Athena Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/athena/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-athena.sarif
+      - name: Upload Athena Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-athena.sarif
+          category: driver-athena
+
+      - name: Run snyk - BigQuery Cloud SDK Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/bigquery-cloud-sdk/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-bigquery.sarif
+      - name: Upload BigQuery Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-bigquery.sarif
+          category: driver-bigquery-cloud-sdk
+
+      - name: Run snyk - ClickHouse Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/clickhouse/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-clickhouse.sarif
+      - name: Upload ClickHouse Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-clickhouse.sarif
+          category: driver-clickhouse
+
+      - name: Run snyk - Databricks Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/databricks/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-databricks.sarif
+      - name: Upload Databricks Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-databricks.sarif
+          category: driver-databricks
+
+      - name: Run snyk - Druid Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/druid/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-druid.sarif
+      - name: Upload Druid Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-druid.sarif
+          category: driver-druid
+
+      - name: Run snyk - Druid JDBC Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/druid-jdbc/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-druid-jdbc.sarif
+      - name: Upload Druid JDBC Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-druid-jdbc.sarif
+          category: driver-druid-jdbc
+
+      - name: Run snyk - Hive-like Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/hive-like/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-hive-like.sarif
+      - name: Upload Hive-like Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-hive-like.sarif
+          category: driver-hive-like
+
+      - name: Run snyk - Mongo Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/mongo/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-mongo.sarif
+      - name: Upload Mongo Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-mongo.sarif
+          category: driver-mongo
+
+      - name: Run snyk - Oracle Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/oracle/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-oracle.sarif
+      - name: Upload Oracle Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-oracle.sarif
+          category: driver-oracle
+
+      - name: Run snyk - Presto JDBC Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/presto-jdbc/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-presto-jdbc.sarif
+      - name: Upload Presto JDBC Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-presto-jdbc.sarif
+          category: driver-presto-jdbc
+
+      - name: Run snyk - Redshift Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/redshift/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-redshift.sarif
+      - name: Upload Redshift Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-redshift.sarif
+          category: driver-redshift
+
+      - name: Run snyk - Snowflake Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/snowflake/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-snowflake.sarif
+      - name: Upload Snowflake Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-snowflake.sarif
+          category: driver-snowflake
+
+      - name: Run snyk - SparkSQL Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/sparksql/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-sparksql.sarif
+      - name: Upload SparkSQL Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-sparksql.sarif
+          category: driver-sparksql
+
+      - name: Run snyk - SQLite Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/sqlite/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-sqlite.sarif
+      - name: Upload SQLite Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-sqlite.sarif
+          category: driver-sqlite
+
+      - name: Run snyk - SQL Server Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/sqlserver/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-sqlserver.sarif
+      - name: Upload SQL Server Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-sqlserver.sarif
+          category: driver-sqlserver
+
+      - name: Run snyk - Starburst Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/starburst/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-starburst.sarif
+      - name: Upload Starburst Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-starburst.sarif
+          category: driver-starburst
+
+      - name: Run snyk - Vertica Driver
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: snyk test --file=modules/drivers/vertica/pom.xml --package-manager=maven --sarif-file-output=snyk-driver-vertica.sarif
+      - name: Upload Vertica Driver results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-driver-vertica.sarif
+          category: driver-vertica
