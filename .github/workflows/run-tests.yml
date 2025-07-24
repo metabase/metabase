@@ -11,7 +11,7 @@ on:
 
 jobs:
   files-changed:
-    if: ${{ github.event.pull_request.labels.*.name != 'ci skip' }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -36,7 +36,7 @@ jobs:
 
   static-viz-files-changed:
     name: Check whether static-viz files changed
-    if: ${{ github.event.pull_request.labels.*.name != 'ci skip' }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:

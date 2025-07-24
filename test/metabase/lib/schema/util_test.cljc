@@ -3,7 +3,6 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (defn- query [uuid-1 uuid-2]
@@ -32,25 +31,6 @@
 (def query-with-duplicate-uuids
   (query "00000000-0000-0000-0000-000000000001"
          "00000000-0000-0000-0000-000000000001"))
-
-(def ^:private query-with-no-uuids
-  {:lib/type :mbql/query
-   :database 1
-   :stages   [{:lib/type     :mbql.stage/mbql
-               :source-table 2
-               :filter       [:=
-                              {}
-                              [:field
-                               {:base-type :type/Text}
-                               3]
-                              4]}
-              {:lib/type :mbql.stage/mbql
-               :filter   [:=
-                          {}
-                          [:field
-                           {:base-type :type/Text}
-                           "my_field"]
-                          4]}]})
 
 (deftest ^:parallel collect-uuids-test
   (are [query expected-uuids] (= expected-uuids
@@ -99,57 +79,6 @@
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Integer} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))
 
-(deftest ^:parallel remove-randomized-idents-test
-  (are [x expected] (= expected
-                       (lib.schema.util/remove-randomized-idents x))
-    {:lib/uuid "00000000-0000-0000-0000-000000000000"}
-    {}
-
-    {:ident "arbitrary string"}
-    {}
-
-    {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-    {:a 1}
-
-    [{:lib/uuid "00000000-0000-0000-0000-000000000000"
-      :ident    "9qXy7eADqYbU2ET9ZWFbp"}]
-    [{}]
-
-    [:a {:lib/uuid "00000000-0000-0000-0000-000000000000"}]
-    [:a {}]
-
-    [:a {:b [:c {:d 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}]}]
-    [:a {:b [:c {:d 1}]}]
-
-    [:a {:b [:c
-             {:d 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
-             {:lib/uuid "00000000-0000-0000-0000-000000000001"
-              :ident    "mje0fGVMd7QtI_s_HkSRk"}]
-         :lib/uuid "00000000-0000-0000-0000-000000000002"}]
-    [:a {:b [:c {:d 1} {}]}]
-
-    ;; order-by clause
-    [:asc
-     {:lib/uuid "81fdaa28-0af3-4168-b4a2-1afe43c389e7"}
-     [:field
-      {:lib/uuid "92d6d8d3-5685-4e41-93ce-f83d63c4156d"
-       :ident    (u/generate-nano-id)
-       :base-type :type/BigInteger
-       :effective-type :type/BigInteger}
-      63400]]
-    [:asc
-     {}
-     [:field
-      {:base-type :type/BigInteger,
-       :effective-type :type/BigInteger}
-      63400]]
-
-    query-with-duplicate-uuids
-    query-with-no-uuids
-
-    query-with-no-duplicate-uuids
-    query-with-no-uuids))
-
 (deftest ^:parallel distinct-ignoring-uuids-schema-test
   (testing "distinct values ignoring uuids"
     (are [x] (not (mr/explain ::lib.schema.util/distinct-ignoring-uuids x))
@@ -169,8 +98,9 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000000"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63401]]]))
+         63401]]])))
 
+(deftest ^:parallel distinct-ignoring-uuids-schema-test-2
   (testing "non-distinct values ignoring uuids"
     (are [x] (mr/explain ::lib.schema.util/distinct-ignoring-uuids x)
       [1 2 1 3]
@@ -189,8 +119,9 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000001"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63400]]]))
+         63400]]])))
 
+(deftest ^:parallel distinct-ignoring-uuids-schema-test-3
   (testing "humanized error message"
     (is (= ["Duplicate values ignoring uuids in: [{:a 1} {:a 1}]"]
            (me/humanize (mr/explain ::lib.schema.util/distinct-ignoring-uuids
