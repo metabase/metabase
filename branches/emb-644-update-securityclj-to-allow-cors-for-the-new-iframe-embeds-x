@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin",
     "hash": "a81c1d753cde1b4edb799c9cbfe0d5fb9ba83ec6"
+  },
+  "upstream": {
+    "branch": "emb-644-update-securityclj-to-allow-cors-for-the-new-iframe-embeds-x"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 61416,
+        "gqlID": "PR_kwDOAczgH86gdFUr"
+      }
+    }
   }
 }
