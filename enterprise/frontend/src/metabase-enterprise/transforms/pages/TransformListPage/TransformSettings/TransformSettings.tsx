@@ -30,7 +30,7 @@ import {
   transformQueryUrl,
 } from "../../../utils/urls";
 
-import { SCHEDULE_OPTIONS } from "./constants";
+import { ScheduleSettings } from "./ScheduleSettings";
 
 type TransformSettingsProps = {
   transform: Transform;
@@ -250,12 +250,8 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">
             <Title order={4}>{t`Schedule`}</Title>
-            <Select
-              label={t`How often should this transform run?`}
-              data={SCHEDULE_OPTIONS}
+            <ScheduleSettings
               value={transform.schedule}
-              placeholder={t`Never, I'll do this manually if I need to`}
-              clearable
               onChange={handleScheduleChange}
             />
           </Stack>

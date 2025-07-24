@@ -1,6 +1,22 @@
 import { t } from "ttag";
 
-export const SCHEDULE_OPTIONS = [
+export const DEFAULT_SCHEDULE = "0 0 * * * ? *";
+
+export const EMPTY_OPTION = {
+  value: "none",
+  get label() {
+    return t`Never`;
+  },
+};
+
+export const CUSTOM_OPTION = {
+  value: "custom",
+  get label() {
+    return t`Custom`;
+  },
+};
+
+export const SHORTCUT_OPTIONS = [
   {
     value: "0 0 0/1 * * ? *",
     get label() {
@@ -38,3 +54,5 @@ export const SCHEDULE_OPTIONS = [
     },
   },
 ];
+
+export const ALL_OPTIONS = [EMPTY_OPTION, ...SHORTCUT_OPTIONS, CUSTOM_OPTION];

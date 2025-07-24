@@ -58,7 +58,9 @@ export function TransformListPage({ params }: TransformListPageProps) {
           maw={COLUMN_CONFIG.item.max}
         >
           <LoadingAndErrorWrapper loading={isItemLoading} error={itemError}>
-            {transform != null && <TransformSettings transform={transform} />}
+            {transform != null && (
+              <TransformSettings key={transform.id} transform={transform} />
+            )}
           </LoadingAndErrorWrapper>
         </Flex>
       )}
