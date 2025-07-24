@@ -36,6 +36,9 @@ export type InteractiveQuestionProps = Omit<
   "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
 >;
 
+/**
+ * @interface
+ */
 export type InteractiveQuestionComponents = {
   BackButton: typeof BackButton;
   Filter: typeof Filter;
