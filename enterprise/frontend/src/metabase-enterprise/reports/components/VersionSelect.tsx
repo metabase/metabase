@@ -31,7 +31,7 @@ export function VersionSelect({
     [reportId, dispatch],
   );
 
-  if (!currentVersion) {
+  if (!currentVersion || reportId === "new") {
     return null;
   }
 

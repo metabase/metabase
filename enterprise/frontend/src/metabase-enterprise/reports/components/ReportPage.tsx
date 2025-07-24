@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
+import { usePrevious } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
@@ -47,6 +48,7 @@ export const ReportPage = ({
   const [updateReport] = useUpdateReportMutation();
   const [sendToast] = useToast();
   const store = useStore();
+  const previousReportId = usePrevious(reportId);
 
   const selectedVersion = location?.query?.version
     ? Number(location.query.version)
@@ -61,6 +63,7 @@ export const ReportPage = ({
     reportTitle,
     setReportTitle,
     reportContent,
+    setReportContent,
     questionRefs,
     updateQuestionRefs,
   } = useReportState(report);
@@ -98,7 +101,19 @@ export const ReportPage = ({
     if (report && currentEditorContent === null) {
       setCurrentEditorContent(report.document || "");
     }
-  }, [report, currentEditorContent]);
+
+    if (reportId === "new" && previousReportId !== "new") {
+      setReportTitle("");
+      setReportContent("");
+    }
+  }, [
+    report,
+    currentEditorContent,
+    reportId,
+    setReportTitle,
+    setReportContent,
+    previousReportId,
+  ]);
 
   const hasUnsavedChanges = useCallback(() => {
     // Don't show save button until content is initialized
@@ -151,7 +166,7 @@ export const ReportPage = ({
         document: markdown as string,
       };
 
-      const result = await (report?.id
+      const result = await (reportId !== "new" && report?.id
         ? updateReport({ ...newReportData, id: report.id }).then((response) => {
             if (response.data) {
               dispatch(
@@ -190,6 +205,7 @@ export const ReportPage = ({
     dispatch,
     store,
     commitVisualizationChanges,
+    reportId,
   ]);
 
   const handleToggleSidebar = useCallback(async () => {
