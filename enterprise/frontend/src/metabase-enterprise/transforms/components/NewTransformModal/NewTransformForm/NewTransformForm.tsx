@@ -19,7 +19,7 @@ import { Flex, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import type { CreateTransformRequest, DatasetQuery } from "metabase-types/api";
 
-import { transformUrl } from "../../../../utils/urls";
+import { transformUrl } from "../../../utils/urls";
 
 type NewTransformFormProps = {
   query: DatasetQuery;

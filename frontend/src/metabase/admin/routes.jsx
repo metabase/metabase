@@ -98,22 +98,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             />
           </Route>
           <Route component={DataModel}>
-            <Route
-              path="transforms"
-              component={PLUGIN_TRANSFORMS.TransformListPage}
-            />
-            <Route
-              path="transforms/new"
-              component={PLUGIN_TRANSFORMS.NewTransformPage}
-            />
-            <Route
-              path="transforms/:transformId"
-              component={PLUGIN_TRANSFORMS.TransformListPage}
-            />
-            <Route
-              path="transforms/:transformId/query"
-              component={PLUGIN_TRANSFORMS.TransformQueryPage}
-            />
+            {PLUGIN_TRANSFORMS.getTransformRoutes()}
           </Route>
           <Redirect
             from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
