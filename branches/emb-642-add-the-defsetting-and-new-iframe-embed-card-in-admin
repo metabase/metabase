@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-655-show-anti-abuse-message-and-auto-enable-embedding-in-embed",
-    "hash": "738c8d04995a7d229c35e45a0de7290eadeaaeb2"
+    "hash": "8843fd2db0f1b326c0b1f6c1dda49c4132baa1f1"
   },
   "upstream": {
     "branch": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin"
