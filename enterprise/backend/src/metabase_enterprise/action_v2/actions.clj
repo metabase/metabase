@@ -40,7 +40,6 @@
                                    input+row (map vector inputs coerced)]
                          input+row)]
     (for [input inputs]
-
       (u/prog1 (assoc input :row (input->coerced input))
         (log/tracef "coerce row %s => %s" (:row input) (:row <>))))))
 
