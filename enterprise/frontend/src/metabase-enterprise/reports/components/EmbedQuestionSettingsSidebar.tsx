@@ -33,21 +33,25 @@ import {
 
 interface EmbedQuestionSettingsSidebarProps {
   questionId: number;
+  snapshotId: number;
   onClose: () => void;
 }
 
 export const EmbedQuestionSettingsSidebar = ({
   questionId,
+  snapshotId,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
   const card = useSelector((state) => getReportCard(state, questionId));
-  const series = useSelector((state) => getReportRawSeries(state, questionId));
+  const series = useSelector((state) =>
+    getReportRawSeries(state, questionId, snapshotId),
+  );
   const isCardLoading = useSelector((state) =>
     getIsLoadingCard(state, questionId),
   );
   const isResultsLoading = useSelector((state) =>
-    getIsLoadingDataset(state, questionId),
+    getIsLoadingDataset(state, snapshotId),
   );
 
   const question = useMemo(
@@ -56,8 +60,9 @@ export const EmbedQuestionSettingsSidebar = ({
   );
 
   const dataset =
-    useSelector((state) => getReportRawSeries(state, questionId))?.[0]?.data ||
-    null;
+    useSelector((state) =>
+      getReportRawSeries(state, questionId, snapshotId),
+    )?.[0]?.data || null;
 
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
     return getSensibleVisualizations({ result: dataset });
@@ -89,7 +94,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
   const selectedElem = useMemo(
     () =>
-      getVisualizationItems(card?.display ?? "table") ??
+      getVisualizationItems((card?.display as CardDisplayType) ?? "table") ??
       sensibleItems[0] ??
       nonsensibleItems[0],
     [card?.display, sensibleItems, nonsensibleItems],

@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import type { Card, CardId } from "metabase-types/api";
 
-// Use a more flexible typing approach that works with the existing State interface
 export const getReportsState = (state: any) => state.plugins?.reports;
 
 export const getReportCard = createSelector(
@@ -11,14 +10,16 @@ export const getReportCard = createSelector(
 );
 
 export const getReportDataset = createSelector(
-  [getReportsState, (_, cardId: CardId) => cardId],
-  (reports, cardId) => reports.datasets[cardId],
+  [getReportsState, (_, snapshotId: number) => snapshotId],
+  (reports, snapshotId) => reports.datasets[snapshotId],
 );
 
 export const getReportQuestionData = createSelector(
   [
-    (state: any, cardId: CardId) => getReportCard(state, cardId),
-    (state: any, cardId: CardId) => getReportDataset(state, cardId),
+    (state: any, cardId: CardId, _snapshotId: number) =>
+      getReportCard(state, cardId),
+    (state: any, _cardId: CardId, snapshotId: number) =>
+      getReportDataset(state, snapshotId),
   ],
   (card, dataset) => (card && dataset ? { card, dataset } : null),
 );
@@ -29,8 +30,9 @@ export const getIsLoadingCard = createSelector(
 );
 
 export const getIsLoadingDataset = createSelector(
-  [getReportsState, (_, cardId: CardId) => cardId],
-  (reports, cardId): boolean => reports.loadingDatasets[cardId] ?? false,
+  [getReportsState, (_, snapshotId: number) => snapshotId],
+  (reports, snapshotId): boolean =>
+    reports.loadingDatasets[snapshotId] ?? false,
 );
 
 export const getSelectedQuestionId = createSelector(
@@ -45,8 +47,10 @@ export const getIsSidebarOpen = createSelector(
 
 export const getReportRawSeries = createSelector(
   [
-    (state: any, cardId: CardId) => getReportCard(state, cardId),
-    (state: any, cardId: CardId) => getReportDataset(state, cardId),
+    (state: any, cardId: CardId, _snapshotId: number) =>
+      getReportCard(state, cardId),
+    (state: any, _cardId: CardId, snapshotId: number) =>
+      getReportDataset(state, snapshotId),
   ],
   (card, dataset) => {
     if (!card || !dataset?.data) {
@@ -54,4 +58,10 @@ export const getReportRawSeries = createSelector(
     }
     return [{ card, data: dataset.data }];
   },
+);
+
+export const getHasModifiedVisualizationSettings = createSelector(
+  [getReportsState, (_state: any, cardId: CardId) => cardId],
+  (reportsState, cardId) =>
+    reportsState?.modifiedVisualizationSettings?.[cardId] ?? false,
 );

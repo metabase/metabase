@@ -2,6 +2,7 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { reportApi } from "metabase-enterprise/api";
 import type {
   Card,
   CardDisplayType,
@@ -11,11 +12,12 @@ import type {
 } from "metabase-types/api";
 export interface ReportsState {
   cards: Record<CardId, Card>;
-  datasets: Record<CardId, Dataset>;
+  datasets: Record<number, Dataset>;
   loadingCards: Record<CardId, boolean>;
-  loadingDatasets: Record<CardId, boolean>;
+  loadingDatasets: Record<number, boolean>;
   selectedQuestionId: CardId | null;
   isSidebarOpen: boolean;
+  modifiedVisualizationSettings: Record<CardId, boolean>;
 }
 
 const initialState: ReportsState = {
@@ -25,6 +27,7 @@ const initialState: ReportsState = {
   loadingDatasets: {},
   selectedQuestionId: null,
   isSidebarOpen: false,
+  modifiedVisualizationSettings: {},
 };
 
 export const fetchReportCard = createAsyncThunk<Card, CardId>(
@@ -40,36 +43,62 @@ export const fetchReportCard = createAsyncThunk<Card, CardId>(
   },
 );
 
-export const fetchReportCardQuery = createAsyncThunk<
-  { cardId: CardId; data: Dataset },
-  CardId
->("reports/fetchCardQuery", async (cardId, { dispatch }) => {
-  const result = await dispatch(
-    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-  );
-  if (result.data != null) {
-    return { cardId, data: result.data };
-  }
-  throw new Error("Failed to fetch card query");
-});
+export const fetchReportSnapshot = createAsyncThunk<Dataset, number>(
+  "reports/fetchSnapshot",
+  async (snapshotId, { dispatch }) => {
+    const result = await dispatch(
+      reportApi.endpoints.getReportSnapshot.initiate(snapshotId),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch snapshot");
+  },
+);
 
 export const fetchReportQuestionData = createAsyncThunk<
   { card: Card; dataset: Dataset },
-  CardId
->("reports/fetchQuestionData", async (cardId, { dispatch }) => {
-  const [cardResult, queryResult] = await Promise.all([
-    dispatch(fetchReportCard(cardId)),
-    dispatch(fetchReportCardQuery(cardId)),
-  ]);
+  { cardId: CardId; snapshotId: number }
+>(
+  "reports/fetchQuestionData",
+  async ({ cardId, snapshotId }, { dispatch, getState, rejectWithValue }) => {
+    const state = getState() as any;
+    const existingCard = state.plugins?.reports?.cards[cardId];
+    const existingDataset = state.plugins?.reports?.datasets[snapshotId];
 
-  if (cardResult.payload && queryResult.payload) {
-    return {
-      card: cardResult.payload as Card,
-      dataset: (queryResult.payload as any).data,
-    };
-  }
-  throw new Error("Failed to fetch question data");
-});
+    const promises = [];
+    if (!existingCard) {
+      promises.push(dispatch(fetchReportCard(cardId)));
+    }
+    if (!existingDataset) {
+      promises.push(dispatch(fetchReportSnapshot(snapshotId)));
+    }
+
+    if (promises.length > 0) {
+      const results = await Promise.all(promises);
+
+      for (const result of results) {
+        if (result.type.endsWith("/rejected")) {
+          return rejectWithValue("Failed to fetch required data");
+        }
+      }
+    }
+
+    const finalState = getState() as any;
+    const card = finalState.plugins?.reports?.cards[cardId] || existingCard;
+    const dataset =
+      finalState.plugins?.reports?.datasets[snapshotId] || existingDataset;
+
+    if (card && dataset) {
+      return {
+        card,
+        dataset,
+      };
+    }
+
+    return rejectWithValue("Card or dataset not found after fetching");
+  },
+);
 
 const reportsSlice = createSlice({
   name: "reports",
@@ -77,10 +106,10 @@ const reportsSlice = createSlice({
   reducers: {
     selectQuestion: (state, action: PayloadAction<CardId | null>) => {
       state.selectedQuestionId = action.payload;
-      // Only auto-open sidebar when selecting a question, not when deselecting
-      if (action.payload !== null) {
-        state.isSidebarOpen = true;
-      }
+    },
+    openVizSettingsSidebar: (state, action: PayloadAction<CardId>) => {
+      state.selectedQuestionId = action.payload;
+      state.isSidebarOpen = true;
     },
     toggleSidebar: (state) => {
       state.isSidebarOpen = !state.isSidebarOpen;
@@ -96,7 +125,6 @@ const reportsSlice = createSlice({
       }>,
     ) => {
       const { cardId, settings } = action.payload;
-      // Directly update the card's visualization settings
       if (state.cards[cardId]) {
         state.cards[cardId] = {
           ...state.cards[cardId],
@@ -105,14 +133,12 @@ const reportsSlice = createSlice({
             ...settings,
           },
         };
+        state.modifiedVisualizationSettings[cardId] = true;
       }
     },
     updateVisualizationType: (
       state,
-      action: PayloadAction<{
-        cardId: CardId;
-        display: CardDisplayType;
-      }>,
+      action: PayloadAction<{ cardId: CardId; display: CardDisplayType }>,
     ) => {
       const { cardId, display } = action.payload;
       if (state.cards[cardId]) {
@@ -120,19 +146,24 @@ const reportsSlice = createSlice({
           ...state.cards[cardId],
           display,
         };
+        state.modifiedVisualizationSettings[cardId] = true;
       }
+    },
+    clearModifiedVisualizationSettings: (
+      state,
+      action: PayloadAction<CardId>,
+    ) => {
+      delete state.modifiedVisualizationSettings[action.payload];
     },
     resetReports: () => initialState,
   },
   extraReducers: (builder) => {
     builder
-      // Handle fetchReportCard
       .addCase(fetchReportCard.pending, (state, action) => {
         state.loadingCards[action.meta.arg] = true;
       })
       .addCase(fetchReportCard.fulfilled, (state, action) => {
         const card = action.payload;
-        // Preserve existing visualization settings if we already have them
         const existingCard = state.cards[card.id];
         if (existingCard?.visualization_settings) {
           card.visualization_settings = {
@@ -146,53 +177,52 @@ const reportsSlice = createSlice({
       .addCase(fetchReportCard.rejected, (state, action) => {
         state.loadingCards[action.meta.arg] = false;
       })
-      // Handle fetchReportCardQuery
-      .addCase(fetchReportCardQuery.pending, (state, action) => {
+      .addCase(fetchReportSnapshot.pending, (state, action) => {
         state.loadingDatasets[action.meta.arg] = true;
       })
-      .addCase(fetchReportCardQuery.fulfilled, (state, action) => {
-        const { cardId, data } = action.payload;
-        state.datasets[cardId] = data;
-        state.loadingDatasets[cardId] = false;
+      .addCase(fetchReportSnapshot.fulfilled, (state, action) => {
+        const dataset = action.payload;
+        const snapshotId = action.meta.arg;
+        state.datasets[snapshotId] = dataset;
+        state.loadingDatasets[snapshotId] = false;
       })
-      .addCase(fetchReportCardQuery.rejected, (state, action) => {
+      .addCase(fetchReportSnapshot.rejected, (state, action) => {
         state.loadingDatasets[action.meta.arg] = false;
       })
-      // Handle fetchReportQuestionData
       .addCase(fetchReportQuestionData.pending, (state, action) => {
-        const cardId = action.meta.arg;
-        state.loadingCards[cardId] = true;
-        state.loadingDatasets[cardId] = true;
+        const { cardId, snapshotId } = action.meta.arg;
+        if (!state.cards[cardId]) {
+          state.loadingCards[cardId] = true;
+        }
+        if (!state.datasets[snapshotId]) {
+          state.loadingDatasets[snapshotId] = true;
+        }
       })
       .addCase(fetchReportQuestionData.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
-        // Preserve existing visualization settings if we already have them
-        const existingCard = state.cards[card.id];
-        if (existingCard?.visualization_settings) {
-          card.visualization_settings = {
-            ...card.visualization_settings,
-            ...existingCard.visualization_settings,
-          };
-        }
+        const { snapshotId } = action.meta.arg;
+
         state.cards[card.id] = card;
-        state.datasets[card.id] = dataset;
+        state.datasets[snapshotId] = dataset;
         state.loadingCards[card.id] = false;
-        state.loadingDatasets[card.id] = false;
+        state.loadingDatasets[snapshotId] = false;
       })
       .addCase(fetchReportQuestionData.rejected, (state, action) => {
-        const cardId = action.meta.arg;
+        const { cardId, snapshotId } = action.meta.arg;
         state.loadingCards[cardId] = false;
-        state.loadingDatasets[cardId] = false;
+        state.loadingDatasets[snapshotId] = false;
       });
   },
 });
 
 export const {
   selectQuestion,
+  openVizSettingsSidebar,
   toggleSidebar,
   setSidebarOpen,
   updateVizSettings,
   updateVisualizationType,
+  clearModifiedVisualizationSettings,
   resetReports,
 } = reportsSlice.actions;
 

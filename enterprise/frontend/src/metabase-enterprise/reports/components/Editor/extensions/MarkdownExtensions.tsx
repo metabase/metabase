@@ -1,5 +1,6 @@
 import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { Editor as TiptapEditor } from "@tiptap/react";
 
 import { STATIC_QUESTION_REGEX } from "./QuestionStatic/QuestionStatic";
 
@@ -10,13 +11,13 @@ export const MarkdownSerializer = Extension.create({
     return {
       getMarkdown:
         () =>
-        ({ editor }) => {
+        ({ editor }: { editor: TiptapEditor }) => {
           const { doc } = editor.state;
           return serializeToMarkdown(doc);
         },
       setMarkdown:
         (markdown: string) =>
-        ({ commands }) => {
+        ({ commands }: { commands: TiptapEditor["commands"] }) => {
           const html = parseMarkdownToHTML(markdown);
           return commands.setContent(html);
         },
@@ -42,11 +43,10 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
         if (child.type.name === "text") {
           paragraphContent += child.text;
         } else if (child.type.name === "questionEmbed") {
-          if (child.attrs.customName) {
-            paragraphContent += `{{card:${child.attrs.questionId}:${child.attrs.customName}}}`;
-          } else {
-            paragraphContent += `{{card:${child.attrs.questionId}}}`;
-          }
+          const { questionId, snapshotId, customName } = child.attrs;
+          paragraphContent += customName
+            ? `{{card:${questionId}:${snapshotId}:${customName}}}`
+            : `{{card:${questionId}:${snapshotId}}}`;
         } else if (child.type.name === "questionStatic") {
           paragraphContent += `{{static-card:${child.attrs.questionName}:series-${child.attrs.series}:viz-${child.attrs.viz}:display-${child.attrs.display}}}`;
         }
@@ -69,11 +69,10 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
       });
       markdown += "\n";
     } else if (node.type.name === "questionEmbed") {
-      if (node.attrs.customName) {
-        markdown += `{{card:${node.attrs.questionId}:${node.attrs.customName}}}\n\n`;
-      } else {
-        markdown += `{{card:${node.attrs.questionId}}}\n\n`;
-      }
+      const { questionId, snapshotId, customName } = node.attrs;
+      markdown += customName
+        ? `{{card:${questionId}:${snapshotId}:${customName}}}\n\n`
+        : `{{card:${questionId}:${snapshotId}}}\n\n`;
     } else if (node.type.name === "questionStatic") {
       markdown += `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}`;
     } else if (node.type.name === "codeBlock") {
@@ -88,13 +87,13 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
 
 export function parseMarkdownToHTML(markdown: string): string {
   let html = markdown
-    // Match both {{card:id}} and {{card:id:custom name}}
-    .replace(/{{card:(\d+)(?::([^}]+))?}}/g, (_match, id, customName) => {
-      if (customName) {
-        return `<div data-type="question-embed" data-question-id="${id}" data-custom-name="${customName}" data-model="card"></div>`;
-      }
-      return `<div data-type="question-embed" data-question-id="${id}" data-model="card"></div>`;
-    })
+    .replace(
+      /{{card:(\d+):(\d+)(?::([^}]+))?}}/g,
+      (_match, id, snapshotId, customName) =>
+        customName
+          ? `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-custom-name="${customName}" data-model="card"></div>`
+          : `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-model="card"></div>`,
+    )
     .replace(
       STATIC_QUESTION_REGEX,
       (_match, questionName, series, viz, display) =>

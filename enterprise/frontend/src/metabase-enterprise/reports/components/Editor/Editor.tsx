@@ -1,4 +1,8 @@
-import { EditorContent, useEditor } from "@tiptap/react";
+import {
+  EditorContent,
+  type Editor as TiptapEditor,
+  useEditor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import type React from "react";
 import { useEffect } from "react";
@@ -14,9 +18,15 @@ import {
 import { QuestionEmbed } from "./extensions/QuestionEmbed";
 import { QuestionStaticNode } from "./extensions/QuestionStatic/QuestionStatic";
 
+export interface QuestionRef {
+  id: number;
+  name: string;
+  snapshotId?: number;
+}
+
 interface EditorProps {
-  onEditorReady?: (editor: any) => void;
-  onQuestionRefsChange?: (refs: Array<{ id: number; name: string }>) => void;
+  onEditorReady?: (editor: TiptapEditor) => void;
+  onQuestionRefsChange?: (refs: QuestionRef[]) => void;
   content: string;
   onQuestionSelect?: (questionId: number | null) => void;
 }
@@ -44,8 +54,10 @@ export const Editor: React.FC<EditorProps> = ({
 
   // Update editor content when content prop changes
   useEffect(() => {
-    if (editor) {
-      editor.commands.setMarkdown(content);
+    if (editor && content) {
+      (
+        editor.commands as unknown as { setMarkdown: (content: string) => void }
+      ).setMarkdown(content);
     }
   }, [editor, content]);
 
@@ -71,7 +83,9 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     if (editor && onEditorReady) {
       // Add getMarkdown method to storage for easy access
-      editor.storage.markdown = {
+      (
+        editor.storage as unknown as { markdown: { getMarkdown: () => string } }
+      ).markdown = {
         getMarkdown: () => {
           const markdown = serializeToMarkdown(editor.state.doc);
           return markdown;
@@ -139,7 +153,25 @@ export const Editor: React.FC<EditorProps> = ({
             target.classList.contains(styles.editorContent) ||
             target.classList.contains("ProseMirror")
           ) {
-            editor.commands.focus("end");
+            const clickY = e.clientY;
+            const proseMirrorElement = target.querySelector(".ProseMirror");
+
+            if (proseMirrorElement) {
+              const proseMirrorRect =
+                proseMirrorElement.getBoundingClientRect();
+              const isClickBelowContent = clickY > proseMirrorRect.bottom;
+
+              if (isClickBelowContent) {
+                // Only move to end if clicking below the actual content
+                editor.commands.focus("end");
+              } else {
+                // Just focus without changing cursor position for clicks in padding areas
+                editor.commands.focus();
+              }
+            } else {
+              // Fallback: just focus without position change
+              editor.commands.focus();
+            }
           }
         }}
       >
@@ -150,13 +182,14 @@ export const Editor: React.FC<EditorProps> = ({
   );
 };
 
-const getRefs = (editor: any) => {
-  const refs: Array<{ id: number; name: string }> = [];
+const getRefs = (editor: TiptapEditor): QuestionRef[] => {
+  const refs: QuestionRef[] = [];
   editor.state.doc.descendants((node: any) => {
     if (node.type.name === "questionEmbed") {
       refs.push({
         id: node.attrs.questionId,
         name: node.attrs.customName || node.attrs.questionName,
+        snapshotId: node.attrs.snapshotId,
       });
     }
   });

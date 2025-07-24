@@ -4,10 +4,11 @@ import { memo, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
+import { openVizSettingsSidebar } from "../../../../reports.slice";
 import {
   getIsLoadingCard,
   getIsLoadingDataset,
@@ -19,6 +20,7 @@ import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import styles from "./QuestionEmbedNode.module.css";
 
 export interface QuestionEmbedAttributes {
+  snapshotId?: number;
   questionId: number;
   questionName: string;
   customName?: string;
@@ -35,6 +37,13 @@ export const QuestionEmbedNode = Node.create<{
 
   addAttributes() {
     return {
+      snapshotId: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-snapshot-id")
+            ? parseInt(element.getAttribute("data-snapshot-id") || "0")
+            : null,
+      },
       questionId: {
         default: null,
         parseHTML: (element) =>
@@ -68,6 +77,7 @@ export const QuestionEmbedNode = Node.create<{
         HTMLAttributes,
         {
           "data-type": "question-embed",
+          "data-snapshot-id": node.attrs.snapshotId,
           "data-question-id": node.attrs.questionId,
           "data-question-name": node.attrs.questionName,
           "data-model": node.attrs.model,
@@ -75,16 +85,16 @@ export const QuestionEmbedNode = Node.create<{
         this.options.HTMLAttributes,
       ),
       node.attrs.customName
-        ? `{{card:${node.attrs.questionId}:${node.attrs.customName}}}`
-        : `{{card:${node.attrs.questionId}}}`,
+        ? `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`
+        : `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}}}`,
     ];
   },
 
   renderText({ node }) {
     if (node.attrs.customName) {
-      return `{{card:${node.attrs.questionId}:${node.attrs.customName}}}`;
+      return `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`;
     }
-    return `{{card:${node.attrs.questionId}}}`;
+    return `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}}}`;
   },
 
   addNodeView() {
@@ -106,16 +116,18 @@ export const QuestionEmbedNode = Node.create<{
 
 export const QuestionEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
-    const { questionId, questionName, customName } = node.attrs;
+    const { snapshotId, questionId, questionName, customName } = node.attrs;
+    const dispatch = useDispatch();
+
     const card = useSelector((state) => getReportCard(state, questionId));
     const rawSeries = useSelector((state) =>
-      getReportRawSeries(state, questionId),
+      getReportRawSeries(state, questionId, snapshotId),
     );
     const isLoadingCard = useSelector((state) =>
       getIsLoadingCard(state, questionId),
     );
     const isLoadingDataset = useSelector((state) =>
-      getIsLoadingDataset(state, questionId),
+      getIsLoadingDataset(state, snapshotId),
     );
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(customName || "");
@@ -204,6 +216,10 @@ export const QuestionEmbedComponent = memo(
           })
           .run();
       }
+    };
+
+    const handleEditVisualizationSettings = () => {
+      dispatch(openVizSettingsSidebar(questionId));
     };
 
     if (isLoading) {
@@ -308,9 +324,12 @@ export const QuestionEmbedComponent = memo(
                       </Box>
                     </Menu.Target>
                     <Menu.Dropdown>
+                      <Menu.Item onClick={handleEditVisualizationSettings}>
+                        {t`Edit Visualization`}
+                      </Menu.Item>
                       {isGuiQuestion && (
                         <Menu.Item onClick={() => setIsModifyModalOpen(true)}>
-                          {t`Modify question`}
+                          {t`Edit Query`}
                         </Menu.Item>
                       )}
                       <Menu.Item onClick={handleReplaceQuestion}>
@@ -348,10 +367,11 @@ export const QuestionEmbedComponent = memo(
             card={card}
             isOpen={isModifyModalOpen}
             onClose={() => setIsModifyModalOpen(false)}
-            onSave={(newCard) => {
+            onSave={(result) => {
               updateAttributes({
-                questionId: newCard.id,
-                questionName: newCard.name,
+                questionId: result.card_id,
+                questionName: result.name,
+                snapshotId: result.snapshot_id,
                 customName: null,
               });
               setIsModifyModalOpen(false);
@@ -365,6 +385,7 @@ export const QuestionEmbedComponent = memo(
     // Custom comparison function to prevent re-renders
     // Only re-render if these specific props change
     return (
+      prevProps.node.attrs.snapshotId === nextProps.node.attrs.snapshotId &&
       prevProps.node.attrs.questionId === nextProps.node.attrs.questionId &&
       prevProps.node.attrs.questionName === nextProps.node.attrs.questionName &&
       prevProps.node.attrs.customName === nextProps.node.attrs.customName &&

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import {
   ActionIcon,
   Box,
@@ -18,19 +18,26 @@ import {
 } from "metabase/ui";
 import {
   useCreateReportMutation,
+  useCreateReportSnapshotMutation,
   useGetReportQuery,
   useGetReportVersionsQuery,
   useUpdateReportMutation,
 } from "metabase-enterprise/api";
 
 import {
+  clearModifiedVisualizationSettings,
   fetchReportQuestionData,
   selectQuestion,
   toggleSidebar,
 } from "../reports.slice";
-import { getIsSidebarOpen, getSelectedQuestionId } from "../selectors";
+import {
+  getHasModifiedVisualizationSettings,
+  getIsSidebarOpen,
+  getReportCard,
+  getSelectedQuestionId,
+} from "../selectors";
 
-import { Editor } from "./Editor";
+import { Editor, type QuestionRef } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
 import { UsedContentSidebar } from "./UsedContent";
@@ -47,18 +54,16 @@ export const ReportPage = ({
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const [editorInstance, setEditorInstance] = useState<any>(null);
-  const [questionRefs, setQuestionRefs] = useState<
-    Array<{ id: number; name: string }>
-  >([]);
+  const [questionRefs, setQuestionRefs] = useState<QuestionRef[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
   const [createReport] = useCreateReportMutation();
   const [updateReport] = useUpdateReportMutation();
+  const [createReportSnapshot] = useCreateReportSnapshotMutation();
   const [sendToast] = useToast();
 
   const selectedVersion = location?.query?.version
     ? Number(location.query.version)
     : undefined;
-
   const { data: report, isLoading: isReportLoading } = useGetReportQuery(
     reportId && reportId !== "new"
       ? { id: reportId, version: selectedVersion }
@@ -67,25 +72,20 @@ export const ReportPage = ({
 
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
-
-  // Centralized data loading for question embeds
-  const questionIds = useMemo(
-    () =>
-      questionRefs
-        .map((ref) => ref.id)
-        .sort()
-        .join(","),
-    [questionRefs],
-  );
+  const store = useStore();
 
   useEffect(() => {
-    if (questionIds) {
-      const ids = questionIds.split(",").map((id) => parseInt(id));
-      ids.forEach((id) => {
-        dispatch(fetchReportQuestionData(id));
-      });
-    }
-  }, [questionIds, dispatch]);
+    questionRefs.forEach((ref) => {
+      if (ref.snapshotId) {
+        dispatch(
+          fetchReportQuestionData({
+            cardId: ref.id,
+            snapshotId: ref.snapshotId,
+          }),
+        );
+      }
+    });
+  }, [questionRefs, dispatch]);
 
   useEffect(() => {
     if (report) {
@@ -94,48 +94,114 @@ export const ReportPage = ({
     }
   }, [report]);
 
-  const handleSave = useCallback(() => {
+  const commitVisualizationChanges = useCallback(
+    async (cardId: number) => {
+      const state = store.getState();
+      const card = getReportCard(state, cardId);
+      const hasModified = getHasModifiedVisualizationSettings(state, cardId);
+
+      if (!card || !hasModified || !editorInstance) {
+        return;
+      }
+
+      try {
+        const { id, created_at, updated_at, ...cardWithoutExcluded } = card;
+        const result = await createReportSnapshot({
+          ...cardWithoutExcluded,
+          name: card.name,
+        }).unwrap();
+
+        dispatch(clearModifiedVisualizationSettings(cardId));
+        const { doc } = editorInstance.state;
+        const tr = editorInstance.state.tr;
+
+        doc.descendants((node: any, pos: number) => {
+          if (
+            node.type.name === "questionEmbed" &&
+            node.attrs.questionId === cardId
+          ) {
+            const newAttrs = {
+              ...node.attrs,
+              questionId: result.card_id,
+              snapshotId: result.snapshot_id,
+            };
+            tr.setNodeMarkup(pos, undefined, newAttrs);
+            return false;
+          }
+        });
+
+        if (tr.docChanged) {
+          editorInstance.view.dispatch(tr);
+        }
+
+        setQuestionRefs((prev) =>
+          prev.map((ref) =>
+            ref.id === cardId
+              ? { ...ref, id: result.card_id, snapshotId: result.snapshot_id }
+              : ref,
+          ),
+        );
+      } catch (error) {
+        console.error("Failed to commit visualization changes:", error);
+      }
+    },
+    [store, editorInstance, createReportSnapshot, dispatch],
+  );
+
+  const handleSave = useCallback(async () => {
     if (!editorInstance) {
       return;
     }
 
-    const markdown = editorInstance.storage.markdown?.getMarkdown() ?? "";
-    const newReportData = {
-      name: reportTitle,
-      document: markdown as string,
-    };
-    (async () => {
-      try {
-        const result = await (report?.id
-          ? updateReport({ ...newReportData, id: report.id }).then(
-              (response) => {
-                if (response.data) {
-                  dispatch(
-                    push(
-                      `/report/${response.data.id}?version=${response.data.version}`,
-                    ),
-                  );
-                }
-                return response.data;
-              },
-            )
-          : createReport(newReportData).then((response) => {
-              // replace state with the report id
-              if (response.data) {
-                dispatch(replace(`/report/${response.data.id}`));
-              }
-              return response.data;
-            }));
+    try {
+      const state = store.getState();
+      const modifiedCards = Object.keys(
+        (state as any).plugins?.reports?.modifiedVisualizationSettings || {},
+      )
+        .map(Number)
+        .filter((cardId) => getHasModifiedVisualizationSettings(state, cardId));
 
+      if (modifiedCards.length > 0) {
+        await Promise.all(
+          modifiedCards.map((cardId) => commitVisualizationChanges(cardId)),
+        );
+      }
+
+      const markdown = editorInstance.storage.markdown?.getMarkdown() ?? "";
+      const newReportData = {
+        name: reportTitle,
+        document: markdown as string,
+      };
+
+      const result = await (report?.id
+        ? updateReport({ ...newReportData, id: report.id }).then((response) => {
+            if (response.data) {
+              dispatch(
+                push(
+                  `/report/${response.data.id}?version=${response.data.version}`,
+                ),
+              );
+            }
+            return response.data;
+          })
+        : createReport(newReportData).then((response) => {
+            if (response.data) {
+              dispatch(replace(`/report/${response.data.id}`));
+            }
+            return response.data;
+          }));
+
+      if (result) {
         sendToast({
           message: report?.id
             ? t`Report v${result?.version} saved`
             : t`Report created`,
         });
-      } catch (error) {
-        sendToast({ message: t`Error saving report`, icon: "warning" });
       }
-    })();
+    } catch (error) {
+      console.error("Failed to save report:", error);
+      sendToast({ message: t`Error saving report`, icon: "warning" });
+    }
   }, [
     editorInstance,
     createReport,
@@ -144,10 +210,15 @@ export const ReportPage = ({
     reportTitle,
     sendToast,
     dispatch,
+    store,
+    commitVisualizationChanges,
   ]);
 
-  const handleToggleSidebar = useCallback(() => {
+  const handleToggleSidebar = useCallback(async () => {
+    // If we're closing the sidebar with a selected question, commit any pending changes
     if (isSidebarOpen && selectedQuestionId) {
+      await commitVisualizationChanges(selectedQuestionId);
+
       // When closing sidebar with a selected question, clear editor selection first
       if (editorInstance) {
         editorInstance.commands.focus("end");
@@ -155,7 +226,23 @@ export const ReportPage = ({
       dispatch(selectQuestion(null));
     }
     dispatch(toggleSidebar());
-  }, [dispatch, isSidebarOpen, selectedQuestionId, editorInstance]);
+  }, [
+    dispatch,
+    isSidebarOpen,
+    selectedQuestionId,
+    editorInstance,
+    commitVisualizationChanges,
+  ]);
+
+  const handleQuestionSelect = useCallback(
+    async (newQuestionId: number | null) => {
+      if (selectedQuestionId && selectedQuestionId !== newQuestionId) {
+        await commitVisualizationChanges(selectedQuestionId);
+      }
+      dispatch(selectQuestion(newQuestionId));
+    },
+    [selectedQuestionId, commitVisualizationChanges, dispatch],
+  );
 
   const handleQuestionClick = useCallback(
     (questionId: number) => {
@@ -163,7 +250,6 @@ export const ReportPage = ({
         return;
       }
 
-      // Find the question embed node in the document
       const { doc } = editorInstance.state;
       let targetPos = null;
 
@@ -178,15 +264,12 @@ export const ReportPage = ({
       });
 
       if (targetPos !== null) {
-        // Scroll to the node and highlight it
         editorInstance
           .chain()
           .focus()
           .setTextSelection(targetPos)
           .scrollIntoView()
           .run();
-
-        // Add highlight effect
         const domNode = editorInstance.view.nodeDOM(targetPos);
         if (domNode) {
           domNode.classList.add(styles.highlighted);
@@ -301,7 +384,7 @@ export const ReportPage = ({
               <Editor
                 onEditorReady={setEditorInstance}
                 onQuestionRefsChange={setQuestionRefs}
-                onQuestionSelect={(id) => dispatch(selectQuestion(id))}
+                onQuestionSelect={handleQuestionSelect}
                 content={reportContent}
               />
             )}
@@ -313,6 +396,10 @@ export const ReportPage = ({
             {selectedQuestionId ? (
               <EmbedQuestionSettingsSidebar
                 questionId={selectedQuestionId}
+                snapshotId={
+                  questionRefs.find((ref) => ref.id === selectedQuestionId)
+                    ?.snapshotId || 0
+                }
                 onClose={() => dispatch(selectQuestion(null))}
               />
             ) : (

@@ -16,11 +16,14 @@ import {
 } from "metabase/search/components/SearchResult";
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
 import { Box, Group, Icon, Popover } from "metabase/ui";
+import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 import type {
   RecentItem,
   SearchModel,
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
+
+import { fetchReportQuestionData } from "../../reports.slice";
 
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
@@ -67,6 +70,7 @@ export const QuestionMentionPlugin = ({
   editor,
 }: QuestionMentionPluginProps) => {
   const dispatch = useDispatch();
+  const [createSnapshot] = useCreateReportSnapshotMutation();
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
@@ -83,9 +87,7 @@ export const QuestionMentionPlugin = ({
     useListRecentsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const filteredRecents = recents
-    .filter(
-      (item: RecentItem) => item.model === "card" || item.model === "dataset",
-    )
+    .filter((item) => item.model === "card" || item.model === "dataset")
     .slice(0, 4);
 
   useEffect(() => {
@@ -131,8 +133,7 @@ export const QuestionMentionPlugin = ({
         return;
       }
 
-      // Only prevent default for arrow keys to stop cursor movement in editor
-      // Let the popover dropdown handle the actual navigation
+      // Prevent cursor movement in editor for arrow keys
       if (["ArrowUp", "ArrowDown"].includes(event.key)) {
         event.preventDefault();
         return;
@@ -150,7 +151,6 @@ export const QuestionMentionPlugin = ({
     editor.on("update", updateHandler);
     editor.on("selectionUpdate", updateHandler);
 
-    // Add keydown listener to the editor's DOM element
     const editorElement = editor.view.dom;
     editorElement.addEventListener("keydown", keydownHandler, true);
 
@@ -161,29 +161,45 @@ export const QuestionMentionPlugin = ({
     };
   }, [editor, mentionRange, showPopover]);
 
-  const handleSelect = (item: UnrestrictedLinkEntity) => {
+  const handleSelect = async (item: UnrestrictedLinkEntity) => {
     if (!mentionRange) {
       return;
     }
 
     const wrappedItem = Search.wrapEntity(item, dispatch);
 
-    editor
-      .chain()
-      .focus()
-      .deleteRange(mentionRange)
-      .insertContent({
-        type: "questionEmbed",
-        attrs: {
-          questionId: wrappedItem.id,
-          questionName: wrappedItem.name,
-          model: wrappedItem.model,
-        },
-      })
-      .run();
+    try {
+      const snapshot = await createSnapshot({
+        card_id: wrappedItem.id,
+      }).unwrap();
 
-    setShowPopover(false);
-    setMentionRange(null);
+      dispatch(
+        fetchReportQuestionData({
+          cardId: wrappedItem.id,
+          snapshotId: snapshot.snapshot_id,
+        }),
+      );
+
+      editor
+        .chain()
+        .focus()
+        .deleteRange(mentionRange)
+        .insertContent({
+          type: "questionEmbed",
+          attrs: {
+            snapshotId: snapshot.snapshot_id,
+            questionId: wrappedItem.id,
+            questionName: wrappedItem.name,
+            model: wrappedItem.model,
+          },
+        })
+        .run();
+
+      setShowPopover(false);
+      setMentionRange(null);
+    } catch (error) {
+      console.error("Failed to create snapshot:", error);
+    }
   };
 
   const handleRecentSelect = (item: RecentItem) => {
@@ -194,7 +210,6 @@ export const QuestionMentionPlugin = ({
     });
   };
 
-  // Position the virtual reference at cursor position
   useEffect(() => {
     if (virtualRef.current && anchorPos) {
       virtualRef.current.style.position = "fixed";
@@ -257,8 +272,8 @@ export const QuestionMentionPlugin = ({
 
       {modal === "question-picker" && (
         <QuestionPickerModal
-          onChange={(item) => {
-            handleSelect({
+          onChange={async (item) => {
+            await handleSelect({
               id: item.id,
               model: item.model,
               name: item.name,
