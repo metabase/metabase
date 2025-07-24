@@ -20,10 +20,7 @@ export function RouterTablePicker(props: TreePath) {
 
       // Update URL only when either opening a table or no table has been opened yet.
       // We want to keep user looking at a table when navigating databases/schemas.
-      const canUpdateUrl =
-        value.tableId != null ||
-        value.transformId != null ||
-        (props.tableId == null && props.transformId == null);
+      const canUpdateUrl = value.tableId != null || props.tableId == null;
 
       if (canUpdateUrl) {
         if (options?.isAutomatic) {

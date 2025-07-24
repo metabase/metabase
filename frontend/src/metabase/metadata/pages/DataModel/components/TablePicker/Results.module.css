@@ -31,7 +31,7 @@
     }
   }
 
-  &.selectable {
+  &.table {
     padding-left: var(--mantine-spacing-md);
   }
 }
