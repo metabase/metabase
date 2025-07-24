@@ -48,4 +48,4 @@ How to make sure the right people can see the right data in your embedded Metaba
 
 ## [Translating questions and dashboards](./translations.md)
 
-Upload a translation dictionary to translate embedded dashboards and questions.
+Upload a translation dictionary to translate questions and dashboards (only in static embeds).
