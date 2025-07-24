@@ -81,7 +81,6 @@
                  68861]
                 [:field {:source-field   68847
                          :lib/uuid       "615c7a01-e368-430a-a3ab-0b7be86570e4"
-                         :ident          "L64Uof03Cj0qfGBL6qMqt"
                          :base-type      :type/Text
                          :effective-type :type/Text
                          :join-alias     "PRODUCTS__via__PRODUCT_ID"}

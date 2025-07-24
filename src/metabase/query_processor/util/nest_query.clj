@@ -118,7 +118,7 @@
   (let [filter-clause (:filter inner-query)
         keep-filter? (and filter-clause
                           (nil? (lib.util.match/match-one filter-clause :expression)))
-        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions :expression-idents]) source
+        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
                  ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
                  ;; first place we already had to do perms checks to make sure the query we're transforming is itself
                  ;; ok, so we don't need to run another check.
@@ -243,15 +243,13 @@
 
 (mu/defn- nest-expressions* :- ::mbql.s/SourceQuery
   [inner-query :- ::mbql.s/SourceQuery]
-  (let [{:keys [expressions expression-idents]
+  (let [{:keys [expressions]
          :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions*)]
     (if-not (should-nest-expressions? inner-query)
       inner-query
       (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
             inner-query                             (rewrite-fields-and-expressions inner-query)
-            source-query                            (assoc source-query
-                                                           :expressions expressions
-                                                           :expression-idents expression-idents)]
+            source-query                            (assoc source-query :expressions expressions)]
         (-> inner-query
             (dissoc :source-query :expressions :expression-idents)
             (assoc :source-query source-query))))))

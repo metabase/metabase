@@ -191,8 +191,7 @@
               expected (walk/postwalk
                         (fn [x]
                           (cond-> x
-                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)
-                            (and (map? x) (:ident x))    (assoc :ident string?)))
+                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)))
                         expected)
               actual   (#'qp.pivot/generate-queries query {:pivot-rows [1 0] :pivot-cols [2]})]
           (is (= 6 (count actual)))
@@ -467,8 +466,7 @@
             (qp.pivot/run-pivot-query (qp.pivot.test-util/parameters-query))))))
 
 (defn- clean-pivot-results [results]
-  (let [no-uuid #(cond-> (dissoc % :lib/source_uuid)
-                   (= (:name %) "pivot-grouping") (assoc :ident "test_dummy_pivot-grouping"))]
+  (let [no-uuid #(dissoc % :lib/source_uuid)]
     (-> results
         (dissoc :running_time :started_at :json_query)
         (m/dissoc-in [:data :results_metadata :checksum])

@@ -690,6 +690,9 @@
 ;; - Early on, some old "field__Database__Schema__TableName__FieldName" idents got saved for models.
 ;; - A bug in #56244 computed bad idents given a fresh column (like an aggregation) while the source was a model.
 ;; To avoid both of these issues, the upgrade to 22 simply discards any old idents.
+;;
+;; NOTE: the idents project was ultimately abandoned and `:ident` and `:model/inner_ident` are no longer populated or
+;; used.
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
   (update card :result_metadata (fn [cols]
