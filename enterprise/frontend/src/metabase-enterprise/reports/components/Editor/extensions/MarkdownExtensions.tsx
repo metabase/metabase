@@ -51,6 +51,7 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
           paragraphContent += `{{static-card:${child.attrs.questionName}:series-${child.attrs.series}:viz-${child.attrs.viz}:display-${child.attrs.display}}}`;
         }
       });
+      // Every paragraph gets standard spacing, empty or not
       markdown += paragraphContent + "\n\n";
     } else if (node.type.name === "heading") {
       const level = node.attrs.level || 1;
@@ -74,7 +75,7 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
         ? `{{card:${questionId}:${snapshotId}:${customName}}}\n\n`
         : `{{card:${questionId}:${snapshotId}}}\n\n`;
     } else if (node.type.name === "questionStatic") {
-      markdown += `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}`;
+      markdown += `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}\n\n`;
     } else if (node.type.name === "codeBlock") {
       markdown += `\`\`\`${node.attrs.language || ""}\n${node.textContent}\n\`\`\`\n\n`;
     } else {
@@ -86,18 +87,28 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
 }
 
 export function parseMarkdownToHTML(markdown: string): string {
+  // First, replace question embeds with placeholder tokens to protect them
+  const embedTokens: string[] = [];
   let html = markdown
     .replace(
       /{{card:(\d+):(\d+)(?::([^}]+))?}}/g,
-      (_match, id, snapshotId, customName) =>
-        customName
+      (_match, id, snapshotId, customName) => {
+        const embed = customName
           ? `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-custom-name="${customName}" data-model="card"></div>`
-          : `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-model="card"></div>`,
+          : `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-model="card"></div>`;
+        const token = `__EMBED_TOKEN_${embedTokens.length}__`;
+        embedTokens.push(embed);
+        return token;
+      },
     )
     .replace(
       STATIC_QUESTION_REGEX,
-      (_match, questionName, series, viz, display) =>
-        `<div data-type="question-static" data-question-name="${questionName}" data-series="${series}" data-viz="${viz}" data-display="${display}"></div>`,
+      (_match, questionName, series, viz, display) => {
+        const embed = `<div data-type="question-static" data-question-name="${questionName}" data-series="${series}" data-viz="${viz}" data-display="${display}"></div>`;
+        const token = `__EMBED_TOKEN_${embedTokens.length}__`;
+        embedTokens.push(embed);
+        return token;
+      },
     )
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
@@ -116,6 +127,7 @@ export function parseMarkdownToHTML(markdown: string): string {
     .replace(/^(?!<)/, "<p>")
     .replace(/(?!>)$/, "</p>");
 
+  // Handle lists
   html = html.replace(/<li>(.*?)<\/li>/g, (match) => {
     if (
       html.indexOf(match) > 0 &&
@@ -127,6 +139,14 @@ export function parseMarkdownToHTML(markdown: string): string {
   });
 
   html = html.replace(/(<\/li>)(?![\s\S]*<li>)/g, "$1</ul>");
+
+  // Now fix paragraph/embed structure by moving standalone embeds outside paragraphs
+  html = html.replace(/<p>(__EMBED_TOKEN_\d+__)<\/p>/g, "$1");
+
+  // Finally, restore the actual embed HTML
+  embedTokens.forEach((embed, index) => {
+    html = html.replace(`__EMBED_TOKEN_${index}__`, embed);
+  });
 
   return html;
 }
