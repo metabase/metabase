@@ -72,6 +72,7 @@ import {
   IsNotAuthenticated,
 } from "./route-guards";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
+import { TableDetailView } from "./scaffolding/TableDetailView/TableDetailView";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -317,6 +318,13 @@ export const getRoutes = (store) => {
 
           <Route path="table">
             <Route path=":id" component={TableListView} />
+            <Route path=":tableId/detail/:rowId" component={TableDetailView} />
+            <Route
+              path=":tableId/detail/:rowId/edit"
+              component={(props) => (
+                <TableDetailView {...props} isEdit={true} />
+              )}
+            />
           </Route>
 
           {/* INDIVIDUAL DASHBOARDS */}
