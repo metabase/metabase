@@ -125,8 +125,12 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
-(defn is-embedding-sdk-header?
-  "Check if the client has indicated it is from the react embedding sdk or simple embedding"
+(defn is-react-sdk-header?
+  "Check if the client has indicated it is from the react embedding sdk"
   [request]
-  (contains? #{"embedding-sdk-react" "embedding-simple"}
-             (get-in request [:headers "x-metabase-client"])))
+  (= (get-in request [:headers "x-metabase-client"]) "embedding-sdk-react"))
+
+(defn is-simple-embed-header?
+  "Check if the client has indicated it is from the react embedding sdk"
+  [request]
+  (= (get-in request [:headers "x-metabase-client"]) "embedding-simple"))

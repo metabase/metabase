@@ -3,6 +3,7 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 // Enable SDK mode as we are in the SDK bundle
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-sdk-react";
 
 // Mantine styles need to be imported before any of our components so that our styles win over
 // the default mantine styles

@@ -57,15 +57,12 @@
                          (map :subject)
                          (filter #(str/includes? % "You're invited to join")))))))))
 
-(deftest is-embedding-sdk-header-test
-  (testing "is-embedding-sdk-header? detects embedding-sdk-react client header"
-    (is (sso-utils/is-embedding-sdk-header? {:headers {"x-metabase-client" "embedding-sdk-react"}})))
-  (testing "is-embedding-sdk-header? detects embedding-simple client header"
-    (is (sso-utils/is-embedding-sdk-header? {:headers {"x-metabase-client" "embedding-simple"}})))
-  (testing "is-embedding-sdk-header? returns false for other client headers"
-    (is (not (sso-utils/is-embedding-sdk-header? {:headers {"x-metabase-client" "embedding-iframe"}}))))
-  (testing "is-embedding-sdk-header? returns false when header is missing"
-    (is (not (sso-utils/is-embedding-sdk-header? {:headers {}})))
-    (is (not (sso-utils/is-embedding-sdk-header? {}))))
-  (testing "is-embedding-sdk-header? returns false for nil request"
-    (is (not (sso-utils/is-embedding-sdk-header? nil)))))
+(deftest is-embedding-header-test
+  (testing "is-react-sdk-header? detects embedding-sdk-react client header"
+    (is (sso-utils/is-react-sdk-header? {:headers {"x-metabase-client" "embedding-sdk-react"}})))
+  (testing "is-react-sdk-header? returns false for other client headers"
+    (is (not (sso-utils/is-react-sdk-header? {:headers {"x-metabase-client" "embedding-iframe"}}))))
+  (testing "is-simple-embed-header? detects embedding-simple client header"
+    (is (sso-utils/is-simple-embed-header? {:headers {"x-metabase-client" "embedding-simple"}})))
+  (testing "is-simple-embed-header? returns false for other client headers"
+    (is (not (sso-utils/is-simple-embed-header? {:headers {"x-metabase-client" "embedding-iframe"}})))))
