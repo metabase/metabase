@@ -4,6 +4,8 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import EmptyState from "metabase/common/components/EmptyState";
 import { Box, rem } from "metabase/ui";
 
+import { newTransformUrl } from "../../../utils/urls";
+
 type TransformEmptyStateProps = {
   isListEmptyState: boolean;
 };
@@ -26,7 +28,7 @@ export function TransformEmptyState({
             : t`Select a transform to edit its query, schedule, and more.`
         }
         action={t`Create a transform`}
-        link="/admin/datamodel/transforms/new"
+        link={newTransformUrl()}
       />
     </Box>
   );

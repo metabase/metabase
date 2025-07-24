@@ -7,6 +7,7 @@ import Question from "metabase-lib/v1/Question";
 
 import { TransformHeader } from "../../components/TransformHeader";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
+import { transformListUrl } from "../../utils/urls";
 
 import { NewTransformModal } from "./NewTransformModal";
 
@@ -20,7 +21,7 @@ export function NewTransformPage() {
   };
 
   const handleCancelClick = () => {
-    dispatch(push("/admin/datamodel/transforms"));
+    dispatch(push(transformListUrl()));
   };
 
   const handleCloseClick = () => {

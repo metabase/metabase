@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { Box, Card, Flex, rem } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
+import { transformUrl } from "../../../../utils/urls";
+
 import S from "./TransformItem.module.css";
 
 type TransformItemProps = {
@@ -27,7 +29,7 @@ export function TransformItem({ transform, isActive }: TransformItemProps) {
     >
       <Flex
         component={Link}
-        to={`/admin/datamodel/transforms/${transform.id}`}
+        to={transformUrl(transform.id)}
         direction="column"
         px="md"
         py={rem(12)}

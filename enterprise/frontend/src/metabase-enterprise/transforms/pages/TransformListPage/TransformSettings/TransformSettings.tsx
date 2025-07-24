@@ -24,6 +24,8 @@ import {
 } from "metabase-enterprise/api";
 import type { Transform } from "metabase-types/api";
 
+import { tableMetadataUrl, transformListUrl } from "../../../utils/urls";
+
 import { SCHEDULE_OPTIONS } from "./constants";
 
 type TransformSettingsProps = {
@@ -167,7 +169,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
       sendErrorToast("Failed to delete transform");
     } else {
       sendSuccessToast("Transform deleted");
-      dispatch(push("/admin/datamodel/transforms"));
+      dispatch(push(transformListUrl()));
     }
   };
 
@@ -192,6 +194,11 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
           >
             {t`Run now`}
           </Button>
+          {transform.table && (
+            <Button component={Link} to={tableMetadataUrl(transform.table)}>
+              {t`Edit metadata`}
+            </Button>
+          )}
         </Group>
         <Card p="xl" shadow="none" withBorder>
           <Stack gap="xl">

@@ -17,11 +17,9 @@ import * as Errors from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
-import type {
-  CreateTransformRequest,
-  DatasetQuery,
-  Transform,
-} from "metabase-types/api";
+import type { CreateTransformRequest, DatasetQuery } from "metabase-types/api";
+
+import { transformUrl } from "../../../utils/urls";
 
 type NewTransformFormProps = {
   query: DatasetQuery;
@@ -57,7 +55,7 @@ export function NewTransformForm({ query }: NewTransformFormProps) {
   const handleSubmit = async (settings: NewTransformSettings) => {
     const request = getRequest(query, settings);
     const transform = await createTransform(request).unwrap();
-    dispatch(push(getTransformUrl(transform)));
+    dispatch(push(transformUrl(transform.id)));
   };
 
   if (isLoading || error != null) {
@@ -108,8 +106,4 @@ function getRequest(
       table: settings.table,
     },
   };
-}
-
-function getTransformUrl(transform: Transform) {
-  return `/admin/datamodel/transforms/${transform.id}`;
 }
