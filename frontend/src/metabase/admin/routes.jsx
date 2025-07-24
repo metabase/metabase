@@ -103,6 +103,10 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               component={PLUGIN_TRANSFORMS.TransformListPage}
             />
             <Route
+              path="transforms/new"
+              component={PLUGIN_TRANSFORMS.NewTransformPage}
+            />
+            <Route
               path="transforms/:transformId"
               component={PLUGIN_TRANSFORMS.TransformListPage}
             />

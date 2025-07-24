@@ -15,37 +15,16 @@ import {
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
-import type { NewTransformModalProps } from "metabase/plugins";
-import { Flex, Modal, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
-import * as Lib from "metabase-lib";
-import type { CreateTransformRequest, Transform } from "metabase-types/api";
-
-export function NewTransformModal({
-  question,
-  opened,
-  onClose,
-}: NewTransformModalProps) {
-  return (
-    <Modal.Root padding="2.5rem" opened={opened} onClose={onClose}>
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header>
-          <Modal.Title>{t`New transform`}</Modal.Title>
-          <Flex align="center" justify="flex-end" gap="sm">
-            <Modal.CloseButton />
-          </Flex>
-        </Modal.Header>
-        <Modal.Body>
-          <NewTransformForm query={question.query()} />
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
-  );
-}
+import type {
+  CreateTransformRequest,
+  DatasetQuery,
+  Transform,
+} from "metabase-types/api";
 
 type NewTransformFormProps = {
-  query: Lib.Query;
+  query: DatasetQuery;
 };
 
 type NewTransformSettings = {
@@ -60,8 +39,8 @@ const NEW_TRANSFORM_SCHEMA = Yup.object().shape({
   table: Yup.string().required(Errors.required),
 });
 
-function NewTransformForm({ query }: NewTransformFormProps) {
-  const databaseId = Lib.databaseID(query);
+export function NewTransformForm({ query }: NewTransformFormProps) {
+  const databaseId = query.database;
   const {
     data: schemas = [],
     isLoading,
@@ -114,14 +93,14 @@ function NewTransformForm({ query }: NewTransformFormProps) {
 }
 
 function getRequest(
-  query: Lib.Query,
+  query: DatasetQuery,
   settings: NewTransformSettings,
 ): CreateTransformRequest {
   return {
     name: settings.name,
     source: {
       type: "query",
-      query: Lib.toLegacyQuery(query),
+      query,
     },
     target: {
       type: "table",
@@ -132,5 +111,5 @@ function getRequest(
 }
 
 function getTransformUrl(transform: Transform) {
-  return `/admin/datamodel/database/${transform.source.query.database}/transform/${transform.id}`;
+  return `/admin/datamodel/transforms/${transform.id}`;
 }

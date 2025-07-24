@@ -797,10 +797,12 @@ export type TransformListPageProps = {
 
 export type TransformsPlugin = {
   canAccessTransforms: (state: State) => boolean;
+  NewTransformPage: ComponentType;
   TransformListPage: ComponentType<TransformListPageProps>;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   canAccessTransforms: () => false,
   TransformListPage: () => null,
+  NewTransformPage: () => null,
 };
