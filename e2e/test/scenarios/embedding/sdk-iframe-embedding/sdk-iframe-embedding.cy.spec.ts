@@ -20,17 +20,24 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     });
   });
 
-  it("displays a dashboard", () => {
-    const frame = H.loadSdkIframeEmbedTestPage({
+  it("uses the embedding-simple client request header", () => {
+    H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
     });
 
-    cy.log("should use the embedding-simple client header");
     cy.wait("@getDashCardQuery").then(({ request }) => {
       expect(request?.headers?.["x-metabase-client"]).to.equal(
         "embedding-simple",
       );
     });
+  });
+
+  it("displays a dashboard", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+    });
+
+    cy.wait("@getDashCardQuery");
 
     frame.within(() => {
       cy.findByText("Orders in a dashboard").should("be.visible");
