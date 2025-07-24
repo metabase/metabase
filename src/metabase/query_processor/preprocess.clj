@@ -94,19 +94,6 @@
              to
              from))
 
-;;; TODO -- this is broken and disables enforcement inside the middleware itself -- see QUE-1346
-(defn- ensure-pmbql-for-unclean-query
-  [middleware-fn]
-  (-> (fn [query]
-        (mu/disable-enforcement
-          (lib/without-cleaning
-           (fn []
-             (let [query' (-> (cond->> query
-                                (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))
-                              (copy-unconverted-properties query))]
-               (-> query' middleware-fn ->legacy))))))
-      (with-meta (meta middleware-fn))))
-
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -143,13 +130,13 @@
    (ensure-pmbql #'resolve-joins/resolve-joins)
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
-   (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
+   (ensure-pmbql #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
    (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-pmbql-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
+   (ensure-pmbql #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-legacy #'limit/add-default-limit)
