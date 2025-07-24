@@ -1368,13 +1368,21 @@
   "Schema for a valid value for a `:source-query` clause."
   [:ref ::SourceQuery])
 
+(defn- lib-normalize-legacy-column
+  "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
+  [m]
+  (when (map? m)
+    (let [m (lib.schema.common/normalize-map-no-kebab-case m)]
+      ;; remove deprecated `:ident` key.
+      (dissoc m :ident))))
+
 (mr/def ::legacy-column-metadata
   "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
   `:metabase.lib.schema.metadata/column`."
   [:and
    [:map
     ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
-    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+    {:decode/normalize lib-normalize-legacy-column}
     [:base_type          ::lib.schema.common/base-type]
     [:display_name       ::lib.schema.common/non-blank-string]
     [:name               :string]
@@ -1507,13 +1515,6 @@
 
   Driver implementations: This is guaranteed to be present after pre-processing."}
      ::lib.schema.join/alias]
-
-    [:ident
-     {:optional true
-      :description
-      "An opaque string used as a unique identifier for this join clause, even if it evolves. This string is randomly
-      generated when a join clause is created, so it can never be confused with another join of the same table."}
-     ::Ident]
 
     [:fk-field-id
      {:optional true

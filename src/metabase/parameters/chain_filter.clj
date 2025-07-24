@@ -69,7 +69,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
@@ -372,7 +371,6 @@
                                 [:field lhs-field-id (when-not (= lhs-table-id source-table-id)
                                                        {:join-alias (joined-table-alias lhs-table-id)})]
                                 [:field rhs-field-id {:join-alias (joined-table-alias rhs-table-id)}]]
-                 :ident        (lib.ident/random-ident)
                  :alias        (joined-table-alias rhs-table-id)}]
        (log/tracef "Adding join against %s\n%s"
                    (name-for-logging :model/Table rhs-table-id) (u/pprint-to-str join))
@@ -432,10 +430,8 @@
                              :order-by [[:asc [:field field-id nil]]]
                              ;; original-field-id is used to power Field->Field breakouts.
                              ;; We include both remapped and original
-                             :breakout    [original-field-clause [:field field-id nil]]
-                             :breakout-idents (lib.ident/indexed-idents 2)}
-                            {:breakout    [[:field field-id nil]]
-                             :breakout-idents (lib.ident/indexed-idents 1)}))
+                             :breakout    [original-field-clause [:field field-id nil]]}
+                            {:breakout    [[:field field-id nil]]}))
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)
                    schema.metadata-queries/add-required-filters-if-needed))

@@ -177,7 +177,7 @@
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   ; NOTE: Postgres fix in 42.7.5 breaks liquibase on case-sensitive databases until https://github.com/liquibase/liquibase/pull/6755 is released
-  org.postgresql/postgresql                 {:mvn/version "42.7.5"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.7"}             ; Postgres driver
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
@@ -250,7 +250,8 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    djblue/portal                {:mvn/version "0.59.1"}                    ; ui for inspecting values
+    dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
+    djblue/portal                {:mvn/version "0.59.2"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:sha "1fe839cfa48549e21b89c6418c747895eda7e7bc"} ; test runner
     io.github.tonsky/clj-reload  {:mvn/version "0.9.7"}                     ; reloader

@@ -150,7 +150,6 @@
   #{:base-type
     :effective-type
     :display-name
-    :ident
     :metabase.lib.query/transformation-added-base-type
     :metabase.lib.field/original-effective-type
     :metabase.lib.field/original-temporal-unit})

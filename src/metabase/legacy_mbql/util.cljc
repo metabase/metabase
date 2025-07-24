@@ -6,7 +6,6 @@
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]

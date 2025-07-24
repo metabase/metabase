@@ -252,9 +252,6 @@
   [query stage-number x]
   (try
     {:lib/type     :metadata/column
-     ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
-     #_{:clj-kondo/ignore [:deprecated-var]}
-     :ident        (lib.options/ident x)
      ;; TODO -- effective-type
      :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
@@ -651,14 +648,12 @@
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
         target-fields (into []
                             (comp (map (fn [{source-field-id :id
-                                             fk-ident       :ident
                                              :keys [fk-target-field-id]
                                              :as   source}]
                                          (-> (id->target-fields fk-target-field-id)
                                              (assoc ::fk-field-id   source-field-id
                                                     ::fk-field-name (lib.field.util/inherited-column-name source)
-                                                    ::fk-join-alias (:metabase.lib.join/join-alias source)
-                                                    ::fk-ident          fk-ident))))
+                                                    ::fk-join-alias (:metabase.lib.join/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
