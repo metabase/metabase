@@ -1,8 +1,0 @@
-.TermsCard {
-  position: fixed;
-  bottom: 1.25rem;
-  right: 1.25rem;
-  width: 20rem;
-  z-index: 1;
-  border: 1px solid var(--mb-color-border);
-}

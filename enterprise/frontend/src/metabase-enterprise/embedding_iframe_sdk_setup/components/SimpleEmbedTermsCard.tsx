@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { Button, Card, Stack, Text } from "metabase/ui";
-
-import S from "./SimpleEmbedTermsCard.module.css";
 
 export const SimpleEmbedTermsCard = ({
   onAccept,
@@ -15,8 +14,13 @@ export const SimpleEmbedTermsCard = ({
     <Card
       shadow="lg"
       p="md"
-      className={S.TermsCard}
       data-testid="simple-embed-terms-card"
+      pos="fixed"
+      bottom="1.25rem"
+      right="1.25rem"
+      w="20rem"
+      bd="1px solid var(--mb-color-border)"
+      className={CS.z1}
     >
       <Stack gap="md">
         <Text size="md" fw="bold" lh="sm">
