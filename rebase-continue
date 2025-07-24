@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-655-show-anti-abuse-message-and-auto-enable-embedding-in-embed"
+    }
+  ]
 }
