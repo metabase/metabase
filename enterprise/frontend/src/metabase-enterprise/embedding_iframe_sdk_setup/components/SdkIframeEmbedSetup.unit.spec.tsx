@@ -4,6 +4,7 @@ import {
   findRequests,
   setupDashboardEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
+  setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -22,6 +23,7 @@ const setup = (options?: {
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupDashboardEndpoints(createMockDashboard());
   setupUpdateSettingsEndpoint();
+  setupUpdateSettingEndpoint();
 
   renderWithProviders(<SdkIframeEmbedSetup />, {
     storeInitialState: createMockState({
