@@ -49,6 +49,9 @@ export type StaticQuestionProps = PropsWithChildren<
   >
 >;
 
+/**
+ * @interface
+ */
 export type StaticQuestionComponents = {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
