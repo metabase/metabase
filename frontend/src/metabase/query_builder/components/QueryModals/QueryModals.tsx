@@ -11,7 +11,6 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
@@ -337,13 +336,5 @@ export function QueryModals({
       return (
         <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />
       );
-    case MODAL_TYPES.NEW_TRANSFORM:
-      return underlyingQuestion != null ? (
-        <PLUGIN_TRANSFORMS.NewTransformModal
-          question={underlyingQuestion}
-          opened
-          onClose={onCloseModal}
-        />
-      ) : null;
   }
 }

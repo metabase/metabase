@@ -6,7 +6,7 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION, PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
   softReloadCard,
@@ -34,7 +34,6 @@ const MOVE_TESTID = "move-button";
 const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
-const TRANSFORM_TESTID = "transform";
 
 type QuestionMoreActionsMenuProps = {
   question: Question;
@@ -73,13 +72,6 @@ export const QuestionMoreActionsMenu = ({
   const hasDataPermissions =
     underlyingQuestion != null &&
     Lib.queryDisplayInfo(underlyingQuestion.query()).isEditable;
-  const canAccessTransforms = useSelector(
-    PLUGIN_TRANSFORMS.canAccessTransforms,
-  );
-  const canCreateTransform =
-    underlyingQuestion != null &&
-    underlyingQuestion.isSaved() &&
-    canAccessTransforms;
 
   const reload = () => dispatch(softReloadCard());
 
@@ -158,16 +150,6 @@ export const QuestionMoreActionsMenu = ({
         onClick={handleTurnToModel}
       >
         {t`Turn into a model`}
-      </Menu.Item>
-    ),
-    canCreateTransform && (
-      <Menu.Item
-        key="transform"
-        leftSection={<Icon name="function" />}
-        data-testid={TRANSFORM_TESTID}
-        onClick={() => onOpenModal(MODAL_TYPES.NEW_TRANSFORM)}
-      >
-        {t`Create a transform`}
       </Menu.Item>
     ),
     hasCollectionPermissions && isModel && (

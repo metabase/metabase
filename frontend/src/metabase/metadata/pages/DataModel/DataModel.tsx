@@ -11,18 +11,20 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 
 import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
+  NavigationLink,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
-  SegmentsLink,
   SyncOptionsModal,
   TableSection,
 } from "./components";
@@ -44,6 +46,13 @@ export const DataModel = ({ children, location, params }: Props) => {
     (database) => database.id === databaseId,
   );
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
+  const isTransforms = location.pathname.startsWith(
+    "/admin/datamodel/transform",
+  );
+  const canAccessTransforms = useSelector(
+    PLUGIN_TRANSFORMS.canAccessTransforms,
+  );
+  const isTables = !isSegments && !isTransforms;
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -111,13 +120,26 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
+          <NavigationLink
+            label={t`Segments`}
+            icon="pie"
+            active={isSegments}
+            to="/admin/datamodel/segments"
+          />
+          {canAccessTransforms && (
+            <NavigationLink
+              label={t`Transforms`}
+              icon="refresh_downstream"
+              active={isTransforms}
+              to="/admin/datamodel/transforms"
+            />
+          )}
         </Box>
       </Stack>
 
-      {isSegments && children}
+      {(isSegments || isTransforms) && children}
 
-      {!isSegments && (
+      {isTables && (
         <>
           {databaseId != null &&
             tableId == null &&
