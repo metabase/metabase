@@ -1,7 +1,6 @@
 const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { FIXTURE_PATH } from "e2e/support/helpers";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -243,7 +242,7 @@ H.describeWithSnowplow(
 
       H.visitCollection(FIRST_COLLECTION_ID);
 
-      cy.fixture(`${FIXTURE_PATH}/${H.VALID_CSV_FILES[2].fileName}`).then(
+      cy.fixture(`${H.FIXTURE_PATH}/${H.VALID_CSV_FILES[2].fileName}`).then(
         (file) => {
           cy.get("#upload-input").selectFile(
             {

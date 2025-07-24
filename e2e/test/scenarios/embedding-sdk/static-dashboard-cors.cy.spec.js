@@ -4,7 +4,6 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { AUTH_PROVIDER_URL } from "e2e/support/helpers";
 import { visitFullAppEmbeddingUrl } from "e2e/support/helpers/e2e-embedding-helpers";
 import {
   EMBEDDING_SDK_STORY_HOST,
@@ -58,7 +57,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       },
       secret: JWT_SHARED_SECRET,
     }).then((jwtToken) => {
-      cy.intercept("GET", `${AUTH_PROVIDER_URL}?response=json`, {
+      cy.intercept("GET", `${H.AUTH_PROVIDER_URL}?response=json`, {
         jwt: jwtToken,
       });
     });

@@ -1,6 +1,5 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { moveDnDKitListElement } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -625,7 +624,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("move a column from rows to columns");
           H.openVizSettingsSidebar();
-          moveDnDKitListElement("drag-handle", {
+          H.moveDnDKitListElement("drag-handle", {
             startIndex: 2,
             dropIndex: 3,
           });
@@ -635,7 +634,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2);
 
           cy.log("move a column from columns to rows");
-          moveDnDKitListElement("drag-handle", {
+          H.moveDnDKitListElement("drag-handle", {
             startIndex: 4,
             dropIndex: 1,
           });
@@ -677,7 +676,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("move an item from columns to measures");
         H.openVizSettingsSidebar();
-        moveDnDKitListElement("drag-handle", {
+        H.moveDnDKitListElement("drag-handle", {
           startIndex: 2,
           dropIndex: 5,
         });
@@ -686,7 +685,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           .should("have.length", 3);
 
         cy.log("move an item from measures to columns");
-        moveDnDKitListElement("drag-handle", {
+        H.moveDnDKitListElement("drag-handle", {
           startIndex: 5,
           dropIndex: 2,
         });

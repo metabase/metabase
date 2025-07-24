@@ -280,7 +280,7 @@ export function createTestRoles({ type, isWritable }) {
 // will this work for multiple schemas?
 /**
  * @param {Object} obj
- * @param {string} [obj.databaseId] - Defaults to WRITABLE_DB_ID
+ * @param {number} [obj.databaseId] - Defaults to WRITABLE_DB_ID
  * @param {string} obj.name - The table's real name, not its display name
  */
 export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
