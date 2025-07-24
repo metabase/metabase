@@ -152,10 +152,12 @@ export function parseTime(value: moment.Moment | string) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string") {
-    return moment(value, [
-      "HH:mm:ss.sss[Z]",
-      "HH:mm:SS.sss",
-      "HH:mm:SS",
+    // removing the timezone part if it exists, so we can parse the time correctly
+    return moment(value.split(/[+-]/)[0], [
+      "HH:mm:ss.SSSZ",
+      "HH:mm:ss.SSS",
+      "HH:mm:ss",
+      "HH:mm:ss",
       "HH:mm",
     ]);
   }
