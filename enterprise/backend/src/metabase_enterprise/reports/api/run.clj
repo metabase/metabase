@@ -100,6 +100,7 @@
   [_route-params
    _query-params
    body :- CardArgs]
+  (api/check-superuser)
   (if-let [card-id (:card_id body)]
     ;; TODO: check that is already a frozen report card
     (let [card (t2/select-one :model/Card :id card-id)]
@@ -148,7 +149,10 @@
   [{:keys [snapshot-id]} :- [:map [:snapshot-id pos-int?]]
    _query-params
    _body-params]
-  (let [{:keys [card_id data]} (t2/select-one :model/ReportRunCardData :id snapshot-id)]
+  (let [{:keys [card_id data report_id user_id]} (t2/select-one :model/ReportRunCardData :id snapshot-id)]
+    (if report_id
+      (api/read-check (t2/select-one :model/Report :id report_id))
+      (api/check-403 (= user_id api/*current-user-id*)))
     (api/check-404 data)
     ;; Deserialize and return the results as regular JSON
     (stream-card-data card_id data)))
