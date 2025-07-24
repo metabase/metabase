@@ -9,8 +9,11 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.settings :as sync.settings]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
    [metabase.sync.util :as sync-util]
@@ -132,6 +135,30 @@
                                         (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)})))
 
+(defn- set-blocked-permissions-for-reactivated-table!
+  "Sets view-data permissions to blocked for all groups when a table is reactivated,
+   if the MB_REACTIVATE_MEMORY environment variable is set to false.
+   
+   This function is called only during table reactivation (when a previously inactive table
+   becomes active again during sync). It does nothing if the environment variable is not set
+   to false, preserving the default behavior.
+   
+   If permission setting fails for any group, the error is logged and processing continues
+   for other groups to ensure the table reactivation process is not interrupted."
+  [table]
+  (when-not (sync.settings/reactivate-table-block-permissions)
+    (log/infof "Setting blocked permissions for reactivated %s" (sync-util/name-for-logging table))
+    (let [all-groups (t2/select :model/PermissionsGroup)]
+      (doseq [group all-groups]
+        (sync-util/with-error-handling
+         (format "Failed to set blocked permission for group '%s' on %s"
+                 (:name group)
+                 (sync-util/name-for-logging table))
+          (data-perms/set-table-permission! (:id group) table :perms/view-data :blocked)
+          (log/debugf "Set blocked view-data permission for group '%s' on %s"
+                      (:name group)
+                      (sync-util/name-for-logging table)))))))
+
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema table-name :name :as table}]
@@ -140,16 +167,20 @@
                                          :schema schema
                                          :name table-name
                                          :active false)]
-    (let [table (t2/select-one :model/Table existing-id)]
+    (let [existing-table (t2/select-one :model/Table existing-id)]
       ;; if the table already exists but is marked *inactive*, mark it as *active*
-      (t2/update! :model/Table existing-id (cond-> (cruft-dependent-cols table database ::reactivate)
+      (t2/update! :model/Table existing-id (cond-> (cruft-dependent-cols existing-table database ::reactivate)
 
                                              ;; do not unhide tables w/ cruft settings
-                                             (some? (:visibility_type table))
+                                             (some? (:visibility_type existing-table))
                                              (dissoc :visibility_type)
 
                                              true
-                                             (assoc :active true))))
+                                             (assoc :active true)))
+      ;; get the updated table instance and potentially set blocked permissions based on environment variable
+      (let [updated-table (t2/select-one :model/Table existing-id)]
+        (set-blocked-permissions-for-reactivated-table! updated-table)
+        updated-table))
     ;; otherwise create a new Table
     (create-table! database table)))
 

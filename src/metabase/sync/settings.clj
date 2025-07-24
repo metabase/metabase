@@ -1,6 +1,8 @@
 (ns metabase.sync.settings
   (:require
+   [environ.core :as env]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
@@ -42,3 +44,23 @@
   :export?        true
   :default        []
   :encryption     :no)
+
+(defsetting reactivate-table-block-permissions
+  (deferred-tru "Controls whether reactivated tables should have their permissions automatically set to blocked.
+                 When the MB_REACTIVATE_MEMORY environment variable is set to 'false', any table that gets 
+                 reactivated during sync (marked as active after being inactive) will have its view-data 
+                 permissions set to blocked for all permission groups. This provides a security mechanism 
+                 to prevent accidentally exposing data from tables that were previously hidden.
+                 
+                 Default behavior (when MB_REACTIVATE_MEMORY is not set to 'false'): reactivated tables 
+                 retain their previous permissions.")
+  :type       :boolean
+  :default    true
+  :setter     :none
+  :visibility :internal
+  :export?    false
+  :getter     (fn reactivate-table-block-permissions-getter []
+                ;; Only block permissions if MB_REACTIVATE_MEMORY is explicitly set to "false" (case-insensitive)
+                ;; Any other value (including unset) preserves default behavior
+                (not= "false" (u/lower-case-en (env/env :mb-reactivate-memory))))
+  :audit      :getter)
