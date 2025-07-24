@@ -222,8 +222,8 @@
         (assoc :lib/type :metadata/results))))
 
 (defn- join->pipeline [join]
-  (let [source (select-keys join [:source-table :source-query])
-        stages (inner-query->stages source)
+  (let [stages (inner-query->stages (or (:source-query join)
+                                        (select-keys join [:source-table])))
         stages (if-let [source-metadata (and (>= (count stages) 2)
                                              (:source-metadata join))]
                  (assoc-in stages [(- (count stages) 2) :lib/stage-metadata] (->stage-metadata source-metadata))
