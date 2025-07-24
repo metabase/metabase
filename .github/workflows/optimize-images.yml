@@ -22,12 +22,32 @@ jobs:
 
     - name: Skip Merge Commits
       id: merge-check
-      run: |
-        if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -gt 2 ]; then
-          echo "Merge commit detected. Skipping."
-          echo "skip=true" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const labelToCheck = 'Type:Documentation';
+          const pr = context.payload.pull_request;
+
+          if (!pr) {
+            core.info('Not a pull request event — skipping.');
+            core.setOutput('skip', 'true');
+            return;
+          }
+
+          const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: pr.number,
+          });
+
+          const hasLabel = labels.some(label => label.name === labelToCheck);
+          if (!hasLabel) {
+            core.info(`Label '${labelToCheck}' not found — skipping.`);
+            core.setOutput('skip', 'true');
+          } else {
+            core.info(`Label '${labelToCheck}' found: Running Optimizer.`);
+            core.setOutput('skip', 'false');
+          }
 
     - name: Get changed PNG files
       id: changed-files
