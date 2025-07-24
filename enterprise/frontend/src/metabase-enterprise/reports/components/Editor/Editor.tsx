@@ -8,10 +8,18 @@ import StarterKit from "@tiptap/starter-kit";
 import type React from "react";
 import { useEffect } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
+import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
-import type { QuestionRef } from "../../reports.slice";
+import {
+  type QuestionRef,
+  fetchReportCard,
+  fetchReportSnapshot,
+} from "../../reports.slice";
 
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
@@ -36,6 +44,8 @@ export const Editor: React.FC<EditorProps> = ({
   content = "",
   onQuestionSelect,
 }) => {
+  const dispatch = useDispatch();
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -75,16 +85,17 @@ export const Editor: React.FC<EditorProps> = ({
     }
 
     const updateQuestionRefs = () => {
-      const refs = getRefs(editor);
+      const refs = getRefs(editor, dispatch);
       onQuestionRefsChange(refs);
     };
     updateQuestionRefs();
+
     editor.on("update", updateQuestionRefs);
 
     return () => {
       editor.off("update", updateQuestionRefs);
     };
-  }, [editor, onQuestionRefsChange]);
+  }, [editor, onQuestionRefsChange, dispatch]);
 
   // Notify parent when editor is ready
   useEffect(() => {
@@ -114,6 +125,9 @@ export const Editor: React.FC<EditorProps> = ({
 
       if (node && node.type.name === "questionEmbed") {
         onQuestionSelect(node.attrs.questionId);
+      }
+      if (node && node.type.name === "questionStatic") {
+        onQuestionSelect(node.attrs.id);
       } else {
         // Check if selection is inside a question embed
         let foundQuestionId: number | null = null;
@@ -189,7 +203,7 @@ export const Editor: React.FC<EditorProps> = ({
   );
 };
 
-const getRefs = (editor: TiptapEditor): QuestionRef[] => {
+const getRefs = (editor: TiptapEditor, dispatch: DispatchFn): QuestionRef[] => {
   const refs: QuestionRef[] = [];
   editor.state.doc.descendants((node: any) => {
     if (node.type.name === "questionEmbed") {
@@ -197,6 +211,44 @@ const getRefs = (editor: TiptapEditor): QuestionRef[] => {
         id: node.attrs.questionId,
         name: node.attrs.customName || node.attrs.questionName,
         snapshotId: node.attrs.snapshotId,
+      });
+    }
+    if (node.type.name === "questionStatic") {
+      // Assign an ID, but only once
+      if (!node.attrs.id) {
+        node.attrs.id = `static-${_.uniqueId()}`;
+        node.attrs.snapshotId = `static-${_.uniqueId()}`;
+
+        const { questionName, display, id, snapshotId } = node.attrs;
+        const seriesData = JSON.parse(b64hash_to_utf8(node.attrs.series));
+        const viz = JSON.parse(b64hash_to_utf8(node.attrs.viz));
+
+        dispatch({
+          type: fetchReportCard.fulfilled.toString(),
+          payload: createMockCard({
+            name: questionName,
+            display,
+            visualization_settings: viz,
+            id,
+          }),
+        });
+
+        dispatch({
+          type: fetchReportSnapshot.fulfilled.toString(),
+          payload: createMockDataset({
+            data: seriesData,
+          }),
+          meta: {
+            arg: snapshotId,
+          },
+        });
+      }
+      const { questionName, id, snapshotId } = node.attrs;
+
+      refs.push({
+        id: id,
+        name: questionName,
+        snapshotId,
       });
     }
   });

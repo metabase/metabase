@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 
@@ -33,26 +34,21 @@ export function useReportActions() {
         return;
       }
 
-      try {
-        const { id, created_at, updated_at, ...cardWithoutExcluded } = card;
-        const result = await createReportSnapshot({
-          ...cardWithoutExcluded,
-          name: card.name,
-        }).unwrap();
-
-        dispatch(clearModifiedVisualizationSettings(cardId));
+      if (card.id.toString().includes("static")) {
         const { doc } = editorInstance.state;
         const tr = editorInstance.state.tr;
 
         doc.descendants((node: any, pos: number) => {
-          if (
-            node.type.name === "questionEmbed" &&
-            node.attrs.questionId === cardId
-          ) {
+          if (node.type.name === "questionStatic" && node.attrs.id === cardId) {
+            const display = card.display;
+            const viz = utf8_to_b64url(
+              JSON.stringify(card.visualization_settings),
+            );
+
             const newAttrs = {
               ...node.attrs,
-              questionId: result.card_id,
-              snapshotId: result.snapshot_id,
+              display,
+              viz,
             };
             tr.setNodeMarkup(pos, undefined, newAttrs);
             return false;
@@ -62,14 +58,45 @@ export function useReportActions() {
         if (tr.docChanged) {
           editorInstance.view.dispatch(tr);
         }
+      } else {
+        try {
+          const { id, created_at, updated_at, ...cardWithoutExcluded } = card;
+          const result = await createReportSnapshot({
+            ...cardWithoutExcluded,
+            name: card.name,
+          }).unwrap();
 
-        dispatch(
-          updateQuestionRefs([
-            { questionId: cardId, snapshotId: result.snapshot_id },
-          ]),
-        );
-      } catch (error) {
-        console.error("Failed to commit visualization changes:", error);
+          dispatch(clearModifiedVisualizationSettings(cardId));
+          const { doc } = editorInstance.state;
+          const tr = editorInstance.state.tr;
+
+          doc.descendants((node: any, pos: number) => {
+            if (
+              node.type.name === "questionEmbed" &&
+              node.attrs.questionId === cardId
+            ) {
+              const newAttrs = {
+                ...node.attrs,
+                questionId: result.card_id,
+                snapshotId: result.snapshot_id,
+              };
+              tr.setNodeMarkup(pos, undefined, newAttrs);
+              return false;
+            }
+          });
+
+          if (tr.docChanged) {
+            editorInstance.view.dispatch(tr);
+          }
+
+          dispatch(
+            updateQuestionRefs([
+              { questionId: cardId, snapshotId: result.snapshot_id },
+            ]),
+          );
+        } catch (error) {
+          console.error("Failed to commit visualization changes:", error);
+        }
       }
     },
     [store, createReportSnapshot, dispatch],
@@ -89,7 +116,7 @@ export function useReportActions() {
         // Create new snapshots for all question embeds in parallel
         const snapshotPromises = questionRefs.map(async (questionRef) => {
           const card = getReportCard(state, questionRef.id);
-          if (!card) {
+          if (!card || card.id.toString().includes("static")) {
             return null;
           }
 

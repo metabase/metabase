@@ -7,10 +7,10 @@ import {
 import { memo } from "react";
 import { t } from "ttag";
 
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
+import { useSelector } from "metabase/lib/redux";
 import { Box, Loader, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { createMockCard } from "metabase-types/api/mocks";
+import { getReportRawSeries } from "metabase-enterprise/reports/selectors";
 
 import styles from "../QuestionEmbed/QuestionEmbedNode.module.css";
 
@@ -107,12 +107,13 @@ export const QuestionStaticNode = Node.create<{
 
 export const QuestionStaticComponent = memo(
   ({ node, selected }: NodeViewProps) => {
-    const seriesData = JSON.parse(b64hash_to_utf8(node.attrs.series));
-    const viz = JSON.parse(b64hash_to_utf8(node.attrs.viz));
+    const { questionName, id, snapshotId } = node.attrs;
 
-    const { questionName, display } = node.attrs;
+    const rawSeries = useSelector((state) =>
+      getReportRawSeries(state, id, snapshotId),
+    );
 
-    const error = !seriesData;
+    const error = !rawSeries;
 
     if (error) {
       return (
@@ -150,19 +151,10 @@ export const QuestionStaticComponent = memo(
               </Box>
             </Box>
           )}
-          {seriesData ? (
+          {rawSeries ? (
             <Box className={styles.questionResults}>
               <Visualization
-                rawSeries={[
-                  {
-                    data: seriesData,
-                    card: createMockCard({
-                      name: questionName,
-                      display,
-                      visualization_settings: viz,
-                    }),
-                  },
-                ]}
+                rawSeries={rawSeries}
                 isEditing={false}
                 isDashboard={false}
               />
