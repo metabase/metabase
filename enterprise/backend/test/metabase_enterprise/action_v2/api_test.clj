@@ -516,9 +516,6 @@
           (update! [{:id 1, :n "e"}])
           (is (= ["a" "c" "d" "e"] (expect-field-values ["a" "c" "d" "e"]))))))))
 
-;; actions (need this to associate with the route namespace)
-;; data-editing (keep this to control whether the data-grid.row actions are callable?)
-
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers

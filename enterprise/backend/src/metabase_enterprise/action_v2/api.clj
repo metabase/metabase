@@ -99,7 +99,6 @@
         (walk/postwalk
          (fn [x]
            (cond
-             ;; TODO handle the fact this stuff can be json-ified better
              (= ::root x)   root
              (= ::input x)  input
              (= ::params x) params
