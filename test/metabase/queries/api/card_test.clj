@@ -76,7 +76,6 @@
    :made_public_by_id      nil
    :parameters             []
    :parameter_mappings     []
-   :param_fields           {}
    :moderation_reviews     ()
    :public_uuid            nil
    :query_type             nil
