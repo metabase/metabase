@@ -8,7 +8,10 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import { openVizSettingsSidebar } from "../../../../reports.slice";
+import {
+  openVizSettingsSidebar,
+  selectQuestion,
+} from "../../../../reports.slice";
 import {
   getIsLoadingCard,
   getIsLoadingDataset,
@@ -219,6 +222,7 @@ export const QuestionEmbedComponent = memo(
     };
 
     const handleEditVisualizationSettings = () => {
+      dispatch(selectQuestion(questionId));
       dispatch(openVizSettingsSidebar(questionId));
     };
 
