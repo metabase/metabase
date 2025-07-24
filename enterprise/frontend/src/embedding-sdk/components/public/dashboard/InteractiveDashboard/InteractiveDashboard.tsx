@@ -1,5 +1,9 @@
 import { useCallback } from "react";
 
+import {
+  SdkDashboard,
+  type SdkDashboardProps,
+} from "embedding-sdk/components/private/SdkDashboard";
 import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
@@ -7,8 +11,6 @@ import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "met
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
-
-import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 /**
  * @interface

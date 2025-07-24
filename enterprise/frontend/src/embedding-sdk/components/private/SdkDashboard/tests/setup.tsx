@@ -44,7 +44,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
-import type { EditableDashboardProps } from "../EditableDashboard";
+import type { EditableDashboardProps } from "../../../public/dashboard/EditableDashboard";
 import type { SdkDashboardProps } from "../SdkDashboard";
 
 export const TEST_DASHBOARD_ID = 1;

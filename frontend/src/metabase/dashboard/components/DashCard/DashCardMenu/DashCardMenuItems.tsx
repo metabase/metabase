@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useSdkDashboardContext } from "embedding-sdk/components/public/dashboard/context";
+import { useSdkDashboardContext } from "embedding-sdk/components/private/SdkDashboard/context";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { editQuestion } from "metabase/dashboard/actions";

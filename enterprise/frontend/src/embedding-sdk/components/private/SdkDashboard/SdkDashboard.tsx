@@ -52,7 +52,7 @@ import { getErrorPage } from "metabase/selectors/app";
 import type {
   DrillThroughQuestionProps,
   SdkQuestionProps,
-} from "../SdkQuestion";
+} from "../../public/SdkQuestion";
 
 import {
   SdkDashboardStyledWrapper,

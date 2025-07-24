@@ -7,13 +7,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { createMockCollection } from "metabase-types/api/mocks";
-
 import {
   type SetupSdkDashboardOptions,
   setupSdkDashboard,
-} from "../tests/setup";
+} from "embedding-sdk/components/private/SdkDashboard/tests/setup";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import { EditableDashboard } from "./EditableDashboard";
 
