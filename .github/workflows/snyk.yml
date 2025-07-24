@@ -2,9 +2,9 @@ name: "Snyk"
 
 on:
   push:
-    branches:
-      - 'master'
-      - 'release-**'
+    # branches:
+      # - 'master'
+      # - 'release-**'
     paths:
       - '**/deps.edn'
       - '**/package.json'
@@ -38,7 +38,6 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-main.sarif
-          category: main-project
       - name: Run snyk drivers
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -48,4 +47,3 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: modules/snyk-drivers.sarif
-          category: drivers
