@@ -913,7 +913,7 @@
             (mt/format-rows-by
              [int]
              (process-native
-              :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
+              :native     {:query         (format "SELECT COUNT(*) AS c FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
                            :template-tags {"checkin_date" {:name         "checkin_date"
                                                            :display-name "Checkin Date"
                                                            :type         :dimension
@@ -931,7 +931,7 @@
               (mt/format-rows-by
                [int]
                (process-native
-                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
+                :native     {:query         (format "SELECT COUNT(*) AS c FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
                              :template-tags {"checkin_date" {:name         "checkin_date"
                                                              :display-name "Checkin Date"
                                                              :type         :dimension
@@ -949,7 +949,7 @@
               (mt/format-rows-by
                [int]
                (process-native
-                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                :native     {:query         (format "SELECT COUNT(*) AS c FROM %s WHERE {{checkin_date}}"
                                                     (table-identifier :checkins))
                              :template-tags {"checkin_date" {:name         "checkin_date"
                                                              :display-name "Checkin Date"
@@ -983,7 +983,7 @@
                   (mt/format-rows-by
                    [int]
                    (process-native
-                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{last_login_date}}"
+                    :native     {:query         (format "SELECT COUNT(*) as c FROM %s WHERE {{last_login_date}}"
                                                         (table-identifier :users))
                                  :template-tags {"last_login_date" {:name         "last_login_date"
                                                                     :display-name "Last Login Date"
@@ -1002,7 +1002,7 @@
               (mt/format-rows-by
                [int]
                (process-native
-                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                :native     {:query         (format "SELECT COUNT(*) AS c FROM %s WHERE {{checkin_date}}"
                                                     (table-identifier :checkins))
                              :template-tags {"checkin_date" {:name         "checkin_date"
                                                              :display-name "Checkin Date"
@@ -1032,7 +1032,7 @@
 
 (defmethod e2e-parse-native-dates-test-sql ::driver/driver
   [_driver]
-  "SELECT cast({{date}} as date)")
+  "SELECT cast({{date}} as date) AS d")
 
 (defmethod e2e-parse-native-dates-test-sql :oracle
   [_driver]
