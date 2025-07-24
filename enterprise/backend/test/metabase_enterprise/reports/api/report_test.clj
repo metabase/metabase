@@ -7,10 +7,11 @@
 
 (deftest post-report-test
   (testing "POST /api/ee/report/"
-    (mt/with-temp-test-data []
+    (mt/with-model-cleanup [:model/Report]
       (testing "should create a new report"
         (let [result (mt/user-http-request :crowberto
-                                           :post 200 "ee/report/" {:name "Report 1" :document "Doc 1"})
+                                           :post 200 "ee/report/" {:name "Report 1"
+                                                                   :document "Doc 1"})
               report-row (t2/select-one :model/Report :id (:id result))
               report-doc-row (t2/select-one :model/ReportVersion :report_id (:id report-row))]
           (is (partial= {:name "Report 1" :document "Doc 1"} result))
@@ -25,9 +26,10 @@
 (deftest put-report-test
   (testing "PUT /api/ee/report/id"
     (mt/with-temp [:model/Report {report-id :id} {:name "Test Report"}
-                   :model/ReportVersion {version-id :id} {:report_id          report-id
-                                                          :document           "Initial Doc"
-                                                          :version_identifier 1}]
+                   :model/ReportVersion {version-id :id}
+                   {:report_id          report-id
+                    :document           "Initial Doc"
+                    :version_identifier 1}]
       (t2/update! :model/Report report-id {:current_version_id version-id})
 
       (testing "should update an existing report"
@@ -40,6 +42,25 @@
   (testing "should return 404 for non-existent report"
     (mt/user-http-request :crowberto
                           :put 404 "ee/report/99999" {:name "Non-existent Report" :document "Doc"})))
+
+(deftest put-report-with-no-perms-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Report {report-id :id} {:collection_id coll-id}
+                 :model/ReportVersion {version-id :id} {:report_id          report-id
+                                                        :document           "Doc 1"
+                                                        :version_identifier 1}]
+    (t2/update! :model/Report report-id {:current_version_id version-id})
+    (mt/with-non-admin-groups-no-collection-perms coll-id
+      (mt/user-http-request :rasta :put 403 (str "ee/report/" report-id)
+                            {:name "Meow"}))))
+
+(deftest post-report-with-no-perms-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}]
+    (mt/with-non-admin-groups-no-collection-perms coll-id
+      (mt/user-http-request :rasta :post 403 "ee/report/"
+                            {:name "Foo"
+                             :document "Bar"
+                             :collection_id coll-id}))))
 
 (deftest get-report-test
   (testing "GET /api/ee/report/id"
@@ -122,7 +143,7 @@
 
       (testing "should get all versions of a report"
         (let [result (mt/user-http-request :crowberto
-                                           :get 200 (str "ee/report/%s/versions" report-id))]
+                                           :get 200 (format "ee/report/%s/versions" report-id))]
           (is (partial= [{:document "Doc 1" :version 1 :content_type "text/markdown" :parent_version_id nil}
                          {:document "Doc 2" :version 2 :content_type "text/markdown" :parent_version_id v1}
                          {:document "Doc 3" :version 3 :content_type "text/markdown" :parent_version_id v2}] result))
