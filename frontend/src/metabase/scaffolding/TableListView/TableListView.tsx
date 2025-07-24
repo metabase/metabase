@@ -96,7 +96,7 @@ export const TableListView = ({ params }: Props) => {
 
   return (
     <Stack gap="md" p="xl">
-      <Group justify="space-between">
+      <Group align="flex-start" justify="space-between">
         <Stack gap="xs">
           <Title>{table.display_name}</Title>
           {typeof count === "number" && (
@@ -107,7 +107,7 @@ export const TableListView = ({ params }: Props) => {
           )}
         </Stack>
 
-        <Group gap="md">
+        <Group align="flex-start" gap="md">
           {!isSyncInProgress(table) && !isEditing && (
             <Button
               component={Link}
