@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 
 import {
   SettingsPageWrapper,
@@ -117,47 +117,63 @@ export function EmbeddingSdkSettings() {
       <SettingsSection>
         <Box>
           <Group align="flex-start" gap="lg">
-            <Flex direction="column" gap="md" style={{ flex: 1 }}>
-              <EmbeddingToggle
-                label={t`Embedding SDK for React`}
-                settingKey="enable-embedding-sdk"
-                labelPosition="right"
-              />
+            <Flex direction="column" gap="md">
+              <Group align="center" justify="space-between" w="100%" gap="xl">
+                <Group gap="sm">
+                  <EmbeddingToggle
+                    label={t`Embedding SDK for React`}
+                    settingKey="enable-embedding-sdk"
+                    labelPosition="right"
+                  />
+                </Group>
+
+                <Text c="text-medium">
+                  {c(
+                    "{0} is the link to quickstart, {1} is the link to documentation",
+                  ).jt`
+                    Check out the ${(
+                      <ExternalLink
+                        href={quickStartUrl}
+                      >{t`quickstart`}</ExternalLink>
+                    )} and
+                    ${(
+                      <ExternalLink
+                        href={documentationUrl}
+                      >{t`documentation`}</ExternalLink>
+                    )}.`}
+                </Text>
+              </Group>
 
               {isSimpleEmbedFeatureEnabled && (
-                <Group align="center" gap="sm">
-                  <EmbeddingToggle
-                    label={t`Simple Embedding`}
-                    labelPosition="right"
-                    settingKey="enable-embedding-simple"
-                  />
+                <Group align="center" justify="space-between" w="100%" gap="xl">
+                  <Group gap="sm">
+                    <EmbeddingToggle
+                      label={t`Simple Embedding`}
+                      labelPosition="right"
+                      settingKey="enable-embedding-simple"
+                    />
 
-                  <Badge size="sm">{t`Beta`}</Badge>
+                    <Badge size="sm">{t`Beta`}</Badge>
+                  </Group>
+
+                  <Text c="text-medium">
+                    {c(
+                      "{0} is the link to quickstart, {1} is the link to documentation",
+                    ).jt`
+                    Check out the ${(
+                      <ExternalLink
+                        href={quickStartUrl}
+                      >{t`quickstart`}</ExternalLink>
+                    )} and
+                    ${(
+                      <ExternalLink
+                        href={documentationUrl}
+                      >{t`documentation`}</ExternalLink>
+                    )}.`}
+                  </Text>
                 </Group>
               )}
             </Flex>
-
-            <Box>
-              <SettingHeader
-                id="get-started"
-                title={
-                  isReactSdkFeatureEnabled
-                    ? t`Get started`
-                    : t`Try Embedded analytics SDK`
-                }
-                description={
-                  isReactSdkFeatureEnabled
-                    ? ""
-                    : t`Use the SDK with API keys for development.`
-                }
-              />
-
-              <Button
-                variant="outline"
-                component={ExternalLink}
-                href={quickStartUrl}
-              >{t`Check out the Quickstart`}</Button>
-            </Box>
           </Group>
         </Box>
 
@@ -210,14 +226,6 @@ export function EmbeddingSdkSettings() {
             >{t`Request version pinning`}</Button>
           </Box>
         )}
-
-        <Text data-testid="sdk-documentation">
-          {jt`Check out the ${(
-            <ExternalLink key="sdk-doc" href={documentationUrl}>
-              {t`documentation`}
-            </ExternalLink>
-          )} for more.`}
-        </Text>
       </SettingsSection>
     </SettingsPageWrapper>
   );
