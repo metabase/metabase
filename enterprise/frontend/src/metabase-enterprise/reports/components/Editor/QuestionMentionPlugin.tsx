@@ -180,11 +180,13 @@ export const QuestionMentionPlugin = ({
         }),
       );
 
+      const insertPosition = mentionRange.from;
+
       editor
         .chain()
         .focus()
         .deleteRange(mentionRange)
-        .insertContent({
+        .insertContentAt(insertPosition, {
           type: "questionEmbed",
           attrs: {
             snapshotId: snapshot.snapshot_id,
@@ -193,6 +195,7 @@ export const QuestionMentionPlugin = ({
             model: wrappedItem.model,
           },
         })
+        .setTextSelection(insertPosition + 1)
         .run();
 
       setShowPopover(false);
