@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -29,6 +29,7 @@ import { getTableQuery } from "../TableListView/utils";
 interface TableDetailViewProps {
   params: {
     tableId: string;
+    rowId: string;
   };
   isEdit?: boolean;
 }
@@ -36,6 +37,7 @@ interface TableDetailViewProps {
 export function TableDetailView(props: TableDetailViewProps) {
   const { isEdit = false } = props;
   const tableId = parseInt(props.params.tableId, 10);
+  const rowId = parseInt(props.params.rowId, 10);
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const dispatch = useDispatch();
 
@@ -67,11 +69,50 @@ export function TableDetailView(props: TableDetailViewProps) {
     dispatch(push(window.location.pathname.replace("/edit", "")));
   }, [dispatch]);
 
-  if (!table || !dataset || !columns) {
+  const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
+
+  useEffect(() => {
+    if (!rows.length) {
+      return;
+    }
+    if (rowId !== undefined) {
+      const idx = rows.findIndex((row) => String(row[0]) === String(rowId));
+      setCurrentRowIndex(idx >= 0 ? idx : 0);
+    } else {
+      setCurrentRowIndex(0);
+    }
+  }, [rowId, rows]);
+
+  const handleViewPreviousObjectDetail = useCallback(() => {
+    setCurrentRowIndex((i) => {
+      const newIndex = i - 1;
+      const rowId = rows[newIndex]?.[0];
+      if (rowId !== undefined) {
+        dispatch(
+          push(`/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`),
+        );
+      }
+      return newIndex;
+    });
+  }, [dispatch, rows, tableId, isEdit]);
+
+  const handleViewNextObjectDetail = useCallback(() => {
+    setCurrentRowIndex((i) => {
+      const newIndex = i + 1;
+      const rowId = rows[newIndex]?.[0];
+      if (rowId !== undefined) {
+        dispatch(
+          push(`/table/${tableId}/detail/${rowId}${isEdit ? "/edit" : ""}`),
+        );
+      }
+      return newIndex;
+    });
+  }, [dispatch, rows, tableId, isEdit]);
+
+  if (!table || !dataset || !columns || fksLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const rows = dataset.data.rows;
   const zoomedRow = rows[currentRowIndex] || {};
   const hiddenColumns = allColumnNames.filter(
     (name) => !visibleColumns.includes(name),
@@ -98,33 +139,33 @@ export function TableDetailView(props: TableDetailViewProps) {
   const objectName = table.name;
   const objectId = null; // You can enhance this to show a PK value if needed
 
-  if (!table || !dataset || !columns || fksLoading) {
+  if (!table || !dataset || !columns) {
     return <LoadingAndErrorWrapper loading />;
   }
 
   return (
     <Flex align="stretch" style={{ height: "100%" }}>
       <Box style={{ flex: 1, minWidth: 0 }}>
-        <Flex align="center" justify="space-between" mb="md">
-          <ObjectDetailHeader
-            canZoom={canZoom}
-            objectName={objectName}
-            objectId={objectId}
-            canZoomPreviousRow={canZoomPreviousRow}
-            canZoomNextRow={canZoomNextRow}
-            viewPreviousObjectDetail={() => setCurrentRowIndex((i) => i - 1)}
-            viewNextObjectDetail={() => setCurrentRowIndex((i) => i + 1)}
-            isEdit={isEdit}
-            onEditClick={handleEditClick}
-            onCloseClick={handleCloseClick}
-            table={table}
-          />
-        </Flex>
+        <ObjectDetailHeader
+          canZoom={canZoom}
+          objectName={objectName}
+          objectId={objectId}
+          canZoomPreviousRow={canZoomPreviousRow}
+          canZoomNextRow={canZoomNextRow}
+          viewPreviousObjectDetail={handleViewPreviousObjectDetail}
+          viewNextObjectDetail={handleViewNextObjectDetail}
+          isEdit={isEdit}
+          onEditClick={handleEditClick}
+          onCloseClick={handleCloseClick}
+          table={table}
+        />
+
         <ObjectDetailBody
           data={dataset.data}
           objectName={objectName}
           zoomedRow={zoomedRow}
           settings={settings}
+          hasRelationships={false}
           tableForeignKeyReferences={[]}
           onVisualizationClick={onVisualizationClick}
           visualizationIsClickable={visualizationIsClickable}
@@ -132,7 +173,7 @@ export function TableDetailView(props: TableDetailViewProps) {
         <Box mt="xl">
           <Relationships
             objectName={objectName}
-            tableForeignKeys={foreignKeys}
+            tableForeignKeys={foreignKeys as any}
           />
         </Box>
       </Box>
@@ -175,77 +216,80 @@ function ObjectDetailHeader({
   table,
 }: ObjectDetailHeaderProps & { table: any }): JSX.Element {
   return (
-    <ObjectDetailHeaderWrapper className={CS.Grid}>
-      <Box className={CS.GridCell} m="auto">
-        <h2 className={CS.p3}>
-          {objectName}
+    <Box>
+      <Box className={CS.GridCell} m="auto" ta="left">
+        <Flex component="h2" className={CS.p3} gap="sm" align="center" pb={0}>
+          <Icon name="table" size={24} c="brand" />
+          <Text fw={600}>{objectName}</Text>
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
-        </h2>
+        </Flex>
       </Box>
 
-      <Flex align="center" gap="0.5rem" p="1rem">
-        {canZoom && (
-          <>
-            <Button
-              size="sx"
-              variant="subtle"
-              data-testid="view-previous-object-detail"
-              disabled={!canZoomPreviousRow}
-              onClick={viewPreviousObjectDetail}
-              leftSection={<Icon name="chevronup" />}
-            />
-            <Button
-              size="sx"
-              variant="subtle"
-              data-testid="view-next-object-detail"
-              disabled={!canZoomNextRow}
-              onClick={viewNextObjectDetail}
-              leftSection={<Icon name="chevrondown" />}
-            />
-          </>
-        )}
+      <ObjectDetailHeaderWrapper className={CS.Grid}>
+        <Flex align="center" gap="0.5rem" p="1rem">
+          {canZoom && (
+            <>
+              <Button
+                size="sx"
+                variant="subtle"
+                data-testid="view-previous-object-detail"
+                disabled={!canZoomPreviousRow}
+                onClick={viewPreviousObjectDetail}
+                leftSection={<Icon name="chevronup" />}
+              />
+              <Button
+                size="sx"
+                variant="subtle"
+                data-testid="view-next-object-detail"
+                disabled={!canZoomNextRow}
+                onClick={viewNextObjectDetail}
+                leftSection={<Icon name="chevrondown" />}
+              />
+            </>
+          )}
 
-        {isEdit && (
-          <>
+          {isEdit && (
+            <>
+              <Button
+                variant="brand"
+                data-testid="object-detail-close-button"
+                onClick={onCloseClick}
+              >{t`Save`}</Button>
+              <Button
+                variant="subtle"
+                color="error"
+                data-testid="object-detail-close-button"
+                onClick={onCloseClick}
+              >{t`Discard changes`}</Button>
+            </>
+          )}
+          {!isEdit && (
+            <Button size="md" variant="light" onClick={onEditClick} ml="md">
+              {t`Edit`}
+            </Button>
+          )}
+          <Flex p="md" gap="md">
             <Button
+              component={Link}
+              to={`/reference/databases/${table.db_id}/tables/${table.id}`}
               variant="brand"
-              data-testid="object-detail-close-button"
-              onClick={onCloseClick}
-            >{t`Save`}</Button>
-            <Button
-              variant="subtle"
-              color="error"
-              data-testid="object-detail-close-button"
-              onClick={onCloseClick}
-            >{t`Discard changes`}</Button>
-          </>
-        )}
-        {!isEdit && (
-          <Button size="md" variant="light" onClick={onEditClick} ml="md">
-            {t`Edit`}
-          </Button>
-        )}
-        <Flex p="md" gap="md">
-          <Button
-            component={Link}
-            to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-            variant="brand"
-            data-testid="table-reference-link"
-          >
-            {t`View table reference`}
-          </Button>
+              data-testid="table-reference-link"
+            >
+              {t`View table reference`}
+            </Button>
 
-          <Button
-            component={Link}
-            to={`/table/${table.id}`}
-            variant="brand"
-            data-testid="table-link"
-          >
-            {t`View table`}
-          </Button>
+            <Button
+              component={Link}
+              to={`/table/${table.id}`}
+              variant="brand"
+              data-testid="table-link"
+            >
+              {t`View table`}
+            </Button>
+          </Flex>
         </Flex>
-      </Flex>
-    </ObjectDetailHeaderWrapper>
+      </ObjectDetailHeaderWrapper>
+    </Box>
   );
 }
 
