@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -63,6 +64,8 @@ export const TableListView = ({ params }: Props) => {
       return;
     }
 
+    /* name */
+
     let nameColumnIndex = columns.findIndex((column) => isEntityName(column));
 
     if (nameColumnIndex === -1) {
@@ -76,11 +79,10 @@ export const TableListView = ({ params }: Props) => {
     }
 
     if (nameColumnIndex !== -1) {
-      console.log("name", columns[nameColumnIndex]);
       setNameColumnIndex(nameColumnIndex);
     }
 
-    /////////////////////////////
+    /* description */
 
     let descriptionColumnIndex = columns.findIndex(
       (column) => column.semantic_type === "type/Description",
@@ -91,11 +93,10 @@ export const TableListView = ({ params }: Props) => {
     }
 
     if (descriptionColumnIndex !== -1) {
-      console.log("description", columns[descriptionColumnIndex]);
       setDescriptionColumnIndex(descriptionColumnIndex);
     }
 
-    /////////////////////////////
+    /* image */
 
     let imageColumnIndex = columns.findIndex((column) => isAvatarURL(column));
 
@@ -104,7 +105,6 @@ export const TableListView = ({ params }: Props) => {
     }
 
     if (imageColumnIndex !== -1) {
-      console.log("image", columns[imageColumnIndex]);
       setImageColumnIndex(imageColumnIndex);
     }
   }, [columns]);
@@ -120,13 +120,13 @@ export const TableListView = ({ params }: Props) => {
 
         {!isEditing && (
           <Button variant="outline" onClick={() => setIsEditing(true)}>
-            Edit
+            {t`Edit`}
           </Button>
         )}
 
         {isEditing && (
           <Button variant="filledz" onClick={() => setIsEditing(false)}>
-            Save
+            {t`Save`}
           </Button>
         )}
       </Group>
@@ -141,9 +141,9 @@ export const TableListView = ({ params }: Props) => {
                 {imageColumnIndex !== -1 && (
                   <Card.Section mb="lg">
                     <Image
-                      src={row[imageColumnIndex]}
+                      alt={row[nameColumnIndex] ?? t`Image`}
                       h={160}
-                      alt={row[nameColumnIndex] ?? "Image"}
+                      src={row[imageColumnIndex]}
                     />
                   </Card.Section>
                 )}
@@ -165,46 +165,46 @@ export const TableListView = ({ params }: Props) => {
         {isEditing && (
           <Stack>
             <Select
-              label="Name"
               clearable
               data={columns.map((column, index) => ({
                 label: column.display_name,
                 value: String(column.id),
                 index,
               }))}
-              placeholder="Select a column"
+              label={t`Name`}
+              placeholder={t`Select a column`}
               value={String(columns[nameColumnIndex]?.id)}
-              onChange={(value, option) => {
+              onChange={(_value, option) => {
                 setNameColumnIndex(option ? option.index : -1);
               }}
             />
 
             <Select
-              label="Description"
               clearable
               data={columns.map((column, index) => ({
                 label: column.display_name,
                 value: String(column.id),
                 index,
               }))}
-              placeholder="Select a column"
+              label={t`Description`}
+              placeholder={t`Select a column`}
               value={String(columns[descriptionColumnIndex]?.id)}
-              onChange={(value, option) => {
+              onChange={(_value, option) => {
                 setDescriptionColumnIndex(option ? option.index : -1);
               }}
             />
 
             <Select
-              label="Image"
               clearable
               data={columns.map((column, index) => ({
                 label: column.display_name,
                 value: String(column.id),
                 index,
               }))}
-              placeholder="Select a column"
+              label={t`Image`}
+              placeholder={t`Select a column`}
               value={String(columns[imageColumnIndex]?.id)}
-              onChange={(value, option) => {
+              onChange={(_value, option) => {
                 setImageColumnIndex(option ? option.index : -1);
               }}
             />
