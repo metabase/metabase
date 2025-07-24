@@ -316,7 +316,7 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route path="table">
-            <Route path=":id/list" component={TableListView} />
+            <Route path=":id" component={TableListView} />
           </Route>
 
           {/* INDIVIDUAL DASHBOARDS */}

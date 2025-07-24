@@ -89,7 +89,7 @@ const TableBrowserItem = ({
   return (
     <BrowseCard
       // to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
-      to={!isSyncInProgress(table) ? `/table/${table.id}/list` : ""}
+      to={!isSyncInProgress(table) ? `/table/${table.id}` : ""}
       icon="table"
       title={table.display_name || table.name}
       onClick={() => trackTableClick(table.id)}
