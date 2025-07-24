@@ -1,19 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ComponentProps, useState } from "react";
+import { useState } from "react";
 
-import { InteractiveQuestion } from "embedding-sdk";
+import {
+  SdkQuestion,
+  type SdkQuestionProps,
+} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Modal, Stack } from "metabase/ui";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
-type InteractiveQuestionComponentProps = ComponentProps<
-  typeof InteractiveQuestion
->;
-
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/SaveQuestionForm",
-  component: InteractiveQuestion,
+  component: SdkQuestion,
   parameters: {
     layout: "fullscreen",
   },
@@ -21,14 +20,14 @@ export default {
 };
 
 export const Default = {
-  render(args: InteractiveQuestionComponentProps) {
+  render(args: SdkQuestionProps) {
     const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
 
     const [isBeforeSaveCalled, setBeforeSaveCalled] = useState(false);
     const [newQuestionTitle, setNewQuestionTitle] = useState("");
 
     return (
-      <InteractiveQuestion
+      <SdkQuestion
         onBeforeSave={async () => setBeforeSaveCalled(true)}
         onSave={(question, context) => {
           if (context.isNewQuestion) {
@@ -45,17 +44,17 @@ export const Default = {
 
         {isSaveModalOpen && (
           <Modal opened={isSaveModalOpen} onClose={close}>
-            <InteractiveQuestion.SaveQuestionForm onCancel={close} />
+            <SdkQuestion.SaveQuestionForm onCancel={close} />
           </Modal>
         )}
 
-        {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
+        {!isSaveModalOpen && <SdkQuestion.QuestionVisualization />}
 
         <Stack p="lg">
           {isBeforeSaveCalled && <Box>onBeforeSave is called</Box>}
           {newQuestionTitle && <Box>question saved as {newQuestionTitle}</Box>}
         </Stack>
-      </InteractiveQuestion>
+      </SdkQuestion>
     );
   },
 
