@@ -88,11 +88,9 @@ type NavigateToStepOptions =
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-const { experience, dismissEmbedTerms } = options;
+  const { experience, dismissEmbedTerms } = options;
 
   visitNewEmbedPage({ dismissEmbedTerms });
-
-  visitNewEmbedPage({ dismissEmbedTerms: options.dismissEmbedTerms });
 
   cy.log("select an experience");
 
