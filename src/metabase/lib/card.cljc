@@ -125,9 +125,9 @@
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     cols                  :- [:maybe [:or
-                                      [:sequential ::lib.schema.metadata/card.result-metadata.map]
+                                      [:sequential ::lib.schema.metadata/lib-or-legacy-column]
                                       [:map
-                                       [:columns [:sequential ::lib.schema.metadata/card.result-metadata.map]]]]]]
+                                       [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
    ;; contains` :columns` as well.
    (when-let [cols (not-empty (cond

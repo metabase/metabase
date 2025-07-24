@@ -26,6 +26,7 @@ import type {
   Database,
   Dataset,
   EmbedDataset,
+  Parameter,
   ParameterId,
   QuestionDashboardCard,
   VirtualCard,
@@ -481,4 +482,49 @@ export function getMappedParametersIds(
     const mappings = dashcard.parameter_mappings ?? [];
     return mappings.map((parameter) => parameter.parameter_id);
   });
+}
+
+/**
+ * Reorders a dashboard header parameter within the full parameters array.
+ *
+ * Since `dashboard.parameters` includes both header and inline (dashcard) parameters,
+ * this function ensures that the header parameters are correctly reordered while
+ * maintaining the integrity of the full parameters array.
+ */
+export function setDashboardHeaderParameterIndex(
+  parameters: Parameter[],
+  headerParameterIds: ParameterId[],
+  parameterId: ParameterId,
+  index: number,
+) {
+  const headerIndex = headerParameterIds.indexOf(parameterId);
+  const fullIndex = parameters.findIndex((p) => p.id === parameterId);
+
+  if (headerIndex === -1 || fullIndex === -1 || headerIndex === index) {
+    return parameters;
+  }
+
+  const reorderedHeaders = [...headerParameterIds];
+  reorderedHeaders.splice(headerIndex, 1);
+  reorderedHeaders.splice(index, 0, parameterId);
+
+  let targetIndex = 0;
+
+  if (index > 0) {
+    const prevHeaderId = reorderedHeaders[index - 1];
+    const prevIndex = parameters.findIndex((p) => p.id === prevHeaderId);
+    if (prevIndex >= 0) {
+      targetIndex = prevIndex + 1;
+    }
+  }
+
+  const result = [...parameters];
+  const [movedParam] = result.splice(fullIndex, 1);
+
+  if (fullIndex < targetIndex) {
+    targetIndex--;
+  }
+
+  result.splice(targetIndex, 0, movedParam);
+  return result;
 }

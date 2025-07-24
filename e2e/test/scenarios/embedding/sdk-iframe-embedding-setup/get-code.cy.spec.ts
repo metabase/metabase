@@ -98,7 +98,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByText("Embed Code").should("be.visible");
       codeBlock().should("be.visible");
-      codeBlock().should("contain", "MetabaseEmbed");
+      codeBlock().should("contain", "defineMetabaseConfig");
+      codeBlock().should("contain", "metabase-dashboard");
     });
   });
 
@@ -133,18 +134,18 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
   });
 
-  it("should set dashboardId for dashboard experience", () => {
+  it("should set dashboard-id for dashboard experience", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
 
     getEmbedSidebar().within(() => {
-      codeBlock().should("contain", `"dashboardId": ${ORDERS_DASHBOARD_ID}`);
+      codeBlock().should("contain", `dashboard-id="${ORDERS_DASHBOARD_ID}"`);
     });
   });
 
-  it("should set questionId for chart experience", () => {
+  it("should set question-id for chart experience", () => {
     navigateToGetCodeStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
@@ -153,16 +154,16 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       codeBlock().should(
         "contain",
-        `"questionId": ${ORDERS_COUNT_QUESTION_ID}`,
+        `question-id="${ORDERS_COUNT_QUESTION_ID}"`,
       );
     });
   });
 
-  it("should set template=exploration for exploration experience", () => {
+  it("should use metabase-question for exploration experience", () => {
     navigateToGetCodeStep({ experience: "exploration" });
 
     getEmbedSidebar().within(() => {
-      codeBlock().should("contain", '"template": "exploration"');
+      codeBlock().should("contain", "metabase-question");
     });
   });
 });

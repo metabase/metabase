@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Stack, Text } from "metabase/ui";
 
@@ -24,21 +24,19 @@ export const QuestionVisualizationButton = {
     const [count, setCount] = useState(0);
     return (
       <Box p="lg">
-        <InteractiveQuestion
+        <SdkQuestion
           questionId={QUESTION_ID}
           onRun={() => setCount((cnt) => cnt + 1)}
         >
           <Box>
             <Stack justify="space-between" w="100%">
               <Text>You&apos;ve run {count} queries.</Text>
-              <InteractiveQuestion.VisualizationButton />
+              <SdkQuestion.VisualizationButton />
             </Stack>
-            <InteractiveQuestion.Editor
-              hasVisualizeButton={false}
-            ></InteractiveQuestion.Editor>
-            <InteractiveQuestion.QuestionVisualization />
+            <SdkQuestion.Editor hasVisualizeButton={false}></SdkQuestion.Editor>
+            <SdkQuestion.QuestionVisualization />
           </Box>
-        </InteractiveQuestion>
+        </SdkQuestion>
       </Box>
     );
   },
@@ -59,7 +57,7 @@ export const CustomVisualizationButton = {
 
     return (
       <Box p="lg">
-        <InteractiveQuestion
+        <SdkQuestion
           questionId={QUESTION_ID}
           onRun={() => setCount((cnt) => cnt + 1)}
         >
@@ -68,12 +66,10 @@ export const CustomVisualizationButton = {
               <OisinsRandomButton />
               <Text>You&apos;ve run {count} queries.</Text>
             </Stack>
-            <InteractiveQuestion.Editor
-              hasVisualizeButton={false}
-            ></InteractiveQuestion.Editor>
-            <InteractiveQuestion.QuestionVisualization />
+            <SdkQuestion.Editor hasVisualizeButton={false}></SdkQuestion.Editor>
+            <SdkQuestion.QuestionVisualization />
           </Box>
-        </InteractiveQuestion>
+        </SdkQuestion>
       </Box>
     );
   },

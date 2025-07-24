@@ -54,6 +54,19 @@
                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
    #'unique-uuids?])
 
+(defn ref-distinct-key
+  "For deduplicating refs: keep just the keys that are essential to distinguishing one ref from another."
+  [ref]
+  (let [options (lib.options/options ref)]
+    (lib.options/with-options ref
+      ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
+      (reduce-kv (fn [acc k _]
+                   (if (or (qualified-keyword? k)
+                           (#{:base-type :effective-type} k))
+                     (dissoc acc k)
+                     acc))
+                 options options))))
+
 (defn distinct-refs?
   "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
   aren't important such as namespaced keys and type info)?"
@@ -62,25 +75,15 @@
    (< (count refs) 2)
    (apply
     distinct?
-    (for [ref refs]
-      (let [options (lib.options/options ref)]
-        (lib.options/with-options ref
-          ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
-          (reduce-kv (fn [acc k _]
-                       (if (or (qualified-keyword? k)
-                               (#{:base-type :effective-type :ident} k))
-                         (dissoc acc k)
-                         acc))
-                     options options)))))))
+    (map ref-distinct-key refs))))
 
-(defn remove-randomized-idents
+(defn remove-lib-uuids
   "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
   [x]
   (walk/postwalk
    (fn [x]
-     (if (map? x)
-       (dissoc x :lib/uuid :ident :entity_id :entity-id)
-       x))
+     (cond-> x
+       (map? x) (dissoc :lib/uuid)))
    x))
 
 (defn- indexed-order-bys-for-stage
@@ -111,8 +114,8 @@
   [:fn
    {:error/message "values must be distinct ignoring uuids"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-randomized-idents value))))}
-   (comp u/empty-or-distinct? remove-randomized-idents)])
+                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))}
+   (comp u/empty-or-distinct? remove-lib-uuids)])
 
 (defn distinct-ignoring-uuids
   "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."

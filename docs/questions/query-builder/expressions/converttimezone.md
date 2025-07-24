@@ -187,7 +187,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query-builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [timestamp sample data](#creating-custom-report-dates) is a `timestamp without time zone` stored in a PostgreSQL database:
 

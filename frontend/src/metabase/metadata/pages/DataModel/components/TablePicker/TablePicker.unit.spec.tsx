@@ -164,7 +164,7 @@ describe("TablePicker", () => {
       await waitLoading();
 
       expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
-      expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toBeInTheDocument();
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toBeInTheDocument();
 
       await clickItem(DATABASE_WITH_MULTIPLE_SCHEMAS);
       await waitLoading();
@@ -403,7 +403,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   const name =
     typeof input === "string" ? input : (input.display_name ?? input.name);
   return (screen.queryByText(name)?.parentNode?.parentNode?.parentNode ??
-    null) as HTMLDivElement | null;
+    null) as HTMLAnchorElement | null;
 }
 
 async function clickItem(

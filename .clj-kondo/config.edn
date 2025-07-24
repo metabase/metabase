@@ -68,6 +68,7 @@
   :metabase/validate-logging                           {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
+  :metabase/discourage-millis-duration                 {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning
@@ -501,6 +502,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
+   clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
@@ -739,6 +741,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
     :metabase/validate-string-or-str-args-to-i18n {:level :warning}
+    :metabase/discourage-millis-duration {:level :warning}
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
@@ -807,4 +810,9 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
 
   general-qp-and-driver-test-namespaces
   {:linters
-   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}
+   {:discouraged-var
+    {metabase.test/with-column-remappings      {:message "Use metabase.lib.test-util/remap-metadata-provider instead of with-column-remappings in QP tests"}
+     metabase.test.util/with-column-remappings {:message "Use metabase.lib.test-util/remap-metadata-provider instead of with-column-remappings in QP tests"}}
+
+    :metabase/disallow-hardcoded-driver-names-in-tests
+    {:level :warning}}}}}

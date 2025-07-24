@@ -280,59 +280,66 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
   });
 
   describe("create new question from dashboards", () => {
-    it("should allow creating a new question from the dashboard", () => {
-      cy.get("@dashboardId").then((dashboardId) => {
-        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
-      });
+    const testCases = [
+      { name: "numeric id", alias: "@dashboardId" },
+      { name: "entity id", alias: "@dashboardEntityId" },
+    ];
 
-      getSdkRoot().within(() => {
-        cy.button("Edit dashboard").should("be.visible").click();
-        cy.button("Add questions").should("be.visible").click();
-        cy.button("New Question").should("be.visible").click();
-
-        cy.log("building the query");
-        H.popover().findByRole("link", { name: "Orders" }).click();
-        cy.button("Visualize").click();
-
-        cy.log("test going back to the dashboard from the visualization");
-        cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();
-
-        cy.log("create a new question again");
-        cy.button("New Question").should("be.visible").click();
-        H.popover().findByRole("link", { name: "Orders" }).click();
-        /**
-         * We need to visualize before we can save the question.
-         * This will be addressed in EMB-584
-         */
-        cy.button("Visualize").click();
-        cy.button("Save").click();
-
-        H.modal().within(() => {
-          cy.findByRole("heading", { name: "Save new question" }).should(
-            "be.visible",
-          );
-          cy.findByLabelText("Name").clear().type("Orders in a dashboard");
-          // Dashboard without tabs should not show the tab selector
-          cy.findByLabelText("Which tab should this go on?").should(
-            "not.exist",
-          );
-          cy.button("Save").click();
+    testCases.forEach((testCase) => {
+      it(`should allow creating a new question from the dashboard with ${testCase.name}`, () => {
+        cy.get(testCase.alias).then((dashboardId) => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
         });
 
-        /**
-         * I was supposed to test the dashcard auto-scroll here, but for some reason,
-         * the test always fails on CI, but not locally. So I didn't test it here.
-         */
-        cy.log("Now we should be back on the dashboard in the edit mode");
-        cy.findByText("You're editing this dashboard.").should("be.visible");
-        cy.findByText("Orders in a dashboard").should("be.visible");
-        const NEW_DASHCARD_INDEX = 0;
-        H.getDashboardCard(NEW_DASHCARD_INDEX)
-          .findByText("Orders in a dashboard")
-          .should("be.visible");
+        getSdkRoot().within(() => {
+          cy.button("Edit dashboard").should("be.visible").click();
+          cy.button("Add questions").should("be.visible").click();
+          cy.button("New Question").should("be.visible").click();
 
-        cy.button("Save").click();
-        cy.findByText("You're editing this dashboard.").should("not.exist");
+          cy.log("building the query");
+          H.popover().findByRole("link", { name: "Orders" }).click();
+          cy.button("Visualize").click();
+
+          cy.log("test going back to the dashboard from the visualization");
+          cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();
+
+          cy.log("create a new question again");
+          cy.button("New Question").should("be.visible").click();
+          H.popover().findByRole("link", { name: "Orders" }).click();
+          /**
+           * We need to visualize before we can save the question.
+           * This will be addressed in EMB-584
+           */
+          cy.button("Visualize").click();
+          cy.button("Save").click();
+
+          H.modal().within(() => {
+            cy.findByRole("heading", { name: "Save new question" }).should(
+              "be.visible",
+            );
+            cy.findByLabelText("Name").clear().type("Orders in a dashboard");
+            // Dashboard without tabs should not show the tab selector
+            cy.findByLabelText("Which tab should this go on?").should(
+              "not.exist",
+            );
+            cy.button("Save").click();
+          });
+
+          /**
+           * I was supposed to test the dashcard auto-scroll here, but for some reason,
+           * the test always fails on CI, but not locally. So I didn't test it here.
+           */
+          cy.log("Now we should be back on the dashboard in the edit mode");
+          cy.findByText("You're editing this dashboard.").should("be.visible");
+          cy.findByText("Orders in a dashboard").should("be.visible");
+          const NEW_DASHCARD_INDEX = 0;
+          H.getDashboardCard(NEW_DASHCARD_INDEX)
+            .findByText("Orders in a dashboard")
+            .should("be.visible");
+
+          cy.button("Save").click();
+          cy.findByText("You're editing this dashboard.").should("not.exist");
+        });
       });
     });
 
