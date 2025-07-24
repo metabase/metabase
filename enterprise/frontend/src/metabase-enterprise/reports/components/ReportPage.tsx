@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
@@ -5,6 +6,7 @@ import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { ActionIcon, Box, Button, Icon, Loader, Menu } from "metabase/ui";
@@ -13,6 +15,7 @@ import {
   useGetReportQuery,
   useUpdateReportMutation,
 } from "metabase-enterprise/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { useEditorActions, useReportActions, useReportState } from "../hooks";
 import { selectQuestion, toggleSidebar } from "../reports.slice";
@@ -46,6 +49,10 @@ export const ReportPage = ({
   >(null);
   const [createReport] = useCreateReportMutation();
   const [updateReport] = useUpdateReportMutation();
+  const [
+    isShowingCollectionPicker,
+    { open: showCollectionPicker, close: hideCollectionPicker },
+  ] = useDisclosure(false);
   const [sendToast] = useToast();
   const store = useStore();
   const previousReportId = usePrevious(reportId);
@@ -139,81 +146,95 @@ export const ReportPage = ({
 
   const showSaveButton = hasUnsavedChanges();
 
-  const handleSave = useCallback(async () => {
-    if (!editorInstance) {
-      return;
-    }
-
-    try {
-      const state = store.getState();
-      const modifiedCards = Object.keys(
-        (state as any).plugins?.reports?.modifiedVisualizationSettings || {},
-      )
-        .map(Number)
-        .filter((cardId) => getHasModifiedVisualizationSettings(state, cardId));
-
-      if (modifiedCards.length > 0) {
-        await Promise.all(
-          modifiedCards.map((cardId) =>
-            commitVisualizationChanges(cardId, editorInstance),
-          ),
-        );
+  const handleSave = useCallback(
+    async (collectionId?: CollectionId) => {
+      if (!editorInstance) {
+        return;
       }
 
-      const markdown = editorInstance.storage.markdown?.getMarkdown() ?? "";
-      const newReportData = {
-        name: reportTitle,
-        document: markdown as string,
-      };
+      try {
+        const state = store.getState();
+        const modifiedCards = Object.keys(
+          (state as any).plugins?.reports?.modifiedVisualizationSettings || {},
+        )
+          .map(Number)
+          .filter((cardId) =>
+            getHasModifiedVisualizationSettings(state, cardId),
+          );
 
-      const result = await (reportId !== "new" && report?.id
-        ? updateReport({ ...newReportData, id: report.id }).then((response) => {
-            if (response.data) {
-              dispatch(
-                push(
-                  `/report/${response.data.id}?version=${response.data.version}`,
-                ),
-              );
-            }
-            return response.data;
-          })
-        : createReport(newReportData).then((response) => {
-            if (response.data) {
-              dispatch(replace(`/report/${response.data.id}`));
-            }
-            return response.data;
-          }));
+        if (modifiedCards.length > 0) {
+          await Promise.all(
+            modifiedCards.map((cardId) =>
+              commitVisualizationChanges(cardId, editorInstance),
+            ),
+          );
+        }
 
-      if (result) {
-        sendToast({
-          message: report?.id
-            ? t`Report v${result?.version} saved`
-            : t`Report created`,
-        });
+        const markdown = editorInstance.storage.markdown?.getMarkdown() ?? "";
+        const newReportData = {
+          name: reportTitle,
+          document: markdown as string,
+        };
+
+        const result = await (reportId !== "new" && report?.id
+          ? updateReport({ ...newReportData, id: report.id }).then(
+              (response) => {
+                if (response.data) {
+                  dispatch(
+                    push(
+                      `/report/${response.data.id}?version=${response.data.version}`,
+                    ),
+                  );
+                }
+                return response.data;
+              },
+            )
+          : createReport({
+              ...newReportData,
+              collection_id: collectionId,
+            }).then((response) => {
+              if (response.data) {
+                dispatch(replace(`/report/${response.data.id}`));
+              }
+              return response.data;
+            }));
+
+        if (result) {
+          sendToast({
+            message: report?.id
+              ? t`Report v${result?.version} saved`
+              : t`Report created`,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to save report:", error);
+        sendToast({ message: t`Error saving report`, icon: "warning" });
       }
-    } catch (error) {
-      console.error("Failed to save report:", error);
-      sendToast({ message: t`Error saving report`, icon: "warning" });
-    }
-  }, [
-    editorInstance,
-    createReport,
-    updateReport,
-    report,
-    reportTitle,
-    sendToast,
-    dispatch,
-    store,
-    commitVisualizationChanges,
-    reportId,
-  ]);
+    },
+    [
+      editorInstance,
+      createReport,
+      updateReport,
+      report,
+      reportTitle,
+      sendToast,
+      dispatch,
+      store,
+      commitVisualizationChanges,
+      reportId,
+    ],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Save shortcut: Cmd+S (Mac) or Ctrl+S (Windows/Linux)
       if ((event.metaKey || event.ctrlKey) && event.key === "s") {
         event.preventDefault();
-        hasUnsavedChanges() && handleSave();
+        if (!hasUnsavedChanges()) {
+          return;
+        }
+
+        reportId === "new" ? showCollectionPicker() : handleSave();
       }
     };
 
@@ -222,7 +243,7 @@ export const ReportPage = ({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hasUnsavedChanges, handleSave]);
+  }, [hasUnsavedChanges, handleSave, reportId, showCollectionPicker]);
 
   const handleToggleSidebar = useCallback(async () => {
     // If we're closing the sidebar with a selected question, commit any pending changes
@@ -331,7 +352,14 @@ export const ReportPage = ({
                 style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
               >
                 {showSaveButton && (
-                  <Button onClick={handleSave} variant="filled">
+                  <Button
+                    onClick={() => {
+                      reportId === "new"
+                        ? showCollectionPicker()
+                        : handleSave();
+                    }}
+                    variant="filled"
+                  >
                     {t`Save`}
                   </Button>
                 )}
@@ -388,7 +416,7 @@ export const ReportPage = ({
               <EmbedQuestionSettingsSidebar
                 questionId={selectedQuestionId}
                 snapshotId={
-                  questionRefs.find((ref) => ref.id === selectedQuestionId)
+                  questionRefs.find((ref: any) => ref.id === selectedQuestionId)
                     ?.snapshotId || 0
                 }
                 onClose={() => dispatch(selectQuestion(null))}
@@ -401,6 +429,17 @@ export const ReportPage = ({
               />
             )}
           </Box>
+        )}
+        {isShowingCollectionPicker && (
+          <CollectionPickerModal
+            title={t`Where should we save this report?`}
+            onClose={hideCollectionPicker}
+            value={{ id: "root", model: "collection" }}
+            onChange={(collection) => {
+              handleSave(collection.id as CollectionId);
+              hideCollectionPicker();
+            }}
+          />
         )}
       </Box>
     </Box>

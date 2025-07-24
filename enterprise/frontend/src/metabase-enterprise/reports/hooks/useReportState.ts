@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { CollectionId } from "metabase-types/api";
 
 import type { QuestionRef } from "../reports.slice";
 import { fetchReportQuestionData, setQuestionRefs } from "../reports.slice";
@@ -14,6 +15,8 @@ export function useReportState(reportData?: {
   const questionRefs = useSelector(getQuestionRefs);
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
+  const [reportCollectionId, setReportCollectionId] =
+    useState<CollectionId | null>(null);
   const previousRefsRef = useRef<QuestionRef[]>([]);
 
   // Sync questionRefs changes with data fetching
@@ -65,6 +68,8 @@ export function useReportState(reportData?: {
     setReportTitle,
     reportContent,
     setReportContent,
+    reportCollectionId,
+    setReportCollectionId,
     questionRefs,
     updateQuestionRefs,
   };

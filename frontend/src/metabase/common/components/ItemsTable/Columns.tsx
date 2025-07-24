@@ -9,6 +9,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import EntityItem from "metabase/common/components/EntityItem";
 import Markdown from "metabase/common/components/Markdown";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { modelToUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
@@ -51,7 +52,10 @@ const ItemLinkComponent = ({
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (
-    <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
+    <ItemLink
+      to={item.getUrl?.() ?? modelToUrl(item)}
+      onClick={() => onClick?.(item)}
+    >
       {children}
     </ItemLink>
   );
