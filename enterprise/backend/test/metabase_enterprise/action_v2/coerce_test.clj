@@ -1,5 +1,6 @@
 (ns metabase-enterprise.action-v2.coerce-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.coerce :as coerce]
@@ -72,5 +73,10 @@
     (testing (every? #(and (fn? (:in %)) (fn? (:out %))) coerce/coercion-fns)))
 
   ;; TODO: fix this test by implementing all strategies
-  #_(testing "all coercion strategies are covered"
-      (is (empty? (second (diff (into #{} (keys coerce/coercion-fns)) (descendants :Coercion/*)))))))
+  (let [implemented (set (keys coerce/coercion-fns))
+        [unknown missing] (clojure.data/diff implemented (descendants :Coercion/*))]
+    (testing "There are no unnecessary transformations (or stale keywords)"
+      (is (nil? unknown)))
+    (testing "There are no gaps in our transformations"
+      ;; TODO implement these remaining cases
+      (is (empty? (set/difference missing @#'coerce/unimplemented-coercion-functions))))))

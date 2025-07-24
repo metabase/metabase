@@ -3,7 +3,7 @@
    [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang BigInt)
-   (java.time LocalDateTime ZonedDateTime ZoneId)
+   (java.time Instant LocalDate LocalDateTime LocalTime ZonedDateTime ZoneId)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
@@ -51,8 +51,8 @@
 (defn- millis->json-zdt
   [millis]
   (-> millis
-      java.time.Instant/ofEpochMilli
-      (java.time.ZonedDateTime/ofInstant (java.time.ZoneId/systemDefault))
+      Instant/ofEpochMilli
+      (ZonedDateTime/ofInstant (ZoneId/systemDefault))
       str))
 
 (defn- unix-seconds->json-zdt
@@ -74,17 +74,33 @@
 (defn- date->json-zdt
   [date]
   (-> date
-      java.time.LocalDate/parse
-      (.atStartOfDay (java.time.ZoneId/systemDefault))
+      LocalDate/parse
+      (.atStartOfDay (ZoneId/systemDefault))
       str))
 
 (defn- time->json-zdt
   [time]
   (-> time
-      java.time.LocalTime/parse
-      (.atDate (java.time.LocalDate/now))
-      (.atZone (java.time.ZoneId/systemDefault))
+      LocalTime/parse
+      (.atDate (LocalDate/now))
+      (.atZone (ZoneId/systemDefault))
       str))
+
+;; TODO Missing cases for [[metabase.actions.coerce-test/coercion-fns-static-test]]
+(def ^:private unimplemented-coercion-functions
+  #{:Coercion/Bytes->Temporal
+    :Coercion/DateTime->Date
+    :Coercion/Float->Integer
+    :Coercion/ISO8601->Temporal
+    :Coercion/ISO8601Bytes->Temporal
+    :Coercion/Number->Temporal
+    :Coercion/String->Float
+    :Coercion/String->Integer
+    :Coercion/String->Number
+    :Coercion/String->Temporal
+    :Coercion/Temporal->Temporal
+    :Coercion/UNIXTime->Temporal
+    :Coercion/YYYYMMDDHHMMSSBytes->Temporal})
 
 (def coercion-fns
   "Maps a coercion strategy to a map containing both input and output conversion functions.
@@ -93,15 +109,6 @@
   :out - Function to convert from database format to JSON output
 
   Assumes the input/output values are valid for the coercion strategy and can fit within bounds."
-  ;; TODO: missing (second (clojure.data/diff (into #{} (keys coercion-fns)) (descendants :Coercion/*)))
-  ;;{:Coercion/Bytes->Temporal
-  ;; :Coercion/UNIXTime->Temporal
-  ;; :Coercion/String->Float
-  ;; :Coercion/Number->Temporal
-  ;; :Coercion/String->Number
-  ;; :Coercion/YYYYMMDDHHMMSSBytes->Temporal
-  ;; :Coercion/String->Temporal
-  ;; :Coercion/ISO8601->Temporal}
   {:Coercion/UNIXSeconds->DateTime          {:in  #'json-zdt->unix-seconds
                                              :out #'unix-seconds->json-zdt}
    :Coercion/UNIXMilliSeconds->DateTime     {:in  #'json-zdt->unix-millis
