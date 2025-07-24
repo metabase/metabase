@@ -17,6 +17,8 @@
   -ms-user-select: none;
   cursor: pointer;
   transition: border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .questionEmbed.selected {
@@ -50,4 +52,13 @@
 .errorContainer {
   padding: 1rem;
   color: var(--mb-color-error);
+}
+
+.questionTimestamp {
+  padding: 0 1rem;
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
 }

@@ -56,7 +56,7 @@ export const getReportRawSeries = createSelector(
     if (!card || !dataset?.data) {
       return null;
     }
-    return [{ card, data: dataset.data }];
+    return [{ card, started_at: dataset.started_at, data: dataset.data }];
   },
 );
 

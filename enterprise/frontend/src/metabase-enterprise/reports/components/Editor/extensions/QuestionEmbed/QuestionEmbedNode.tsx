@@ -3,6 +3,7 @@ import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { memo, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import DateTime from "metabase/common/components/DateTime";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
@@ -352,13 +353,19 @@ export const QuestionEmbedComponent = memo(
             </Box>
           )}
           {rawSeries ? (
-            <Box className={styles.questionResults}>
-              <Visualization
-                rawSeries={rawSeries}
-                isEditing={false}
-                isDashboard={false}
-              />
-            </Box>
+            <>
+              <Box className={styles.questionResults}>
+                <Visualization
+                  rawSeries={rawSeries}
+                  isEditing={false}
+                  isDashboard={false}
+                />
+              </Box>
+              <Box className={styles.questionTimestamp}>
+                {t`Snapshot At:`}
+                <DateTime value={rawSeries[0].started_at} />
+              </Box>
+            </>
           ) : (
             <Box className={styles.loadingContainer}>
               <Loader size="sm" />
