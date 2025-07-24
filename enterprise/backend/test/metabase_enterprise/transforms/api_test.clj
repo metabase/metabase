@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -49,19 +50,20 @@
        ~@body)))
 
 (deftest create-transform-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transform/basic)
+  (mt/test-drivers (mt/normal-drivers)
     (with-transform-cleanup! [table-name "gadget_products"]
-      (mt/user-http-request :crowberto :post 200 "ee/transform"
-                            {:name "Gadget Products"
-                             :source {:type "query"
-                                      :query {:database (mt/id)
-                                              :type "native",
-                                              :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
-                                                       :template-tags {}}}}
-                             :target {:type "table"
+      (let [query (qp.compile/compile (mt/mbql-query products {:where [:= $category "Gadget"]}))]
+        (mt/user-http-request :crowberto :post 200 "ee/transform"
+                              {:name "Gadget Products"
+                               :source {:type "query"
+                                        :query {:database (mt/id)
+                                                :type "native",
+                                                :native {:query (:query query)
+                                                         :template-tags {}}}}
+                               :target {:type "table"
                                       ;; leave out schema for now
                                       ;;:schema (str (rand-int 10000))
-                                      :table table-name}}))))
+                                        :table table-name}})))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)

@@ -2076,9 +2076,11 @@
 (defmethod driver/compile-transform :sql
   [driver {:keys [sql output-table]}]
   (format-honeysql driver
-                   {:select [:*]
-                    :from [[[:raw (str "(" sql ")")] (str (random-uuid))]]
-                    :into output-table}))
+                   {:create-table-as [output-table]
+                    :raw sql}
+                   #_{:select [:*]
+                      :from [[[:raw (str "(" sql ")")] (str (random-uuid))]]
+                      :into output-table}))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]
