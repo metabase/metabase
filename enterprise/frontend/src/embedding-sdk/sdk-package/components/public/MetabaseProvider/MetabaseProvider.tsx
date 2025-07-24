@@ -1,4 +1,5 @@
 import { memo, useId, useMemo } from "react";
+// eslint-disable-next-line no-external-references-for-sdk-package-code
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-external-references-for-sdk-package-code
 import { getSdkLoaderCss } from "embedding/sdk-common/lib/get-sdk-loader-css";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import type { CommonStylingProps } from "embedding-sdk/types/props";

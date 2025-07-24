@@ -256,6 +256,7 @@
     "esbuild": "^0.25.0",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.13.10",
+    "eslint-module-utils": "^2.12.1",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-depend": "^0.9.0",
     "eslint-plugin-i18next": "^6.1.1",
