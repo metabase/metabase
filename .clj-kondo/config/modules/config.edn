@@ -578,7 +578,6 @@
           metabase.lib.field
           metabase.lib.field.resolution
           metabase.lib.filter
-          metabase.lib.ident
           metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
@@ -601,7 +600,10 @@
           metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
+          metabase.lib.schema.metadata.fingerprint
+          metabase.lib.schema.order-by
           metabase.lib.schema.parameter
+          metabase.lib.schema.ref
           metabase.lib.schema.template-tag
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.util

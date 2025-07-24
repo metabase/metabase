@@ -539,19 +539,6 @@ describe(
   "filtering based on the remapped column name should result in a correct query (metabase#22715)",
   { tags: "@flaky" },
   () => {
-    function mapColumnTo({ table, column } = {}) {
-      cy.findByText("Database column this maps to")
-        .parent()
-        .contains("None")
-        .click();
-
-      H.popover().findByText(table).click();
-      H.popover().findByText(column).click();
-      cy.findByText("Database column this maps to")
-        .next()
-        .should("contain", `${table} → ${column}`);
-    }
-
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("PUT", "/api/card/*").as("updateModel");
@@ -573,13 +560,13 @@ describe(
 
         // Let's go straight to the model metadata editor
         cy.visit(`/model/${id}/metadata`);
-        cy.findByText("Database column this maps to");
+        cy.findByText("Database column this maps to").should("be.visible");
 
         // The first column `ID` is automatically selected
-        mapColumnTo({ table: "Orders", column: "ID" });
+        H.mapColumnTo({ table: "Orders", column: "ID" });
         cy.findByText("ALIAS_CREATED_AT").click();
 
-        mapColumnTo({ table: "Orders", column: "Created At" });
+        H.mapColumnTo({ table: "Orders", column: "Created At" });
 
         // Make sure the column name updated before saving
         cy.findByDisplayValue("Created At");

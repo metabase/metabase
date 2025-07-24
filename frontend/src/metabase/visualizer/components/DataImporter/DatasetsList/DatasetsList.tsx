@@ -6,16 +6,22 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { Box, Flex, Skeleton } from "metabase/ui";
+import { isCartesianChart } from "metabase/visualizations";
 import {
   getDataSources,
   getDatasets,
+  getVisualizationColumns,
   getVisualizationType,
   getVisualizerComputedSettings,
   getVisualizerComputedSettingsForFlatSeries,
   getVisualizerDatasetColumns,
 } from "metabase/visualizer/selectors";
-import { createDataSource } from "metabase/visualizer/utils";
+import {
+  createDataSource,
+  partitionTimeDimensions,
+} from "metabase/visualizer/utils";
 import {
   addDataSource,
   removeDataSource,
@@ -67,6 +73,7 @@ export function DatasetsList({
 
   // Get current visualization context
   const visualizationType = useSelector(getVisualizationType);
+  const visualizationColumns = useSelector(getVisualizationColumns);
 
   // Get data needed for compatibility checking
   const columns = useSelector(getVisualizerDatasetColumns);
@@ -112,6 +119,17 @@ export function DatasetsList({
       },
     );
 
+  const { timeDimensions, otherDimensions } = useMemo(() => {
+    return partitionTimeDimensions(visualizationColumns || []);
+  }, [visualizationColumns]);
+
+  const nonTemporalDimIds = useMemo(() => {
+    return otherDimensions
+      .map((dim) => dim.id)
+      .filter(isNotNull)
+      .sort() as number[];
+  }, [otherDimensions]);
+
   const { data: visualizationSearchResult, isFetching: isSearchFetching } =
     useSearchQuery(
       {
@@ -120,6 +138,12 @@ export function DatasetsList({
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
+        ...(visualizationType &&
+          isCartesianChart(visualizationType) &&
+          search.length === 0 && {
+            has_temporal_dim: timeDimensions.length > 0,
+            non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
+          }),
       },
       {
         skip: muted,
