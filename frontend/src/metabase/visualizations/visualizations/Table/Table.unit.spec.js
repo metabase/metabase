@@ -165,6 +165,76 @@ const setup = ({ display, visualization_settings = {} }) => {
   });
 });
 
+// --- Freeze First Column Feature Tests ---
+describe("Freeze first column feature", () => {
+  it("should show the 'Freeze first column' toggle in the Columns section", async () => {
+    setup({ display: "table" });
+    // Open the Columns section if needed (simulate user interaction)
+    // The label is 'Freeze first column' as per Table.tsx
+    expect(
+      await screen.findByLabelText("Freeze first column"),
+    ).toBeInTheDocument();
+  });
+
+  it("should update the setting when toggled", async () => {
+    const { onChange } = setup({ display: "table" });
+    const toggle = await screen.findByLabelText("Freeze first column");
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ "table.freeze_first_column": true }),
+    );
+  });
+
+  it("should apply the sticky class to the first column when enabled", async () => {
+    const cols = [
+      createMockColumn({
+        name: "ID",
+        id: 1,
+        source: "fields",
+        field_ref: ["field", 1, null],
+      }),
+      createMockColumn({
+        name: "Name",
+        id: 2,
+        source: "fields",
+        field_ref: ["field", 2, null],
+      }),
+    ];
+    const rows = [
+      [1, "Alice"],
+      [2, "Bob"],
+    ];
+    renderWithProviders(
+      <Table
+        series={[
+          {
+            card: createMockCard(),
+            data: { cols, rows, results_timezone: null },
+          },
+        ]}
+        settings={{
+          "table.freeze_first_column": true,
+          "table.columns": [
+            { name: "ID", enabled: true },
+            { name: "Name", enabled: true },
+          ],
+          column: () => ({}),
+        }}
+        metadata={metadata}
+        height={400}
+      />,
+    );
+    // Find all grid cells, including hidden ones
+    const cells = await screen.findAllByRole("gridcell", { hidden: true });
+    const cellWith1 = cells.find((cell) => cell.textContent === "1");
+    expect(cellWith1).toBeDefined();
+    expect(cellWith1.className).toContain(
+      "test-TableInteractive-cellWrapper--firstColumn",
+    );
+  });
+});
+
 describe("table.pivot", () => {
   describe("getHidden", () => {
     const createMockSeriesWithCols = (cols) => [
