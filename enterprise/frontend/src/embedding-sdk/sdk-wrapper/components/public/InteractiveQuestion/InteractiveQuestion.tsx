@@ -6,6 +6,94 @@ const _InteractiveQuestion = createComponent(
   () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion,
 );
 
+const subComponents: InteractiveQuestionComponents = {
+  BackButton: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.BackButton,
+  ),
+  Filter: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Filter,
+  ),
+  FilterDropdown: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.FilterDropdown,
+  ),
+  ResetButton: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ResetButton,
+  ),
+  Title: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Title,
+  ),
+  Summarize: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Summarize,
+  ),
+  SummarizeDropdown: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SummarizeDropdown,
+  ),
+  Notebook: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Editor,
+  ),
+  Editor: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Editor,
+  ),
+  NotebookButton: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.EditorButton,
+  ),
+  EditorButton: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.EditorButton,
+  ),
+  QuestionVisualization: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+        ?.QuestionVisualization,
+  ),
+  SaveQuestionForm: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SaveQuestionForm,
+  ),
+  SaveButton: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SaveButton,
+  ),
+  ChartTypeSelector: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ChartTypeSelector,
+  ),
+  QuestionSettings: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.QuestionSettings,
+  ),
+  QuestionSettingsDropdown: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+        ?.QuestionSettingsDropdown,
+  ),
+  BreakoutDropdown: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.BreakoutDropdown,
+  ),
+  Breakout: createComponent(
+    () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Breakout,
+  ),
+  ChartTypeDropdown: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ChartTypeDropdown,
+  ),
+  DownloadWidget: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.DownloadWidget,
+  ),
+  DownloadWidgetDropdown: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+        ?.DownloadWidgetDropdown,
+  ),
+  VisualizationButton: createComponent(
+    () =>
+      getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
+        ?.VisualizationButton,
+  ),
+};
+
 /**
  * A component that renders an interactive question.
  *
@@ -13,89 +101,7 @@ const _InteractiveQuestion = createComponent(
  * @category InteractiveQuestion
  * @param props
  */
-export const InteractiveQuestion =
-  _InteractiveQuestion as typeof _InteractiveQuestion &
-    InteractiveQuestionComponents;
-
-InteractiveQuestion.BackButton = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.BackButton,
-);
-InteractiveQuestion.Filter = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Filter,
-);
-InteractiveQuestion.FilterDropdown = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.FilterDropdown,
-);
-InteractiveQuestion.ResetButton = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ResetButton,
-);
-InteractiveQuestion.Title = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Title,
-);
-InteractiveQuestion.Summarize = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Summarize,
-);
-InteractiveQuestion.SummarizeDropdown = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SummarizeDropdown,
-);
-InteractiveQuestion.Notebook = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Editor,
-);
-InteractiveQuestion.Editor = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Editor,
-);
-InteractiveQuestion.NotebookButton = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.EditorButton,
-);
-InteractiveQuestion.EditorButton = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.EditorButton,
-);
-InteractiveQuestion.QuestionVisualization = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
-      ?.QuestionVisualization,
-);
-InteractiveQuestion.SaveQuestionForm = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SaveQuestionForm,
-);
-InteractiveQuestion.SaveButton = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.SaveButton,
-);
-InteractiveQuestion.ChartTypeSelector = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ChartTypeSelector,
-);
-InteractiveQuestion.QuestionSettings = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.QuestionSettings,
-);
-InteractiveQuestion.QuestionSettingsDropdown = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
-      ?.QuestionSettingsDropdown,
-);
-InteractiveQuestion.BreakoutDropdown = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.BreakoutDropdown,
-);
-InteractiveQuestion.Breakout = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.Breakout,
-);
-InteractiveQuestion.ChartTypeDropdown = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.ChartTypeDropdown,
-);
-InteractiveQuestion.DownloadWidget = createComponent(
-  () => getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.DownloadWidget,
-);
-InteractiveQuestion.DownloadWidgetDropdown = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion
-      ?.DownloadWidgetDropdown,
-);
-InteractiveQuestion.VisualizationButton = createComponent(
-  () =>
-    getWindow()?.MetabaseEmbeddingSDK?.InteractiveQuestion?.VisualizationButton,
+export const InteractiveQuestion = Object.assign(
+  _InteractiveQuestion,
+  subComponents,
 );

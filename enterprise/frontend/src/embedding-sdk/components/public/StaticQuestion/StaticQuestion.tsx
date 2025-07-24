@@ -131,21 +131,22 @@ const _StaticQuestion = ({
   );
 };
 
-export const StaticQuestion = _StaticQuestion as typeof _StaticQuestion &
-  StaticQuestionComponents;
+const subComponents: StaticQuestionComponents = {
+  Filter: Filter,
+  FilterDropdown: FilterDropdown,
+  ResetButton: QuestionResetButton,
+  Title: Title,
+  Summarize: Summarize,
+  SummarizeDropdown: SummarizeDropdown,
+  QuestionVisualization: QuestionVisualization,
+  ChartTypeSelector: ChartTypeSelector,
+  ChartTypeDropdown: ChartTypeDropdown,
+  QuestionSettings: QuestionSettings,
+  QuestionSettingsDropdown: QuestionSettingsDropdown,
+  Breakout: Breakout,
+  BreakoutDropdown: BreakoutDropdown,
+  DownloadWidget: DownloadWidget,
+  DownloadWidgetDropdown: DownloadWidgetDropdown,
+};
 
-StaticQuestion.Filter = Filter;
-StaticQuestion.FilterDropdown = FilterDropdown;
-StaticQuestion.ResetButton = QuestionResetButton;
-StaticQuestion.Title = Title;
-StaticQuestion.Summarize = Summarize;
-StaticQuestion.SummarizeDropdown = SummarizeDropdown;
-StaticQuestion.QuestionVisualization = QuestionVisualization;
-StaticQuestion.ChartTypeSelector = ChartTypeSelector;
-StaticQuestion.QuestionSettings = QuestionSettings;
-StaticQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
-StaticQuestion.BreakoutDropdown = BreakoutDropdown;
-StaticQuestion.Breakout = Breakout;
-StaticQuestion.ChartTypeDropdown = ChartTypeDropdown;
-StaticQuestion.DownloadWidget = DownloadWidget;
-StaticQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
+export const StaticQuestion = Object.assign(_StaticQuestion, subComponents);
