@@ -17,13 +17,14 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import {
-  isAvatarURL,
-  isEmail,
-  isEntityName,
-  isImageURL,
-} from "metabase-lib/v1/types/utils/isa";
 import type { StructuredDatasetQuery } from "metabase-types/api";
+
+import {
+  detectDescriptionColumn,
+  detectImageColumn,
+  detectNameColumn,
+  renderValue,
+} from "./utils";
 
 interface RouteParams {
   id: string;
@@ -52,56 +53,34 @@ export const TableListView = ({ params }: Props) => {
   }, [table]);
 
   const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
-  const columns = dataset?.data?.results_metadata?.columns;
+  const columns = useMemo(
+    () => dataset?.data?.results_metadata?.columns ?? [],
+    [dataset],
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [nameColumnIndex, setNameColumnIndex] = useState(-1);
   const [descriptionColumnIndex, setDescriptionColumnIndex] = useState(-1);
   const [imageColumnIndex, setImageColumnIndex] = useState(-1);
+  const nameColumn = columns[nameColumnIndex];
+  const descriptionColumn = columns[descriptionColumnIndex];
+  const imageColumn = columns[imageColumnIndex];
 
   useEffect(() => {
     if (!columns) {
       return;
     }
 
-    /* name */
-
-    let nameColumnIndex = columns.findIndex((column) => isEntityName(column));
-
-    if (nameColumnIndex === -1) {
-      nameColumnIndex = columns.findIndex(
-        (column) => column.semantic_type === "type/Title",
-      );
-    }
-
-    if (nameColumnIndex === -1) {
-      nameColumnIndex = columns.findIndex((column) => isEmail(column));
-    }
+    const nameColumnIndex = detectNameColumn(columns);
+    const descriptionColumnIndex = detectDescriptionColumn(columns);
+    const imageColumnIndex = detectImageColumn(columns);
 
     if (nameColumnIndex !== -1) {
       setNameColumnIndex(nameColumnIndex);
     }
 
-    /* description */
-
-    let descriptionColumnIndex = columns.findIndex(
-      (column) => column.semantic_type === "type/Description",
-    );
-
-    if (descriptionColumnIndex === -1) {
-      descriptionColumnIndex = columns.findIndex((column) => isEmail(column));
-    }
-
     if (descriptionColumnIndex !== -1) {
       setDescriptionColumnIndex(descriptionColumnIndex);
-    }
-
-    /* image */
-
-    let imageColumnIndex = columns.findIndex((column) => isAvatarURL(column));
-
-    if (imageColumnIndex === -1) {
-      imageColumnIndex = columns.findIndex((column) => isImageURL(column));
     }
 
     if (imageColumnIndex !== -1) {
@@ -125,7 +104,7 @@ export const TableListView = ({ params }: Props) => {
         )}
 
         {isEditing && (
-          <Button variant="filledz" onClick={() => setIsEditing(false)}>
+          <Button variant="filled" onClick={() => setIsEditing(false)}>
             {t`Save`}
           </Button>
         )}
@@ -141,7 +120,10 @@ export const TableListView = ({ params }: Props) => {
                 {imageColumnIndex !== -1 && (
                   <Card.Section mb="lg">
                     <Image
-                      alt={row[nameColumnIndex] ?? t`Image`}
+                      alt={
+                        renderValue(row[nameColumnIndex], nameColumn) ??
+                        t`Image`
+                      }
                       h={160}
                       src={row[imageColumnIndex]}
                     />
@@ -149,12 +131,17 @@ export const TableListView = ({ params }: Props) => {
                 )}
 
                 <Group justify="space-between">
-                  <Text fw="bold">{row[nameColumnIndex]}</Text>
+                  <Text fw="bold">
+                    {renderValue(row[nameColumnIndex], nameColumn)}
+                  </Text>
                 </Group>
 
-                {descriptionColumnIndex !== -1 && (
+                {descriptionColumn && (
                   <Text c="text-secondary" size="sm">
-                    {row[descriptionColumnIndex]}
+                    {renderValue(
+                      row[descriptionColumnIndex],
+                      descriptionColumn,
+                    )}
                   </Text>
                 )}
               </Card>
@@ -173,9 +160,10 @@ export const TableListView = ({ params }: Props) => {
               }))}
               label={t`Name`}
               placeholder={t`Select a column`}
-              value={String(columns[nameColumnIndex]?.id)}
+              value={String(nameColumn?.id)}
               onChange={(_value, option) => {
-                setNameColumnIndex(option ? option.index : -1);
+                const customOption = option as unknown as { index: number };
+                setNameColumnIndex(customOption.index);
               }}
             />
 
@@ -188,9 +176,10 @@ export const TableListView = ({ params }: Props) => {
               }))}
               label={t`Description`}
               placeholder={t`Select a column`}
-              value={String(columns[descriptionColumnIndex]?.id)}
+              value={String(descriptionColumn?.id)}
               onChange={(_value, option) => {
-                setDescriptionColumnIndex(option ? option.index : -1);
+                const customOption = option as unknown as { index: number };
+                setDescriptionColumnIndex(customOption.index);
               }}
             />
 
@@ -203,9 +192,10 @@ export const TableListView = ({ params }: Props) => {
               }))}
               label={t`Image`}
               placeholder={t`Select a column`}
-              value={String(columns[imageColumnIndex]?.id)}
+              value={String(imageColumn?.id)}
               onChange={(_value, option) => {
-                setImageColumnIndex(option ? option.index : -1);
+                const customOption = option as unknown as { index: number };
+                setImageColumnIndex(customOption.index);
               }}
             />
           </Stack>
@@ -213,6 +203,4 @@ export const TableListView = ({ params }: Props) => {
       </Group>
     </Stack>
   );
-
-  return null;
 };

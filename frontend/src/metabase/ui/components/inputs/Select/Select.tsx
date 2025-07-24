@@ -27,7 +27,7 @@ export interface SelectProps<Value extends string | null = string>
   extends Omit<MantineSelectProps, "data" | "onChange" | "value" | "ref"> {
   data: SelectData<Value>;
   value?: Value;
-  onChange?: (newValue: Value) => void;
+  onChange?: (newValue: Value, option: ComboboxItem) => void;
 }
 
 function _Select<Value extends string | null>(
