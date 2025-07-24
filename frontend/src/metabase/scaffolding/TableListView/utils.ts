@@ -4,7 +4,12 @@ import {
   isEntityName,
   isImageURL,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValue,
+  StructuredDatasetQuery,
+  Table,
+} from "metabase-types/api";
 
 export function renderValue(value: RowValue, column: DatasetColumn): string {
   if (value === undefined) {
@@ -50,4 +55,29 @@ export function detectImageColumn(columns: DatasetColumn[]) {
   }
 
   return imageColumnIndex;
+}
+
+export function getRowCountQuery(
+  table: Table,
+): StructuredDatasetQuery | undefined {
+  return {
+    database: table.db_id,
+    query: {
+      "source-table": table.id,
+      aggregation: [["count"]],
+    },
+    type: "query",
+  };
+}
+
+export function getTableQuery(
+  table: Table,
+): StructuredDatasetQuery | undefined {
+  return {
+    database: table.db_id,
+    query: {
+      "source-table": table.id,
+    },
+    type: "query",
+  };
 }

@@ -23,6 +23,8 @@ import {
   detectDescriptionColumn,
   detectImageColumn,
   detectNameColumn,
+  getRowCountQuery,
+  getTableQuery,
   renderValue,
 } from "./utils";
 
@@ -39,20 +41,17 @@ export const TableListView = ({ params }: Props) => {
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
-    if (!table) {
-      return undefined;
-    }
-
-    return {
-      database: table.db_id,
-      query: {
-        "source-table": table.id,
-      },
-      type: "query",
-    };
+    return table ? getTableQuery(table) : undefined;
+  }, [table]);
+  const countQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
+    return table ? getRowCountQuery(table) : undefined;
   }, [table]);
 
   const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
+  const { data: countDataset } = useGetAdhocQueryQuery(
+    countQuery ? countQuery : skipToken,
+  );
+  const count = countDataset?.data.rows?.[0]?.[0];
   const columns = useMemo(
     () => dataset?.data?.results_metadata?.columns ?? [],
     [dataset],
@@ -95,7 +94,15 @@ export const TableListView = ({ params }: Props) => {
   return (
     <Stack gap="md" p="xl">
       <Group justify="space-between">
-        <Title>{table.display_name}</Title>
+        <Stack gap="xs">
+          <Title>{table.display_name}</Title>
+          {typeof count === "number" && (
+            <Text c="text-secondary" size="sm">
+              {count === 1 && t`1 row`}
+              {count !== 1 && t`${count} rows`}
+            </Text>
+          )}
+        </Stack>
 
         {!isEditing && (
           <Button variant="outline" onClick={() => setIsEditing(true)}>
@@ -113,8 +120,6 @@ export const TableListView = ({ params }: Props) => {
       <Group align="flex-start" gap="xl">
         <Stack component="ul" gap="md" w={isEditing ? 500 : 1000}>
           {dataset.data.rows.map((row, index) => {
-            // dataset.data.cols;
-
             return (
               <Card component="li" key={index}>
                 {imageColumnIndex !== -1 && (
