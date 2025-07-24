@@ -9,7 +9,7 @@ export {
   InteractiveDashboard,
   EditableDashboard,
 } from "./dashboard";
-export { SdkQuestion } from "./SdkQuestion";
+export { InteractiveQuestion } from "./InteractiveQuestion";
 export { MetabaseProvider } from "./MetabaseProvider";
 export { StaticQuestion } from "./StaticQuestion";
 

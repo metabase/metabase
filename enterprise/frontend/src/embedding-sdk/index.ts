@@ -13,7 +13,7 @@ export { CreateDashboardModal } from "./sdk-wrapper/components/public/CreateDash
 export { EditableDashboard } from "./sdk-wrapper/components/public/dashboard/EditableDashboard";
 export { InteractiveDashboard } from "./sdk-wrapper/components/public/dashboard/InteractiveDashboard";
 export { StaticDashboard } from "./sdk-wrapper/components/public/dashboard/StaticDashboard";
-export { InteractiveQuestion } from "./sdk-wrapper/components/public/SdkQuestion";
+export { InteractiveQuestion } from "./sdk-wrapper/components/public/InteractiveQuestion";
 export { StaticQuestion } from "./sdk-wrapper/components/public/StaticQuestion";
 export { MetabaseProvider } from "./sdk-wrapper/components/public/MetabaseProvider";
 export { MetabotQuestion } from "./sdk-wrapper/components/public/MetabotQuestion";
@@ -41,9 +41,6 @@ export type {
   EditableDashboardProps,
 } from "./components/public/dashboard";
 export {
-  type InteractiveQuestionComponents,
-  type BaseInteractiveQuestionProps,
-  type InteractiveQuestionProps,
   type InteractiveQuestionBackButtonProps,
   type InteractiveQuestionBreakoutDropdownProps,
   type InteractiveQuestionChartTypeDropdownProps,
@@ -64,8 +61,15 @@ export {
   type InteractiveQuestionTitleProps,
   type DrillThroughQuestionProps,
 } from "./components/public/SdkQuestion";
+export {
+  type InteractiveQuestionComponents,
+  type InteractiveQuestionProps,
+} from "./components/public/InteractiveQuestion";
 export { type MetabaseProviderProps } from "./components/public/MetabaseProvider";
-export { type StaticQuestionProps } from "./components/public/StaticQuestion";
+export {
+  type StaticQuestionProps,
+  type StaticQuestionComponents,
+} from "./components/public/StaticQuestion";
 
 export type {
   CustomDashboardCardMenuItem,

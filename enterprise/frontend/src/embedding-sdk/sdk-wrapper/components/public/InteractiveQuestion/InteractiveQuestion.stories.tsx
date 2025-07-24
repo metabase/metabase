@@ -3,13 +3,13 @@ import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkSt
 
 import { MetabaseProvider } from "../MetabaseProvider";
 
-import { SdkQuestion } from "./SdkQuestion";
+import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 const config = getStorybookSdkAuthConfigForUser("admin");
 
 export default {
-  title: "EmbeddingSDK/SdkQuestion/public",
+  title: "EmbeddingSDK/InteractiveQuestion/public",
   parameters: {
     layout: "fullscreen",
   },
@@ -18,16 +18,16 @@ export default {
 
 export const Default = () => (
   <MetabaseProvider authConfig={config}>
-    <SdkQuestion questionId={QUESTION_ID} />
+    <InteractiveQuestion questionId={QUESTION_ID} />
   </MetabaseProvider>
 );
 
 export const WithChildrenComponents = () => (
   <MetabaseProvider authConfig={config}>
-    <SdkQuestion questionId={QUESTION_ID}>
-      <SdkQuestion.Title />
-      <SdkQuestion.QuestionSettings />
-      <SdkQuestion.QuestionVisualization />
-    </SdkQuestion>
+    <InteractiveQuestion questionId={QUESTION_ID}>
+      <InteractiveQuestion.Title />
+      <InteractiveQuestion.QuestionSettings />
+      <InteractiveQuestion.QuestionVisualization />
+    </InteractiveQuestion>
   </MetabaseProvider>
 );
