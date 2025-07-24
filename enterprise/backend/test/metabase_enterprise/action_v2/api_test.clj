@@ -396,10 +396,9 @@
               ;; :d == data-editing   only allowed to edit if editing enabled
               ;; :s == super-user     only allowed to edit if a superuser
               tests
-              ;; TODO: figure out the expected permisison model for non-super users
-              [;#{:a}       ["You don't have permissions to do that." 403]
-               ;#{:d}       ["You don't have permissions to do that." 403]
-               ;#{:a :d}    ["You don't have permissions to do that." 403]
+              [#{:a}       ["You don't have permissions to do that." 403]
+               #{:d}       ["You don't have permissions to do that." 403]
+               #{:a :d}    ["You don't have permissions to do that." 403]
                #{:s}       ["Data editing is not enabled."           400]
                #{:s :a}    ["Data editing is not enabled."           400]
                #{:s :d}    :ok
