@@ -9,7 +9,7 @@ import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
 
 interface SdkAdHocQuestionProps {
   questionPath: string; // route path to load a question, e.g. /question/140-best-selling-products - for saved, or /question/xxxxxxx for ad-hoc encoded question config
-  onNavigateBack: () => void;
+  onNavigateBack?: () => void;
 }
 
 export const SdkAdHocQuestion = ({
