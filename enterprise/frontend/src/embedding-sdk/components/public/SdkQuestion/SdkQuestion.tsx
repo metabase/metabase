@@ -173,32 +173,33 @@ export const _SdkQuestion = ({
   </SdkQuestionProvider>
 );
 
-const SdkQuestion = withPublicComponentWrapper(
-  _SdkQuestion,
-) as typeof _SdkQuestion & SdkQuestionComponents;
+const subComponents: SdkQuestionComponents = {
+  BackButton: BackButton,
+  Filter: Filter,
+  FilterDropdown: FilterDropdown,
+  ResetButton: QuestionResetButton,
+  Title: Title,
+  Summarize: Summarize,
+  SummarizeDropdown: SummarizeDropdown,
+  Notebook: Editor,
+  Editor: Editor,
+  NotebookButton: EditorButton,
+  EditorButton: EditorButton,
+  QuestionVisualization: QuestionVisualization,
+  SaveQuestionForm: SdkSaveQuestionForm,
+  SaveButton: SaveButton,
+  ChartTypeSelector: ChartTypeSelector,
+  QuestionSettings: QuestionSettings,
+  QuestionSettingsDropdown: QuestionSettingsDropdown,
+  BreakoutDropdown: BreakoutDropdown,
+  Breakout: Breakout,
+  ChartTypeDropdown: ChartTypeDropdown,
+  DownloadWidget: DownloadWidget,
+  DownloadWidgetDropdown: DownloadWidgetDropdown,
+  VisualizationButton: VisualizationButton,
+};
 
-SdkQuestion.BackButton = BackButton;
-SdkQuestion.Filter = Filter;
-SdkQuestion.FilterDropdown = FilterDropdown;
-SdkQuestion.ResetButton = QuestionResetButton;
-SdkQuestion.Title = Title;
-SdkQuestion.Summarize = Summarize;
-SdkQuestion.SummarizeDropdown = SummarizeDropdown;
-SdkQuestion.Notebook = Editor;
-SdkQuestion.Editor = Editor;
-SdkQuestion.NotebookButton = EditorButton;
-SdkQuestion.EditorButton = EditorButton;
-SdkQuestion.QuestionVisualization = QuestionVisualization;
-SdkQuestion.SaveQuestionForm = SdkSaveQuestionForm;
-SdkQuestion.SaveButton = SaveButton;
-SdkQuestion.ChartTypeSelector = ChartTypeSelector;
-SdkQuestion.QuestionSettings = QuestionSettings;
-SdkQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
-SdkQuestion.BreakoutDropdown = BreakoutDropdown;
-SdkQuestion.Breakout = Breakout;
-SdkQuestion.ChartTypeDropdown = ChartTypeDropdown;
-SdkQuestion.DownloadWidget = DownloadWidget;
-SdkQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
-SdkQuestion.VisualizationButton = VisualizationButton;
-
-export { SdkQuestion };
+export const SdkQuestion = Object.assign(
+  withPublicComponentWrapper(_SdkQuestion),
+  subComponents,
+);
