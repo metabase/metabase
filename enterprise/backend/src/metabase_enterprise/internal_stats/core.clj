@@ -17,4 +17,6 @@
                                                     (setting/get-value-of-type :boolean :ldap-enabled)
                                                     (setting/get-value-of-type :boolean :google-auth-enabled))))
    :enabled-embedding-sdk         (boolean  (and  (setting/get-value-of-type :boolean :enable-embedding-sdk)
+                                                  (setting/get-value-of-type :boolean :jwt-enabled)))
+   :enabled-embedding-simple      (boolean  (and  (setting/get-value-of-type :boolean :enable-embedding-simple)
                                                   (setting/get-value-of-type :boolean :jwt-enabled)))})
