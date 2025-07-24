@@ -367,6 +367,7 @@
                     (u/id db-or-id-or-spec)     db-or-id-or-spec
                     ;; otherwise it's a spec and we can't get the db
                     :else nil)]
+      (driver/set-database-used! driver conn db)
       (set-role-if-supported! driver conn db))
     (let [read-only? (not write?)]
       (try
