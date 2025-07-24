@@ -76,6 +76,7 @@
    :made_public_by_id      nil
    :parameters             []
    :parameter_mappings     []
+   :param_fields           {}
    :moderation_reviews     ()
    :public_uuid            nil
    :query_type             nil
@@ -1357,6 +1358,23 @@
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
                           (map clean)))))))))))
+
+(deftest fetch-card-param-fields-test
+  (testing "GET /api/card/:id"
+    (testing "Should be able to fetch the Card with :param_fields if you have Collection read perms but no data perms"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query         "SELECT id FROM products WHERE {{category}}"
+                                                                    :template-tags {"category" {:dimension    [:field (mt/id :products :category) nil],
+                                                                                                :display-name "Category",
+                                                                                                :id           "_category_",
+                                                                                                :name         "category",
+                                                                                                :required     false,
+                                                                                                :type         :dimension,
+                                                                                                :widget-type  :string/=}}}}}]
+          (is (=? {:param_fields {:_category_ [{:id (mt/id :products :category)}]}}
+                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))))))
 
 (deftest fetch-card-entity-id-test
   (testing "GET /api/card/:id with entity ID"
