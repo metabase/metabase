@@ -24,40 +24,13 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       showSimpleEmbedTerms: false,
     });
 
-    // Check that both toggles are present
-    const switches = screen.getAllByRole("switch");
-    expect(switches).toHaveLength(2);
+    const toggles = screen.getAllByRole("switch");
+    expect(toggles).toHaveLength(2);
 
-    // Check for the labels
-    expect(screen.getByText("SDK Embedding")).toBeInTheDocument();
+    expect(screen.getByText("Embedding SDK for React")).toBeInTheDocument();
+
     expect(screen.getByText("Simple Embedding")).toBeInTheDocument();
-
-    // Check for the Beta badge
-    expect(screen.getByText("Beta")).toBeInTheDocument();
-  });
-
-  it("should show 'Authorized Origins' instead of 'Cross-Origin Resource Sharing (CORS)'", async () => {
-    await setup({
-      isEmbeddingSdkEnabled: true,
-      showSdkEmbedTerms: false,
-    });
-
-    expect(screen.getByText("Authorized Origins")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Cross-Origin Resource Sharing (CORS)"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should enable CORS field when either SDK or Simple Embedding is enabled", async () => {
-    await setup({
-      isEmbeddingSdkEnabled: false,
-      isEmbeddingSimpleEnabled: true,
-      showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: false,
-    });
-
-    const input = screen.getByDisplayValue("");
-    expect(input).toBeEnabled();
+    expect(screen.queryAllByText("Beta")).toHaveLength(1);
   });
 
   it("should show legalese modal when Simple Embedding toggle is enabled", async () => {
@@ -70,9 +43,8 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    // Click on the Simple Embedding toggle (second switch)
-    const switches = screen.getAllByRole("switch");
-    await userEvent.click(switches[1]);
+    // Check the Simple Embedding toggle
+    await userEvent.click(screen.getByLabelText("Simple Embedding"));
 
     // Should show the legalese modal
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -89,21 +61,69 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       showSimpleEmbedTerms: true,
     });
 
-    // Click on the Simple Embedding toggle (second switch)
-    const switches = screen.getAllByRole("switch");
-    await userEvent.click(switches[1]);
-
-    // Accept the terms
+    await userEvent.click(screen.getByLabelText("Simple Embedding"));
     await userEvent.click(screen.getByText("Agree and continue"));
-
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);
+
     const [{ body }] = puts;
     expect(body).toEqual({
       "enable-embedding-simple": true,
       "show-simple-embed-terms": false,
     });
+  });
+
+  describe("Authorized Origins input field", () => {
+    it("should be disabled when both SDK and simple embedding are disabled", async () => {
+      await setup({
+        isEmbeddingSdkEnabled: false,
+        isEmbeddingSimpleEnabled: false,
+        showSdkEmbedTerms: false,
+        showSimpleEmbedTerms: false,
+      });
+
+      expect(screen.getByText("Authorized Origins")).toBeInTheDocument();
+
+      const originInput = screen.getByPlaceholderText("https://*.example.com");
+      expect(originInput).toBeDisabled();
+    });
+
+    it.each([
+      {
+        description:
+          "should be enabled when SDK is enabled and simple embedding is disabled",
+        isEmbeddingSdkEnabled: true,
+        isEmbeddingSimpleEnabled: false,
+      },
+      {
+        description:
+          "should be enabled when simple embedding is enabled and SDK is disabled",
+        isEmbeddingSdkEnabled: false,
+        isEmbeddingSimpleEnabled: true,
+      },
+      {
+        description:
+          "should be enabled when both SDK and simple embedding are enabled",
+        isEmbeddingSdkEnabled: true,
+        isEmbeddingSimpleEnabled: true,
+      },
+    ])(
+      "$description",
+      async ({ isEmbeddingSdkEnabled, isEmbeddingSimpleEnabled }) => {
+        await setup({
+          isEmbeddingSdkEnabled,
+          isEmbeddingSimpleEnabled,
+          showSdkEmbedTerms: false,
+          showSimpleEmbedTerms: false,
+        });
+
+        const originInput = screen.getByPlaceholderText(
+          "https://*.example.com",
+        );
+        expect(originInput).toBeEnabled();
+      },
+    );
   });
 });

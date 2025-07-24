@@ -133,11 +133,13 @@ export function EmbeddingSdkSettings() {
                   ).jt`
                     Check out the ${(
                       <ExternalLink
+                        key="quickstart-sdk"
                         href={quickStartUrl}
                       >{t`quickstart`}</ExternalLink>
                     )} and
                     ${(
                       <ExternalLink
+                        key="documentation-sdk"
                         href={documentationUrl}
                       >{t`documentation`}</ExternalLink>
                     )}.`}
@@ -156,17 +158,20 @@ export function EmbeddingSdkSettings() {
                     <Badge size="sm">{t`Beta`}</Badge>
                   </Group>
 
+                  {/** TODO: update the quickstart and documentation link to link to simple embedding docs */}
                   <Text c="text-medium">
                     {c(
                       "{0} is the link to quickstart, {1} is the link to documentation",
                     ).jt`
                     Check out the ${(
                       <ExternalLink
+                        key="quickstart-simple"
                         href={quickStartUrl}
                       >{t`quickstart`}</ExternalLink>
                     )} and
                     ${(
                       <ExternalLink
+                        key="documentation-simple"
                         href={documentationUrl}
                       >{t`documentation`}</ExternalLink>
                     )}.`}
