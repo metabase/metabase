@@ -43,6 +43,7 @@ export const SdkIframeEmbedPreview = () => {
           defineMetabaseConfig({
             instanceUrl: "http://localhost:3000",
             useExistingUserSession: true,
+            theme: settings.theme,
             ...(localeOverride ? { locale: localeOverride } : {}),
           });
 
