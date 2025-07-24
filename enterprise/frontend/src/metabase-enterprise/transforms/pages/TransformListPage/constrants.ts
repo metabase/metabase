@@ -10,3 +10,5 @@ export const COLUMN_CONFIG = {
     max: 680,
   },
 };
+
+export const EMPTY_STATE_MIN_WIDTH = 240;

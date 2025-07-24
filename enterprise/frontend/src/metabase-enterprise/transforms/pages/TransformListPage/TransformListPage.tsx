@@ -41,7 +41,7 @@ export function TransformListPage({ params }: TransformListPageProps) {
           <TransformList transforms={transforms} transformId={transformId} />
         </LoadingAndErrorWrapper>
       </Flex>
-      {transformId != null && transform != null && (
+      {transformId != null && (
         <Flex
           className={S.column}
           direction="column"
@@ -52,7 +52,7 @@ export function TransformListPage({ params }: TransformListPageProps) {
           maw={COLUMN_CONFIG.item.max}
         >
           <LoadingAndErrorWrapper loading={isItemLoading} error={itemError}>
-            <TransformSettings transform={transform} />
+            {transform != null && <TransformSettings transform={transform} />}
           </LoadingAndErrorWrapper>
         </Flex>
       )}
