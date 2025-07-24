@@ -1,4 +1,7 @@
-import { type BaseInteractiveQuestionProps, SdkQuestion } from "../SdkQuestion";
+import {
+  InteractiveQuestion,
+  type InteractiveQuestionProps,
+} from "../InteractiveQuestion";
 
 /**
  * @interface
@@ -11,5 +14,5 @@ export type CreateQuestionProps = Omit<
 >;
 
 export const CreateQuestion = (props: CreateQuestionProps = {}) => (
-  <SdkQuestion {...props} questionId="new" />
+  <InteractiveQuestion {...props} questionId="new" />
 );
