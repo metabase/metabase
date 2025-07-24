@@ -8,9 +8,9 @@
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
@@ -134,7 +134,7 @@
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
-   (ensure-legacy #'qp.add-dimension-projections/add-remapped-columns)
+   (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
    (ensure-legacy #'qp.resolve-fields/resolve-fields)
    (ensure-legacy #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)

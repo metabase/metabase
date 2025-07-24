@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
+   [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
@@ -26,6 +27,16 @@
                                                                                       :stages   [{}]
                                                                                       :conditions []
                                                                                       :alias      "join alias"}]}]})))))
+
+(deftest ^:parallel normalize-join-test
+  (let [join (lib/normalize
+              ::lib.schema.join/join
+              {:alias      "Child 1 Child"
+               :stages     [{:lib/type :mbql.stage/mbql, :source-table 1}]
+               :conditions [[:=
+                             [:field {:join-alias "Child 1"} 1]
+                             [:field {:join-alias "Child 1 Child"} 1]]]})]
+    (is (not (me/humanize (mr/explain ::lib.schema.join/join join))))))
 
 (deftest ^:parallel normalize-source-metadata-test
   (is (=? {:lib/type :mbql/query
