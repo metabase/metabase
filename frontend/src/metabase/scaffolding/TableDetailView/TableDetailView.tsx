@@ -5,7 +5,10 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
-import { useGetTableQueryMetadataQuery } from "metabase/api/table";
+import {
+  useGetTableQueryMetadataQuery,
+  useListTableForeignKeysQuery,
+} from "metabase/api/table";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
@@ -17,6 +20,7 @@ import {
   ObjectDetailHeaderWrapper,
   ObjectIdLabel,
 } from "metabase/visualizations/components/ObjectDetail/ObjectDetailHeader.styled";
+import { Relationships } from "metabase/visualizations/components/ObjectDetail/ObjectRelationships";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
@@ -36,6 +40,8 @@ export function TableDetailView(props: TableDetailViewProps) {
   const dispatch = useDispatch();
 
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
+  const { data: foreignKeys = [], isLoading: fksLoading } =
+    useListTableForeignKeysQuery(tableId);
 
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getTableQuery(table) : undefined;
@@ -92,6 +98,10 @@ export function TableDetailView(props: TableDetailViewProps) {
   const objectName = table.name;
   const objectId = null; // You can enhance this to show a PK value if needed
 
+  if (!table || !dataset || !columns || fksLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
   return (
     <Flex align="stretch" style={{ height: "100%" }}>
       <Box style={{ flex: 1, minWidth: 0 }}>
@@ -115,10 +125,16 @@ export function TableDetailView(props: TableDetailViewProps) {
           objectName={objectName}
           zoomedRow={zoomedRow}
           settings={settings}
-          hasRelationships={false}
+          tableForeignKeyReferences={[]}
           onVisualizationClick={onVisualizationClick}
           visualizationIsClickable={visualizationIsClickable}
         />
+        <Box mt="xl">
+          <Relationships
+            objectName={objectName}
+            tableForeignKeys={foreignKeys}
+          />
+        </Box>
       </Box>
       {isEdit && (
         <TableDetailViewSidebar
