@@ -22,7 +22,7 @@ export function TransformEmptyState({
         }
         message={
           isListEmptyState
-            ? t`Transforms allow you to create a table based on a query and refresh it periodically on a schedule`
+            ? t`Transforms allow you to create a table based on your query and refresh it periodically on a schedule`
             : t`Select a transform to edit its query, schedule, and more.`
         }
         action={t`Create a transform`}
