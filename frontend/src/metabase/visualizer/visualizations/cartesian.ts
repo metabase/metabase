@@ -214,8 +214,6 @@ export function addDimensionColumnToCartesianChart(
   };
 }
 
-// TODO clean up the unused parameters
-// Ideally the compatFns should accept an object instead of multiple parameters
 /**
  * Returns a slot where the column can be added to a cartesian chart,
  * or undefined if no suitable slot is found.
@@ -228,16 +226,15 @@ export function addDimensionColumnToCartesianChart(
  * @returns a string representing the slot where the column should be added,
  *          or undefined if no suitable slot is found.
  */
-export function findColumnSlotForCartesianChart(
+export function findColumnSlotForCartesianChart(parameters: {
   state: Pick<
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
-  >,
-  settings: ComputedVisualizationSettings,
-  _datasets: Record<VisualizerDataSourceId, Dataset>,
-  _dataSourceColumns: DatasetColumn[],
-  column: DatasetColumn,
-) {
+  >;
+  settings: ComputedVisualizationSettings;
+  column: DatasetColumn;
+}) {
+  const { state, settings, column } = parameters;
   if (state.display === "scatter") {
     const metrics = settings["graph.metrics"]?.filter(isNotNull) ?? [];
     const dimensions = settings["graph.dimensions"]?.filter(isNotNull) ?? [];
@@ -278,13 +275,11 @@ export function addColumnToCartesianChart(
   columnRef: VisualizerColumnReference,
   dataSource: VisualizerDataSource,
 ) {
-  const slot = findColumnSlotForCartesianChart(
+  const slot = findColumnSlotForCartesianChart({
     state,
     settings,
-    datasets,
-    dataSourceColumns,
     column,
-  );
+  });
   if (slot === "graph.dimensions") {
     addDimensionColumnToCartesianChart(
       state,
@@ -472,13 +467,11 @@ export function combineWithCartesianChart(
   );
 
   metrics.forEach((column) => {
-    const isCompatible = !!findColumnSlotForCartesianChart(
+    const isCompatible = !!findColumnSlotForCartesianChart({
       state,
       settings,
-      datasets,
-      dataset.data.cols,
       column,
-    );
+    });
     if (isCompatible) {
       const columnRef = createVisualizerColumnReference(
         dataSource,
@@ -496,13 +489,11 @@ export function combineWithCartesianChart(
   });
 
   dimensions.forEach((column) => {
-    const isCompatible = !!findColumnSlotForCartesianChart(
+    const isCompatible = !!findColumnSlotForCartesianChart({
       state,
       settings,
-      datasets,
-      dataset.data.cols,
       column,
-    );
+    });
     if (isCompatible) {
       const columnRef = createVisualizerColumnReference(
         dataSource,

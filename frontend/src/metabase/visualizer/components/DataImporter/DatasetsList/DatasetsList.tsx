@@ -120,7 +120,6 @@ export function DatasetsList({
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
-        // has_temporal_dimensions: timeDimensions.length > 0,
       },
       {
         skip: muted,
