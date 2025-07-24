@@ -1,6 +1,6 @@
 "use client";
 
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react/nextjs";
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 
