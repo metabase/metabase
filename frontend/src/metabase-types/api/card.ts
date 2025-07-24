@@ -25,7 +25,7 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question" | "metric";
+export type CardType = "model" | "question" | "metric" | "in_report";
 
 type CreatorInfo = Pick<
   UserInfo,
