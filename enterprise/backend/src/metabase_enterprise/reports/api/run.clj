@@ -103,7 +103,6 @@
   (if-let [card-id (:card_id body)]
     ;; TODO: check that is already a frozen report card
     (let [card (t2/select-one :model/Card :id card-id)]
-      (prn (:type card))
       (api/check-404 card)
       (if (= :in_report (:type card))
         {:snapshot_id (snapshot-card card (:report_id body)) :card_id card-id}
