@@ -1389,12 +1389,64 @@
                                                          :source-table 2
                                                          :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
                                                                         [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
-                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]}]}]}]
+                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1 2]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
                                       :source-query {:source-table 2
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
-                                      :fields       [[:field 1 {:join-alias "J"}]]}]}}
-             (lib.convert/->legacy-MBQL query))))))
+                                      :fields       [[:field 1 {:join-alias "J"}]]
+                                      :condition    [:= 1 2]}]}}
+             (lib.convert/->legacy-MBQL query)
+             ;; make sure roundtripping doesn't introduce extra stages.
+             (-> query
+                 lib.convert/->legacy-MBQL
+                 lib.convert/->pMBQL
+                 lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel join-with-fields-in-last-stage-to-legacy-test-2
+  (testing "converting a join whose last stage has :fields to legacy should put :fields in :source-query even if join does not have :fields"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1
+                             :joins        [{:lib/type   :mbql/join
+                                             :alias      "J"
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 2
+                                                           :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                                                                          [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 1 2]]}]}]}]
+      (is (= {:type  :query
+              :query {:source-table 1
+                      :joins        [{:alias        "J"
+                                      :source-query {:source-table 2
+                                                     :fields       [[:field 1 nil]
+                                                                    [:field 2 nil]]}
+                                      :condition    [:= 1 2]}]}}
+             (lib.convert/->legacy-MBQL query)
+             ;; make sure roundtripping doesn't introduce extra stages.
+             (-> query
+                 lib.convert/->legacy-MBQL
+                 lib.convert/->pMBQL
+                 lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel do-not-add-extra-stages-to-join-test
+  (is (=? {:stages [{:source-table 45060
+                     :joins        [{:alias  "PRODUCTS__via__PRODUCT_ID"
+                                     :stages [{:source-table 45050
+                                               :fields       [[:field {:base-type :type/BigInteger} 45500]
+                                                              [:field {:base-type :type/Text} 45507]]}]}]}]}
+          (lib.convert/->pMBQL '{:database 45001
+                                 :type     :query
+                                 :query    {:source-table 45060
+                                            :joins        [{:strategy     :left-join
+                                                            :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                            :fk-field-id  45607
+                                                            :condition    [:=
+                                                                           [:field 45607 nil]
+                                                                           [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                            :source-query {:source-table 45050
+                                                                           :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                                                          [:field 45507 {:base-type :type/Text}]]}}]}}))))
