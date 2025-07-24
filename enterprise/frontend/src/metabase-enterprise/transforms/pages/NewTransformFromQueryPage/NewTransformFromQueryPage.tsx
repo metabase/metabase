@@ -8,7 +8,7 @@ import { NewTransformModal } from "../../components/NewTransformModal";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
 import { transformListUrl } from "../../utils/urls";
 
-export function NewQueryTransformPage() {
+export function NewTransformFromQueryPage() {
   const [query, setQuery] = useState(() => getInitialQuery());
   const [isOpened, setIsOpened] = useState(false);
   const dispatch = useDispatch();
