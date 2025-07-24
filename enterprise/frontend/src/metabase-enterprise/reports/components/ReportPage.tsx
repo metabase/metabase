@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
+import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
@@ -66,6 +67,10 @@ export const ReportPage = ({
 
   const { commitVisualizationChanges, refreshAllData } = useReportActions();
   const { handleQuestionClick } = useEditorActions();
+  useBeforeUnload(() => {
+    // warn if you try to navigate away with unsaved changes
+    return hasUnsavedChanges();
+  });
 
   useEffect(() => {
     if (!editorInstance) {
