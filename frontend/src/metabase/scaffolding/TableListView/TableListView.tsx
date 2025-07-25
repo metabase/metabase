@@ -223,7 +223,7 @@ export const TableListView = ({ location, params }: Props) => {
 
       <Group align="flex-start" gap="xl" wrap="nowrap">
         <Box flex="1" style={{ overflow: "auto" }}>
-          <Box bg="white" className={S.table} component="table">
+          <Box bg="white" className={S.table} component="table" w="100%">
             <thead>
               <tr>
                 {columns.map((column, index) => (
