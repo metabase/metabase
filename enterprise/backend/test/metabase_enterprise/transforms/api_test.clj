@@ -20,14 +20,14 @@
   [table]
   (let [target (if (map? table)
                  table
-                 {:table table})
+                 {:name table})
         driver driver/*driver*]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       (-> (driver/drop-table! driver (mt/id) (qualified-table-name driver target))
           u/ignore-exceptions))))
 
-;; Eventually this can be extended to generate {:schema "s", :table "t"} shapes
+;; Eventually this can be extended to generate {:schema "s", :name "t"} shapes
 ;; depending on prefix.  For now it just generates unique names with the given
 ;; prefix.
 (defn- gen-table-name
@@ -66,7 +66,7 @@
                             {:name "Gadget Products"
                              :source {:type "query"
                                       :query {:database (mt/id)
-                                              :type "native",
+                                              :type "native"
                                               :native {:query (make-query "Gadget")
                                                        :template-tags {}}}}
                              ;; for clickhouse (and other dbs where we do merge into), we will
@@ -75,7 +75,7 @@
                              :target {:type "table"
                                       ;; leave out schema for now
                                       ;;:schema (str (rand-int 10000))
-                                      :table table-name}}))))
+                                      :name table-name}}))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -87,12 +87,12 @@
                     :description "Desc"
                     :source {:type "query"
                              :query {:database (mt/id)
-                                     :type "native",
+                                     :type "native"
                                      :native {:query (make-query "Gadget")
                                               :template-tags {}}}}
                     :target {:type "table"
                              ;;:schema "transforms"
-                             :table table-name}}
+                             :name table-name}}
               _ (mt/user-http-request :crowberto :post 200 "ee/transform" body)
               list-resp (mt/user-http-request :crowberto :get 200 (str "ee/transform?database_id=" (mt/id)))]
           (is (seq list-resp))
@@ -106,12 +106,12 @@
                   :description "Desc"
                   :source {:type "query"
                            :query {:database (mt/id)
-                                   :type "native",
+                                   :type "native"
                                    :native {:query (make-query "Gadget")
                                             :template-tags {}}}}
                   :target {:type "table"
                            ;;:schema "transforms"
-                           :table table-name}}
+                           :name table-name}}
             resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
         (is (=? (assoc body
                        :database_id (mt/id)
@@ -128,12 +128,12 @@
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
-                                                         :type "native",
+                                                         :type "native"
                                                          :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
-                                                 :table table-name}})]
+                                                 :name table-name}})]
         (is (=? {:name "Gadget Products 2"
                  :description "Desc"
                  :database_id (mt/id)
@@ -143,13 +143,13 @@
                                   :native {:query query2
                                            :template-tags {}}}}
                  :target {:type "table"
-                          :table table-name}}
+                          :name table-name}}
                 (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                       {:name "Gadget Products 2"
                                        :description "Desc"
                                        :source {:type "query"
                                                 :query {:database (mt/id)
-                                                        :type "native",
+                                                        :type "native"
                                                         :native {:query query2
                                                                  :template-tags {}}}}})))))))
 
@@ -160,12 +160,12 @@
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
-                                                         :type "native",
+                                                         :type "native"
                                                          :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
-                                                 :table table-name}})]
+                                                 :name table-name}})]
         (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
         (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))
 
@@ -176,10 +176,10 @@
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
-                                                         :type "native",
+                                                         :type "native"
                                                          :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
-                                                 :table table-name}})]
+                                                 :name table-name}})]
         (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))

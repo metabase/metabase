@@ -1,14 +1,13 @@
 (ns metabase-enterprise.transforms.util
   (:require
-   [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [toucan2.core :as t2]))
 
 (defn qualified-table-name
   "Return the properly escaped name of the target of a transform."
-  [driver {:keys [schema table]}]
-  (cond->> (driver/escape-alias driver table)
+  [driver {:keys [schema name]}]
+  (cond->> (driver/escape-alias driver name)
     (string? schema) (str (driver/escape-alias driver schema) ".")))
 
 (defn target-table-exists?
@@ -18,7 +17,7 @@
         database (t2/select-one :model/Database db-id)
         driver (:engine database)]
     (try
-      (-> (driver/describe-table driver database (set/rename-keys target {:table :name}))
+      (-> (driver/describe-table driver database target)
           :fields
           seq
           boolean)
@@ -49,4 +48,12 @@
   (t2/select-one :model/Table
                  :db_id database-id
                  :schema (:schema target)
-                 :name (:table target)))
+                 :name (:name target)))
+
+(defn required-database-feature
+  "Returns the database feature necessary to execute `transform`."
+  [transform]
+  (case (-> transform :target :type)
+    "table"             :transforms/table
+    "view"              :transforms/view
+    "materialized-view" :transforms/materialized-view))
