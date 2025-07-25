@@ -144,9 +144,8 @@
   [connectable index documents]
   (log/info "Populating semantic search index with" (count documents) "documents")
   (when (seq documents)
-    (let [filtered-documents (remove #(= (:model %) "indexed-entity") documents)
-          text->docs         (group-by :searchable_text filtered-documents)
-          searchable-texts   (map :searchable_text filtered-documents)]
+    (let [text->docs         (group-by :searchable_text documents)
+          searchable-texts   (map :searchable_text documents)]
       (embedding/process-embeddings-streaming
        (:embedding-model index)
        searchable-texts
@@ -347,6 +346,8 @@
   [docs]
   (let [doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         t2-instances  (for [[t2-model docs] (group-by doc->t2-model docs)
+                            ;; NOTE an "indexed-entity" (:model/ModelIndexValue) does not have an :id column. For now
+                            ;; we are filtering indexed-entities out and they should not appear here.
                             t2-instance     (t2/select t2-model :id [:in (map :id docs)])]
                         t2-instance)
         doc->t2       (comp (u/index-by (juxt :id t2/model) t2-instances)
