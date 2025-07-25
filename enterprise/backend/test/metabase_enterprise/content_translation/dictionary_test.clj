@@ -41,7 +41,7 @@
     (let [rows [["invalidlocale" "Hello" "Hola"]]
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 2.*Invalid locale" (first (:errors result)))))))
+      (is (re-find #"Row 1.*Invalid locale" (first (:errors result)))))))
 
 (deftest ^:parallel process-rows-undefined-locale-test
   (testing "Invalid locale generates error"
@@ -57,14 +57,14 @@
                 ["fr" "Hello" "Salut"]]  ; Same locale+msgid
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 3.*Hello.*fr.*earlier" (first (:errors result)))))))
+      (is (re-find #"Row 2.*Hello.*fr.*earlier" (first (:errors result)))))))
 
 (deftest ^:parallel process-rows-wrong-columns-test
   (testing "Wrong number of columns generates error"
     (let [rows [["fr" "Hello" "Bonjour" "extra"]]
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 2.*Invalid format.*3 columns" (first (:errors result)))))))
+      (is (re-find #"Row 1.*Invalid format.*3 columns" (first (:errors result)))))))
 
 (deftest ^:parallel process-rows-multiple-errors-test
   (testing "Multiple errors are collected"
@@ -99,9 +99,10 @@
 
 (deftest ^:parallel adjust-index-test
   (testing "Index adjustment for human-readable error messages"
-    (is (= 2 (#'dictionary/adjust-index 0)) "First row becomes row 2 (header is row 1)")
-    (is (= 3 (#'dictionary/adjust-index 1)) "Second row becomes row 3")
-    (is (= 10 (#'dictionary/adjust-index 8)) "Ninth row becomes row 10")))
+    (binding [dictionary/*header-adjustment* 1]
+      (is (= 2 (#'dictionary/adjust-index 0)) "First row becomes row 2 (header is row 1)")
+      (is (= 3 (#'dictionary/adjust-index 1)) "Second row becomes row 3")
+      (is (= 10 (#'dictionary/adjust-index 8)) "Ninth row becomes row 10"))))
 
 (deftest read-and-import-csv!-test
   (mt/with-premium-features #{:content-translation}
@@ -111,12 +112,12 @@
     (testing "Reads CSV with invalid header row and throws informative error"
       (let [file (.getBytes "Language,String,\"Translation\"X")] ; character outside quotation marks
         (is (thrown-with-msg?
-             Exception #"Header row.*CSV error.*unexpected character.*X"
+             Exception #"Row 1.*CSV error.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))
     (testing "Reads CSV with invalid data row and throws informative error"
       (let [file (.getBytes "Language,String,Translation\nde,Title,Titel\nde,Vendor,\"Anbieter\"X")] ; character outside quotation marks
         (is (thrown-with-msg?
-             Exception #"Row 2.*CSV error.*unexpected character.*X"
+             Exception #"Row 3.*CSV error.*unexpected character.*X"
              (dictionary/read-and-import-csv! file)))))))
 
 (deftest read-and-import-csv-with-and-without-header-test

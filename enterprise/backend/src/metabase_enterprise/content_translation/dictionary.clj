@@ -12,6 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private http-status-unprocessable 422)
+(def ^:private ^:dynamic *header-adjustment* 0)
 
 (defn- translation-key
   "The identity of a translation. It's locale and source string so we can identify if the same translation is present
@@ -20,10 +21,10 @@
   (select-keys t [:locale :msgid]))
 
 (defn- adjust-index
-  "Adjust index: increment once for the header row that was chopped off and again to go to 1-based indexing for human
-  consumption."
+  "Adjust index: increment once for the header row that was chopped off to go to 1-based indexing for human
+  consumption. If there is header present increment again to account for that line."
   [i]
-  (+ i 2))
+  (+ i 1 *header-adjustment*))
 
 (defn- collect-locale-error
   "Returns an error message if a row does not have a valid locale."
@@ -71,16 +72,12 @@
        (adjust-index index)))
 
 (defn- header?
-  "Checks if a row is likely a by checking if it begins with language or locale works with both unparsed strings
-  and vectors"
+  "Checks if a row is likely a header by seeing if it has the set of values we expect in the header"
   [row]
-  (cond
-    (string? row)
-    (let [downcased (u/lower-case-en row)]
-      (or (str/starts-with? downcased "locale")
-          (str/starts-with? downcased "language")))
-    (vector? row)
-    (contains? #{"locale" "language"} (u/lower-case-en (first row)))))
+  (and (vector? row)
+       (= #{"language" "string" "translation"} (->> row
+                                                    (map u/lower-case-en)
+                                                    set))))
 
 (defn- process-rows
   "Format, validate, and process rows from a CSV. Takes a collection of vectors and returns a map with the shape
@@ -101,11 +98,12 @@
           formatted-rows (map format-row (if (header? maybe-header)
                                            rest
                                            rows))]
-      (reduce-kv collect-translation-and-errors
-                 {:seen         #{}
-                  :errors       []
-                  :translations []}
-                 (vec formatted-rows)))))
+      (binding [*header-adjustment* (if (header? maybe-header) 1 0)]
+        (reduce-kv collect-translation-and-errors
+                   {:seen         #{}
+                    :errors       []
+                    :translations []}
+                   (vec formatted-rows))))))
 
 (defn- import-translations!
   "Insert or update rows in the content_translation table."
@@ -133,13 +131,13 @@
          (first (csv/read-csv (java.io.StringReader. line)))
          (catch Exception e
            (let [error-message (.getMessage ^Exception e)
-                 error-message (if (and (zero? i) (header? line))
-                                 (tru "Header row: {0}" error-message)
-                                 (tru "Row {0}: {1}" i error-message))]
+                 ;; report line number 1 indexed
+                 line-no (inc i)]
              (throw (ex-info
-                     error-message
+                     (tru "Error Parsing CSV at Row {0}: {1}" line-no error-message)
                      {:status-code http-status-unprocessable
-                      :errors [error-message]})))))))))
+                      :line line-no}
+                     e)))))))))
 
 (defn read-and-import-csv!
   "Read CSV and catch error if the CSV is invalid."
