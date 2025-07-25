@@ -14,7 +14,6 @@ const jdbcPrefix = "(?<hasJdbcPrefix>jdbc:)?";
 const userPass = "(?:(?<username>[^:/?#]+)(?::(?<password>[^@/?#]*))?@)?";
 const host = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
 const params = "(?:\\?(?<params>.*))?";
-const path = "(?:/(?<path>[^/?#]*))?";
 const semicolonParams = "([^;]*)(?<semicolonParams>.*)?";
 
 const connectionStringRegexes = {
@@ -43,6 +42,15 @@ const connectionStringRegexes = {
   bigquery: new RegExp(
     "^" + jdbcPrefix + "(?<protocol>bigquery)://" + semicolonParams + "$",
     "i",
+  ),
+  clickhouse: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>clickhouse)://" +
+      userPass +
+      host +
+      "(?:/(?<database>[^/?#]*))?" +
+      params,
   ),
   postgresql: new RegExp(
     "^" +
@@ -145,10 +153,6 @@ const connectionStringRegexes = {
       params +
       "$",
     "i",
-  ),
-
-  clickhouse: new RegExp(
-    "^" + jdbcPrefix + "(?<protocol>clickhouse)://" + userPass + host + path,
   ),
 };
 
