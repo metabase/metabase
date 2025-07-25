@@ -280,16 +280,18 @@
                 (lib.field.util/add-source-and-desired-aliases-xform query))
           cols)))
 
-(defn- update-keys-for-join-returned-column [col]
-  ;; Things like bucketing that happened in the last stage of the join they should NOT get propagated (QUE-1621) to
-  ;; the parent stage, otherwise we'd be performing the bucketing twice.
-  ;; Use [[lib.field.util/update-keys-for-col-from-previous-stage]] to update all these keys so we make sure stuff
-  ;; like binning and bucketing that should not get propagated are updated appropriately.
-  (merge (lib.field.util/update-keys-for-col-from-previous-stage col)
-         ;; these columns aren't TRULY from a previous stage so we don't want to update `:lib/desired-column-alias` =>
-         ;; `:lib/source-column-alias`; we'll keep the ones we already have. Throw out the
-         ;; changes [[lib.field.util/update-keys-for-col-from-previous-stage]] made to these.
-         (select-keys col [:lib/source-column-alias :lib/desired-column-alias])))
+(defn- update-keys-for-join-returned-column
+  "Things like bucketing that happened in the last stage of the join they should NOT get propagated (QUE-1621) to the
+  parent stage, otherwise we'd be performing the bucketing twice.
+  Use [[lib.field.util/update-keys-for-col-from-previous-stage]] to update all these keys so we make sure stuff like
+  binning and bucketing that should not get propagated are updated appropriately."
+  [col]
+  (-> col
+      lib.field.util/update-keys-for-col-from-previous-stage
+      ;; these columns aren't TRULY from a previous stage so we don't want to update `:lib/desired-column-alias` =>
+      ;; `:lib/source-column-alias`; we'll keep the ones we already have. Throw out the
+      ;; changes [[lib.field.util/update-keys-for-col-from-previous-stage]] made to these.
+      (merge (select-keys col [:lib/source-column-alias :lib/desired-column-alias]))))
 
 (mu/defn join-fields-to-add-to-parent-stage :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."

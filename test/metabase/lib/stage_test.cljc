@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -834,7 +835,7 @@
 
 (deftest ^:parallel test-QUE-1607
   (testing "QUE-1607"
-    (is (#'metabase.lib.stage/add-cols-from-join-duplicate?
+    (is (#'lib.stage/add-cols-from-join-duplicate?
          {:base-type                    :type/Integer
           :display-name                 "Sum of Quantity"
           :effective-type               :type/Integer

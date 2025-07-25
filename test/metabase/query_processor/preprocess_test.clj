@@ -479,3 +479,32 @@
               (qp.preprocess/preprocess query)))
       (testing "Query should be convertable back to MBQL 5"
         (is (lib/query mp (qp.preprocess/preprocess query)))))))
+
+(deftest ^:parallel returned-columns-no-duplicates-test
+  (testing "Don't return columns from a join twice (QUE-1607)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query people
+                   {:source-query {:source-table $$people
+                                   :breakout     [!month.created-at]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-query {:source-table $$people
+                                                   :breakout     [!month.birth-date]
+                                                   :aggregation  [[:count]]}
+                                    :alias        "Q2"
+                                    :condition    [:= !month.created-at !month.&Q2.birth-date]
+                                    :fields       :all}]
+                    :order-by     [[:asc !month.created-at]]
+                    :limit        3}))]
+      (is (=? {:query {:joins [{:fields [[:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                         [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]
+                       :fields [[:field (meta/id :people :created-at) {:inherited-temporal-unit :month}]
+                                [:field "count" {:base-type :type/Integer}]
+                                [:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}}
+              (qp.preprocess/preprocess query)))
+      (is (= ["CREATED_AT"
+              "count"
+              "Q2__BIRTH_DATE"
+              "Q2__count"]
+             (mapv :lib/desired-column-alias (qp.preprocess/query->expected-cols query)))))))
