@@ -76,6 +76,10 @@ export interface ExplorationEmbedOptions {
   entityTypes?: EntityTypeFilterKeys[];
   // incompatible options
   dashboardId?: never;
+  drills?: never;
+  withDownloads?: never;
+  withTitle?: never;
+  initialSqlParameters?: never;
 }
 
 export interface CurateContentEmbedOptions {
@@ -83,6 +87,11 @@ export interface CurateContentEmbedOptions {
   initialCollection: CollectionId;
 
   entityTypes?: CollectionBrowserEntityTypes[];
+
+  drills?: never;
+  withTitle?: never;
+  withDownloads?: never;
+  initialSqlParameters?: never;
 
   questionId?: never;
   dashboardId?: never;
@@ -93,6 +102,11 @@ export interface ViewContentEmbedOptions {
   initialCollection: CollectionId;
 
   entityTypes?: CollectionBrowserEntityTypes[];
+
+  drills?: never;
+  withTitle?: never;
+  withDownloads?: never;
+  initialSqlParameters?: never;
 
   questionId?: never;
   dashboardId?: never;
