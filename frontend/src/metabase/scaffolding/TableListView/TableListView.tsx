@@ -54,7 +54,7 @@ interface Props {
   params: RouteParams;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 const CELL_PADDING_HORIZONTAL = "md" as const;
 const CELL_PADDING_VERTICAL_NORMAL = "sm" as const;
 const CELL_PADDING_VERTICAL_THIN = "xs" as const;
@@ -402,7 +402,7 @@ export const TableListView = ({ location, params }: Props) => {
                     style={{ cursor: "pointer" }}
                     onClick={() => handleColumnSort(column)}
                   >
-                    <Group gap="sm" align="center">
+                    <Group gap="sm" align="center" wrap="nowrap">
                       <Text c="text-secondary" size="sm">
                         {column.display_name}
                       </Text>
