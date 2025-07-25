@@ -793,6 +793,7 @@ export const PLUGIN_TABLE_EDITING = {
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
   getRoutes: () => null as React.ReactElement | null,
+  getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
   AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
     updateDatabase: (
