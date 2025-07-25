@@ -38,6 +38,7 @@ export const getDefaultSdkIframeEmbedSettings = (
       "exploration",
       (): ExplorationEmbedOptions => ({
         template: "exploration",
+        questionId: "new",
         isSaveEnabled: true,
       }),
     )

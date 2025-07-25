@@ -69,13 +69,12 @@ export interface QuestionEmbedOptions {
 
 export interface ExplorationEmbedOptions {
   template: "exploration";
+  questionId: "new";
 
   isSaveEnabled?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
-
   // incompatible options
-  questionId?: never;
   dashboardId?: never;
 }
 
