@@ -239,14 +239,15 @@
    stage-number :- :int
    col          :- ::lib.schema.metadata/column
    join-alias   :- ::lib.schema.join/alias]
-  (assoc col
-         ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
-         ;; keys for join aliases.
-         :source-alias            join-alias
-         :lib/original-join-alias join-alias
-         :display-name            (lib.metadata.calculation/display-name query stage-number col)
-         :lib/source              :source/joins
-         ::join-alias             join-alias))
+  (-> col
+      (assoc
+       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
+       ;; keys for join aliases.
+       :source-alias            join-alias
+       :lib/original-join-alias join-alias
+       :lib/source              :source/joins
+       ::join-alias             join-alias)
+      (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
 (defmethod lib.metadata.calculation/display-name-method :option/join.strategy
   [_query _stage-number {:keys [strategy]} _style]
