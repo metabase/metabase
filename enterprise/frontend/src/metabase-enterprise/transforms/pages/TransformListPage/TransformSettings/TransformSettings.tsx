@@ -171,7 +171,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
   const handleDelete = () => {
     askConfirmation({
       title: t`Delete this transform?`,
-      message: "Deleting a transform deletes a table associated with it.",
+      message: "Deleting a transform deletes the table associated with it.",
       confirmButtonText: t`Delete`,
       onConfirm: async () => {
         const { error } = await deleteTransform(transform.id);

@@ -6,7 +6,7 @@ import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { Flex, Stack } from "metabase/ui";
+import { Flex, Stack, Title } from "metabase/ui";
 
 import { NewTransformModal } from "../../components/NewTransformModal";
 import { newTransformQueryUrl } from "../../utils/urls";
@@ -35,21 +35,22 @@ export function NewTransformPage() {
   return (
     <Flex direction="column" flex={1} h="100%" justify="center" align="center">
       <Stack>
+        <Title order={3}>{t`Create a new transform`}</Title>
         <NewTransformOption
           icon="notebook"
-          label={t`Use the notebook editor`}
+          label={t`Using the notebook editor`}
           description={t`This automatically inherits metadata from your source tables.`}
           link={newTransformQueryUrl()}
         />
         <NewTransformOption
           icon="sql"
-          label={t`Use a native query`}
+          label={t`Using a native query`}
           description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
           link={newTransformQueryUrl()}
         />
         <NewTransformOption
           icon="copy"
-          label={t`Use an existing question or model`}
+          label={t`From an existing question or model`}
           description={t`You can copy the query definition to a new transform.`}
           onClick={handleQuestionModalOpen}
         />
