@@ -501,7 +501,8 @@
    (check-coercion-fn-coverage #{} test-cases))
   ([exclusions test-cases]
    (let [covered-fns  (into #{} (keep second) test-cases)
-         expected-fns (descendants :Coercion/*)
+         ;; Strip out Coercions defined in tests, e.g. clojure.types.core-test/Coerce-BigInteger-To-Instant
+         expected-fns (into #{} (filter (comp #{"Coercion"} namespace)) (descendants :Coercion/*))
          [unknown missing] (data/diff covered-fns expected-fns)]
      (testing "There are no unnecessary transformations (or stale keywords)"
        (is (empty? unknown)))

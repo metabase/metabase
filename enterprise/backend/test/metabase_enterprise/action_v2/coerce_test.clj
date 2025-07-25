@@ -75,7 +75,8 @@
 
   ;; TODO: fix this test by implementing all strategies
   (let [implemented (set (keys coerce/coercion-fns))
-        [unknown missing] (data/diff implemented (descendants :Coercion/*))]
+        expected-fns (into #{} (filter (comp #{"Coercion"} namespace)) (descendants :Coercion/*))
+        [unknown missing] (data/diff implemented expected-fns)]
     (testing "There are no unnecessary transformations (or stale keywords)"
       (is (nil? unknown)))
     (testing "There are no gaps in our transformations"
