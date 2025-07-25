@@ -26,7 +26,12 @@ export function getEmbedSnippet({
   experience: SdkIframeEmbedSetupExperience;
 }): string {
   // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-  return `<script src="${instanceUrl}/app/embed.js"></script>
+  return `<script defer src="${instanceUrl}/app/embed.js"></script>
+<script>
+function defineMetabaseConfig(config) {
+  window.metabaseConfig = config;
+}
+</script>
 
 <script>
   const { defineMetabaseConfig } = window["metabase.embed"];
