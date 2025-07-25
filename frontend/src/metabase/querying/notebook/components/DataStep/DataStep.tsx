@@ -52,8 +52,8 @@ export const DataStep = ({
   };
 
   const columns = useMemo(
-    () => Lib.fieldableColumns(query, stageIndex),
-    [query, stageIndex],
+    () => canSelectTableColumns ? Lib.visibleColumns(query, stageIndex) : [],
+    [query, stageIndex, canSelectTableColumns],
   );
 
   const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
@@ -70,6 +70,15 @@ export const DataStep = ({
 
   const handleSelectNone = () => {
     const nextQuery = Lib.withFields(query, stageIndex, [columns[0]]);
+    updateQuery(nextQuery);
+  };
+
+  const handleReorderColumns = (reorderedColumns: Lib.ColumnMetadata[]) => {
+    // Only include columns that are currently selected
+    const selectedColumns = reorderedColumns.filter(column => 
+      isColumnSelected({ column, columnInfo: Lib.displayInfo(query, stageIndex, column) })
+    );
+    const nextQuery = Lib.withFields(query, stageIndex, selectedColumns);
     updateQuery(nextQuery);
   };
 
@@ -128,6 +137,7 @@ export const DataStep = ({
           onToggle={handleToggle}
           onSelectAll={handleSelectAll}
           onSelectNone={handleSelectNone}
+          onReorderColumns={handleReorderColumns}
           data-testid="data-step-column-picker"
         />
       )}

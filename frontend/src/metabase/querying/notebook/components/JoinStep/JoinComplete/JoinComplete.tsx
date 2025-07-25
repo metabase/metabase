@@ -102,10 +102,19 @@ export function JoinComplete({
     onJoinChange(newJoin);
   };
 
-  const columns = useMemo(
-    () => Lib.joinableColumns(query, stageIndex, join),
-    [query, stageIndex, join],
-  );
+  const columns = useMemo(() => {
+    const joinFields = Lib.joinFields(join);
+    if (Array.isArray(joinFields)) {
+      // Use the specific fields in the order they are defined
+      return joinFields;
+    } else if (joinFields === "all") {
+      // Fall back to all joinable columns
+      return Lib.joinableColumns(query, stageIndex, join);
+    } else {
+      // joinFields === "none", return empty array
+      return [];
+    }
+  }, [query, stageIndex, join]);
 
   const isColumnSelected = ({ columnInfo }: FieldPickerItem) => {
     return Boolean(columnInfo.selected);
@@ -126,6 +135,18 @@ export function JoinComplete({
 
   const handleSelectNone = () => {
     const newJoin = Lib.withJoinFields(join, "none");
+    const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
+    onQueryChange(newQuery);
+  };
+
+  const handleReorderColumns = (reorderedColumns: Lib.ColumnMetadata[]) => {
+    // For joins, we need to update the join fields based on the reordered columns
+    // Only include columns that are currently selected
+    const selectedColumns = reorderedColumns.filter(column => 
+      isColumnSelected({ column, columnInfo: Lib.displayInfo(query, stageIndex, column) })
+    );
+    
+    const newJoin = Lib.withJoinFields(join, selectedColumns);
     const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
     onQueryChange(newQuery);
   };
@@ -221,6 +242,7 @@ export function JoinComplete({
       onToggle={handleToggle}
       onSelectAll={handleSelectAll}
       onSelectNone={handleSelectNone}
+      onReorderColumns={handleReorderColumns}
       data-testid="join-complete-column-picker"
     />
     </>

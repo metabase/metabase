@@ -2,7 +2,7 @@ import { DndContext, type DragEndEvent, closestCenter } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -184,9 +184,15 @@ export const ColumnPickerSidePanel = ({
 }: ColumnPickerSidePanelProps) => {
   const [searchText, setSearchText] = useState("");
   const [columnDisplayNames, setColumnDisplayNames] = useState<Map<string, string>>(new Map());
+  const [localColumns, setLocalColumns] = useState<Lib.ColumnMetadata[]>([]);
+
+  // Update local columns when columns prop changes
+  useEffect(() => {
+    setLocalColumns(columns);
+  }, [columns]);
 
   const items = useMemo(() => {
-    const items = columns.map((column) => ({
+    const items = localColumns.map((column) => ({
       column,
       columnInfo: Lib.displayInfo(query, stageIndex, column),
     }));
@@ -195,7 +201,7 @@ export const ColumnPickerSidePanel = ({
       isSelected: isColumnSelected(item, items),
       isDisabled: isColumnDisabled?.(item, items),
     }));
-  }, [query, stageIndex, columns, isColumnSelected, isColumnDisabled]);
+  }, [query, stageIndex, localColumns, isColumnSelected, isColumnDisabled]);
 
   const filteredItems = useMemo(() => {
     if (!searchText.trim()) {
@@ -224,16 +230,25 @@ export const ColumnPickerSidePanel = ({
     const { active, over } = event;
     
     if (active.id !== over?.id && onReorderColumns) {
-      const oldIndex = filteredItems.findIndex((item) => item.columnInfo.longDisplayName === active.id);
-      const newIndex = filteredItems.findIndex((item) => item.columnInfo.longDisplayName === over?.id);
+      // Find indices in the local columns
+      const oldIndex = localColumns.findIndex((column) => {
+        const info = Lib.displayInfo(query, stageIndex, column);
+        return info.longDisplayName === active.id;
+      });
+      const newIndex = localColumns.findIndex((column) => {
+        const info = Lib.displayInfo(query, stageIndex, column);
+        return info.longDisplayName === over?.id;
+      });
       
       if (oldIndex !== -1 && newIndex !== -1) {
-        const reorderedItems = arrayMove(filteredItems, oldIndex, newIndex);
-        const reorderedColumns = reorderedItems.map(item => item.column);
+        const reorderedColumns = arrayMove(localColumns, oldIndex, newIndex);
+        // Update local state immediately for instant UI feedback
+        setLocalColumns(reorderedColumns);
+        // Also notify parent component
         onReorderColumns(reorderedColumns);
       }
     }
-  }, [filteredItems, onReorderColumns]);
+  }, [localColumns, onReorderColumns, query, stageIndex]);
 
   const handleDisplayNameChange = useCallback((column: Lib.ColumnMetadata, newDisplayName: string) => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);

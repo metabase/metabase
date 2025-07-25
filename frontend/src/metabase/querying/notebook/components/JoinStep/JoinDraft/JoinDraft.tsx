@@ -129,6 +129,18 @@ export function JoinDraft({
     setSelectedRhsTableColumns([]);
   };
 
+  const handleReorderColumns = (reorderedColumns: Lib.ColumnMetadata[]) => {
+    // Update the order of rhsTableColumns to match the reordered columns
+    const newRhsTableColumns = reorderedColumns.slice();
+    setRhsTableColumns(newRhsTableColumns);
+    
+    // Also update selected columns to maintain the same selection state
+    const selectedColumns = reorderedColumns.filter(column => 
+      selectedRhsTableColumns.includes(column)
+    );
+    setSelectedRhsTableColumns(selectedColumns);
+  };
+
   return (
     <>
       <Flex miw="100%" gap="1rem">
@@ -187,6 +199,7 @@ export function JoinDraft({
           onToggle={handleToggle}
           onSelectAll={handleSelectAll}
           onSelectNone={handleSelectNone}
+          onReorderColumns={handleReorderColumns}
           data-testid="join-draft-column-picker"
         />
       )}
