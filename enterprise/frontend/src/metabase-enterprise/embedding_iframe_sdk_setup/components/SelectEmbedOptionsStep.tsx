@@ -21,7 +21,8 @@ export const SelectEmbedOptionsStep = () => {
   const { theme } = settings;
 
   const isQuestionOrDashboardEmbed =
-    settings.dashboardId || settings.questionId;
+    (experience === "dashboard" && settings.dashboardId) ||
+    (experience === "chart" && settings.questionId);
 
   const isExplorationEmbed = settings.template === "exploration";
 
