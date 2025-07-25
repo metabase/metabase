@@ -480,6 +480,7 @@ function createCustomElement<Arr extends readonly string[]>(
       }
 
       // we need to copy the settings, we don't want to accidentally mutate the shared object
+      // TODO: do deep copy to be sure we're not sharing the theme
       const settings: Record<string, unknown> = {
         ...(window.metabaseConfig || {}),
       };
