@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.api]
    [metabase-enterprise.action-v2.coerce :as coerce]
+   [metabase-enterprise.action-v2.data-editing :as data-editing]
    [metabase-enterprise.action-v2.test-util :as data-editing.tu]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
@@ -16,7 +17,9 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent ArrayBlockingQueue)))
 
 (set! *warn-on-reflection* true)
 
@@ -577,34 +580,37 @@
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers data-editing-drivers
       (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
-        (let [field-id     (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
-              _            (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
-              field-values #(vec (:values (field-values/get-latest-full-field-values field-id)))
-              create!      #(create-rows! table-id %)
-              update!      #(update-rows! table-id %)
-              expect-field-values
-              (fn [expect]                     ; redundantly pass expect get ok-ish assert errors (preserve last val)
-                (let [last-res (volatile! nil)]
-                  (or (u/poll {:thunk       (fn [] (vreset! last-res (field-values)))
-                               :done?       #(= expect %)
-                               :timeout-ms  1000
-                               :interval-ms 1})
-                      @last-res)))]
-          ;; TODO this can flake sometimes, not sure why (left over state from other tests?)
-          (is (= [] (field-values)))
+        (let [field-id         (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
+              _                (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
+              field-values     #(vec (:values (field-values/get-latest-full-field-values field-id)))
+              test-queue       (ArrayBlockingQueue. 100)
+              create!          #(create-rows! table-id %)
+              update!          #(update-rows! table-id %)
+              process-queue!   (fn []
+                                 (when-let [field-ids (.poll test-queue)]
+                                   (#'data-editing/batch-invalidate-field-values! [field-ids])
+                                   (recur)))]
+          (binding [data-editing/*field-value-invalidate-queue* test-queue]
+            ;; TODO this can flake sometimes, not sure why (left over state from other tests?)
+            (is (= [] (field-values)))
 
-          (create! [{:n "a"}])
-          (is (= ["a"] (expect-field-values ["a"])))
+            (create! [{:n "a"}])
+            (process-queue!)
+            (is (= ["a"] (field-values)))
 
-          (create! [{:n "b"} {:n "c"}])
-          (is (= ["a" "b" "c"] (expect-field-values ["a" "b" "c"])))
+            (create! [{:n "b"} {:n "c"}])
+            (process-queue!)
+            (is (= ["a" "b" "c"] (field-values)))
 
-          (update! [{:id 2, :n "d"}])
-          (is (= ["a" "c" "d"] (expect-field-values ["a" "c" "d"])))
+            (update! [{:id 2, :n "d"}])
+            (process-queue!)
+            (is (= ["a" "c" "d"] (field-values)))
 
-          (create! [{:n "a"}])
-          (update! [{:id 1, :n "e"}])
-          (is (= ["a" "c" "d" "e"] (expect-field-values ["a" "c" "d" "e"]))))))))
+            (create! [{:n "a"}])
+            (process-queue!)
+            (update! [{:id 1, :n "e"}])
+            (process-queue!)
+            (is (= ["a" "c" "d" "e"] (field-values)))))))))
 
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{actions-feature-flag}

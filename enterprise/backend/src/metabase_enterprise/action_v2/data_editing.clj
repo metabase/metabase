@@ -9,8 +9,32 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.queue :as queue]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent ArrayBlockingQueue)))
+
+(def ^:private ^ArrayBlockingQueue global-field-value-invalidate-queue
+  "Queue used to recalculate the field values for updated columns in the background."
+  (ArrayBlockingQueue. 1000))
+
+(def ^:dynamic *field-value-invalidate-queue*
+  "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
+  nil)
+
+(defn- ^ArrayBlockingQueue field-value-invalidation-queue []
+  (or *field-value-invalidate-queue* global-field-value-invalidate-queue))
+
+(defn- batch-invalidate-field-values!
+  "Recalculate the field values for the given fields."
+  [field-batches]
+  (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
+       (run! field-values/create-or-update-full-field-values!)))
+
+(defmethod queue/init-listener! ::FieldValueInvalidation [_]
+  (queue/listen! "field-value-invalidate" (field-value-invalidation-queue) batch-invalidate-field-values!
+                 {:max-batch-messages 10, :max-next-ms 10}))
 
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."
@@ -97,6 +121,7 @@
     (for [row input-rows]
       (m/map-kv-vals coerce row))))
 
+;; TODO we should move this work onto the background thread as well.
 (defn- invalidate-field-values! [table-id rows]
   ;; Be conservative with respect to case sensitivity, invalidate every field when there is ambiguity.
   (let [ln->values  (u/group-by first second (for [row rows [k v] row] [(u/lower-case-en (name k)) v]))
@@ -120,10 +145,7 @@
                           (apply concat))]
     ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
     (when (seq stale-fields)
-      ;; Using a future is not ideal, it would be better to use a queue and a single worker, to avoid tying up threads.
-      (future
-        (->> (t2/select :model/Field :id [:in stale-fields])
-             (run! field-values/create-or-update-full-field-values!))))))
+      (.offer (field-value-invalidation-queue) stale-fields))))
 
 ;; TODO this is fairly dirty, would be cleaner to map from db values to de-coerced values via middleware
 ;;      invalidation could perhaps be done in response to effect, or in middleware (to dedupe for chained actions)
