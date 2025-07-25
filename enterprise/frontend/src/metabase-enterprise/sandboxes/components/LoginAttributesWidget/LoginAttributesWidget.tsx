@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import FormField from "metabase/common/components/FormField";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
-import { useGetTenantQuery } from "metabase-enterprise/api";
 import { getExtraAttributes } from "metabase-enterprise/sandboxes/utils";
 import type {
   StructuredUserAttributes,
@@ -24,7 +23,6 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   userId?: UserId;
 }
 
-// if the value set in the ui is the same as the tenant or jwt value, don't save it to the user
 const isInheritedValue = (
   [key, inputValue]: [UserAttributeKey, UserAttributeValue],
   structuredAttributes: StructuredUserAttributes,
@@ -36,9 +34,7 @@ const isInheritedValue = (
 
   const inheritedValue =
     attribute?.original?.value ??
-    (attribute.source === "tenant" || attribute.source === "jwt"
-      ? attribute.value
-      : undefined);
+    (attribute.source === "jwt" ? attribute.value : undefined);
   return inheritedValue === inputValue;
 };
 
@@ -51,16 +47,12 @@ export const LoginAttributesWidget = ({
   userId,
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
-  const [{ value: tenantId }] = useField("tenant_id");
 
   const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
-  const { data: tenant, isLoading: isLoadingTenant } = useGetTenantQuery(
-    tenantId ?? skipToken,
-  );
 
   const structuredAttributes = useMemo(() => {
-    return getExtraAttributes(userData?.structured_attributes, tenant);
-  }, [userData?.structured_attributes, tenant]);
+    return getExtraAttributes(userData?.structured_attributes);
+  }, [userData?.structured_attributes]);
 
   const handleChange = (newValue: UserAttributeMap) => {
     const validEntries = Object.entries(newValue).filter(
@@ -86,7 +78,7 @@ export const LoginAttributesWidget = ({
           </Accordion.Control>
           <Accordion.Panel>
             <Box pt="md">
-              {isLoading || isLoadingTenant ? (
+              {isLoading ? (
                 <Loader />
               ) : (
                 <LoginAttributeMappingEditor

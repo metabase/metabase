@@ -1,12 +1,8 @@
-import type { ReactNode } from "react";
-import { t } from "ttag";
-
-import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
+import { Group, type SelectProps } from "metabase/ui";
 import type {
   GroupTableAccessPolicy,
   StructuredUserAttributes,
   Table,
-  Tenant,
 } from "metabase-types/api";
 
 import type {
@@ -14,16 +10,6 @@ import type {
   MappingEditorEntry,
   MappingType,
 } from "./types";
-
-const TENANT_SLUG_ATTRIBUTE = "@tenant.slug";
-
-const GET_USER_ATTRIBUTE_ICON_MAP: () => Record<string, ReactNode> = () => ({
-  [TENANT_SLUG_ATTRIBUTE]: (
-    <Tooltip label={t`This attribute is system defined`}>
-      <Icon name="info" />
-    </Tooltip>
-  ),
-});
 
 export const getPolicyKeyFromParams = ({
   groupId,
@@ -46,7 +32,6 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
 }) => (
   <Group flex="1" p="sm" gap="xs" justify="space-between">
     {option.label}
-    {GET_USER_ATTRIBUTE_ICON_MAP()[option.value]}
   </Group>
 );
 
@@ -100,28 +85,6 @@ export const buildMapping = <T,>(
 
 export const getExtraAttributes = (
   structuredAttributes?: StructuredUserAttributes,
-  tenant?: Tenant,
 ): StructuredUserAttributes | undefined => {
-  if (!tenant || structuredAttributes?.[TENANT_SLUG_ATTRIBUTE]) {
-    return structuredAttributes;
-  }
-
-  // for newly created tenant users, we want to pre-populate their inherited attributes
-  return {
-    [TENANT_SLUG_ATTRIBUTE]: {
-      value: tenant.slug,
-      source: "tenant",
-      frozen: true,
-    },
-    ...Object.fromEntries(
-      Object.entries(tenant.attributes ?? {}).map(([key, value]) => [
-        key,
-        {
-          value,
-          source: "tenant",
-          frozen: false,
-        },
-      ]),
-    ),
-  };
+  return structuredAttributes;
 };

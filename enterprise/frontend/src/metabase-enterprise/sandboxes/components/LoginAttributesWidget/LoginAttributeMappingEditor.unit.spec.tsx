@@ -15,23 +15,6 @@ const simpleAttributes: UserAttributeMap = {
 };
 
 const structuredAttributes: StructuredUserAttributes = {
-  type: {
-    // overridden tenant attribute
-    source: "user",
-    frozen: false,
-    value: "insect",
-    original: {
-      source: "tenant",
-      frozen: false,
-      value: "bug",
-    },
-  },
-  color: {
-    // inherited tenant attribute
-    source: "tenant",
-    frozen: false,
-    value: "green",
-  },
   session: {
     // inherited JWT attribute
     source: "jwt",
@@ -195,15 +178,6 @@ describe("LoginAttributeMappingEditor", () => {
       expect(await screen.findByDisplayValue("bug_gym")).toBeInTheDocument();
     });
 
-    it("shows tenant attributes with text keys", async () => {
-      setup({ structuredAttributes });
-
-      expect(await screen.findByText("type")).toBeInTheDocument();
-      expect(await screen.findByDisplayValue("insect")).toBeInTheDocument();
-      expect(await screen.findByText("color")).toBeInTheDocument();
-      expect(await screen.findByDisplayValue("green")).toBeInTheDocument();
-    });
-
     it("shows user defined attributes with editable keys and values", async () => {
       setup({ structuredAttributes });
 
@@ -236,8 +210,6 @@ describe("LoginAttributeMappingEditor", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
-        type: "insect",
-        color: "green",
         session: "abc123",
         role: "admin",
         personal: "secret",
@@ -253,8 +225,6 @@ describe("LoginAttributeMappingEditor", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
-        type: "insect",
-        color: "green",
         session: "abc123",
         role: "admin",
         public: "newSecret",
@@ -269,59 +239,8 @@ describe("LoginAttributeMappingEditor", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         "@tenant.slug": "bug_gym",
-        type: "insect",
-        color: "green",
         session: "abc123",
         role: "admin",
-      });
-    });
-
-    it("can override a tenant attribute value", async () => {
-      const { onChange } = setup({ structuredAttributes });
-
-      await changeInput("green", "blue");
-      expect(onChange).toHaveBeenLastCalledWith({
-        "@tenant.slug": "bug_gym",
-        type: "insect",
-        color: "blue",
-        session: "abc123",
-        role: "admin",
-        personal: "secret",
-      });
-    });
-
-    it("can change an overridden tenant attribute value", async () => {
-      const { onChange } = setup({ structuredAttributes });
-
-      await changeInput("insect", "ick");
-      expect(onChange).toHaveBeenLastCalledWith({
-        "@tenant.slug": "bug_gym",
-        type: "ick",
-        color: "green",
-        session: "abc123",
-        role: "admin",
-        personal: "secret",
-      });
-    });
-
-    it("can revert a tenant attribute value", async () => {
-      const { onChange } = setup({ structuredAttributes });
-
-      expect(await screen.findByDisplayValue("insect")).toBeInTheDocument();
-      const revertButtons = await screen.findAllByLabelText("refresh icon");
-      // Click the revert button for the tenant attribute (type)
-      await userEvent.click(revertButtons[1]);
-
-      expect(await screen.findByDisplayValue("bug")).toBeInTheDocument();
-      expect(screen.queryByDisplayValue("insect")).not.toBeInTheDocument();
-
-      expect(onChange).toHaveBeenLastCalledWith({
-        "@tenant.slug": "bug_gym",
-        type: "bug",
-        color: "green",
-        session: "abc123",
-        role: "admin",
-        personal: "secret",
       });
     });
 
@@ -331,8 +250,6 @@ describe("LoginAttributeMappingEditor", () => {
       await changeInput("abc123", "xyz789");
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
-        type: "insect",
-        color: "green",
         session: "xyz789",
         role: "admin",
         personal: "secret",
@@ -345,8 +262,6 @@ describe("LoginAttributeMappingEditor", () => {
       await changeInput("admin", "superuser");
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
-        type: "insect",
-        color: "green",
         session: "abc123",
         role: "superuser",
         personal: "secret",
@@ -366,8 +281,6 @@ describe("LoginAttributeMappingEditor", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         "@tenant.slug": "bug_gym",
-        type: "insect",
-        color: "green",
         session: "abc123",
         role: "user",
         personal: "secret",

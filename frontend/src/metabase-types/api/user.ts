@@ -7,7 +7,7 @@ export type UserAttributeKey = string;
 export type UserAttributeValue = string;
 export type UserAttributeMap = Record<UserAttributeKey, UserAttributeValue>;
 
-export type UserAttributeSource = "system" | "tenant" | "jwt" | "user";
+export type UserAttributeSource = "system" | "jwt" | "user";
 
 type StructuredAttributeBase = {
   frozen: boolean;

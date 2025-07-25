@@ -73,9 +73,7 @@ export const buildStructuredEntries = (
         disabled: frozen,
         revert:
           original ||
-          (source === "tenant" || source === "jwt"
-            ? { value, source, frozen: false }
-            : undefined),
+          (source === "jwt" ? { value, source, frozen: false } : undefined),
       },
     }))
     .sort((a, b) =>
@@ -105,7 +103,6 @@ export const LoginAttributeMappingEditor = ({
   );
 
   useEffect(() => {
-    // structuredAttributes can change if a different tenant is selected
     if (structuredAttributes) {
       setEntries((previousEntries) => [
         ...buildStructuredEntries(structuredAttributes),
@@ -269,10 +266,8 @@ const ValueInput = ({
   );
 };
 
-const infoText = (source?: "tenant" | "system" | "jwt" | "user"): string => {
+const infoText = (source?: "system" | "jwt" | "user"): string => {
   switch (source) {
-    case "tenant":
-      return t`This attribute is inherited from the tenant, but you can override its value`;
     case "system":
       return t`This attribute is system defined`;
     case "jwt":
@@ -282,12 +277,8 @@ const infoText = (source?: "tenant" | "system" | "jwt" | "user"): string => {
   }
 };
 
-const InfoCard = ({
-  source,
-}: {
-  source?: "tenant" | "system" | "user" | "jwt";
-}) =>
-  !["tenant", "system", "jwt"].includes(source ?? "") ? null : (
+const InfoCard = ({ source }: { source?: "system" | "user" | "jwt" }) =>
+  !["system", "jwt"].includes(source ?? "") ? null : (
     <HoverCard>
       <HoverCard.Target>
         <Icon name="info_filled" c="text-light" />
