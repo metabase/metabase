@@ -87,7 +87,6 @@
                              :fields       [$id
                                             &Cat.categories.name]}
               :breakout     [&Cat.categories.name]
-              :breakout-idents {0 "tAm-2ApQEQSBGJDVg9TmQ"}
               :limit        1})))))
 
 (deftest ^:parallel multiple-joins-test
@@ -185,7 +184,6 @@
           (add-alias-info
            (lib.tu.macros/mbql-query products
              {:expressions {"CATEGORY" [:concat [:field %category nil] "2"]}
-              :expression-idents {"CATEGORY" "NasJJtjrlg_blZ_8ddjSx"}
               :fields      [[:field %category nil]
                             [:expression "CATEGORY"]]
               :limit       1})))))
@@ -207,7 +205,6 @@
           (add-alias-info
            (lib.tu.macros/mbql-query checkins
              {:aggregation [[:count]]
-              :aggregation-idents {0 "H8sfHf-gsjijAIs3APFjQ"}
               :filter      [:not-null $date]})))))
 
 (deftest ^:parallel duplicate-aggregations-test
@@ -256,10 +253,7 @@
                                               ::add/position      0
                                               ::add/desired-alias "count"}]
                                             [:count]
-                                            [:count]]
-                             :aggregation-idents {0 "ZnBWpC26xWsBk40Ebuv63"
-                                                  1 "Qh4rDGS0a5-cnEthRD-qj"
-                                                  2 "vwlMLeUWqDdhN91kPr6U_"}}
+                                            [:count]]}
               :limit        1})))))
 
 (deftest ^:parallel multiple-expressions-test
@@ -303,8 +297,6 @@
             (lib.tu.macros/mbql-query venues
               {:expressions {"big_price"                  [:+ $price 2]
                              "price_divided_by_big_price" [:/ $price [:expression "big_price"]]}
-               :expression-idents {"big_price"                  "64aGSdDHNzSrRltFxwmHp",
-                                   "price_divided_by_big_price" "WOb_-8uyvcijoPRgU-Bjj"}
                :fields      [$price
                              [:expression "big_price"]
                              [:expression "price_divided_by_big_price"]]
@@ -371,16 +363,12 @@
                 :joins  [{:strategy     :left-join
                           :condition    [:= &Q2.products.category 1]
                           :alias        "Q2"
-                          :ident        "0vefkkp2BmB9QcZmJFr9Q"
                           :source-query {:source-table $$reviews
                                          :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
-                                         :aggregation-idents {0 "_4g53S8I4pIlBaZGDJJID"}
                                          :breakout     [&P2.products.category]
-                                         :breakout-idents {0 "jZPKhXzciFGQuzNYSV9zg"}
                                          :joins        [{:strategy     :left-join
                                                          :source-table $$products
                                                          :condition    [:= $reviews.product-id &P2.products.id]
-                                                         :ident        "Re0HbvwhsumyWhCHuPo8g"
                                                          :alias        "P2"}]}}]
                 :limit  2}))))))
 
@@ -479,9 +467,7 @@
                                       :aggregation  [[:aggregation-options
                                                       [:count]
                                                       {:name "strange count"}]]
-                                      :aggregation-idents {0 "htRA_o2ioYfaoBulhEFvv"}
-                                      :breakout     [$price]
-                                      :breakout-idents {0 "bs-5Ij4lw0kDRLklLc_MW"}}
+                                      :breakout     [$price]}
                        :filter       [:< [:field "strange count" {:base-type :type/Integer}] 10]
                        :limit        1})
                     add-alias-info
@@ -566,13 +552,11 @@
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
                                                     :alias        "Products Renamed"
-                                                    :ident        "HfWxcPle1nlw1XR_JRkCS"
                                                     :condition    [:=
                                                                    $product-id
                                                                    [:field %products.id {:join-alias "Products Renamed"}]]
                                                     :fields       [[:field %products.id {:join-alias "Products Renamed"}]]}]
                                     :expressions  {"CC" [:+ 1 1]}
-                                    :expression-idents {"CC" "U8KabZf9xDsU3066vHidT"}
                                     :fields       [[:field %products.id {:join-alias "Products Renamed"}]
                                                    [:expression "CC"]]
                                     :filter       [:=
@@ -674,7 +658,6 @@
             (add-alias-info
              (lib.tu.macros/mbql-query checkins
                {:aggregation [[:sum $user-id]]
-                :aggregation-idents {0 "mXYj8fX11NEAGVQXp4fzv"}
                 :order-by    [[:asc [:aggregation 0]]]}))))))
 
 (deftest ^:parallel uniquify-aggregation-names-text
@@ -692,11 +675,8 @@
           (add-alias-info
            (lib.tu.macros/mbql-query checkins
              {:expressions {"count" [:+ 1 1]}
-              :expression-idents {"count" "ZlGfnBJC-axsF8tkpkPL0"}
               :breakout    [[:expression "count"]]
-              :breakout-idents {0 "E-Cy0ca-0PwGbVwXzgiDx"}
               :aggregation [[:count]]
-              :aggregation-idents {0 "7CNnUL8lX44acBh3DyQ9W"}
               :limit       1})))))
 
 (deftest ^:parallel fuzzy-field-info-test
@@ -827,7 +807,6 @@
                                   :query    {:joins
                                              [{:fields :all,
                                                :alias "Model B - A1",
-                                               :ident "t3Nz_yY5hISIlmxaJlSsm"
                                                :strategy :inner-join,
                                                :condition
                                                [:=

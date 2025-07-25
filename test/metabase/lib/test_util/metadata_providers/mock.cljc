@@ -6,13 +6,11 @@
    [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -159,8 +157,6 @@
   ([m]
    (-> m
        ->mock-metadata
-       (m/update-existing :fields #(for [field %]
-                                     (u/assoc-default field :ident (u/generate-nano-id))))
        ->MockMetadataProvider))
 
   ([parent-metadata-provider mock-metadata]
