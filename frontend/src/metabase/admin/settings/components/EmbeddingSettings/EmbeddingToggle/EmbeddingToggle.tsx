@@ -6,13 +6,14 @@ import { useAdminSetting } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { Switch, type SwitchProps, Text } from "metabase/ui";
 
-import { EmbeddingSdkLegaleseModal } from "../EmbeddingSdkLegaleseModal";
+import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
 
 export type EmbeddingToggleProps = {
   settingKey:
     | "enable-embedding-static"
     | "enable-embedding-sdk"
-    | "enable-embedding-interactive";
+    | "enable-embedding-interactive"
+    | "enable-embedding-simple";
 } & Omit<SwitchProps, "onChange">;
 
 export function EmbeddingToggle({
@@ -21,6 +22,7 @@ export function EmbeddingToggle({
 }: EmbeddingToggleProps) {
   const { value, settingDetails, updateSetting } = useAdminSetting(settingKey);
   const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
+  const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
 
   const [
     isLegaleseModalOpen,
@@ -32,11 +34,19 @@ export function EmbeddingToggle({
       <Text c="var(--mb-color-text-secondary)">{t`Set via environment variable`}</Text>
     );
   }
+
   const isEnabled = Boolean(value);
-  const isEmbeddingToggle = settingKey === "enable-embedding-sdk";
+
+  const isEmbeddingToggle =
+    settingKey === "enable-embedding-sdk" ||
+    settingKey === "enable-embedding-simple";
 
   const handleChange = (newValue: boolean) => {
-    if (showSdkEmbedTerms && isEmbeddingToggle && newValue) {
+    const shouldShowEmbedTerms =
+      (settingKey === "enable-embedding-sdk" && showSdkEmbedTerms) ||
+      (settingKey === "enable-embedding-simple" && showSimpleEmbedTerms);
+
+    if (shouldShowEmbedTerms && isEmbeddingToggle && newValue) {
       openLegaleseModal();
       return;
     }
@@ -62,8 +72,10 @@ export function EmbeddingToggle({
           handleChange(event.currentTarget.checked);
         }}
       />
+
       {isEmbeddingToggle && (
-        <EmbeddingSdkLegaleseModal
+        <EmbeddingLegaleseModal
+          setting={settingKey}
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
         />

@@ -37,7 +37,6 @@ const MetabotQuestionInner = () => {
         <SdkAdHocQuestion
           questionPath={redirectUrl}
           title={false}
-          onNavigateBack={() => {}}
           isSaveEnabled={false}
         >
           <SdkQuestionDefaultView

@@ -7,7 +7,7 @@ import { QuestionSettings } from "./QuestionSettings";
 const QUESTION_ID = (window as any).QUESTION_ID || 11;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/QuestionSettings",
+  title: "EmbeddingSDK/SdkQuestion/QuestionSettings",
   component: QuestionSettings,
   parameters: {
     layout: "fullscreen",

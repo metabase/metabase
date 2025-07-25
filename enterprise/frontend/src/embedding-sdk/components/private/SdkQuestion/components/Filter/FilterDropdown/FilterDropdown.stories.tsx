@@ -7,7 +7,7 @@ import { FilterDropdown } from "./FilterDropdown";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Filter/FilterDropdown",
+  title: "EmbeddingSDK/SdkQuestion/Filter/FilterDropdown",
   component: FilterDropdown,
   parameters: {
     layout: "fullscreen",
