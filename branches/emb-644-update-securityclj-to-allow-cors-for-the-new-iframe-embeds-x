@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin",
-    "hash": "a087ad734df7daed817fecb6cf06605270ca6c46"
+    "name": "master",
+    "hash": "647058ec89718c7b164f5fec1072d9de63e5dc15"
   },
   "upstream": {
     "branch": "emb-644-update-securityclj-to-allow-cors-for-the-new-iframe-embeds-x"
