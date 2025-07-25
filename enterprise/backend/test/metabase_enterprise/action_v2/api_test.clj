@@ -595,20 +595,25 @@
             (is (= [] (field-values)))
 
             (create! [{:n "a"}])
+            (is (pos? (.size test-queue)))
             (process-queue!)
             (is (= ["a"] (field-values)))
 
             (create! [{:n "b"} {:n "c"}])
+            (is (pos? (.size test-queue)))
             (process-queue!)
             (is (= ["a" "b" "c"] (field-values)))
 
             (update! [{:id 2, :n "d"}])
+            (is (pos? (.size test-queue)))
             (process-queue!)
             (is (= ["a" "c" "d"] (field-values)))
 
             (create! [{:n "a"}])
+            (is (zero? (.size test-queue)))
             (process-queue!)
             (update! [{:id 1, :n "e"}])
+            (is (pos? (.size test-queue)))
             (process-queue!)
             (is (= ["a" "c" "d" "e"] (field-values)))))))))
 
