@@ -23,9 +23,6 @@
   "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
   nil)
 
-(defn- ^ArrayBlockingQueue field-value-invalidation-queue []
-  (or *field-value-invalidate-queue* global-field-value-invalidate-queue))
-
 (defn- batch-invalidate-field-values!
   "Recalculate the field values for the given fields."
   [field-batches]
@@ -33,7 +30,7 @@
        (run! field-values/create-or-update-full-field-values!)))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
-  (queue/listen! "field-value-invalidate" (field-value-invalidation-queue) batch-invalidate-field-values!
+  (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!
                  {:max-batch-messages 10, :max-next-ms 10}))
 
 (defn select-table-pk-fields
@@ -145,7 +142,8 @@
                           (apply concat))]
     ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
     (when (seq stale-fields)
-      (.offer (field-value-invalidation-queue) stale-fields))))
+      (let [queue ^ArrayBlockingQueue (or *field-value-invalidate-queue* global-field-value-invalidate-queue)]
+        (.offer queue stale-fields)))))
 
 ;; TODO this is fairly dirty, would be cleaner to map from db values to de-coerced values via middleware
 ;;      invalidation could perhaps be done in response to effect, or in middleware (to dedupe for chained actions)
