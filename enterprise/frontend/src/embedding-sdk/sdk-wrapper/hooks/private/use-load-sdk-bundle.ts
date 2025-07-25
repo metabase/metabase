@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk/sdk-wrapper/config";
 import { dispatchSdkBundleScriptLoadingEvent } from "embedding-sdk/sdk-wrapper/lib/private/dispatch-sdk-bundle-script-loading-event";
 import { getSdkBundleScriptElement } from "embedding-sdk/sdk-wrapper/lib/private/get-sdk-bundle-script-element";
+import type { SdkBundleScriptLoadingEvent } from "embedding-sdk/sdk-wrapper/types/sdk-bundle-script";
 
 const loadSdkBundle = async (metabaseInstanceUrl: string) => {
   return new Promise<void>((resolve, reject) => {
@@ -17,10 +18,20 @@ const loadSdkBundle = async (metabaseInstanceUrl: string) => {
     script.onload = () => {
       resolve();
     };
-    script.onerror = (e) => {
-      reject(new Error(`Failed to load embedding SDK bundle: ${e}`));
+    script.onerror = () => {
+      reject(new Error("Failed to load Embedding SDK bundle"));
+    };
+    script.onabort = () => {
+      reject(new Error("Loading of Embedding SDK bundle was aborted"));
     };
   });
+};
+
+const dispatchLoadingState = (
+  status: SdkBundleScriptLoadingEvent["status"],
+) => {
+  window.EMBEDDING_SDK_BUNDLE_LOADING_STATE = status;
+  dispatchSdkBundleScriptLoadingEvent(status);
 };
 
 export function useLoadSdkBundle(metabaseInstanceUrl: string) {
@@ -32,13 +43,14 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
         return;
       }
 
-      dispatchSdkBundleScriptLoadingEvent("loading");
+      dispatchLoadingState("loading");
 
       try {
         await loadSdkBundle(metabaseInstanceUrl);
-        dispatchSdkBundleScriptLoadingEvent("loaded");
+        dispatchLoadingState("loaded");
       } catch (error) {
-        dispatchSdkBundleScriptLoadingEvent("error");
+        console.error("Error loading SDK bundle:", error);
+        dispatchLoadingState("error");
       }
     };
 
