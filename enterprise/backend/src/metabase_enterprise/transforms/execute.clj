@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.sync.core :as sync]
@@ -41,7 +42,11 @@
   [transform]
   (let [{:keys [source target]} transform
         db (get-in source [:query :database])
-        {driver :engine :as database} (t2/select-one :model/Database db)]
+        {driver :engine :as database} (t2/select-one :model/Database db)
+        feature (transforms.util/required-database-feature transform)]
+    (when-not (driver.u/supports? driver feature database)
+      (throw (ex-info "The database does not support the requested transform target type."
+                      {:driver driver, :database database, :feature feature})))
     (execute!
      {:db-ref db
       :driver driver

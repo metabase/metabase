@@ -6,6 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.driver.util :as driver.u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -38,6 +40,18 @@
              :table "gadget_products"}}]
   -)
 
+(defn- source-database-id
+  [transform]
+  (-> transform :source :query :database))
+
+(defn- check-database-feature
+  [transform]
+  (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
+                                (deferred-tru "The source database cannot be found."))
+        feature (transforms.util/required-database-feature transform)]
+    (api/check-400 (driver.u/supports? (:engine database) feature database)
+                   (deferred-tru "The database does not support the requested transform target type."))))
+
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
@@ -57,6 +71,7 @@
             [:target ::transform-target]
             [:schedule {:optional true} [:maybe :string]]]]
   (api/check-superuser)
+  (check-database-feature body)
   (when (transforms.util/target-table-exists? body)
     (api/throw-403))
   (let [transform (t2/insert-returning-instance!
@@ -70,7 +85,7 @@
   (log/info "get transform" id)
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        database-id (-> transform :source :query :database)]
+        database-id (source-database-id transform)]
     (assoc transform :table (transforms.util/target-table database-id (:target transform)))))
 
 (api.macros/defendpoint :put "/:id"
@@ -89,6 +104,7 @@
         new (merge old body)
         target-fields #(-> % :target (select-keys [:schema :table]))
         query-fields #(select-keys % [:source :target])]
+    (check-database-feature new)
     (when (and (not= (target-fields old) (target-fields new))
                (transforms.util/target-table-exists? new))
       (api/throw-403))

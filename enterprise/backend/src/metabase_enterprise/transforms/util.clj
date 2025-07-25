@@ -50,3 +50,11 @@
                  :db_id database-id
                  :schema (:schema target)
                  :name (:table target)))
+
+(defn required-database-feature
+  "Returns the database feature necessary to execute `transform`."
+  [transform]
+  (case (-> transform :target :type)
+    "table"             :transforms/table
+    "view"              :transforms/view
+    "materialized-view" :transforms/materialized-view))
