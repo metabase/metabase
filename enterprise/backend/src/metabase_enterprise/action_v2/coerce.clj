@@ -34,13 +34,13 @@
         (.atZone (ZoneId/of "UTC"))
         str)))
 
-;; the date/time coercions are highly ambigious
-;; in one direction one can make a decision (take the local date, or clock time)
-;; but how do you reverse it?
-;; Often the original SQL string might have been a full date, a zoned or unzoned ISO string,
-;; Needs to be considered properly at some later time.
-;; Idea: make the coercion dependent on previous database string, so if lossy - modify *just* the time, or the date component
-;; * still somewhat ambiguous, e.g did the user *intend* to discard the previous date/time components?
+;; Now that we are adding support for writing back to databases, things get interesting where the conversion is lossy.
+;; If the transformation from database to presentation is lossy, say showing just the date of a zoned ISO string,
+;; how do we update it given a new date?
+;; Perhaps we are happy to reset the time to midnight, use the current time, or carry over the previous time portion?
+;; This last option will complicate our implementation, and can still run into issues with leap seconds, etc.
+;; There are similar complications when only displaying the time portion, dealing with timezones, etc.
+;; This is a thorny area and will need careful consideration at some point.
 
 (defn- json-zdt->date [s]
   (-> s ZonedDateTime/parse .toLocalDate str))
