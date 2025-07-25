@@ -207,7 +207,7 @@ describe("scenarios > question > native", () => {
           .findByLabelText("Parameter widget label")
           .type(" updated")
           .blur();
-        H.filterWidget().should("have.text", "Unit updated");
+        H.filterWidget({ name: "Unit updated" }).should("exist");
       });
 
       it("should handle required prop for time grouping", () => {

@@ -16,14 +16,12 @@ function ParameterValueWidgetTriggerInner(
     ariaLabel,
     className,
     mimicMantine = false,
-    variant = "default",
   }: {
     children: ReactNode;
     hasValue: boolean;
     ariaLabel?: string;
     className?: string;
     mimicMantine?: boolean;
-    variant?: "default" | "subtle";
   },
   ref: Ref<HTMLDivElement>,
 ) {
@@ -49,7 +47,6 @@ function ParameterValueWidgetTriggerInner(
       ref={ref}
       className={cx(S.parameter, className, {
         [S.selected]: hasValue,
-        [S[variant]]: variant,
       })}
       role="button"
       aria-label={ariaLabel}

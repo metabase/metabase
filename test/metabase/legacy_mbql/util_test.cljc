@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.util-test
   (:require
-   #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+   #?@(:clj  (^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]

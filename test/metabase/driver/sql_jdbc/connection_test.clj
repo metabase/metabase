@@ -218,7 +218,7 @@
     (when config/ee-available?
       (t2/delete! 'Database {:where [:= :is_audit true]})
       (let [status (mbc/ensure-audit-db-installed!)
-            audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
+            audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]})
             _ (is (= :metabase-enterprise.audit-app.audit/installed status))
             _ (is (= 13371337 audit-db-id))
             first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)

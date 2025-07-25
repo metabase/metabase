@@ -36,26 +36,37 @@
               {:locale "de" :msgid "Thank you" :msgstr "Danke"}]
              (:translations result))))))
 
-(deftest ^:parallel process-rows-validation-test
+(deftest ^:parallel process-rows-invalid-locale-test
   (testing "Invalid locale generates error"
     (let [rows [["invalidlocale" "Hello" "Hola"]]
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 2.*Invalid locale" (first (:errors result))))))
+      (is (re-find #"Row 2.*Invalid locale" (first (:errors result)))))))
 
+(deftest ^:parallel process-rows-undefined-locale-test
+  (testing "Invalid locale generates error"
+    ;; Esperanto is not a locale metabase is available in
+    (let [rows [["eo" "Hello" "Hola"]]
+          result (#'dictionary/process-rows rows)]
+      (is (= 1 (count (:errors result))))
+      (is (re-find #"Row 2.*Invalid locale" (first (:errors result)))))))
+
+(deftest ^:parallel process-rows-duplicate-keys-test
   (testing "Duplicate translation keys generate error"
     (let [rows [["fr" "Hello" "Bonjour"]
                 ["fr" "Hello" "Salut"]]  ; Same locale+msgid
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 3.*Hello.*fr.*earlier" (first (:errors result))))))
+      (is (re-find #"Row 3.*Hello.*fr.*earlier" (first (:errors result)))))))
 
+(deftest ^:parallel process-rows-wrong-columns-test
   (testing "Wrong number of columns generates error"
     (let [rows [["fr" "Hello" "Bonjour" "extra"]]
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 2.*Invalid format.*3 columns" (first (:errors result))))))
+      (is (re-find #"Row 2.*Invalid format.*3 columns" (first (:errors result)))))))
 
+(deftest ^:parallel process-rows-multiple-errors-test
   (testing "Multiple errors are collected"
     (let [rows [["invalid" "Hello" "Hola" "extra"]  ; Invalid locale + extra column
                 ["fr" "Hello" "Bonjour"]

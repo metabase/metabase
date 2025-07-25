@@ -60,7 +60,6 @@
                                                     :base-type         :type/Text
                                                     :effective-type    :type/Date
                                                     :coercion-strategy :Coercion/ISO8601->Date
-                                                    :ident             "ybTElkkGoYYBAyDRTIiUe"
                                                     :name              "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
@@ -72,7 +71,6 @@
                 :coercion-strategy        :Coercion/ISO8601->Date
                 :id                       4
                 :name                     "Field 4"
-                :ident                    "ybTElkkGoYYBAyDRTIiUe"
                 :lib/source               :source/card
                 :lib/card-id              3
                 :lib/source-column-alias  "Field 4"
@@ -84,7 +82,6 @@
                :coercion-strategy       :Coercion/ISO8601->Date
                :id                      4
                :name                    "Field 4"
-               :ident                   "ybTElkkGoYYBAyDRTIiUe"
                :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card
@@ -134,19 +131,19 @@
                                                    :database 1
                                                    :stages   [{:lib/type     :mbql.stage/mbql
                                                                :source-table 2}]}
-                                 :result-metadata [{:id    4
-                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
-                                                    :name  "Field 4"}]}]})
+                                 :result-metadata [{:lib/type  :metadata/column
+                                                    :id        4
+                                                    :name      "Field 4"
+                                                    :base-type :type/Integer}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
                                                     :source-card 3}]})]
       (is (=? [{:lib/type                 :metadata/column
-                :base-type                :type/*
-                :effective-type           :type/*
+                :base-type                :type/Integer
+                :effective-type           :type/Integer
                 :id                       4
                 :name                     "Field 4"
-                :ident                    "ybTElkkGoYYBAyDRTIiUe"
                 :lib/source               :source/card
                 :lib/card-id              3
                 :lib/source-column-alias  "Field 4"
@@ -154,10 +151,9 @@
               (lib/returned-columns query)))
       (is (=? {:lib/type                :metadata/column
                :base-type               :type/Text
-               :effective-type          :type/Text
+               :effective-type          :type/Integer
                :id                      4
                :name                    "Field 4"
-               :ident                   "ybTElkkGoYYBAyDRTIiUe"
                :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card
@@ -578,7 +574,9 @@
                                                             (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1}))]
                                                    (-> col
                                                        (dissoc :lib/type)
-                                                       (update-keys u/->snake_case_en)))
+                                                       (update-keys (fn [k]
+                                                                      (cond-> k
+                                                                        (simple-keyword? k) u/->snake_case_en)))))
                                 :alias           "Question 54"
                                 :condition       [:= $id [:field %orders.id {:join-alias "Question 54"}]]
                                 :fields          [[:field %orders.id {:join-alias "Question 54"}]
