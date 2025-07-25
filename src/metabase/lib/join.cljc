@@ -238,7 +238,8 @@
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query           :- ::lib.schema/query
    stage-number    :- :int
-   column-metadata :- ::lib.schema.metadata/column
+   column-metadata :- [:map
+                       [:lib/type [:= :metadata/column]]]
    join-alias      :- ::lib.schema.common/non-blank-string]
   ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two keys for
   ;; join aliases. (QUE-1403)

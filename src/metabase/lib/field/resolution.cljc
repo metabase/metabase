@@ -103,6 +103,8 @@
                         (cond-> *debug* (update ::debug.origin (fn [origin]
                                                                  (list (list 'resolve-column-name-in-metadata column-name :key k :=> origin)))))))
               resolution-keys)
+        (when-let [[_match undeduplicated] (re-find #"(^.*)_\d+$" column-name)]
+          (fallback-match-field-name undeduplicated cols))
         (when (zero? *recursive-column-resolution-depth*)
           ;; ideally we shouldn't hit this but if we do it's not the end of the world.
           (log/infof "Couldn't resolve column name %s."
@@ -415,9 +417,7 @@
               ;; found join at this stage of the query, now resolve within the join.
               (let [fake-join-query (assoc query :stages (:stages join))]
                 (when-some [resolved (resolve-field-ref* fake-join-query -1 (lib.join/with-join-alias field-ref nil))]
-                  (-> resolved
-                      (assoc :lib/original-join-alias join-alias)
-                      (lib.join/with-join-alias join-alias)
+                  (-> (lib.join/column-from-join query stage-number resolved join-alias)
                       (m/update-existing :lib/original-ref lib.join/with-join-alias join-alias))))
               ;; join does not exist at this stage of the query, try looking in previous stages.
               (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
@@ -438,7 +438,7 @@
                                  ;; calculate much metadata -- assume it comes from the previous stage so we at least
                                  ;; have a value for `:lib/source`.
                                  (when (zero? *recursive-column-resolution-depth*)
-                                   (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
+                                   (log/debugf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
                                  {:lib/source :source/previous-stage}))
          field-id          (if (integer? id-or-name)
                              id-or-name

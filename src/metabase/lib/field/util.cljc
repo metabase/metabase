@@ -65,7 +65,8 @@
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable]
   (comp (add-deduplicated-names)
         (let [unique-name-fn (lib.util/unique-name-generator)]
-          (map (fn [col]
+          (map (mu/fn [col :- [:map
+                               [:lib/type [:= :metadata/column]]]]
                  (let [source-alias  ((some-fn :lib/source-column-alias :name) col)
                        desired-alias (unique-name-fn
                                       (lib.join.util/desired-alias metadata-providerable col))]

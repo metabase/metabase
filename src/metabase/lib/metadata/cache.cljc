@@ -85,11 +85,11 @@
   [k]
   (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :red "MISS: ") (name (first k)) " " (hash (rest k)))))
 
-(mu/defn do-with-cached-value :- :some
+(mu/defn do-with-cached-value
   "Impl for [[with-cached-value]]."
   [metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
    k                     :- ::cache-key
-   thunk                 :- [:=> [:cat] :some]]
+   thunk                 :- [:=> [:cat] :any]]
   (binding [*cache-depth* (inc *cache-depth*)]
     (log/debug (str (str/join (repeat *cache-depth* "|   ")) (u/colorize :cyan "GET: ") (name (first k)) " " (hash (rest k))))
     (let [cached-v (cached-value metadata-providerable k ::not-found)]
