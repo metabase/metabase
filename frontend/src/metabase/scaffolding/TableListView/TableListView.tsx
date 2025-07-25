@@ -14,7 +14,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { SortableFieldList } from "metabase/metadata/components";
 import {
   ActionIcon,
   Box,
@@ -30,6 +29,7 @@ import type { FieldId, StructuredDatasetQuery } from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
+import { SortableFieldList } from "./SortableFieldList";
 import S from "./TableListView.module.css";
 import type { RouteParams } from "./types";
 import {
