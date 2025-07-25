@@ -1789,7 +1789,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.init}
-   :uses #{connection-pool
+   :uses #{analytics
+           connection-pool
            models
            premium-features
            search
