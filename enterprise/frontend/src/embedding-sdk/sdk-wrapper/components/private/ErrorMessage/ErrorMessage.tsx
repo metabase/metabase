@@ -1,4 +1,5 @@
 import { SDK_BUNDLE_LOADING_ERROR_MESSAGE } from "embedding-sdk/sdk-wrapper/config";
+// eslint-disable-next-line no-external-references-for-sdk-package-code
 import { colors } from "metabase/lib/colors/colors";
 
 // Mimics the frontend/src/metabase/common/components/Alert/Alert.styled.tsx
