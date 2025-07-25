@@ -79,7 +79,7 @@ const _StaticQuestion = ({
           className={className}
           style={style}
         >
-          <Stack gap="sm">
+          <Stack gap="sm" w="100%" h="100%">
             {title && <DefaultViewTitle title={title} />}
 
             {(withChartTypeSelector || withDownloads) && (
