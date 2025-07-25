@@ -5,8 +5,16 @@ import {
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
+const setup = () => {
+  const rootElement = document.createElement("div");
+
+  return { rootElement };
+};
+
 describe("Transform Embedding Theme Override", () => {
   it("should transform MetabaseTheme to EmbeddingThemeOverride", () => {
+    const { rootElement } = setup();
+
     const theme = getEmbeddingThemeOverride(
       {
         lineHeight: 1.5,
@@ -27,6 +35,7 @@ describe("Transform Embedding Theme Override", () => {
         },
       },
       "Roboto",
+      rootElement,
     );
 
     expect(theme).toEqual({
@@ -44,7 +53,7 @@ describe("Transform Embedding Theme Override", () => {
         fontSize: "2rem",
         ...DEFAULT_EMBEDDED_COMPONENT_THEME,
       },
-      components: getEmbeddingComponentOverrides(),
+      components: getEmbeddingComponentOverrides(rootElement),
     });
   });
 });

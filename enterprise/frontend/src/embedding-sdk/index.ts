@@ -62,6 +62,7 @@ export type {
   SdkQuestionTitleProps,
   SdkUserId,
   SqlParameterValues,
+  WebComponentAttributes,
 } from "./types";
 
 export type {

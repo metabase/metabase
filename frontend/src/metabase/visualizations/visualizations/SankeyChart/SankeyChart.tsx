@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useMemo, useRef } from "react";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/layout";
@@ -26,6 +27,7 @@ export const SankeyChart = ({
   height,
   onVisualizationClick,
 }: VisualizationProps) => {
+  const rootElement = useRootElement();
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
@@ -46,9 +48,13 @@ export const SankeyChart = ({
   const option = useMemo(
     () => ({
       ...getSankeyChartOption(chartModel, layout, settings, renderingContext),
-      tooltip: getTooltipOption(containerRef, chartModel),
+      tooltip: getTooltipOption({
+        containerRef,
+        chartModel,
+        rootElement,
+      }),
     }),
-    [chartModel, layout, settings, renderingContext],
+    [rootElement, chartModel, layout, settings, renderingContext],
   );
 
   const handleInit = useCallback((chart: EChartsType) => {
