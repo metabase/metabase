@@ -92,6 +92,25 @@ function mapDruidValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
+function mapMysqlValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host],
+    ["details.port", parsedValues.port],
+    ["details.dbname", parsedValues.database],
+    ["details.user", parsedValues.username],
+    ["details.password", parsedValues.password],
+    ["details.ssl", parsedValues.params?.ssl],
+    [
+      "details.additional-options",
+      Object.entries(parsedValues.params ?? {})
+        .filter(([key]) => !["ssl"].includes(key))
+        .map(([key, value]) => `${key}=${value}`)
+        .join(";"),
+    ],
+  ]);
+  return fieldsMap;
+}
+
 function mapPostgresValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host],
@@ -99,6 +118,14 @@ function mapPostgresValues(parsedValues: RegexFields) {
     ["details.dbname", parsedValues.database],
     ["details.user", parsedValues.username],
     ["details.password", parsedValues.password],
+    ["details.ssl", parsedValues.params?.ssl],
+    [
+      "details.additional-options",
+      Object.entries(parsedValues.params ?? {})
+        .filter(([key]) => !["ssl"].includes(key))
+        .map(([key, value]) => `${key}=${value}`)
+        .join(";"),
+    ],
   ]);
   return fieldsMap;
 }
@@ -129,6 +156,7 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with(P.union("postgres", "postgresql"), () =>
       mapPostgresValues(parsedValues),
     )
+    .with("mysql", () => mapMysqlValues(parsedValues))
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
     .otherwise(() => new Map());
 }

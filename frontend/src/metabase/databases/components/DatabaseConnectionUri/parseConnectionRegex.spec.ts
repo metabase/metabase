@@ -169,6 +169,25 @@ describe("parseConnectionUriRegex - Druid", () => {
   });
 });
 
+describe("parseConnectionUriRegex - MySQL", () => {
+  it("should parse a MySQL connection string", () => {
+    const connectionString = "jdbc:mysql://user:pass@host:3306/dbname?ssl=true";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual({
+      username: "user",
+      password: "pass",
+      host: "host",
+      port: "3306",
+      database: "dbname",
+      params: {
+        ssl: "true",
+      },
+      protocol: "mysql",
+      hasJdbcPrefix: true,
+    });
+  });
+});
+
 describe("parseConnectionUriRegex", () => {
   it("should parse a PostgreSQL connection string", () => {
     const connectionString =
@@ -197,25 +216,6 @@ describe("parseConnectionUriRegex", () => {
         password: undefined,
       }),
     );
-  });
-});
-
-describe("parseConnectionUriRegex - MySQL", () => {
-  it("should parse a MySQL connection string", () => {
-    const connectionString = "jdbc:mysql://user:pass@host:3306/dbname?ssl=true";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      username: "user",
-      password: "pass",
-      host: "host",
-      port: "3306",
-      database: "dbname",
-      params: {
-        ssl: "true",
-      },
-      protocol: "mysql",
-      hasJdbcPrefix: true,
-    });
   });
 });
 
