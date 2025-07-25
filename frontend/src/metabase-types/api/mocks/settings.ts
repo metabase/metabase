@@ -376,7 +376,6 @@ export const createMockSettings = (
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
   "check-for-updates": true,
-  "update-channel": "latest",
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
   "sdk-iframe-embed-setup-settings": null,

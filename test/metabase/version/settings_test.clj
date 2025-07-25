@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.test :as mt]
    [metabase.version.settings :as version.settings]))
 
 (def prevent? #'version.settings/prevent-upgrade?)
@@ -70,14 +69,3 @@
       (testing "rollout is a decimal"
         (let [modified (update version-info :latest assoc :rollout 0.2)]
           (is (= modified (info modified {:current-major 51 :upgrade-threshold-value 25}))))))))
-
-(deftest update-channel-test
-  (testing "we can set the update channel"
-    (mt/discard-setting-changes [update-channel]
-      (version.settings/update-channel! "nightly")
-      (is (= "nightly" (version.settings/update-channel)))))
-  (testing "we can't set the update channel to an invalid value"
-    (mt/discard-setting-changes [update-channel]
-      (is (thrown?
-           IllegalArgumentException
-           (version.settings/update-channel! "millennially"))))))

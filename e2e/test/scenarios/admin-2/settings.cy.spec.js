@@ -1431,10 +1431,6 @@ describe("admin > settings > updates", () => {
       .findByText("Check for updates")
       .should("be.visible");
 
-    cy.findByTestId("update-channel-setting")
-      .findByText("Types of releases to check for")
-      .should("be.visible");
-
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
       cy.findByText("Some old feature").should("be.visible");
@@ -1447,36 +1443,7 @@ describe("admin > settings > updates", () => {
       .click();
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Types of releases to check for").should("not.exist");
       cy.findByText("Some old feature").should("not.exist");
-    });
-  });
-
-  it("should change release notes based on the selected update channel", () => {
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
-      cy.findByText("Some old feature").should("be.visible");
-      cy.findByText("New latest feature").should("be.visible");
-      cy.findByDisplayValue("Stable releases").click();
-    });
-
-    H.popover().findByText("Beta releases").click();
-
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New beta feature").should("be.visible");
-      cy.findByDisplayValue("Beta releases").click();
-    });
-
-    H.popover().findByText("Nightly builds").click();
-
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New nightly feature").should("be.visible");
     });
   });
 });

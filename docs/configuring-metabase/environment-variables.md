@@ -1715,15 +1715,6 @@ Maximum number of rows to return specifically on :rows type queries via the API.
 
 Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. See also MB_AGGREGATED_QUERY_ROW_LIMIT.
 
-### `MB_UPDATE_CHANNEL`
-
-- Type: string
-- Default: `latest`
-- [Exported as](../installation-and-operation/serialization.md): `update-channel`.
-- [Configuration file name](./config-file.md): `update-channel`
-
-We'll notify you here when there's a new version of this type of release.
-
 ### `MB_UPLOADS_DATABASE_ID [DEPRECATED]`
 
 > DEPRECATED: 0.50.0
