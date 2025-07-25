@@ -150,10 +150,14 @@
                       new-database-name)
            {:name new-database-name})
          (when new-pk?
-           (log/infof "Database pk of %s has changed from '%s' to '%s'"
-                      (common/field-metadata-name-for-logging table metabase-field)
-                      old-pk
-                      new-pk)
+           ;; historically the semantic type was used to provide a value for the :pk? key
+           ;; this guard avoids spamming logs when people upgrade to support database_is_pk
+           (when (or (some? old-pk)                         ; have a value, on the new branch
+                     (not= old-semantic-type :type/PK))
+             (log/infof "Database pk of %s has changed from '%s' to '%s'"
+                        (common/field-metadata-name-for-logging table metabase-field)
+                        old-pk
+                        new-pk))
            {:database_is_pk new-pk})
          (when new-db-auto-incremented?
            (log/infof "Database auto incremented of %s has changed from '%s' to '%s'."
