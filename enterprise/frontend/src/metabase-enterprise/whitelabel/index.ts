@@ -27,6 +27,7 @@ import { updateColors } from "./lib/whitelabel";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.getLandingPage = () =>
+    // TODO: MetabaseSettings doesn't have EnterpriseSetting keys, so the type and mapping don't work
     MetabaseSettings.get("landing-page" as SettingKey) as string;
   PLUGIN_LANDING_PAGE.LandingPageWidget = LandingPageWidget;
 
