@@ -14,6 +14,8 @@ import { createQuestion } from "./api";
  **            QA DATABASES             **
  ******************************************/
 
+const SYNC_RETRY_DELAY_MS = 500;
+
 export function addMongoDatabase(displayName = "QA Mongo") {
   const { host, user, password, database: dbName } = QA_DB_CREDENTIALS;
   const port = QA_MONGO_PORT;
@@ -145,7 +147,7 @@ function assertOnDatabaseMetadata(engine) {
 
 function recursiveCheck(id, i = 0) {
   // Let's not wait more than 20s for the sync to finish
-  if (i === 20) {
+  if (i === 40) {
     cy.task(
       "log",
       "The DB sync isn't complete yet, but let's be optimistic about it",
@@ -153,7 +155,7 @@ function recursiveCheck(id, i = 0) {
     return;
   }
 
-  cy.wait(1000);
+  cy.wait(SYNC_RETRY_DELAY_MS);
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
     cy.task("log", {
@@ -170,12 +172,12 @@ function recursiveCheck(id, i = 0) {
 
 function recursiveCheckFields(id, i = 0) {
   // Let's not wait more than 10s for the sync to finish
-  if (i === 10) {
+  if (i === 20) {
     cy.task("log", "The field sync isn't complete");
     return;
   }
 
-  cy.wait(1000);
+  cy.wait(SYNC_RETRY_DELAY_MS);
 
   cy.request("GET", `/api/database/${id}/schemas`).then(({ body: schemas }) => {
     const [schema] = schemas;
@@ -354,7 +356,7 @@ export function waitForSyncToFinish({
     throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  cy.wait(500);
+  cy.wait(SYNC_RETRY_DELAY_MS);
 
   cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
     if (!body.tables.length) {

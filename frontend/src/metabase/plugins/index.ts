@@ -128,6 +128,14 @@ export const PLUGIN_WHITELABEL = {
 export const PLUGIN_ADMIN_SETTINGS = {
   InteractiveEmbeddingSettings: NotFoundPlaceholder,
   LicenseAndBillingSettings: PluginPlaceholder,
+  useUpsellFlow: (_props: {
+    campaign: string;
+    location: string;
+  }): {
+    triggerUpsellFlow: (() => void) | undefined;
+  } => ({
+    triggerUpsellFlow: undefined,
+  }),
 };
 
 // admin permissions
