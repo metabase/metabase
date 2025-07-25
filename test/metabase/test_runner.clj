@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.date-2]
    [metabase.util.i18n.impl]
+   [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]))
 
 (set! *warn-on-reflection* true)
@@ -103,7 +104,7 @@
     (u/with-timer-ms [duration-ms]
       (doseq [init-step steps]
         (fixtures/initialize init-step))
-      (println "Initialized" (count steps) "fixtures in" (duration-ms) "ms"))))
+      (log/info (str "Initialized " (count steps) " fixtures in " (duration-ms) "ms")))))
 
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."
