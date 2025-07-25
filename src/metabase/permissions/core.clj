@@ -37,6 +37,7 @@
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
+  visible-database-filter-select
   visible-table-filter-select]
  [metabase.permissions.models.permissions
   application-perms-path
