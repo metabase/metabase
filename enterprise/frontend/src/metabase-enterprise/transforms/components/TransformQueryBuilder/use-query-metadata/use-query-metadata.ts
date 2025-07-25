@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useAsync } from "react-use";
 import _ from "underscore";
 
@@ -10,7 +10,7 @@ import type Question from "metabase-lib/v1/Question";
 export function useQueryMetadata(question: Question) {
   const dispatch = useDispatch();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
-  const isInitiallyLoadedRef = useRef(false);
+  const [isInitiallyLoaded, setIsInitiallyLoaded] = useState(false);
 
   const { loading } = useAsync(async () => {
     const dependencies = Lib.dependentMetadata(
@@ -26,9 +26,9 @@ export function useQueryMetadata(question: Question) {
     }
   }, [question]);
 
-  if (!loading) {
-    isInitiallyLoadedRef.current = true;
+  if (!isInitiallyLoaded && !loading) {
+    setIsInitiallyLoaded(true);
   }
 
-  return { isInitiallyLoaded: isInitiallyLoadedRef.current };
+  return { isInitiallyLoaded };
 }

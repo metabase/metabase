@@ -34,6 +34,7 @@ export function TransformVisualization({
         rawSeries={rawSeries}
         isRunnable={isRunnable}
         isRunning={isRunning}
+        isDirty
         isResultDirty={isResultDirty}
         runQuestionQuery={onRunQuery}
         cancelQuery={onCancelQuery}
