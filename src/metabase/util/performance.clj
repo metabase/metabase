@@ -1,6 +1,6 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
-  (:refer-clojure :exclude [reduce mapv run! some concat])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys])
   (:import (clojure.lang LazilyPersistentVector RT)
            java.util.Iterator))
 
@@ -137,6 +137,11 @@
   "Like `clojure.core/some` but uses our custom `reduce` which in turn uses iterators."
   [f coll]
   (unreduced (reduce #(when-let [match (f %2)] (reduced match)) nil coll)))
+
+(defn every?
+  "Like `clojure.core/every?` but uses our custom `reduce` which in turn uses iterators."
+  [f coll]
+  (unreduced (reduce #(if (f %2) true (reduced false)) true coll)))
 
 (defn concat
   "Like `clojure.core/concat` but accumulates the result into a vector."
@@ -275,3 +280,14 @@
            (with-meta (meta form)))
        form))
    m))
+
+(defn select-keys
+  "Like `clojure.walk/select-keys`, but much more efficient."
+  [m keyseq]
+  (let [absent (Object.)]
+    (persistent! (reduce (fn [acc k]
+                           (let [v (get m k absent)]
+                             (if (identical? v absent)
+                               acc
+                               (assoc! acc k v))))
+                         (transient {}) keyseq))))

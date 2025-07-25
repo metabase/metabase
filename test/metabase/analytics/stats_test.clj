@@ -6,12 +6,12 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
-   [metabase.channel.email :as email]
-   [metabase.config :as config]
+   [metabase.app-db.core :as mdb]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as slack]
+   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
-   [metabase.db :as mdb]
-   [metabase.integrations.slack :as slack]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -88,7 +88,7 @@
     "250+"    5000))
 
 (deftest anonymous-usage-stats-test
-  (with-redefs [email/email-configured? (constantly false)
+  (with-redefs [channel.settings/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
@@ -126,7 +126,7 @@
 (deftest anonymous-usage-stats-test-ee-with-values-changed
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
-    (with-redefs [email/email-configured? (constantly false)
+    (with-redefs [channel.settings/email-configured? (constantly false)
                   slack/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
@@ -505,19 +505,19 @@
 
 (deftest deployment-model-test
   (testing "deployment model correctly reports cloud/docker/jar"
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (with-redefs [premium-features.settings/is-hosted? (constantly true)]
       (is (= "cloud" (@#'stats/deployment-model))))
 
     ;; Lets just mock io/file to always return an existing (temp) file, to validate that we're doing a filesystem check
     ;; to determine whether we're in a Docker container
     (mt/with-temp-file [mock-file]
       (spit mock-file "Temp file!")
-      (with-redefs [premium-features/is-hosted? (constantly false)
-                    io/file                     (constantly (java.io.File. mock-file))]
+      (with-redefs [premium-features.settings/is-hosted? (constantly false)
+                    io/file                              (constantly (java.io.File. mock-file))]
         (is (= "docker" (@#'stats/deployment-model)))))
 
-    (with-redefs [premium-features/is-hosted? (constantly false)
-                  stats/in-docker?            (constantly false)]
+    (with-redefs [premium-features.settings/is-hosted? (constantly false)
+                  stats/in-docker?                     (constantly false)]
       (is (= "jar" (@#'stats/deployment-model))))))
 
 (deftest no-features-enabled-but-not-available-test
@@ -540,20 +540,24 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
+    :development-mode
     :embedding
     :embedding-sdk
+    :embedding-iframe-sdk
     :enhancements
+    :etl-connections
+    :etl-connections-pg
     :llm-autodescription
     :query-reference-validation
-    :session-timeout-config
-    :table-data-editing})
+    :cloud-custom-smtp
+    :session-timeout-config})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
     (let [included-features     (->> (concat (@#'stats/snowplow-features-data) (@#'stats/ee-snowplow-features-data))
                                      (map :name))
           included-features-set (set included-features)
-          all-features      @premium-features/premium-features]
+          all-features      @@#'premium-features.settings/premium-features]
       ;; make sure features are not missing
       (is (empty? (set/difference all-features included-features-set excluded-features)))
 

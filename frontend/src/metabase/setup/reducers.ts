@@ -16,6 +16,7 @@ import {
   updateLocale,
   updateTracking,
 } from "./actions";
+import type { SetupStep } from "./types";
 
 const getUserFromQueryParams = () => {
   const params = new URLSearchParams(window.location.search);
@@ -32,11 +33,21 @@ const getUserFromQueryParams = () => {
   };
 };
 
+const getIsEmbeddingUseCaseFromQueryParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has("use_case", "embedding");
+};
+
+const isEmbeddingUseCase = getIsEmbeddingUseCaseFromQueryParams();
+const getInitialStep = (): SetupStep =>
+  isEmbeddingUseCase ? "user_info" : "welcome";
+
 const initialState: SetupState = {
-  step: "welcome",
+  step: getInitialStep(),
   isLocaleLoaded: false,
   isTrackingAllowed: true,
   user: getUserFromQueryParams(),
+  isEmbeddingUseCase,
 };
 
 export const reducer = createReducer(initialState, (builder) => {
@@ -55,11 +66,13 @@ export const reducer = createReducer(initialState, (builder) => {
   builder.addCase(selectStep, (state, { payload: step }) => {
     state.step = step;
   });
-  builder.addCase(updateLocale.pending, (state, { meta }) => {
-    state.locale = meta.arg;
+  builder.addCase(updateLocale.pending, (state) => {
     state.isLocaleLoaded = false;
   });
-  builder.addCase(updateLocale.fulfilled, (state) => {
+  builder.addCase(updateLocale.fulfilled, (state, { meta }) => {
+    // Note: locale needs to be set here to make sure that the locale has been loaded.
+    // Otherwise the components might reload before the locale is available.
+    state.locale = meta.arg;
     state.isLocaleLoaded = true;
   });
   builder.addCase(submitUser.fulfilled, (state, { meta }) => {

@@ -6,6 +6,7 @@ import type {
   CardId,
   CardQueryMetadata,
   Dataset,
+  GetPublicCard,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -18,6 +19,15 @@ export function setupCardEndpoints(card: Card) {
     return createMockCard(await lastCall?.request?.json());
   });
   fetchMock.get(`path:/api/card/${card.id}/series`, []);
+}
+
+export function setupCardByEntityIdEndpoints(card: Card) {
+  fetchMock.get(`path:/api/card/${card.entity_id}`, card);
+  fetchMock.put(`path:/api/card/${card.entity_id}`, async (url) => {
+    const lastCall = fetchMock.lastCall(url);
+    return createMockCard(await lastCall?.request?.json());
+  });
+  fetchMock.get(`path:/api/card/${card.entity_id}/series`, []);
 }
 
 export function setupCardQueryMetadataEndpoint(
@@ -73,4 +83,8 @@ export function setupCardPublicLinkEndpoints(cardId: CardId) {
   fetchMock.delete(`path:/api/card/${cardId}/public_link`, {
     id: cardId,
   });
+}
+
+export function setupListPublicCardsEndpoint(publicCards: GetPublicCard[]) {
+  fetchMock.get("path:/api/card/public", publicCards);
 }

@@ -23,8 +23,6 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    expression-idents:
-      Days since last view: expression_-fFVxT-GLz6WO41bvw-Ar@0__Days since last view
     expressions:
       Days since last view:
       - datetime-diff
@@ -205,7 +203,6 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Float
   display_name: Days since last view
-  expression_name: Days since last view
   field_ref:
   - expression
   - Days since last view

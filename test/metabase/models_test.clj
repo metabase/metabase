@@ -1,7 +1,6 @@
 (ns metabase.models-test
   (:require
    [clojure.test :refer :all]
-   [metabase.moderation]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

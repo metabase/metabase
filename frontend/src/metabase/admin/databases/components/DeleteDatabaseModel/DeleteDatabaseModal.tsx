@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { MetabaseApi } from "metabase/services";

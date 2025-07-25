@@ -6,13 +6,13 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.matrix :as matrix]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.number :as u.number]))
@@ -257,9 +257,12 @@
             "Venues__LATITUDE"
             "Venues__LONGITUDE"
             "Venues__PRICE"
-            "CATEGORIES__via__CATEGORY_ID__ID"
-            "CATEGORIES__via__CATEGORY_ID__NAME"]
-           (map :lib/desired-column-alias columns)))
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
+           (into []
+                 (comp (lib.field.util/add-source-and-desired-aliases-xform query)
+                       (map :lib/desired-column-alias))
+                 columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,
                "NAME" text-operators,
@@ -289,24 +292,6 @@
                  "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
-
-(deftest ^:parallel filterable-columns-excludes-offset-expressions-test
-  (testing "filterable-columns should exclude expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/filterable-columns query)))))))
 
 (deftest ^:parallel filter-clause-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -354,7 +339,7 @@
                                   :inside (lib/filter-clause op col 12 34 56 78 90)
                                   (:< :>) (lib/filter-clause op col col)
                                   (lib/filter-clause op col 123))]]
-      (testing (str (:short op) " with " (lib.types.isa/field-type col))
+      (testing (str (:short op) " with " (:name col))
         (is (= op
                (lib/filter-operator query filter-clause)))))))
 
@@ -490,14 +475,14 @@
          :display-name   "Last Online Time"
          :base-type      :type/Time
          :effective-type :type/Time
-         :semantic-type  :type/Time))
+         :semantic-type  :type/UpdatedTime))
 
 (def ^:private is-active
   (assoc (meta/field-metadata :orders :discount)
          :display-name   "Is Active"
          :base-type      :type/Boolean
          :effective-type :type/Boolean
-         :semantic-type  :type/Boolean))
+         :semantic-type  nil))
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider
@@ -509,7 +494,9 @@
       (testing exp
         (is (= exp (lib/display-name
                     query -1
-                    (lib/expression-clause op args options))))))))
+                    (lib/expression-clause op
+                                           (map #(lib/expression-parts query -1 %) args)
+                                           options))))))))
 
 (deftest ^:parallel truncate-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
@@ -639,6 +626,17 @@
        :name "Created At excludes 3 quarter of year selections"}
       {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
+
+      {:clause [:= (lib/get-year created-at) 2001]
+       :name "Created At is in 2001"}
+      {:clause [:= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At is one of 3 year of era selections"}
+      {:clause [:!= (lib/get-year created-at) 2001]
+       :name "Created At excludes 2001"}
+      {:clause [:!= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
+      {:clause [:not-in (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
 
       {:clause [:is-null created-at]
        :name "Created At is empty"}
@@ -913,7 +911,7 @@
                                     {:column-type :type/Boolean :v true}
                                     {:column-type :type/Coordinate :v 1}}
           [query desired] (matrix/test-queries column-type)]
-    (let [col (matrix/find-first desired (lib/filterable-columns query))
+    (let [col (matrix/find-first query desired (lib/filterable-columns query))
           query' (lib/filter query (lib/= col v))
           parts (lib/expression-parts query' (first (lib/filters query')))]
       (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import type { CollectionId, User } from "metabase-types/api";
 
 import { AppBarRoot } from "./AppBar.styled";
@@ -13,6 +13,7 @@ export interface AppBarProps {
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isMetabotVisible?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;

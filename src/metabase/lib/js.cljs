@@ -68,6 +68,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
@@ -77,8 +78,8 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -368,7 +369,6 @@
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
   (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
       (lib.core/display-info stage-number x)
       display-info->js))
 
@@ -677,9 +677,10 @@
                                         ;; We ignore the order of the fields in the lists, but need to make sure any
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
-                                        ;; Remove the randomized idents, which are of course not going to match.
+                                        ;; Remove the randomized idents, which are of course not going to match. These
+                                        ;; are deprecated and should no longer be populated
                                         (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
-      ;; Ignore :info since it contains the randomized :card-entity-id.
+      ;; Ignore :info since it contains the randomized :card-entity-id. (This is no longer populated either.)
       (dissoc :info)))
 
 (defn- prep-query-for-equals-pMBQL
@@ -690,7 +691,7 @@
     (lib.util/update-query-stage a-query -1
                                  #(-> %
                                       (assoc :fields (frequencies fields))
-                                      lib.schema.util/remove-randomized-idents))))
+                                      lib.schema.util/remove-lib-uuids))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
@@ -721,10 +722,10 @@
          (= (first x) (first y) :field))
     (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid and :ident values don't have to match.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't have to match.
     (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid :ident)
-          y (dissoc y :lib/uuid :ident)]
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
       (and (= (set (keys x)) (set (keys y)))
            (every? (fn [[k v]]
                      (query=* v (get y k)))
@@ -821,10 +822,12 @@
   "Get a translated description of a temporal bucketing interval.
 
   > **Code health:** Healthy"
-  [n unit]
-  (let [n    (if (string? n) (keyword n) n)
-        unit (if (string? unit) (keyword unit) unit)]
-    (lib.core/describe-temporal-interval n unit)))
+  ([n unit]
+   (describe-temporal-interval n unit {}))
+  ([n unit opts]
+   (let [n    (if (string? n) (keyword n) n)
+         unit (if (string? unit) (keyword unit) unit)]
+     (lib.core/describe-temporal-interval n unit (js->clj opts :keywordize-keys true)))))
 
 (defn ^:export describe-relative-datetime
   "Get a translated description of a relative datetime interval.
@@ -852,15 +855,6 @@
   > **Code health:** Healthy"
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
-
-(defn ^:export aggregation-column
-  "Given an `aggregation-clause` from [[aggregations]], returns the column corresponding to that aggregation.
-
-  Returns `nil` (JS `null`) if the aggregation is one like `:count` that doesn't have a column.
-
-  > **Code health:** Healthy"
-  [a-query stage-number aggregation-clause]
-  (lib.core/aggregation-column a-query stage-number aggregation-clause))
 
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
@@ -988,14 +982,44 @@
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
 ;; This form is deliberately different from the MBQL representation.
 
+(defn- expression-parts-like?
+  "Test if [[x]] has the shape expression-parts, possible with missing :lib/type."
+  [x]
+  (and (map? x)
+       (:operator x)
+       (:args x)
+       (or
+        (and
+         (not (:lib/type x))
+         (not (:type x)))
+        (= (:lib/type x) :mbql/expression-parts)
+        (= (:type x) :mbql/expression-parts))))
+
+(defn- expression-parts-js->cljs
+  "When coming from js the expression parts will have no :lib/type, so we need to add
+   it back in recursively for each node down the path."
+  [x]
+  (as-> x parts
+    (js->clj parts :keywordize-keys true)
+    (walk/postwalk
+     #(cond-> %
+        (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
+     parts)))
+
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
-  [an-operator args options]
-  (-> (lib.core/expression-clause
-       (keyword an-operator)
-       args
-       (js->clj options :keywordize-keys true))
-      lib.core/normalize))
+  ([x]
+   (-> x
+       expression-parts-js->cljs
+       lib.core/expression-clause
+       lib.core/normalize))
+  ([an-operator args]
+   (expression-clause an-operator args {}))
+  ([an-operator args options]
+   (expression-clause {:lib/type :mbql/expression-parts
+                       :operator (keyword an-operator)
+                       :args args
+                       :options options})))
 
 (defn ^:export expression-parts
   "Returns an AST for `an-expression-clause`.
@@ -1018,7 +1042,8 @@
        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
          (let [{:keys [operator options args]} node]
            #js {:operator (name operator)
-                :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                :options (fix-namespaced-values
+                          (clj->js (select-keys options [:case-sensitive :include-current :base-type :mode]) :keyword-fn u/qualified-name))
                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
          node))
      parts)))
@@ -1201,14 +1226,67 @@
       #js {:operator (name operator)
            :column   column})))
 
-;; TODO remove once all filter-parts are migrated to MBQL lib
-(defn ^:export is-column-metadata
+(defn ^:export join-condition-clause
+  "Creates a join condition from the operator, LHS and RHS expressions. Expressions are opaque objects.
+
+  > **Code health:** Healthy."
+  [operator lhs-expression rhs-expression]
+  (lib.fe-util/join-condition-clause (keyword operator) lhs-expression rhs-expression))
+
+(defn ^:export join-condition-parts
+  "Destructures a join condition created by [[join-condition-clause]]. Expressions are opaque objects.
+
+  > **Code health:** Healthy."
+  [condition]
+  (when-let [parts (lib.fe-util/join-condition-parts condition)]
+    (let [{:keys [operator lhs-expression rhs-expression]} parts]
+      #js {:operator      (name operator)
+           :lhsExpression lhs-expression
+           :rhsExpression rhs-expression})))
+
+(defn ^:export join-condition-lhs-or-rhs-literal?
+  "Whether this LHS or RHS expression is a literal and not a custom expression.
+
+  > **Code health:** Single use. This is used in the notebook editor."
+  [lhs-or-rhs-expression]
+  (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs-expression))
+
+(defn ^:export join-condition-lhs-or-rhs-column?
+  "Whether this LHS or RHS expression is a column and not a custom expression.
+
+  > **Code health:** Single use. This is used in the notebook editor."
+  [lhs-or-rhs-expression]
+  (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs-expression))
+
+(defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
 
-  > **Code health:** Smelly. When is this called and why does the FE need to know? The values are supposed to be opaque,
-  and we should see if there's a better way to get the needed information."
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
   [arg]
   (and (map? arg) (= :metadata/column (:lib/type arg))))
+
+(defn ^:export metric-metadata?
+  "Returns true if arg is named entity that can be used as an aggregation expression on its own, i.e., without
+  wrapping it into an aggregating function.
+  Currently, this can be an MLv2 metric (`:lib/type :metadata/metric`) or an aggregation column
+  (`:lib/type :metadata/column` and `:lib/source :source/aggregations`).
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg)
+       (or (= (:lib/type arg) :metadata/metric)
+           (and (= (:lib/type arg) :metadata/column)
+                (= (:lib/source arg) :source/aggregations)))))
+
+(defn ^:export segment-metadata?
+  "Returns true if arg is an MLv2 metric, ie. has `:lib/type :metadata/segment`.
+
+  > **Code health:** Single use. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/segment (:lib/type arg))))
 
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
@@ -1313,6 +1391,9 @@
                    ;; Unique names are required by the FE for compatibility.
                    ;; This applies only for JS; Clojure usage should prefer `:lib/desired-column-alias` to `:name`, and
                    ;; that's already unique by construction.
+                   ;;
+                   ;; TODO (Cam 7/8/25) -- shouldn't this use `:lib/deduplicate-name` or something?? Shouldn't we do
+                   ;; this generally everywhere? (Also, we're already doing this in the `returned-columns-method`
                    (update :name unique-name-fn)))
          to-array)))
 
@@ -1345,28 +1426,13 @@
 ;; This interface contains several other sets of columns, like [[filterable-columns]] and [[expressionable-columns]];
 ;; these are subsets of [[visible-columns]] possibly with extra information added, such as the set of filter operators
 ;; which can be used with that column.
-;;
-;; Note: At the time of writing, `lib.ref/ref` would produce a broken ref for a column from [[returned-columns]] due to
-;; `:lib/source` differences compared to [[visible-columns]]. We cannot use such refs for for matching in
-;; [[find-matching-column]]. However, all other [[returned-columns]] properties are correct, and we can pass a column
-;; from [[visible-columns]] for the ref/needle and [[returned-columns]] for the haystack.
-;; Example - for a query with `source-card` and `:fields` clause, `:lib/source` for [[returned-columns]] would be
-;; `:source/fields` and `lib.ref/ref` would generate field id-based refs; while for [[visible-columns]] `:lib/source`
-;; would be `:source/card` and `lib.ref/ref` would generate `:lib/desired-column-alias`-based refs. As the card can
-;; contain multiple columns with the same ID (e.g. multiple breakouts of the same column, model metadata overrides) we
-;; could get exact dupliates with `lib.ref/ref` for [[returned-columns]].
-;; `(lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns)` cannot be used here because it
-;; would compute the refs for `ret-columns` and we want to do it the other way around.
 (defn- visible-columns*
   "Inner implementation for [[visible-columns]], which wraps this with caching."
   [a-query stage-number]
   (let [stage       (lib.util/query-stage a-query stage-number)
         vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (->> (for [col vis-columns
-               :let [match (lib.equality/find-matching-column a-query stage-number col ret-columns)]]
-           (assoc col :selected? (some? match)))
-         to-array)))
+    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
 (defn ^:export visible-columns
   "Returns a JS array of all columns \"visible\" at the given stage of `a-query`.
@@ -1412,7 +1478,8 @@
       (js->clj :keywordize-keys true)
       (update 0 keyword)
       (->> (mbql.normalize/normalize-fragment nil))
-      lib.convert/->pMBQL))
+      lib.convert/->pMBQL
+      (->> (lib.normalize/normalize ::lib.schema.ref/ref))))
 
 (defn- ref->legacy-ref
   [a-ref]
@@ -1544,19 +1611,23 @@
   (This argument is actually ignored if it's not a join, but these types are accepted for consistency with
   [[join-condition-rhs-columns]] which does use the argument. See #32005.)
 
-  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-expression-or-nil` so we can
   mark the current column as `:selected` in the return value.
 
-  If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
-  pass it as `rhs-column-or-nil`. In the future this may be used to restrict results to compatible columns; see #31174.
+  If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI), pass
+  it as `rhs-expression-or-nil`. In the future this may be used to restrict results to compatible columns; see #31174.
 
   Results will be returned in a 'somewhat smart' order, with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly joinable columns **are not** returned here.
 
   > **Code health:** Healthy"
-  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-lhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-expression-or-nil rhs-expression-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query
+                                                 stage-number
+                                                 join-or-joinable
+                                                 lhs-expression-or-nil
+                                                 rhs-expression-or-nil)))
 
 (defn ^:export join-condition-rhs-columns
   "Returns a JS array of columns which are valid as the right-hand side of a join condition. By \"right-hand side\" is
@@ -1566,17 +1637,21 @@
   model, etc.
 
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
-  pass it as `lhs-column-or-nil`. (Currently this is ignored, but in the future it may be used to restrict results to
-  compatible columns; see #31174.)
+  pass it as `lhs-expression-or-nil`. (Currently this is ignored, but in the future it may be used to restrict results
+  to compatible columns; see #31174.)
 
-  If we're *editing* an existing join condition with the RHS column already chosen, pass it as `rhs-column-or-nil`, so
-  it can be marked as `:selected` in the returned list.
+  If we're *editing* an existing join condition with the RHS column already chosen, pass it as `rhs-expression-or-nil`,
+  so it can be marked as `:selected` in the returned list.
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   > **Code health:** Healthy"
-  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-rhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-expression-or-nil rhs-expression-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query
+                                                 stage-number
+                                                 join-or-joinable
+                                                 lhs-expression-or-nil
+                                                 rhs-expression-or-nil)))
 
 (defn ^:export join-condition-operators
   "Returns a JS array of valid filter clause operators that can be used to build a join condition.
@@ -1586,8 +1661,11 @@
   See #31174.
 
   > **Code health:** Healthy"
-  [a-query stage-number lhs-column-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil)))
+  [a-query stage-number lhs-expression-or-nil rhs-expression-or-nil]
+  (to-array (map name (lib.core/join-condition-operators a-query
+                                                         stage-number
+                                                         lhs-expression-or-nil
+                                                         rhs-expression-or-nil))))
 
 ;; TODO: Move the join and expressions functions to be contiguous instead of interleaved.
 
@@ -1615,8 +1693,8 @@
 (defn ^:export expressionable-columns
   "Returns a JS array of those columns that can be used in an expression in the given stage of `a-query`.
 
-  Expressions can only see other expressions on the same stage which appear earlier in the list, so you must pass
-  `expression-position` (a 0-based index) when editing an existing expression.
+  `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
+  significant when editing an existing expression, but it's not currently used.
 
   When creating a new expression, `expression-position` should be `nil` (JS `null` or `undefined`).
 
@@ -1632,6 +1710,27 @@
    (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
    (fn [_]
      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
+
+(defn ^:export aggregable-columns
+  "Returns a JS array of those columns that can be used in an aggregation expression in the given stage of `a-query`.
+
+  `expression-position` (a 0-based index) containing the position of the expression in the list. It could be
+  significant when editing an existing expression, but it's not currently used.
+
+  When creating a new expression, `expression-position` should be `nil` (JS `null` or `undefined`).
+
+  Cached on the query and stage.
+
+  > **Code health:** Healthy"
+  [a-query stage-number expression-position]
+  (lib.cache/side-channel-cache
+    ;; Caching is based on both the stage and expression position, since they can return different sets.
+    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+    ;; support that currently.
+   (keyword "aggregable-columns" (str "stage-" stage-number "-" expression-position)) a-query
+   (fn [_]
+     (to-array (lib.core/aggregable-columns a-query stage-number expression-position)))))
 
 (defn ^:export column-extractions
   "Column extractions are a set of transformations possible on a given `column`, based on its type.
@@ -2013,13 +2112,13 @@
 
   For a new join under construction, `join-or-joinable` should be the target entity, eg. table or card metadata.
 
-  If the join has a condition set, its LHS column should be passed as `condition-lhs-column-or-nil`. If not defined yet,
-  pass `nil` (JS `null` or `undefined`).
+  If the join has a condition set, its LHS column should be passed as `condition-lhs-expression-or-nil`. If not defined
+  yet, pass `nil` (JS `null` or `undefined`).
 
   > **Code health:** Smelly. Name should be updated, and docs expanded to explain how the name is calculated; see the
   docs on [[metabase.lib.join/join-lhs-display-name]]."
-  [a-query stage-number join-or-joinable condition-lhs-column-or-nil]
-  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-column-or-nil))
+  [a-query stage-number join-or-joinable condition-lhs-expression-or-nil]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-expression-or-nil))
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with `a-query`.
@@ -2069,6 +2168,15 @@
     (let [column-ref (when-let [a-ref (.-field_ref js-column)]
                        (legacy-ref->pMBQL a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
+
+(defn ^:export legacy-column->type-info
+  "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
+  does not require a `query`. MLv2 columns remain unchanged.
+
+  > **Code health:** Legacy."
+  [column]
+  (cond-> column
+    (object? column) js.metadata/parse-column))
 
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
@@ -2319,40 +2427,12 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-args-display-name a-query stage-number a-filter-clause))
 
-(defn ^:export expression-clause-for-legacy-expression
-  "Convert `legacy-expression` into a modern expression clause.
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number legacy-expression]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.core/normalize (lib.convert/->pMBQL expr)))))
-
-(defn ^:export legacy-expression-for-expression-clause
-  "Convert `an-expression-clause` into a legacy expression.
-
-  When processing aggregation clauses with custom expressions, any `aggregation-options` wrapper is thrown away. (The
-  options specify extras like the name of the aggregation expression.)
-
-  > **Code health:** Legacy, Single use. We should refactor away the round trip through legacy expressions and make the
-  expression parser understand MLv2 expressions."
-  [a-query stage-number an-expression-clause]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
-      (clj->js (cond-> legacy-expr
-                 (and (vector? legacy-expr)
-                      (#{:aggregation-options} (first legacy-expr)))
-                 (get 1))
-               :keyword-fn u/qualified-name))))
-
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.
 
   - `expression-mode` specifies what type of thing `expr` is: an \"expression\" (custom column),
     an \"aggregation\" expression, or a \"filter\" condition.
-  - `legacy-expression` is a legacy MBQL expression created using the custom column editor in the FE.
+  - `expression` is an expression created using the custom column editor in the FE.
   - `expression-position` is provided when editing an existing custom column, and `nil` otherwise.
 
   Cyclic references are checked only when `expression-mode` is `\"expression\"` and `expression-position` is non-`nil`.
@@ -2360,20 +2440,16 @@
 
   Returns an i18n error message describing the problem, or `nil` (JS `null`) if there are no issues.
 
-  > **Code health:** Legacy, Single use. The expression parser should be refactored to support MLv2 expressions, and
-  then several of these functions for dealing with legacy can be removed."
-  [a-query stage-number expression-mode legacy-expression expression-position]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (as-> legacy-expression expr
-                 (js->clj expr :keywordize-keys true)
-                 (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))
-                 (lib.convert/->pMBQL expr)
-                 (lib.core/normalize expr))]
-      (-> (lib.expression/diagnose-expression a-query stage-number
-                                              (keyword expression-mode)
-                                              expr
-                                              expression-position)
-          clj->js))))
+  > **Code health:** Single use."
+  [a-query stage-number expression-mode an-expression expression-position]
+  (let [expr (-> an-expression
+                 (js->clj :keywordize-keys true)
+                 lib.normalize/normalize)]
+    (-> (lib.expression/diagnose-expression a-query stage-number
+                                            (keyword expression-mode)
+                                            expr
+                                            expression-position)
+        clj->js)))
 
 ;; TODO: [[field-values-search-info]] seems over-specific - I feel like we can do a better job of extracting search info
 ;; from arbitrary entities, akin to [[display-info]].
@@ -2384,11 +2460,11 @@
 
   > **Code health:** Single use. Only supports the search info."
   [metadata-providerable column]
-  (-> (lib.field/field-values-search-info metadata-providerable column)
-      (update :has-field-values name)
-      ;; TODO: This should probably reuse `display-info->js` for caching and uniformity.
-      (update-keys cljs-key->js-key)
-      clj->js))
+  (let [{:keys [field-id search-field search-field-id has-field-values]} (lib.field/field-values-search-info metadata-providerable column)]
+    #js {:fieldId        field-id
+         :searchField    search-field
+         :searchFieldId  search-field-id
+         :hasFieldValues (name has-field-values)}))
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map
@@ -2409,14 +2485,10 @@
   west > east, this indicates that the bounds cross the antimerdian, and so we must add two filter clauses, which are
   ORed together. In such cases, the first clause covers the range [west, 180.0] and the second covers [-180.0, east].
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number latitude-column longitude-column card-id  bounds]
   ;; (.log js/console "update-lat-lon-filter")
-  (let [bounds           (js->clj bounds :keywordize-keys true)
-        latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
-        longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
+  (let [bounds           (js->clj bounds :keywordize-keys true)]
     (lib.core/with-wrapped-native-query a-query stage-number card-id
       lib.core/update-lat-lon-filter latitude-column longitude-column bounds)))
 
@@ -2424,13 +2496,10 @@
   "Add or update a filter against `numeric-column`, based on the provided start and end values. **Removes** any existing
   filters for `numeric-column`.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number numeric-column card-id start end]
-  (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-numeric-filter numeric-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-numeric-filter numeric-column start end))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`, based on the provided start and end values.
@@ -2439,13 +2508,10 @@
   Modifies the temporal unit for any breakouts to on `temporal-column` to still be useful: If there are fewer than 4
   points (see [[metabase.lib.filter.update/temporal-filter-min-num-points]]), move to the next-smaller unit.
 
-  > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
-  However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
-  ideally refactored away."
+  > **Code health:** Single use. This is highly specialized in the UI, but should probably continue to exist."
   [a-query stage-number temporal-column card-id start end]
-  (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    (lib.core/with-wrapped-native-query a-query stage-number card-id
-      lib.core/update-temporal-filter temporal-column start end)))
+  (lib.core/with-wrapped-native-query a-query stage-number card-id
+    lib.core/update-temporal-filter temporal-column start end))
 
 (defn ^:export valid-filter-for?
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.
@@ -2551,10 +2617,3 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
-
-(defn ^:export random-ident
-  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
-
-  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
-  []
-  (lib.core/random-ident))

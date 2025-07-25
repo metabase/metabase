@@ -1,13 +1,26 @@
-import { type PropsWithChildren, useEffect, useState } from "react";
+import {
+  type Context,
+  type PropsWithChildren,
+  createContext,
+  useEffect,
+  useState,
+} from "react";
 
 import { useSetting } from "metabase/common/hooks";
 import { setLocaleHeader } from "metabase/lib/api";
 import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
+import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 
 interface LocaleProviderProps {
   locale?: string | null;
   shouldWaitForLocale?: boolean;
 }
+
+/** context for the locale used in the sdk and in public/static from the #locale parameter  */
+export const FrontendLocaleContext = createContext({}) as unknown as Context<{
+  locale: string | null;
+  isLocaleLoading: boolean;
+}>;
 
 export const LocaleProvider = ({
   children,
@@ -16,6 +29,7 @@ export const LocaleProvider = ({
 }: PropsWithChildren<LocaleProviderProps>) => {
   const shouldLoadLocale = Boolean(locale);
   const [isLocaleLoading, setIsLocaleLoading] = useState(shouldLoadLocale);
+  const [contextLocale, setContextLocale] = useState<string | null>(null);
 
   const availableLocalesData = useSetting("available-locales");
 
@@ -31,6 +45,7 @@ export const LocaleProvider = ({
         .then((translatedObject) => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
+          setContextLocale(localeToLoad);
         })
         .catch(() => {
           setIsLocaleLoading(false);
@@ -42,10 +57,23 @@ export const LocaleProvider = ({
     return null;
   }
 
-  // note: we may show a loader here while loading, this would prevent race
-  // conditions and things being rendered for some time with the wrong locale
-  // downside is that it would make the initial load slower
-  return children;
+  return (
+    <FrontendLocaleContext.Provider
+      value={{
+        locale: contextLocale,
+        isLocaleLoading,
+      }}
+    >
+      {/* The `DatesProvider` wrapping the app is not re-rendered when the locale changes
+      so we need to wrap the children in another `DatesProvider` to ensure the locale is updated */}
+      <DatesProvider>
+        {/* note: we may show a loader here while loading, this would prevent race
+        conditions and things being rendered for some time with the wrong locale
+        downside is that it would make the initial load slower */}
+        {children}
+      </DatesProvider>
+    </FrontendLocaleContext.Provider>
+  );
 };
 
 // Re-implementation of the fallback logic of the backend.

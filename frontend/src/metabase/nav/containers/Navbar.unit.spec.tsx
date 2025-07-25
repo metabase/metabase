@@ -6,7 +6,9 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupGdriveGetFolderEndpoint,
   setupSearchEndpoints,
+  setupSettingEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -58,7 +60,13 @@ async function setup({
     collection: createMockCollection(ROOT_COLLECTION),
     collectionItems: [],
   });
+  setupGdriveGetFolderEndpoint({ status: "active" });
   fetchMock.get("path:/api/bookmark", []);
+
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: {},
+  });
 
   const storeInitialState = createMockState({
     app: createMockAppState({
@@ -109,12 +117,14 @@ describe("nav > containers > Navbar > Core App", () => {
     expect(screen.queryByTestId("main-navbar-root")).not.toBeInTheDocument();
   });
 
-  ["question", "model", "dashboard"].forEach((pathname) => {
-    it(`should be hidden on initial load for a ${pathname}`, async () => {
-      await setup({ pathname: `/${pathname}/1` });
-      await expectNavbarClosed();
-    });
-  });
+  ["question/1", "model/1", "dashboard/1", "embed-iframe"].forEach(
+    (pathname) => {
+      it(`should be hidden on initial load for a ${pathname}`, async () => {
+        await setup({ pathname: `/${pathname}` });
+        await expectNavbarClosed();
+      });
+    },
+  );
 
   it("should hide when visiting a question", async () => {
     const store = await setup({ pathname: "/" });

@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_DATE_COLUMNS],
-              ["Summaries", ["Created At: Month", "Created At: Year"]],
+              ["Summaries", ["Created At: Month", "User → Created At: Year"]],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -94,7 +94,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_DATE_COLUMNS],
-              ["Summaries", ["Created At: Month", "Created At: Year"]],
+              ["Summaries", ["Created At: Month", "User → Created At: Year"]],
             ],
           );
           QSHelpers.verifyNoDashcardMappingOptions(
@@ -124,8 +124,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_TEXT_COLUMNS],
-              ["Summaries", ["Category"]],
-              ["Summaries (2)", ["Reviewer", "Category"]],
+              ["Summaries", ["Product → Category"]],
+              [
+                "Summaries (2)",
+                [
+                  "Reviews - Created At: Month → Reviewer",
+                  "Product → Category",
+                ],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -146,8 +152,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_TEXT_COLUMNS],
-              ["Summaries", ["Category"]],
-              ["Summaries (2)", ["Reviewer", "Category"]],
+              ["Summaries", ["Product → Category"]],
+              [
+                "Summaries (2)",
+                [
+                  "Reviews - Created At: Month → Reviewer",
+                  "Product → Category",
+                ],
+              ],
             ],
           );
           QSHelpers.verifyNoDashcardMappingOptions(
@@ -182,7 +194,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_NUMBER_COLUMNS],
               ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-              ["Summaries (2)", ["Count", "Sum of Rating"]],
+              [
+                "Summaries (2)",
+                ["Count", "Sum of Reviews - Created At: Month → Rating"],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -208,7 +223,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_NUMBER_COLUMNS],
               ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-              ["Summaries (2)", ["Count", "Sum of Rating"]],
+              [
+                "Summaries (2)",
+                ["Count", "Sum of Reviews - Created At: Month → Rating"],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -382,14 +400,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           H.getDashboardCard(0).findByText("Select…").click();
           H.popover().within(() => {
-            QSHelpers.getPopoverList().scrollTo("bottom");
-            QSHelpers.getPopoverItem("Category", 2).click();
+            QSHelpers.getPopoverItem("Product → Category", 1)
+              .scrollIntoView()
+              .click();
           });
 
           H.getDashboardCard(1).findByText("Select…").click();
           H.popover().within(() => {
-            QSHelpers.getPopoverList().scrollTo("bottom");
-            QSHelpers.getPopoverItem("Category", 2).click();
+            QSHelpers.getPopoverItem("Product → Category", 1)
+              .scrollIntoView()
+              .click();
           });
 
           H.saveDashboard({ waitMs: 250 });

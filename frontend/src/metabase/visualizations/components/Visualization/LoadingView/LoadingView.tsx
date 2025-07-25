@@ -11,23 +11,21 @@ import {
   StyledLoadingSpinner,
 } from "./LoadingView.styled";
 
-interface LoadingViewProps {
-  isSlow: CardSlownessStatus;
+export interface LoadingViewProps {
+  isSlow: CardSlownessStatus | undefined;
   expectedDuration?: number;
 }
 
 function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
-  if (!expectedDuration) {
-    return null;
-  }
-
   return (
     <SlowQueryMessageContainer>
       <ShortMessage>{t`Still Waiting…`}</ShortMessage>
       {isSlow === "usually-slow" ? (
         <div>
           {jt`This usually takes an average of ${(
-            <Duration key="duration">{duration(expectedDuration)}</Duration>
+            <Duration key="duration">
+              {duration(expectedDuration ?? 0)}
+            </Duration>
           )}, but is currently taking longer.`}
         </div>
       ) : (

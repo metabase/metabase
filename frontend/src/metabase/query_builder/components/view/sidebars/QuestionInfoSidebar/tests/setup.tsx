@@ -2,9 +2,10 @@ import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
-  setupAuditEndpoints,
+  setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupRevisionsEndpoints,
+  setupTokenStatusEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
@@ -38,14 +39,14 @@ export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
   user,
-  hasEnterprisePlugins,
+  hasEnterprisePlugins = false,
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
-  setupAuditEndpoints();
+  setupAuditInfoEndpoint();
 
   const state = createMockState({
     currentUser,
@@ -63,6 +64,8 @@ export const setup = async ({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+
+  setupTokenStatusEndpoint(hasEnterprisePlugins);
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
@@ -24,11 +25,15 @@ export function DefaultRequiredValueControl({
   onChangeRequired: (value: boolean) => void;
 }) {
   const isMissing = tag.required && !tag.default;
+  const parameterWithoutDefault = useMemo(
+    () => ({ ...parameter, default: null }),
+    [parameter],
+  );
 
   return (
     <div>
       <ContainerLabel id={`default-value-label-${tag.id}`}>
-        {t`Default filter widget value`}
+        {getLabel(tag)}
         {isMissing && <ErrorSpan> ({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
@@ -36,7 +41,7 @@ export function DefaultRequiredValueControl({
         {parameter && (
           <div aria-labelledby={`default-value-label-${tag.id}`}>
             <DefaultParameterValueWidget
-              parameter={parameter}
+              parameter={parameterWithoutDefault}
               value={tag.default}
               setValue={onChangeDefaultValue}
               isEditing
@@ -73,4 +78,10 @@ export function DefaultRequiredValueControl({
       </Flex>
     </div>
   );
+}
+
+function getLabel(tag: TemplateTag) {
+  return tag.type === "temporal-unit"
+    ? t`Default parameter widget value`
+    : t`Default filter widget value`;
 }

@@ -1,7 +1,7 @@
 (ns metabase.model-persistence.events.persisted-info-test
   (:require
    [clojure.test :refer [deftest is]]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

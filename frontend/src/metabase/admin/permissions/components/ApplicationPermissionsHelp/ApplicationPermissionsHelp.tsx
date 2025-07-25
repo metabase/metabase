@@ -1,17 +1,17 @@
 import { jt, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { Flex, Stack, Text, Title, rem } from "metabase/ui";
 
 export const ApplicationPermissionsHelp = () => {
   const { url } = useDocsUrl("permissions/application");
   return (
     <Flex direction="column" py={rem(22)} px="lg">
-      <Title order={4}>{t`Applications permissions`}</Title>
+      <Title order={3}>{t`Applications permissions`}</Title>
       <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 
-      <Title order={5}>{t`Applications permissions`}</Title>
+      <Title order={6} my="sm">{t`Applications permissions`}</Title>
 
       <Stack gap={10} mt="sm">
         <Text>{t`Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.`}</Text>

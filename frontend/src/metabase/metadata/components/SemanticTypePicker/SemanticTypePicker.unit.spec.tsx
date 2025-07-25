@@ -140,11 +140,11 @@ describe("SemanticTypePicker", () => {
     });
   });
 
-  it("shows Category semantic type for boolean field's", async () => {
+  it("hides Category semantic type for boolean field's", async () => {
     setup({ fieldId: BOOLEAN_FIELD.id });
 
     await assertSemanticTypesVisibility({
-      visibleTypes: ["Category"],
+      hiddenTypes: ["Category"],
     });
   });
 
@@ -203,22 +203,20 @@ describe("SemanticTypePicker", () => {
     );
   });
 
-  describe("hack: allow casting text types to numerical types", () => {
-    it("also shows semantic types derived from text/Number when field's effective_type is derived from $display_name", async () => {
-      setup({ fieldId: TEXT_FIELD.id });
+  it("does not show semantic types derived from type/Number when field's effective_type is derived from type/Text", async () => {
+    setup({ fieldId: TEXT_FIELD.id });
 
-      await assertSemanticTypesVisibility({
-        visibleTypes: [
-          "Latitude",
-          "Longitude",
-          "Currency",
-          "Discount",
-          "Income",
-          "Quantity",
-          "Score",
-          "Percentage",
-        ],
-      });
+    await assertSemanticTypesVisibility({
+      hiddenTypes: [
+        "Latitude",
+        "Longitude",
+        "Currency",
+        "Discount",
+        "Income",
+        "Quantity",
+        "Score",
+        "Percentage",
+      ],
     });
   });
 

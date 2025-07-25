@@ -4,20 +4,23 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.query-processor.deprecated]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util.date-2 :as u.date]
@@ -210,7 +213,7 @@
                 :h2
                 (lib.tu.macros/mbql-query venues
                   {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
-                   :source-metadata [{:name "name", :base_type :type/Integer}]
+                   :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
                    :filter          [:!= *name/Integer "Lucky Pigeon"]}))))))))
 
 (deftest ^:parallel joins-against-native-queries-test
@@ -424,17 +427,17 @@
                                      ORDERS.PRODUCT_ID                  AS PRODUCT_ID
                                      ORDERS.CREATED_AT                  AS CREATED_AT
                                      ABS (0)                            AS pivot-grouping
-                                     ;; TODO: The order here is not deterministic!
-                                     ;; It's coming from qp.util/nest-source, which walks the query looking for refs
-                                     ;; in an arbitrary order, and returns `m/distinct-by` over that random order.
-                                     ;; Changing the map keys on the inner query can perturb this order; if you cause
-                                     ;; this test to fail based on shuffling the order of these joined fields, just
-                                     ;; edit the expectation to match the new order.
-                                     ;; Tech debt issue: #39396
-                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID
+                                     ;; TODO: The order here is not deterministic! It's coming
+                                     ;; from [[metabase.query-processor.util.transformations.nest-breakouts]]
+                                     ;; or [[metabase.query-processor.util.nest-query]], which walks the query looking
+                                     ;; for refs in an arbitrary order, and returns `m/distinct-by` over that random
+                                     ;; order. Changing the map keys on the inner query can perturb this order; if you
+                                     ;; cause this test to fail based on shuffling the order of these joined fields,
+                                     ;; just edit the expectation to match the new order. Tech debt issue: #39396
+                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                                      PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
-                                     PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY]
+                                     PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
+                                     PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
                          :from      [ORDERS]
                          :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
                                      ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
@@ -503,9 +506,9 @@
                 VENUES.LATITUDE    AS LATITUDE
                 VENUES.LONGITUDE   AS LONGITUDE
                 VENUES.PRICE       AS PRICE
-                CAST (VENUES.PRICE AS float)
+                CAST (VENUES.PRICE AS double)
                 /
-                NULLIF (CategoriesStats.AvgPrice, 0) AS RelativePrice
+                NULLIF (CAST (CategoriesStats.AvgPrice AS double), 0.0) AS RelativePrice
                 CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
                 CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
                 CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
@@ -807,9 +810,9 @@
 (deftest ^:parallel floating-point-division-test
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
     (is (= '{:select   [CAST
-                        (VENUES.PRICE AS float)
+                        (VENUES.PRICE AS double)
                         /
-                        NULLIF (VENUES.PRICE + 2, 0) AS my_cool_new_field]
+                        NULLIF (CAST (VENUES.PRICE + 2 AS double), 0.0) AS my_cool_new_field]
              :from     [VENUES]
              :order-by [VENUES.ID ASC]
              :limit    [3]}
@@ -1146,3 +1149,59 @@
     (binding [driver/*compile-with-inline-parameters* true]
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftest ^:parallel sort-by-cumulative-aggregation-test
+  (testing "Sorting by expression containing cumulative aggregation should work (#57289)"
+    (let [mp (mt/metadata-provider)
+          query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                  (lib/breakout $ (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
+                                    :month))
+                  (lib/aggregate $ (lib/+
+                                    (lib/cum-sum (lib.metadata/field mp (mt/id :orders :total)))
+                                    (lib/cum-sum (lib.metadata/field mp (mt/id :orders :tax)))))
+                  (lib/order-by $ (m/find-first (comp #{:source/aggregations} :lib/source) (lib/orderable-columns $)))
+                  (lib/limit $ 1))]
+      (is (= 55.98
+             (->> (qp/process-query query) (mt/formatted-rows [str 2.0]) first second))))))
+
+(deftest ^:parallel literal-float-test
+  (doseq [{:keys [value expected type]} [{:value "1.2" :expected 1.2  :type "TEXT"}
+                                         {:value 10    :expected 10.0 :type "BIGINT"}
+                                         {:value 90.9  :expected 90.9 :type "DOUBLE"}]]
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql value))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 [:inline value]))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info [:inline value] type)))))
+    (is (= [:inline expected]
+           (h2x/unwrap-typed-honeysql-form
+            (sql.qp/coerce-float :sql
+                                 (h2x/with-database-type-info value type)))))))
+
+(deftest ^:parallel literal-integer-test
+  (doseq [{:keys [value expected type]} [{:value "1"  :expected 1  :type "TEXT"}
+                                         {:value 10   :expected 10 :type "BIGINT"}
+                                         {:value 10.9 :expected 11 :type "DOUBLE"}
+                                         {:value 10.4 :expected 10 :type "DOUBLE"}]]
+    (testing (str "Coercing " (pr-str value) " to integer.")
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql value))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     [:inline value]))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info [:inline value] type)))))
+      (is (= [:inline expected]
+             (h2x/unwrap-typed-honeysql-form
+              (sql.qp/coerce-integer :sql
+                                     (h2x/with-database-type-info value type))))))))

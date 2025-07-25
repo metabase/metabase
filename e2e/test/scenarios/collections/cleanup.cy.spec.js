@@ -33,7 +33,7 @@ describe("scenarios > collections > clean up", () => {
     describe("action menu", () => {
       it("should show in proper contexts", () => {
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.log("should not show in custom analytics collections");
         H.visitCollection("root");
@@ -145,7 +145,7 @@ describe("scenarios > collections > clean up", () => {
       beforeEach(() => {
         H.resetSnowplow();
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.enableTracking();
       });
 
@@ -235,7 +235,7 @@ describe("scenarios > collections > clean up", () => {
           moveToTrash();
           assertNoPagination();
 
-          H.expectGoodSnowplowEvent(
+          H.expectUnstructuredSnowplowEvent(
             (event) =>
               isMatching(
                 {
@@ -254,7 +254,7 @@ describe("scenarios > collections > clean up", () => {
           // Because cutoff_date will be relative to the current date, we simply check
           // that it exists and is a string. Snowplow will assert that it is in the correct
           // format
-          H.expectGoodSnowplowEvent(
+          H.expectUnstructuredSnowplowEvent(
             (event) =>
               event &&
               event.event === "stale_items_archived" &&
@@ -290,7 +290,9 @@ describe("scenarios > collections > clean up", () => {
 
           makeItemStale(ORDERS_QUESTION_ID, "card");
 
-          cy.findByRole("navigation").findByText("Our analytics").click();
+          cy.findByTestId("main-navbar-root")
+            .findByText("Our analytics")
+            .click();
           selectCleanThingsUpCollectionAction();
           cy.url().should("include", "cleanup");
 
@@ -303,7 +305,7 @@ describe("scenarios > collections > clean up", () => {
           closeCleanUpModal();
 
           // Ensure that stale items in Our Analytics are maked with a null collection id
-          H.expectGoodSnowplowEvent(
+          H.expectUnstructuredSnowplowEvent(
             (event) =>
               event &&
               event.event === "stale_items_archived" &&

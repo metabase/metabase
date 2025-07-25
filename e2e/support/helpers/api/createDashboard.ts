@@ -41,7 +41,7 @@ export const createDashboard = (
 
   cy.log(`Create a dashboard: ${name}`);
 
-  // For all the possible keys, refer to `src/metabase/api/dashboard.clj`
+  // For all the possible keys, refer to `src/metabase/dashboards/api.clj`
   return cy
     .request<Dashboard>("POST", "/api/dashboard", {
       name,

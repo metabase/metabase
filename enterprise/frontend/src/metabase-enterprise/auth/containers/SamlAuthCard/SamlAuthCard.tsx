@@ -1,23 +1,54 @@
 import { t } from "ttag";
 
-import AuthCard from "metabase/admin/settings/auth/components/AuthCard";
-import { updateSettings } from "metabase/admin/settings/settings";
-import { connect } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import type { Dispatch, State } from "metabase-types/store";
+import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
+import { useAdminSetting } from "metabase/api/utils";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 import { SAML_SCHEMA } from "../../constants";
 
-const mapStateToProps = (state: State) => ({
-  type: "saml",
-  name: t`SAML`,
-  description: t`Allows users to login via a SAML Identity Provider.`,
-  isConfigured: Boolean(getSetting(state, "saml-configured")),
-});
+export function SamlAuthCard() {
+  const {
+    value: isConfigured,
+    updateSetting,
+    updateSettings,
+    settingDetails,
+    isLoading,
+  } = useAdminSetting("saml-configured");
+  const { value: isEnabled } = useAdminSetting("saml-enabled");
 
-const mapDispatchToProps = (dispatch: Dispatch) => ({
-  onDeactivate: () => dispatch(updateSettings(SAML_SCHEMA.getDefault())),
-});
+  const handleDeactivate = () => {
+    return updateSettings(
+      SAML_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
+    );
+  };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);
+  const hasFeature = useHasTokenFeature("sso_saml");
+
+  if (!hasFeature) {
+    return null;
+  }
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return (
+    <AuthCard
+      type="saml"
+      name={t`SAML`}
+      description={t`Allows users to login via a SAML Identity Provider.`}
+      isConfigured={!!isConfigured}
+      isEnabled={!!isEnabled}
+      onDeactivate={handleDeactivate}
+      onChange={(newValue) =>
+        updateSetting({
+          key: "saml-enabled",
+          value: newValue,
+        })
+      }
+      setting={settingDetails as any}
+    />
+  );
+}

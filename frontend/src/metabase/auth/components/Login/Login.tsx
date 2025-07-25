@@ -1,10 +1,11 @@
 import type { Location } from "history";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
 import type { AuthProvider } from "metabase/plugins/types";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box } from "metabase/ui";
+import { Box, Divider } from "metabase/ui";
 
 import { getAuthProviders } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
@@ -27,6 +28,11 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
   const selection = getSelectedProvider(providers, params?.provider);
   const redirectUrl = location?.query?.redirect;
   const applicationName = useSelector(getApplicationName);
+
+  const [passwordProvider, otherProviders] = _.partition(
+    providers,
+    (provider) => provider.name === "password",
+  );
   return (
     <AuthLayout>
       <Box
@@ -46,10 +52,18 @@ export const Login = ({ params, location }: LoginProps): JSX.Element => {
       )}
       {!selection && (
         <Box mt="3.5rem">
-          {providers.map((provider) => (
+          {otherProviders.map((provider) => (
             <Box key={provider.name} mt="2rem" ta="center">
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
             </Box>
+          ))}
+          {passwordProvider.map((provider) => (
+            <>
+              <Divider mt="2rem" />
+              <Box key={provider.name} mt="1rem" ta="center">
+                <provider.Button isCard={true} redirectUrl={redirectUrl} />
+              </Box>
+            </>
           ))}
         </Box>
       )}

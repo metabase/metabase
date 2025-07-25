@@ -2,7 +2,7 @@ import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { METAKEY } from "metabase/lib/browser";
 import { Button, Icon, Tooltip } from "metabase/ui";
 

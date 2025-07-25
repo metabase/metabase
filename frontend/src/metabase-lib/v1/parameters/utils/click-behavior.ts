@@ -5,7 +5,7 @@ import {
   formatDateToRangeForParameter,
 } from "metabase/lib/formatting/date";
 import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { checkNotNull } from "metabase/lib/types";
 import type { ClickObjectDimension as DimensionType } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -162,21 +162,18 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       target,
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
-        column: (sourceColumn, sourceQuestion) => {
-          const sourceQuery = sourceQuestion.query();
-          const stageIndex = -1;
-
-          return Lib.isAssignableType(
-            Lib.fromLegacyColumn(sourceQuery, stageIndex, sourceColumn),
+        column: (sourceColumn) =>
+          Lib.isAssignableType(
+            Lib.legacyColumnTypeInfo(sourceColumn),
             targetColumn,
-          );
-        },
+          ),
         parameter: (parameter) =>
           columnFilterForParameter(query, stageIndex, parameter)(targetColumn),
         userAttribute: () =>
-          Lib.isString(targetColumn) ||
-          Lib.isCategory(targetColumn) ||
-          Lib.isBoolean(targetColumn),
+          Lib.isStringOrStringLike(targetColumn) ||
+          Lib.isNumeric(targetColumn) ||
+          Lib.isBoolean(targetColumn) ||
+          Lib.isDateOrDateTime(targetColumn),
       },
     };
   });
@@ -204,12 +201,12 @@ function getTargetsForDimensionOptions(
       const target: ClickBehaviorTarget = { type: "variable", id: name };
 
       const field = templateTagDimension.field();
-      const base_type = field?.base_type;
+      const effectiveType = field?.effective_type;
 
       const parentType =
-        [TYPE.Temporal, TYPE.Number, TYPE.Text].find(
-          (t) => typeof base_type === "string" && isa(base_type, t),
-        ) || base_type;
+        [TYPE.Temporal, TYPE.Number, TYPE.Text, TYPE.Boolean].find(
+          (t) => typeof effectiveType === "string" && isa(effectiveType, t),
+        ) || effectiveType;
 
       return {
         id,
@@ -218,9 +215,9 @@ function getTargetsForDimensionOptions(
         sourceFilters: {
           column: (column: DatasetColumn) =>
             Boolean(
-              column.base_type &&
+              column.effective_type &&
                 parentType &&
-                isa(column.base_type, parentType),
+                isa(column.effective_type, parentType),
             ),
           parameter: (parameter) =>
             dimensionFilterForParameter(parameter)(templateTagDimension),
@@ -239,9 +236,11 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           card: undefined,
           dimension: undefined,
           snippet: undefined,
+          "temporal-unit": undefined,
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,
+          boolean: TYPE.Boolean,
         }[type]
       : undefined;
 
@@ -252,7 +251,9 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
       sourceFilters: {
         column: (column: DatasetColumn) =>
           Boolean(
-            column.base_type && parentType && isa(column.base_type, parentType),
+            column.effective_type &&
+              parentType &&
+              isa(column.effective_type, parentType),
           ),
         parameter: (parameter) =>
           variableFilterForParameter(parameter)(templateTagVariable),
@@ -279,7 +280,7 @@ export function getTargetsForDashboard(
       target: { type: "parameter", id },
       sourceFilters: {
         column: (c: DatasetColumn) =>
-          notRelativeDateOrRange(parameter) && filter(c.base_type),
+          notRelativeDateOrRange(parameter) && filter(c.effective_type),
         parameter: (sourceParam) => {
           // parameter IDs are generated client-side, so they might not be unique
           // if dashboard is a clone, it will have identical parameter IDs to the original
@@ -302,6 +303,7 @@ function baseTypeFilterForParameterType(parameterType: string) {
     category: [TYPE.Text, TYPE.Integer],
     location: [TYPE.Text],
     "temporal-unit": [TYPE.Text, TYPE.TextLike],
+    boolean: [TYPE.Boolean],
   }[typePrefix];
   if (allowedTypes === undefined) {
     // default to showing everything
@@ -423,6 +425,15 @@ export function formatSourceForTarget(
         "date/single",
         sourceDateUnit,
       );
+    }
+  }
+
+  if (parameter?.type === "number/between" && "column" in datum) {
+    const value = datum.value;
+    const binWidth = datum.column?.binning_info?.bin_width;
+
+    if (binWidth != null && typeof value === "number") {
+      return [value, value + binWidth];
     }
   }
 

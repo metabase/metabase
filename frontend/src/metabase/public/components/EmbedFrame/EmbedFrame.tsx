@@ -1,32 +1,32 @@
 import cx from "classnames";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import TitleAndDescription from "metabase/components/TitleAndDescription";
+import { TitleAndDescription } from "metabase/common/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
 import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import {
-  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
+import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box } from "metabase/ui";
-import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -53,6 +53,7 @@ import {
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import { LogoBadge } from "./LogoBadge";
+import { useGlobalTheme } from "./useGlobalTheme";
 
 export type EmbedFrameBaseProps = Partial<{
   className: string;
@@ -60,6 +61,7 @@ export type EmbedFrameBaseProps = Partial<{
   description: string | null;
   question: Question;
   dashboard: Dashboard | null;
+  headerButtons: ReactNode;
   actionButtons: ReactNode;
   footerVariant: FooterVariant;
   parameters: Parameter[];
@@ -87,6 +89,7 @@ export const EmbedFrame = ({
   question,
   dashboard,
   actionButtons,
+  headerButtons = null,
   dashboardTabs = null,
   footerVariant = "default",
   parameters,
@@ -105,7 +108,6 @@ export const EmbedFrame = ({
   withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
     (state) => !getSetting(state, "hide-embed-branding?"),
   );
@@ -114,12 +116,14 @@ export const EmbedFrame = ({
     dashboard && getDashboardType(dashboard.id) === "public",
   );
 
+  const isQuestion = question != null;
+  const isDashboard = dashboard != null;
   const ParametersListComponent = getParametersListComponent({
-    isEmbeddingSdk,
-    isDashboard: !!dashboard,
+    isQuestion,
+    isDashboard,
   });
 
-  const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
+  const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk());
 
   useMount(() => {
     initializeIframeResizer(() => setHasFrameScroll(false));
@@ -153,6 +157,25 @@ export const EmbedFrame = ({
   const shouldApplyParameterPanelThemeChangeTransition =
     !isParameterPanelStickyStateChanging && isParameterPanelSticky;
 
+  const valuePopulatedParameters = parameters
+    ? getValuePopulatedParameters({
+        parameters,
+        values: _.isEmpty(draftParameterValues)
+          ? parameterValues
+          : draftParameterValues,
+      })
+    : [];
+
+  useSyncUrlParameters({
+    parameters: valuePopulatedParameters,
+    enabled: shouldSyncUrlParameters({
+      isQuestion,
+      isDashboard,
+    }),
+  });
+
+  const hasDashboardTabs = dashboard?.tabs && dashboard.tabs.length > 1;
+
   return (
     <Root
       hasScroll={hasFrameScroll}
@@ -166,10 +189,14 @@ export const EmbedFrame = ({
     >
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-        className={cx(
-          EmbedFrameS.ContentContainer,
-          EmbedFrameS.WithThemeBackground,
-        )}
+        className={cx({
+          [EmbedFrameS.ContentContainer]: true,
+          [EmbedFrameS.WithThemeBackground]: true,
+
+          // If we are showing a standalone question, make the entire card a hover parent
+          [CS.hoverParent]: question,
+          [CS.hoverVisibility]: question,
+        })}
       >
         {hasHeader && (
           <Header
@@ -180,7 +207,7 @@ export const EmbedFrame = ({
             data-testid="embed-frame-header"
           >
             {(finalName || pdfDownloadsEnabled) && (
-              <TitleAndDescriptionContainer>
+              <TitleAndDescriptionContainer hasTitle={!!finalName}>
                 <TitleAndButtonsContainer
                   data-testid="fixed-width-dashboard-header"
                   isFixedWidth={dashboard?.width === "fixed"}
@@ -194,8 +221,16 @@ export const EmbedFrame = ({
                   )}
                   <Box style={{ flex: 1 }} />
                   {dashboard && pdfDownloadsEnabled && (
-                    <ExportAsPdfButton dashboard={dashboard} color="brand" />
+                    <ExportAsPdfButton
+                      className={cx({
+                        [EmbedFrameS.CompactExportAsPdfButton]:
+                          !titled && (hasVisibleParameters || hasDashboardTabs),
+                        [EmbedFrameS.ParametersVisibleWithNoTabs]:
+                          hasVisibleParameters && !hasDashboardTabs,
+                      })}
+                    />
                   )}
+                  {headerButtons}
                 </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>
             )}
@@ -210,9 +245,12 @@ export const EmbedFrame = ({
               </DashboardTabsContainer>
             )}
 
-            <Separator className={EmbedFrameS.Separator} />
+            {finalName && <Separator className={EmbedFrameS.Separator} />}
           </Header>
         )}
+
+        {/* show floating header buttons if there is no title */}
+        {headerButtons && !titled ? headerButtons : null}
 
         <span ref={parameterPanelRef} />
         {hasVisibleParameters && (
@@ -229,19 +267,14 @@ export const EmbedFrame = ({
           >
             <FixedWidthContainer
               className={DashboardS.ParametersFixedWidthContainer}
-              id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+              id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}
             >
               <ParametersListComponent
                 question={question}
                 dashboard={dashboard}
-                parameters={getValuePopulatedParameters({
-                  parameters,
-                  values: _.isEmpty(draftParameterValues)
-                    ? parameterValues
-                    : draftParameterValues,
-                })}
+                parameters={valuePopulatedParameters}
                 setParameterValue={setParameterValue}
                 hideParameters={hideParameters}
                 setParameterValueToDefault={setParameterValueToDefault}
@@ -249,12 +282,13 @@ export const EmbedFrame = ({
                   enableParameterRequiredBehavior
                 }
               />
-              {dashboard && <FilterApplyButton />}
             </FixedWidthContainer>
           </FullWidthContainer>
         )}
         <Body>{children}</Body>
       </ContentContainer>
+
+      {dashboard && <FilterApplyToast position="fixed" />}
       {isFooterEnabled && (
         <Footer
           data-testid="embed-frame-footer"
@@ -271,32 +305,6 @@ export const EmbedFrame = ({
   );
 };
 
-function useGlobalTheme(theme: DisplayTheme | undefined) {
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-  useEffect(() => {
-    // We don't want to modify user application DOM when using the SDK.
-    if (isEmbeddingSdk || theme == null) {
-      return;
-    }
-
-    const originalTheme = document.documentElement.getAttribute(
-      "data-metabase-theme",
-    );
-    document.documentElement.setAttribute("data-metabase-theme", theme);
-
-    return () => {
-      if (originalTheme == null) {
-        document.documentElement.removeAttribute("data-metabase-theme");
-      } else {
-        document.documentElement.setAttribute(
-          "data-metabase-theme",
-          originalTheme,
-        );
-      }
-    };
-  }, [isEmbeddingSdk, theme]);
-}
-
 function isParametersWidgetContainersSticky(parameterCount: number) {
   if (!isSmallScreen()) {
     return true;
@@ -308,15 +316,37 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
 }
 
 function getParametersListComponent({
-  isEmbeddingSdk,
+  isQuestion,
   isDashboard,
 }: {
-  isEmbeddingSdk: boolean;
+  isQuestion: boolean;
   isDashboard: boolean;
 }) {
+  return shouldSyncUrlParameters({ isQuestion, isDashboard })
+    ? SyncedParametersList
+    : ParametersList;
+}
+
+function shouldSyncUrlParameters({
+  isQuestion,
+  isDashboard,
+}: {
+  isQuestion: boolean;
+  isDashboard: boolean;
+}) {
+  // Couldn't determine if it's a question or a dashboard until one becomes true.
+  if (!isQuestion && !isDashboard) {
+    return false;
+  }
+
   if (isDashboard) {
     // Dashboards manage parameters themselves
-    return ParametersList;
+    return false;
+  } else {
+    /**
+     * We don't want to sync the query string to the URL when using the embedding SDK,
+     * because it would change the URL of users' apps.
+     */
+    return !isEmbeddingSdk();
   }
-  return isEmbeddingSdk ? ParametersList : SyncedParametersList;
 }

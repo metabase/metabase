@@ -6,7 +6,7 @@ import type { IconName } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type { ModelResult, RecentModel } from "./types";
+import type { ModelResult, RecentModel, SortColumn } from "./types";
 
 export const isModel = (item: SearchResult) => item.model === "dataset";
 
@@ -23,37 +23,24 @@ export const getModelDescription = (item: ModelResult) => {
 
 const getValueForSorting = (
   model: ModelResult,
-  sort_column: keyof ModelResult,
+  sortColumn: SortColumn,
 ): string => {
-  if (sort_column === "collection") {
+  if (sortColumn === "collection") {
     return getCollectionPathAsString(model.collection) ?? "";
   } else {
-    return model[sort_column] ?? "";
+    return model[sortColumn] ?? "";
   }
 };
 
-export const isValidSortColumn = (
-  sort_column: string,
-): sort_column is keyof ModelResult => {
-  return ["name", "collection", "description"].includes(sort_column);
-};
-
-export const getSecondarySortColumn = (
-  sort_column: string,
-): keyof ModelResult => {
-  return sort_column === "name" ? "collection" : "name";
+export const getSecondarySortColumn = (sortColumn: SortColumn): SortColumn => {
+  return sortColumn === "name" ? "collection" : "name";
 };
 
 export function sortModels(
   models: ModelResult[],
-  sortingOptions: SortingOptions,
+  sortingOptions: SortingOptions<SortColumn>,
 ) {
   const { sort_column, sort_direction } = sortingOptions;
-
-  if (!isValidSortColumn(sort_column)) {
-    console.error("Invalid sort column", sort_column);
-    return models;
-  }
 
   const compare = (a: string, b: string) => a.localeCompare(b);
 

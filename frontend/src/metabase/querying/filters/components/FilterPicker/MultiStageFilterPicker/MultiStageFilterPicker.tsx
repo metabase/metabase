@@ -4,12 +4,16 @@ import * as Lib from "metabase-lib";
 
 import { FilterColumnPicker } from "../FilterColumnPicker";
 import { FilterPickerBody } from "../FilterPickerBody";
-import type { ColumnListItem, SegmentListItem } from "../types";
+import type {
+  ColumnListItem,
+  FilterChangeOpts,
+  SegmentListItem,
+} from "../types";
 
-type MultiStageFilterPickerProps = {
+export type MultiStageFilterPickerProps = {
   query: Lib.Query;
   canAppendStage: boolean;
-  onChange: (newQuery: Lib.Query) => void;
+  onChange: (newQuery: Lib.Query, opts: FilterChangeOpts) => void;
   onClose?: () => void;
 };
 
@@ -29,20 +33,34 @@ export function MultiStageFilterPicker({
 
   const [selectedItem, setSelectedItem] = useState<ColumnListItem>();
 
-  const handleChange = (filter: Lib.Filterable, stageIndex: number) => {
-    const newQuery = Lib.filter(query, stageIndex, filter);
-    onChange(newQuery);
+  const handleChange = (
+    filter: Lib.Filterable,
+    stageIndex: number,
+    opts: FilterChangeOpts,
+  ) => {
+    const newQuery = Lib.dropEmptyStages(Lib.filter(query, stageIndex, filter));
+    onChange(newQuery, opts);
   };
 
-  const handleFilterChange = (filter: Lib.ExpressionClause) => {
-    if (selectedItem != null) {
-      handleChange(filter, selectedItem.stageIndex);
+  const handleFilterChange = (
+    filter: Lib.ExpressionClause,
+    opts: FilterChangeOpts,
+  ) => {
+    if (selectedItem == null) {
+      return;
+    }
+
+    handleChange(filter, selectedItem.stageIndex, opts);
+
+    if (opts.run) {
       onClose?.();
+    } else {
+      setSelectedItem(undefined);
     }
   };
 
   const handleSegmentChange = (item: SegmentListItem) => {
-    handleChange(item.segment, item.stageIndex);
+    handleChange(item.segment, item.stageIndex, { run: true });
     onClose?.();
   };
 
@@ -68,6 +86,7 @@ export function MultiStageFilterPicker({
       stageIndex={selectedItem.stageIndex}
       column={selectedItem.column}
       isNew
+      withAddButton
       onChange={handleFilterChange}
       onBack={handleBack}
     />

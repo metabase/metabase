@@ -42,7 +42,7 @@ describe("issue 13504", () => {
 
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At is Mar 1–31, 2023").should("be.visible");
+      cy.findByText("Created At: Month is Mar 1–31, 2023").should("be.visible");
     });
   });
 });
@@ -56,6 +56,10 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     });
 
     H.popover().contains(value).click();
+    H.popover().findByDisplayValue(value);
+
+    // click outside popover
+    cy.findByTestId("chartsettings-list-container").click();
   }
 
   function assertOnTheYAxis() {
@@ -92,13 +96,12 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       replaceMissingValuesWith(replacementValue);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
-
       assertOnTheYAxis();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.cartesianChartCircle().eq(-2).trigger("mousemove");
+      H.cartesianChartCircle()
+        .should("have.length", 6)
+        .eq(-2)
+        .trigger("mousemove");
 
       H.assertEChartsTooltip({
         header: "2019",
@@ -185,9 +188,8 @@ describe("issue 17524", () => {
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("1");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       cy.get("polygon");
     });
   });
@@ -606,6 +608,7 @@ describe("issue 21665", () => {
     native: { query: "select 2" },
     display: "scalar",
   };
+
   function editQ2NativeQuery(query, questionId) {
     cy.request("PUT", `/api/card/${questionId}`, {
       dataset_query: {
@@ -619,6 +622,8 @@ describe("issue 21665", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.createNativeQuestionAndDashboard({
       questionDetails: Q1,
@@ -640,12 +645,15 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    cy.findByTestId("add-series-button").click({ force: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(Q2.name).click();
-
-    cy.findByTestId("add-series-modal").button("Done").click();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(Q2.name);
+      cy.button("Save").click();
+    });
 
     H.saveDashboard();
     cy.wait("@getDashboard");
@@ -660,7 +668,9 @@ describe("issue 21665", () => {
 
     cy.get("@dashboardLoaded").should("have.callCount", 3);
     cy.findByTestId("dashcard")
-      .findByText("There was a problem displaying this chart.")
+      .findByText(
+        "Some columns are missing, this card might not render correctly.",
+      )
       .should("be.visible");
   });
 });
@@ -1192,7 +1202,7 @@ describe("issue 49160", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("pie chart should have a placeholder", () => {

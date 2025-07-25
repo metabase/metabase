@@ -8,16 +8,16 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { useFavicon } from "metabase/common/hooks/use-favicon";
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
-import { useFavicon } from "metabase/hooks/use-favicon";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -32,6 +32,7 @@ import type {
   BookmarkId,
   Bookmark as BookmarkType,
   Card,
+  Series,
   Timeline,
 } from "metabase-types/api";
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
@@ -56,13 +57,11 @@ import {
   getIsLiveResizable,
   getIsLoadingComplete,
   getIsNativeEditorOpen,
-  getIsObjectDetail,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
   getLastRunCard,
   getModalSnippet,
-  getMode,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getOriginalCard,
@@ -87,9 +86,11 @@ import {
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "../selectors";
+import { getIsObjectDetail, getMode } from "../selectors/mode";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
+import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
 const timelineProps = {
@@ -184,6 +185,10 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isLoadingComplete: getIsLoadingComplete(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
+    didFirstNonTableChartGenerated: getSetting(
+      state,
+      "non-table-chart-generated",
+    ),
 
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),
@@ -236,7 +241,27 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB,
     route,
     queryBuilderMode,
+    didFirstNonTableChartGenerated,
+    setDidFirstNonTableChartRender,
   } = props;
+
+  const didTrackFirstNonTableChartGeneratedRef = useRef(
+    didFirstNonTableChartGenerated,
+  );
+  const handleVisualizationRendered = useCallback(
+    (series: Series) => {
+      const isNonTable = series[0].card.display !== "table";
+      if (
+        !didFirstNonTableChartGenerated &&
+        !didTrackFirstNonTableChartGeneratedRef.current &&
+        isNonTable
+      ) {
+        setDidFirstNonTableChartRender(card);
+        didTrackFirstNonTableChartGeneratedRef.current = true;
+      }
+    },
+    [card, didFirstNonTableChartGenerated, setDidFirstNonTableChartRender],
+  );
 
   const forceUpdate = useForceUpdate();
   const forceUpdateDebounced = useMemo(
@@ -288,6 +313,8 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useMount(() => {
     initializeQB(location, params);
   });
+
+  useRegisterQueryBuilderMetabotContext();
 
   useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
@@ -409,7 +436,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     }
   };
 
-  useHotkeys([["mod+Enter", handleCmdEnter]]);
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   return (
     <>
@@ -426,6 +453,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         onDismissToast={onDismissToast}
         onConfirmToast={onConfirmToast}
         isShowingToaster={isShowingToaster}
+        onVisualizationRendered={handleVisualizationRendered}
       />
 
       <LeaveRouteConfirmModal

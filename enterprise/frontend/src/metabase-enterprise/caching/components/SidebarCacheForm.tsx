@@ -7,8 +7,8 @@ import { StrategyForm } from "metabase/admin/performance/components/StrategyForm
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { SidesheetSubPage } from "metabase/common/components/Sidesheet";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheFormProps } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { CacheStrategy } from "metabase-types/api";

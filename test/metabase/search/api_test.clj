@@ -6,15 +6,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.core :as analytics]
+   [metabase.collections.models.collection :as collection]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.collection :as collection]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.models.moderation-review :as moderation-review]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.core :as search.engines.appdb]
@@ -25,6 +22,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -120,15 +118,54 @@
 
 (defn- default-search-results []
   (cleaned-results
-   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :can_write true)
+   [(make-result "dashboard test dashboard"
+                 :model "dashboard"
+                 :bookmark false
+                 :creator_id true
+                 :creator_common_name
+                 "Rasta Toucan"
+                 :can_write true)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
-                 :database_id true :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "metric test metric", :model "metric", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :display "table" :can_write true)
+    (make-result "card test card"
+                 :model               "card"
+                 :bookmark            false
+                 :dashboardcard_count 0
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan"
+                 :display             "table"
+                 :can_write           true
+                 :display_type        "table")
+    (make-result "dataset test dataset"
+                 :model               "dataset"
+                 :bookmark            false
+                 :dashboardcard_count 0
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan"
+                 :display             "table"
+                 :can_write           true
+                 :display_type        "table")
+    (make-result "action test action"
+                 :model               "action"
+                 :model_name          (:name action-model-params)
+                 :model_id            true
+                 :database_id         true
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan")
+    (make-result "metric test metric"
+                 :model               "metric"
+                 :bookmark            false
+                 :dashboardcard_count 0
+                 :creator_id          true
+                 :creator_common_name "Rasta Toucan"
+                 :display             "table"
+                 :can_write           true
+                 :display_type        "table")
     (merge
-     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
+     (make-result "segment test segment"
+                  :model "segment"
+                  :description "Lookin' for a blueberry"
+                  :creator_id true
+                  :creator_common_name "Rasta Toucan")
      (table-search-results))]))
 
 (defn- default-segment-results []
@@ -357,49 +394,47 @@
     (with-search-items-in-root-collection "test"
       (is (= #{} (get-available-models :q "noresults"))))))
 
-(deftest available-models-test
+(deftest ^:synchronized available-models-test
   ;; Porting these tests over earlier
-  (doseq [engine ["in-place" "appdb"]]
-    (let [search-term "query-model-set"
-          get-available-models #(apply get-available-models :search_engine engine %&)]
-      (with-search-items-in-root-collection search-term
-        (testing "should returns a list of models that search result will return"
-          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                 (get-available-models)))
-          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                 (get-available-models :q search-term))))
-        (testing "return a subset of model for created-by filter"
-          (is (= #{"dashboard" "dataset" "card" "metric" "action"}
-                 (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
-        (testing "return a subset of model for verified filter"
-          (mt/with-temp
-            [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
-             :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
-             :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
-             :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
-            (testing "when has both :content-verification features"
-              (mt/with-premium-features #{:content-verification}
-                (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
-                  (is (= #{"card" "dataset" "metric"}
-                         (get-available-models :q search-term :verified true))))))
-            (testing "when has :content-verification feature only"
-              (mt/with-premium-features #{:content-verification}
-                (mt/with-verified-cards! [v-card-id]
-                  (is (= #{"card"}
-                         (get-available-models :q search-term :verified true))))))))
-        (testing "return a subset of model for created_at filter"
-          (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-                 (get-available-models :q search-term :created_at "today"))))
+  (let [search-term "query-model-set"]
+    (with-search-items-in-root-collection search-term
+      (testing "should returns a list of models that search result will return"
+        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+               (get-available-models)))
+        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+               (get-available-models :q search-term))))
+      (testing "return a subset of model for created-by filter"
+        (is (= #{"dashboard" "dataset" "card" "metric" "action"}
+               (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
+      (testing "return a subset of model for verified filter"
+        (mt/with-temp
+          [:model/Card {v-card-id :id} {:name (format "%s Verified Card" search-term)}
+           :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
+           :model/Card {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
+           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+          (testing "when has both :content-verification features"
+            (mt/with-premium-features #{:content-verification}
+              (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
+                (is (= #{"card" "dataset" "metric"}
+                       (get-available-models :q search-term :verified true))))))
+          (testing "when has :content-verification feature only"
+            (mt/with-premium-features #{:content-verification}
+              (mt/with-verified-cards! [v-card-id]
+                (is (= #{"card"}
+                       (get-available-models :q search-term :verified true))))))))
+      (testing "return a subset of model for created_at filter"
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+               (get-available-models :q search-term :created_at "today"))))
 
-        (testing "return a subset of model for search_native_query filter"
-          (is (= #{"dataset" "action" "card" "metric"}
-                 (get-available-models :q search-term :search_native_query true))))))))
+      (testing "return a subset of model for search_native_query filter"
+        (is (= #{"dataset" "action" "card" "metric"}
+               (get-available-models :q search-term :search_native_query true)))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
                          :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"
-                         :display "table" :can_write true))]
+                         :display "table" :display_type "table" :can_write true))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -448,7 +483,7 @@
                      :model/Card {card :id} {:collection_id parent-id :name (named "card")}
                      :model/Card {model :id} {:collection_id parent-id :type :model :name (named "model")}]
         (mt/with-full-data-perms-for-all-users!
-          (perms/revoke-collection-permissions! (perms-group/all-users) parent-id)
+          (perms/revoke-collection-permissions! (perms/all-users-group) parent-id)
           (testing "sanity check: before archiving, we can't see these items"
             (is (= [] (:data (mt/user-http-request :rasta :get 200 "/search"
                                                    :archived true :q search-name)))))
@@ -467,7 +502,7 @@
                    (set (map (comp :id :collection) (:data (mt/user-http-request :crowberto :get 200 "/search"
                                                                                  :archived true :q search-name)))))))
           (testing "if we are granted permissions on the original collection, we can see the trashed items"
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) parent-id)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-id)
             (is (= #{dash card model}
                    (set (map :id (:data (mt/user-http-request :rasta :get 200 "/search"
                                                               :archived true :q search-name))))))))))))
@@ -488,7 +523,7 @@
         (mt/with-full-data-perms-for-all-users!
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
-            (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+            (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (mt/ordered-subset? (->> (default-search-results)
                                          (remove (comp #{"collection"} :model))
                                          (map #(cond-> %
@@ -526,7 +561,7 @@
           (mt/with-temp [:model/PermissionsGroup           group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
             (mt/with-full-data-perms-for-all-users!
-              (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
+              (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
               (perms/grant-collection-read-permissions! group collection)
               (is (mt/ordered-subset? (->> (default-results-with-collection)
                                            (concat (->> (default-search-results)
@@ -921,6 +956,15 @@
                (binding [*search-request-results-database-id* db-id]
                  (search-request-data :rasta :q (:name table)))))))))
 
+(deftest table-test-8
+  (testing "you should be able to see a Table when the current user is a superuser"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    table {:db_id db-id}]
+      (mt/with-no-data-perms-for-all-users!
+        (is (= 1
+               (binding [*search-request-results-database-id* db-id]
+                 (count (search-request-data :crowberto :q (:name table))))))))))
+
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
@@ -929,8 +973,8 @@
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
+        (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(default-table-search-row "RoundTable")]
                  (binding [*search-request-results-database-id* db-id]
@@ -940,8 +984,8 @@
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
     (mt/with-temp [:model/Database                   {db-id :id} {}
                    :model/Table                      table {:name "RoundTable", :db_id db-id}]
-      (mt/with-restored-data-perms-for-group! (:id (perms-group/all-users))
-        (data-perms/set-table-permission! (perms-group/all-users) table :perms/create-queries :no)
+      (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
+        (perms/set-table-permission! (perms/all-users-group) table :perms/create-queries :no)
         (is (= []
                (filter #(= (:name %) "RoundTable")
                        (binding [*search-request-results-database-id* db-id]
@@ -1321,7 +1365,7 @@
                      :available_models
                      set))))))))
 
-(deftest search-native-query-test
+(deftest ^:synchronized search-native-query-test
   (let [search-term "search-native-query"]
     (mt/with-temp
       [:model/Card {mbql-card :id}             {:name search-term}
@@ -1473,7 +1517,7 @@
                 :type            nil}
                (-> result :data first :collection))))
 
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-2)
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll-2)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              (u/the-id coll-1)
                 :name            "Collection 1"
@@ -1481,7 +1525,7 @@
                 :type            nil}
                (-> result :data first :collection))))
 
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-1)
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll-1)
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
         (is (= {:id              "root"
                 :name            "Our analytics"
@@ -1502,8 +1546,8 @@
                    :model/Dashboard   _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
                                                                         :collection_id collection-id})]
       ;; remove read/write access and add back read access to the collection
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+      (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
+      (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
       (mt/with-current-user (mt/user->id :crowberto)
         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id collection-id)
                                                      {:archived true}))
@@ -1606,7 +1650,7 @@
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
 
-(deftest force-reindex-test
+(deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
@@ -1700,7 +1744,7 @@
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param context :model :dataset)))))))
 
-(deftest dashboard-questions
+(deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -1748,19 +1792,22 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
-(deftest include-metadata
+(deftest ^:synchronized include-metadata
   (testing "Include card result_metadata if include-metadata is set"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
       (mt/with-temp [:model/Card {reg-card-id :id} {:name            (named "regular card")
-                                                    :result_metadata [{:description "The state or province of the account’s billing address."}]}]
+                                                    :result_metadata [{:name         "STATE"
+                                                                       :display_name "State"
+                                                                       :base_type    :type/Text
+                                                                       :description  "The state or province of the account’s billing address."}]}]
         (testing "Can include `result_metadata` info"
-          (is (= [{:description "The state or province of the account’s billing address."}]
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
-                      :data
-                      (filter #(= reg-card-id (:id %)))
-                      first
-                      :result_metadata))))
+          (is (=? [{:description "The state or province of the account’s billing address."}]
+                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_metadata "true")
+                       :data
+                       (filter #(= reg-card-id (:id %)))
+                       first
+                       :result_metadata))))
         (testing "result_metadata not included by default"
           (is (nil?
                (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
@@ -1769,7 +1816,7 @@
                     first
                     :result_metadata))))))))
 
-(deftest prometheus-response-metrics-test
+(deftest ^:synchronized prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls (atom nil)]
       (mt/with-dynamic-fn-redefs [analytics/inc! #(swap! calls conj %)]
@@ -1789,3 +1836,15 @@
             (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
+
+(deftest ^:synchronized multiple-limits
+  (when (search/supports-index?)
+    ;; This test is failing with "no index" for some reason, forcing the reindex
+    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
+  (testing "Multiple `limit` query args should be handled correctly (#45345)"
+    (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
+                          :data count)
+          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
+                           :data count)]
+      (is (>= total-count result-count))
+      (is (= 1 result-count)))))

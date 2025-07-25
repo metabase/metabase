@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 
-import { Badge } from "metabase/components/Badge";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { Badge } from "metabase/common/components/Badge";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import * as Urls from "metabase/lib/urls";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import type {

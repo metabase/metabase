@@ -32,5 +32,15 @@
         ],
       },
     ],
+    "ttag/no-module-declaration": 2,
   },
+  "overrides": [
+    {
+      "files": ["**/*.stories.tsx"],
+      "rules": {
+        "import/no-default-export": 0,
+        "no-restricted-imports": 0,
+      },
+    },
+  ],
 }

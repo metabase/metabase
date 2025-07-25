@@ -1,3 +1,4 @@
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
   DatabaseId,
@@ -80,10 +81,7 @@ export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-declare const JoinConditionOperatorSymbol: unique symbol;
-export type JoinConditionOperator = unknown & {
-  _opaque: typeof JoinConditionOperatorSymbol;
-};
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
 export type Clause =
   | AggregationClause
@@ -113,6 +111,9 @@ export type Limit = number | null;
 declare const ColumnMetadataSymbol: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadataSymbol };
 
+declare const ColumnTypeInfoSymbol: unique symbol;
+export type ColumnTypeInfo = unknown & { _opaque: typeof ColumnTypeInfoSymbol };
+
 declare const ColumnGroupSymbol: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroupSymbol };
 
@@ -130,7 +131,8 @@ export type BucketDisplayInfo = {
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
-  isSourceTable: boolean;
+  isSourceTable?: boolean;
+  isSourceCard?: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   schema: SchemaId;
@@ -258,37 +260,16 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
-  | "+"
-  | "-"
-  | "*"
-  | "/"
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | ">="
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "starts-with"
-  | "ends-with"
-  | "concat"
-  | "interval"
-  | "time-interval"
-  | "relative-time-interval"
-  | "relative-datetime"
-  | "datetime-add"
-  | "inside"
-  | "segment"
-  | "offset";
+export type ExpressionOperator = DefinedClauseName | "value";
 
-export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+export type ExpressionArg =
+  | boolean
+  | number
+  | bigint
+  | string
+  | ColumnMetadata
+  | SegmentMetadata
+  | MetricMetadata;
 
 export type ExpressionParts = {
   operator: ExpressionOperator;
@@ -299,6 +280,9 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
+  "base-type"?: string;
+  "effective-type"?: string;
+  mode?: DatetimeMode;
 };
 
 declare const FilterOperatorSymbol: unique symbol;
@@ -367,6 +351,16 @@ export type ExcludeDateFilterUnit =
   | "day-of-week"
   | "month-of-year"
   | "quarter-of-year";
+
+export type DatetimeMode =
+  | "iso"
+  | "simple"
+  | "iso-bytes"
+  | "simple-bytes"
+  | "unix-seconds"
+  | "unix-milliseconds"
+  | "unix-microseconds"
+  | "unix-nanoseconds";
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -463,16 +457,10 @@ export type DefaultFilterParts = {
   column: ColumnMetadata;
 };
 
-export type JoinConditionOperatorDisplayInfo = {
-  displayName: string;
-  shortName: string;
-  default?: boolean;
-};
-
 export type JoinConditionParts = {
   operator: JoinConditionOperator;
-  lhsColumn: ColumnMetadata;
-  rhsColumn: ColumnMetadata;
+  lhsExpression: ExpressionClause;
+  rhsExpression: ExpressionClause;
 };
 
 export type JoinStrategyDisplayInfo = {
@@ -648,6 +636,7 @@ export interface ClickObject {
 
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;
+  searchField: ColumnMetadata | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }

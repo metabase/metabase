@@ -2,72 +2,6 @@ const { H } = cy;
 
 import { setupSaml } from "./sso/shared/helpers.js";
 
-describe("scenarios > admin > settings > authentication", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  describe("page layout", () => {
-    describe("oss", { tags: "@OSS" }, () => {
-      it("should implement a tab layout for oss customers", () => {
-        cy.visit("/admin/settings/authentication");
-
-        cy.log(
-          "should have the api keys as a auth card (and should be able to access the page)",
-        );
-        cy.findByTestId("api-keys-setting").should("exist");
-
-        cy.log("should show an upsell");
-        cy.findByTestId("upsell-card").should("exist");
-
-        cy.log("should not have tabs");
-        // no tabs on authentication page
-        cy.findByRole("tab").should("not.exist");
-        // no tabs on api keys
-        cy.visit("/admin/settings/authentication/api-keys");
-        H.main().within(() => {
-          cy.findByText("Manage API Keys");
-        });
-        cy.findByRole("tab").should("not.exist");
-      });
-    });
-
-    describe("ee", () => {
-      it("should implement a tab layout for enterprise customers", () => {
-        H.setTokenFeatures("all");
-
-        cy.visit("/admin/settings/authentication");
-
-        authTab("Authentication")
-          .should("exist")
-          .should("have.attr", "data-active", "true");
-        authTab("User Provisioning").should("exist");
-        authTab("API Keys").should("exist");
-
-        cy.log("should not upsell enterprise customer");
-        cy.findByTestId("upsell-card").should("not.exist");
-
-        cy.log("should not show api keys under authentication tab");
-        cy.findByTestId("api-keys-setting").should("not.exist");
-
-        cy.log("should be able to go to the user provisioning page via a tab");
-        authTab("User Provisioning").click();
-        authTab("User Provisioning").should("have.attr", "data-active", "true");
-        cy.url().should(
-          "include",
-          "/admin/settings/authentication/user-provisioning",
-        );
-
-        cy.log("should be able to go to the api keys page via a tab");
-        authTab("API Keys").click();
-        authTab("API Keys").should("have.attr", "data-active", "true");
-        cy.url().should("include", "/admin/settings/authentication/api-keys");
-      });
-    });
-  });
-});
-
 describe("scenarios > admin > settings > user provisioning", () => {
   beforeEach(() => {
     H.restore();
@@ -75,29 +9,26 @@ describe("scenarios > admin > settings > user provisioning", () => {
   });
 
   describe("oss", { tags: "@OSS" }, () => {
-    it("user provisioning page should not be availble for OSS customers", () => {
+    it("user provisioning page should not be available for OSS customers", () => {
       cy.visit("/admin/settings/authentication/user-provisioning");
-      H.main().within(() => {
-        cy.findByText("We're a little lost...");
-      });
+
+      // falls back to the authentication page
+      cy.findByTestId("google-setting").should("be.visible");
+      cy.findByTestId("ldap-setting").should("be.visible");
+      cy.findByTestId("api-keys-setting").should("be.visible");
+
+      // no EE auth providers
+      cy.findByTestId("saml-setting").should("not.exist");
     });
   });
 
   describe("scim settings management", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be able to setup and manage scim feature", () => {
-      cy.visit("/admin/settings/authentication");
-
-      cy.log("can go to user provisioning tab");
-      authTab("User Provisioning").should("exist");
-      authTab("User Provisioning").click();
-      cy.url().should(
-        "include",
-        "/admin/settings/authentication/user-provisioning",
-      );
+      cy.visit("/admin/settings/authentication/user-provisioning");
 
       cy.log(
         "should not show endpoint and token inputs if scim has never been enabled before",
@@ -184,14 +115,14 @@ describe("scenarios > admin > settings > user provisioning", () => {
 
       cy.log("should be able to disable scim and info stay");
       scimToggle().click();
-      scimToggle().should("not.be.checked");
+      scimToggle().findByText("Disabled");
       scimEndpointInput().should("be.visible");
       scimTokenInput().should("be.visible");
       cy.findByRole("button", { name: /Regenerate/ }).should("be.disabled");
 
       cy.log("should be able to re-enable");
       scimToggle().click();
-      scimToggle().should("be.checked");
+      scimToggle().findByText("Enabled");
     });
 
     it("should warn users that saml user provisioning will be disabled before enabling scim", () => {
@@ -206,9 +137,9 @@ describe("scenarios > admin > settings > user provisioning", () => {
         cy.findByText(samlWarningMessage).should("exist");
 
         cy.log("message should not exist once scim has been enabled");
-        scimToggle().should("not.be.checked");
+        scimToggle().findByText("Disabled");
         scimToggle().click();
-        scimToggle().should("be.checked");
+        scimToggle().findByText("Enabled");
       });
 
       H.modal().within(() => {
@@ -267,13 +198,8 @@ describe("scenarios > admin > settings > user provisioning", () => {
   });
 });
 
-function authTab(name: string) {
-  return cy.findByRole("tab", { name });
-}
-
 function scimToggle() {
-  // TODO: make better selector
-  return cy.get("#scim-enabled");
+  return cy.findByTestId("scim-enabled-setting").findByText(/Enabled|Disabled/);
 }
 
 function scimEndpointInput() {

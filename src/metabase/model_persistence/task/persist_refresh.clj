@@ -6,17 +6,17 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
-   [metabase.models.task-history :as task-history]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
+   [metabase.task-history.core :as task-history]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -332,7 +332,7 @@
    (triggers/with-schedule
     (cron-schedule cron-spec))))
 
-(defn- individual-trigger [persisted-info]
+(defn- individual-trigger ^Trigger [persisted-info]
   (triggers/build
    (triggers/with-description (format "Refresh model %d: persisted-info %d"
                                       (:card_id persisted-info)
@@ -346,33 +346,33 @@
 (defn schedule-persistence-for-database!
   "Schedule a database for persistence refreshing."
   [database cron-spec]
-  (let [tggr (database-trigger database cron-spec)]
+  (let [trigger (database-trigger database cron-spec)]
     (log/info
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
-                     (u/the-id database) (.. ^Trigger tggr getKey getName)))
+                     (u/the-id database) (.. trigger getKey getName)))
     (persisted-info/ready-database! (u/the-id database))
-    (try (task/add-trigger! tggr)
+    (try (task/add-trigger! trigger)
          (catch ObjectAlreadyExistsException _e
            (log/info
             (u/format-color 'green "Persistence already present for database %d: trigger: %s"
                             (u/the-id database)
-                            (.. ^Trigger tggr getKey getName)))))))
+                            (.. trigger getKey getName)))))))
 
 (defn schedule-refresh-for-individual!
   "Schedule a refresh of an individual [[PersistedInfo record]]. Done through quartz for locking purposes."
   [persisted-info]
-  (let [tggr (individual-trigger persisted-info)]
+  (let [trigger (individual-trigger persisted-info)]
     (log/info
      (u/format-color 'green
                      "Scheduling refresh for model: %d"
                      (:card_id persisted-info)))
-    (try (task/add-trigger! tggr)
+    (try (task/add-trigger! trigger)
          (catch ObjectAlreadyExistsException _e
            (log/info
             (u/format-color :green "Persistence already present for model %d %s"
                             (:card_id persisted-info)
-                            (.. ^Trigger tggr getKey getName)))))))
+                            (.. trigger getKey getName)))))))
          ;; other errors?
 
 (defn job-info-by-db-id

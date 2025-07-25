@@ -6,7 +6,6 @@
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
@@ -40,11 +39,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- combine-compound-filters-of-type [compound-type subclauses]
-  (mapcat #(lib.util.match/match-one %
-             [(_ :guard (partial = compound-type)) & args]
+  (mapcat #(lib.util.match/match-lite %
+             [(t :guard (= t compound-type)) & args]
              args
              _
-             [&match])
+             [%])
           subclauses))
 
 (declare simplify-compound-filter)
@@ -187,6 +186,17 @@
     [:is-null field]  [:=  field nil]
     [:not-null field] [:!= field nil]))
 
+(declare field-options)
+
+(defn- emptyable?
+  [clause]
+  (if (is-clause? #{:field :expression :aggregation} clause)
+    (-> clause
+        field-options
+        :base-type
+        (isa? :metabase.lib.schema.expression/emptyable))
+    (mbql.preds/Emptyable? clause)))
+
 (defn desugar-is-empty-and-not-empty
   "Rewrite `:is-empty` and `:not-empty` filter clauses as simpler `:=` and `:!=`, respectively.
 
@@ -194,15 +204,15 @@
    non-`emptyable` types act as `:is-null`. If field has nil base type it is considered not emptyable expansion wise."
   [m]
   (lib.util.match/replace m
-    [:is-empty field]
-    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
-      [:or [:= field nil] [:= field ""]]
-      [:= field nil])
+    [:is-empty clause]
+    (if (emptyable? clause)
+      [:or [:= clause nil] [:= clause ""]]
+      [:= clause nil])
 
-    [:not-empty field]
-    (if (isa? (get-in field [2 :base-type]) :metabase.lib.schema.expression/emptyable)
-      [:and [:!= field nil] [:!= field ""]]
-      [:!= field nil])))
+    [:not-empty clause]
+    (if (emptyable? clause)
+      [:and [:!= clause nil] [:!= clause ""]]
+      [:!= clause nil])))
 
 (defn- replace-field-or-expression
   "Replace a field or expression inside :time-interval"
@@ -367,7 +377,8 @@
   [m]
   (lib.util.match/replace m
     [clause field & (args :guard (partial some (partial = [:relative-datetime :current])))]
-    (let [temporal-unit (or (lib.util.match/match-one field [:field _ {:temporal-unit temporal-unit}] temporal-unit)
+    (let [temporal-unit (or (lib.util.match/match-lite-recursive field
+                              [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]
       (into [clause field] (lib.util.match/replace args
                              [:relative-datetime :current]
@@ -548,10 +559,7 @@
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
                                          orderable))
-                                  (:order-by inner-query))
-        ;; Remove any :ident the orderable might have had. `:ident` in the options of a ref is for clauses that
-        ;; create columns, eg. breakouts; it's not referring to another clause by ident.
-        orderable           (m/update-existing orderable 2 #(not-empty (dissoc % :ident)))]
+                                  (:order-by inner-query))]
     (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query
@@ -933,11 +941,11 @@
   [field-form]
   (if (integer? field-form)
     [:field field-form nil]
-    (lib.util.match/match-one field-form :field)))
+    (lib.util.match/match-lite-recursive field-form :field field-form)))
 
 (mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]
   (or (unwrap-field-clause field-or-ref-form)
-      (lib.util.match/match-one field-or-ref-form :expression)))
+      (lib.util.match/match-lite-recursive field-or-ref-form :expression field-or-ref-form)))

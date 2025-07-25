@@ -2,10 +2,6 @@
 title: Funnel charts
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/funnel
-  - /learn/visualization/funnel
-  - /docs/latest/questions/visualizations/funnel
-  - /learn/metabase-basics/querying-and-dashboards/visualization/funnel
-
 description: Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps. To build a funnel chart in Metabase, you need a table with the name and value for each step.
 ---
 
@@ -51,11 +47,11 @@ For example: you could create three separate [query builder](../query-builder/ed
 ```sql
 -- example of a query that retrieves results of questions and combines them with UNION
 
-SELECT 'Leads' as step, * from {{#120-leads}}
+SELECT 'Leads' as step, * from {% raw %}{{#120-leads}}{% endraw %}
 UNION
-SELECT 'Qualified' as step, * from {{#121-qualified}}
+SELECT 'Qualified' as step, * from {% raw %}{{#121-qualified}}{% endraw %}
 UNION
-SELECT 'Prospects' as step, * from {{#122-prospects}}
+SELECT 'Prospects' as step, * from {% raw %}{{#122-prospects}}{% endraw %}
 
 ```
 
@@ -67,7 +63,7 @@ Funnel charts show the value of the metric for each step, and how the metric com
 
 ![Funnel chart with a tooltip](../images/read-a-funnel.png)
 
-So for example,"76.19\%, 2,972" under a step means that the value of the metric at this step is 2,972, which is 76.19\% of the value of the _first_ step (equal to 3,901).
+So for example,"76.19%, 2,972" under a step means that the value of the metric at this step is 2,972, which is 76.19% of the value of the _first_ step (equal to 3,901).
 
 To see percentage comparison with the _previous_ step (instead of the first), hover over the step and read the tooltip.
 

@@ -1,29 +1,34 @@
 import { c, t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
-import DateTime from "metabase/components/DateTime";
-import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
+import DateTime from "metabase/common/components/DateTime";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
   ItemCell,
   TBody,
   Table,
   TableColumn,
-} from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/components/ItemsTable/Columns";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
-import type { StaleCollectionItem } from "../types";
+import type {
+  ListStaleCollectionItemsSortColumn,
+  StaleCollectionItem,
+} from "../types";
 
 import CS from "./CleanupCollectionTable.module.css";
 import { itemKeyFn } from "./utils";
 
 interface CleanupCollectionTableProps {
   items: StaleCollectionItem[];
-  sortingOptions: SortingOptions;
-  onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
+  sortingOptions: SortingOptions<ListStaleCollectionItemsSortColumn>;
+  onSortingOptionsChange?: (
+    newSortingOptions: SortingOptions<ListStaleCollectionItemsSortColumn>,
+  ) => void;
   selectedItems?: StaleCollectionItem[];
   hasUnselected?: boolean;
   getIsSelected: (item: StaleCollectionItem) => boolean;

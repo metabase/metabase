@@ -23,15 +23,15 @@
 
 (defn- metadatas-for-table [tracker metadata-provider metadata-type table-id]
   (let [tracking-type (case metadata-type
-                        :metadata/column        ::table-fields
-                        :metadata/metric        ::table-metrics
-                        :metadata/segment       ::table-segments)]
+                        :metadata/column  ::table-fields
+                        :metadata/metric  ::table-metrics
+                        :metadata/segment ::table-segments)]
     (track-ids! tracker tracking-type [table-id]))
   (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id))
 
 (defn- metadatas-for-card [tracker metadata-provider metadata-type card-id]
   (let [tracking-type (case metadata-type
-                        :metadata/metric        ::card-metrics)]
+                        :metadata/metric ::card-metrics)]
     (track-ids! tracker tracking-type [card-id]))
   (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id))
 
@@ -63,6 +63,10 @@
     (lib.metadata.protocols/cached-metadatas metadata-provider metadata-type ids))
   (store-metadata! [_this object]
     (lib.metadata.protocols/store-metadata! metadata-provider object))
+  (cached-value [_this k not-found]
+    (lib.metadata.protocols/cached-value metadata-provider k not-found))
+  (cache-value! [_this k v]
+    (lib.metadata.protocols/cache-value! metadata-provider k v))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]

@@ -5,18 +5,20 @@ import PropTypes from "prop-types";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import Label from "metabase/components/type/Label";
-import Subhead from "metabase/components/type/Subhead";
+import Label from "metabase/common/components/type/Label";
+import Subhead from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getParameters } from "metabase/dashboard/selectors";
 import {
+  conjunct,
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 import { connect } from "metabase/lib/redux";
-import { formatFrame } from "metabase/lib/time";
+import { formatFrame } from "metabase/lib/time-dayjs";
+import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
@@ -170,10 +172,32 @@ function buildFilterText(pulse, parameters) {
   }
 
   const [firstParameter, ...otherParameters] = activeParameters;
-  const numValues = [].concat(firstParameter.value).length;
-  const firstFilterText = `${firstParameter.name} is ${
-    numValues > 1 ? t`${numValues} selections` : firstParameter.value
-  }`;
+
+  // Format the first parameter value using the same logic as DefaultParametersSection
+  let formattedValue;
+  if (firstParameter.type && firstParameter.type.startsWith("date/")) {
+    const values = Array.isArray(firstParameter.value)
+      ? firstParameter.value
+      : [firstParameter.value];
+    const formattedValues = values
+      .map((val) => formatDateValue(firstParameter, val))
+      .filter(Boolean);
+    if (formattedValues.length > 0) {
+      formattedValue = conjunct(formattedValues, t`and`);
+    } else {
+      formattedValue = firstParameter.value;
+    }
+  } else {
+    const values = Array.isArray(firstParameter.value)
+      ? firstParameter.value
+      : [firstParameter.value];
+    formattedValue =
+      values.length > 1
+        ? t`${values.length} selections`
+        : conjunct(values, t`and`);
+  }
+
+  const firstFilterText = `${firstParameter.name}: ${formattedValue}`;
 
   return _.isEmpty(otherParameters)
     ? firstFilterText

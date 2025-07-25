@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sso.api.sso-test
   (:require
    [clojure.test :refer :all]
-   [metabase.http-client :as client]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.http-client :as client]))
 
 (deftest saml-logout
   (testing "with slo enabled and configured"

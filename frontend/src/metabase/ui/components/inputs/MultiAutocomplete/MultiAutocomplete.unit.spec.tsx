@@ -1,6 +1,7 @@
-import type { ComboboxData } from "@mantine/core";
+import type { ComboboxItem, ComboboxItemGroup } from "@mantine/core";
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
@@ -21,44 +22,30 @@ function TestInput({ initialValue, onChange, ...props }: TestInputProps) {
   return <MultiAutocomplete {...props} value={value} onChange={handleChange} />;
 }
 
-const REMAPPED_DATA: ComboboxData = [
+const REMAPPED_DATA: ComboboxItem[] = [
   { value: "1", label: "One" },
   { value: "2", label: "Two" },
   { value: "3", label: "Three" },
   { value: "4", label: "Four" },
 ];
 
-const GROUPED_DATA: ComboboxData = [
+const GROUPED_DATA: ComboboxItemGroup[] = [
   { group: "A", items: ["A1", "A2"] },
   { group: "B", items: ["B1", "B2"] },
 ];
 
-type SetupOpts = {
+type SetupOpts = Omit<MultiAutocompleteProps, "value" | "onChange"> & {
   initialValue?: string[];
-  data?: ComboboxData;
-  placeholder?: string;
-  autoFocus?: boolean;
-  rightSection?: ReactNode;
-  nothingFoundMessage?: ReactNode;
-  "aria-label"?: string;
-  onCreate?: (rawValue: string) => string | null;
 };
 
-function setup({
-  initialValue = [],
-  data = [],
-  placeholder = "Enter some text",
-  onCreate,
-}: SetupOpts = {}) {
+function setup({ initialValue = [], ...props }: SetupOpts = {}) {
   const onChange = jest.fn<void, [string[]]>();
   const onSearchChange = jest.fn<void, [string]>();
 
   renderWithProviders(
     <TestInput
+      {...props}
       initialValue={initialValue}
-      data={data}
-      placeholder={placeholder}
-      onCreate={onCreate}
       onChange={onChange}
       onSearchChange={onSearchChange}
     />,
@@ -91,9 +78,9 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should not accept values when blurring if they are not accepted by onCreate", async () => {
+  it("should not accept values when blurring if they are not accepted by parseValue", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => (value === "foo" ? value : null),
+      parseValue: (value) => (value === "foo" ? value : null),
     });
     await userEvent.type(input, "foo");
     await userEvent.click(document.body);
@@ -182,9 +169,9 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should not accept values when entering a comma if they are not accepted by onCreate", async () => {
+  it("should not accept values when entering a comma if they are not accepted by parseValue", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => (value === "foo" ? value : null),
+      parseValue: (value) => (value === "foo" ? value : null),
     });
     await userEvent.type(input, "foo,");
     expect(onChange).toHaveBeenLastCalledWith(["foo"]);
@@ -220,9 +207,10 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  it("should accept comma-separated values, but omit values not accepted by onCreate", async () => {
+  it("should accept comma-separated values, but omit values not accepted by parseValue", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => (value === "foo" || value === "bar" ? value : null),
+      parseValue: (value) =>
+        value === "foo" || value === "bar" ? value : null,
     });
     await userEvent.click(input);
     await userEvent.paste("foo,bar,baz");
@@ -304,8 +292,13 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["3", "4", "2"]);
   });
 
-  it("should display the remapped value when there are matching data", () => {
-    setup({ initialValue: ["1", "2", "5"], data: REMAPPED_DATA });
+  it("should display the remapped value with renderValue", () => {
+    setup({
+      initialValue: ["1", "2", "5"],
+      data: REMAPPED_DATA,
+      renderValue: ({ value }) =>
+        REMAPPED_DATA.find((option) => option.value === value)?.label ?? value,
+    });
     expect(screen.getByText("One")).toBeInTheDocument();
     expect(screen.getByText("Two")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
@@ -315,11 +308,11 @@ describe("MultiAutocomplete", () => {
     const { input, onChange } = setup({
       initialValue: ["1", "3"],
       data: REMAPPED_DATA,
+      renderValue: ({ value }) =>
+        REMAPPED_DATA.find((option) => option.value === value)?.label ?? value,
     });
     await userEvent.click(screen.getByText("One"));
-    expect(input).toHaveValue("One");
-    expect(getOption("One")).toBeInTheDocument();
-    expect(queryOption("Two")).not.toBeInTheDocument();
+    expect(input).toHaveValue("1");
     expect(onChange).not.toHaveBeenCalled();
 
     await userEvent.clear(input);
@@ -359,34 +352,6 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue('"a\\"bc"');
     expect(onChange).toHaveBeenCalledWith(['a"bc']);
     expect(onSearchChange).toHaveBeenLastCalledWith('a"bc');
-  });
-
-  it("should quote the selected option label when editing", async () => {
-    const { input, onChange } = setup({
-      initialValue: ["1"],
-      data: [
-        { value: "1", label: "a,b" },
-        { value: "2", label: "a,b,c" },
-        { value: "3", label: "a,b,c,d" },
-      ],
-    });
-    await userEvent.click(screen.getByText("a,b"));
-    expect(input).toHaveValue('"a,b"');
-    expect(getOption("a,b")).toBeInTheDocument();
-    expect(getOption("a,b,c")).toBeInTheDocument();
-    expect(onChange).not.toHaveBeenCalled();
-
-    await userEvent.click(getOption("a,b,c"));
-    expect(input).toHaveValue("");
-    expect(onChange).toHaveBeenLastCalledWith(["2"]);
-
-    await userEvent.type(input, '"b\\,c"');
-    expect(queryOption("a,b")).not.toBeInTheDocument();
-    expect(queryOption("a,b,c")).not.toBeInTheDocument();
-    expect(getOption("a,b,c,d")).toBeInTheDocument();
-
-    await userEvent.click(getOption("a,b,c,d"));
-    expect(onChange).toHaveBeenLastCalledWith(["2", "3"]);
   });
 
   it("should open and close the dropdown correctly", async () => {
@@ -453,7 +418,7 @@ describe("MultiAutocomplete", () => {
 
   it("should ignore duplicates when there are different string representations of the underlying value", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => {
+      parseValue: (value) => {
         const number = parseFloat(value);
         return Number.isNaN(number) ? null : String(number);
       },
@@ -464,7 +429,7 @@ describe("MultiAutocomplete", () => {
 
   it("should ignore duplicates in the clipboard data", async () => {
     const { input, onChange } = setup({
-      onCreate: (value) => {
+      parseValue: (value) => {
         const number = parseFloat(value);
         return Number.isNaN(number) ? null : String(number);
       },
@@ -499,5 +464,17 @@ describe("MultiAutocomplete", () => {
 
     await userEvent.type(input, "on");
     expect(getOption("One")).toBeInTheDocument();
+  });
+
+  it("should not submit the input value during a keyboard composition session (metabase#60630)", async () => {
+    const { input, onChange } = setup();
+    await userEvent.type(input, "foo");
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(input).toHaveValue("foo");
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
+
+    fireEvent.keyDown(input, { key: "Enter", isComposing: false });
+    expect(input).toHaveValue("");
+    expect(onChange).toHaveBeenLastCalledWith(["foo"]);
   });
 });

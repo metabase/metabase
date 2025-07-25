@@ -1,39 +1,52 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
+import {
+  isHeadingDashCard,
+  isLinkDashCard,
+  isQuestionDashCard,
+  isVirtualDashCard,
+  supportsInlineParameters,
+} from "metabase/dashboard/utils";
+import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
+import {
+  isVisualizerDashboardCard,
+  isVisualizerSupportedVisualization,
+} from "metabase/visualizer/utils";
+import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
-  Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { canEditQuestion } from "../DashCardMenu/utils";
+
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
-import { AddSeriesButton } from "./AddSeriesButton/AddSeriesButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
 import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButton";
 import S from "./DashCardActionsPanel.module.css";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
-import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 
 interface Props {
   series: Series;
-  dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question: Question | null;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
   isTrashedOnRemove: boolean;
+  onDuplicate: () => void;
   onRemove: (dashcard: DashboardCard) => void;
-  onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
@@ -48,18 +61,20 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
+  onAddParameter: (options: NewParameterOpts) => void;
+  onEditVisualization?: () => void;
 }
 
 function DashCardActionsPanelInner({
   series,
-  dashboard,
   dashcard,
+  question,
   isLoading,
   isPreviewing,
   hasError,
   isTrashedOnRemove,
+  onDuplicate,
   onRemove,
-  onAddSeries,
   onReplaceCard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateVisualizationSettings,
@@ -68,13 +83,11 @@ function DashCardActionsPanelInner({
   onLeftEdge,
   onMouseDown,
   className,
+  onAddParameter,
+  onEditVisualization,
 }: Props) {
-  const {
-    disableSettingsConfig,
-    supportPreviewing,
-    supportsSeries,
-    disableClickBehavior,
-  } = getVisualizationRaw(series) ?? {};
+  const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
+    getVisualizationRaw(series) ?? {};
 
   const buttons = [];
 
@@ -110,14 +123,6 @@ function DashCardActionsPanelInner({
     onReplaceCard(dashcard);
   }, [dashcard, onReplaceCard]);
 
-  const handleAddSeries = useCallback(() => {
-    if (!dashcard) {
-      return;
-    }
-
-    onAddSeries(dashcard);
-  }, [dashcard, onAddSeries]);
-
   const handleRemoveCard = useCallback(() => {
     if (!dashcard) {
       return;
@@ -137,6 +142,29 @@ function DashCardActionsPanelInner({
     );
   }
 
+  const canAddFilter = useMemo(() => {
+    if (!dashcard || !supportsInlineParameters(dashcard)) {
+      return false;
+    }
+
+    return isQuestionDashCard(dashcard)
+      ? question != null && canEditQuestion(question)
+      : isHeadingDashCard(dashcard);
+  }, [dashcard, question]);
+
+  if (canAddFilter) {
+    buttons.push(
+      <AddFilterParameterMenu key="add-filter" onAdd={onAddParameter}>
+        <DashCardActionButton
+          tooltip={t`Add a filter`}
+          aria-label={t`Add a filter`}
+        >
+          <DashCardActionButton.Icon name="filter" />
+        </DashCardActionButton>
+      </AddFilterParameterMenu>,
+    );
+  }
+
   if (supportPreviewing && isPreviewing) {
     buttons.push(
       <DashCardActionButton
@@ -151,17 +179,65 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (!disableSettingsConfig) {
+    if (
+      isVisualizerDashboardCard(dashcard) ||
+      isVisualizerSupportedVisualization(dashcard?.card.display)
+    ) {
+      const label = isVisualizerDashboardCard(dashcard)
+        ? t`Edit visualization`
+        : t`Visualize another way`;
+
+      buttons.push(
+        <DashCardActionButton
+          key="visualizer-button"
+          tooltip={label}
+          aria-label={label}
+          onClick={onEditVisualization}
+        >
+          <DashCardActionButton.Icon name="lineandbar" />
+        </DashCardActionButton>,
+      );
+    }
+
+    if (
+      !disableSettingsConfig &&
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard?.card.display)
+    ) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
-          dashboard={dashboard}
           dashcard={dashcard}
           onReplaceAllVisualizationSettings={
             handleOnReplaceAllVisualizationSettings
           }
         />,
+      );
+    }
+
+    if (
+      dashcard &&
+      !isVisualizerDashboardCard(dashcard) &&
+      !isVisualizerSupportedVisualization(dashcard?.card.display) &&
+      !isVirtualDashCard(dashcard) &&
+      onEditVisualization
+    ) {
+      buttons.push(
+        <DashCardActionButton
+          key="visualizer-button"
+          tooltip={t`Visualize another way`}
+          aria-label={t`Visualize another way`}
+          onClick={() => {
+            trackSimpleEvent({
+              event: "visualize_another_way_clicked",
+              triggered_from: "dashcard-actions-panel",
+            });
+            onEditVisualization();
+          }}
+        >
+          <DashCardActionButton.Icon name="lineandbar" />
+        </DashCardActionButton>,
       );
     }
 
@@ -192,14 +268,13 @@ function DashCardActionsPanelInner({
     );
   }
 
-  const duplicateDashcard = useDuplicateDashCard({ dashboard, dashcard });
   if (!isLoading && dashcard) {
     buttons.push(
       <DashCardActionButton
         key="duplicate-question"
         aria-label={t`Duplicate`}
         tooltip={t`Duplicate`}
-        onClick={duplicateDashcard}
+        onClick={onDuplicate}
       >
         <Icon name="copy" />
       </DashCardActionButton>,
@@ -207,21 +282,10 @@ function DashCardActionsPanelInner({
   }
 
   if (!isLoading && !hasError) {
-    if (supportsSeries) {
-      buttons.push(
-        <AddSeriesButton
-          key="add-series-button"
-          series={series}
-          onClick={handleAddSeries}
-        />,
-      );
-    }
-
     if (dashcard && isActionDashCard(dashcard)) {
       buttons.push(
         <ActionSettingsButtonConnected
           key="action-settings-button"
-          dashboard={dashboard}
           dashcard={dashcard}
         />,
       );

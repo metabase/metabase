@@ -146,7 +146,7 @@
 (#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
   "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
   MetadataProviders that can hit some sort of relatively expensive external service,
-  e.g. [[metabase.lib.metadata.jvm/application-database-metadata-provider]]. The main purpose of this is to allow
+  e.g. [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]]. The main purpose of this is to allow
   pre-warming the cache with stuff that was already fetched elsewhere.
   See [[metabase.models.metric/warmed-metadata-provider]] for example.
 
@@ -155,7 +155,11 @@
   (cached-metadatas [cached-metadata-provider metadata-type metadata-ids]
     "Like [[metadatas]], but only return metadata that is already present in the cache.")
   (store-metadata! [cached-metadata-provider object]
-    "Store metadata of a specific type, e.g. `:metadata/table`."))
+    "Store metadata of a specific type, e.g. `:metadata/table`.")
+  (cached-value [cached-metadata-provider k not-found]
+    "Fetch a general cached value stored by [[cache-value!]] with the key `k`.")
+  (cache-value! [cached-metadata-provider k v]
+    "Store a general cached value `v` under the key `k`."))
 
 (defn cached-metadata-provider?
   "Whether `x` is a valid [[CachedMetadataProvider]]."

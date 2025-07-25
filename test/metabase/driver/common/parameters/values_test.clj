@@ -16,10 +16,10 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -407,7 +407,7 @@
                                       []))))
                     (testing "query hits persisted table"
                       (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
-                                                                (public-settings/site-uuid))
+                                                                (system/site-uuid))
                             update-query     (format "update %s.%s set name = name || ' from cached table'"
                                                      persisted-schema (:table_name pi))
                             model-query (format "select c_orig.name, c_cached.name
@@ -468,8 +468,8 @@
                                  (ex-data e)))
                              (take-while some? (iterate ex-cause e)))]
           (testing "should be a card Query error"
-            (is (= true
-                   (boolean (:card-query-error? exc-data)))))
+            (is (true?
+                 (boolean (:card-query-error? exc-data)))))
           (testing "card-id"
             (is (= 1
                    (:card-id exc-data))))
@@ -588,7 +588,7 @@
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                       meta/metadata-provider
-                                      {:cards [(assoc ((lib.tu/mock-cards) :orders)
+                                      {:cards [(assoc (:orders (lib.tu/mock-cards))
                                                       :id 1
                                                       :dataset-query (lib.tu.macros/mbql-query orders
                                                                        {:filter      [:between $total 30 60]

@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.databases :as advanced-config.file.databases]
-   [metabase.db :as mdb]
-   [metabase.driver.h2 :as h2]
+   [metabase.app-db.core :as mdb]
+   [metabase.driver.settings :as driver.settings]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -14,7 +14,7 @@
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
-                                h2/*allow-testing-h2-connections*         true]
+                                driver.settings/*allow-testing-h2-connections* true]
                         (mt/with-premium-features #{:config-text-file}
                           (thunk)))))
 

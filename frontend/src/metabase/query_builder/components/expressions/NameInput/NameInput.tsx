@@ -1,7 +1,7 @@
 import { type ChangeEvent, type KeyboardEvent, useCallback } from "react";
 
 import { TextInput } from "metabase/ui";
-import type { StartRule } from "metabase-lib/v1/expressions";
+import type * as Lib from "metabase-lib";
 
 import S from "./NameInput.module.css";
 import { getPlaceholder } from "./utils";
@@ -10,12 +10,12 @@ export function NameInput({
   value,
   onChange,
   onSubmit,
-  startRule,
+  expressionMode,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
 }) {
   const handleChange = useCallback(
     (evt: ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +26,9 @@ export function NameInput({
 
   const handleKeyDown = useCallback(
     (evt: KeyboardEvent<HTMLInputElement>) => {
+      if (evt.nativeEvent.isComposing) {
+        return;
+      }
       if (evt.key === "Enter") {
         onSubmit();
       }
@@ -39,7 +42,7 @@ export function NameInput({
       data-testid="expression-name"
       type="text"
       value={value}
-      placeholder={getPlaceholder(startRule)}
+      placeholder={getPlaceholder(expressionMode)}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
       classNames={{

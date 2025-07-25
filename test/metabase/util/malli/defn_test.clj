@@ -161,9 +161,7 @@
 
 (deftest ^:parallel preserve-arglists-metadata-test
   (is (= 'java.lang.Integer
-         (-> '{:arities [:single {:args    ^{:tag Integer} [x :- :int y :- :int]
-                                  :prepost nil
-                                  :body    [(+ x y)]}]}
+         (-> (mu.fn/parse-fn-tail '[^Integer [x :- :int y :- :int] (+ x y)])
              (#'mu.defn/deparameterized-arglists)
              first
              meta
@@ -177,7 +175,7 @@
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
-                    "Inputs: []\n  Return: :int" (clojure.core/fn f [] "foo"))
+                    "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
                  (deanon-fn-names expansion))))))
     (testing "returns an instrumented fn"
       (mt/with-dynamic-fn-redefs [mu.fn/instrument-ns? (constantly true)]

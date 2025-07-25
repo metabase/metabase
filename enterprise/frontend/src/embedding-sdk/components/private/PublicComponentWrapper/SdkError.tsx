@@ -2,8 +2,8 @@ import { jt, t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
-import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
-import Alert from "metabase/core/components/Alert";
+import type { SdkErrorComponentProps } from "embedding-sdk/types";
+import Alert from "metabase/common/components/Alert";
 import { color } from "metabase/lib/colors";
 import { Box, Center, Code } from "metabase/ui";
 
@@ -13,7 +13,7 @@ export const SdkError = ({ message }: SdkErrorComponentProps) => {
   const ErrorMessageComponent = CustomError || DefaultErrorMessage;
 
   return (
-    <Center h="100%" w="100%" mx="auto">
+    <Center h="100%" w="100%" mx="auto" data-testid="sdk-error-container">
       <ErrorMessageComponent message={message} />
     </Center>
   );

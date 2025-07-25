@@ -3,7 +3,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
-import SidebarLayout from "metabase/components/SidebarLayout";
+import SidebarLayout from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -26,9 +26,9 @@ const mapDispatchToProps = {
 class DatabaseListContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,
-    databaseId: PropTypes.number.isRequired,
     location: PropTypes.object.isRequired,
-    isEditing: PropTypes.bool,
+    database: PropTypes.object.isRequired,
+    databaseId: PropTypes.number.isRequired,
   };
 
   async fetchContainerData() {
@@ -48,12 +48,9 @@ class DatabaseListContainer extends Component {
   }
 
   render() {
-    const { isEditing } = this.props;
-
     return (
       <SidebarLayout
         className={cx(CS.flexFull, CS.relative)}
-        style={isEditing ? { paddingTop: "43px" } : {}}
         sidebar={<BaseSidebar />}
       >
         <DatabaseList {...this.props} />

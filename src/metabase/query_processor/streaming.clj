@@ -1,5 +1,7 @@
 (ns metabase.query-processor.streaming
   (:require
+   [metabase.analytics.core :as analytics]
+   [metabase.driver :as driver]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
@@ -134,6 +136,7 @@
          {:data initial-metadata})
 
         ([result]
+         (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
          (assoc result
                 :row_count @row-count
                 :status :completed))
@@ -185,13 +188,20 @@
                         (f rff))
                       (catch Throwable e
                         e))]
-         (assert (some? result) "QP unexpectedly returned nil.")
-        ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
-        ;; question to return a response directly instead of a core.async channel
-         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
-         (when (or (instance? Throwable result)
-                   (= (:status result) :failed))
-           (streaming-response/write-error! os result export-format)))))))
+         (if (nil? result)
+           (do
+             (assert (qp.pipeline/canceled?* canceled-chan)
+                     "QP unexpectedly returned nil.")
+             ;; Create a cancelled result to trigger possible proper cleanup?
+             ;; If canceled, nobody should be receiving the stream.
+             {:status :canceled, :row_count 0, :data {:cols []}})
+           (do
+             ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
+             ;; question to return a response directly instead of a core.async channel
+             (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+             (when (or (instance? Throwable result)
+                       (= (:status result) :failed))
+               (streaming-response/write-error! os result export-format)))))))))
 
 (defn transforming-query-response
   "Decorate the streaming rff to transform the top-level payload."
@@ -216,9 +226,3 @@
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
-
-(defn export-formats
-  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
-  with extra metadata), but other types may be available if plugins are installed. (The interface is extensible.)"
-  []
-  (set (keys (methods qp.si/stream-options))))

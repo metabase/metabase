@@ -3,11 +3,10 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config :as config]
-   [metabase.embed.app-origins-sdk :as aos]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings :as public-settings]
+   [metabase.config.core :as config]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
@@ -56,7 +55,7 @@
 
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
-    (mt/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
       (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
                   "https://metabase.com https://*.metabase.com https://www.metabase.com "
                   "https://clojure.org https://*.clojure.org")
@@ -190,14 +189,14 @@
         (is (= "http://localhost:8080" (-> "http://localhost:8080"
                                            (mw.security/access-control-headers
                                             (embed.settings/enable-embedding-sdk)
-                                            (aos/embedding-app-origins-sdk))
+                                            (embed.settings/embedding-app-origins-sdk))
                                            (get "Access-Control-Allow-Origin"))))))
     (testing "Should disable CORS when enable-embedding-sdk is disabled"
       (mt/with-temporary-setting-values [enable-embedding-sdk false]
         (is (= nil (get (mw.security/access-control-headers
                          "http://localhost:8080"
                          (embed.settings/enable-embedding-sdk)
-                         (aos/embedding-app-origins-sdk))
+                         (embed.settings/embedding-app-origins-sdk))
                         "Access-Control-Allow-Origin"))
             "Localhost is only permitted when `enable-embedding-sdk` is `true`."))
       (is (= nil (get (mw.security/access-control-headers
@@ -212,12 +211,54 @@
           (is (= "https://example.com"
                  (get (mw.security/access-control-headers "https://example.com"
                                                           (embed.settings/enable-embedding-sdk)
-                                                          (aos/embedding-app-origins-sdk))
-                      "Access-Control-Allow-Origin"))))))))
+                                                          (embed.settings/embedding-app-origins-sdk))
+                      "Access-Control-Allow-Origin"))))))
+    (testing "Should set Access-Control-Max-Age to 60"
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                         embedding-app-origins-sdk "https://example.com"]
+        (let [headers (mw.security/access-control-headers
+                       "https://example.com"
+                       (embed.settings/enable-embedding-sdk)
+                       (embed.settings/embedding-app-origins-sdk))]
+          (is (= "60" (get headers "Access-Control-Max-Age"))
+              "Expected Access-Control-Max-Age header to be set to 60")))))
+  (testing "CORS should be enabled when enable-embedding-simple is true"
+    (mt/with-temporary-setting-values [enable-embedding-simple true
+                                       enable-embedding-sdk false]
+      (let [headers (mw.security/access-control-headers "https://example.com"
+                                                        (or (embed.settings/enable-embedding-sdk)
+                                                            (embed.settings/enable-embedding-simple))
+                                                        "https://example.com")]
+        (is (= "https://example.com"
+               (get headers "Access-Control-Allow-Origin"))
+            "CORS should work when enable-embedding-simple is true even if enable-embedding-sdk is false"))))
+  (testing "CORS should be enabled when both enable-embedding-simple and enable-embedding-sdk are true"
+    (mt/with-premium-features #{:embedding-sdk}
+      (mt/with-temporary-setting-values [enable-embedding-simple true
+                                         enable-embedding-sdk true
+                                         embedding-app-origins-sdk "https://example.com"]
+        (let [headers (mw.security/access-control-headers "https://example.com"
+                                                          (or (embed.settings/enable-embedding-sdk)
+                                                              (embed.settings/enable-embedding-simple))
+                                                          (embed.settings/embedding-app-origins-sdk))]
+          (is (= "https://example.com"
+                 (get headers "Access-Control-Allow-Origin"))
+              "CORS should work when both embedding options are enabled")))))
+  (testing "CORS should be disabled when both enable-embedding-simple and enable-embedding-sdk are false"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk false
+                                       embedding-app-origins-sdk "https://example.com"]
+      (let [headers (mw.security/access-control-headers "https://example.com"
+                                                        (or (embed.settings/enable-embedding-sdk)
+                                                            (embed.settings/enable-embedding-simple))
+                                                        (embed.settings/embedding-app-origins-sdk))]
+        (is (= nil
+               (get headers "Access-Control-Allow-Origin"))
+            "CORS should be disabled when both embedding options are disabled")))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
-    (let [default-hosts @#'public-settings/default-allowed-iframe-hosts]
+    (let [default-hosts @#'server.settings/default-allowed-iframe-hosts]
       (testing "The defaults hosts parse correctly"
         (is (= ["'self'"
                 "youtube.com"

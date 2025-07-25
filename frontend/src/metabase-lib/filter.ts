@@ -1,9 +1,11 @@
-import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
+import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import * as ML from "cljs/metabase.lib.js";
-import type { CardId, DatasetColumn } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
+import { isSegmentMetadata } from "./metadata";
 import { removeClause } from "./query";
 import type {
   BooleanFilterParts,
@@ -15,6 +17,7 @@ import type {
   FilterClause,
   FilterOperator,
   FilterParts,
+  Filterable,
   NumberFilterParts,
   Query,
   RelativeDateFilterParts,
@@ -76,7 +79,7 @@ export function stringFilterClause({
 export function stringFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): StringFilterParts | null {
   return ML.string_filter_parts(query, stageIndex, filterClause);
 }
@@ -92,7 +95,7 @@ export function numberFilterClause({
 export function numberFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): NumberFilterParts | null {
   return ML.number_filter_parts(query, stageIndex, filterClause);
 }
@@ -109,7 +112,7 @@ export function coordinateFilterClause({
 export function coordinateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): CoordinateFilterParts | null {
   return ML.coordinate_filter_parts(query, stageIndex, filterClause);
 }
@@ -125,7 +128,7 @@ export function booleanFilterClause({
 export function booleanFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): BooleanFilterParts | null {
   return ML.boolean_filter_parts(query, stageIndex, filterClause);
 }
@@ -139,7 +142,7 @@ export function specificDateFilterClause({
   return ML.specific_date_filter_clause(
     operator,
     column,
-    values.map((value) => moment(value)),
+    values.map((value) => dayjs(value)),
     hasTime,
   );
 }
@@ -147,7 +150,7 @@ export function specificDateFilterClause({
 export function specificDateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): SpecificDateFilterParts | null {
   const filterParts = ML.specific_date_filter_parts(
     query,
@@ -186,7 +189,7 @@ export function relativeDateFilterClause({
 export function relativeDateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): RelativeDateFilterParts | null {
   return ML.relative_date_filter_parts(query, stageIndex, filterClause);
 }
@@ -203,7 +206,7 @@ export function excludeDateFilterClause({
 export function excludeDateFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): ExcludeDateFilterParts | null {
   return ML.exclude_date_filter_parts(query, stageIndex, filterClause);
 }
@@ -216,14 +219,14 @@ export function timeFilterClause({
   return ML.time_filter_clause(
     operator,
     column,
-    values.map((value) => moment(value)),
+    values.map((value) => dayjs(value)),
   );
 }
 
 export function timeFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): TimeFilterParts | null {
   const filterParts = ML.time_filter_parts(query, stageIndex, filterClause);
   if (!filterParts) {
@@ -245,7 +248,7 @@ export function defaultFilterClause({
 export function defaultFilterParts(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause,
+  filterClause: Filterable,
 ): DefaultFilterParts | null {
   return ML.default_filter_parts(query, stageIndex, filterClause);
 }
@@ -281,8 +284,13 @@ export function isSegmentFilter(
   stageIndex: number,
   filter: FilterClause,
 ) {
-  const { operator } = expressionParts(query, stageIndex, filter);
-  return operator === "segment";
+  const parts = expressionParts(query, stageIndex, filter);
+
+  return (
+    isSegmentMetadata(parts) ||
+    // @ts-expect-error: TODO should we remove this branch?
+    parts?.operator === "segment"
+  );
 }
 
 type UpdateLatLonFilterBounds = {
@@ -299,8 +307,8 @@ type UpdateLatLonFilterBounds = {
 export function updateLatLonFilter(
   query: Query,
   stageIndex: number,
-  latitudeColumn: DatasetColumn,
-  longitudeColumn: DatasetColumn,
+  latitudeColumn: ColumnMetadata,
+  longitudeColumn: ColumnMetadata,
   cardId: CardId | undefined,
   bounds: UpdateLatLonFilterBounds,
 ): Query {
@@ -320,7 +328,7 @@ export function updateLatLonFilter(
 export function updateNumericFilter(
   query: Query,
   stageIndex: number,
-  numericColumn: DatasetColumn,
+  numericColumn: ColumnMetadata,
   cardId: CardId | undefined,
   start: number,
   end: number,
@@ -342,7 +350,7 @@ export function updateNumericFilter(
 export function updateTemporalFilter(
   query: Query,
   stageIndex: number,
-  temporalColumn: DatasetColumn,
+  temporalColumn: ColumnMetadata,
   cardId: CardId | undefined,
   start: string | Date,
   end: string | Date,

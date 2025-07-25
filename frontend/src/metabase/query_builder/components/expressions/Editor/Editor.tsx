@@ -1,28 +1,29 @@
-import type { EditorState } from "@codemirror/state";
+import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
-import CodeMirror, {
-  EditorSelection,
-  type ReactCodeMirrorRef,
-} from "@uiw/react-codemirror";
+import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import {
+  CodeMirror,
+  type CodeMirrorRef,
+} from "metabase/common/components/CodeMirror";
+import { useSelector } from "metabase/lib/redux";
+import {
+  type DefinedClauseName,
   type ExpressionError,
-  MBQL_CLAUSES,
-  type StartRule,
   diagnoseAndCompile,
   format,
-} from "metabase-lib/v1/expressions";
-import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
+  getClauseDefinition,
+} from "metabase/querying/expressions";
+import { tokenAtPos } from "metabase/querying/expressions";
+import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
@@ -37,19 +38,22 @@ import { Tooltip } from "./Tooltip";
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import { hasActiveSnippet, useInitialClause } from "./utils";
 
 type EditorProps = {
   id?: string;
   clause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
   hasHeader?: boolean;
   onCloseEditor?: () => void;
+  initialExpressionClause?: DefinedClauseName | null;
 
   onChange: (
     clause: Lib.ExpressionClause | null,
@@ -65,19 +69,20 @@ const FB_HEIGHT_WITH_HEADER = FB_HEIGHT + 48;
 export function Editor(props: EditorProps) {
   const {
     id,
-    startRule = "expression",
+    expressionMode = "expression",
     stageIndex,
     query,
-    expressionIndex,
+    availableColumns,
     readOnly,
     error,
     reportTimezone,
     shortcuts,
     hasHeader,
     onCloseEditor,
+    initialExpressionClause,
   } = props;
 
-  const ref = useRef<ReactCodeMirrorRef>(null);
+  const ref = useRef<CodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
   const [isFunctionBrowserOpen, { toggle: toggleFunctionBrowser }] =
     useDisclosure();
@@ -108,17 +113,17 @@ export function Editor(props: EditorProps) {
         stageIndex={stageIndex}
         metadata={metadata}
         reportTimezone={reportTimezone}
+        expressionMode={expressionMode}
         {...props}
       />
     ),
   });
 
   const extensions = useExtensions({
-    startRule,
+    expressionMode,
     query,
     stageIndex,
-    expressionIndex,
-    reportTimezone,
+    availableColumns,
     metadata,
     extensions: [customTooltip],
   });
@@ -128,17 +133,13 @@ export function Editor(props: EditorProps) {
     if (!view) {
       return;
     }
-    const clause = MBQL_CLAUSES[name];
+    const clause = getClauseDefinition(name);
     if (!clause) {
       return;
     }
 
-    const text =
-      clause.args.length > 0 ? `${clause.displayName}()` : clause.displayName;
-    const len =
-      clause.args.length > 0
-        ? clause.displayName.length + 1 // + 1 for the parenthesis
-        : clause.displayName.length;
+    const text = `${clause.displayName}()`;
+    const len = clause.displayName.length + 1; // + 1 for the parenthesis
 
     view?.focus();
     view?.dispatch(
@@ -147,6 +148,15 @@ export function Editor(props: EditorProps) {
         changes: [{ from: range.from, to: range.to, insert: text }],
       })),
     );
+  }, []);
+
+  const applyInitialSnippet = useInitialClause({
+    initialExpressionClause,
+  });
+
+  const [isSnippetActive, setIsSnippetActive] = useState(false);
+  const handleUpdate = useCallback((update: ViewUpdate) => {
+    setIsSnippetActive(hasActiveSnippet(update.state));
   }, []);
 
   return (
@@ -167,8 +177,17 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          onCreateEditor={applyInitialSnippet}
+          onUpdate={handleUpdate}
+          autoCorrect="off"
+          tabIndex={0}
+          onFormat={
+            error === null && isValidated && !isSnippetActive
+              ? formatExpression
+              : undefined
+          }
         />
-        <Errors error={error} />
+        <Errors error={isSnippetActive ? null : error} />
 
         {source.trim() === "" && !isFormatting && error == null && (
           <Shortcuts shortcuts={shortcuts} className={S.shortcuts} />
@@ -208,7 +227,7 @@ export function Editor(props: EditorProps) {
       {isFunctionBrowserOpen && (
         <LayoutSidebar h={hasHeader ? FB_HEIGHT_WITH_HEADER : FB_HEIGHT}>
           <FunctionBrowser
-            startRule={startRule}
+            expressionMode={expressionMode}
             reportTimezone={reportTimezone}
             query={query}
             onClauseClick={handleFunctionBrowserClauseClick}
@@ -228,10 +247,11 @@ export function Editor(props: EditorProps) {
 
 function useExpression({
   clause,
-  startRule,
+  expressionMode,
   stageIndex,
-  query,
   expressionIndex,
+  query,
+  availableColumns,
   metadata,
   onChange,
 }: EditorProps & {
@@ -245,35 +265,29 @@ function useExpression({
 
   const formatExpression = useCallback(
     ({ initial = false }: { initial?: boolean }) => {
-      const expression =
-        clause &&
-        Lib.legacyExpressionForExpressionClause(query, stageIndex, clause);
-
-      if (!expression) {
+      function done(source: string) {
         setIsFormatting(false);
-        setSource("");
+        setSource(source);
         if (initial) {
-          setInitialSource("");
+          setInitialSource(source);
         }
+      }
+
+      if (clause == null) {
+        done("");
         return;
       }
 
-      format(expression, {
+      format(clause, {
         query,
         stageIndex,
-        expressionIndex,
+        availableColumns,
         printWidth: 55, // 60 is the width of the editor
       })
         .catch(() => "")
-        .then((source) => {
-          setIsFormatting(false);
-          setSource(source);
-          if (initial) {
-            setInitialSource(source);
-          }
-        });
+        .then(done);
     },
-    [clause, query, stageIndex, expressionIndex],
+    [clause, query, stageIndex, availableColumns],
   );
 
   const handleChange = useCallback<typeof onChange>(
@@ -303,11 +317,12 @@ function useExpression({
 
       const { error, expressionClause: clause } = diagnoseAndCompile({
         source,
-        startRule,
+        expressionMode,
         query,
         stageIndex,
-        metadata,
         expressionIndex,
+        metadata,
+        availableColumns,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -319,11 +334,12 @@ function useExpression({
     [
       query,
       stageIndex,
-      startRule,
+      expressionMode,
+      expressionIndex,
       metadata,
       handleChange,
       debouncedOnChange,
-      expressionIndex,
+      availableColumns,
     ],
   );
 

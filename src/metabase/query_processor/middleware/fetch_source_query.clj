@@ -2,6 +2,7 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -11,10 +12,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -49,7 +50,7 @@
     (when persisted?
       (log/infof "Found substitute cached query for card %s from %s.%s"
                  card-id
-                 (ddl.i/schema-name {:id (:database-id card)} (public-settings/site-uuid))
+                 (ddl.i/schema-name {:id (:database-id card)} (system/site-uuid))
                  (:table-name persisted-info)))
     (letfn [(update-stages [stages]
               (let [stages        (fix-mongodb-first-stage stages)
@@ -60,7 +61,7 @@
                     card-metadata (into [] (remove :remapped-from)
                                         (lib.card/card-metadata-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
-                                    (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
+                                    (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
                                     ;; This will be applied, if still appropriate, by
                                     ;; the [[metabase.query-processor.middleware.persistence]] middleware
                                     ;;
@@ -101,7 +102,7 @@
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
              (:source-card stage))
     ;; make sure nested queries are enabled before resolving them.
-    (when-not (public-settings/enable-nested-queries)
+    (when-not (lib-be/enable-nested-queries)
       (throw (ex-info (trs "Nested queries are disabled")
                       {:type qp.error-type/disabled-feature, :card-id (:source-card stage)})))
     ;; If the first stage came from a different source card (i.e., we are doing recursive resolution) record the
@@ -116,13 +117,16 @@
         (dep/topo-sort <>)))
     (let [card         (card query (:source-card stage))
           card-stages  (get-in card [:dataset-query :stages])
-          ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
+          ;; TODO this information WAS used
+          ;; by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]] which doesn't exist anymore
+          ;; -- do we still need it? -- Cam
           stage'        (-> stage
                             ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
                             ;; the metadata associated with Fields themselves)
                             (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model))
+                                   :source-query/model?      (= (:type card) :model)
+                                   :source-query/entity-id   (:entity-id card))
                             (dissoc :source-card))]
       (into (vec card-stages) [stage']))))
 

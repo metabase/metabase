@@ -7,21 +7,25 @@
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -44,19 +48,11 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
-(defn drop-if-exists-and-create-db!
-  "Drop a MySQL database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-    (doseq [sql [(format "DROP DATABASE IF EXISTS %s;" db-name)
-                 (format "CREATE DATABASE %s;" db-name)]]
-      (jdbc/execute! spec [sql]))))
-
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "
                   "when returning them like we asked")
-      (drop-if-exists-and-create-db! "all_zero_dates")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "all_zero_dates")
       ;; Create Table & add data
       (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
             spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
@@ -78,8 +74,8 @@
 (deftest multiple-schema-test
   (testing "Make sure that we filter databases (schema) with :db or :dbname (#50072)"
     (mt/test-driver :mysql
-      (drop-if-exists-and-create-db! "dbone")
-      (drop-if-exists-and-create-db! "dbtwo")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "dbone")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "dbtwo")
       (doseq [dbname ["dbone" "dbtwo"]
               :let [details (tx/dbdef->connection-details :mysql :db {:database-name dbname})
                     spec    (sql-jdbc.conn/connection-details->spec :mysql details)]]
@@ -153,7 +149,7 @@
       ;; trigger a full sync on this database so fields are categorized correctly
       (sync/sync-database! (mt/db))
       (testing "By default TINYINT(1) should be a boolean"
-        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type :type/Category}
+        (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                  {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
                (db->fields (mt/db)))))
@@ -184,7 +180,7 @@
             fields (t2/select :model/Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
           (is (= [[2001] [2002] [1999]]
-                 (metadata-queries/table-rows-sample table fields (constantly conj)))))
+                 (table-rows-sample/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1
                  (:updated-fingerprints (#'sync.fingerprint/fingerprint-fields! table fields)))))))))
@@ -330,7 +326,7 @@
 (deftest system-versioned-tables-test
   (mt/test-driver :mysql
     (testing "system versioned tables appear during a sync"
-      (drop-if-exists-and-create-db! "versioned_tables")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "versioned_tables")
       ;; Create Table & add data
       (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
             spec    (sql-jdbc.conn/connection-details->spec :mysql details)
@@ -498,8 +494,8 @@
   (testing "Make sure sync a table with json columns that have composite pks works"
     (mt/test-driver :mysql
       (when-not (mysql/mariadb? (mt/db))
-        (drop-if-exists-and-create-db! "composite_pks_test")
-        (with-redefs [metadata-queries/nested-field-sample-limit 4]
+        (tx/drop-if-exists-and-create-db! driver/*driver* "composite_pks_test")
+        (with-redefs [table-rows-sample/nested-field-sample-limit 4]
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
                 spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
             (doseq [statement (concat ["CREATE TABLE `json_table` (`first_id` INT, `second_id` INT, `json_val` JSON, PRIMARY KEY(`first_id`, `second_id`));"]
@@ -654,7 +650,7 @@
 (deftest action-error-handling-test
   (mt/test-driver :mysql
     (testing "violate not-null constraints with multiple columns"
-      (drop-if-exists-and-create-db! "not_null_constraint_on_multiple_cols")
+      (tx/drop-if-exists-and-create-db! driver/*driver* "not_null_constraint_on_multiple_cols")
       (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "not_null_constraint_on_multiple_cols"})]
         (doseq [stmt ["CREATE TABLE IF NOT EXISTS mytable (
                       id INT PRIMARY KEY,
@@ -750,7 +746,7 @@
   (mt/test-driver :mysql
     (when-not (mysql/mariadb? (mt/db))
       (testing "`table-privileges` should return the correct data for current_user and role privileges"
-        (drop-if-exists-and-create-db! "table_privileges_test")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "table_privileges_test")
         (let [details          (tx/dbdef->connection-details :mysql :db {:database-name "table_privileges_test"})
               spec             (sql-jdbc.conn/connection-details->spec :mysql details)
               get-privileges   (fn []
@@ -815,3 +811,18 @@
             (is (= (->> unbinned-query qp/process-query mt/cols (map :database_type)
                         (map #(get {"TIMESTAMP" "DATETIME"} % %)))
                    (->> binned-query   qp/process-query mt/cols (map :database_type))))))))))
+
+(deftest have-select-privelege?-timeout-test
+  (mt/test-driver :mysql
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+      (qp.store/with-metadata-provider (mt/id)
+        (testing "checking select privilege defaults to allow on timeout (#56737)"
+          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT sleep(3)"])]
+            (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver*
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                             driver/*driver* conn schema table-name))))))))))))

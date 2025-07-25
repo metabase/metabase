@@ -27,7 +27,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
       cy.visit("/admin/people");
     });
@@ -71,7 +71,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
 
       // Add user attribute to existing ("normal" / id:2) user
@@ -200,7 +200,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 
@@ -265,7 +265,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
     });
 
@@ -1144,60 +1144,64 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.contains("37.65");
     });
 
-    it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
-      H.remapDisplayValueToFK({
-        display_value: ORDERS.USER_ID,
-        name: "User ID",
-        fk: PEOPLE.NAME,
-      });
+    it(
+      "unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)",
+      { tags: "@flaky" },
+      () => {
+        H.remapDisplayValueToFK({
+          display_value: ORDERS.USER_ID,
+          name: "User ID",
+          fk: PEOPLE.NAME,
+        });
 
-      // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
-      cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
-        table_id: REVIEWS_ID,
-        special_type: "type/FK",
-        name: "PRODUCT_ID",
-        fk_target_field_id: ORDERS.ID,
-        display_name: "Product ID",
-      });
+        // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
+        cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
+          table_id: REVIEWS_ID,
+          special_type: "type/FK",
+          name: "PRODUCT_ID",
+          fk_target_field_id: ORDERS.ID,
+          display_name: "Product ID",
+        });
 
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
+        cy.sandboxTable({
+          table_id: ORDERS_ID,
+          attribute_remappings: {
+            attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
+          },
+        });
 
-      cy.sandboxTable({
-        table_id: PEOPLE_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
-        },
-      });
+        cy.sandboxTable({
+          table_id: PEOPLE_ID,
+          attribute_remappings: {
+            attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
+          },
+        });
 
-      cy.sandboxTable({
-        table_id: REVIEWS_ID,
-        attribute_remappings: {
-          attr_uid: [
-            "dimension",
-            [
-              "fk->",
-              ["field-id", REVIEWS.PRODUCT_ID],
-              ["field-id", ORDERS.USER_ID],
+        cy.sandboxTable({
+          table_id: REVIEWS_ID,
+          attribute_remappings: {
+            attr_uid: [
+              "dimension",
+              [
+                "fk->",
+                ["field-id", REVIEWS.PRODUCT_ID],
+                ["field-id", ORDERS.USER_ID],
+              ],
             ],
-          ],
-        },
-      });
-      cy.signOut();
-      cy.signInAsSandboxedUser();
+          },
+        });
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
-      H.openReviewsTable({
-        callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
-      });
-      H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
-      H.assertDatasetReqIsSandboxed();
+        H.openReviewsTable({
+          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
+        });
+        H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
+        H.assertDatasetReqIsSandboxed();
 
-      // Add positive assertion once this issue is fixed
-    });
+        // Add positive assertion once this issue is fixed
+      },
+    );
 
     it(
       "sandboxed user should receive sandboxed dashboard subscription",

@@ -34,9 +34,9 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as root]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as root]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -74,9 +74,8 @@
                   {:order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
-       (mapcat (fn [[_ rows]] (drop 1 rows)))
-       (map :id)
-       set))
+       (into #{} (comp (mapcat (fn [[_ rows]] (drop 1 rows)))
+                       (map :id)))))
 
 (def rv-models
   "These are models for which we will retrieve recency."
@@ -250,6 +249,10 @@
                          :card.database_id
                          :card.display
                          :card.card_schema
+                         :card.result_metadata
+                         :card.dataset_query
+                         :card.entity_id
+                         :card.visualization_settings
                          [:dashboard.id :dashboard_id]
                          [:dashboard.name :dashboard_name]
                          [:card.collection_id :entity-coll-id]
@@ -301,6 +304,10 @@
      :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
+     :result_metadata (:result_metadata card)
+     :dataset_query (:dataset_query card)
+     :entity_id (:entity_id card)
+     :visualization_settings (:visualization_settings card)
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)
@@ -318,6 +325,7 @@
      :database_id (:database_id dataset)
      :description (:description dataset)
      :model :dataset
+     :result_metadata (:result_metadata dataset)
      :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
      ;; another table that doesn't differentiate between card and dataset :cry:
@@ -334,6 +342,7 @@
      :description (:description metric)
      :display (some-> metric :display name)
      :model :metric
+     :result_metadata (:result_metadata metric)
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status metric)
@@ -491,15 +500,18 @@
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
 
-(defn- post-process [entity->id->data recent-view]
+(defn- post-process [entity->id->data options recent-view]
   (when recent-view
     (let [entity (some-> recent-view :model keyword)
           id (some-> recent-view :model_id)]
       (when-let [model-object (get-in entity->id->data [entity id])]
-        (some-> (assoc recent-view :model_object model-object)
-                fill-recent-view-info
-                (dissoc :card_type)
-                (update :model model->return-model))))))
+        (let [processed-item (some-> (assoc recent-view :model_object model-object)
+                                     fill-recent-view-info
+                                     (dissoc :card_type)
+                                     (update :model model->return-model))]
+          ;; Remove result_metadata if include-metadata? is false
+          (cond-> processed-item
+            (not (:include-metadata? options)) (dissoc :result_metadata)))))))
 
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card
@@ -538,11 +550,13 @@
   sequence, so there's no need to do it twice."
   ([user-id] (get-recents user-id [:views :selections]))
   ([user-id context :- [:sequential [:enum :views :selections]]]
+   (get-recents user-id context {}))
+  ([user-id context :- [:sequential [:enum :views :selections]] options]
    (let [recent-items (do-query user-id context)
          entity->id->data (get-entity->id->data recent-items)
          view-items (into []
                           (comp
-                           (keep (partial post-process entity->id->data))
+                           (keep (partial post-process entity->id->data options))
                            (keep error-avoider)
                            (m/distinct-by (juxt :id :model)))
                           recent-items)]

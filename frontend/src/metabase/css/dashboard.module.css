@@ -123,7 +123,7 @@
   transition: opacity 0.15s linear;
 }
 
-.DashEditing .DashCard {
+.DashEditing:not(.Mobile) .DashCard {
   cursor: move;
 }
 
@@ -179,13 +179,6 @@
 /* Used in frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.styled.tsx */
 /* stylelint-disable-next-line block-no-empty */
 .DashDragging {
-}
-
-.Modal.AddSeriesModal {
-  height: 80%;
-  max-height: 600px;
-  width: 80%;
-  max-width: 1024px;
 }
 
 /* what for to print the dashboards */

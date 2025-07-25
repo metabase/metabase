@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import type {
   DatePickerOperator,
@@ -7,12 +7,15 @@ import type {
 } from "metabase/querying/filters/types";
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
+import type { DatePickerSubmitButtonProps } from "../types";
+import { renderDefaultSubmitButton } from "../utils";
+
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {
   SingleDatePicker,
   type SingleDatePickerValue,
 } from "./SingleDatePicker";
-import S from "./SpecificDatePicker.modules.css";
+import S from "./SpecificDatePicker.module.css";
 import {
   canSetTime,
   coerceValue,
@@ -29,7 +32,7 @@ interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  submitButtonLabel: string;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
@@ -38,13 +41,14 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   availableUnits,
-  submitButtonLabel,
+  renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
   const tabs = useMemo(() => getTabs(availableOperators), [availableOperators]);
   const [value, setValue] = useState(() => initialValue ?? getDefaultValue());
   const hasTimeToggle = canSetTime(value, availableUnits);
+  const coercedValue = coerceValue(value);
 
   const handleTabChange = (tabValue: string | null) => {
     const tab = tabs.find((tab) => tab.operator === tabValue);
@@ -65,7 +69,7 @@ export function SpecificDatePicker({
   };
 
   const handleSubmit = () => {
-    onChange(coerceValue(value));
+    onChange(coercedValue);
   };
 
   return (
@@ -86,16 +90,20 @@ export function SpecificDatePicker({
           {isDateRange(value.values) ? (
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
-              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
+              renderSubmitButton={() =>
+                renderSubmitButton({ value: coercedValue })
+              }
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
             />
           ) : (
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
-              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
+              renderSubmitButton={() =>
+                renderSubmitButton({ value: coercedValue })
+              }
               onChange={handleDateChange}
               onSubmit={handleSubmit}
             />

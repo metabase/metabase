@@ -1,9 +1,11 @@
 (ns metabase.notification.payload.core
   (:require
+   [metabase.appearance.core :as appearance]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
-   [metabase.public-settings :as public-settings]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.system.core :as system]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -101,7 +103,7 @@
 (defn- logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
   []
-  (let [url (public-settings/application-logo-url)]
+  (let [url (appearance/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
@@ -127,13 +129,14 @@
 (defn- default-context
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
-  {:application_name     (public-settings/application-name)
-   :application_color    (public-settings/application-color)
+  {:application_name     (appearance/application-name)
+   :application_color    (appearance/application-color)
    :application_logo_url (logo-url)
-   :site_name            (public-settings/site-name)
-   :site_url             (public-settings/site-url)
-   :admin_email          (public-settings/admin-email)
-   :style                {:button (button-style (public-settings/application-color))}})
+   :include_branding     (not (premium-features/enable-whitelabeling?))
+   :site_name            (appearance/site-name)
+   :site_url             (system/site-url)
+   :admin_email          (system/admin-email)
+   :style                {:button (button-style (appearance/application-color))}})
 
 (defmulti payload
   "Given a notification info, return the notification payload."

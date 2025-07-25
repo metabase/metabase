@@ -1,6 +1,5 @@
 const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import { modal } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -30,7 +29,9 @@ describe("scenarios > question > snippets", () => {
     }
 
     cy.log("Add a snippet of that text");
-    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
     cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
@@ -150,6 +151,40 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get("@results").contains(/christ/i);
   });
+
+  it("should be possible to search snippets", () => {
+    for (let i = 0; i < 16; i++) {
+      H.createSnippet({ name: `snippet ${i}`, content: `select ${i}` });
+    }
+
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+
+    H.rightSidebar().icon("search").click();
+    H.rightSidebar().findByRole("textbox").type("snippet 14");
+
+    H.rightSidebar().findByText("snippet 14").should("be.visible");
+    H.rightSidebar().findByText("snippet 2").should("not.exist");
+
+    H.rightSidebar().icon("close").click();
+    H.rightSidebar().findByText("snippet 2").should("be.visible");
+  });
+
+  it("should be possible to preview a query that has a snippet in it (metabase#60534)", () => {
+    cy.request("POST", "/api/native-query-snippet", {
+      content: "'foo'",
+      name: "Foo",
+      collection_id: null,
+    });
+
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+    H.NativeEditor.type("select {{snippet: Foo}}");
+    cy.findByTestId("native-query-top-bar")
+      .findByLabelText("Preview the query")
+      .click();
+    H.modal().findByText("select 'foo'").should("be.visible");
+  });
 });
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
@@ -175,7 +210,7 @@ describe("scenarios > question > snippets (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   ["admin", "normal"].forEach((user) => {
@@ -370,15 +405,13 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.icon("snippet").click();
 
       // Edit permissions for a snippet folder
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Snippet Folder")
-          .next()
-          .find(".Icon-ellipsis")
-          .click({ force: true });
-      });
+      H.rightSidebar()
+        .findByText("Snippet Folder")
+        .next()
+        .find(".Icon-ellipsis")
+        .click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Change permissions").click();
+      H.popover().findByText("Change permissions").click();
 
       // Update permissions for "All users" and let them only "View" this folder
       H.modal().within(() => {
@@ -388,15 +421,17 @@ describe("scenarios > question > snippets (EE)", () => {
       });
 
       H.popover().contains("View").click();
-      modal().button("Save").click();
+      H.modal().button("Save").click();
 
       cy.wait("@updatePermissions");
 
       // Now let's do the sanity check for the top level (root) snippet permissions and make sure nothing changed there
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Snippets").parent().next().find(".Icon-ellipsis").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Change permissions").click();
+      H.rightSidebar()
+        .findByTestId("snippet-header-buttons")
+        .icon("ellipsis")
+        .click();
+
+      H.popover().findByText("Change permissions").click();
 
       // UI check
       H.modal().within(() => {

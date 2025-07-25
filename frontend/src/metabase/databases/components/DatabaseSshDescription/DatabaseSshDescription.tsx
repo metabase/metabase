@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 
 const DatabaseSshDescription = (): JSX.Element => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings

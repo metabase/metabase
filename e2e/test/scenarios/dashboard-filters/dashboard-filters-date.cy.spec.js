@@ -134,9 +134,9 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
-    // click on Relative dates…, to open the relative date filter type tabs
+    // click on Relative date range…, to open the relative date filter type tabs
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates…").click();
+    cy.findByText("Relative date range…").click();
     // choose Next, under which the new options should be available
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
@@ -160,9 +160,11 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
-    // we can't use helpers as they use english words
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+    H.dashboardHeader().within(() => {
+      // we can't use helpers as they use english words
+      cy.icon("pencil").click();
+      cy.icon("filter").click();
+    });
 
     H.popover().icon("calendar").click(); // "Time" -> "All Options"
 
@@ -203,7 +205,7 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      DateFilter.setTime({ hours: 11, minutes: 0 });
+      DateFilter.setTime({ hours: 9, minutes: 27 });
       cy.findByText("Add filter").click();
       break;
 

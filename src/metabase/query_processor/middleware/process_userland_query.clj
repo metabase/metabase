@@ -4,20 +4,15 @@
   adding query ViewLogs, storing exceptions and formatting the results.
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
-  event -- see [[metabase.events.view-log]]."
+  event -- see [[metabase.view-log.events.view-log]]."
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
-   [metabase.events :as events]
-   [metabase.lib.core :as lib]
-   [metabase.models.field-usage :as field-usage]
-   [metabase.models.query :as query]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.events.core :as events]
+   [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.grouper :as grouper]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -28,44 +23,13 @@
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms
-                             (- (System/currentTimeMillis) start-time-ms)))
+                             ;; Consider having `:start_time_nanos` instead, to avoid the pitfalls of system clocks.
+                             (u/since-ms-wall-clock start-time-ms)))
       (dissoc :start_time_millis)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:private field-usage-interval-seconds 20)
-
-(defsetting enable-field-usage-analysis
-  (deferred-tru
-   "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
-    application database.
-
-    Turn off by default since we haven''t had an user-facing feature that uses this data yet.")
-  :type    :boolean
-  :export? false
-  :audit   :never
-  :default false)
-
-(defonce ^:private
-  field-usages-queue
-  (delay (grouper/start!
-          (fn [inputs]
-            (try
-              (t2/insert! :model/FieldUsage (mapcat
-                                             (fn [{:keys [query_execution_id pmbql]}]
-                                               (try
-                                                 (map #(assoc % :query_execution_id query_execution_id) (field-usage/pmbql->field-usages pmbql))
-                                                 ;; one query fail shouldn't fail the whole batch
-                                                 (catch Throwable e
-                                                   (log/warn e "Error getting field usages from pmbql" pmbql)
-                                                   [])))
-                                             inputs))
-              (catch Throwable e
-                (log/error e "Error saving field usages"))))
-          :capacity 20
-          :interval (* field-usage-interval-seconds 1000))))
 
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
@@ -74,19 +38,16 @@
 ;; for other places where we would want to do async saves (such as results-metadata for Cards?)
 (defn- save-execution-metadata!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution} pmbql]
+  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
   (when-not (:cache_hit query-execution)
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
-    (let [qe-id (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))]
-      (when (and (enable-field-usage-analysis) pmbql)
-        (grouper/submit! @field-usages-queue {:query_execution_id qe-id
-                                              :pmbql              pmbql})))))
+    (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
-  [execution-info pmbql]
+  [execution-info]
   (let [execution-info' (analytics/include-sdk-info execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
@@ -99,21 +60,21 @@
       (fn []
         (log/trace "Saving QueryExecution info")
         (try
-          (save-execution-metadata!* (add-running-time execution-info') pmbql)
+          (save-execution-metadata!* (add-running-time execution-info'))
           (catch Throwable e
             (log/error e "Error saving query execution info")))))))
 
-(defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows pmbql]
+(defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
                       :cache_hit    (boolean (:cached cache-details))
                       :cache_hash   (:hash cache-details)
                       :result_rows  result-rows
                       :is_sandboxed (boolean is-sandboxed?))]
-    (save-execution-metadata! qe-map pmbql)))
+    (save-execution-metadata! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
   (try
-    (save-execution-metadata! (assoc query-execution :error (str message)) nil)
+    (save-execution-metadata! (assoc query-execution :error (str message)))
     (catch Throwable e
       (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
 
@@ -133,7 +94,7 @@
     :average_execution_time (when (:cached cache)
                               (query/average-execution-time-ms query-hash))}))
 
-(defn- add-and-save-execution-metadata-xform! [execution-info pmbql rf]
+(defn- add-and-save-execution-metadata-xform! [execution-info rf]
   {:pre [(fn? rf)]}
   ;; previously we did nothing for cached results, now we have `cache_hit?` column
   (let [row-count (volatile! 0)]
@@ -147,7 +108,7 @@
          (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
-       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count pmbql)
+       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -164,7 +125,7 @@
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
-    mirror-database-id             :mirror-database/id
+    destination-database-id        :destination-database/id
     :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -173,7 +134,7 @@
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)
                        (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       (or mirror-database-id database-id)
+    {:database_id       (or destination-database-id database-id)
      :executor_id       executed-by
      :action_id         action-id
      :card_id           card-id
@@ -210,14 +171,10 @@
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
-                  (let [preprocessed-query (:preprocessed_query metadata)
-                        ;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                        result             (rff (dissoc metadata :preprocessed_query))
-                        ;; skip internal queries because it uses honeysql, not mbql
-                        pmbql              (when-not (qp.util/internal-query? query)
-                                             (lib/query (qp.store/metadata-provider) preprocessed-query))]
+                  (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
+                        result (rff (dissoc metadata :preprocessed_query))]
                         ;; temporarily disabled because it impacts query performance
-                    (add-and-save-execution-metadata-xform! execution-info pmbql result)))]
+                    (add-and-save-execution-metadata-xform! execution-info result)))]
           (try
             (qp query rff*)
             (catch Throwable e

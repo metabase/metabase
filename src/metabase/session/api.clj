@@ -6,14 +6,15 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
-   [metabase.config :as config]
-   [metabase.events :as events]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.models.user :as user]
-   [metabase.public-settings :as public-settings]
+   [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.session.settings :as session.settings]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -31,6 +32,7 @@
 
 (def ^:private login-throttlers
   {:username   (throttle/make-throttler :username)
+
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
@@ -167,8 +169,8 @@
   "Disable password reset for all users created with SSO logins, unless those Users were created with Google SSO
   in which case disable reset for them as long as the Google SSO feature is enabled."
   [sso-source]
-  (if (and (= sso-source :google) (not (public-settings/sso-enabled?)))
-    (public-settings/google-auth-enabled?)
+  (if (and (= sso-source :google) (not (sso/sso-enabled?)))
+    (sso/google-auth-enabled)
     (some? sso-source)))
 
 (defn- forgot-password-impl
@@ -185,7 +187,7 @@
         ;; are exempted see `password-reset-allowed?`
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
-              password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+              password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
@@ -205,17 +207,10 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(defsetting reset-token-ttl-hours
-  (deferred-tru "Number of hours a password reset is considered valid.")
-  :visibility :internal
-  :type       :integer
-  :default    48
-  :audit      :getter)
-
 (defn reset-token-ttl-ms
   "number of milliseconds a password reset is considered valid."
   []
-  (* (reset-token-ttl-hours) 60 60 1000))
+  (* (session.settings/reset-token-ttl-hours) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
@@ -229,7 +224,7 @@
         (when (u/ignore-exceptions
                 (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
-          (let [token-age (- (System/currentTimeMillis) reset_triggered)]
+          (let [token-age (u/since-ms-wall-clock reset_triggered)]
             (when (< token-age (reset-token-ttl-ms))
               user)))))))
 
@@ -304,6 +299,15 @@
         (do-login)
         (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
           (do-login))))))
+
+(api.macros/defendpoint :post "/password-check"
+  "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:password ms/ValidPassword]]]
+  ;; if we pass the [[ms/ValidPassword]] test we're g2g
+  {:valid true})
 
 (defn- +log-all-request-failures [handler]
   (open-api/handler-with-open-api-spec

@@ -1,6 +1,7 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -178,7 +179,7 @@ interface BreakoutClauseOpts {
   binningStrategyName?: string;
 }
 
-interface ExpressionClauseOpts {
+export interface ExpressionClauseOpts {
   name: string;
   operator: Lib.ExpressionOperator;
   args: (Lib.ExpressionArg | Lib.ExpressionClause)[];
@@ -308,7 +309,7 @@ export const getJoinQueryHelpers = (
   stageIndex: number,
   tableId: TableId,
 ) => {
-  const table = Lib.tableOrCardMetadata(query, tableId);
+  const table = checkNotNull(Lib.tableOrCardMetadata(query, tableId));
 
   const findLHSColumn = columnFinder(
     query,
@@ -327,10 +328,7 @@ export const getJoinQueryHelpers = (
     throw new Error("No default strategy found");
   }
 
-  const defaultOperator = Lib.joinConditionOperators(query, stageIndex).find(
-    (operator) => Lib.displayInfo(query, stageIndex, operator).default,
-  );
-
+  const defaultOperator = Lib.joinConditionOperators(query, stageIndex)[0];
   if (!defaultOperator) {
     throw new Error("No default operator found");
   }

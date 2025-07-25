@@ -6,7 +6,7 @@ import type {
 } from "react";
 import { Component, forwardRef } from "react";
 
-import { SmallGenericError } from "metabase/components/ErrorPages";
+import { SmallGenericError } from "metabase/common/components/ErrorPages";
 
 interface ErrorBoundaryProps extends PropsWithChildren {
   onError?: (errorInfo: ErrorInfo) => void;

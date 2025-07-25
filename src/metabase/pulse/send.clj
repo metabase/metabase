@@ -67,7 +67,8 @@
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
                               :dashboard_subscription_dashcards (map
-                                                                 #(merge {:card_id (:id %)}
+                                                                 #(merge {:card_id (:id %)
+                                                                          :dashboard_card_id (:dashboard_card_id %)}
                                                                          (select-keys % [:include_xls :include_csv :pivot_results :format_rows]))
                                                                  (:cards pulse))}
      :handlers               [(get-notification-handler pulse-channel)]}

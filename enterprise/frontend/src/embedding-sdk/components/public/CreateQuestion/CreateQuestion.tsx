@@ -1,14 +1,16 @@
 import {
-  type BaseInteractiveQuestionProps,
   InteractiveQuestion,
-} from "../InteractiveQuestion";
+  type InteractiveQuestionProps,
+} from "embedding-sdk";
 
 /**
  * @interface
+ * @expand
  * @category CreateQuestion
  */
-export type CreateQuestionProps = Partial<
-  Omit<BaseInteractiveQuestionProps, "questionId" | "children">
+export type CreateQuestionProps = Omit<
+  Partial<InteractiveQuestionProps>,
+  "questionId" | "children"
 >;
 
 /**

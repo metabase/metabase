@@ -1,26 +1,22 @@
-import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import {
-  useDocsUrl,
-  useMergeSetting,
-  useSetting,
-  useUrlWithUtm,
-} from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { UpsellDevInstances } from "metabase/admin/upsells";
+import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
+import { isEEBuild } from "metabase/lib/utils";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";
-import { Alert, Box, Button, Icon, Stack, Text } from "metabase/ui";
+import { getLearnUrl } from "metabase/selectors/settings";
+import { Alert, Box, Button, Icon, Text } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
-import { SetByEnvVarWrapper } from "../../SettingsSetting";
-import { SwitchWithSetByEnvVar } from "../../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
-import { SettingTextInput } from "../../widgets/SettingTextInput";
-import { EmbeddingSdkLegaleseModal } from "../EmbeddingSdkLegaleseModal";
-import type { AdminSettingComponentProps } from "../types";
+import { AdminSettingInput } from "../../widgets/AdminSettingInput";
+import { EmbeddingToggle } from "../EmbeddingToggle";
 
 const utmTags = {
   utm_source: "product",
@@ -29,55 +25,14 @@ const utmTags = {
   utm_content: "embedding-sdk-admin",
 };
 
-export function EmbeddingSdkSettings({
-  updateSetting,
-}: AdminSettingComponentProps) {
-  const isEE = PLUGIN_EMBEDDING_SDK.isEnabled();
+export function EmbeddingSdkSettings() {
+  const isEmbeddingAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
-  const showSdkEmbedTerms = useSetting("show-sdk-embed-terms");
-  const [
-    isLegaleseModalOpen,
-    { open: openLegaleseModal, close: closeLegaleseModal },
-  ] = useDisclosure(Boolean(isEmbeddingSdkEnabled && showSdkEmbedTerms));
+  const isEE = isEEBuild();
 
-  const canEditSdkOrigins = isEE && isEmbeddingSdkEnabled;
+  const canEditSdkOrigins = isEmbeddingAvailable && isEmbeddingSdkEnabled;
 
   const isHosted = useSetting("is-hosted?");
-
-  const upgradeUrl = useSelector((state) =>
-    getUpgradeUrl(state, {
-      utm_campaign: "embedding-sdk",
-      utm_content: "embedding-sdk-admin",
-    }),
-  );
-
-  const sdkOriginsSetting = useMergeSetting(
-    !isEE
-      ? {
-          key: "embedding-app-origins-sdk",
-          placeholder: "https://*.example.com",
-          display_name: t`Cross-Origin Resource Sharing (CORS)`,
-          description: jt`Try out the SDK on localhost. To enable other sites, ${(
-            <ExternalLink key="upgrade-url" href={upgradeUrl}>
-              {t`upgrade to Metabase Pro`}
-            </ExternalLink>
-          )} and Enter the origins for the websites or apps where you want to allow SDK embedding.`,
-        }
-      : {
-          key: "embedding-app-origins-sdk",
-          placeholder: "https://*.example.com",
-          display_name: t`Cross-Origin Resource Sharing (CORS)`,
-          description: t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.`,
-        },
-  );
-
-  function handleChangeSdkOrigins(value: string | null) {
-    updateSetting({ key: sdkOriginsSetting.key }, value);
-  }
-
-  function handleToggleEmbeddingSdk(value: boolean) {
-    updateSetting({ key: "enable-embedding-sdk" }, value);
-  }
 
   const { url: switchMetabaseBinariesUrl } = useDocsUrl(
     "paid-features/activating-the-enterprise-edition",
@@ -95,79 +50,52 @@ export function EmbeddingSdkSettings({
   );
   const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
 
+  const SwitchBinariesLink = (
+    <ExternalLink
+      key="switch-metabase-binaries"
+      href={switchMetabaseBinariesUrl}
+    >
+      {t`switch Metabase binaries`}
+    </ExternalLink>
+  );
+
+  const ImplementJwtLink = (
+    <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+      {t`implement JWT SSO`}
+    </ExternalLink>
+  );
+
   const apiKeyBannerText = match({
-    isOSS: !isEE && !isHosted,
-    isCloudStarter: !isEE && isHosted,
-    isEE,
+    needsToSwitchBinaries: !isEE,
+    needsToUpgrade: !isEmbeddingAvailable,
+    needsToImplementJwt: isEmbeddingAvailable,
   })
     .with(
-      { isOSS: true },
+      { needsToSwitchBinaries: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
-          <ExternalLink
-            key="switch-metabase-binaries"
-            href={switchMetabaseBinariesUrl}
-          >
-            switch Metabase binaries
-          </ExternalLink>
-        )}, ${(
-          <ExternalLink key="upgrade-url" href={upgradeUrl}>
-            {t`upgrade to Metabase Pro`}
-          </ExternalLink>
-        )} and ${(
-          <ExternalLink key="implement-jwt" href={implementJwtUrl}>
-            {t`implement JWT SSO`}
-          </ExternalLink>
-        )}.`,
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${SwitchBinariesLink}, ${(<UpsellSdkLink />)} and ${ImplementJwtLink}.`,
     )
     .with(
-      { isCloudStarter: true },
+      { needsToUpgrade: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
-          <ExternalLink key="upgrade-url" href={upgradeUrl}>
-            {t`upgrade to Metabase Pro`}
-          </ExternalLink>
-        )} and ${(
-          <ExternalLink key="implement-jwt" href={implementJwtUrl}>
-            {t`implement JWT SSO`}
-          </ExternalLink>
-        )}.`,
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(<UpsellSdkLink />)} and ${ImplementJwtLink}.`,
     )
     .with(
-      { isEE: true },
+      { needsToImplementJwt: true },
       () =>
-        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
-          <ExternalLink key="implement-jwt" href={implementJwtUrl}>
-            {t`implement JWT SSO`}
-          </ExternalLink>
-        )}.`,
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${ImplementJwtLink}.`,
     )
     .otherwise(() => null);
 
   return (
-    <Box p="0.5rem 1rem 0">
-      <Stack gap="2.5rem">
-        <Breadcrumbs
-          size="large"
-          crumbs={[
-            [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Embedded analytics SDK for React`],
-          ]}
-        />
-        <SwitchWithSetByEnvVar
+    <SettingsPageWrapper title={t`Embedding SDK`}>
+      <UpsellDevInstances location="embedding-page" />
+      <SettingsSection>
+        <EmbeddingToggle
           label={t`Enable Embedded analytics SDK for React`}
           settingKey="enable-embedding-sdk"
-          onChange={
-            !isEmbeddingSdkEnabled && showSdkEmbedTerms
-              ? openLegaleseModal
-              : handleToggleEmbeddingSdk
-          }
         />
-        <EmbeddingSdkLegaleseModal
-          opened={isLegaleseModalOpen}
-          onClose={closeLegaleseModal}
-          updateSetting={updateSetting}
-        />
+
         <Alert
           data-testid="sdk-settings-alert-info"
           icon={
@@ -187,9 +115,15 @@ export function EmbeddingSdkSettings({
         <Box>
           <SettingHeader
             id="get-started"
-            title={isEE ? t`Get started` : t`Try Embedded analytics SDK`}
+            title={
+              isEmbeddingAvailable
+                ? t`Get started`
+                : t`Try Embedded analytics SDK`
+            }
             description={
-              isEE ? "" : t`Use the SDK with API keys for development.`
+              isEmbeddingAvailable
+                ? ""
+                : t`Use the SDK with API keys for development.`
             }
           />
           <Button
@@ -199,27 +133,20 @@ export function EmbeddingSdkSettings({
           >{t`Check out the Quickstart`}</Button>
         </Box>
         <Box>
-          <SettingHeader
-            id={sdkOriginsSetting.key}
-            title={sdkOriginsSetting.display_name}
-            description={sdkOriginsSetting.description}
+          <AdminSettingInput
+            name="embedding-app-origins-sdk"
+            title={t`Cross-Origin Resource Sharing (CORS)`}
+            placeholder="https://*.example.com"
+            description={
+              isEmbeddingAvailable
+                ? t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included. Changes will take effect within one minute.`
+                : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and Enter the origins for the websites or apps where you want to allow SDK embedding.`
+            }
+            inputType="text"
+            disabled={!canEditSdkOrigins}
           />
-          <SetByEnvVarWrapper setting={sdkOriginsSetting}>
-            <SettingTextInput
-              id={sdkOriginsSetting.key}
-              setting={sdkOriginsSetting}
-              onClick={
-                isEmbeddingSdkEnabled && showSdkEmbedTerms
-                  ? openLegaleseModal
-                  : undefined
-              }
-              onChange={handleChangeSdkOrigins}
-              type="text"
-              disabled={!canEditSdkOrigins}
-            />
-          </SetByEnvVarWrapper>
         </Box>
-        {isEE && isHosted && (
+        {isEmbeddingAvailable && isHosted && (
           <Box>
             <SettingHeader
               id="version-pinning"
@@ -243,7 +170,7 @@ export function EmbeddingSdkSettings({
             </ExternalLink>
           )} for more.`}
         </Text>
-      </Stack>
-    </Box>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

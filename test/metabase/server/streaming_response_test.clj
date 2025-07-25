@@ -4,12 +4,12 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.http-client :as client]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
@@ -113,13 +113,13 @@
           (dotimes [_ num-requests]
             (future (http/post url request)))
           (Thread/sleep 100)
-          (let [start-time-ms (System/currentTimeMillis)]
+          (let [timer (u/start-timer)]
             (is (= {:status "ok"} (client/client :get 200 "health")))
             (testing "Health endpoint should complete before the first round of queries completes"
               (is (> @remaining (inc (- num-requests thread-pool-size)))))
             (testing "Health endpoint should complete in under 500ms regardless of how many queries are running"
               (testing "(Usually this is under 100ms but might be a little over if CircleCI is being slow)"
-                (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
+                (let [elapsed-ms (u/since-ms timer)]
                   (is (< elapsed-ms 500)))))))))))
 
 (deftest cancelation-test
@@ -171,7 +171,7 @@
                                    :async-context (reify AsyncContext
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
-        (is (= true
-               (deref complete-promise 1000 ::timed-out)))
+        (is (true?
+             (deref complete-promise 1000 ::timed-out)))
         (is (= "2 cans"
                (String. (.toByteArray os) "UTF-8")))))))

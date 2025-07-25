@@ -1,4 +1,4 @@
-import type { CodeLanguage } from "metabase/components/CodeBlock";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type { Card, Dashboard } from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
@@ -21,8 +21,8 @@ export type EmbedResourceParameter = {
 };
 
 export type EmbedResourceDownloadOptions = {
-  pdf: boolean;
-  results: boolean;
+  pdf?: boolean;
+  results?: boolean;
 };
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
@@ -40,8 +40,6 @@ export type EmbeddingDisplayOptions = {
   background: boolean;
   bordered: boolean;
   titled: boolean;
-  /** this is deprecated in favor of `downloads`, but it's still supported */
-  hide_download_button?: boolean | null;
   downloads: EmbedResourceDownloadOptions | null;
 };
 

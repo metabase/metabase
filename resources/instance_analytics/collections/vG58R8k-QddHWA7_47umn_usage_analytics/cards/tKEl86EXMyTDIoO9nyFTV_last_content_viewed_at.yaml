@@ -31,14 +31,10 @@ dataset_query:
           temporal-unit: minute
           original-temporal-unit: month
           inherited-temporal-unit: default
-    aggregation-idents:
-      0: KgDE_qFte8LODn0DoYnVO
     breakout:
     - - field
       - entity_qualified_id
       - base-type: type/Text
-    breakout-idents:
-      0: fSWOaaeBC3bztKE9nIWkh
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
 result_metadata:
@@ -71,8 +67,7 @@ result_metadata:
   - public
   - v_view_log
   visibility_type: normal
-- aggregation_index: 0
-  base_type: type/DateTimeWithLocalTZ
+- base_type: type/DateTimeWithLocalTZ
   display_name: 'Max of Timestamp: Minute'
   field_ref:
   - aggregation

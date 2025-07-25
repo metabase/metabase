@@ -6,9 +6,9 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
-   [metabase.events :as events]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
@@ -126,7 +126,7 @@
        set))
 
 (defn- send-you-were-added-card-notification-email! [notification]
-  (when (email/email-configured?)
+  (when (channel.settings/email-configured?)
     (let [current-user? #{(:email @api/*current-user*)}]
       (when-let [recipients-except-creator (->> (all-email-recipients notification)
                                                 (remove current-user?)
@@ -141,6 +141,7 @@
   (let [notification (models.notification/hydrate-notification
                       (models.notification/create-notification!
                        (-> body
+                           (update :payload_type keyword)
                            (assoc :creator_id api/*current-user-id*)
                            (dissoc :handlers :subscriptions))
                        (:subscriptions body)
@@ -153,7 +154,7 @@
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
   [updated-notification existing-notification]
-  (when (email/email-configured?)
+  (when (channel.settings/email-configured?)
     (let [was-active?  (:active existing-notification)
           is-active?   (:active updated-notification)
           current-user @api/*current-user*
@@ -221,6 +222,7 @@
   "Send an unsaved notification."
   [_route _query body :- ::models.notification/FullyHydratedNotification]
   (api/create-check :model/Notification body)
+  (models.notification/validate-email-handlers! (:handlers body))
   (-> body
       (assoc :creator_id api/*current-user-id*)
       promote-to-t2-instance

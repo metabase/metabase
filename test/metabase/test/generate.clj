@@ -262,11 +262,6 @@
                                   :spec        ::field
                                   :insert!     {:model :model/Field}
                                   :relations   {:table_id [:table :id]}}
-   :metric                       {:prefix    :metric
-                                  :spec      ::metric
-                                  :insert!   {:model :model/LegacyMetric}
-                                  :relations {:creator_id [:core-user :id]
-                                              :table_id   [:table :id]}}
    :table                        {:prefix    :t
                                   :spec      ::table
                                   :insert!   {:model :model/Table}

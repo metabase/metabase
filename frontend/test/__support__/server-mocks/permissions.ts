@@ -5,7 +5,7 @@ import type {
   Database,
   Group,
 } from "metabase-types/api";
-import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
+import { createMockPermissionsGraph } from "metabase-types/api/mocks";
 
 export const setupPermissionsGraphEndpoints = (
   groups: Omit<Group, "members">[],

@@ -74,9 +74,8 @@ describe("scenarios > metrics > question", () => {
       cy.findByText("Product").click();
       cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
@@ -146,7 +145,7 @@ describe("scenarios > metrics > question", () => {
     H.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Mar 1–31, 2024")
+      .findByText("Created At: Month is Mar 1–31, 2024")
       .should("be.visible");
     H.assertQueryBuilderRowCount(445);
   });

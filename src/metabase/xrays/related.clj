@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.malli.registry :as mr]
@@ -26,17 +25,12 @@
            qp.util/normalize-token)]]
    [:* :any]])
 
-(defn- strip-idents [clause]
-  (cond-> clause
-    (mbql.u/is-clause? :field clause) (update 2 dissoc :ident)))
-
 (defn- collect-context-bearing-forms
   [form]
   (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
           (comp (filter (mr/validator ContextBearingForm))
-                (map #(update % 0 qp.util/normalize-token))
-                (map strip-idents))
+                (map #(update % 0 qp.util/normalize-token)))
           (tree-seq sequential? identity form))))
 
 (defmulti definition
@@ -45,7 +39,7 @@
   {:arglists '([instance])}
   mi/model)
 
-(defmethod definition :model/LegacyMetric
+(defmethod definition :xrays/Metric
   [metric]
   (-> metric :definition ((juxt :aggregation :filter))))
 
@@ -109,12 +103,6 @@
   (filter-visible (t2/select :model/Card
                              :table_id (:id table)
                              :type :metric
-                             :archived false)))
-
-(defn- legacy-metrics-for-table
-  [table]
-  (filter-visible (t2/select :model/LegacyMetric
-                             :table_id (:id table)
                              :archived false)))
 
 (defn- segments-for-table
@@ -244,14 +232,10 @@
   [query]
   (related (mi/instance :model/Card query)))
 
-(defmethod related :model/LegacyMetric
+(defmethod related :xrays/Metric
   [metric]
   (let [table (t2/select-one :model/Table :id (:table_id metric))]
     {:table    table
-     :metrics  (->> table
-                    legacy-metrics-for-table
-                    (rank-by-similarity metric)
-                    interesting-mix)
      :segments (->> table
                     segments-for-table
                     (rank-by-similarity metric)

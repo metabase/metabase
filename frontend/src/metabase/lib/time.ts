@@ -87,19 +87,6 @@ export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
   return !Number.isNaN(diff);
 }
 
-export function formatFrame(frame: "first" | "last" | "mid") {
-  switch (frame) {
-    case "first":
-      return t`first`;
-    case "last":
-      return t`last`;
-    case "mid":
-      return t`15th (Midpoint)`;
-    default:
-      return frame;
-  }
-}
-
 export function getDateStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
   return customFormattingSettings?.["type/Temporal"]?.date_style;
@@ -152,10 +139,12 @@ export function parseTime(value: moment.Moment | string) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string") {
-    return moment(value, [
-      "HH:mm:ss.sss[Z]",
-      "HH:mm:SS.sss",
-      "HH:mm:SS",
+    // removing the timezone part if it exists, so we can parse the time correctly
+    return moment(value.split(/[+-]/)[0], [
+      "HH:mm:ss.SSSZ",
+      "HH:mm:ss.SSS",
+      "HH:mm:ss",
+      "HH:mm:ss",
       "HH:mm",
     ]);
   }

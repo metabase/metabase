@@ -253,7 +253,7 @@ describe("AggregationPicker", () => {
       ).toHaveAttribute("aria-selected", "true");
       expect(
         screen.getByRole("option", { name: "Sum of ..." }),
-      ).not.toHaveAttribute("aria-selected");
+      ).toHaveAttribute("aria-selected", "false");
     });
 
     it("should highlight selected operator column", () => {
@@ -312,7 +312,7 @@ describe("AggregationPicker", () => {
     it("should allow to enter a custom expression containing an aggregation", async () => {
       const { getRecentClauseInfo } = setup({ allowCustomExpressions: true });
 
-      const expression = "count + 1";
+      const expression = "count() + 1";
       const expressionName = "My expression";
 
       await userEvent.click(screen.getByText("Custom Expression"));

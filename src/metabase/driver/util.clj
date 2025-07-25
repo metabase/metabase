@@ -1,18 +1,19 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.auth-provider :as auth-provider]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.auth-provider.core :as auth-provider]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -28,11 +29,7 @@
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
    (javax.net SocketFactory)
-   (javax.net.ssl
-    KeyManagerFactory
-    SSLContext
-    TrustManagerFactory
-    X509TrustManager)))
+   (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
 (set! *warn-on-reflection* true)
 
@@ -118,41 +115,6 @@
       (contains? message :message) (update :message str)
       (contains? message :errors)  (update :errors update-vals str))))
 
-;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
-(defsetting db-connection-timeout-ms
-  "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
-  successfully connect after this many milliseconds. By default, this is 10 seconds."
-  :visibility :internal
-  :export?    false
-  :type       :integer
-  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
-  ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
-  ;;
-  ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
-  :default    (if config/is-test?
-                3000
-                10000)
-  :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
-        In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
-        as the connections via tunnels have more overhead than connections without.")
-
-;; This is normally set via the env var `MB_DB_QUERY_TIMEOUT_MINUTES`
-(defsetting db-query-timeout-minutes
-  "By default, this is 20 minutes."
-  :visibility :internal
-  :export?    false
-  :type       :integer
-  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
-  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
-  ;; code
-  :default    (if config/is-prod?
-                20
-                3)
-  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
-  Please be aware that other services (like Nginx) may still drop long-running queries.")
-
 (defn- connection-error? [^Throwable throwable]
   (and (some? throwable)
        (or (instance? java.net.ConnectException throwable)
@@ -169,7 +131,7 @@
   {:pre [(keyword? driver) (map? details-map)]}
   (if throw-exceptions
     (try
-      (u/with-timeout (db-connection-timeout-ms)
+      (u/with-timeout (driver.settings/db-connection-timeout-ms)
         (or (driver/can-connect? driver details-map)
             (throw (Exception. "Failed to connect to Database"))))
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
@@ -270,12 +232,26 @@
   (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
 
-(defn features
-  "Return a set of all features supported by `driver` with respect to `database`."
-  [driver database]
+(defn- features* [driver database]
   (set (for [feature driver/features
              :when (supports? driver feature database)]
          feature)))
+
+(def ^:private memoized-features*
+  (memoize/memo
+   (-> features*
+       (vary-meta assoc ::memoize/args-fn
+                  (fn [[driver database]]
+                    [driver (mdb/unique-identifier) (:id database)
+                     (if (snake-hating-map? database)
+                       (:updated-at database)
+                       (:updated_at database))])))))
+
+(defn features
+  "Return a set of all features supported by `driver` with respect to `database`."
+  [driver database]
+  (let [f (if *memoize-supports?* memoized-features* features*)]
+    (f driver database)))
 
 (defn- supported-in-environment?
   "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the
@@ -388,27 +364,30 @@
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
         disp-name (or (:display-name prop) "")
+        visible-if (:visible-if prop)
+        placeholder (or (:placeholder prop) "E.x. public,auth*")
         type-prop-nm (str prop-name "-type")]
-    [{:name type-prop-nm
-      :display-name disp-name
-      :type "select"
-      :options [{:name (trs "All")
-                 :value "all"}
-                {:name (trs "Only these...")
-                 :value "inclusion"}
-                {:name (trs "All except...")
-                 :value "exclusion"}]
-      :default "all"}
+    [(merge {:name type-prop-nm
+             :display-name disp-name
+             :type "select"
+             :options [{:name (trs "All")
+                        :value "all"}
+                       {:name (trs "Only these...")
+                        :value "inclusion"}
+                       {:name (trs "All except...")
+                        :value "exclusion"}]
+             :default "all"}
+            {:visible-if visible-if})
      {:name (str prop-name "-patterns")
       :type "text"
-      :placeholder "E.x. public,auth*"
+      :placeholder placeholder
       :description (trs "Comma separated names of {0} that should appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "inclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
-      :placeholder "E.x. public,auth*"
+      :placeholder placeholder
       :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
@@ -520,17 +499,12 @@
     "starburst"
     "vertica"})
 
-(def partner-drivers
-  "The set of other drivers in the partnership program"
-  #{"firebolt" "materialize"})
-
 (defn driver-source
-  "Return the source type of the driver: official, partner, or community"
+  "Return the source type of the driver: official or community"
   [driver-name]
-  (cond
-    (contains? official-drivers driver-name) "official"
-    (contains? partner-drivers driver-name) "partner"
-    :else "community"))
+  (if (contains? official-drivers driver-name)
+    "official"
+    "community"))
 
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
@@ -549,16 +523,10 @@
                                             :contact (driver/contact-info driver)}
                                    :details-fields props
                                    :driver-name    (driver/display-name driver)
-                                   :superseded-by  (driver/superseded-by driver)})
+                                   :superseded-by  (driver/superseded-by driver)
+                                   :extra-info     (driver/extra-info driver)})
                acc))
            (transient {}) (available-drivers))))
-
-(defsetting engines
-  "Available database engines"
-  :visibility :public
-  :setter     :none
-  :getter     available-drivers-info
-  :doc        false)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |

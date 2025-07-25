@@ -6,12 +6,11 @@
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
-   [metabase.audit :as audit]
+   [metabase.audit-app.core :as audit]
+   [metabase.classloader.core :as classloader]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.request.core :as request]
@@ -19,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -152,8 +152,8 @@
   "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
   on sandboxes (the Card cannot add fields or change types vs. the original Table)."
   :feature :sandboxes
-  [{new-result-metadata :result_metadata, card-id :id}]
-  (when new-result-metadata
+  [{new-result-metadata :result_metadata, card-id :id} changes]
+  (when (contains? changes :result_metadata)
     (when-let [gtaps-using-this-card (not-empty (t2/select [:model/GroupTableAccessPolicy :id :table_id] :card_id card-id))]
       (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
@@ -190,8 +190,8 @@
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
-    (when (= (data-perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
-      (data-perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
+    (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
+      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 

@@ -1,11 +1,13 @@
 import { useClickOutside } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/components/LogoIcon";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Button, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
@@ -39,10 +41,32 @@ export const AdminNavbar = ({
   adminPaths,
 }: AdminNavbarProps) => {
   const isPaidPlan = useSelector(getIsPaidPlan);
+  const dispatch = useDispatch();
+
+  useRegisterShortcut(
+    [
+      {
+        id: "admin-change-tab",
+        perform: (_, event) => {
+          if (!event?.key) {
+            return;
+          }
+          const key = parseInt(event.key);
+          const path = adminPaths[key - 1]?.path;
+
+          if (path) {
+            dispatch(push(path));
+          }
+        },
+      },
+    ],
+    [adminPaths],
+  );
 
   return (
     <AdminNavbarRoot
       data-element-id="navbar-root"
+      data-testid="admin-navbar"
       aria-label={t`Navigation bar`}
     >
       <AdminLogoLink to="/admin">

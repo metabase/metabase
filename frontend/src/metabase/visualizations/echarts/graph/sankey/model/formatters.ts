@@ -1,4 +1,4 @@
-import { memoize } from "metabase/hooks/use-memoized-callback";
+import { memoize } from "metabase/common/hooks/use-memoized-callback";
 import { formatValue } from "metabase/lib/formatting";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 

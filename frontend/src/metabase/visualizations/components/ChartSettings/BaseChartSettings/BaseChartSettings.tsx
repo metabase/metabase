@@ -1,7 +1,8 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
-import Radio from "metabase/core/components/Radio";
+import Radio from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { Stack } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
@@ -34,6 +35,7 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
+  className,
   ...stackProps
 }: BaseChartSettingsProps) => {
   const {
@@ -195,7 +197,7 @@ export const BaseChartSettings = ({
         data-testid="chartsettings-sidebar"
         h="100%"
         gap={0}
-        className={CS.overflowHidden}
+        className={cx(CS.overflowHidden, className)}
         {...stackProps}
       >
         {showSectionPicker && (

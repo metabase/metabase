@@ -4,11 +4,11 @@ import * as d3 from "d3";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getDashboardById } from "metabase/dashboard/selectors";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
@@ -22,9 +22,8 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
-  computeTimeseriesDataInverval,
+  computeTimeseriesDataInterval,
   minTimeseriesUnit,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import {
@@ -61,6 +60,8 @@ export const getIsShowingSnippetSidebar = (state) =>
   getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = (state) =>
   getUiControls(state).isShowingDataReference;
+export const getHighlightedNativeQueryLineNumbers = (state) =>
+  getUiControls(state).highlightedNativeQueryLineNumbers;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
@@ -72,6 +73,7 @@ const SIDEBARS = [
   "isShowingChartTypeSidebar",
   "isShowingChartSettingsSidebar",
   "isShowingTimelineSidebar",
+  "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
 
@@ -278,7 +280,7 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getQuestionWithParameters = createSelector(
+export const getQuestionWithoutComposing = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) => {
     if (!card || !metadata) {
@@ -289,7 +291,7 @@ export const getQuestionWithParameters = createSelector(
 );
 
 export const getQuestion = createSelector(
-  [getQuestionWithParameters, getQueryBuilderMode],
+  [getQuestionWithoutComposing, getQueryBuilderMode],
   (question, queryBuilderMode) => {
     if (!question) {
       return;
@@ -305,10 +307,10 @@ export const getQuestion = createSelector(
     // with a clean, ad-hoc, query.
     // This has to be skipped for users without data permissions.
     // See https://github.com/metabase/metabase/issues/20042
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
-    return (isModel || isMetric) && isEditable
-      ? question.composeQuestion()
-      : question;
+    const composedQuestion =
+      isModel || isMetric ? question.composeQuestion() : question;
+    const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
+    return isEditable ? composedQuestion : question;
   },
 );
 
@@ -573,21 +575,6 @@ export const getZoomRow = createSelector(
   },
 );
 
-const isZoomingRow = createSelector(
-  [getZoomedObjectId],
-  (index) => index != null,
-);
-
-export const getMode = createSelector(
-  [getLastRunQuestion],
-  (question) => question && getQuestionMode(question),
-);
-
-export const getIsObjectDetail = createSelector(
-  [getMode, isZoomingRow],
-  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
-);
-
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
   isQuestionDirty,
@@ -670,15 +657,10 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [
-    getQuestion,
-    getFirstQueryResult,
-    getLastRunDatasetQuery,
-    getIsShowingRawTable,
-  ],
-  (question, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+  [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
+  (card, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
     const rawSeries = createRawSeries({
-      question,
+      card,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
@@ -790,7 +772,7 @@ const getTimeseriesDataInterval = createSelector(
         isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
       )
       .filter(isNotNull);
-    return computeTimeseriesDataInverval(
+    return computeTimeseriesDataInterval(
       xValues,
       minTimeseriesUnit(columnUnits),
     );
@@ -877,6 +859,7 @@ export const getVisibleTimelineEvents = createSelector(
     _.chain(timelines)
       .map((timeline) => timeline.events)
       .flatten()
+      .compact()
       .filter((event) => visibleTimelineEventIds.includes(event.id))
       .sortBy((event) => event.timestamp)
       .value(),
@@ -1070,7 +1053,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
 
 export const getSubmittableQuestion = (state, question) => {
   const rawSeries = createRawSeries({
-    question: getQuestion(state),
+    card: getCard(state),
     queryResult: getFirstQueryResult(state),
     datasetQuery: getLastRunDatasetQuery(state),
   });

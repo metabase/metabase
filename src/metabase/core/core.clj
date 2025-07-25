@@ -5,33 +5,35 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.api-routes.core :as api-routes]
+   [metabase.app-db.core :as mdb]
+   [metabase.classloader.core :as classloader]
    [metabase.cloud-migration.core :as cloud-migration]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.initialization-status :as init-status]
-   [metabase.db :as mdb]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
-   [metabase.embed.settings :as embed.settings]
-   [metabase.events :as events]
-   [metabase.logger :as logger]
-   [metabase.models.database :as database]
-   [metabase.models.setting :as setting]
+   [metabase.embedding.settings :as embed.settings]
+   [metabase.events.core :as events]
+   [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
-   [metabase.plugins :as plugins]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
-   [metabase.sample-data :as sample-data]
+   [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
+   [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
-   [metabase.task :as task]
+   [metabase.startup.core :as startup]
+   [metabase.system.core :as system]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
-   [metabase.util.system-info :as u.system-info])
+   [metabase.util.system-info :as u.system-info]
+   [metabase.warehouses.models.database :as database])
   (:import
    (java.lang.management ManagementFactory)))
 
@@ -76,7 +78,7 @@
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
-        site-url  (or (public-settings/site-url)
+        site-url  (or (system/site-url)
                       (str "http://"
                            hostname
                            (when-not (= 80 port) (str ":" port))))
@@ -101,6 +103,7 @@
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (analytics/shutdown!)
+  (notification/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
@@ -144,11 +147,12 @@
   (init-status/set-progress! 0.5)
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.55)
+  (task/init-scheduler!)
+  (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (setup/has-user-setup))]
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
-    (task/init-scheduler!)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
     (when new-install?
@@ -174,20 +178,21 @@
   (init-status/set-progress! 0.95)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
+  (startup/run-startup-logic!)
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
-        duration   (- (System/currentTimeMillis) start-time)]
+        duration   (u/since-ms-wall-clock start-time)]
     (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
 
 (defn init!
-  "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
+  "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
   (let [start-time (t/zoned-date-time)]
     (init!*)
-    (public-settings/startup-time-millis!
+    (system/startup-time-millis!
      (.toMillis (t/duration start-time (t/zoned-date-time))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
@@ -195,8 +200,10 @@
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
-    ;; launch embedded webserver async
-    (server/start-web-server! (server/handler))
+    ;; launch embedded webserver
+    (let [server-routes (server/make-routes #'api-routes/routes)
+          handler       (server/make-handler server-routes)]
+      (server/start-web-server! handler))
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing
@@ -207,8 +214,7 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]
-  (classloader/require 'metabase.cmd)
-  ((resolve 'metabase.cmd/run-cmd) cmd init-fn args))
+  ((requiring-resolve 'metabase.cmd.core/run-cmd) cmd init-fn args))
 
 ;;; -------------------------------------------------- Tracing -------------------------------------------------------
 

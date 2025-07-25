@@ -6,19 +6,20 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.config :as config]
-   [metabase.driver.h2 :as h2]
-   [metabase.events :as events]
-   [metabase.http-client :as client]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.cache-test :as setting.cache-test]
+   [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.events.core :as events]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings.core :as setting]
+   [metabase.settings.models.setting.cache-test :as setting.cache-test]
    [metabase.setup.api :as api.setup]
    [metabase.setup.core :as setup]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
@@ -61,7 +62,7 @@
      request-body
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                     h2/*allow-testing-h2-connections*                       true]
+                     driver.settings/*allow-testing-h2-connections*                       true]
          (testing "API response should return a Session UUID"
            (is (=? {:id string/valid-uuid?}
                    (client/client :post 200 "setup" request-body))))
@@ -81,7 +82,7 @@
             (testing "new User should be created"
               (is (t2/exists? :model/User :email email)))
             (testing "Creating a new admin user should set the `admin-email` Setting"
-              (is (= email (public-settings/admin-email))))
+              (is (= email (system/admin-email))))
             (testing "Should record :user-joined in the Audit Log (#12933)"
               (let [user-id (u/the-id (t2/select-one :model/User :email email))]
                 (is (= {:topic    :user-joined
@@ -326,7 +327,7 @@
          body
          (fn []
            (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
-                         h2/*allow-testing-h2-connections*                       true
+                         driver.settings/*allow-testing-h2-connections* true
                          api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
                                                          (fn [& args]
                                                            (apply orig args)
@@ -343,9 +344,9 @@
                     (t2/exists? :model/Database :engine "h2", :name db-name))))
            (testing "Settings should not be changed"
              (is (not= site-name
-                       (public-settings/site-name)))
+                       (appearance/site-name)))
              (is (= "en"
-                    (public-settings/site-locale))))
+                    (system/site-locale))))
            (testing "Setup token should still be set"
              (is (= setup-token
                     (setup/setup-token))))))))))

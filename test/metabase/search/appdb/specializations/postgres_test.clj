@@ -1,7 +1,10 @@
 (ns metabase.search.appdb.specializations.postgres-test
   (:require
    [clojure.test :refer :all]
-   [metabase.search.appdb.specialization.postgres :as search.postgres]))
+   [metabase.app-db.core :as mdb]
+   [metabase.search.appdb.specialization.postgres :as search.postgres]
+   [metabase.test.util :as tu]
+   [metabase.util.i18n :as i18n]))
 
 (def search-expr #'search.postgres/to-tsquery-expr)
 
@@ -57,3 +60,23 @@
   (testing "single quotes"
     (is (= "'you''re':*"
            (search-expr "you're")))))
+
+(deftest available-tsv-languages
+  (when (= :postgres (mdb/db-type))
+    (let [available @#'search.postgres/available-tsv-languages]
+      (is (= :english (:en available)))
+      (is (= :german (:de available)))
+      (is (nil? (:ko available))))))
+
+(deftest tsv-language
+  (when (= :postgres (mdb/db-type))
+    (binding [i18n/*site-locale-override* "en"]
+      (is (= "english" (#'search.postgres/tsv-language))))
+    (binding [i18n/*site-locale-override* "de"]
+      (is (= "german" (#'search.postgres/tsv-language))))
+    (binding [i18n/*site-locale-override* "pt_BR"]
+      (is (= "portuguese" (#'search.postgres/tsv-language))))
+    (binding [i18n/*site-locale-override* "ko"]
+      (is (= "simple" (#'search.postgres/tsv-language))))
+    (tu/with-temporary-setting-values [search-language "custom-value"]
+      (is (= "custom-value" (#'search.postgres/tsv-language))))))

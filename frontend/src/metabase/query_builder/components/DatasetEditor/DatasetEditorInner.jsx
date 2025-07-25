@@ -1,20 +1,20 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePrevious } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
-import ActionButton from "metabase/components/ActionButton";
-import DebouncedFrame from "metabase/components/DebouncedFrame";
-import EditBar from "metabase/components/EditBar";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
-import Button from "metabase/core/components/Button";
+import ActionButton from "metabase/common/components/ActionButton";
+import Button from "metabase/common/components/Button";
+import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import EditBar from "metabase/common/components/EditBar";
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { connect } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
@@ -207,9 +207,9 @@ const _DatasetEditorInner = (props) => {
     onOpenModal,
   } = props;
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
-  const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const fields = useMemo(
     () =>
       getSortedModelFields(
@@ -243,11 +243,15 @@ const _DatasetEditorInner = (props) => {
     });
   }, [question, height]);
 
-  const [editorHeight, setEditorHeight] = useState(
-    isEditingQuery ? initialEditorHeight : 0,
-  );
+  const [editorHeight, setEditorHeight] = useState(initialEditorHeight);
 
   const [focusedFieldName, setFocusedFieldName] = useState();
+
+  useMount(() => {
+    if (question.isSaved() && Lib.canRun(question.query(), question.type())) {
+      runQuestionQuery();
+    }
+  });
 
   const focusedFieldIndex = useMemo(() => {
     if (!focusedFieldName) {
@@ -320,20 +324,16 @@ const _DatasetEditorInner = (props) => {
   );
 
   const handleCancelEdit = () => {
-    setShowCancelEditWarning(false);
+    closeModal();
     cancelQuestionChanges();
-    runDirtyQuestionQuery();
     setQueryBuilderMode("view");
-  };
-
-  const handleCancelEditWarningClose = () => {
-    setShowCancelEditWarning(false);
+    runDirtyQuestionQuery();
   };
 
   const handleCancelClick = () => {
     if (question.isSaved()) {
       if (isDirty) {
-        setShowCancelEditWarning(true);
+        openModal();
       } else {
         handleCancelEdit();
       }
@@ -490,6 +490,7 @@ const _DatasetEditorInner = (props) => {
         center={
           <EditorTabs
             currentTab={datasetEditorTab}
+            disabledQuery={!isEditable}
             disabledMetadata={!resultsMetadata}
             onChange={onChangeEditorTab}
           />
@@ -582,12 +583,11 @@ const _DatasetEditorInner = (props) => {
         </ViewSidebar>
       </Flex>
 
-      <Modal isOpen={showCancelEditWarning}>
-        <LeaveConfirmationModalContent
-          onAction={handleCancelEdit}
-          onClose={handleCancelEditWarningClose}
-        />
-      </Modal>
+      <LeaveConfirmModal
+        opened={modalOpened}
+        onConfirm={handleCancelEdit}
+        onClose={closeModal}
+      />
     </>
   );
 };

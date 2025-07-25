@@ -1,70 +1,178 @@
+import cx from "classnames";
 import { useMount } from "react-use";
+import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, Flex, Text, Title } from "metabase/ui";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
+import {
+  Box,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+  Title,
+  UnstyledButton,
+} from "metabase/ui";
 
+import { UPGRADE_URL } from "../constants";
+
+import {
+  type DismissibleProps,
+  UpsellWrapperDismissible,
+} from "./UpsellBannerDismissible";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
-export type UpsellBannerProps = {
+type CardLinkProps =
+  | {
+      buttonLink: string;
+      internalLink?: never;
+    }
+  | {
+      internalLink: string;
+      buttonLink?: never;
+    };
+
+type UpsellBannerPropsBase = {
   title: string;
   buttonText: string;
-  buttonLink: string;
   campaign: string;
-  source: string;
+  location: string;
+  large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  onClick?: () => void;
 };
+
+export type UpsellBannerProps =
+  | (UpsellBannerPropsBase & CardLinkProps)
+  | (UpsellBannerPropsBase & CardLinkProps & DismissibleProps);
 
 export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   title,
   buttonText,
   buttonLink,
+  internalLink,
   campaign,
-  source,
+  location,
+  large,
   children,
+  onClick,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
-    url: buttonLink,
+    url: buttonLink ?? UPGRADE_URL,
     campaign,
-    source,
+    location,
   });
 
   useMount(() => {
-    trackUpsellViewed({ source, campaign });
+    trackUpsellViewed({ location, campaign });
   });
+
+  const { dismissible, onDismiss, ...domProps } =
+    "dismissible" in props
+      ? props
+      : { dismissible: false, onDismiss: () => {} };
+  const gemSize = large ? 24 : undefined;
+  const contentAlignment = large ? "flex-start" : "center";
 
   return (
     <Box
-      className={S.UpsellBannerComponent}
+      className={cx(S.UpsellBannerComponent, large && S.Large)}
       data-testid="upsell-banner"
-      {...props}
+      bg="bg-white"
+      {...domProps}
     >
-      <Flex align="center" gap="md" wrap="nowrap">
-        <UpsellGem />
-        <Box>
-          <Title lh={1.25} order={2} size="md">
+      <Flex align={contentAlignment} gap="md" wrap="nowrap">
+        <UpsellGem size={gemSize} />
+        <Stack gap="xs">
+          <Title lh={1.25} order={3} size="md">
             {title}
           </Title>
-          <Text lh="1rem" size="sm">
+          <Text lh="1rem" size="sm" c="text-secondary">
             {children}
           </Text>
-        </Box>
+        </Stack>
       </Flex>
 
-      <ExternalLink
-        className={S.UpsellCTALink}
-        href={url}
-        onClickCapture={() => trackUpsellClicked({ source, campaign })}
-      >
-        {buttonText}
-      </ExternalLink>
+      <Flex align="center" gap="md">
+        {match({ onClick, buttonLink, internalLink })
+          .with(
+            {
+              onClick: P.nonNullable,
+              buttonLink: P.any,
+              internalLink: P.nullish,
+            },
+            (args) => (
+              <UnstyledButton
+                onClick={() => {
+                  trackUpsellClicked({ location, campaign });
+                  args.onClick();
+                }}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </UnstyledButton>
+            ),
+          )
+          .with(
+            {
+              onClick: P.any,
+              buttonLink: P.nonNullable,
+              internalLink: P.nullish,
+            },
+            () => (
+              <ExternalLink
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
+                href={url}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </ExternalLink>
+            ),
+          )
+          .with(
+            {
+              onClick: P.any,
+              buttonLink: P.any,
+              internalLink: P.nonNullable,
+            },
+            (args) => (
+              <Link
+                onClickCapture={() =>
+                  trackUpsellClicked({ location, campaign })
+                }
+                to={args.internalLink}
+                className={S.UpsellCTALink}
+              >
+                {buttonText}
+              </Link>
+            ),
+          )
+          .otherwise(() => null)}
+
+        {dismissible && (
+          <UnstyledButton
+            role="button"
+            component={Icon}
+            size="1rem"
+            name="close"
+            aria-label={t`Dismiss banner`}
+            onClick={onDismiss}
+          />
+        )}
+      </Flex>
     </Box>
   );
 };
 
-export const UpsellBanner = UpsellWrapper(_UpsellBanner);
+export const UpsellBanner = UpsellWrapperDismissible(
+  UpsellWrapper(_UpsellBanner),
+);

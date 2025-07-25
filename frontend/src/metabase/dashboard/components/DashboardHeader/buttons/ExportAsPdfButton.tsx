@@ -1,29 +1,22 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   type DashboardAccessedVia,
   trackExportDashboardToPDF,
 } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
-import { useDispatch } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
-import { Button, Icon } from "metabase/ui";
-import {
-  getExportTabAsPdfButtonText,
-  saveDashboardPdf,
-} from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { Dashboard } from "metabase-types/api";
+import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 
-export const ExportAsPdfButton = ({
-  dashboard,
-  color,
-}: {
-  dashboard: Dashboard;
-  color?: string;
-}) => {
-  const dispatch = useDispatch();
+export const ExportAsPdfButton = (props: ActionIconProps) => {
+  const { dashboard } = useDashboardContext();
+  const isWhitelabeled = useHasTokenFeature("whitelabel");
+  const includeBranding = !isWhitelabeled;
 
   const saveAsPDF = () => {
     const dashboardAccessedVia = match(dashboard?.id)
@@ -37,21 +30,23 @@ export const ExportAsPdfButton = ({
     });
 
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    return saveDashboardPdf(
-      cardNodeSelector,
-      dashboard.name ?? t`Exported dashboard`,
-    );
+    return saveDashboardPdf({
+      selector: cardNodeSelector,
+      dashboardName: dashboard?.name ?? t`Exported dashboard`,
+      includeBranding,
+    });
   };
 
   return (
-    <Button
-      variant="subtle"
-      px="0.5rem"
-      leftSection={<Icon name="document" />}
-      color={color || "text-dark"}
-      onClick={() => dispatch(saveAsPDF)}
-    >
-      {getExportTabAsPdfButtonText(dashboard.tabs)}
-    </Button>
+    <Tooltip label={t`Download as PDF`}>
+      <ActionIcon
+        onClick={saveAsPDF}
+        aria-label={t`Download as PDF`}
+        data-testid="export-as-pdf-button"
+        {...props}
+      >
+        <Icon name="download" />
+      </ActionIcon>
+    </Tooltip>
   );
 };

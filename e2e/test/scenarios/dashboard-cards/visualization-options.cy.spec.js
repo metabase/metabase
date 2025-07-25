@@ -37,9 +37,9 @@ describe("scenarios > dashboard cards > visualization options", () => {
   it("should show the ellipsis even with an empty card title on visualizations with noHeader (metabase#46897)", () => {
     const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-    const QUESTION_LINE_CHART = {
-      name: "Line chart",
-      display: "line",
+    const QUESTION_TABLE = {
+      name: "The tablest of all tables",
+      display: "table",
       query: {
         aggregation: [["count"]],
         breakout: [
@@ -54,12 +54,12 @@ describe("scenarios > dashboard cards > visualization options", () => {
       },
     };
 
-    H.createQuestionAndDashboard({ questionDetails: QUESTION_LINE_CHART }).then(
+    H.createQuestionAndDashboard({ questionDetails: QUESTION_TABLE }).then(
       ({ body: card }) => {
         H.visitDashboard(card.dashboard_id);
 
         cy.findByTestId("legend-caption")
-          .should("contain", QUESTION_LINE_CHART.name)
+          .should("contain", QUESTION_TABLE.name)
           .and("be.visible");
 
         H.editDashboard();
@@ -67,16 +67,13 @@ describe("scenarios > dashboard cards > visualization options", () => {
         cy.icon("palette").click();
 
         H.modal().within(() => {
-          cy.findByDisplayValue(QUESTION_LINE_CHART.name)
-            .click()
-            .clear()
-            .blur();
+          cy.findByDisplayValue(QUESTION_TABLE.name).click().clear().blur();
           cy.button("Done").click();
         });
 
         cy.findByTestId("legend-caption").should(
           "not.contain",
-          QUESTION_LINE_CHART.name,
+          QUESTION_TABLE.name,
         );
         H.saveDashboard();
         H.getDashboardCard().realHover();
@@ -97,14 +94,14 @@ describe("scenarios > dashboard cards > visualization options", () => {
       H.moveDnDKitElement(H.getDraggableElements().contains("ID"), {
         vertical: 100,
       });
-      const idButton = cy
-        .get('[data-testid="draggable-item-ID"]')
-        .closest("[role=button]");
-      const userIdButton = cy
-        .get('[data-testid="draggable-item-User ID"]')
-        .closest("[role=button]");
+      const idButton = () =>
+        cy.get('[data-testid="draggable-item-ID"]').closest("[role=button]");
+      const userIdButton = () =>
+        cy
+          .get('[data-testid="draggable-item-User ID"]')
+          .closest("[role=button]");
       // The ID column should be below the User ID column.
-      expect(idButton.prev()[0]).to.equal(userIdButton[0]);
+      expect(idButton().prev()[0]).to.equal(userIdButton()[0]);
     });
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
     H.modal().findAllByRole("columnheader").first().contains("User ID");

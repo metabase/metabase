@@ -2,8 +2,9 @@
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as common]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -69,7 +70,7 @@
     :else                (isa? x y)))
 
 (defn type-of?
-  "Whether the [[type-of]] `expr` isa? [[metabase.types]] `base-type`."
+  "Whether the [[type-of]] `expr` isa? [[metabase.types.core]] `base-type`."
   [expr base-type]
   (let [expr-type (type-of expr)]
     (assert ((some-fn keyword? set?) expr-type)
@@ -196,13 +197,27 @@
    [:cat
     #_tag :any
     #_opts [:map
-            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
-            [:ident               [:ref {:decode/normalize common/normalize-string-key} ::common/non-blank-string]]]
-    #_args [:* :any]]])
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+    #_args [:* :any]]
+   [:fn
+    {:error/message "non-aggregation expression"}
+    #(letfn [(agg-tag? [tag]
+               (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
+             (agg-expr? [expr]
+               (and (vector? expr)
+                    (or (agg-tag? (first expr))
+                        (some agg-expr? (nnext expr)))))]
+       (not (agg-expr? %)))]])
 
-;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:sequential {:min 1} [:ref ::expression.definition]])
+  "The `:expressions` definition map as found as a top-level key in an MBQL stage."
+  [:and
+   [:sequential {:min 1} [:ref ::expression.definition]]
+   [:fn
+    {:error/message "expressions must have unique names"}
+    (fn [expressions]
+      (or (empty? expressions)
+          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and

@@ -211,11 +211,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -225,11 +225,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: (value) => {
-        H.popover().findByRole("textbox").clear().type(value).blur();
+        H.popover().findByRole("combobox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -367,7 +367,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("no default value, non-required, has current value");
     filter(NO_DEFAULT_NON_REQUIRED).click();
     setValue(otherValue);
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+
+    filter(NO_DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
     filter(NO_DEFAULT_NON_REQUIRED).should(
@@ -382,19 +383,18 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("no default value, required, has current value");
     filter(NO_DEFAULT_REQUIRED).click();
     updateValue(otherValue);
-    filter(NO_DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
-    // checkStatusIcon(NO_DEFAULT_REQUIRED, "clear");
+    filter(NO_DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
 
     cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     clearButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
 
     cy.log("has default value, non-required, no current value");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log(
@@ -402,10 +402,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     );
     filter(DEFAULT_NON_REQUIRED).click();
     updateValue(otherValue);
-    filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_NON_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
@@ -414,10 +414,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log("has default value, required, current value different than default");
     filter(DEFAULT_REQUIRED).click();
     updateValue(otherValue);
-    filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
+    filter(DEFAULT_REQUIRED).should("contain.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "reset");
     resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
+    filter(DEFAULT_REQUIRED).should("contain.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
   }
 

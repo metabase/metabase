@@ -2,7 +2,7 @@
   "JDBC proxy driver used for drivers added at runtime. DriverManager refuses to recognize drivers that weren't loaded
   by the system classloader, so we need to wrap our drivers loaded at runtime with a proxy class loaded at launch time."
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin.types :as p.types]

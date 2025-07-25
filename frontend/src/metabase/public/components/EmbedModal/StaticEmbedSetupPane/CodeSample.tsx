@@ -1,9 +1,10 @@
 import cx from "classnames";
 import { type ChangeEvent, useMemo } from "react";
 
-import { CodeBlock, type CodeLanguage } from "metabase/components/CodeBlock";
-import { CopyButton } from "metabase/components/CopyButton";
-import Select, { Option } from "metabase/core/components/Select";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import Select, { Option } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
@@ -77,11 +78,12 @@ export const CodeSample = ({
           CS.overflowHidden,
         )}
       >
-        <CodeBlock
+        <CodeEditor
           className={CS.z1}
           language={language}
-          code={source}
           highlightRanges={highlightRanges}
+          readOnly
+          value={source}
         />
         {source && (
           <CopyButtonContainer>

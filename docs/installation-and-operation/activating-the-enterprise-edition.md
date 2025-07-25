@@ -37,7 +37,7 @@ There are two ways to activate your license when self-hosting Metabase:
 
 OR
 
-- **Before you start Metabase**: you can also set the license token with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_premium_embedding_token). This environment variable must be set _before_ you start your Metabase.
+- **Before you start Metabase**: you can also set the license token with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token). This environment variable must be set _before_ you start your Metabase.
 
 ## Upgrading from a self-hosted Metabase Open Source Edition to a Pro or Enterprise plan
 
@@ -57,7 +57,7 @@ Assuming you've been using a [production application database](../installation-a
 
 Migrating to the Enterprise Edition will keep all of your questions, dashboards, people, settings — everything in your existing Metabase.
 
-And don't stress. You won't lose any of your work, and if you get stuck, we're [here to help](https://www.metabase.com/help/premium).
+And don't stress. You won't lose any of your work, and if you get stuck, we're [here to help](https://www.metabase.com/help-premium).
 
 ## Validating your token
 
@@ -99,12 +99,12 @@ If you're hosting Metabase behind a firewall that blocks outgoing connections, *
 44.212.138.188
 ```
 
-To verify your license with a token check to `token-check.metabase.com`, your Metabase will make GET HTTP requests to these IP addresses and parse their responses. If you can't allow outbound connections for security reasons, please [contact us](https://www.metabase.com/help/premium).
+To verify your license with a token check to `token-check.metabase.com`, your Metabase will make GET HTTP requests to these IP addresses and parse their responses. If you can't allow outbound connections for security reasons, please [contact us](https://www.metabase.com/help-premium).
 
 ## Note about Zscaler deployments
 
 When Metabase is deployed inside infrastructure that uses Zscaler, you should do the following:
 
-1. Contact your networking team and let them know that Metabase will need to perform token checks in order for paid features to work. If you need an air-gapped version of Metabase, [contact us](https://www.metabase.com/help/premium).
+1. Contact your networking team and let them know that Metabase will need to perform token checks in order for paid features to work. If you need an air-gapped version of Metabase, [contact us](https://www.metabase.com/help-premium).
 2. Make sure Zscaler isn't acting as a proxy or DNS for the server where Metabase is running. Metabase needs a direct connection to the token check service without any gateway acting as a proxy.
 3. Make sure the server where Metabase is running isn't using Zscaler root CA certificates for all websites. Otherwise, the Java virtual machine where Metabase runs will determine that the certificate authority is incorrect.

@@ -155,42 +155,12 @@ describe(
       });
     });
 
-    it("should allow to create an action with the New button", () => {
-      const QUERY = "UPDATE orders SET discount = {{ discount }}";
-      cy.visit("/");
-
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Action").click();
-
-      cy.wait("@getDatabase");
-      H.fillActionQuery(QUERY);
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByText(/New Action/)
-          .clear()
-          .type("Discount order");
-
-        cy.findByRole("button", { name: "Save" }).click();
-      });
-
-      H.modal().eq(1).findByText("Select a model").click();
-      H.entityPickerModal().within(() => {
-        cy.findByText("Order").click();
-      });
-
-      cy.findByRole("button", { name: "Create" }).click();
-
-      cy.get("@modelId").then((modelId) => {
-        cy.url().should("include", `/model/${modelId}/detail/actions`);
-      });
-    });
-
     it("should respect permissions", () => {
       // Enabling actions for sample database as well
       // to test database picker behavior in the action editor
       H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
@@ -266,8 +236,7 @@ describe(
 
     it("should display parameters for variable template tags only", () => {
       cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Action").click();
+      H.startNewAction();
 
       H.fillActionQuery("{{#1-orders-model}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");
@@ -746,7 +715,7 @@ describe(
           role,
           `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
         );
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.queryWritableDB(sql);
 
         cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {

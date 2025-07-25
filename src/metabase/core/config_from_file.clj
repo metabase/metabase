@@ -1,6 +1,6 @@
 (ns metabase.core.config-from-file
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util.log :as log]))
 
 (defn init-from-file-if-code-available!

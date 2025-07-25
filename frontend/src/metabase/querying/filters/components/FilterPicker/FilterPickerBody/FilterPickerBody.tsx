@@ -7,23 +7,30 @@ import { DefaultFilterPicker } from "../DefaultFilterPicker";
 import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
+import type { FilterChangeOpts } from "../types";
 
 interface FilterPickerBodyProps {
+  autoFocus?: boolean;
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter?: Lib.Filterable;
   isNew?: boolean;
-  onChange: (filter: Lib.ExpressionClause) => void;
+  withAddButton?: boolean;
+  withSubmitButton?: boolean;
+  onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
 }
 
 export function FilterPickerBody({
+  autoFocus = true,
   query,
   stageIndex,
   column,
   filter,
   isNew = filter == null,
+  withAddButton = false,
+  withSubmitButton = true,
   onChange,
   onBack,
 }: FilterPickerBodyProps) {
@@ -34,11 +41,14 @@ export function FilterPickerBody({
 
   return (
     <FilterWidget
+      autoFocus={autoFocus}
       query={query}
       stageIndex={stageIndex}
       column={column}
       filter={filter}
       isNew={isNew}
+      withAddButton={withAddButton}
+      withSubmitButton={withSubmitButton}
       onChange={onChange}
       onBack={onBack}
     />

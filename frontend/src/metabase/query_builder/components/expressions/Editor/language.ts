@@ -2,13 +2,16 @@ import { LRLanguage, LanguageSupport } from "@codemirror/language";
 import { type Diagnostic, linter } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 
+import {
+  type ExpressionError,
+  diagnoseAndCompile,
+} from "metabase/querying/expressions";
+import { parser } from "metabase/querying/expressions/tokenizer/parser";
 import type * as Lib from "metabase-lib";
-import type { ExpressionError, StartRule } from "metabase-lib/v1/expressions";
-import { diagnoseAndCompile } from "metabase-lib/v1/expressions";
-import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { DEBOUNCE_VALIDATION_MS } from "./constants";
+import { hasActiveSnippet } from "./utils";
 
 const expressionLanguage = LRLanguage.define({
   parser,
@@ -16,16 +19,20 @@ const expressionLanguage = LRLanguage.define({
 });
 
 type LintOptions = {
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex?: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
   metadata: Metadata;
 };
 
 const lint = (options: LintOptions) =>
   linter(
     (view: EditorView): Diagnostic[] => {
+      if (hasActiveSnippet(view.state)) {
+        return [];
+      }
+
       const source = view.state.doc.toString();
       if (source === "") {
         return [];

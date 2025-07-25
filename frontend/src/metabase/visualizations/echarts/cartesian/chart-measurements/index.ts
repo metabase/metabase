@@ -17,9 +17,12 @@ import type {
   Padding,
   RenderingContext,
 } from "metabase/visualizations/types";
-import { isCategory, isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
+import {
+  isCategoryAxis,
+  isNumericAxis,
+  isTimeSeriesAxis,
+} from "../model/guards";
 
 import type {
   ChartBoundsCoords,
@@ -294,10 +297,12 @@ const getXTicksToMeasure = (
   renderingContext: RenderingContext,
 ) => {
   const { fontSize } = renderingContext.theme.cartesian.label;
-  const dimensionColumn = chartModel.dimensionModel.column;
 
   // On continuous axes, we measure a limited number of evenly spaced ticks, including the start and end points.
-  if (isNumeric(dimensionColumn) || isDate(dimensionColumn)) {
+  if (
+    isNumericAxis(chartModel.xAxisModel) ||
+    isTimeSeriesAxis(chartModel.xAxisModel)
+  ) {
     return getEvenlySpacedIndices(
       chartModel.dataset.length,
       X_TICKS_TO_MEASURE_COUNT,
@@ -307,7 +312,7 @@ const getXTicksToMeasure = (
   // On category scales, when the dimension width is smaller than the tick font size,
   // meaning that even with 90-degree rotation the ticks will not fit,
   // we select the top N ticks based on character length for formatting and measurement.
-  if (isCategory(dimensionColumn) && dimensionWidth <= fontSize) {
+  if (isCategoryAxis(chartModel.xAxisModel) && dimensionWidth <= fontSize) {
     return chartModel.dataset
       .map((datum) => datum[X_AXIS_DATA_KEY])
       .sort((a, b) => String(b).length - String(a).length)

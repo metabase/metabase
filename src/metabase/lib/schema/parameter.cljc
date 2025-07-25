@@ -70,8 +70,7 @@
    :text    {:type :string,  :allowed-for #{:text :string/= :id :category
                                             :location/city :location/state :location/zip_code :location/country}}
    :date    {:type :date,    :allowed-for #{:date :date/single :date/all-options :id :category}}
-   ;; I don't think `:boolean` is actually used on the FE at all.
-   :boolean {:type :boolean, :allowed-for #{:boolean :id :category}}
+   :boolean {:type :boolean, :allowed-for #{:boolean :id :category :boolean/=}}
 
    ;; as far as I can tell this is basically just an alias for `:date`... I'm not sure what the difference is TBH
    :date/single {:type :date, :allowed-for #{:date :date/single :date/all-options :id :category}}
@@ -137,7 +136,8 @@
    :string/contains         {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/contains}}
    :string/does-not-contain {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/ends-with}}
-   :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}})
+   :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}
+   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean :boolean/=}}})
 
 (mr/def ::type
   (into [:enum {:error/message    "valid parameter type"
@@ -177,11 +177,18 @@
 ;;; update [[metabase.lib.convert]] to convert `:parameters` back and forth and add UUIDs and what not. But parameters
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
+(defn- normalize-legacy-ref [legacy-ref]
+  ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref))
+
 (mr/def ::legacy-field-ref
-  [:ref :metabase.legacy-mbql.schema/field])
+  [:ref
+   {:decode/normalize normalize-legacy-ref}
+   :metabase.legacy-mbql.schema/field])
 
 (mr/def ::legacy-expression-ref
-  [:ref :metabase.legacy-mbql.schema/expression])
+  [:ref
+   {:decode/normalize normalize-legacy-ref}
+   :metabase.legacy-mbql.schema/expression])
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag

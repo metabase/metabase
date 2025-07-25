@@ -1,5 +1,8 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabasesEndpoints,
+  setupTokenStatusEndpoint,
+} from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -7,15 +10,13 @@ import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import {
-  createMockSettings,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
-import {
   createMockCacheConfig,
   createMockCacheConfigWithDoNotCacheStrategy,
   createMockCacheConfigWithDurationStrategy,
   createMockCacheConfigWithMultiplierStrategy,
-} from "metabase-types/api/mocks/performance";
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -27,7 +28,7 @@ export interface SetupOpts {
 }
 
 export const setupStrategyEditorForDatabases = ({
-  hasEnterprisePlugins,
+  hasEnterprisePlugins = false,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
@@ -42,6 +43,7 @@ export const setupStrategyEditorForDatabases = ({
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+  setupTokenStatusEndpoint(hasEnterprisePlugins);
 
   const cacheConfigs = [
     createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),

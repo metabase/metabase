@@ -2,10 +2,10 @@
   (:refer-clojure :exclude [distinct])
   (:require
    [clojure.string :as str]
-   [metabase.types]
+   [metabase.types.core]
    [metabase.util.malli.registry :as mr]))
 
-(comment metabase.types/keep-me)
+(comment metabase.types.core/keep-me)
 
 ;;; --------------------------------------------------- defclause ----------------------------------------------------
 

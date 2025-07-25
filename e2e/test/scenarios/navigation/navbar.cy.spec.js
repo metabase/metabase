@@ -131,7 +131,7 @@ describe("scenarios > navigation > navbar", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be open when logging in with a landing page configured", () => {

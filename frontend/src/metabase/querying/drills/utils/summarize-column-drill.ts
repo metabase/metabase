@@ -10,19 +10,25 @@ import type { Dispatch } from "metabase-types/store";
 const ACTIONS: Record<Lib.SummarizeColumnDrillThruOperator, ClickActionBase> = {
   sum: {
     name: "summarize-column.sum",
-    title: t`Sum`,
+    get title() {
+      return t`Sum`;
+    },
     section: "sum",
     buttonType: "token",
   },
   avg: {
     name: "summarize-column.avg",
-    title: t`Avg`,
+    get title() {
+      return t`Avg`;
+    },
     section: "sum",
     buttonType: "token",
   },
   distinct: {
     name: "summarize-column.distinct",
-    title: t`Distinct values`,
+    get title() {
+      return t`Distinct values`;
+    },
     section: "sum",
     buttonType: "token",
   },

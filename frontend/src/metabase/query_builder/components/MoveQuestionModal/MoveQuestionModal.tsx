@@ -7,8 +7,9 @@ import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { MoveModal } from "metabase/containers/MoveModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { MoveModal } from "metabase/common/components/MoveModal";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import Dashboards from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -156,7 +157,7 @@ export const MoveQuestionModal = ({
         }}
         onClose={onClose}
         title={
-          <Title fz="1.25rem" lh={1.5}>
+          <Title order={3}>
             {c(
               "{0} is the dashboard name the question currently has dashcards in",
             ).jt`Do you still want this question to appear in ${(
@@ -169,7 +170,7 @@ export const MoveQuestionModal = ({
         }
         message={
           <>
-            <Box mt="-2rem">
+            <Box mt="-1.5rem">
               {t`It can still appear there even though you’re moving it into a collection.`}
             </Box>
             <Radio.Group
@@ -189,7 +190,7 @@ export const MoveQuestionModal = ({
             </Radio.Group>
           </>
         }
-        confirmButtonPrimary
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
         confirmButtonText={t`Done`}
       />
     );
@@ -204,14 +205,18 @@ export const MoveQuestionModal = ({
         onClose={onClose}
         title={
           <Title fz="1.25rem" lh={1.5}>
-            Moving this question to another dashboard will remove it from{" "}
-            <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
-            <Dashboards.Name id={question.dashboardId()} />
+            {c("{0} is the name of a dashboard")
+              .jt`Moving this question to another dashboard will remove it from ${(
+              <>
+                <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
+                <Dashboards.Name id={question.dashboardId()} />
+              </>
+            )}`}
           </Title>
         }
         message={t`You can move it to a collection if you want to use it in both dashboards.`}
-        confirmButtonPrimary
         confirmButtonText={t`Okay`}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
       />
     );
   }
@@ -234,6 +239,16 @@ export const MoveQuestionModal = ({
     );
   }
 
+  const recentAndSearchFilter = (item: CollectionPickerItem) => {
+    const dashboardId = question.dashboardId();
+
+    if (dashboardId) {
+      return item.model === "dashboard" && item.id === dashboardId;
+    } else {
+      return item.model === "collection" && item.id === question.collectionId();
+    }
+  };
+
   return (
     <MoveModal
       title={t`Where do you want to save this?`}
@@ -241,6 +256,7 @@ export const MoveQuestionModal = ({
       onClose={onClose}
       onMove={handleChooseMoveLocation}
       canMoveToDashboard={question.type() === "question"}
+      recentAndSearchFilter={recentAndSearchFilter}
     />
   );
 };

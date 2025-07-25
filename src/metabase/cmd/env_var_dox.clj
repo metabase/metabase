@@ -7,8 +7,8 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.reader.edn :as edn]
-   [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]))
 
 (defn prep-settings

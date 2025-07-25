@@ -29,22 +29,37 @@ export default (ComposedComponent) =>
 
       UNSAFE_componentWillMount() {
         if (this.props.column) {
-          this.props.fetchRemapping(this.props.value, this.props.column.id);
+          this.props.fetchRemapping({
+            parameter: this.props.parameter,
+            value: this.props.value,
+            field: this.props.column,
+            cardId: this.props.cardId,
+            dashboardId: this.props.dashboardId,
+          });
         }
       }
       UNSAFE_componentWillReceiveProps(nextProps) {
         if (
           nextProps.column &&
           (this.props.value !== nextProps.value ||
-            this.props.column !== nextProps.column)
+            this.props.column?.id !== nextProps.column.id ||
+            this.props.parameter?.id !== nextProps.parameter?.id ||
+            this.props.cardId !== nextProps.cardId ||
+            this.props.dashboardId !== nextProps.dashboardId)
         ) {
-          this.props.fetchRemapping(nextProps.value, nextProps.column.id);
+          this.props.fetchRemapping({
+            parameter: nextProps.parameter,
+            value: nextProps.value,
+            field: this.props.column,
+            cardId: nextProps.cardId,
+            dashboardId: nextProps.dashboardId,
+          });
         }
       }
 
       render() {
         const { metadata, fetchRemapping, ...props } = this.props;
-        const field = metadata.field(props.column && props.column.id);
+        const field = props.column;
         const displayValue = field && field.remappedValue(props.value);
         const displayColumn =
           (displayValue != null && field && field.remappedField()) || null;

@@ -1,14 +1,14 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import GroupSummary from "metabase/admin/people/components/GroupSummary";
+import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type {
   GroupIds,
   UserGroupType,
   UserGroupsType,
 } from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Select from "metabase/core/components/Select";
+import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
+import Select from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,
@@ -60,9 +60,11 @@ export const GroupSelect = ({
 }: GroupSelectProps) => {
   const triggerElement = (
     <div className={cx(CS.flex, CS.alignCenter)}>
-      <span className={cx(CS.mr1, CS.textMedium)}>
-        <GroupSummary groups={groups} selectedGroupIds={selectedGroupIds} />
-      </span>
+      <GroupSummary
+        mr="0.5rem"
+        groups={groups}
+        selectedGroupIds={selectedGroupIds}
+      />
       <Icon className={CS.textLight} name="chevrondown" size={10} />
     </div>
   );

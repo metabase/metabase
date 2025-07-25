@@ -5,7 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.types.constants :as lib.types.constants]
    [metabase.lib.types.isa :as lib.types.isa]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -39,107 +38,47 @@
                                           orderable-columns))]
     (testing "effective type"
       (is (=? [{:name "NAME"
-                :lib/desired-column-alias "NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}
                {:name "NAME"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"
                 :semantic-type :type/Name
                 :effective-type :type/Text}]
               (columns-of-type :type/Text))))
     (testing "semantic type"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (columns-of-type :Relation/*))))
-    (testing "experssions"
+    (testing "expressions"
       (is (=? [{:name "ID"
-                :lib/desired-column-alias "ID"
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}
                {:name "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"
                 :semantic-type :type/FK
                 :effective-type :type/Integer}
                {:name "LATITUDE"
-                :lib/desired-column-alias "LATITUDE"
                 :semantic-type :type/Latitude
                 :effective-type :type/Float}
                {:name "LONGITUDE"
-                :lib/desired-column-alias "LONGITUDE"
                 :semantic-type :type/Longitude
                 :effective-type :type/Float}
                {:name "PRICE"
-                :lib/desired-column-alias "PRICE"
                 :semantic-type :type/Category
                 :effective-type :type/Integer}
                {:name "myadd"
-                :lib/desired-column-alias "myadd"
                 :effective-type :type/Integer}
                {:name "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :fk-field-id (meta/id :venues :category-id)
                 :semantic-type :type/PK
                 :effective-type :type/BigInteger}]
               (filter lib.types.isa/numeric? orderable-columns))))))
-
-(deftest ^:parallel field-type-test
-  ;; should fall back to `:base-type` if `:effective-type` isn't present.
-  (doseq [base-or-effective-type-key [:effective-type :base-type]]
-    (testing "temporal"
-      (are [typ] (= ::lib.types.constants/temporal (lib.types.isa/field-type {base-or-effective-type-key typ}))
-        :type/Date :type/DateTime :type/Time))
-    (testing "numeric"
-      (are [typ] (= ::lib.types.constants/number (lib.types.isa/field-type {base-or-effective-type-key typ}))
-        :type/BigInteger :type/Integer :type/Float :type/Decimal))
-    (testing "string"
-      (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key typ}))
-        :type/Text :type/MySQLEnum))
-    (testing "types of string"
-      (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key :type/Text
-                                                                            :semantic-type typ}))
-        :type/Name :type/Description :type/UUID :type/URL))
-    (testing "primary key"
-      (is (= ::lib.types.constants/primary_key (lib.types.isa/field-type {base-or-effective-type-key :type/Integer
-                                                                          :semantic-type             :type/PK}))))
-    (testing "foreign key"
-      (is (= ::lib.types.constants/foreign_key (lib.types.isa/field-type {base-or-effective-type-key :type/Integer
-                                                                          :semantic-type             :type/FK}))))
-    (testing "boolean"
-      (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {base-or-effective-type-key :type/Boolean}))))
-    (testing "location"
-      (are [typ] (= ::lib.types.constants/location (lib.types.isa/field-type {:semantic-type typ}))
-        :type/City :type/Country))
-    (testing "coordinate"
-      (are [typ] (= ::lib.types.constants/coordinate (lib.types.isa/field-type {:semantic-type typ}))
-        :type/Latitude :type/Longitude))
-    (testing "string like"
-      (are [typ] (= ::lib.types.constants/string_like (lib.types.isa/field-type {base-or-effective-type-key typ}))
-        :type/TextLike :type/IPAddress))
-    (testing "number, regardless of the semantic type is"
-      (are [typ] (= ::lib.types.constants/number (lib.types.isa/field-type {base-or-effective-type-key :type/Float
-                                                                            :semantic-type typ}))
-        :type/Name :type/Category))
-    (testing "boolean, regardless of the semantic type"
-      (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {base-or-effective-type-key :type/Boolean
-                                                                      :semantic-type             :type/Category})))))
-  (testing "unexpected things"
-    (are [column] (nil? (lib.types.isa/field-type column))
-      {:effective-type "DERP DERP DERP"}
-      {:semantic-type "DERP DERP DERP"}
-      {:effective-type nil}
-      {:semantic-type nil}
-      "DERP DERP DERP"
-      :type/Category
-      nil)))
 
 (deftest ^:parallel type-predicate-test
   (letfn [(column [x]
@@ -152,7 +91,7 @@
             [{:pred #'lib.types.isa/temporal?,           :positive :type/Date,              :negative :type/CreationDate}
              {:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
-             {:pred #'lib.types.isa/numeric?,            :positive :type/Price,             :negative :type/CreationDate}
+             {:pred #'lib.types.isa/numeric?,            :positive :type/Float,             :negative :type/Price}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
              {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
              {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
@@ -161,6 +100,7 @@
              {:pred #'lib.types.isa/category?,           :positive :type/Category,          :negative :type/Boolean}
              {:pred #'lib.types.isa/category?,           :positive :type/Company,           :negative :type/URL}
              {:pred #'lib.types.isa/location?,           :positive :type/Address,           :negative :type/Number}
+             {:pred #'lib.types.isa/location?,           :positive :type/Latitude           :negative :type/Category}
              {:pred #'lib.types.isa/description?,        :positive :type/Description,       :negative :type/City}
              {:pred #'lib.types.isa/foreign-key?,        :positive :type/FK,                :negative :type/ZipCode}
              {:pred #'lib.types.isa/primary-key?,        :positive :type/PK,                :negative :type/ZipCode}
@@ -192,17 +132,22 @@
       (testing pred
         (when positive
           (testing positive
-            (is (true?  (pred (column positive))))))
+            (is (true? (pred (column positive))))))
         (when negative
           (testing negative
             (is (false? (pred (column negative))))))))))
 
 (deftest ^:parallel string?-test
-  (are [exp column] (= exp (lib.types.isa/string? column))
-    true  {:effective-type :type/Text :semantic-type :type/SerializedJSON}
-    false {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))
+  (is (true? (lib.types.isa/string? {:effective-type :type/Text :semantic-type :type/SerializedJSON})))
+  (is (false? (lib.types.isa/string? {:effective-type :type/JSON :semantic-type :type/SerializedJSON}))))
+
+(deftest ^:parallel numeric?-test
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type nil})))
+  (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type :type/Price})))
+  (is (false? (lib.types.isa/numeric? {:effective-type :type/Text :semantic-type :type/Price}))))
 
 (deftest ^:parallel valid-filter-for?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?
                                                        {:base-type      base-lhs
                                                         :effective-type eff-lhs}

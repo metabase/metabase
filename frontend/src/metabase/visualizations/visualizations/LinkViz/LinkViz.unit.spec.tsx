@@ -531,5 +531,25 @@ describe("LinkViz", () => {
         screen.getByText("https://example.com/foo?q=bar"),
       ).toBeInTheDocument();
     });
+
+    it("should URL-encode parameter values", () => {
+      const parameters = [
+        createMockParameter({
+          id: "1",
+          name: "Parameter 1",
+          slug: "param1",
+        }),
+      ];
+
+      setupParameterTest({
+        parameters,
+        linkUrl: "https://example.com/{{param1}}",
+        parameterValues: { param1: "pb&j" },
+      });
+
+      expect(
+        screen.getByText("https://example.com/pb%26j"),
+      ).toBeInTheDocument();
+    });
   });
 });

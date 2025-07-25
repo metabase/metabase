@@ -19,7 +19,24 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("should not show the sidebar preview when working with instance analyics (metabase#49904)", () => {
+      cy.signInAsAdmin();
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      cy.findByRole("button", { name: /Editor/ }).click();
+      cy.findByRole("button", { name: /View SQL/ }).click();
+      cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+      H.openNavigationSidebar();
+      cy.findByRole("link", { name: /Usage analytics/i }).click();
+      cy.findByRole("link", { name: /Metabase metrics/i }).click();
+      cy.findByRole("link", { name: /Question views last week/i }).click();
+
+      cy.findByRole("button", { name: /Editor/ }).click();
+      cy.findByRole("button", { name: /View SQL/ }).should("not.exist");
+      cy.findByTestId("native-query-preview-sidebar").should("not.exist");
     });
 
     it("allows admins to see the instance analytics collection content", () => {
@@ -95,7 +112,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         H.modal()
           .button(/Duplicate/i)
           .should("not.exist");
-        H.modal().button("Not now").click();
 
         cy.log("saving copied dashboard");
 
@@ -240,7 +256,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should not allow editing analytics content (metabase#36228)", () => {
@@ -288,7 +304,7 @@ describe("question and dashboard links", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should show an analytics link for questions", () => {

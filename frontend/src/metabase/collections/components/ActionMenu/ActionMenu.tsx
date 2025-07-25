@@ -19,7 +19,7 @@ import {
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
@@ -140,7 +140,6 @@ function ActionMenu({
 
     dispatch(
       addUndo({
-        icon: "check",
         message: t`${item.name} has been restored.`,
         actionLabel: t`View`, // could be collection or dashboard
         action: () => dispatch(push(redirect)),

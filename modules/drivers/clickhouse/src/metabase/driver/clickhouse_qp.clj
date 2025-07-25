@@ -3,13 +3,13 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x])
@@ -23,8 +23,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime]
-   java.util.Arrays))
-
+   [java.util Arrays UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
@@ -34,7 +33,7 @@
 (defn- get-report-timezone-id-safely
   []
   (try
-    (qp.timezone/report-timezone-id-if-supported)
+    (driver-api/report-timezone-id-if-supported)
     (catch Throwable _e nil)))
 
 ;; datetime('europe/amsterdam') -> europe/amsterdam
@@ -265,7 +264,7 @@
   (map (fn [arg] [:'toFloat64 (sql.qp/->honeysql :clickhouse arg)]) args))
 
 (defn- interval? [expr]
-  (mbql.u/is-clause? :interval expr))
+  (driver-api/is-clause? :interval expr))
 
 (defmethod sql.qp/->honeysql [:clickhouse :+]
   [driver [_ & args]]
@@ -290,6 +289,26 @@
   [driver [_ arg pattern]]
   [:'extract (sql.qp/->honeysql driver arg) pattern])
 
+(defmethod sql.qp/->honeysql [:clickhouse :split-part]
+  [driver [_ text divider position]]
+  (let [position (sql.qp/->honeysql driver position)]
+    [:case
+     [:< position 1]
+     ""
+
+     :else
+     [:'arrayElement
+      [:'splitByString (sql.qp/->honeysql driver divider) [:'assumeNotNull (sql.qp/->honeysql driver text)]]
+      [:'toInt64 position]]]))
+
+(defmethod sql.qp/->honeysql [:clickhouse :text]
+  [driver [_ value]]
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
+
+(defmethod sql.qp/date-dbtype :clickhouse
+  [_driver]
+  :Date32)
+
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
   [:'stddevPop (sql.qp/->honeysql driver field)])
@@ -313,9 +332,18 @@
   [driver [_ field]]
   [:'varPop (sql.qp/->honeysql driver field)])
 
+(defmethod sql.qp/float-dbtype :clickhouse
+  [_]
+  :Float64)
+
 (defmethod sql.qp/->float :clickhouse
   [_ value]
-  [:'toFloat64 value])
+  ;; casting in clickhouse does not properly handle NULL; this function does
+  (h2x/with-database-type-info [:'toFloat64 value] :Float64))
+
+(defmethod sql.qp/->integer :clickhouse
+  [driver value]
+  (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:clickhouse :value]
   [driver value]
@@ -428,6 +456,10 @@
 (defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
   expr)
+
+(defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:'parseDateTime expr (h2x/literal "%Y%m%d%H%i%S")])
 
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
@@ -569,3 +601,8 @@
 (defmethod sql.qp/inline-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
+  [_driver this]
+  {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
+

@@ -178,6 +178,21 @@
                                                       :rows [[#t "2020" 2]
                                                              [#t "2021" 3]]}))))))
 
+(deftest ^:parallel detect-pulse-chart-type-test-10
+  (testing "Visualizer dashboard card display type takes precedence"
+    (is (= :javascript_visualization
+           (mt/with-temp [:model/Card                card1 {:display :row}
+                          :model/Card                card2 {:display :row}
+                          :model/Dashboard           dashboard {}
+                          :model/DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1) :visualization_settings {:visualization {:display :line}}}
+                          :model/DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
+             (channel.render/detect-pulse-chart-type card1
+                                                     dc1
+                                                     {:cols [{:base_type :type/Temporal}
+                                                             {:base_type :type/Number}]
+                                                      :rows [[#t "2020" 2]
+                                                             [#t "2021" 3]]}))))))
+
 (deftest ^:parallel make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
     (mt/with-temp [:model/Card          card {:description "Card description"}
@@ -206,16 +221,17 @@
 (deftest ^:parallel table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query {:database (mt/id)
-                                                                     :type     :query
-                                                                     :query    {:source-table (mt/id :orders)
-                                                                                :expressions  {"Tax Rate" [:/
-                                                                                                           [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                           [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                                :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                               [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                               [:expression "Tax Rate"]]
-                                                                                :limit        10}}}
+      (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query
+                                                     {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (mt/id :orders)
+                                                                 :expressions  {"Tax Rate" [:/
+                                                                                            [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                            [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                                                 :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                                [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                                                [:expression "Tax Rate"]]
+                                                                 :limit        10}}}
                      :model/Card {model-card-id  :id
                                   model-query    :dataset_query
                                   model-metadata :result_metadata
@@ -238,10 +254,15 @@
                                   :as            question-card} {:dataset_query {:type     :query
                                                                                  :database (mt/id)
                                                                                  :query    {:source-table (format "card__%s" model-card-id)}}}]
-        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an
-        ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
-        ;; the significant digits in the formatter, we'll need to modify this test as well.
+        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an integer
+        ;; value. IDK if this is what we want long term, but this captures the current logic. If we do extend the
+        ;; significant digits in the formatter, we'll need to modify this test as well.
         (letfn [(create-comparison-results [query-results card]
+                  (is (=? [{:name "TAX"}
+                           {:name "TOTAL"}
+                           {:name "Tax Rate", :semantic_type :type/Percentage}]
+                          (map #(select-keys % [:name :semantic_type])
+                               (get-in query-results [:data :cols]))))
                   (let [expected      (mapv (fn [row]
                                               (format "%.2f%%" (* 100 (peek row))))
                                             (get-in query-results [:data :rows]))
@@ -276,3 +297,19 @@
                                                                                 {:channel.render/include-title? true}))]
           (is (some? (lib.util.match/match-one rendered-card-content
                        [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
+
+(deftest visualizer-href-includes-scroll
+  (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+    (mt/with-temp [:model/Card           card {:name          "A Card"
+                                               :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Dashboard      dashboard {}
+                   :model/DashboardCard  dc1 {:dashboard_id (:id dashboard) :card_id (:id card) :visualization_settings {:visualization {}}}]
+      (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
+        (let [rendered-card-content (:content (channel.render/render-pulse-card :inline
+                                                                                (channel.render/defaulted-timezone card)
+                                                                                card
+                                                                                dc1
+                                                                                (qp/process-query (:dataset_query card))
+                                                                                {:channel.render/include-title? true}))
+              expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
+          (is (every? true? (map #(= (:href %) expected-href) (lib.util.match/match rendered-card-content  {:href _})))))))))

@@ -1,3 +1,4 @@
+/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
 import { DataPermissionValue } from "../types";

@@ -23,19 +23,29 @@ interface SetupOpts {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew?: boolean;
+  withAddButton?: boolean;
 }
 
-function setup({ query, column, filter, isNew = false }: SetupOpts) {
+function setup({
+  query,
+  column,
+  filter,
+  isNew = false,
+  withAddButton = false,
+}: SetupOpts) {
   const onChange = jest.fn();
   const onBack = jest.fn();
 
   renderWithProviders(
     <DateFilterPicker
+      autoFocus
       query={query}
       stageIndex={STAGE_INDEX}
       column={column}
       filter={filter}
       isNew={isNew}
+      withAddButton={withAddButton}
+      withSubmitButton
       onChange={onChange}
       onBack={onBack}
     />,
@@ -63,11 +73,17 @@ function setup({ query, column, filter, isNew = false }: SetupOpts) {
     return Lib.excludeDateFilterParts(query, STAGE_INDEX, filter);
   };
 
+  const getNextFilterChangeOpts = () => {
+    const [_filter, opts] = onChange.mock.lastCall;
+    return opts;
+  };
+
   return {
     getNextFilterColumnName,
     getNextSpecificFilterParts,
     getNextRelativeFilterParts,
     getNextExcludeFilterParts,
+    getNextFilterChangeOpts,
   };
 }
 
@@ -80,7 +96,11 @@ describe("DateFilterPicker", () => {
   const column = findDateTimeColumn(initialQuery);
 
   it("should add a filter via shortcut", async () => {
-    const { getNextFilterColumnName, getNextRelativeFilterParts } = setup({
+    const {
+      getNextFilterColumnName,
+      getNextRelativeFilterParts,
+      getNextFilterChangeOpts,
+    } = setup({
       query: initialQuery,
       column,
       isNew: true,
@@ -94,6 +114,9 @@ describe("DateFilterPicker", () => {
       value: 0,
       unit: "day",
     });
+    expect(getNextFilterChangeOpts()).toMatchObject({
+      run: true,
+    });
   });
 
   it("should add a specific date filter", async () => {
@@ -103,7 +126,7 @@ describe("DateFilterPicker", () => {
       isNew: true,
     });
 
-    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Fixed date range…"));
     await userEvent.click(screen.getByText("On"));
     await userEvent.clear(screen.getByLabelText("Date"));
     await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
@@ -145,7 +168,7 @@ describe("DateFilterPicker", () => {
       isNew: true,
     });
 
-    await userEvent.click(screen.getByText("Relative dates…"));
+    await userEvent.click(screen.getByText("Relative date range…"));
     await userEvent.clear(screen.getByLabelText("Interval"));
     await userEvent.type(screen.getByLabelText("Interval"), "20");
     await userEvent.click(screen.getByText("Add filter"));
@@ -234,12 +257,12 @@ describe("DateFilterPicker", () => {
       isNew: true,
     });
 
-    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Fixed date range…"));
     await userEvent.click(screen.getByText("On"));
     expect(screen.queryByText("Add time")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByLabelText("Back"));
-    await userEvent.click(screen.getByText("Relative dates…"));
+    await userEvent.click(screen.getByText("Relative date range…"));
     await userEvent.click(screen.getByDisplayValue("days"));
     expect(screen.getByText("days")).toBeInTheDocument();
     expect(screen.queryByText("hours")).not.toBeInTheDocument();
@@ -249,4 +272,37 @@ describe("DateFilterPicker", () => {
     expect(screen.getByText("Days of the week…")).toBeInTheDocument();
     expect(screen.queryByText("Hours of the day…")).not.toBeInTheDocument();
   });
+
+  it.each([
+    { label: "Apply filter", run: true },
+    { label: "Add another filter", run: false },
+  ])(
+    'should add a filter via the "$label" button when the add button is enabled',
+    async ({ label, run }) => {
+      const {
+        getNextFilterColumnName,
+        getNextSpecificFilterParts,
+        getNextFilterChangeOpts,
+      } = setup({
+        query: initialQuery,
+        column,
+        isNew: true,
+        withAddButton: true,
+      });
+
+      await userEvent.click(screen.getByText("Fixed date range…"));
+      await userEvent.click(screen.getByText("On"));
+      await userEvent.clear(screen.getByLabelText("Date"));
+      await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
+      await userEvent.click(screen.getByRole("button", { name: label }));
+
+      expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
+      expect(getNextSpecificFilterParts()).toMatchObject({
+        operator: "=",
+        column: expect.anything(),
+        values: [new Date(2020, 1, 15)],
+      });
+      expect(getNextFilterChangeOpts()).toMatchObject({ run });
+    },
+  );
 });

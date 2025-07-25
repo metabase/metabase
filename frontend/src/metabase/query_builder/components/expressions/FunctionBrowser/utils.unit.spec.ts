@@ -1,15 +1,16 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { StartRule } from "metabase-lib/v1/expressions";
+import { getHelpText } from "metabase/querying/expressions";
+import type * as Lib from "metabase-lib";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { getFilteredClauses } from "./utils";
 
 function setup({
   filter = "",
-  startRule = "expression",
+  expressionMode = "expression",
 }: {
   filter?: string;
-  startRule?: StartRule;
+  expressionMode?: Lib.ExpressionMode;
 } = {}) {
   const sampleDatabase = createSampleDatabase();
   const metadata = createMockMetadata({ databases: [sampleDatabase] });
@@ -19,16 +20,17 @@ function setup({
   }
   database.hasFeature = jest.fn().mockReturnValue(true);
 
-  return getFilteredClauses({
+  const results = getFilteredClauses({
     filter,
-    startRule,
+    expressionMode,
     database,
   });
+  return { results, database, metadata };
 }
 
 describe("getFilteredClauses", () => {
   it("should return all clauses when no filter is passed", () => {
-    const results = setup();
+    const { results } = setup();
 
     // The array should be sorted
     expect(results.map((group) => group.category)).toEqual(
@@ -38,7 +40,7 @@ describe("getFilteredClauses", () => {
     const dateFunctions = results[1];
 
     // The array should be sorted
-    expect(dateFunctions.clauses.map((clause) => clause.structure)).toEqual(
+    expect(dateFunctions.clauses.map((clause) => clause.displayName)).toEqual(
       [
         "convertTimezone",
         "datetimeAdd",
@@ -66,7 +68,7 @@ describe("getFilteredClauses", () => {
   });
 
   it("should filter clauses", () => {
-    const results = setup({
+    const { results } = setup({
       filter: "no",
     });
 
@@ -88,7 +90,7 @@ describe("getFilteredClauses", () => {
   });
 
   it("should filter clauses based on display name", () => {
-    const results = setup({
+    const { results } = setup({
       filter: "regexex",
     });
 
@@ -99,7 +101,7 @@ describe("getFilteredClauses", () => {
   });
 
   it("should not filter clauses based on display name", () => {
-    const results = setup({
+    const { results } = setup({
       filter: "regex-match-first",
     });
 
@@ -107,7 +109,7 @@ describe("getFilteredClauses", () => {
   });
 
   it("should find case", () => {
-    const results = setup({
+    const { results, database } = setup({
       filter: "case",
     });
 
@@ -115,44 +117,6 @@ describe("getFilteredClauses", () => {
     expect(results.map((group) => group.category)).toEqual(["logical"].sort());
 
     // The array should be sorted
-    expect(results[0].clauses[0]).toEqual({
-      args: [
-        {
-          description: "Something that should evaluate to `true` or `false`.",
-          example: [">", ["dimension", "Weight"], 200],
-          name: "condition",
-        },
-        {
-          description:
-            "The value that will be returned if the preceding condition is `true`.",
-          example: "Large",
-          name: "output",
-        },
-        {
-          description: "You can add more conditions to test.",
-          example: [
-            "args",
-            [[">", ["dimension", "Weight"], 150], "Medium", "Small"],
-          ],
-          name: "…",
-        },
-      ],
-      category: "logical",
-      description:
-        "Alias for `if()`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
-      docsPage: "case",
-      example: [
-        "case",
-        [
-          [[">", ["dimension", "Weight"], 200], "Large"],
-          [[">", ["dimension", "Weight"], 150], "Medium"],
-        ],
-        {
-          default: "Small",
-        },
-      ],
-      name: "case",
-      structure: "case",
-    });
+    expect(results[0].clauses[0]).toEqual(getHelpText("case", database));
   });
 });

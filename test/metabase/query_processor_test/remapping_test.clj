@@ -3,12 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-dimension-projections
-    :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -29,7 +28,7 @@
                :cols [(mt/col :venues :name)
                       (assoc (mt/col :venues :category_id)
                              :remapped_to "Category ID [internal remap]")
-                      (#'qp.add-dimension-projections/create-remapped-col
+                      (#'qp.add-remaps/create-remapped-col
                        "Category ID [internal remap]"
                        (mt/format-name "category_id")
                        :type/Text)]}
@@ -51,7 +50,7 @@
                       ["Asian"    4 2]]
                :cols [(merge (mt/col :categories :name)
                              {:display_name  "Category ID [external remap]"
-                              :options       {::qp.add-dimension-projections/new-field-dimension-id integer?}
+                              :options       {::qp.add-remaps/new-field-dimension-id integer?}
                               :remapped_from (mt/format-name "category_id")
                               :field_ref     [:field
                                               (mt/id :categories :name)
@@ -59,7 +58,7 @@
                               :fk_field_id   (mt/id :venues :category_id)
                               :source        :breakout})
                       (merge (mt/col :venues :category_id)
-                             {:options     {::qp.add-dimension-projections/original-field-dimension-id integer?}
+                             {:options     {::qp.add-remaps/original-field-dimension-id integer?}
                               :remapped_to (mt/format-name "name")
                               :source      :breakout})
                       {:field_ref     [:aggregation 0]
@@ -88,7 +87,7 @@
                :cols [(mt/col :venues :name)
                       (-> (mt/col :venues :category_id)
                           (assoc :remapped_to "Category ID [internal remap]"))
-                      (#'qp.add-dimension-projections/create-remapped-col
+                      (#'qp.add-remaps/create-remapped-col
                        "Category ID [internal remap]"
                        (mt/format-name "category_id")
                        :type/Text)]}
@@ -164,19 +163,17 @@
                           (assoc (mt/col :categories :name)
                                  :fk_field_id   %category_id
                                  :display_name  "Category ID [external remap]"
-                                 :options       {::qp.add-dimension-projections/new-field-dimension-id integer?}
+                                 :options       {::qp.add-remaps/new-field-dimension-id integer?}
                                  :name          (mt/format-name "name_2")
                                  :remapped_from (mt/format-name "category_id")
                                  :field_ref     $category_id->categories.name))]}
-                (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                                    (mt/format-rows-by
-                                     [str int str str]
-                                     (mt/run-mbql-query venues
-                                       {:fields   [$name $price $category_id]
-                                        :order-by [[:asc $name]]
-                                        :limit    4})))
-                    (update :cols (fn [[c1 c2 c3]]
-                                    [c1 c2 (dissoc c3 :source_alias)])))))))))
+                (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
+                                (mt/format-rows-by
+                                 [str int str str]
+                                 (mt/run-mbql-query venues
+                                   {:fields   [$name $price $category_id]
+                                    :order-by [[:asc $name]]
+                                    :limit    4})))))))))
 
 (deftest ^:parallel remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
@@ -312,6 +309,7 @@
   [_driver _feature _database]
   false)
 
+;;; see also [[metabase.lib.field-test/remapped-columns-in-joined-source-queries-display-names-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join ::remapped-columns-in-joined-source-queries-test)
     (testing "Remapped columns in joined source queries should work (#15578)"
@@ -325,6 +323,7 @@
                                                     :aggregation  [[:sum $orders.quantity]]}
                                      :alias        "Orders"
                                      :condition    [:= $id &Orders.orders.product_id]
+                                     ;; we can get title since product_id is remapped to title
                                      :fields       [&Orders.title
                                                     &Orders.*sum/Integer]}]
                          :fields   [$title $category]
@@ -334,10 +333,10 @@
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)
                   (testing "Metadata"
-                    (is (= [["TITLE"    "Title"]
-                            ["CATEGORY" "Category"]
-                            ["TITLE_2"  "Orders → Title"]
-                            ["sum"      "Orders → Sum"]]
+                    (is (= [["TITLE"    "Title"]                     ; products.title
+                            ["CATEGORY" "Category"]                  ; products.category
+                            ["TITLE_2"  "Orders → Title"]            ; Orders.title (remapped from orders.product-id => products.title)
+                            ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
                            (map (juxt :name :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
@@ -372,6 +371,23 @@
                     [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]
                     [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
                    (mt/rows (qp/process-query q3))))))))))
+
+(deftest ^:parallel remapped-breakout-test
+  (testing "remapped columns should be accounted for in the result rows (#46919)"
+    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                         (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                         (mt/id :products :title)))
+      (let [query (mt/mbql-query orders
+                    {:aggregation [[:sum [:field (mt/id :orders :total)]]]
+                     :breakout    [[:field
+                                    (mt/id :orders :product_id)
+                                    {:base-type    :type/Integer}]]
+                     :limit       3})]
+        (is (= [["Aerodynamic Bronze Hat"     144    5753.63]
+                ["Aerodynamic Concrete Bench" 116   10035.81]
+                ["Aerodynamic Concrete Lamp"  197    6478.65]]
+               (mt/formatted-rows [str int 2.0]
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel pivot-with-remapped-breakout
   (testing "remapped columns should be accounted for in the result rows (#46919)"

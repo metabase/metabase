@@ -5,9 +5,10 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
@@ -210,22 +211,16 @@
                   [->local-date 2.0]
                   (qp/process-query query)))))))))
 
-(deftest multiple-limits
-  (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
-                        :data count)
-        result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                         :data count)]
-    (is (>= total-count result-count))
-    (is (= 1 result-count))))
-
-(deftest external-remapping-with-offset-test
+(deftest ^:parallel external-remapping-with-offset-test
   (testing "External remapping works correctly with offset (#45348)"
-    (mt/with-column-remappings [orders.product_id products.title]
+    (let [mp (lib.tu/remap-metadata-provider
+              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              (mt/id :orders :product_id)
+              (mt/id :products :title))]
       (doseq [[multiple-breakouts? ofs-col-index]
               [[false 2] [true 3]]]
         (testing (format "multiple-breakouts? `%s`" multiple-breakouts?)
-          (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                q (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+          (let [q (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
                     (lib/aggregate $ (lib/offset (lib/sum (m/find-first (comp #{"TOTAL"} :name)
                                                                         (lib/visible-columns $)))
                                                  -1))

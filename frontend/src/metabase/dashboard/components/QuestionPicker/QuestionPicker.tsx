@@ -4,18 +4,18 @@ import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import SelectList from "metabase/components/SelectList";
-import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
-import Input from "metabase/core/components/Input";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import Input from "metabase/common/components/Input";
+import SelectList from "metabase/common/components/SelectList";
+import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
-import { isEmbeddingSdk } from "metabase/env";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Flex, Icon, type IconProps } from "metabase/ui";
@@ -69,23 +69,8 @@ function QuestionPickerInner({
     [databases],
   );
 
-  const onNewQuestion = (type: "native" | "notebook") =>
-    dispatch(addDashboardQuestion(type));
-
-  useRegisterShortcut(
-    [
-      {
-        id: "add-notebook-question",
-        perform: () => onNewQuestion("notebook"),
-      },
-      {
-        id: "add-native-question",
-        perform: () => onNewQuestion("native"),
-      },
-    ],
-    [dashboard],
-  );
-
+  const { onNewQuestion } = useDashboardContext();
+  const onNewNativeQuestion = () => dispatch(addDashboardQuestion("native"));
   return (
     <div className={S.questionPickerRoot}>
       <Input
@@ -99,24 +84,24 @@ function QuestionPickerInner({
         onChange={handleSearchTextChange}
       />
 
-      {(hasDataAccess || hasNativeWrite) && !isEmbeddingSdk && (
+      {(hasDataAccess || hasNativeWrite) && (
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
               variant="outline"
               className={S.newButton}
-              leftSection={<Icon name="insight" />}
-              onClick={() => onNewQuestion("notebook")}
+              leftSection={<Icon aria-hidden name="insight" />}
+              onClick={onNewQuestion}
             >
               {t`New Question`}
             </Button>
           )}
-          {hasNativeWrite && (
+          {hasNativeWrite && !isEmbeddingSdk() && (
             <Button
               variant="outline"
               className={S.newButton}
-              leftSection={<Icon name="sql" />}
-              onClick={() => onNewQuestion("native")}
+              leftSection={<Icon aria-hidden name="sql" />}
+              onClick={onNewNativeQuestion}
             >
               {t`New SQL query`}
             </Button>

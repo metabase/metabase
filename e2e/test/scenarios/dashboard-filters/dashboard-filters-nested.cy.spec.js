@@ -50,8 +50,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     });
 
     H.editDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(filter.name).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
 
@@ -69,7 +68,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     // Add multiple values (metabase#18113)
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo,Gadget").blur();
+      H.fieldValuesCombobox().type("Gizmo,Gadget").blur();
     });
 
     cy.button("Add filter").click();
@@ -90,8 +89,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     cy.findByText("2 selections");
 
     H.editDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(filter.name).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Column to filter on");

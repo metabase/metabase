@@ -24,7 +24,12 @@ const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
 
 const sdkPackageTemplateJson = fs.readFileSync(
-  path.resolve("./enterprise/frontend/src/embedding-sdk/package.template.json"),
+  path.resolve(
+    path.join(
+      __dirname,
+      "enterprise/frontend/src/embedding-sdk/package.template.json",
+    ),
+  ),
   "utf-8",
 );
 const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
@@ -38,7 +43,7 @@ const BABEL_CONFIG = {
 
 const CSS_CONFIG = {
   modules: {
-    auto: filename =>
+    auto: (filename) =>
       !filename.includes("node_modules") && !filename.includes("vendor.css"),
     localIdentName: isDevMode
       ? "[name]__[local]___[hash:base64:5]"
@@ -49,7 +54,7 @@ const CSS_CONFIG = {
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
-module.exports = env => {
+module.exports = (env) => {
   const config = {
     ...mainConfig,
 
@@ -158,7 +163,7 @@ module.exports = env => {
           .execSync("git rev-parse HEAD")
           .toString()
           .trim(),
-        IS_EMBEDDING_SDK: true,
+        IS_EMBEDDING_SDK: "true",
       }),
       new webpack.DefinePlugin({
         "process.env.BUILD_TIME": webpack.DefinePlugin.runtimeValue(
@@ -187,8 +192,13 @@ module.exports = env => {
 
   config.resolve.alias = {
     ...mainConfig.resolve.alias,
-    "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
+    "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
+    "sdk-iframe-embedding-ee-plugins":
+      ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+
+    // Allows importing side effects that applies only to the SDK.
+    "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
   };
 
   if (config.cache) {
@@ -207,8 +217,8 @@ class TypescriptConvertErrorsToWarnings {
   apply(compiler) {
     const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
 
-    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", issues =>
-      issues.map(issue => ({ ...issue, severity: "warning" })),
+    hooks.issues.tap("TypeScriptWarnOnlyWebpackPlugin", (issues) =>
+      issues.map((issue) => ({ ...issue, severity: "warning" })),
     );
   }
 }

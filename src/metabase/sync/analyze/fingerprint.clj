@@ -5,12 +5,10 @@
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analyze.core :as analyze]
-   [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field]
-   [metabase.models.table :as table]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -19,11 +17,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
    [redux.core :as redux]
    [toucan2.core :as t2]))
-
-(comment
-  metadata-queries/keep-me-for-default-table-row-sample)
 
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
@@ -37,7 +34,7 @@
 
 (mu/defn- save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe analyze/Fingerprint]]
+   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
@@ -161,10 +158,10 @@
   [:and
    [:= :active true]
    [:or
-    [:not (mdb.query/isa :semantic_type :type/PK)]
+    [:not (app-db/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (mdb.query/type-keyword->descendants :type/fingerprint-unsupported)
+   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
                              (u/qualified-name :type/*))]])
 
 (def ^:dynamic *refingerprint?*
@@ -200,12 +197,11 @@
   (if-let [fields (fields-to-fingerprint table)]
     (do
       (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-      (let [stats (sync-util/with-error-handling
-                   (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                    (fingerprint-fields! table fields))]
-        (if (instance? Exception stats)
-          (assoc (empty-stats-map 0)
-                 :throwable stats)
+      (let [stats
+            (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+              (fingerprint-fields! table fields))]
+        (if (:throwable stats)
+          (merge (empty-stats-map 0) stats)
           stats)))
     (empty-stats-map 0)))
 
@@ -227,8 +223,14 @@
                     (sync-util/reducible-sync-tables database))]
        (reduce (fn [acc table]
                  (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-                 (let [new-acc (merge-with + acc (fingerprint-table! table))]
-                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? new-acc)))
+                 (let [ret (fingerprint-table! table)
+                       new-acc (let [ret (if (:throwable ret)
+                                           (-> ret
+                                               (dissoc :throwable)
+                                               (update :failed-fingerprints inc))
+                                           ret)]
+                                 (merge-with + acc ret))]
+                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
                      new-acc
                      (reduced new-acc))))
                (empty-stats-map 0)

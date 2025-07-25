@@ -7,11 +7,10 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -162,17 +161,6 @@
                 payload-id))
   instance)
 
-(defmethod audit-log/model-details :model/Notification
-  [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
-  (merge
-   (select-keys fully-hydrated-notification [:id :payload_type :payload_id :creator_id :active])
-   {:subscriptions (map #(dissoc % :id :created_at) subscriptions)
-    :handlers      (map (fn [handler]
-                          (merge (select-keys [:id :channel_type :channel_id :template_id :active]
-                                              handler)
-                                 {:recipients (map #(select-keys % [:id :type :user_id :permissions_group_id :details]) (:recipients handler))}))
-                        handlers)}))
-
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                               :model/NotificationSubscription                                   ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -195,7 +183,6 @@
   "Schema for :model/NotificationSubscription."
   [:merge [:map
            [:type (ms/enum-decode-keyword subscription-types)]]
-
    [:multi {:dispatch (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
@@ -323,8 +310,8 @@
   [instance]
   (validate-notification-handler instance)
   (when (some #{:channel_id :template_id :channel_type} (-> instance t2/changes keys))
-    (cross-check-channel-type-and-template-type instance)
-    instance))
+    (cross-check-channel-type-and-template-type instance))
+  instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                   :model/NotificationRecipient                                  ;;
@@ -374,6 +361,13 @@
   [recipient]
   (mu/validate-throw ::NotificationRecipient recipient))
 
+(defenterprise validate-email-domains!
+  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting,
+  if set. This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the
+  `:email-allow-list` feature." metabase-enterprise.advanced-config.models.notification
+  [_email-addresses]
+  nil)
+
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
@@ -382,6 +376,9 @@
 (t2/define-before-update :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
+  (when (and (= :notification-recipient/raw-value (:type instance))
+             (u/email? (get-in instance [:details :value])))
+    (validate-email-domains! [(get-in instance [:details :value])]))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -410,6 +407,21 @@
   (merge {:send_condition :has_result
           :send_once      false}
          instance))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                            Helpers                                              ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn validate-email-handlers!
+  "Validate the domains of external emails for email handlers."
+  [handlers]
+  ;; validate email domain of all the external email recipients
+  (some->> handlers
+           (filter #(= :channel/email (:channel_type %)))
+           (mapcat :recipients)
+           (filter #(= :notification-recipient/raw-value (:type %)))
+           (map #(get-in % [:details :value]))
+           validate-email-domains!))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Permissions                                             ;;
@@ -493,7 +505,7 @@
    [:multi {:dispatch (comp keyword :payload_type)}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
-    [::mc/default       :any]]])
+    [::mc/default       :map]]])
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
@@ -530,6 +542,7 @@
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [notification subscriptions handlers+recipients]
+  (validate-email-handlers! handlers+recipients)
   (t2/with-transaction [_conn]
     (let [payload-id      (case (:payload_type notification)
                             (:notification/system-event :notification/testing)
@@ -543,11 +556,15 @@
           notification-id (:id instance)]
       (when (seq subscriptions)
         (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id notification-id) subscriptions)))
-      (doseq [handler handlers+recipients]
-        (let [recipients (:recipients handler)
+      (doseq [{:keys [recipients template] :as handler} handlers+recipients]
+        ;; assert can either template_id exists, then template but be nil, and vice versa
+        (let [template-id (if template
+                            (t2/insert-returning-pk! :model/ChannelTemplate template)
+                            (:template_id handler))
               handler    (-> handler
-                             (dissoc :recipients)
-                             (assoc :notification_id notification-id))
+                             (dissoc :recipients :template)
+                             (assoc :notification_id notification-id
+                                    :template_id template-id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
@@ -571,11 +588,15 @@
                                   :nested-specs {:recipients {:model        :model/NotificationRecipient
                                                               :fk-column    :notification_handler_id
                                                               :compare-cols [:notification_handler_id :type :user_id :permissions_group_id :details]
-                                                              :multi-row?   true}}}}})
+                                                              :multi-row?   true}
+                                                 :template   {:model         :model/ChannelTemplate
+                                                              :ref-in-parent :template_id
+                                                              :compare-cols  [:channel_type :name :details]}}}}})
 
 (defn update-notification!
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
+  (validate-email-handlers! (:handlers new-notification))
   (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
 
 (defn unsubscribe-user!

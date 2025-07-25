@@ -1,28 +1,21 @@
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import { Sortable } from "metabase/core/components/Sortable";
-import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
-import { TabButton } from "metabase/core/components/TabButton";
-import { TabRow } from "metabase/core/components/TabRow";
+import Button from "metabase/common/components/Button";
+import { Sortable } from "metabase/common/components/Sortable";
+import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
+import { TabButton } from "metabase/common/components/TabButton";
+import { TabRow } from "metabase/common/components/TabRow";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
 import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
-export type DashboardTabsProps = {
-  dashboardId: DashboardId;
-  isEditing?: boolean;
-  className?: string;
-};
+export function DashboardTabs() {
+  const { isEditing = false } = useDashboardContext();
 
-export function DashboardTabs({
-  dashboardId,
-  isEditing = false,
-  className,
-}: DashboardTabsProps) {
   const {
     tabs,
     createNewTab,
@@ -32,10 +25,29 @@ export function DashboardTabs({
     selectTab,
     selectedTabId,
     moveTab,
-  } = useDashboardTabs({ dashboardId });
+  } = useDashboardTabs();
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
+
+  useRegisterShortcut(
+    [
+      {
+        id: "dashboard-change-tab",
+        perform: (_, event) => {
+          if (!event?.key) {
+            return;
+          }
+          const key = parseInt(event.key);
+          const tab = tabs[key - 1];
+          if (tab) {
+            selectTab(tab.id);
+          }
+        },
+      },
+    ],
+    [tabs],
+  );
 
   if (!showTabs) {
     return null;
@@ -55,7 +67,7 @@ export function DashboardTabs({
   }
 
   return (
-    <Flex align="start" gap="lg" w="100%" className={className}>
+    <Flex align="start" gap="lg" w="100%" className={S.dashboardTabs}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}
@@ -64,7 +76,6 @@ export function DashboardTabs({
       >
         {showPlaceholder ? (
           <TabButton
-            className={S.tabButton}
             label={t`Tab 1`}
             value={null}
             showMenu
@@ -72,12 +83,7 @@ export function DashboardTabs({
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable
-              key={tab.id}
-              id={tab.id}
-              className={S.tabButton}
-              disabled={!isEditing}
-            >
+            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}

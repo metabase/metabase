@@ -1,3 +1,4 @@
+import { useHotkeys } from "@mantine/hooks";
 import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
@@ -18,6 +19,10 @@ import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
+import {
+  type DashboardContextReturned,
+  useDashboardContext,
+} from "metabase/dashboard/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
@@ -33,27 +38,41 @@ import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
 import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
-interface DashboardInfoSidebarProps {
-  dashboard: Dashboard;
-  setDashboardAttribute: <Key extends keyof Dashboard>(
-    attribute: Key,
-    value: Dashboard[Key],
-  ) => void;
-  onClose: () => void;
-}
-
 enum Tab {
   Overview = "overview",
   History = "history",
   Insights = "insights",
 }
 
-export function DashboardInfoSidebar({
+export function DashboardInfoSidebar() {
+  const { dashboard, closeSidebar, setDashboardAttributes } =
+    useDashboardContext();
+
+  if (!dashboard) {
+    return null;
+  }
+
+  return (
+    <DashboardInfoSidebarInner
+      dashboard={dashboard}
+      closeSidebar={closeSidebar}
+      setDashboardAttributes={setDashboardAttributes}
+    />
+  );
+}
+
+export function DashboardInfoSidebarInner({
   dashboard,
-  setDashboardAttribute,
-  onClose,
-}: DashboardInfoSidebarProps) {
+  closeSidebar,
+  setDashboardAttributes,
+}: { dashboard: NonNullable<DashboardContextReturned["dashboard"]> } & Pick<
+  DashboardContextReturned,
+  "closeSidebar" | "setDashboardAttributes"
+>) {
   const [isOpen, setIsOpen] = useState(false);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+
+  useHotkeys([["]", closeSidebar]]);
 
   useMount(() => {
     // this component is not rendered until it is "open"
@@ -62,17 +81,15 @@ export function DashboardInfoSidebar({
     setIsOpen(true);
   });
 
-  const [descriptionError, setDescriptionError] = useState<string | null>(null);
-
   const { data: revisions } = useRevisionListQuery({
-    query: { model_type: "dashboard", model_id: dashboard.id },
+    query: { model_type: "dashboard", model_id: dashboard?.id },
   });
 
   const isIADashboard = useMemo(
     () =>
-      dashboard.collection &&
+      dashboard?.collection &&
       isInstanceAnalyticsCollection(dashboard?.collection),
-    [dashboard.collection],
+    [dashboard?.collection],
   );
 
   const currentUser = useSelector(getUser);
@@ -80,12 +97,18 @@ export function DashboardInfoSidebar({
 
   const handleDescriptionChange = useCallback(
     (description: string) => {
-      if (description.length <= DASHBOARD_DESCRIPTION_MAX_LENGTH) {
-        setDashboardAttribute?.("description", description);
+      if (
+        dashboard?.id &&
+        description.length <= DASHBOARD_DESCRIPTION_MAX_LENGTH
+      ) {
+        setDashboardAttributes?.({
+          id: dashboard.id,
+          attributes: { description },
+        });
         dispatch(updateDashboard({ attributeNames: ["description"] }));
       }
     },
-    [dispatch, setDashboardAttribute],
+    [dashboard?.id, dispatch, setDashboardAttributes],
   );
 
   const handleDescriptionBlur = useCallback(
@@ -99,6 +122,10 @@ export function DashboardInfoSidebar({
     [],
   );
 
+  if (!dashboard) {
+    return null;
+  }
+
   const canWrite = dashboard.can_write && !dashboard.archived;
 
   return (
@@ -107,7 +134,7 @@ export function DashboardInfoSidebar({
         <Sidesheet
           isOpen={isOpen}
           title={t`Info`}
-          onClose={onClose}
+          onClose={closeSidebar}
           removeBodyPadding
           size="md"
         >

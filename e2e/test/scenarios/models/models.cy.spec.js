@@ -52,9 +52,8 @@ describe("scenarios > models", () => {
       H.selectFilterOperator("Contains");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("Fisher");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({
@@ -103,9 +102,8 @@ describe("scenarios > models", () => {
     H.selectFilterOperator("Contains");
     H.popover().within(() => {
       cy.findByLabelText("Filter value").type("Fisher");
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     assertQuestionIsBasedOnModel({
@@ -170,9 +168,8 @@ describe("scenarios > models", () => {
     H.selectFilterOperator("Greater than");
     H.popover().within(() => {
       cy.findByLabelText("Filter value").type("30");
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
@@ -297,6 +294,8 @@ describe("scenarios > models", () => {
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
+
+    H.modal().should("not.exist");
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
@@ -354,8 +353,8 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders");
 
         cy.findByText("Everywhere").click();
-        getResults().should("have.length", 6);
-        cy.findByText("6 results").should("be.visible");
+        getResults().should("have.length", 5);
+        cy.findByText("5 results").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "dataset")
@@ -374,10 +373,6 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders, Count");
         getResults()
           .eq(4)
-          .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders");
-        getResults()
-          .eq(5)
           .should("have.attr", "data-model-type", "table")
           .and("contain.text", "Orders");
       });
@@ -433,7 +428,7 @@ describe("scenarios > models", () => {
         cy.findByText("Save").click();
       });
 
-      cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
+      cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*$/);
     });
 
     it("should not display models if nested queries are disabled", () => {
@@ -465,8 +460,7 @@ describe("scenarios > models", () => {
       H.filter();
       H.popover().findByText("Discount").click();
       H.selectFilterOperator("Not empty");
-      H.popover().button("Add filter").click();
-      H.runButtonOverlay().click();
+      H.popover().button("Apply filter").click();
       cy.wait("@dataset");
 
       assertQuestionIsBasedOnModel({

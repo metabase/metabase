@@ -10,6 +10,14 @@ import {
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
+export function ensureChartIsActive() {
+  cy.findByTestId("debounced-frame-root").should(
+    "not.have.css",
+    "pointer-events",
+    "none",
+  );
+}
+
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
@@ -57,6 +65,12 @@ export function echartsIcon(name, isSelected = false) {
   const dataUri = svgToDataUri(iconSvg);
 
   return echartsContainer().find(`image[href="${dataUri}"]`);
+}
+
+export function chartGridLines() {
+  return echartsContainer().find(
+    "path[stroke='var(--mb-color-border)'][fill='transparent'][stroke-dasharray='5']",
+  );
 }
 
 export function chartPathWithFillColor(color) {

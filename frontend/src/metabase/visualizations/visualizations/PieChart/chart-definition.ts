@@ -48,11 +48,12 @@ const pieRowsReadDeps = [
 ];
 
 export const PIE_CHART_DEFINITION: VisualizationDefinition = {
-  uiName: t`Pie`,
+  getUiName: () => t`Pie`,
   identifier: "pie",
   iconName: "pie",
   minSize: getMinSize("pie"),
   defaultSize: getDefaultSize("pie"),
+  supportsVisualizer: true,
   isSensible: ({ cols, rows }) => {
     const numDimensions = cols.filter(isDimension).length;
     const numMetrics = cols.filter(isMetric).length;
@@ -90,15 +91,21 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   hasEmptyState: true,
   settings: {
     ...metricSetting("pie.metric", {
-      section: t`Data`,
-      title: t`Measure`,
+      get section() {
+        return t`Data`;
+      },
+      get title() {
+        return t`Measure`;
+      },
       showColumnSetting: true,
       getDefault: (rawSeries: Series) => getDefaultPieColumns(rawSeries).metric,
     }),
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("pie.dimension", {
       hidden: true,
-      title: t`Dimension`,
+      get title() {
+        return t`Dimension`;
+      },
       showColumnSetting: true,
       getDefault: (rawSeries: Series) =>
         getDefaultPieColumns(rawSeries).dimension,
@@ -179,7 +186,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     } as any), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
 
     "pie._dimensions_widget": {
-      section: t`Data`,
+      get section() {
+        return t`Data`;
+      },
       widget: DimensionsWidget,
       getProps: (
         rawSeries: RawSeries,
@@ -195,48 +204,90 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["pie.dimension", "pie.rows"],
     },
     "pie.show_legend": {
-      section: t`Display`,
-      title: t`Show legend`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Show legend`;
+      },
       widget: "toggle",
       getDefault: getDefaultShowLegend,
       inline: true,
       marginBottom: "1rem",
     },
     "pie.show_total": {
-      section: t`Display`,
-      title: t`Show total`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Show total`;
+      },
       widget: "toggle",
       getDefault: getDefaultShowTotal,
       inline: true,
       marginBottom: "1rem",
     },
     "pie.show_labels": {
-      section: t`Display`,
-      title: t`Show labels`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Show labels`;
+      },
       widget: "toggle",
       getDefault: (_rawSeries, settings) => getDefaultShowLabels(settings),
       inline: true,
     },
     "pie.percent_visibility": {
-      section: t`Display`,
-      title: t`Show percentages`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Show percentages`;
+      },
       widget: "radio",
       getDefault: getDefaultPercentVisibility,
       props: {
         options: [
-          { name: t`Off`, value: "off" },
-          { name: t`In legend`, value: "legend" },
-          { name: t`On the chart`, value: "inside" },
-          { name: t`Both`, value: "both" },
+          {
+            get name() {
+              return t`Off`;
+            },
+            value: "off",
+          },
+          {
+            get name() {
+              return t`In legend`;
+            },
+            value: "legend",
+          },
+          {
+            get name() {
+              return t`On the chart`;
+            },
+            value: "inside",
+          },
+          {
+            get name() {
+              return t`Both`;
+            },
+            value: "both",
+          },
         ],
       },
     },
     "pie.decimal_places": {
-      section: t`Display`,
-      title: t`Number of decimal places`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Number of decimal places`;
+      },
       widget: "number",
       props: {
-        placeholder: t`Auto`,
+        get placeholder() {
+          return t`Auto`;
+        },
         options: { isInteger: true, isNonNegative: true },
       },
       getHidden: (_, settings) =>
@@ -245,8 +296,12 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       readDependencies: ["pie.percent_visibility"],
     },
     "pie.slice_threshold": {
-      section: t`Display`,
-      title: t`Minimum slice percentage`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Minimum slice percentage`;
+      },
       widget: "number",
       getDefault: getDefaultSliceThreshold,
     },

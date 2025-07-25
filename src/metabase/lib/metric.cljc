@@ -15,13 +15,12 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(defn- resolve-metric [query metric-id]
-  (when (integer? metric-id)
-    (lib.metadata/metric query metric-id)))
+(defn- resolve-metric [query card-id]
+  (when (pos-int? card-id)
+    (lib.metadata/metric query card-id)))
 
 (mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
@@ -46,10 +45,10 @@
     [:metric options id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/metric
-  [query stage-number metric-metadata]
+  [_query _stage-number metric-metadata]
   (or
    (when-let [[aggregation] (not-empty (:aggregation (metric-definition metric-metadata)))]
-     (lib.metadata.calculation/type-of query stage-number aggregation))
+     (lib.schema.expression/type-of aggregation))
    :type/*))
 
 (defmethod lib.metadata.calculation/type-of-method :metric
@@ -123,6 +122,9 @@
              metrics (if source-table
                        (lib.metadata/metadatas-for-table query :metadata/metric source-table)
                        (lib.metadata/metadatas-for-card query :metadata/metric (lib.util/source-card-id query)))]
+         (when (seq metrics)
+           ;; "pre-warm" the metadata provider
+           (lib.metadata/bulk-metadata query :metadata/card (into #{} (map :id) metrics)))
          (not-empty
           (into []
                 (comp (filter (fn [metric-card]
@@ -138,17 +140,16 @@
 
 (defmethod lib.metadata.calculation/metadata-method :metric
   [query _stage-number [_ opts metric-id]]
-  (let [metric-meta       (lib.metadata/metric query metric-id)
-        metric-query      (lib.query/query query (normalize-legacy-query (:dataset-query metric-meta)))
-        inner-aggregation (first (lib.aggregation/aggregations metric-query))
-        inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
-    (-> inner-meta
-        (assoc :display-name           (:name metric-meta) ; Metric card's name
-               :lib/hack-original-name (:name metric-meta) ; Metric card's name
-               :name                   (:name inner-meta)) ; Name of the inner aggregation column
-        ;; We emphatically DO NOT want to use the `:ident` of the inner aggregation from the metric's definition.
-        ;; If the `[:metric ...]` ref is a top-level aggregation, it will have its own ident, which we should use.
-        ;; If there is no ident in the `[:metric ...]` ref then *drop* the ident from column.
-        (u/assoc-dissoc :ident (:ident opts))
-        ;; If the :metric ref has a :name option, that overrides the metric card's name.
-        (cond-> (:name opts) (assoc :name (:name opts))))))
+  (if-let [metric-meta (lib.metadata/metric query metric-id)]
+    (let [metric-query      (lib.query/query query (normalize-legacy-query (:dataset-query metric-meta)))
+          inner-aggregation (first (lib.aggregation/aggregations metric-query))
+          inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
+      (-> inner-meta
+          (assoc :display-name           (:name metric-meta) ; Metric card's name
+                 :lib/hack-original-name (:name metric-meta) ; Metric card's name
+                 :name                   (:name inner-meta)) ; Name of the inner aggregation column
+          ;; If the :metric ref has a :name option, that overrides the metric card's name.
+          (cond-> (:name opts) (assoc :name (:name opts)))))
+    {:lib/type :metadata/metric
+     :id metric-id
+     :display-name (fallback-display-name)}))

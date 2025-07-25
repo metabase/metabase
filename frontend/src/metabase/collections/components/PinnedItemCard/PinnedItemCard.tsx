@@ -7,7 +7,7 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
-import EventSandbox from "metabase/components/EventSandbox";
+import EventSandbox from "metabase/common/components/EventSandbox";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -60,10 +60,18 @@ export type PinnedItemCardProps = {
 const TOOLTIP_MAX_WIDTH = 450;
 
 const DEFAULT_DESCRIPTION: Record<string, string> = {
-  card: t`A question`,
-  metric: t`A metric`,
-  dashboard: t`A dashboard`,
-  dataset: t`A model`,
+  get card() {
+    return t`A question`;
+  },
+  get metric() {
+    return t`A metric`;
+  },
+  get dashboard() {
+    return t`A dashboard`;
+  },
+  get dataset() {
+    return t`A model`;
+  },
 };
 
 const isCollectionItem = (

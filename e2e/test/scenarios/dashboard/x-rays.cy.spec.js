@@ -187,6 +187,12 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.findAllByTestId("dashcard").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
+
+    H.openNavigationSidebar();
+
+    H.navigationSidebar()
+      .findByRole("link", { name: /Automatically generated dashboards/i })
+      .should("exist");
   });
 
   it("should start loading cards from top to bottom", () => {
@@ -216,6 +222,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     H.getDashboardCards().eq(1).contains("Total transactions");
   });
 
+  // TODO - this is a legitimate failure because `param_fields` are not returned for x-ray dashboards
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
     const timeout = { timeout: 10000 };
 
@@ -394,6 +401,49 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     getDashcardByTitle("Sales by coordinates")
       .findByText("Leaflet")
       .should("exist");
+  });
+
+  it("should work on questions with breakout by day-of-week and null semantic type (metabase#23820)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+    H.createQuestion(
+      {
+        name: "23820",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
+          ],
+        },
+        display: "line",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    H.cartesianChartCircle()
+      .eq(3) // Wednesday
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("Automatic insights…").click();
+      cy.findByText("X-ray").click();
+    });
+
+    cy.wait("@dataset");
+
+    H.main().within(() => {
+      cy.findByText(
+        "A closer look at number of Orders where day of week of Created At is Wednesday",
+      ).should("be.visible");
+    });
+
+    getDashcardByTitle("A look at Created At fields").should("exist");
+
+    getDashcardByTitle("A look at the number of Orders").should("exist");
   });
 });
 

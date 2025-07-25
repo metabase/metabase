@@ -6,12 +6,10 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { createDashboard, getTextCardDetails } from "e2e/support/helpers";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
@@ -67,7 +65,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
     });
   });
 
-  it("should show fullscreen mode control by default", () => {
+  it("should not show fullscreen mode control", () => {
     cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
@@ -77,7 +75,8 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
     });
 
     getSdkRoot().within(() => {
-      cy.icon("expand").should("be.visible"); // enter full screen control
+      cy.log("fullscreen mode icon should not show up");
+      cy.icon("expand").should("not.exist");
     });
   });
 

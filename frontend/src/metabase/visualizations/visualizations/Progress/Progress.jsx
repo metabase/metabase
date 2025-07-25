@@ -5,7 +5,7 @@ import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import IconBorder from "metabase/components/IconBorder";
+import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
@@ -35,7 +35,7 @@ export default class Progress extends Component {
     this.barRef = createRef();
   }
 
-  static uiName = t`Progress`;
+  static getUiName = () => t`Progress`;
   static identifier = "progress";
   static iconName = "progress";
 
@@ -70,14 +70,22 @@ export default class Progress extends Component {
       ],
     }),
     "progress.goal": {
-      section: t`Display`,
-      title: t`Goal`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Goal`;
+      },
       widget: "number",
       default: 0,
     },
     "progress.color": {
-      section: t`Display`,
-      title: t`Color`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Color`;
+      },
       widget: "color",
       default: color("accent1"),
     },

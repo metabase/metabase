@@ -8,15 +8,11 @@ export type Widget = {
   hidden?: boolean;
   props: Record<string, unknown>;
   title?: string;
-  widget: (() => JSX.Element | null) | undefined;
+  widget?: string | React.ComponentType<any>;
 };
 
 export type CommonChartSettingsProps = {
   series: Series;
+  settings?: VisualizationSettings;
   onChange?: (settings: VisualizationSettings, question?: Question) => void;
-};
-
-// Only used for the tests in ChartSettings.unit.spec.tsx
-export type BaseChartSettingsTestProps = {
-  widgets?: Widget[];
 };

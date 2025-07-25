@@ -84,7 +84,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -126,13 +126,13 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("State");
 
-      cy.button("Apply").should("not.exist");
+      H.applyFilterToast().should("not.exist");
 
       H.popover().findByText("AK").click();
       H.popover().button("Add filter").click();
 
-      cy.button("Apply").should("be.visible").click();
-      cy.button("Apply").should("not.exist");
+      H.applyFilterButton().click();
+      H.applyFilterToast().should("not.exist");
 
       cy.location("search").should("eq", "?city=&state=AK");
 
@@ -156,12 +156,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
-      cy.button("Apply").should("be.visible").click();
-      cy.button("Apply").should("not.exist");
+      H.applyFilterButton().click();
+      H.applyFilterToast().should("not.exist");
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
@@ -202,7 +202,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
 
       H.popover().button("Add filter").click();
@@ -247,7 +247,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -285,7 +285,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().click();
+          H.fieldValuesTextbox().click();
         });
       H.popover().button("Add filter").click();
 
@@ -492,7 +492,7 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
 
 function searchFieldValuesFilter() {
   cy.findByTestId("parameter-value-dropdown").within(() => {
-    H.fieldValuesInput().type("An");
+    H.fieldValuesTextbox().type("An");
   });
 
   cy.findByTestId("field-values-widget").within(() => {
@@ -503,9 +503,5 @@ function searchFieldValuesFilter() {
 }
 
 function removeValueForFilter(label) {
-  cy.get("legend")
-    .contains(label)
-    .closest("fieldset")
-    .find(".Icon-close")
-    .click();
+  H.filterWidget({ name: label }).icon("close").click();
 }

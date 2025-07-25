@@ -14,6 +14,7 @@ import {
 import Field from "metabase-lib/v1/metadata/Field";
 import {
   createMockCard,
+  createMockDashboard,
   createMockDashboardCard,
   createMockField,
   createMockHeadingDashboardCard,
@@ -60,6 +61,7 @@ const STATE = createMockState({
       }),
       2: createMockHeadingDashboardCard(),
     },
+    editingDashboard: createMockDashboard({ id: 0 }),
     sidebar: {},
   },
   entities: createMockEntitiesState({

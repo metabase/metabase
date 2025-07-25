@@ -1,3 +1,4 @@
+#_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.test-runner
   "The only purpose of this namespace is to make sure all of the other stuff below gets loaded."
   (:require
@@ -7,12 +8,16 @@
    [clojure.string :as str]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.core.bootstrap]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.initialize :as initialize]
+   [metabase.util :as u]
    [metabase.util.date-2]
    [metabase.util.i18n.impl]
+   [metabase.util.log :as log]
    [pjstadig.humane-test-output :as humane-test-output]))
 
 (set! *warn-on-reflection* true)
@@ -94,12 +99,21 @@
   ([options]
    (hawk/find-tests-with-options (merge (default-options) options))))
 
+(defn- initialize-all-fixtures []
+  (let [steps (initialize/all-components)]
+    (u/with-timer-ms [duration-ms]
+      (doseq [init-step steps]
+        (fixtures/initialize init-step))
+      (log/info (str "Initialized " (count steps) " fixtures in " (duration-ms) "ms")))))
+
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."
   [options]
+  (initialize-all-fixtures)
   (hawk/find-and-run-tests-repl (merge (default-options) options)))
 
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
+  (initialize-all-fixtures)
   (hawk/find-and-run-tests-cli (merge (default-options) options)))

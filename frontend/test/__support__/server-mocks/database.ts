@@ -1,8 +1,8 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
@@ -34,6 +34,16 @@ export function setupDatabaseUsageInfoEndpoint(
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
 }
 
+export function setupDatabaseListEndpoint(
+  databases: Database[],
+  { overwriteRoutes = false }: { overwriteRoutes?: boolean } = {},
+) {
+  fetchMock.get(
+    { url: "path:/api/database", overwriteRoutes },
+    { data: databases, total: databases.length },
+  );
+}
+
 export function setupDatabasesEndpoints(
   databases: Database[],
   { hasSavedQuestions = true } = {},
@@ -53,10 +63,7 @@ export function setupDatabasesEndpoints(
       total: databasesWithSavedQuestions.length,
     },
   );
-  fetchMock.get(
-    { url: "path:/api/database", overwriteRoutes: false },
-    { data: databases, total: databases.length },
-  );
+  setupDatabaseListEndpoint(databases);
   fetchMock.post("path:/api/database", async (url) => {
     const lastCall = fetchMock.lastCall(url);
     return await lastCall?.request?.json();
@@ -79,14 +86,17 @@ export const setupSchemaEndpoints = (db: Database) => {
   });
 };
 
-export function setupDatabaseIdFieldsEndpoints({ id, tables = [] }: Database) {
+export function setupDatabaseIdFieldsEndpoints(
+  { id, tables = [] }: Database,
+  options?: MockOptionsMethodGet,
+) {
   const fields = tables.flatMap((table) =>
     (table.fields ?? [])
-      .filter((field) => isTypeFK(field.semantic_type))
+      .filter((field) => isTypePK(field.semantic_type))
       .map((field) => ({ ...field, table })),
   );
 
-  fetchMock.get(`path:/api/database/${id}/idfields`, fields);
+  fetchMock.get(`path:/api/database/${id}/idfields`, fields, options);
 }
 
 export const setupUnauthorizedSchemaEndpoints = (db: Database) => {

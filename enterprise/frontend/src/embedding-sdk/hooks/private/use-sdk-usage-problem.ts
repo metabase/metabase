@@ -34,13 +34,23 @@ export function useSdkUsageProblem({
     return getTokenFeature(state, "embedding_sdk");
   });
 
+  const isDevelopmentMode = useSdkSelector((state) => {
+    // Assume that we are not in development mode until the setting is loaded
+    if (!state.settings.values?.["token-features"]) {
+      return false;
+    }
+
+    return getTokenFeature(state, "development_mode");
+  });
+
   const usageProblem = useMemo(() => {
     return getSdkUsageProblem({
       authConfig,
       hasTokenFeature,
       isEnabled,
+      isDevelopmentMode,
     });
-  }, [authConfig, hasTokenFeature, isEnabled]);
+  }, [authConfig, hasTokenFeature, isEnabled, isDevelopmentMode]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.

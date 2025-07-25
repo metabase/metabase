@@ -1,10 +1,12 @@
 (ns mage.util
   (:require
+   [babashka.fs :as fs]
    [babashka.tasks :refer [shell]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [mage.color :as c]))
+   [mage.color :as c]
+   [puget.printer :as puget]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,15 +22,20 @@
   "Run a blocking shell command and return the output as a trimmed string.
 
   Will throw an exception if the command returns a non-zero exit code."
-  [cmd]
-  (->> (shell {:out :string :dir project-root-directory} cmd)
+  [& cmd]
+  (->> (apply shell {:out :string :dir project-root-directory} cmd)
        :out
        str/trim-newline))
 
 (defn shl
   "Run a shell command and return the output as a vector of lines."
-  [cmd]
-  (-> cmd sh str/split-lines vec))
+  [& cmd]
+  (-> (apply sh cmd) str/split-lines vec))
+
+(defn node
+  "Run a Node.js command string and print the output as a trimmed string."
+  [& cmd]
+  (apply sh "node" "-p" cmd))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Git Stuff
@@ -100,5 +107,51 @@
         :out
         (str/split-lines)
         ;; filter out any files that have been deleted/moved
+        (remove #{""})
         (filter (fn [filename]
-                  (.exists (io/file (str project-root-directory "/" filename))))))))
+                  (fs/exists? (str project-root-directory "/" filename)))))))
+
+(comment
+  (count (updated-files "master"))
+  (count (updated-files "master...")))
+
+(defn with-throbber
+  "Calls a function f and displays a throbber animation while waiting
+   for it to complete. Returns the result of calling f."
+  [message f]
+  (let [frames ["⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏"]
+        delay  100
+        done?  (atom false)
+        result (atom nil)
+        err    (atom nil)]
+    (future (try
+              (loop [i 0]
+                (when (not @done?)
+                  (print (str "\r" (nth frames (mod i (count frames))) " " message))
+                  (flush)
+                  (Thread/sleep delay)
+                  (recur (inc i))))
+              (catch Exception e
+                (reset! err e)))
+            ;; Clear the throbber when done
+            (print "\r")
+            (flush))
+
+    ;; Execute the function
+    (try
+      (let [res (f)]
+        (reset! result res)
+        res)
+      (catch Exception e
+        (reset! err e)
+        (throw e))
+      (finally
+        (reset! done? true)))))
+
+(defn- without-slash [s] (str/replace s #"/$" ""))
+
+(defn pp [& xs]
+  (doseq [x xs] (puget/cprint x)))
+
+(defn pp-line [& xs]
+  (doseq [x xs] (puget/cprint x {:width 10e20})))

@@ -180,7 +180,7 @@ describe("embed modal display", () => {
 
   describe("when the user has a paid instance", () => {
     it("should display a disabled state and a link to the Interactive embedding settings", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       H.visitDashboard("@dashboardId");
 
       H.openSharingMenu("Embed");
@@ -289,7 +289,7 @@ describe("#39152 sharing an unsaved question", () => {
           H.openSharingMenu(/public link/i);
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "public_link_copied",
               artifact: "dashboard",
               format: null,
@@ -297,7 +297,7 @@ describe("#39152 sharing an unsaved question", () => {
           }
 
           if (resource === "question") {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
               format: "html",
@@ -305,7 +305,7 @@ describe("#39152 sharing an unsaved question", () => {
 
             H.popover().findByText("csv").click();
             cy.findByTestId("copy-button").realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
               format: "csv",
@@ -313,7 +313,7 @@ describe("#39152 sharing an unsaved question", () => {
 
             H.popover().findByText("xlsx").click();
             cy.findByTestId("copy-button").realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
               format: "xlsx",
@@ -321,7 +321,7 @@ describe("#39152 sharing an unsaved question", () => {
 
             H.popover().findByText("json").click();
             cy.findByTestId("copy-button").realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "public_link_copied",
               artifact: "question",
               format: "json",
@@ -336,7 +336,7 @@ describe("#39152 sharing an unsaved question", () => {
 
           H.openSharingMenu(/public link/i);
           H.popover().button("Remove public link").click();
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
             source: "public-share",
@@ -365,7 +365,7 @@ describe("#39152 sharing an unsaved question", () => {
 
           H.popover().findByTestId("copy-button").click();
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "public_embed_code_copied",
             artifact: resource,
             source: "public-embed",
@@ -382,7 +382,7 @@ describe("#39152 sharing an unsaved question", () => {
 
           H.popover().findByText("Remove public link").click();
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
             source: "public-embed",
@@ -401,7 +401,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.findByTestId("embed-backend")
             .findByTestId("copy-button")
             .realClick();
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
             language: "node",
@@ -420,7 +420,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.findByTestId("embed-frontend")
             .findByTestId("copy-button")
             .realClick();
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
             language: "pug",
@@ -446,7 +446,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.findByTestId("embed-backend")
             .findByTestId("copy-button")
             .realClick();
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
             language: "ruby",
@@ -486,7 +486,7 @@ describe("#39152 sharing an unsaved question", () => {
           cy.findByTestId("embed-backend")
             .findByTestId("copy-button")
             .realClick();
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "static_embed_code_copied",
             artifact: resource,
             language: "python",
@@ -509,7 +509,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
               .realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
               language: "python",
@@ -529,7 +529,7 @@ describe("#39152 sharing an unsaved question", () => {
 
         describe("Pro/EE instances", () => {
           beforeEach(() => {
-            H.setTokenFeatures("all");
+            H.activateToken("pro-self-hosted");
           });
 
           it("should send `static_embed_code_copied` when copying the static embed code", () => {
@@ -542,7 +542,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
               .realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
               language: "node",
@@ -561,7 +561,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByTestId("embed-frontend")
               .findByTestId("copy-button")
               .realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
               language: "pug",
@@ -587,7 +587,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
               .realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
               language: "ruby",
@@ -646,7 +646,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
               .realClick();
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "static_embed_code_copied",
               artifact: resource,
               language: "python",
@@ -686,7 +686,7 @@ describe("#39152 sharing an unsaved question", () => {
                 .findByTestId("copy-button")
                 .realClick();
 
-              H.expectGoodSnowplowEvent({
+              H.expectUnstructuredSnowplowEvent({
                 event: "static_embed_code_copied",
                 artifact: resource,
                 language: "node",
@@ -720,7 +720,7 @@ describe("#39152 sharing an unsaved question", () => {
                 .findByTestId("copy-button")
                 .realClick();
 
-              H.expectGoodSnowplowEvent({
+              H.expectUnstructuredSnowplowEvent({
                 event: "static_embed_code_copied",
                 artifact: resource,
                 language: "node",
@@ -754,7 +754,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByText("Discard changes").click();
           });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "static_embed_discarded",
             artifact: resource,
           });
@@ -774,7 +774,7 @@ describe("#39152 sharing an unsaved question", () => {
             .click();
 
           cy.then(function () {
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "static_embed_published",
               artifact: resource,
               new_embed: true,
@@ -812,7 +812,7 @@ describe("#39152 sharing an unsaved question", () => {
               .button("Publish")
               .click();
 
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "static_embed_published",
               artifact: resource,
               new_embed: false,
@@ -840,7 +840,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByText("Unpublish").click();
           });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "static_embed_unpublished",
             artifact: resource,
             time_since_creation: closeTo(toSecond(HOUR), 10),

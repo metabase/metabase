@@ -115,31 +115,35 @@ describe("issue 41765", { tags: "@external" }, () => {
     });
   }
 
-  it("re-syncing a database should invalidate the table cache (metabase#41765)", () => {
-    cy.visit("/");
+  it(
+    "re-syncing a database should invalidate the table cache (metabase#41765)",
+    { tags: "@flaky" },
+    () => {
+      cy.visit("/");
 
-    H.queryWritableDB(
-      `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
-      "postgres",
-    );
+      H.queryWritableDB(
+        `ALTER TABLE ${TEST_TABLE} ADD ${COLUMN_NAME} text;`,
+        "postgres",
+      );
 
-    openWritableDatabaseQuestion();
+      openWritableDatabaseQuestion();
 
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText(COLUMN_DISPLAY_NAME).should("not.exist");
 
-    enterAdmin();
+      enterAdmin();
 
-    H.appBar().findByText("Databases").click();
-    cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
-    cy.button("Sync database schema").click();
+      H.appBar().findByText("Databases").click();
+      cy.findAllByRole("link").contains(WRITABLE_DB_DISPLAY_NAME).click();
+      cy.button("Sync database schema").click();
 
-    exitAdmin();
-    openWritableDatabaseQuestion();
+      exitAdmin();
+      openWritableDatabaseQuestion();
 
-    H.getNotebookStep("data").button("Pick columns").click();
-    H.popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
-  });
+      H.getNotebookStep("data").button("Pick columns").click();
+      H.popover().findByText(COLUMN_DISPLAY_NAME).should("be.visible");
+    },
+  );
 });
 
 describe("(metabase#45042)", () => {
@@ -152,7 +156,7 @@ describe("(metabase#45042)", () => {
     cy.visit("/admin");
 
     //Ensure tabs are present in normal view
-    cy.findByRole("navigation").within(() => {
+    cy.findByTestId("admin-navbar").within(() => {
       cy.findByRole("link", { name: "Settings" }).should("exist");
       cy.findByRole("link", { name: "Exit admin" }).should("exist");
     });
@@ -161,17 +165,19 @@ describe("(metabase#45042)", () => {
     cy.viewport(500, 750);
 
     //ensure that hamburger is visible and functional
-    cy.findByRole("navigation").within(() => {
+    cy.findByTestId("admin-navbar").within(() => {
       cy.findByRole("button", { name: /burger/ })
-        .should("exist")
+        .should("be.visible")
         .click();
       cy.findByRole("list", { name: "Navigation links" }).should("exist");
       cy.findByRole("link", { name: "Settings" }).should("exist");
       cy.findByRole("link", { name: "Exit admin" }).should("exist");
     });
 
-    //Click something to dismiss nav list
-    cy.findByRole("link", { name: "General" }).click();
+    // dismiss nav list
+    cy.findByRole("button", { name: /burger/ })
+      .should("be.visible")
+      .click();
     cy.findByRole("list", { name: "Navigation links" }).should("not.exist");
   });
 });
@@ -189,8 +195,8 @@ describe("(metabase#46714)", () => {
       cy.findByText("Orders").click();
     });
 
-    //TODO: Fix this shame
-    cy.wait(2000);
+    cy.findByTestId("entity-picker-modal").should("not.exist");
+    cy.findByTestId("segment-editor").findByText("Orders").should("be.visible");
 
     cy.findByTestId("segment-editor")
       .findByText("Add filters to narrow your answer")
@@ -200,7 +206,7 @@ describe("(metabase#46714)", () => {
   it("should allow users to apply relative date options in the segment date picker", () => {
     H.popover().within(() => {
       cy.findByText("Created At").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByRole("tab", { name: "Previous" }).click();
       cy.findByLabelText("Starting from…").click();
     });

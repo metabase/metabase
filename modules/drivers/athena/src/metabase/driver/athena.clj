@@ -8,20 +8,26 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DatabaseMetaData Date ResultSet Time Timestamp Types)
+   (java.sql
+    Connection
+    DatabaseMetaData
+    Date
+    ResultSet
+    Time
+    Timestamp
+    Types)
    (java.time OffsetDateTime ZonedDateTime)
    [java.util UUID]))
 
@@ -40,7 +46,8 @@
                               :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
-                              :test/jvm-timezone-setting     false}]
+                              :test/jvm-timezone-setting     false
+                              :database-routing              false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -67,7 +74,7 @@
         :OutputLocation s3_staging_dir
         :WorkGroup      workgroup
         :Region      region}
-       (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
+       (when (and (not (driver-api/is-hosted?)) (str/blank? access_key))
          {:CredentialsProvider "DefaultChain"})
        (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"
@@ -148,7 +155,7 @@
     ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
     (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
       (let [timestamp-instant (.toInstant timestamp)
-            results-timezone (qp.timezone/results-timezone-id)]
+            results-timezone (driver-api/results-timezone-id)]
         (try
           (t/zoned-date-time timestamp-instant (t/zone-id results-timezone))
           (catch Throwable _
@@ -293,7 +300,7 @@
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->DateTime]
   [_driver _semantic-type expr]
-  (h2x/->timestamp expr))
+  (h2x/->timestamp [:replace expr "T" " "]))
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Date]
   [_driver _semantic-type expr]
@@ -302,6 +309,10 @@
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Time]
   [_driver _semantic-type expr]
   (h2x/->time expr))
+
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
   [driver [_ x y unit]]
@@ -312,11 +323,6 @@
       [:date_diff (h2x/literal unit) (date-trunc :day x) (date-trunc :day y)]
       (:hour :minute :second)
       [:date_diff (h2x/literal unit) (h2x/->timestamp x) (h2x/->timestamp y)])))
-
-;; fix to allow integer division to be cast as double (float is not supported by athena)
-(defmethod sql.qp/->float :athena
-  [_ value]
-  (h2x/cast :double value))
 
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
@@ -330,15 +336,6 @@
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
-
-;; keyword function converts database-type variable to a symbol, so we use symbols above to map the types
-(defn- database-type->base-type-or-warn
-  "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
-  [driver database-type]
-  (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                     database-type)
-          :type/*)))
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
@@ -385,7 +382,7 @@
               (map athena.schema-parser/parse-schema))
         (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
 
-(defn- describe-table-fields-without-nested-fields [driver columns]
+(defn- describe-table-fields-without-nested-fields [driver schema table-name columns]
   (set
    (for [[idx {database-type :type_name
                column-name   :column_name
@@ -393,7 +390,9 @@
      (merge
       {:name              column-name
        :database-type     database-type
-       :base-type         (database-type->base-type-or-warn driver database-type)
+       :base-type         (sql-jdbc.sync/database-type->base-type-or-warn driver
+                                                                          [schema table-name column-name]
+                                                                          database-type)
        :database-position idx}
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))
@@ -426,7 +425,7 @@
                 ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
               (empty? columns))
         (describe-table-fields-with-nested-fields database schema table-name)
-        (describe-table-fields-without-nested-fields driver columns)))
+        (describe-table-fields-without-nested-fields driver schema table-name columns)))
     (catch Throwable e
       (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
       (throw e))))

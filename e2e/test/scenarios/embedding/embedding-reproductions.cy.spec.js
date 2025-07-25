@@ -658,7 +658,7 @@ describe("issue 30535", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
@@ -907,6 +907,11 @@ describe("dashboard preview", () => {
       cy.button("Add filter").click();
     });
 
+    // Wait for the iframe to load
+    H.getIframeBody().within(() => {
+      cy.button(filter.name).should("not.exist");
+    });
+
     H.getIframeBody().within(() => {
       cy.log("Assert filter 1");
       cy.button(filter.name).click();
@@ -1008,7 +1013,7 @@ describe("issue 8490", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     H.createDashboardWithQuestions({
       dashboardDetails: {
@@ -1030,10 +1035,10 @@ describe("issue 8490", () => {
               ],
             ],
             filter: [
-              "time-interval",
+              "between",
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-              -12,
-              "month",
+              "2024-01-01",
+              "2025-01-01",
             ],
           },
           limit: 100,
@@ -1156,7 +1161,9 @@ describe("issue 8490", () => {
     });
 
     // Loading...
-    cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
+    cy.findByTestId("embed-frame")
+      .findByText("로드 중...")
+      .should("be.visible");
 
     cy.log("test a static embedded question");
     cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
@@ -1210,17 +1217,14 @@ describe("issue 8490", () => {
         "static embeddings with `#locale` should show a translated the loading message",
       );
       // Loading...
-      cy.findByText("로딩...")
+      cy.findByText("로드 중...")
         .should("be.visible")
         .then(resolveDashboardLoaderPromise);
-
-      // PDF export
-      cy.findByText("PDF로 내보내기").should("be.visible");
 
       cy.log("assert the line chart");
       H.getDashboardCard(0).within(() => {
         // X-axis labels: Jan 2024 (or some other year)
-        cy.findByText(/1월 20\d\d\b/).should("be.visible");
+        cy.findByText(/^1월 20\d\d\b/).should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
       });
@@ -1314,4 +1318,177 @@ describe("issue 50373", () => {
 
     H.visitEmbeddedPage({ resource: { dashboard: ORDERS_DASHBOARD_ID } });
   });
+});
+
+describe("issue 51934 (EMB-189)", () => {
+  const COLLECTION_NAME = "Model Collection";
+  const MODEL_IN_ROOT_NAME = "Products Model";
+  const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+  const QUESTION_IN_COLLECTION_NAME = "Orders Question";
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.createModelFromTableName({
+      tableName: "products",
+      modelName: MODEL_IN_ROOT_NAME,
+    });
+    H.createCollection({
+      name: COLLECTION_NAME,
+      alias: "collectionId",
+    });
+    H.createModelFromTableName({
+      tableName: "orders",
+      modelName: MODEL_IN_COLLECTION_NAME,
+      idAlias: "modelId",
+    });
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "modelId",
+    });
+    H.createQuestion(
+      {
+        name: QUESTION_IN_COLLECTION_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "questionId",
+      },
+    );
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "questionId",
+    });
+  });
+
+  it("should set the starting join step based on the query source", () => {
+    startNewEmbeddingQuestion();
+    const QA_DB_NAME = "QA Postgres12";
+    const DATA_SOURCE_NAME = "Orders";
+
+    cy.log("select a table as a data source");
+    H.popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByRole("heading", { name: QA_DB_NAME }).click();
+      cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
+    });
+    H.getNotebookStep("data").button("Join data").click();
+
+    cy.log(
+      'select the "Join" step when the data source is a table will open a table in the same database',
+    );
+    H.popover().within(() => {
+      cy.findByText(QA_DB_NAME).should("be.visible");
+      cy.findByRole("option", { name: "Orders" }).should("be.visible");
+    });
+
+    cy.log(
+      "changing the data source while not selecting the join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(DATA_SOURCE_NAME).click();
+
+    cy.log('go back to the "Bucket" step');
+    H.popover().within(() => {
+      cy.icon("chevronleft").click();
+      cy.icon("chevronleft").click();
+    });
+
+    cy.log(
+      "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
+    );
+    H.popover().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
+      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME }).click();
+    });
+
+    cy.log("the join popover is automatically opened");
+    H.popover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 227)",
+      );
+      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME })
+        .should("be.visible")
+        .click();
+    });
+
+    cy.log(
+      "select a model as a data source should open the model step in the same collection as the data source",
+    );
+    H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
+
+    H.popover().within(() => {
+      // Go back to the "Bucket" step
+      cy.findByText("Saved Questions").click();
+
+      // We're now at the "Bucket" step
+      cy.findByText("Models").click();
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
+      cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME }).click();
+    });
+
+    cy.log("the join popover is automatically opened");
+    H.popover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 227)",
+      );
+      cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME })
+        .should("be.visible")
+        .click();
+    });
+
+    cy.log(
+      "select a data source after selecting a join step should refresh the data picker on the join step",
+    );
+    H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
+    H.popover().within(() => {
+      cy.findByRole("menuitem", { name: "Our analytics" }).click();
+      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).click();
+    });
+
+    H.popover().within(() => {
+      cy.log("the collection of the new data source should be selected");
+      cy.findByRole("menuitem", { name: "Our analytics" }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 227)",
+      );
+      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
+        "be.visible",
+      );
+    });
+  });
+
+  function startNewEmbeddingQuestion() {
+    H.visitFullAppEmbeddingUrl({
+      url: "/question/notebook",
+      qs: {
+        data_picker: "staged",
+        entity_types: "table,model,question",
+      },
+    });
+  }
+
+  function moveToCollection({ collectionIdAlias, cardIdAlias }) {
+    cy.get(`@${collectionIdAlias}`).then((collectionId) => {
+      cy.get(`@${cardIdAlias}`).then((cardId) => {
+        cy.request("PUT", `/api/card/${cardId}`, {
+          collection_id: collectionId,
+        });
+      });
+    });
+  }
 });

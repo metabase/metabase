@@ -4,11 +4,9 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -63,6 +61,7 @@
 (def ^:private cards
   {:cards [{:name          "My Card"
             :id            1
+            :entity-id     (u/generate-nano-id)
             :type          :question
             :dataset-query (lib.tu.macros/mbql-query checkins
                              {:aggregation [[:count]]
@@ -105,46 +104,39 @@
   (lib/composed-metadata-provider
    meta/metadata-provider
    (providers.mock/mock-metadata-provider
-    (let [query (lib.tu.macros/mbql-query checkins
-                  {:aggregation [[:count]]
-                   :breakout    [$user-id]})]
-      {:cards [{:name            "My Card"
-                :id              1
-                :database-id     (meta/id)
-                ;; THIS IS A LEGACY STYLE QUERY!
-                :dataset-query   (lib.tu.macros/mbql-query checkins
-                                   {:aggregation [[:count]]
-                                    :breakout    [$user-id]})
-                ;; this is copied directly from a QP response. NOT CONVERTED TO KEBAB-CASE YET, BECAUSE THIS IS HOW IT
-                ;; LOOKS IN LEGACY QUERIES!
-                :result-metadata [{:description        nil
-                                   :semantic_type      :type/FK
-                                   :table_id           (meta/id :checkins)
-                                   :coercion_strategy  nil
-                                   :name               "USER_ID"
-                                   :settings           nil
-                                   :source             :breakout
-                                   :field_ref          [:field (meta/id :checkins :user-id) nil]
-                                   :effective_type     :type/Integer
-                                   :nfc_path           nil
-                                   :parent_id          nil
-                                   :id                 (meta/id :checkins :user-id)
-                                   ;; TODO: This :ident is made up, since `:result-metadata` doesn't contain idents yet.
-                                   :ident              (get-in query [:query :breakout-idents 0])
-                                   :fk_target_field_id (meta/id :users :id)
-                                   :visibility_type    :normal
-                                   :display_name       "User ID"
-                                   :fingerprint        {:global {:distinct-count 15, :nil% 0.0}}
-                                   :base_type          :type/Integer}
-                                  {:base_type      :type/Integer
-                                   :semantic_type  :type/Quantity
-                                   :name           "count"
-                                   :display_name   "Count"
-                                   ;; TODO: This :ident is made up, since `:result-metadata` doesn't contain idents yet.
-                                   :ident          (get-in query [:query :aggregation-idents 0])
-                                   :source         :aggregation
-                                   :field_ref      [:aggregation 0]
-                                   :effective_type :type/BigInteger}]}]}))))
+    {:cards [{:name            "My Card"
+              :id              1
+              :database-id     (meta/id)
+              ;; THIS IS A LEGACY STYLE QUERY!
+              :dataset-query   (lib.tu.macros/mbql-query checkins
+                                 {:aggregation [[:count]]
+                                  :breakout    [$user-id]})
+              ;; this is copied directly from a QP response. NOT CONVERTED TO KEBAB-CASE YET, BECAUSE THIS IS HOW IT
+              ;; LOOKS IN LEGACY QUERIES!
+              :result-metadata [{:description        nil
+                                 :semantic_type      :type/FK
+                                 :table_id           (meta/id :checkins)
+                                 :coercion_strategy  nil
+                                 :name               "USER_ID"
+                                 :settings           nil
+                                 :source             :breakout
+                                 :field_ref          [:field (meta/id :checkins :user-id) nil]
+                                 :effective_type     :type/Integer
+                                 :nfc_path           nil
+                                 :parent_id          nil
+                                 :id                 (meta/id :checkins :user-id)
+                                 :fk_target_field_id (meta/id :users :id)
+                                 :visibility_type    :normal
+                                 :display_name       "User ID"
+                                 :fingerprint        {:global {:distinct-count 15, :nil% 0.0}}
+                                 :base_type          :type/Integer}
+                                {:base_type      :type/Integer
+                                 :semantic_type  :type/Quantity
+                                 :name           "count"
+                                 :display_name   "Count"
+                                 :source         :aggregation
+                                 :field_ref      [:aggregation 0]
+                                 :effective_type :type/BigInteger}]}]})))
 
 (defn query-with-source-card-with-result-metadata
   "Returns a query with a `card__<id>` source Table and a metadata provider that has a Card with `:result_metadata`."
@@ -211,13 +203,11 @@
                    :lib/stage-metadata {:lib/type :metadata/results
                                         :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
                                                    {:lib/type      :metadata/column
                                                     :name          "sum"
-                                                    :ident         "native__zkZ11tfUHvSej1u4yPLjB__sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
@@ -237,7 +227,7 @@
                                 (merge
                                  {:lib/type      :metadata/card
                                   :id            (inc idx)
-                                  :entity_id     eid
+                                  :entity-id     eid
                                   :database-id   (:id (lib.metadata/database metadata-provider))
                                   :name          (str "Mock " (name table) " card")
                                   :dataset-query (if native?
@@ -251,10 +241,7 @@
                                    {:result-metadata
                                     (cond->> (lib.metadata/fields metadata-provider table-id)
                                       true    (sort-by :id)
-                                      native? (mapv #(-> %
-                                                         (dissoc :table-id :id :fk-target-field-id)
-                                                         (assoc :ident (lib.metadata.ident/native-ident
-                                                                        (:name %) eid)))))}))]))))
+                                      native? (mapv #(dissoc % :table-id :id :fk-target-field-id)))}))]))))
         table-key-and-ids))
 
 (defn- make-mock-cards-special-cases
@@ -328,6 +315,13 @@
    (providers.mock/mock-metadata-provider
     {:cards (vals (mock-cards))})))
 
+(defn as-model
+  "Given a mock card, make it a model.
+
+  This sets the `:type` of the card to `:model`."
+  [card]
+  (assoc card :type :model))
+
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
   with `column-name` returned by a `query`. This only makes sense for queries with multiple stages, or ones with a
@@ -341,9 +335,7 @@
                        (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
                                        {:column column-name
                                         :found  col-names}))))]
-    (lib/ref (cond-> metadata
-               ;; This forces a string column in the presence of force-broken-id-refs
-               (::lib.card/force-broken-id-refs metadata) (dissoc :id)))))
+    (lib/ref metadata)))
 
 (mu/defn query-with-stage-metadata-from-card :- ::lib.schema/query
   "Convenience for creating a query that has `:lib/metadata` stage metadata attached to it from a Card. Note that this

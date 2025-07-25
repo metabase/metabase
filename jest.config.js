@@ -11,6 +11,7 @@ const esmPackages = [
   "hast.*",
   "html-void-elements",
   "is-absolute-url",
+  "jose",
   "property-information",
   "rehype-external-links",
   "screenfull",
@@ -46,7 +47,19 @@ const baseConfig = {
      * This isn't a problem in the core app because we seem to not import to entry file directly
      * for any component under tests.
      */
+    "sdk-ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    /**
+     * SDK iframe embedding imports the embedding sdk and its components.
+     * We want to exclude the SDK from the main app's bundle to reduce the bundle size.
+     */
+    "sdk-iframe-embedding-ee-plugins":
+      "<rootDir>/frontend/src/metabase/lib/noop.js",
     "ee-plugins": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    /**
+     * Imports which are only applicable to the embedding sdk.
+     * As we use SDK components in new iframe embedding, we need to import them here.
+     **/
+    "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.js",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
@@ -115,14 +128,23 @@ const config = {
         "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
+      setupFiles: [
+        ...baseConfig.setupFiles,
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/setup-env.js",
+      ],
+
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest-console-restrictions.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/console-restrictions.js",
       ],
     },
     {
       ...baseConfig,
       displayName: "core",
+      testPathIgnorePatterns: [
+        ...(baseConfig.testPathIgnorePatterns || []),
+        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+      ],
     },
   ],
 };

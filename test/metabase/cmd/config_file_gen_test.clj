@@ -20,7 +20,7 @@
                          :on-change nil,
                          :doc nil,
                          :feature nil,
-                         :namespace metabase.public-settings,
+                         :namespace metabase.system.settings,
                          :munged-name "admin-email",
                          :visibility :authenticated}
                         {:database-local :allowed,
@@ -61,7 +61,7 @@
                          :on-change nil,
                          :doc nil,
                          :feature nil,
-                         :namespace metabase.public-settings,
+                         :namespace metabase.system.settings,
                          :munged-name "anon-tracking-enabled",
                          :visibility :public}
                         {:database-local :never,
@@ -81,7 +81,7 @@
                          :on-change nil,
                          :doc nil,
                          :feature nil,
-                         :namespace metabase.public-settings,
+                         :namespace metabase.system.settings,
                          :munged-name "deprecated-setting",
                          :visibility :public}))
 

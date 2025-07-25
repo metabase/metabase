@@ -6,7 +6,7 @@
 // can use this flag to enable it. This is set to true in CI
 const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
-const plugins = ["react", "no-only-tests"];
+const plugins = ["react", "no-only-tests", "ttag", "i18next"];
 if (shouldLintCssModules) {
   plugins.push("postcss-modules");
 }
@@ -118,7 +118,7 @@ module.exports = {
         ],
       },
     ],
-    complexity: ["error", { max: 54 }],
+    complexity: ["error", { max: 55 }],
     ...(shouldLintCssModules
       ? {
           "postcss-modules/no-undef-class": "error",
@@ -149,6 +149,7 @@ module.exports = {
     "plugin:import/typescript",
     "plugin:depend/recommended",
     "plugin:storybook/recommended",
+    "plugin:i18next/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
@@ -195,17 +196,36 @@ module.exports = {
         "*.unit.spec.*",
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
+        "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
         "stories-data.*",
         "e2e/**/*",
         "**/tests/*",
         "release/**/*",
+        "webpack.config.js",
+        "rspack.config.js",
       ],
       rules: {
         "no-color-literals": "off",
         "no-unconditional-metabase-links-render": "off",
         "no-literal-metabase-strings": "off",
+      },
+    },
+    {
+      files: [
+        "*.unit.spec.*",
+        "frontend/lint/**/*",
+        "*.stories.*",
+        "stories-data.*",
+        "e2e/**/*",
+        "**/tests/*",
+        "release/**/*",
+        "webpack.config.js",
+        "rspack.config.js",
+      ],
+      rules: {
+        "i18next/no-literal-string": "off",
       },
     },
     {
@@ -258,9 +278,9 @@ module.exports = {
         "jest/expect-expect": [
           "error",
           {
-            "assertFunctionNames": ["expect*", "assert*"],
-            "additionalTestBlockFunctions": []
-          }
+            assertFunctionNames: ["expect*", "assert*"],
+            additionalTestBlockFunctions: [],
+          },
         ],
       },
     },
@@ -291,8 +311,14 @@ module.exports = {
             selector: "Literal[value=/mb-base-color-/]",
             message:
               "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
-          }
+          },
         ],
+      },
+    },
+    {
+      files: ["frontend/src/metabase/query_builder/**/*"],
+      rules: {
+        "import/no-cycle": "error",
       },
     },
     {

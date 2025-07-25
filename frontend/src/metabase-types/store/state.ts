@@ -8,6 +8,7 @@ import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
 import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
+import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
 import type { ParametersState } from "./parameters";
 import type { QueryBuilderState } from "./qb";
@@ -16,6 +17,7 @@ import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
+import type { VisualizerState } from "./visualizer";
 
 type ModalName = null | "collection" | "dashboard" | "action" | "help";
 
@@ -26,6 +28,7 @@ export interface State {
   currentUser: User | null;
   dashboard: DashboardState;
   embed: EmbedState;
+  embeddingDataPicker: EmbeddingDataPickerState;
   entities: EntitiesState;
   parameters: ParametersState;
   qb: QueryBuilderState;
@@ -37,6 +40,11 @@ export interface State {
   modal: ModalName;
   undo: UndoState;
   downloads: DownloadsState;
+  visualizer: {
+    past: VisualizerState[];
+    present: VisualizerState;
+    future: VisualizerState[];
+  };
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

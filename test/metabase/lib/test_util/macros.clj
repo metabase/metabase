@@ -20,6 +20,8 @@
   ([table-name & body]
    (do-with-bindings #(mbql-query-impl/parse-tokens table-name `(do ~@body)))))
 
+;;; TODO (Cam 6/13/25) -- rename this `mbql-4-query` or something so it's clear that it returns a legacy MBQL query and
+;;; not MBQL 5
 (defmacro mbql-query
   "MLv2 version of [[metabase.test/mbql-query]] that uses the [[metabase.lib.test-metadata]] rather than the application
   database."
@@ -33,9 +35,7 @@
     #(as-> inner-query <>
        (mbql-query-impl/parse-tokens table-name <>)
        (mbql-query-impl/maybe-add-source-table <> table-name)
-       (mbql-query-impl/wrap-populate-idents <>)
-       (mbql-query-impl/wrap-inner-query <>)
-       (vary-meta <> assoc :type :mbql-query)))))
+       (mbql-query-impl/wrap-inner-query <>)))))
 
 (defmacro with-testing-against-standard-queries
   "Tests against a number of named expressions that all produce the same columns through different methods."

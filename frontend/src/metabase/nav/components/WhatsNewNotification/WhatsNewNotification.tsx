@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
+import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -16,7 +17,7 @@ import { getLatestEligibleReleaseNotes } from "./utils";
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
-  const versionInfo = useSetting("version-info");
+  const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSetting("version");
   const lastAcknowledgedVersion = useSetting("last-acknowledged-version");
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);

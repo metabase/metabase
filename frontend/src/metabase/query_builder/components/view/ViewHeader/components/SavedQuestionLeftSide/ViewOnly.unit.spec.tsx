@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
@@ -93,7 +94,7 @@ const ORDERS_QUERY = (function () {
 
 const ORDERS_JOIN_PRODUCTS_QUERY = (function () {
   let query = createQuery({ databaseId: SAMPLE_DB_ID });
-  const joinTable = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
+  const joinTable = checkNotNull(Lib.tableOrCardMetadata(query, PRODUCTS_ID));
 
   query = Lib.join(
     query,
@@ -102,8 +103,6 @@ const ORDERS_JOIN_PRODUCTS_QUERY = (function () {
       joinTable,
       [
         Lib.joinConditionClause(
-          query,
-          -1,
           Lib.joinConditionOperators(query, -1)[0],
           Lib.joinConditionLHSColumns(query, -1)[0],
           Lib.joinConditionRHSColumns(query, -1, joinTable)[0],

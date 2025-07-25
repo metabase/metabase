@@ -19,7 +19,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("smoke UI test", () => {
@@ -32,21 +32,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       .should("have.text", "Appearance")
       .and("not.have.descendants", ".Icon-gem");
 
-    cy.log("By default redirects to the branding tab");
-    cy.location("pathname").should("eq", "/admin/settings/whitelabel/branding");
-    cy.findByRole("tab", { name: "Branding" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    cy.findByRole("tab", { name: "Conceal Metabase" })
-      .should("be.visible")
-      .and("have.attr", "aria-selected", "false");
-
     cy.log("Should show the upsell if the feature is missing");
     H.deleteToken();
-    cy.visit("/admin/settings/whitelabel");
-    cy.location("pathname").should("eq", "/admin/settings/whitelabel");
+    cy.visit("/admin/settings/appearance");
     cy.findByRole("heading", { name: "Make Metabase look like you" }).should(
       "be.visible",
     );
@@ -57,10 +45,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         "https://www.metabase.com/docs/latest/configuring-metabase/appearance",
       )
       .and("include", "utm_");
-    cy.findByRole("link", { name: "Try for free" })
-      .should("have.attr", "href")
-      .and("include", "https://www.metabase.com/upgrade")
-      .and("include", "utm_");
+    cy.findByRole("button", { name: "Try for free" });
 
     cy.log("Upsell icon should now be visible in the sidebar link");
     cy.findAllByTestId("settings-sidebar-link")
@@ -70,34 +55,32 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   });
 
   describe("company name", () => {
-    const COMPANY_NAME = "Test Co";
+    const NEW_COMPANY_NAME = "New Test Co";
 
     beforeEach(() => {
-      cy.log("Change company name");
-      cy.visit("/admin/settings/whitelabel");
-      cy.findByLabelText("Application Name").clear().type(COMPANY_NAME);
-      // Helps scroll the page up in order to see "Saved" notification
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Application Name").click();
+      cy.visit("/admin/settings/whitelabel/conceal-metabase");
+      cy.findByLabelText("Application name")
+        .clear()
+        .type(NEW_COMPANY_NAME)
+        .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
-      cy.findByDisplayValue(COMPANY_NAME);
-      cy.log("Company name has been updated!");
+      cy.findByDisplayValue(NEW_COMPANY_NAME);
     });
 
-    it.skip("should not show the old name in the admin panel (metabase#17043)", () => {
-      cy.reload();
-
-      cy.findByDisplayValue(COMPANY_NAME);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(
-        `These are the primary colors used in charts and throughout ${COMPANY_NAME}.`,
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(`The top nav bar of ${COMPANY_NAME}.`);
-
+    it("should not show the old name in the admin panel (metabase#17043)", () => {
       cy.visit("/admin/settings/general");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(`The name used for this instance of ${COMPANY_NAME}.`);
+      cy.findByTestId("site-name-setting")
+        .findByText(`The name used for this instance of ${NEW_COMPANY_NAME}.`)
+        .should("be.visible");
+    });
+
+    it("should show the new name in the main app", () => {
+      cy.visit("/");
+      cy.icon("gear").click();
+      H.popover().findByText(`About ${NEW_COMPANY_NAME}`).click();
+      H.modal()
+        .findByText(`Thanks for using ${NEW_COMPANY_NAME}!`)
+        .should("be.visible");
     });
   });
 
@@ -326,24 +309,22 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         it("should allow display the selected illustration on the landing page", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByRole("textbox", { name: "Landing page" }).should(
-            "have.value",
-            "Lighthouse",
-          );
+          cy.findByTestId("landing-page-illustration-setting")
+            .findByDisplayValue("Lighthouse")
+            .click();
 
-          cy.findByRole("textbox", { name: "Landing page" }).click();
           H.selectDropdown().findByText("Custom").click();
+          cy.findByTestId("file-input").selectFile(
+            {
+              contents: "e2e/support/assets/logo.jpeg",
+              mimeType: "image/jpeg",
+            },
+            { force: true },
+          );
+          cy.findByTestId("landing-page-illustration-setting")
+            .findByText("logo.jpeg")
+            .should("be.visible");
 
-          cy.findByTestId("landing-page-illustration-setting").within(() => {
-            cy.findByTestId("file-input").selectFile(
-              {
-                contents: "e2e/support/assets/logo.jpeg",
-                mimeType: "image/jpeg",
-              },
-              { force: true },
-            );
-            cy.findByText("logo.jpeg").should("be.visible");
-          });
           H.undoToast().findByText("Changes saved").should("be.visible");
 
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
@@ -361,7 +342,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           cy.log("test no illustration");
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
-          cy.findByLabelText("Landing page").click();
+          cy.findByTestId("landing-page-illustration-setting")
+            .findByDisplayValue("Custom")
+            .click();
           H.selectDropdown().findByText("No illustration").click();
 
           cy.visit("/");
@@ -478,7 +461,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.log("test custom illustration");
 
-          cy.findByRole("navigation").findByText("Exit admin").click();
+          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -511,7 +494,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           }).click();
           H.selectDropdown().findByText("No illustration").click();
 
-          cy.findByRole("navigation").findByText("Exit admin").click();
+          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -532,21 +515,21 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
   describe("loading message", () => {
     it("should update loading message", () => {
-      cy.visit("/question/" + ORDERS_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Doing science...");
+      cy.intercept("PUT", "/api/setting/loading-message").as(
+        "putLoadingMessage",
+      );
+      const messages = [
+        "Loading results...",
+        "Doing science...",
+        "Running query...",
+      ];
 
-      const runningQueryMessage = "Running query...";
-      changeLoadingMessage(runningQueryMessage);
-      cy.visit("/question/" + ORDERS_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(runningQueryMessage);
-
-      const loadingResultsMessage = "Loading results...";
-      changeLoadingMessage(loadingResultsMessage);
-      cy.visit("/question/" + ORDERS_QUESTION_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(loadingResultsMessage);
+      messages.forEach((message) => {
+        changeLoadingMessage(message);
+        // can't use visitQuestion helper because it waits for loading to be finished
+        cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+        cy.findByTestId("query-builder-main").findByText(message);
+      });
     });
   });
 
@@ -573,13 +556,30 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     beforeEach(() => {
       cy.log("Change Application Font");
       cy.signInAsAdmin();
-      setApplicationFontTo(font);
     });
 
     it("should apply correct font", () => {
+      setApplicationFontTo(font);
       cy.signInAsNormalUser();
       cy.visit("/");
       cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
+    });
+
+    it("should be able to make multiple font changes (metabase#45486)", () => {
+      cy.intercept("PUT", "/api/setting/application-font").as("saveFont");
+      const fonts = ["Lora", "Merriweather", "Montserrat", "Lato"];
+      cy.visit("/admin/settings/whitelabel/branding");
+
+      fonts.forEach((newFont) => {
+        cy.findByLabelText("Font").click();
+        H.selectDropdown().findByText(newFont).click();
+        cy.wait("@saveFont");
+        cy.get("body").should(
+          "have.css",
+          "font-family",
+          `${newFont}, sans-serif`,
+        );
+      });
     });
   });
 
@@ -619,6 +619,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       getHelpLinkCustomDestinationInput()
         .should("have.focus")
+        .clear()
         .type("https://example.org/custom-destination")
         .blur();
 
@@ -668,7 +669,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     });
 
     it("should link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
-      H.setTokenFeatures("none");
+      H.deleteToken();
 
       cy.signInAsNormalUser();
       cy.visit("/");
@@ -701,7 +702,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("Please make sure this is a valid URL")
         .should("exist");
 
-      getHelpLinkCustomDestinationInput().type("example");
+      getHelpLinkCustomDestinationInput().type("example").blur();
 
       H.main()
         .findByText("Please make sure this is a valid URL")
@@ -718,7 +719,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     });
 
     it("should not render the widget when users does not have a valid license", () => {
-      H.setTokenFeatures("none");
+      H.activateToken("starter");
       cy.reload();
       cy.findByLabelText("Landing page custom destination").should("not.exist");
     });
@@ -731,7 +732,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.url().should("include", "/test-1");
     });
 
@@ -753,7 +754,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("This field must be a relative URL.")
         .should("be.visible");
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.url().should("include", "/test-2");
     });
   });
@@ -762,16 +763,18 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 function changeLoadingMessage(message) {
   cy.visit("/admin/settings/whitelabel");
   cy.findByLabelText("Loading message").click();
-  cy.findByText(message).click();
+  H.selectDropdown().findByText(message).click();
+  cy.wait("@putLoadingMessage");
 }
 
 function setApplicationFontTo(font) {
   H.updateSetting("application-font", font);
 }
 
-const openSettingsMenu = () => H.appBar().icon("gear").click();
+const openSettingsMenu = () =>
+  H.appBar().findByRole("button", { name: "Settings" }).click();
 
-const helpLink = () => H.popover().findByRole("link", { name: "Help" });
+const helpLink = () => H.popover().findByRole("menuitem", { name: "Help" });
 
 const getHelpLinkCustomDestinationInput = () =>
   cy.findByPlaceholderText("Enter a URL it should go to");

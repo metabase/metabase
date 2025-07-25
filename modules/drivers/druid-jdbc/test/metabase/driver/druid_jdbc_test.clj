@@ -3,10 +3,11 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [malli.error :as me]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
@@ -453,11 +454,11 @@
                    (some-> (.getCause e) recur)))))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
-                                           [(t2/select-one :model/Field :id (mt/id :checkins :id))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
-                                            (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
-                                           (constantly conj))
+  (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :checkins))
+                                            [(t2/select-one :model/Field :id (mt/id :checkins :id))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :venue_name))
+                                             (t2/select-one :model/Field :id (mt/id :checkins :__time #_:timestamp))]
+                                            (constantly conj))
        (sort-by first)
        (take 5)))
 
@@ -477,3 +478,20 @@
           (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
             (is (= expected
                    (table-rows-sample)))))))))
+
+(deftest ^:parallel druid-jdbc-date-parameter-query
+  (testing "druid jdbc query with a date parameter should work"
+    (mt/test-driver :druid-jdbc
+      (let [query {:database   (mt/id)
+                   :type       :native
+                   :native     {:query         "select count(1) from checkins where __time >= {{dbtime}}"
+                                :template-tags {"dbtime" {:type         :date
+                                                          :name         "dbtime"
+                                                          :display-name "Dbtime"}}}
+                   :parameters [{:type   :date/single
+                                 :target [:variable [:template-tag "dbtime"]]
+                                 :value  "2014-04-07"}]}]
+        (is (= [[650]]
+               (mt/rows (qp/process-query query))))
+        (is (= "select count(1) from checkins where __time >= '2014-04-07'"
+               (:query (qp.compile/compile-with-inline-parameters query))))))))

@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { alpha, color, darken } from "metabase/lib/colors";
 import {
   breakpointMaxLarge,
@@ -27,6 +27,7 @@ export const AdminNavbarItems = styled.ul`
   display: flex;
   flex-grow: 0;
   min-width: 0;
+  gap: 4px;
 `;
 
 export const MobileHide = styled.div`

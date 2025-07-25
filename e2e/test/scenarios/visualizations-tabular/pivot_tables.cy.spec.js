@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { moveDnDKitListElement } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
@@ -130,7 +131,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
-    H.dragField(1, 0);
+    moveDnDKitListElement("drag-handle", {
+      startIndex: 1,
+      dropIndex: 0,
+    });
 
     // One field should now be empty
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -711,12 +715,32 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
   });
 
-  it("should open the download popover (metabase#14750)", () => {
+  it("should show a download widget with a hint about pivoted xlsx exports (metabase#14750)", () => {
+    const HINT_TEXT =
+      "Trying to pivot this data in Excel? You should download the raw data instead.";
     createTestQuestion();
     cy.icon("download").click();
-    H.popover().within(() =>
-      cy.findAllByText("Download").should("have.length", 2),
-    );
+
+    H.popover().within(() => {
+      cy.findByText(".xlsx").click();
+      cy.findByText(HINT_TEXT);
+      cy.findByText("Read the docs").should(
+        "have.attr",
+        "href",
+        "https://www.metabase.com/docs/latest/questions/exporting-results.html#exporting-pivot-tables",
+      );
+
+      cy.findByLabelText("Close hint").click();
+      cy.findByText(HINT_TEXT).should("not.exist");
+
+      cy.findByText("Download");
+    });
+
+    // Ensure the hint is not visible after a page reload
+    cy.reload();
+
+    cy.icon("download").click();
+    H.popover().findByText(HINT_TEXT).should("not.exist");
   });
 
   it.skip("should work for user without data permissions (metabase#14989)", () => {
@@ -990,7 +1014,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     function assertTopMostRowTotalValue(value) {
       // Warning: Fragile selector!
       // TODO: refactor once we have a better HTML structure for tables.
-      cy.get("[role=rowgroup] > div").eq(5).invoke("text").should("eq", value);
+      cy.get("[role=row] > div").eq(5).invoke("text").should("eq", value);
     }
   });
 
@@ -1063,16 +1087,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("should persist column sizes in visualization settings", () => {
       H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
-      const leftHeaderColHandle = cy
-        .findAllByTestId("pivot-table-resize-handle")
-        .first();
-      // eslint-disable-next-line no-unsafe-element-filtering
-      const totalHeaderColHandle = cy
-        .findAllByTestId("pivot-table-resize-handle")
-        .last();
+      const leftHeaderColHandle = () =>
+        cy.findAllByTestId("pivot-table-resize-handle").first();
+      const totalHeaderColHandle = () =>
+        // eslint-disable-next-line no-unsafe-element-filtering
+        cy.findAllByTestId("pivot-table-resize-handle").last();
 
-      dragColumnHeader(leftHeaderColHandle, -100);
-      dragColumnHeader(totalHeaderColHandle, 100);
+      dragColumnHeader(leftHeaderColHandle(), -100);
+      dragColumnHeader(totalHeaderColHandle(), 100);
 
       cy.findByTestId("pivot-table").within(() => {
         cy.findByText("User → Source").should(($headerTextEl) => {

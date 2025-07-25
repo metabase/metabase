@@ -94,29 +94,35 @@
   [query :- ::lib.schema/query]
   (some? (first (pop-until-aggregation-or-breakout query))))
 
+;;; TODO (Cam 7/1/25) -- give this a better name now that it takes
+;;;
+;;;    (f col) => boolean
+;;;
+;;; instead of source keyword; not sure what to name it because I don't really know what the hecc 'underlying' is
+;;; supposed to mean here
 (mu/defn- has-source-or-underlying-source-fn :- [:function
                                                  [:-> [:maybe ::lib.schema.metadata/column] :boolean]
                                                  [:->
                                                   ::lib.schema/query
                                                   [:maybe ::lib.schema.metadata/column]
                                                   :boolean]]
-  [source :- :keyword]
+  [f :- [:=> [:cat ::lib.schema.metadata/column] :boolean]]
   (fn has-source?
     ([column]
-     (= (:lib/source column) source))
+     (f column))
     ([query column]
      (boolean
       (and (seq column)
            (or (has-source? column)
                (has-source? (top-level-column query column))))))))
 
-(def aggregation-sourced?
+(def ^{:arglists '([column] [query column])} aggregation-sourced?
   "Does column or top-level-column have :source/aggregations?"
-  (has-source-or-underlying-source-fn :source/aggregations))
+  (has-source-or-underlying-source-fn #(= (:lib/source %) :source/aggregations)))
 
-(def breakout-sourced?
-  "Does column or top-level-column have :source/breakouts?"
-  (has-source-or-underlying-source-fn :source/breakouts))
+(def ^{:arglists '([column] [query column])} breakout-sourced?
+  "Is column or top-level-column used in breakouts?"
+  (has-source-or-underlying-source-fn :lib/breakout?))
 
 (mu/defn strictly-underlying-aggregation? :- :boolean
   "Does the [[top-level-column]] (but not `column` itself) in `query` have :source/aggregations?"

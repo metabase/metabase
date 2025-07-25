@@ -4,9 +4,9 @@
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection]
+   [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.queries.schema :as queries.schema]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -91,6 +91,7 @@
    :moderated_status    :text
    :display             :text
    :dashboard_id        :integer
+   :display_type        :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -160,6 +161,18 @@
     (sql.helpers/where query [:= id :database_id])
     query))
 
+(defn add-table-where-clauses
+  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  [qry model search-ctx]
+  (sql.helpers/where qry (case model
+                           "table" (search.permissions/permitted-tables-clause search-ctx :table.id)
+                           "search-index" [:or
+                                           [:= :search_index.model nil]
+                                           [:!= :search_index.model [:inline "table"]]
+                                           [:and
+                                            [:= :search_index.model [:inline "table"]]
+                                            (search.permissions/permitted-tables-clause search-ctx :search_index.model_id)]])))
+
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -168,7 +181,7 @@
    search-ctx     :- SearchContext]
   (let [collection-id-col      (case model
                                  "collection"    :collection.id
-                                 "search-index" :search_index.collection_id
+                                 "search-index"  :search_index.collection_id
                                  :collection_id)
         permitted-clause       (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
@@ -350,7 +363,9 @@
         [:collection.authority_level :collection_authority_level]
         [:dashboard.name :dashboard_name]
         :dashboard_id
-        bookmark-col dashboardcard-count-col))
+        bookmark-col dashboardcard-count-col
+        :result_metadata
+        [:display :display_type]))
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]
@@ -439,7 +454,7 @@
       (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
-  [model :- :metabase.models.card/type
+  [model :- ::queries.schema/card-type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])
@@ -542,6 +557,7 @@
   (when (seq current-user-perms)
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
+        (add-table-where-clauses model search-ctx)
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
 
 (defmethod search.engine/model-set :search.engine/in-place
@@ -553,7 +569,7 @@
         query         (when (pos-int? (count model-queries))
                         {:select [:*]
                          :from   [[{:union-all model-queries} :dummy_alias]]})]
-    (into #{} (map :model) (some-> query mdb.query/query))))
+    (into #{} (map :model) (some-> query mdb/query))))
 
 (mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to a trivial case
@@ -585,7 +601,7 @@
   (let [search-query (full-search-query search-ctx)]
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
-                (mdb.query/format-sql (first (mdb.query/compile search-query))))
+                (mdb/format-sql (first (mdb/compile search-query))))
     (t2/reducible-query search-query)))
 
 (defmethod search.engine/score :search.engine/in-place [search-ctx result]

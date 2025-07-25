@@ -5,7 +5,14 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -483,30 +490,30 @@
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
       (doseq [timezone [nil "America/Los_Angeles"]]
         (mt/with-report-timezone-id! timezone
-          (is (= true
-                 (-> (mt/run-mbql-query venues
-                       {:expressions {"1" [:now]}
-                        :fields [[:expression "1"]]
-                        :limit  1})
-                     mt/rows
-                     ffirst
-                     u.date/parse
-                     (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
-                     (close? (t/instant) (t/seconds 30))))))))))
+          (is (true?
+               (-> (mt/run-mbql-query venues
+                     {:expressions {"1" [:now]}
+                      :fields [[:expression "1"]]
+                      :limit  1})
+                   mt/rows
+                   ffirst
+                   u.date/parse
+                   (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
+                   (close? (t/instant) (t/seconds 30))))))))))
 
 (deftest ^:parallel now-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
     (testing "should work as an argument to datetime-add and datetime-subtract"
-      (is (= true
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows
-                 ffirst
-                 u.date/parse
-                 (t/zoned-date-time (t/zone-id "UTC"))
-                 (close? (t/instant) (t/seconds 30))))))))
+      (is (true?
+           (-> (mt/run-mbql-query venues
+                 {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :day] 1 :day]}
+                  :fields [[:expression "1"]]
+                  :limit  1})
+               mt/rows
+               ffirst
+               u.date/parse
+               (t/zoned-date-time (t/zone-id "UTC"))
+               (close? (t/instant) (t/seconds 30))))))))
 
 (deftest ^:parallel now-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
@@ -606,77 +613,101 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- test-convert-tz [field expression]
+  (->> (mt/run-mbql-query times
+         {:expressions {"expr" expression}
+          :limit       1
+          :fields      [field                  ;; original row for comparison
+                        [:expression "expr"]]}) ;; result
+       mt/rows
+       first))
+
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
-      (letfn [(test-convert-tz
-                [field
-                 expression]
-                (->> (mt/run-mbql-query times
-                       {:expressions {"expr" expression}
-                        :limit       1
-                        :fields      [field                   ;; original row for comparision
-                                      [:expression "expr"]]}) ;; result
-                     mt/rows
-                     first))]
-        (testing "timestamp with out timezone columns"
-          (mt/with-report-timezone-id! "UTC"
-            (testing "convert from Asia/Shanghai(+08:00) to Asia/Seoul(+09:00)"
-              (is (= ["2004-03-19T09:19:09Z"
-                      "2004-03-19T10:19:09+09:00"]
-                     (mt/$ids (test-convert-tz
-                               $times.dt
-                               [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"])))))
-            (testing "source-timezone is required"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
+      (testing "timestamp with out timezone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "convert from Asia/Shanghai(+08:00) to Asia/Seoul(+09:00)"
+            (is (= ["2004-03-19T09:19:09Z"
+                    "2004-03-19T10:19:09+09:00"]
                    (mt/$ids (test-convert-tz
                              $times.dt
-                             [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))
+                             [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"]))))))))))
 
-          (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
-            (mt/with-report-timezone-id! "Europe/Rome"
-              (testing "results should be displayed in the converted timezone, not report-tz"
-                (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
-                       (mt/$ids (test-convert-tz
-                                 $times.dt
-                                 [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul" "Europe/Rome"]))))))))
+(deftest convert-timezone-test-1b
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with out timezone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "source-timezone is required"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
+                 (mt/$ids (test-convert-tz
+                           $times.dt
+                           [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))))))
 
-        (testing "timestamp with time zone columns"
-          (mt/with-report-timezone-id! "UTC"
-            (testing "convert to +09:00"
-              (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
+(deftest convert-timezone-test-1c
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with out timezone columns"
+        (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
+          (mt/with-report-timezone-id! "Europe/Rome"
+            (testing "results should be displayed in the converted timezone, not report-tz"
+              (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
                      (mt/$ids (test-convert-tz
-                               $times.dt_tz
-                               [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"])))))
+                               $times.dt
+                               [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul" "Europe/Rome"])))))))))))
 
-            (testing "timestamp with time zone columns shouldn't have `source-timezone`"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"input column already has a set timezone. Please remove the source parameter in convertTimezone."
+(deftest convert-timezone-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with time zone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "convert to +09:00"
+            (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
                    (mt/$ids (test-convert-tz
                              $times.dt_tz
-                             [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                              "Asia/Seoul"
-                              "UTC"]))))))
+                             [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"]))))))))))
 
-          (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
-            (mt/with-report-timezone-id! "Europe/Rome"
-              (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
-                (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
-                       (mt/$ids (test-convert-tz
-                                 $times.dt_tz
-                                 [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"]))))))))
+(deftest convert-timezone-test-2b
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with time zone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "timestamp with time zone columns shouldn't have `source-timezone`"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"input column already has a set timezone. Please remove the source parameter in convertTimezone."
+                 (mt/$ids (test-convert-tz
+                           $times.dt_tz
+                           [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+                            "Asia/Seoul"
+                            "UTC"]))))))))))
 
-        (testing "with literal datetime"
-          (mt/with-report-timezone-id! "UTC"
-            (is (= "2022-10-03T14:10:20+07:00"
-                   (->> (mt/run-mbql-query times
-                          {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
-                           :fields      [[:expression "expr"]]})
-                        mt/rows
-                        ffirst)))))))))
+(deftest convert-timezone-test-2c
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with time zone columns"
+        (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
+          (mt/with-report-timezone-id! "Europe/Rome"
+            (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
+              (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
+                     (mt/$ids (test-convert-tz
+                               $times.dt_tz
+                               [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"])))))))))))
+
+(deftest convert-timezone-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "with literal datetime"
+        (mt/with-report-timezone-id! "UTC"
+          (is (= "2022-10-03T14:10:20+07:00"
+                 (->> (mt/run-mbql-query times
+                        {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
+                         :fields      [[:expression "expr"]]})
+                      mt/rows
+                      ffirst))))))))
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
@@ -807,40 +838,45 @@
     (mt/with-report-timezone-id! "UTC"
       (mt/dataset times-mixed
         (testing "nested custom expression should works"
-          (mt/with-temp [:model/Card
-                         card
-                         {:dataset_query
-                          (mt/mbql-query
-                            times
-                            {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                           "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                          "Asia/Saigon"]}
-                             :filter      [:= $times.index 1]
-                             :fields      [$times.dt
-                                           [:expression "to-07"]
-                                           [:expression "to-07-to-09"]]})}]
+          (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                            (mt/application-database-metadata-provider (mt/id))
+                                            [(mt/mbql-query
+                                               times
+                                               {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                                                              "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "Asia/Saigon"]}
+                                                :filter      [:= $times.index 1]
+                                                :fields      [$times.dt
+                                                              [:expression "to-07"]
+                                                              [:expression "to-07-to-09"]]})])
+            (testing "sanity check: make sure metadata is correct"
+              (let [query (lib/query
+                           (qp.store/metadata-provider)
+                           (lib.metadata/card (qp.store/metadata-provider) 1))]
+                (testing `lib.metadata.result-metadata/returned-columns
+                  (is (=? [{:name "dt"}
+                           {:name "to-07", :converted-timezone "Asia/Saigon"}
+                           {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
+                          (map #(select-keys % [:name :converted-timezone])
+                               (lib.metadata.result-metadata/returned-columns query)))))
+                (testing `annotate/expected-cols
+                  (is (=? [{:name "dt"}
+                           {:name "to-07", :converted_timezone "Asia/Saigon"}
+                           {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
+                          (map #(select-keys % [:name :converted_timezone])
+                               (annotate/expected-cols query)))))
+                (testing `qp.preprocess/query->expected-cols
+                  (is (=? [{:name "dt"}
+                           {:name "to-07", :converted_timezone "Asia/Saigon"}
+                           {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
+                          (map #(select-keys % [:name :converted_timezone])
+                               (qp.preprocess/query->expected-cols query)))))))
             (testing "mbql query"
               (is (= [["2004-03-19T09:19:09Z"
                        "2004-03-19T16:19:09+07:00"
                        "2004-03-19T18:19:09+09:00"]]
-                     (->> (mt/mbql-query nil {:source-table (format "card__%d" (:id card))})
+                     (->> (mt/mbql-query nil {:source-table "card__1"})
                           mt/process-query
-                          mt/rows))))
-            ;; TIMEZONE FIXME: technically these values should have offset timezone(different than 'Z')
-            ;; like the mbql query test above
-            ;; but we haven't figured out a way to pass the convert_timezone metadata if you use a native query.
-            (testing "native query"
-              (let [card-tag (format "#%d" (:id card))]
-                (is (= [["2004-03-19T09:19:09Z"
-                         "2004-03-19T16:19:09Z"
-                         "2004-03-19T18:19:09Z"]]
-                       (->> (mt/native-query {:query         (nested-convert-timezone-test-6-native-query driver/*driver* card-tag)
-                                              :template-tags {card-tag {:card-id      (:id card)
-                                                                        :type         :card
-                                                                        :display-name "CARD ID"
-                                                                        :id           "_CARD_ID_"}}})
-                            mt/process-query
-                            mt/rows)))))))))))
+                          mt/rows))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Datetime diff tests                                                 |
@@ -932,7 +968,7 @@
     (mt/dataset times-mixed
       (testing "Can compare across dates, datetimes with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+        (mt/with-temporary-setting-values [report-timezone "UTC"]
           (is (= [25200 -8349]
                  (->> (mt/run-mbql-query times
                         {:fields [[:expression "tz,dt"]
@@ -975,7 +1011,7 @@
 (deftest single-time-zone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff :test/timestamptz-type)
     (mt/dataset diff-time-zones-cases
-      (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
+      (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
         (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
                       (let [a-str "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
                             b-str "2022-10-03T00:00:00Z"
@@ -1004,102 +1040,102 @@
     => `{:second 86400 :minute 1440 :hour 24 :day 1 :quarter 0 :month 0 :year 0}`)."
   [diffs]
   (testing "a day"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
       (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
                     (diffs "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
                            "2022-10-03T00:00:00Z"))))   ; 2022-10-02T23:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2022-10-03T00:00:00Z"))))) ; 2022-10-03T00:00:00Z
   (testing "hour under a day"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:second 82800 :minute 1380 :hour 23 :day 1}
                       {:second 82800 :minute 1380 :hour 23 :day 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                            "2022-10-03T00:00:00+01:00")))) ; 2022-10-02T22:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:second 82800 :minute 1380 :hour 23 :day 0}
                     (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
                            "2022-10-03T00:00:00+01:00"))))) ; 2022-10-02T23:00:00Z
   (testing "hour under a week"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:hour 167 :day 7 :week 1}
                       {:hour 167 :day 6 :week 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                            "2022-10-09T00:00:00+01:00")))) ; 2022-10-08T22:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:hour 167 :day 6 :week 0}
                     (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
                            "2022-10-09T00:00:00+01:00"))))) ; 2022-10-08T23:00:00Z
   (testing "week"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= {:hour 168 :day 7 :week 1}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
                            "2022-10-09T00:00:00Z"))))  ; 2022-10-08T23:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:hour 168 :day 7 :week 1}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2022-10-09T00:00:00Z"))))) ; 2022-10-09T00:00:00Z
   (testing "hour under a month"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:hour 743 :day 31 :week 4 :month 1}
                       {:hour 743 :day 30 :week 4 :month 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                            "2022-11-02T00:00:00+01:00")))) ; 2022-11-01T22:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:hour 743 :day 30 :week 4 :month 0}
                     (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
                            "2022-11-02T00:00:00+01:00"))))) ; 2022-11-01T23:00:00Z
   (testing "month"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= {:hour 744 :day 31 :month 1 :year 0}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
                            "2022-11-02T00:00:00Z"))))  ; 2022-11-01T23:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:hour 744 :day 31 :month 1 :year 0}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2022-11-02T00:00:00Z"))))) ; 2022-11-02T00:00:00Z
   (testing "hour under a quarter"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:month 3 :quarter 1}
                       {:month 2 :quarter 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                            "2023-01-02T00:00:00+01:00")))) ; 2023-01-01T22:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:month 2 :quarter 0}
                     (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
                            "2023-01-02T00:00:00+01:00"))))) ; 2023-01-01T23:00:00Z
   (testing "quarter"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= {:month 3 :quarter 1}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-01T23:00:00-01:00
                            "2023-01-02T00:00:00Z"))))  ; 2023-01-01T23:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:month 3 :quarter 1}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2023-01-02T00:00:00Z"))))) ; 2023-01-02T00:00:00Z
   (testing "year"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= {:day 365, :week 52, :month 12, :year 1}
                     (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-01T23:00:00-01:00
                            "2023-10-02T00:00:00Z"))))      ; 2023-10-01T23:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:day 365, :week 52, :month 12, :year 1}
                     (diffs "2022-10-02T01:00:00+01:00" ; 2022-10-02T00:00:00Z
                            "2023-10-02T00:00:00Z"))))) ; 2023-10-02T00:00:00Z
   (testing "hour under a year"
-    (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+    (mt/with-temporary-setting-values [report-timezone "Atlantic/Cape_Verde"]
       (is (partial= (if (driver.u/supports? driver/*driver* :set-timezone (mt/db))
                       {:day 365 :month 12 :year 1}
                       {:day 364 :month 11 :year 0})
                     (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                            "2023-10-02T00:00:00+01:00")))) ; 2023-10-01T22:00:00-01:00
-    (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+    (mt/with-temporary-setting-values [report-timezone "UTC"]
       (is (partial= {:day 364 :month 11 :year 0}
                     (diffs "2022-10-02T00:00:00Z"            ; 2022-10-02T00:00:00Z
                            "2023-10-02T00:00:00+01:00")))))) ; 2023-10-01T23:00:00Z

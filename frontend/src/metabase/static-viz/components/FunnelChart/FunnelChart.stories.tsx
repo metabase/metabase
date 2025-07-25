@@ -18,10 +18,15 @@ const Template: StoryFn<FunnelProps> = (args) => {
 
 export const Default = {
   render: Template,
-  args: DEFAULT,
+  args: { ...DEFAULT },
 };
 
 export const WithDuplicatedSteps = {
   render: Template,
   args: DUPLICATED_STEPS,
+};
+
+export const Watermark = {
+  render: Template,
+  args: { ...DEFAULT, hasDevWatermark: true },
 };

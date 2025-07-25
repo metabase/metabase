@@ -5,12 +5,12 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
-import EmptyState from "metabase/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/components/PaginationControls";
-import { NoObjectError } from "metabase/components/errors/NoObjectError";
+import EmptyState from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import Search from "metabase/entities/search";
-import { usePagination } from "metabase/hooks/use-pagination";
 import { useDispatch } from "metabase/lib/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {

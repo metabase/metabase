@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as app-db]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -136,19 +136,19 @@
                 "like Turkish, it can turn an i into an İ. This test converts a keyword with an `i` in it to verify "
                 "that we convert the identifier correctly using the english locale even when the user has changed the "
                 "locale to Turkish")
-    (mt/with-locale "tr"
+    (mt/with-locale! "tr"
       (is (= ["SELECT \"SETTING\""]
              (sql/format {:select [:setting]} {:dialect :h2}))))))
 
 (deftest ^:parallel ratios-test
   (testing (str "test behavior for Ratios (#9246). In Honey SQL 1, we converted this to a double in the query itself. "
                 "As far as I know, there is no way to do that in Honey SQL 2. So instead we convert it to a double
-                in [[metabase.db.jdbc-protocols]]. "
+                in [[metabase.app-db.jdbc-protocols]]. "
                 "division operation. The double itself should get converted to a numeric literal")
     (is (= [{:one_tenth (case (mdb.connection/db-type)
                           (:h2 :postgres) 0.1
                           :mysql          0.1M)}]
-           (mdb.query/query {:select [[(/ 1 10) :one_tenth]]})))))
+           (app-db/query {:select [[(/ 1 10) :one_tenth]]})))))
 
 (deftest ^:parallel quoted-cast-test
   (is (= ["SELECT CAST(? AS \"bird type\")" "toucan"]
@@ -230,6 +230,7 @@
              (h2x/with-database-type-info (h2x/with-database-type-info :field "date") nil))))))
 
 (deftest ^:parallel is-of-type?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [expr tyype expected] (= expected (h2x/is-of-type? expr tyype))
     typed-form     "text"   true
     typed-form     "TEXT"   true

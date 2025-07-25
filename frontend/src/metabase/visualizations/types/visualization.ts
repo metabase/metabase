@@ -15,7 +15,6 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   Dashboard,
@@ -71,6 +70,11 @@ export interface VisualizationTheme {
         fontSize: number;
       };
     };
+    splitLine: {
+      lineStyle: {
+        color: string;
+      };
+    };
   };
   pie: {
     borderColor: string;
@@ -100,6 +104,7 @@ export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   renderingContext: RenderingContext;
   isStorybook?: boolean;
+  hasDevWatermark?: boolean;
 }
 
 export interface VisualizationProps {
@@ -111,6 +116,7 @@ export interface VisualizationProps {
   data: DatasetData;
   metadata?: Metadata;
   rawSeries: RawSeries;
+  visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
@@ -122,6 +128,7 @@ export interface VisualizationProps {
   isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
+  isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
   isNightMode: boolean;
@@ -167,12 +174,16 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
 
-  canRemoveSeries?: (seriesIndex: number) => boolean;
   canToggleSeriesVisibility?: boolean;
-  onRemoveSeries?: (event: MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 
   dispatch: Dispatch;
+
+  /**
+   * Items that will be shown in a menu when the title is clicked.
+   * Used for visualizer cards to jump to underlying questions
+   */
+  titleMenuItems?: React.ReactNode;
 }
 
 export type VisualizationPassThroughProps = {
@@ -209,12 +220,15 @@ export type VisualizationPassThroughProps = {
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
 
-  // frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.tsx
-  canRemoveSeries?: (seriesIndex: number) => boolean;
   showAllLegendItems?: boolean;
-  onRemoveSeries?: (event: MouseEvent, removedIndex: number) => void;
 
   onHeaderColumnReorder?: (columnName: string) => void;
+
+  /**
+   * Items that will be shown in a menu when the title is clicked.
+   * Used for visualizer cards to jump to underlying questions
+   */
+  titleMenuItems?: React.ReactNode[];
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -298,7 +312,7 @@ export type Visualization = React.ComponentType<
 export type VisualizationDefinition = {
   name?: string;
   noun?: string;
-  uiName: string;
+  getUiName: () => string;
   identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
@@ -313,7 +327,7 @@ export type VisualizationDefinition = {
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
-  supportsSeries?: boolean;
+  supportsVisualizer?: boolean;
 
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
@@ -326,7 +340,6 @@ export type VisualizationDefinition = {
   checkRenderable: (
     series: Series,
     settings: VisualizationSettings,
-    query?: NativeQuery | null,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;

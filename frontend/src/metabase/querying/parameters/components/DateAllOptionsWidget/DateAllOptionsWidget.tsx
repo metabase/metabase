@@ -11,6 +11,7 @@ import {
   deserializeDateParameterValue,
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
+import { Button } from "metabase/ui";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateAllOptionsWidgetProps = {
@@ -36,7 +37,11 @@ export function DateAllOptionsWidget({
     <DatePicker
       value={pickerValue}
       availableOperators={availableOperators}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={({ isDisabled }) => (
+        <Button type="submit" variant="filled" disabled={isDisabled}>
+          {submitButtonLabel}
+        </Button>
+      )}
       onChange={handleChange}
     />
   );

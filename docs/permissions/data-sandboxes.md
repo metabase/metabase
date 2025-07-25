@@ -78,9 +78,9 @@ Since Metabase can't parse SQL queries, the results of SQL questions will always
 
 [Use collection permissions](#saved-sql-questions-cannot-be-sandboxed) to prevent sandboxed groups from viewing saved SQL questions with restricted data.
 
-### Non-SQL databases cannot be sandboxed
+### Non-SQL databases have limited sandboxing
 
-Data sandbox permissions are unavailable for non-SQL databases such as Apache Druid or MongoDB.
+MongoDB only supports [basic sandboxes](#basic-data-sandboxes-filter-by-a-column-in-the-table). Data sandbox permissions are unavailable for Apache Druid.
 
 ## Prerequisites for basic sandboxes
 
@@ -270,5 +270,5 @@ Metabase can only create a data sandbox using the group membership or user attri
 
 - [Data sandbox examples](./data-sandbox-examples.md)
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy)
-- [Configuring permissions for different customer schemas](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions)
-- [Securing embedded Metabase](https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds)
+- [Configuring permissions for embedding](../permissions/embedding.md)
+- [Securing embedded Metabase](../embedding/securing-embeds.md)

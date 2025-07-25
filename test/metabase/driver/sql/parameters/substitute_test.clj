@@ -783,7 +783,16 @@
               :params []}
              (expand-with-field-filter-param-on-datetime-field
               "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
-              nil))))))
+              nil))))
+    (testing "generate valid closed-open interval for timestamp field and hour and second units (##57767)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-07T11:00Z[UTC]" #t "2016-06-07T12:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "past1hours"})))
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-07T11:59:59Z[UTC]" #t "2016-06-07T12:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "past1seconds"}))))))
 
 (deftest ^:parallel expand-exclude-field-filter-test
   (mt/with-driver :h2

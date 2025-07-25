@@ -80,6 +80,73 @@ describe("scenarios > visualizations > table", () => {
     headerCells().findAllByText("ID updated").should("have.length", 1);
   });
 
+  it("should allow selecting cells in a table and copy the values", () => {
+    H.grantClipboardPermissions();
+
+    H.openOrdersTable();
+
+    const getNonPKCells = () =>
+      H.tableInteractiveBody().find(
+        '[data-selectable-cell]:not([data-column-id="ID"])',
+      );
+
+    const assertSelectedCells = (expectedCount) => {
+      H.tableInteractiveBody()
+        .find("[data-selectable-cell]")
+        .filter('[aria-selected="true"]')
+        .should("have.length", expectedCount);
+    };
+
+    // Single cell selection by clicking
+    getNonPKCells().first().as("firstCell");
+    cy.get("@firstCell").click();
+    cy.get("@firstCell").should("have.attr", "aria-selected", "true");
+
+    // Multi-cell selection by dragging
+    getNonPKCells().eq(0).as("startCell");
+    getNonPKCells().eq(3).as("endCell");
+
+    cy.get("@startCell")
+      .trigger("mousedown", { which: 1 })
+      .then(() => {
+        cy.get("@endCell").trigger("mouseover", { buttons: 1 });
+        cy.get("@endCell").trigger("mouseup");
+      });
+    assertSelectedCells(4);
+
+    // Cmd+click to add cells to selection
+    getNonPKCells().eq(5).as("cmdClickCell");
+    cy.get("@cmdClickCell").click({ metaKey: true });
+    assertSelectedCells(5);
+
+    // Shift+click for range selection
+    getNonPKCells().eq(4).click();
+    getNonPKCells().eq(6).click({ shiftKey: true });
+    assertSelectedCells(3);
+
+    // Copy formatted content with Cmd+C
+    cy.realPress(["Meta", "c"]);
+    cy.window()
+      .then((win) => win.navigator.clipboard.readText())
+      .should("equal", "39.72		February 11, 2025, 9:40 PM");
+
+    // Copy unformatted content with Shift+Cmd+C
+    cy.realPress(["Shift", "Meta", "c"]);
+    cy.window()
+      .then((win) => win.navigator.clipboard.readText())
+      .should("equal", "39.718145389078366	null	2025-02-11T21:40:27.892-08:00");
+
+    // Escape to clear selection
+    cy.realPress("Escape");
+    assertSelectedCells(0);
+
+    // Click outside to clear selection
+    getNonPKCells().eq(0).click();
+    // Click outside the table
+    H.queryBuilderHeader().findByText("Orders").click();
+    assertSelectedCells(0);
+  });
+
   it("should allow enabling row index column", () => {
     H.openOrdersTable();
     H.openVizSettingsSidebar();
@@ -246,7 +313,7 @@ describe("scenarios > visualizations > table", () => {
           // semantic type
           cy.contains("City");
           // description
-          cy.contains("The city of the account’s billing address");
+          cy.findByText("The city of the account’s billing address");
           // fingerprint
           cy.findByText("1,966 distinct values");
         },
@@ -377,26 +444,15 @@ describe("scenarios > visualizations > table", () => {
       .and("contain", "No description");
   });
 
-  it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
+  it("should close the colum popover on subsequent click (metabase#16789)", () => {
     H.openPeopleTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    H.popover().within(() => {
-      cy.icon("arrow_up");
-      cy.icon("arrow_down");
-      cy.icon("gear");
-      cy.findByText("Filter by this column");
-      cy.findByText("Distribution");
-      cy.findByText("Distinct values");
-    });
+    H.tableHeaderColumn("City").click();
+    H.clickActionsPopover().should("be.visible");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
-    // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
-    cy.wait(100);
-    H.popover().should("not.exist");
+    H.tableHeaderColumn("City").click();
+    cy.wait(100); // Ensure popover is closed
+    H.clickActionsPopover({ skipVisibilityCheck: true }).should("not.exist");
   });
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
@@ -463,7 +519,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
   it("should allow enabling pagination in dashcard viz settings", () => {
     // Page rows count is based on the available space which can differ depending on the platform and scroll bar system settings
-    const rowsRegex = /Rows \d+-\d+ of first 2000/;
+    const rowsRegex = /Rows \d+-\d+ of first 2,000/;
     const idCellSelector = '[data-column-id="ID"]';
     const firstPageId = 6;
     const secondPageId = 12;
@@ -475,7 +531,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findByText(rowsRegex)
       .should("not.exist");
 
-    cy.get("@tableDashcard").findByText("2000 rows");
+    cy.get("@tableDashcard").findByText("2,000 rows");
 
     // Enable pagination
     H.editDashboard();
@@ -567,8 +623,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         size_y: 12,
       },
     }).then(({ body: { dashboard_id } }) => {
-      const wrappedRowInitialHeight = 104;
-      const updatedRowHeight = 87;
+      const wrappedRowInitialHeight = 87;
+      const updatedRowHeight = 70;
       H.visitDashboard(dashboard_id);
 
       H.assertRowHeight(0, wrappedRowInitialHeight);
@@ -629,6 +685,81 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findAllByTestId("row-id-cell")
       .eq(0)
       .should("have.text", 1);
+  });
+
+  it("should expand columns to the full width of the dashcard (metabase#57381)", () => {
+    const sideColumnsWidth = 200;
+    const expandedSideColumnsWidth = 2 * sideColumnsWidth;
+    const idColumnWidth = 54;
+    const idExpandedWidth = 2 * idColumnWidth;
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "reviews",
+        type: "model",
+        query: {
+          "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+        },
+        visualization_settings: {
+          "table.column_widths": [sideColumnsWidth, null, sideColumnsWidth], // middle column width is not set
+          column_settings: {
+            '["name","BODY"]': {
+              text_wrapping: true,
+            },
+          },
+          "table.columns": [
+            {
+              name: "BODY",
+              enabled: true,
+            },
+            {
+              name: "CREATED_AT",
+              enabled: false,
+            },
+            {
+              name: "ID",
+              enabled: true,
+            },
+            {
+              name: "PRODUCT_ID",
+              enabled: false,
+            },
+            {
+              name: "REVIEWER",
+              enabled: false,
+            },
+            {
+              name: "RATING",
+              enabled: true,
+            },
+          ],
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard",
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+
+      // Column widths should be expanded to the full width of the dashcard
+      H.getColumnWidth("Body").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("Rating").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("ID").should("be.gt", idExpandedWidth);
+
+      // Resize Body column
+      H.resizeTableColumn("BODY", -100);
+
+      // Ensure columns are not expanded to the full width of the dashcard after manual resizing
+      H.getColumnWidth("Body")
+        .should("be.gt", expandedSideColumnsWidth - 100)
+        .should("be.lt", expandedSideColumnsWidth);
+      H.getColumnWidth("Rating").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("ID").should("be.gt", idExpandedWidth);
+    });
   });
 
   it("should support resizing columns in dashcard viz settings", () => {

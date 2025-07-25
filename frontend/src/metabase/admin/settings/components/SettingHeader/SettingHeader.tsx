@@ -15,9 +15,11 @@ export const SettingHeader = ({
 } & BoxProps) => (
   <Box {...boxProps}>
     <SettingTitle id={id}>{title}</SettingTitle>
-    <Text my="sm" maw="38rem" lh="xl" c="text-medium">
-      {description}
-    </Text>
+    {!!description && (
+      <Text mb="sm" maw="38rem" lh="xl" c="text-medium">
+        {description}
+      </Text>
+    )}
   </Box>
 );
 
@@ -25,16 +27,15 @@ export const SettingTitle = ({
   id,
   children,
 }: {
-  id: string;
+  id?: string;
   children: React.ReactNode;
 }) => (
   <Text
     htmlFor={id}
     component="label"
-    c="text-medium"
+    c="text-dark"
     fw="bold"
-    tt="uppercase"
-    display="block"
+    display="inline-block"
   >
     {children}
   </Text>

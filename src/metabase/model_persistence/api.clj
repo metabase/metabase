@@ -4,18 +4,18 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
-   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.public-settings :as public-settings]
+   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
@@ -28,7 +28,7 @@
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
   [{:keys [persisted-info-id card-id db-ids]} limit offset]
-  (let [site-uuid-str    (public-settings/site-uuid)
+  (let [site-uuid-str    (system/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)
         query            (cond-> {:select    [:p.id :p.database_id :p.definition
                                               :p.active :p.state :p.error
@@ -64,7 +64,7 @@
 (api.macros/defendpoint :get "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   (let [db-ids (t2/select-fn-set :database_id :model/PersistedInfo)
         writable-db-ids (when (seq db-ids)
                           (->> (t2/select :model/Database :id [:in db-ids])
@@ -115,7 +115,7 @@
    _query-params
    {:keys [cron], :as _body} :- [:map
                                  [:cron CronSchedule]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (when cron
     (when-not (and (string? cron)
                    (org.quartz.CronExpression/isValidExpression cron)
@@ -129,7 +129,7 @@
 (api.macros/defendpoint :post "/enable"
   "Enable global setting to allow databases to persist models."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (log/info "Enabling model persistence")
   (model-persistence.settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
@@ -153,7 +153,7 @@
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (when (model-persistence.settings/persisted-models-enabled)
     (try (model-persistence.settings/persisted-models-enabled! false)
          (disable-persisting)
@@ -184,7 +184,7 @@
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (card/model? card)
+      (when-not (queries/model? card)
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
       (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
@@ -196,7 +196,7 @@
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [card           (t2/select-one :model/Card :id card-id)
                 persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
-    (when (not (card/model? card))
+    (when (not (queries/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
@@ -233,7 +233,7 @@
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
       (let [[success? error] (ddl.i/check-can-persist database)
-            schema           (ddl.i/schema-name database (public-settings/site-uuid))]
+            schema           (ddl.i/schema-name database (system/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})

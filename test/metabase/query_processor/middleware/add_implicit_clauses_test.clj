@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -159,7 +159,7 @@
            (mt/mbql-query checkins
              {:aggregation [[:count]]
               :breakout    [!month.$date]}))]
-      (is (=? {:fields [[:field (mt/id :checkins :date) nil]
+      (is (=? {:fields [[:field (mt/id :checkins :date) {:inherited-temporal-unit :month}]
                         [:field "count" {:base-type :type/BigInteger}]]}
               (add-implicit-fields
                (:query (lib.tu.macros/mbql-query checkins
@@ -205,15 +205,13 @@
                                           :field_ref     field-ref
                                           :id            %categories.name
                                           :display_name  "c → Name"
-                                          :base_type     :type/Text
-                                          :source_alias  "c"}
+                                          :base_type     :type/Text}
                                          {:table_id     $$categories
                                           :name         "NAME"
                                           :field_ref    $category-id->categories.name
                                           :id           %categories.name
                                           :display_name "Category → Name"
-                                          :base_type    :type/Text
-                                          :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
+                                          :base_type    :type/Text}]})]
           (is (=? (lib.tu.macros/$ids [$venues.id
                                        (mbql.u/update-field-options field-ref dissoc :temporal-unit)
                                        $venues.category-id->categories.name])

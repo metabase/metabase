@@ -9,13 +9,14 @@
 (defn do-with-persistence-enabled!
   [f]
   (tu/with-temporary-setting-values [:persisted-models-enabled true]
-    (ddl.i/check-can-persist (data/db))
-    (persisted-info/ready-database! (data/id))
-    (let [persist-fn (fn persist-fn []
-                       (#'task.persist-refresh/refresh-tables!
-                        (data/id)
-                        (var-get #'task.persist-refresh/dispatching-refresher)))]
-      (f persist-fn))))
+    (with-redefs [persisted-info/default-persistent-info-state (fn [] "creating")]
+      (ddl.i/check-can-persist (data/db))
+      (persisted-info/ready-database! (data/id))
+      (let [persist-fn (fn persist-fn []
+                         (#'task.persist-refresh/refresh-tables!
+                          (data/id)
+                          (var-get #'task.persist-refresh/dispatching-refresher)))]
+        (f persist-fn)))))
 
 (defmacro with-persistence-enabled!
   "Does the necessary setup to enable persistence on the current db. Provide a binding for a function to persist

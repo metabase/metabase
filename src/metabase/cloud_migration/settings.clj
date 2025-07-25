@@ -1,8 +1,8 @@
 (ns metabase.cloud-migration.settings
   (:require
    [clojure.string :as str]
-   [metabase.config :as config]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.config.core :as config]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting store-use-staging
@@ -22,23 +22,32 @@
     env-var-value
     config/is-dev?))
 
+(defn- store-url-default
+  "Returns the default store URL, with support for environment variable override in dev mode only."
+  []
+  (if-some [env-url (and config/is-dev? (config/config-str :mb-store-url))]
+    (str env-url)
+    (str "https://store" (when (default-to-staging?) ".staging") ".metabase.com")))
+
 ;;; TODO -- DEFAULT VALUES SHOULD NOT THE VALUE OF ANOTHER SETTING! BECAUSE GETTING SETTING VALUES REQUIRES THE APP DB
 ;;; TO BE SET UP!! AND IT IS NOT SET UP IMMEDIATELY ON LAUNCH!!
 
 (defsetting store-url
   (deferred-tru "Store URL.")
+  :type       :string
   :encryption :no
   ;; should be :internal, but FE doesn't get internal settings. -- Someone else
   ;;
   ;; OK, then no it shouldn't be internal at all, internal is literally for Settings that are only visible to backend
   ;; code. -- Cam
   :visibility :admin
-  :default    (str "https://store" (when (default-to-staging?) ".staging") ".metabase.com")
+  :default    (store-url-default)
   :doc        false
   :export?    false)
 
 (defsetting store-api-url
   (deferred-tru "Store API URL.")
+  :type       :string
   :encryption :no
   :visibility :internal
   :default    (str "https://store-api" (when (default-to-staging?) ".staging") ".metabase.com")

@@ -18,12 +18,20 @@ export const processResults = (
   );
 
   const actions = processSection(t`Actions`, groupedResults["basic"]);
+  const metabotActions = processSection(t`Metabot`, groupedResults["metabot"]);
   const search = processSection(t`Search results`, groupedResults["search"]);
   const recent = processSection(t`Recent items`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
+  return [
+    ...metabotActions,
+    ...recent,
+    ...actions.slice(0, 6),
+    ...admin,
+    ...search,
+    ...docs,
+  ];
 };
 
 export const processSection = (

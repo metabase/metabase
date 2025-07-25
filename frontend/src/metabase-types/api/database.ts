@@ -19,13 +19,18 @@ export type DatabaseFeature =
   | "case-sensitivity-string-filter-options"
   | "convert-timezone"
   | "datetime-diff"
+  | "database-replication"
+  | "database-routing"
   | "dynamic-schema"
   | "expression-aggregations"
   | "expression-literals"
   | "expressions"
   | "expressions/date"
+  | "expressions/datetime"
   | "expressions/integer"
+  | "expressions/float"
   | "expressions/text"
+  | "expressions/today"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
@@ -46,6 +51,7 @@ export type DatabaseFeature =
   | "native-requires-specified-collection"
   | "window-functions/offset"
   | "distinct-where"
+  | "saved-question-sandboxing"
   | "split-part";
 
 export interface Database extends DatabaseData {
@@ -116,7 +122,7 @@ export type GetDatabaseHealthResponse =
   | { status: "error"; message: string; errors: unknown };
 
 export interface ListDatabasesRequest {
-  include?: "table";
+  include?: "tables";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;

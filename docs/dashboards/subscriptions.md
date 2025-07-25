@@ -80,7 +80,7 @@ If you check this box, Metabase will drop any visualization settings applied to 
 
 Here you can specify which questions Metabase should attach results for.
 
-The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help/premium) and request a different row limit.
+The attached files will include up to 1 048 575 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_ATTACHMENT_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_attachment_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help-premium) and request a different row limit.
 
 ## Slack subscription options
 
@@ -131,6 +131,10 @@ The section to call out here is the **Set filter values for when this gets sent*
 ## How permissions work with dashboard subscriptions
 
 See [Notification permissions](../permissions/notifications.md).
+
+## Removing Metabase branding from subscriptions
+
+See [Remove Metabase branding from exports](../questions/exporting-results.md#remove-metabase-branding-from-exports).
 
 ## Further reading
 

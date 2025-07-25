@@ -10,7 +10,7 @@ import {
  */
 
 H.describeWithSnowplowEE(
-  "Public dashboards/questions downloads (results and export as pdf)",
+  "Public dashboards/questions downloads (results and pdf)",
   () => {
     beforeEach(() => {
       H.resetSnowplow();
@@ -23,7 +23,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
@@ -48,62 +48,95 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}#downloads=false`);
         waitLoading();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByText("Export as PDF").should("not.exist");
+        cy.findByRole("button", { name: "Download as PDF" }).should(
+          "not.exist",
+        );
 
         // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
-        H.getDashboardCardMenu().should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("#downloads=pdf should enable only PDF downloads", () => {
         cy.visit(`${publicLink}#downloads=pdf`);
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").should("exist");
-        H.getDashboardCardMenu().should("not.exist");
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .should("exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("#downloads=results should enable only dashcard results downloads", () => {
         cy.visit(`${publicLink}#downloads=results`);
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").should("not.exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .should("not.exist");
+
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=pdf,results should enable both PDF and results downloads", () => {
         cy.visit(`${publicLink}#downloads=pdf,results`);
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").should("exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .should("exist");
+
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=results,pdf should enable both PDF and results downloads (order agnostic)", () => {
         cy.visit(`${publicLink}#downloads=results,pdf`);
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").should("exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .should("exist");
+
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=results, pdf should handle whitespace between parameters", () => {
         cy.visit(`${publicLink}#downloads=results, pdf`);
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").should("exist");
-        H.getDashboardCardMenu().should("exist");
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .should("exist");
+
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("should be able to download a public dashboard as PDF", () => {
         cy.visit(`${publicLink}#downloads=true`);
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").click();
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "dashboard_pdf_exported",
           dashboard_id: 0,
           dashboard_accessed_via: "public-link",
@@ -114,8 +147,6 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        H.showDashboardCardActions();
-
         const uuid = publicLink.split("/").at(-1);
 
         H.downloadAndAssert(
@@ -124,12 +155,13 @@ H.describeWithSnowplowEE(
             fileType: "csv",
             questionId: ORDERS_BY_YEAR_QUESTION_ID,
             isDashboard: true,
+            isEmbed: true,
             dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
           },
           H.assertNotEmptyObject,
         );
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "dashcard",
           accessed_via: "public-link",
@@ -144,7 +176,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.visit(`/question/${ORDERS_BY_YEAR_QUESTION_ID}`);
 
@@ -165,21 +197,27 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}#downloads=results`);
         waitLoading();
 
-        cy.findByTestId("download-button").should("exist");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=false should disable result downloads", () => {
         cy.visit(`${publicLink}#downloads=false`);
         waitLoading();
 
-        cy.findByTestId("download-button").should("not.exist");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download the question as PNG", () => {
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
         H.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
@@ -187,7 +225,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".png", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "public-link",
@@ -199,7 +237,10 @@ H.describeWithSnowplowEE(
         cy.visit(`${publicLink}`);
         waitLoading();
 
-        cy.findByTestId("download-button").should("exist");
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
 
         const uuid = publicLink.split("/").at(-1);
 
@@ -209,15 +250,105 @@ H.describeWithSnowplowEE(
             fileType: "csv",
             questionId: ORDERS_BY_YEAR_QUESTION_ID,
             isDashboard: false,
+            isEmbed: true,
           },
           H.assertNotEmptyObject,
         );
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "public-link",
           export_type: "csv",
+        });
+      });
+    });
+
+    describe("Public questions with parameters", () => {
+      before(() => {
+        H.restore("default");
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
+
+        H.createNativeQuestion(
+          {
+            native: {
+              query: "SELECT * FROM orders WHERE TOTAL > {{ minimum }}",
+
+              "template-tags": {
+                minimum: {
+                  id: "930e4001",
+                  name: "minimum",
+                  "display-name": "Minimum",
+                  type: "number",
+                  default: "10",
+                },
+              },
+            },
+            parameters: [
+              {
+                id: "930e4001",
+                slug: "minimum",
+                name: "minimum",
+                type: "number",
+                default: 10,
+                target: ["variable", ["template-tag", "minimum"]],
+              },
+            ],
+          },
+          {
+            visitQuestion: true,
+          },
+        );
+
+        H.openSharingMenu("Create a public link");
+
+        H.popover()
+          .findByTestId("public-link-input")
+          .should("contain.value", "/public/")
+          .invoke("val")
+          .then((url) => {
+            if (typeof url === "string") {
+              cy.signOut();
+              cy.visit(url);
+            }
+          });
+      });
+
+      it("should not pass all the parameters to the public link", () => {
+        waitLoading();
+
+        H.main().realHover();
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
+
+        cy.location("pathname").then((pathname) => {
+          const uuid = pathname.split("/").at(-1);
+
+          H.downloadAndAssert(
+            {
+              publicUuid: uuid,
+              fileType: "csv",
+              questionId: ORDERS_BY_YEAR_QUESTION_ID,
+              isDashboard: false,
+              isEmbed: true,
+            },
+            H.assertNotEmptyObject,
+          );
+
+          cy.get<{ request: Request }>("@fileDownload").then(({ request }) => {
+            const url = new URL(request.url);
+            const parameters = JSON.parse(
+              url.searchParams.get("parameters") ?? "[]",
+            );
+
+            cy.wrap(parameters).should("have.length", 1);
+            cy.wrap(parameters[0]).should("have.property", "id");
+            cy.wrap(parameters[0]).should("have.property", "value");
+            cy.wrap(parameters[0]).should("not.have.property", "type");
+            cy.wrap(parameters[0]).should("not.have.property", "target");
+          });
         });
       });
     });

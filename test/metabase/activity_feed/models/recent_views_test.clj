@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.activity-feed.models.recent-views :as recent-views]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
@@ -23,6 +23,7 @@
 
 (defn fixup [list-item]
   (-> list-item
+      (dissoc :entity_id)
       (update :parent_collection #(into {} %))
       (update :timestamp type)))
 
@@ -35,6 +36,7 @@
     [:model/Collection {coll-id :id} {:name "my coll"}
      :model/Database   {db-id :id}   {}
      :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
+
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :dashboard nil
@@ -46,7 +48,9 @@
              :display "display",
              :timestamp String
              :model :card
-             :database_id db-id}]
+             :database_id db-id
+             :dataset_query {}
+             :visualization_settings {}}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -209,7 +213,6 @@
         (mt/with-temp
           [:model/Collection {parent-coll-id :id} {:name "parent"}
            :model/Database   {db-id :id} {:name "My DB"} ;; just needed for temp tables and card's db:
-
            :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id :database_id db-id}
            :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id :database_id db-id}
            :model/Card       {metric-id :id} {:type "metric" :name "my metric" :display "Metric" :collection_id parent-coll-id :database_id db-id}
@@ -271,7 +274,9 @@
                    :id "ID",
                    :display "table",
                    :model :card
-                   :database_id db-id}]
+                   :database_id db-id
+                   :dataset_query {}
+                   :visualization_settings {}}]
                  (mt/with-test-user :rasta
                    (with-redefs [mi/can-read? (constantly true)
                                  mi/can-write? (fn ([id] (not= id table-id))
@@ -280,6 +285,7 @@
                           (mapv (fn [rv] (cond-> rv
                                            true                                       (assoc :id "ID")
                                            true                                       (dissoc :timestamp)
+                                           true                                       (dissoc :entity_id)
                                            (-> rv :database :id)                      (assoc-in [:database :id] db-id)
                                            (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
                                            (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID")))))))))

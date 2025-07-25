@@ -6,9 +6,10 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -525,6 +526,122 @@
                           :columns
                           (map :base_type)))))))))))
 
+(deftest ^:parallel top-level-boolean-expressions-test
+  (mt/test-driver :sqlserver
+    (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
+      (let [true-value  [:value true {:base_type :type/Boolean}]
+            false-value [:value false {:base_type :type/Boolean}]]
+        (letfn [(orders-query [args]
+                  (-> (mt/mbql-query orders
+                        {:expressions {"MyTrue"  true-value
+                                       "MyFalse" false-value}
+                         :fields      [[:expression "MyTrue"]]
+                         :limit       1})
+                      (update :query merge args)))]
+          (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
+                  [{:desc "true filter"
+                    :query
+                    (orders-query {:filter true-value})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  1 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
+                   {:desc "false filter"
+                    :query
+                    (orders-query {:filter false-value})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  0 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  []}
+                   {:desc "not filter"
+                    :query
+                    (orders-query {:filter [:not false-value]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  NOT (0 = 1)"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
+                   {:desc "nested logical operators"
+                    :query
+                    (orders-query {:filter [:and
+                                            [:not false-value]
+                                            [:or
+                                             [:expression "MyFalse"]
+                                             [:expression "MyTrue"]]]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  NOT (0 = 1)"
+                     "  AND ("
+                     "    (0 = 1)"
+                     "    OR (1 = 1)"
+                     "  )"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}
+                   {:desc "case expression"
+                    :query
+                    (orders-query {:expressions {"MyTrue"  true-value
+                                                 "MyFalse" false-value
+                                                 "MyCase"  [:case [[[:expression "MyFalse"] false-value]
+                                                                   [[:expression "MyTrue"]  true-value]]]}
+                                   :fields [[:expression "MyCase"]]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CASE"
+                     "    WHEN 0 = 1 THEN 0"
+                     "    WHEN 1 = 1 THEN 1"
+                     "  END AS MyCase"
+                     "FROM"
+                     "  dbo.orders"]
+                    :expected-types [:type/Integer]
+                    :expected-rows  [[1]]}
+                   ;; only top-level booleans should be transformed; otherwise an expression like 1 = 1 gets compiled
+                   ;; to (1 = 1) = (1 = 1)
+                   {:desc "non-top-level booleans"
+                    :query
+                    (orders-query {:filter [:= true-value true-value]})
+                    :expected-sql
+                    ["SELECT"
+                     "  TOP(1) CAST(1 AS bit) AS MyTrue"
+                     "FROM"
+                     "  dbo.orders"
+                     "WHERE"
+                     "  1 = 1"]
+                    :expected-types [:type/Boolean]
+                    :expected-rows  [[true]]}]]
+            (testing (format "\n%s\nMBQL query = %s\n" desc query)
+              (testing "Should generate the correct SQL query"
+                (is (= expected-sql
+                       (pretty-sql (:query (qp.compile/compile query))))))
+              (testing "Should return correct results"
+                (let [result (qp/process-query query)
+                      rows (mt/rows result)
+                      cols (mt/cols result)
+                      results-metadata-cols (-> result :data :results_metadata :columns)]
+                  (is (= expected-rows
+                         rows))
+                  (is (= expected-types
+                         (map :base_type cols)))
+                  (is (= expected-types
+                         (map :base_type results-metadata-cols))))))))))))
+
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
     (testing "Should match datetime fields even in non-default timezone (#30454)"
@@ -586,3 +703,21 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
     (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))
+
+(deftest ^:parallel default-database-role-test
+  (testing "SQL Server default database role handling"
+    (testing "returns role when explicitly configured"
+      (let [database {:details {:user "login_user" :role "db_user"}}]
+        (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "returns nil when no role is configured"
+      (let [database {:details {:user "login_user"}}]
+        (is (nil? (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "returns nil even when user is 'sa'"
+      (let [database {:details {:user "sa"}}]
+        (is (nil? (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "ignores user field and only uses role field"
+      (let [database {:details {:user "login_user" :role "impersonation_user"}}]
+        (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))

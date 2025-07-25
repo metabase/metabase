@@ -6,7 +6,8 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
+import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 /** These tests are about the `downloads` flag for static embeds, both dashboards and questions.
  *  Unless the product changes, these should test the same things as `public-resource-downloads.cy.spec.ts`
@@ -29,7 +30,7 @@ H.describeWithSnowplowEE(
           enable_embedding: true,
         });
 
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.signOut();
       });
@@ -52,11 +53,14 @@ H.describeWithSnowplowEE(
         );
         waitLoading();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- this should not appear anywhere in the page
-        cy.findByText("Export as PDF").should("not.exist");
+        cy.findByRole("button", { name: "Download as PDF" }).should(
+          "not.exist",
+        );
 
         // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-        H.getDashboardCardMenu().should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download a static embedded dashboard as PDF", () => {
@@ -73,11 +77,13 @@ H.describeWithSnowplowEE(
         );
         waitLoading();
 
-        cy.get("header").findByText("Export as PDF").click();
+        cy.get("header")
+          .findByRole("button", { name: "Download as PDF" })
+          .click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "dashboard_pdf_exported",
           dashboard_id: 0,
           dashboard_accessed_via: "static-embed",
@@ -99,12 +105,11 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
+        H.getDashboardCard().realHover();
         H.exportFromDashcard(".csv");
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "dashcard",
           accessed_via: "static-embed",
@@ -116,7 +121,7 @@ H.describeWithSnowplowEE(
         beforeEach(() => {
           cy.signInAsAdmin();
 
-          H.setTokenFeatures("all");
+          H.activateToken("pro-self-hosted");
 
           // Test parameter with accentuation (metabase#49118)
           const CATEGORY_FILTER = createMockParameter({
@@ -181,12 +186,11 @@ H.describeWithSnowplowEE(
 
           waitLoading();
 
-          H.showDashboardCardActions();
-          H.getDashboardCardMenu().click();
+          H.getDashboardCard().realHover();
           H.exportFromDashcard(".csv");
           cy.verifyDownload(".csv", { contains: true });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "dashcard",
             accessed_via: "static-embed",
@@ -205,7 +209,7 @@ H.describeWithSnowplowEE(
           enable_embedding: true,
         });
 
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.signOut();
       });
@@ -225,7 +229,9 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download the question as PNG", () => {
@@ -243,7 +249,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
         H.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
@@ -251,7 +257,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".png", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -274,7 +280,7 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        cy.findByTestId("download-button").click();
+        cy.findByRole("button", { name: "Download results" }).click();
 
         H.popover().within(() => {
           cy.findByText(".csv").click();
@@ -283,7 +289,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        H.expectUnstructuredSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -295,37 +301,51 @@ H.describeWithSnowplowEE(
         beforeEach(() => {
           cy.signInAsAdmin();
 
-          H.setTokenFeatures("all");
+          H.activateToken("pro-self-hosted");
+        });
+
+        it("should be able to download a static embedded question as CSV with correct parameters when field filters has multiple values (metabase#52430)", () => {
+          const FILTER_VALUES = ["NY", "CA"];
+          const QUESTION_NAME = "Native question with a Field parameter";
 
           // Can't figure out the type if I extracted `questionDetails` to a variable.
           H.createNativeQuestion(
             {
-              name: "Native question with a parameter",
+              name: QUESTION_NAME,
               native: {
                 "template-tags": {
-                  num: {
+                  state: {
                     id: "f7672b4d-1e84-1fa8-bf02-b5e584cd4535",
-                    name: "num",
-                    "display-name": "Num",
-                    type: "number",
+                    name: "state",
+                    "display-name": "State",
+                    type: "dimension",
+                    options: {
+                      "case-sensitive": false,
+                    },
+                    dimension: ["field", PEOPLE.STATE, null],
                     default: null,
+                    "widget-type": "string/contains",
                   },
                 },
-                query: "select {{num}}",
+                query:
+                  "select id, email, state from people where {{state}} limit 2",
               },
               parameters: [
                 {
                   id: "f7672b4d-1e84-1fa8-bf02-b5e584cd4535",
-                  type: "number/=",
-                  target: ["variable", ["template-tag", "num"]],
-                  name: "Num",
-                  slug: "num",
+                  type: "string/contains",
+                  options: {
+                    "case-sensitive": false,
+                  },
+                  target: ["dimension", ["template-tag", "state"]],
+                  name: "State",
+                  slug: "state",
                   default: null,
                 },
               ],
               enable_embedding: true,
               embedding_params: {
-                num: "enabled",
+                state: "enabled",
               },
             },
             {
@@ -333,23 +353,23 @@ H.describeWithSnowplowEE(
               wrapId: true,
             },
           );
-
           cy.signOut();
-        });
 
-        it("should be able to download a static embedded dashcard as CSV", () => {
-          const value = 9999;
           cy.get("@questionId").then((questionId) => {
             H.visitEmbeddedPage(
               {
                 resource: { question: Number(questionId) },
                 params: {
-                  num: value,
+                  state: FILTER_VALUES,
                 },
               },
               {
                 pageStyle: {
                   downloads: true,
+                },
+                // should ignore `?locale=xx` search parameter when downloading results from questions without parameters (metabase#53037)
+                qs: {
+                  locale: "en",
                 },
               },
             );
@@ -357,23 +377,142 @@ H.describeWithSnowplowEE(
 
           waitLoading();
 
-          H.main().findByText(value).should("exist");
+          const FIRST_ROW = [
+            5,
+            "leffler.dominique@hotmail.com",
+            FILTER_VALUES[0],
+          ];
+          const SECOND_ROW = [
+            13,
+            "mustafa.thiel@hotmail.com",
+            FILTER_VALUES[1],
+          ];
 
-          cy.findByTestId("download-button").click();
-
-          H.popover().within(() => {
-            cy.findByText(".csv").click();
-            cy.findByTestId("download-results-button").click();
+          H.assertTableData({
+            columns: ["ID", "EMAIL", "STATE"],
+            firstRows: [FIRST_ROW, SECOND_ROW],
           });
 
-          cy.verifyDownload(".csv", { contains: true });
+          cy.findByRole("heading", { name: QUESTION_NAME }).realHover();
+          H.downloadAndAssert(
+            {
+              isDashboard: false,
+              isEmbed: true,
+              enableFormatting: true,
+              fileType: "csv",
+              downloadUrl: "/api/embed/card/*/query/csv*",
+              downloadMethod: "GET",
+            },
+            (sheet) => {
+              expect(sheet["A2"].v).to.eq(FIRST_ROW[0]);
+              expect(sheet["B2"].v).to.eq(FIRST_ROW[1]);
+              expect(sheet["C2"].v).to.eq(FIRST_ROW[2]);
 
-          H.expectGoodSnowplowEvent({
+              expect(sheet["A3"].v).to.eq(SECOND_ROW[0]);
+              expect(sheet["B3"].v).to.eq(SECOND_ROW[1]);
+              expect(sheet["C3"].v).to.eq(SECOND_ROW[2]);
+            },
+          );
+
+          H.expectUnstructuredSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "question",
             accessed_via: "static-embed",
             export_type: "csv",
           });
+        });
+
+        it("should be able to download a static embedded question as CSV when a filter expects 1 parameter value e.g. date (metabase#58957, 59074)", () => {
+          const FILTER_VALUE = "2025-02-11";
+          const QUESTION_NAME = "Native question with a Date parameter";
+
+          // Can't figure out the type if I extracted `questionDetails` to a variable.
+          H.createNativeQuestion(
+            {
+              name: QUESTION_NAME,
+              native: {
+                "template-tags": {
+                  created_at: {
+                    id: "c9bbcc68-c59b-4ac1-b5e7-50d2123b4150",
+                    name: "created_at",
+                    "display-name": "Created At",
+                    type: "date",
+                  },
+                },
+                query:
+                  "select id, created_at, quantity from orders where created_at >= {{created_at}} limit 1",
+              },
+              parameters: [
+                {
+                  id: "c9bbcc68-c59b-4ac1-b5e7-50d2123b4150",
+                  type: "date/single",
+                  options: {
+                    "case-sensitive": false,
+                  },
+                  target: ["variable", ["template-tag", "created_at"]],
+                  name: "Created At",
+                  slug: "created_at",
+                },
+              ],
+              enable_embedding: true,
+              embedding_params: {
+                created_at: "enabled",
+              },
+            },
+            {
+              idAlias: "questionId",
+              wrapId: true,
+            },
+          );
+          cy.signOut();
+
+          cy.get("@questionId").then((questionId) => {
+            H.visitEmbeddedPage(
+              {
+                resource: { question: Number(questionId) },
+                params: {},
+              },
+              {
+                pageStyle: {
+                  downloads: true,
+                },
+                // should ignore `?locale=xx` search parameter when downloading results from questions with visible parameters (metabase#53037)
+                qs: {
+                  locale: "en",
+                },
+              },
+            );
+          });
+
+          cy.button("Created At").should("be.visible").click();
+          DateFilter.setSingleDate(FILTER_VALUE);
+          H.popover().findByText("Add filter").click();
+
+          waitLoading();
+
+          const FIRST_ROW = [1, "February 11, 2025, 9:40 PM", 2];
+
+          H.assertTableData({
+            columns: ["ID", "CREATED_AT", "QUANTITY"],
+            firstRows: [FIRST_ROW],
+          });
+
+          cy.findByRole("heading", { name: QUESTION_NAME }).realHover();
+          H.downloadAndAssert(
+            {
+              isDashboard: false,
+              isEmbed: true,
+              enableFormatting: true,
+              fileType: "csv",
+              downloadUrl: "/api/embed/card/*/query/csv*",
+              downloadMethod: "GET",
+            },
+            (sheet) => {
+              expect(sheet["A2"].v).to.eq(FIRST_ROW[0]);
+              expect(sheet["B2"].v).to.eq(FIRST_ROW[1]);
+              expect(sheet["C2"].v).to.eq(FIRST_ROW[2]);
+            },
+          );
         });
       });
     });

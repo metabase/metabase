@@ -9,11 +9,17 @@ import EditorTabsS from "./EditorTabs.module.css";
 
 type Props = {
   currentTab: string;
+  disabledQuery: boolean;
   disabledMetadata: boolean;
   onChange: (optionId: string) => void;
 };
 
-export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
+export function EditorTabs({
+  currentTab,
+  disabledQuery,
+  disabledMetadata,
+  onChange,
+}: Props) {
   const theme = useMantineTheme();
 
   return (
@@ -34,6 +40,7 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
           className={cx(EditorTabsS.Tab, {
             [EditorTabsS.active]: currentTab === "query",
             [EditorTabsS.inactive]: currentTab !== "query",
+            [EditorTabsS.disabled]: disabledQuery,
           })}
           htmlFor="editor-tabs-query"
         >
@@ -45,9 +52,11 @@ export function EditorTabs({ currentTab, disabledMetadata, onChange }: Props) {
             name="editor-tabs"
             value="query"
             checked={currentTab === "query"}
+            disabled={disabledQuery}
             onChange={() => {
               onChange("query");
             }}
+            data-testid="editor-tabs-query"
           />
           <span data-testid="editor-tabs-query-name">{t`Query`}</span>
         </label>

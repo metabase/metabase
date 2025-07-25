@@ -3,18 +3,18 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
-   [metabase.config :as config]
-   [metabase.models.setting :as setting]
-   [metabase.models.task-history :as task-history]
+   [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.settings :as notification.settings]
+   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent Callable Executors ExecutorService)
+   (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
    (org.quartz CronExpression)))
 
@@ -26,12 +26,9 @@
     (str (u/qualified-name channel_type) " " channel_id)
     (u/qualified-name channel_type)))
 
-(setting/defsetting notification-thread-pool-size
-  "The size of the thread pool used to send notifications."
-  :default    3
-  :export?    false
-  :type       :integer
-  :visibility :internal)
+(def ^:private default-blocking-queue-size 1000)
+
+(def ^:private default-shutdown-timeout-ms (* 30 60 1000)) ;; 30 minutes
 
 (def ^:private default-retry-config
   {:max-attempts            (if config/is-dev? 2 7)
@@ -178,9 +175,8 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
-                          (log/warnf e "Error sending to channel %s"
-                                     (handler->channel-name handler))))))))
-              (do-after-notification-sent notification-info notification-payload)
+                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))))
+              (do-after-notification-sent hydrated-notification notification-payload)
               (log/info "Sent successfully")
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
@@ -197,8 +193,8 @@
 (defn- cron->next-execution-times
   "Returns the next n fired times for a given cron schedule.
 
-   If the cron schedule doesn't have n future executions (e.g., one-off schedules),
-   returns as many execution times as available."
+  If the cron schedule doesn't have n future executions (e.g., one-off schedules),
+  returns as many execution times as available."
   [cron-schedule n]
   (let [cron-expression (CronExpression. ^String cron-schedule)
         now             (t/java-date)]
@@ -217,11 +213,11 @@
 (defn- avg-interval-seconds
   "Returns the average seconds between executions for a given cron schedule by sampling future execution times.
 
-   Using the average across multiple executions (rather than mean interval) helps handle
-   irregular schedules (like workday-only alerts) consistently, ensuring that the priority doesn't
-   fluctuate based on seasonality (e.g., different priority on Friday vs. Monday).
+  Using the average across multiple executions (rather than mean interval) helps handle
+  irregular schedules (like workday-only alerts) consistently, ensuring that the priority doesn't
+  fluctuate based on seasonality (e.g., different priority on Friday vs. Monday).
 
-   For one-off schedules that don't repeat, returns 10 seconds to give them reasonable priority."
+  For one-off schedules that don't repeat, returns 10 seconds to give them reasonable priority."
   [cron-schedule n]
   (assert (pos? n) "Need at least 1 execution time to calculate average")
   (let [times (cron->next-execution-times cron-schedule n)]
@@ -273,9 +269,11 @@
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
   (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
-  (take-notification! [this]              "Take the next notification from the queue, blocking if none available."))
+  (take-notification-with-timeout! [this timeout-ms] "Take the next notification from the queue, returning nil if timeout is reached.")
+  (queue-size [this] "Get the current size of the queue."))
 
-(deftype ^:private NotificationQueue
+;; A priority queue that deduplicates notifications by id
+(deftype ^:private DedupPriorityQueue
          [^java.util.PriorityQueue                  items-list
           ^java.util.concurrent.ConcurrentHashMap   id->notification
           ^java.util.concurrent.locks.ReentrantLock queue-lock
@@ -294,19 +292,29 @@
         (finally
           (.unlock queue-lock)))))
 
-  (take-notification! [_]
+  (take-notification-with-timeout! [_ timeout-ms]
     (.lock queue-lock)
     (try
-      ;; Wait until there's at least one notification
-      (while (.isEmpty items-list)
-        (.await not-empty-cond))
-      (let [^NotificationQueueEntry entry (.poll items-list)
-            id                            (.id entry)]
-        (.remove id->notification id))
+      ;; Wait until there's at least one notification or timeout
+      (loop []
+        (if (.isEmpty items-list)
+          (if (.await not-empty-cond timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS)
+            (recur)
+            nil) ; timeout occurred
+          (let [^NotificationQueueEntry entry (.poll items-list)
+                id                            (.id entry)]
+            (.remove id->notification id))))
+      (finally
+        (.unlock queue-lock))))
+
+  (queue-size [_]
+    (.lock queue-lock)
+    (try
+      (.size items-list)
       (finally
         (.unlock queue-lock)))))
 
-(defn- create-notification-queue
+(defn- create-dedup-priority-queue
   "A thread-safe, prioritized notification queue with the following properties:
   - Notifications are identified by unique IDs
   - Prioritized by deadline
@@ -316,58 +324,108 @@
   []
   (let [queue-lock     (java.util.concurrent.locks.ReentrantLock.)
         not-empty-cond (.newCondition queue-lock)]
-    (->NotificationQueue (java.util.PriorityQueue. ^java.util.Comparator deadline-comparator)
-                         (java.util.concurrent.ConcurrentHashMap.)
-                         queue-lock
-                         not-empty-cond)))
+    (->DedupPriorityQueue (java.util.PriorityQueue. ^java.util.Comparator deadline-comparator)
+                          (java.util.concurrent.ConcurrentHashMap.)
+                          queue-lock
+                          not-empty-cond)))
+
+;; A simple array blocking queue for notification
+(deftype BlockingQueue [^java.util.concurrent.ArrayBlockingQueue items-list]
+  NotificationQueueProtocol
+  (put-notification! [_ notification]
+    (.put items-list notification))
+  (take-notification-with-timeout! [_ timeout-ms]
+    (.poll items-list timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS))
+  (queue-size [_]
+    (.size items-list)))
+
+(defn- create-blocking-queue
+  "Create a blocking queue for notifications."
+  []
+  (BlockingQueue. (ArrayBlockingQueue. default-blocking-queue-size)))
 
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
   There can only be one notification with the same id in the queue.
   - if a notification of the same id is already in the queue, then replace it
-    (we keep the latest version because it likely contains the most up-to-date information
-     such as: creator_id, active status, handlers info etc.)
-  - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)"
+  (we keep the latest version because it likely contains the most up-to-date information
+  such as: creator_id, active status, handlers info etc.)
+  - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)
+
+  Returns a map with :dispatch-fn and :shutdown-fn."
   [pool-size queue]
   (let [executor (Executors/newFixedThreadPool
                   pool-size
                   (.build
                    (doto (BasicThreadFactory$Builder.)
-                     (.namingPattern "send-notification-thread-pool-%d"))))]
-    (.addShutdownHook
-     (Runtime/getRuntime)
-     (Thread. ^Runnable (fn []
-                          (.shutdownNow ^ExecutorService executor)
-                          (try
-                            (.awaitTermination ^ExecutorService executor 30 java.util.concurrent.TimeUnit/SECONDS)
-                            (catch InterruptedException _
-                              (log/warn "Interrupted while waiting for notification executor to terminate"))))))
+                     (.namingPattern "send-notification-thread-pool-%d"))))
+        shutdown-flag (java.util.concurrent.atomic.AtomicBoolean. false)
+        start-worker! (fn []
+                        (.submit ^ThreadPoolExecutor executor
+                                 ^Callable (fn []
+                                             (while (and (not (Thread/interrupted))
+                                                         (or (not (.get shutdown-flag))
+                                                             ;; Continue processing if shutdown flag is set but queue is not empty
+                                                             (pos? (queue-size queue))))
+                                               (try
+                                                 (when-let [notification (take-notification-with-timeout! queue 1000)]
+                                                   (send-notification-sync! notification))
+                                                 (catch InterruptedException _
+                                                   (log/warn "Notification worker interrupted, shutting down")
+                                                   (throw (InterruptedException.)))
+                                                 (catch Throwable e
+                                                   (log/error e "Error in notification worker")))))))
+        ensure-enough-workers! (fn []
+                                 (dotimes [i (- pool-size (.getActiveCount ^ThreadPoolExecutor executor))]
+                                   (log/debugf "Not enough workers, starting a new one %d/%d"
+                                               (+ (.getActiveCount ^ThreadPoolExecutor executor) i)
+                                               pool-size)
+                                   (start-worker!)))
+        dispatch-fn (fn [notification]
+                      (if-not (.get shutdown-flag)
+                        (do
+                          (ensure-enough-workers!)
+                          (put-notification! queue notification)
+                          ::ok)
+                        (do
+                          (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))
+                          ::shutdown)))
+        shutdown-fn (fn [timeout-ms]
+                      (log/infof "Gracefully shutting down notification dispatcher with %d pending notifications to process" (queue-size queue))
+                      (.set shutdown-flag true)
+                      (.shutdown ^ThreadPoolExecutor executor)
+                      (try
+                        (.awaitTermination ^ThreadPoolExecutor executor timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS)
+                        (log/info "Notification worker shut down successfully")
+                        (catch InterruptedException _
+                          (log/warn "Interrupted while waiting for notification executor to terminate")
+                          (.shutdownNow ^ThreadPoolExecutor executor))))]
+
+    (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
-      (.submit ^ExecutorService executor
-               ^Callable (fn []
-                           (while (not (Thread/interrupted))
-                             (try
-                               (let [notification (take-notification! queue)]
-                                 (send-notification-sync! notification))
-                               (catch InterruptedException _
-                                 (log/info "Notification worker interrupted, shutting down")
-                                 (throw (InterruptedException.)))
-                               (catch Exception e
-                                 (log/error e "Error in notification worker")))))))
-    (fn [notification]
-      (put-notification! queue notification))))
+      (start-worker!))
+    {:dispatch-fn dispatch-fn
+     :shutdown-fn shutdown-fn}))
 
-(defonce ^{:private true
-           :doc "Do not use this queue directly, use the dispatcher instead."}
-  notification-queue (delay (create-notification-queue)))
+(defonce ^:private dedup-priority-dispatcher
+  (delay (create-notification-dispatcher (notification.settings/notification-thread-pool-size) (create-dedup-priority-queue))))
 
-(defonce ^:private dispatcher
-  (delay (create-notification-dispatcher (notification-thread-pool-size) @notification-queue)))
+(defonce ^:private simple-blocking-dispatcher
+  (delay (create-notification-dispatcher (notification.settings/notification-system-event-thread-pool-size) (create-blocking-queue))))
+
+(defn- dispatch!
+  [notification]
+  (let [{:keys [dispatch-fn]} (case (:payload_type notification)
+                                :notification/system-event
+                                @simple-blocking-dispatcher
+                                 ;; notification/card, notification/dashboard
+                                @dedup-priority-dispatcher)]
+    (dispatch-fn notification)))
 
 (mu/defn ^:private send-notification-async!
   "Send a notification asynchronously."
   [notification :- ::notification.payload/Notification]
-  (@dispatcher notification)
+  (dispatch! notification)
   nil)
 
 (def ^:private Options
@@ -385,7 +443,20 @@
                      :payload_type    (:payload_type notification)}
     (let [options      (merge *default-options* options)
           notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
-      (log/debugf "Sending %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
+      (log/debugf "Will be send %s" (if (:notification/sync? options) "synchronously" "asynchronously"))
       (if (:notification/sync? options)
         (send-notification-sync! notification)
         (send-notification-async! notification)))))
+
+(defn shutdown!
+  "Shutdown all notification workers with wait up to [[timeout-ms]] milliseconds for each workers."
+  []
+  (let [workers [dedup-priority-dispatcher simple-blocking-dispatcher]]
+    (log/with-context {:dispatcher-count (count workers)}
+      (log/info "Shutting down notification dispatchers...")
+      (try
+        (doseq [worker workers]
+          ((:shutdown-fn @worker) default-shutdown-timeout-ms))
+        (log/info "All notification workers shut down successfully")
+        (catch Exception e
+          (log/error e "Error shutting down notification workers"))))))

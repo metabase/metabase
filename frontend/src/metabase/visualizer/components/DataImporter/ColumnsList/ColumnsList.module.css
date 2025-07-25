@@ -1,0 +1,12 @@
+.parent {
+  border: 1px solid transparent;
+  border-radius: var(--default-border-radius);
+}
+
+.ActionsButton {
+  visibility: hidden;
+}
+
+.parent:hover .ActionsButton {
+  visibility: visible;
+}

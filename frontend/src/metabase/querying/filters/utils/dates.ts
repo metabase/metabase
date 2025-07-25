@@ -72,7 +72,7 @@ export function getDatePickerUnits(
 export function getDatePickerValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): DatePickerValue | undefined {
   return (
     getSpecificDateValue(query, stageIndex, filterClause) ??
@@ -84,7 +84,7 @@ export function getDatePickerValue(
 function getSpecificDateValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): SpecificDatePickerValue | undefined {
   const filterParts = Lib.specificDateFilterParts(
     query,
@@ -106,7 +106,7 @@ function getSpecificDateValue(
 function getRelativeDateValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): RelativeDatePickerValue | undefined {
   const filterParts = Lib.relativeDateFilterParts(
     query,
@@ -130,7 +130,7 @@ function getRelativeDateValue(
 function getExcludeDateValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): ExcludeDatePickerValue | undefined {
   const filterParts = Lib.excludeDateFilterParts(
     query,
@@ -280,15 +280,20 @@ export function getDateFilterDisplayName(
         return `${formatDate(startDate, hasTime)} - ${formatDate(endDate, hasTime)}`;
       },
     )
-    .with({ type: "relative" }, ({ value, unit, offsetValue, offsetUnit }) => {
-      if (offsetValue != null && offsetUnit != null) {
-        const prefix = Lib.describeTemporalInterval(value, unit);
-        const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
-        return `${prefix}, ${suffix}`;
-      } else {
-        return Lib.describeTemporalInterval(value, unit);
-      }
-    })
+    .with(
+      { type: "relative" },
+      ({ value, unit, offsetValue, offsetUnit, options }) => {
+        if (offsetValue != null && offsetUnit != null) {
+          const prefix = Lib.describeTemporalInterval(value, unit);
+          const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
+          return `${prefix}, ${suffix}`;
+        } else {
+          return Lib.describeTemporalInterval(value, unit, {
+            "include-current": options?.includeCurrent,
+          });
+        }
+      },
+    )
     .with({ type: "exclude", operator: "!=" }, ({ values, unit }) => {
       if (values.length <= 2 && unit != null) {
         const parts = values.map((value) => formatExcludeUnit(value, unit));

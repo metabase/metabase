@@ -89,10 +89,10 @@ describe(
           cy.button("Update filter").click();
         });
         H.assertTableRowsCount(53);
-        H.dashboardParametersContainer().within(() => {
-          cy.button("Apply").click();
-          cy.wait("@cardQuery");
-        });
+        H.applyFilterToast().findByText("1 filter changed");
+        H.applyFilterButton().click();
+
+        cy.wait("@cardQuery");
         H.assertTableRowsCount(107);
         cy.get("@cardQuery.all").should("have.length", 3);
 
@@ -105,7 +105,7 @@ describe(
           cy.button("Update filter").click();
         });
         H.filterWidget().findByText("Widget").should("be.visible");
-        H.dashboardParametersContainer().button("Apply").should("be.visible");
+        H.applyFilterButton().should("be.visible");
 
         H.openDashboardSettingsSidebar();
         H.sidesheet().within(() => {
@@ -152,12 +152,36 @@ describe(
         cy.findByText("Gadget").click();
         cy.button("Add filter").click();
       });
-      H.dashboardParametersContainer().button("Apply").should("be.visible");
+
+      H.applyFilterButton().should("be.visible");
+      H.applyFilterToast().findByText("1 filter changed");
 
       cy.log("verify filter value is not saved");
 
       H.visitDashboard("@dashboardId");
       H.filterWidget().should("not.contain", "Gadget");
+    });
+
+    it("should allow resetting unapplied filter state", () => {
+      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
+      openDashboard();
+
+      H.filterWidget().findByText(FILTER.name).click();
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.applyFilterButton().should("be.visible");
+      H.applyFilterToast().findByText("1 filter changed");
+
+      H.cancelFilterButton().click();
+      H.applyFilterToast().should("not.exist");
+
+      H.filterWidget().findByText(FILTER.name).click();
+      H.popover().within(() => {
+        cy.findByText("Gadget").should("not.be.checked");
+      });
     });
 
     describe("modifying dashboard and dashboard cards", () => {
@@ -170,7 +194,7 @@ describe(
           cy.findByText("Gadget").click();
           cy.button("Add filter").click();
         });
-        H.dashboardParametersContainer().button("Apply").should("be.visible");
+        H.applyFilterButton().should("be.visible");
 
         H.editDashboard();
 
@@ -185,8 +209,8 @@ describe(
           cy.findByText("Category").should("be.visible");
           cy.findByText("Vendor").should("be.visible");
           cy.findByText("Gadget").should("not.exist");
-          cy.button("Apply").should("not.exist");
         });
+        H.applyFilterToast().should("not.exist");
 
         cy.get("@updateDashboardSpy").should("have.callCount", 1);
       });
@@ -202,12 +226,12 @@ describe(
           cy.findByText("Gadget").click();
           cy.button("Add filter").click();
         });
-        H.dashboardParametersContainer().button("Apply").should("be.visible");
+        H.applyFilterButton().should("be.visible");
 
         H.editDashboard();
         cy.findByTestId("edit-bar").button("Cancel").click();
         H.filterWidget().findByText("Gadget").should("be.visible");
-        H.dashboardParametersContainer().button("Apply").should("be.visible");
+        H.applyFilterButton().should("be.visible");
       });
     });
 
@@ -243,10 +267,7 @@ describe(
           "card result should be updated after manually updating the filter",
         );
         H.filterWidget().icon("close").click();
-        H.dashboardParametersContainer()
-          .button("Apply")
-          .should("be.visible")
-          .click();
+        H.applyFilterButton().should("be.visible").click();
 
         H.getDashboardCard().within(() => {
           H.assertTableRowsCount(200);
@@ -430,7 +451,7 @@ describe(
             H.visitPublicDashboard(dashboardId);
           });
 
-          H.dashboardParametersContainer().button("Apply").should("not.exist");
+          H.applyFilterToast().should("not.exist");
           H.filterWidget().findByText("Category").click();
           H.popover().within(() => {
             cy.findByText("Widget").click();
@@ -439,10 +460,7 @@ describe(
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(200);
           });
-          H.dashboardParametersContainer()
-            .button("Apply")
-            .should("be.visible")
-            .click();
+          H.applyFilterButton().should("be.visible").click();
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(54);
           });
@@ -479,7 +497,7 @@ describe(
             H.visitEmbeddedPage(embeddingPayload);
           });
 
-          H.dashboardParametersContainer().button("Apply").should("not.exist");
+          H.applyFilterToast().should("not.exist");
           H.filterWidget().findByText("Category").click();
           H.popover().within(() => {
             cy.findByText("Widget").click();
@@ -488,10 +506,7 @@ describe(
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(200);
           });
-          H.dashboardParametersContainer()
-            .button("Apply")
-            .should("be.visible")
-            .click();
+          H.applyFilterButton().should("be.visible").click();
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(54);
           });
@@ -541,7 +556,7 @@ describe(
           // Ensure that we're viewing the dashboard in full-app embedding mode, since `logo` is a full-app embedding parameter.
           cy.findByTestId("main-logo").should("not.exist");
 
-          H.dashboardParametersContainer().button("Apply").should("not.exist");
+          H.applyFilterToast().should("not.exist");
           H.filterWidget().findByText("Category").click();
           H.popover().within(() => {
             cy.findByText("Widget").click();
@@ -550,10 +565,7 @@ describe(
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(200);
           });
-          H.dashboardParametersContainer()
-            .button("Apply")
-            .should("be.visible")
-            .click();
+          H.applyFilterButton().should("be.visible").click();
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(54);
           });
@@ -589,10 +601,7 @@ describe(
 
           // Card result should be updated after manually updating the filter
           H.filterWidget().icon("close").click();
-          H.dashboardParametersContainer()
-            .button("Apply")
-            .should("be.visible")
-            .click();
+          H.applyFilterButton().should("be.visible").click();
 
           H.getDashboardCard().within(() => {
             H.assertTableRowsCount(200);
@@ -624,8 +633,6 @@ describe(
 );
 
 H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
-  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS = 2;
-
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -645,15 +652,12 @@ H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
 
     H.openDashboardSettingsSidebar();
     H.sidesheet().within(() => {
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
-      );
       cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("not.be.checked");
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS + 1,
-      );
+      H.expectUnstructuredSnowplowEvent({
+        event: "auto_apply_filters_disabled",
+      });
     });
   });
 
@@ -664,15 +668,12 @@ H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
 
     H.openDashboardSettingsSidebar();
     H.sidesheet().within(() => {
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
-      );
       cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("be.checked");
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
-      );
+      H.assertNoUnstructuredSnowplowEvent({
+        event: "auto_apply_filters_disabled",
+      });
     });
   });
 });

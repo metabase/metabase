@@ -1,3 +1,5 @@
+import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+
 export function expressionEditorWidget() {
   return cy.findByTestId("expression-editor");
 }
@@ -15,6 +17,7 @@ export function enterCustomColumnDetails({
   blur = true,
   format = false,
   allowFastSet = false,
+  clickDone = false,
 }: {
   formula: string;
 
@@ -41,6 +44,11 @@ export function enterCustomColumnDetails({
    *   This has some other side effects, like not triggering change handlers or not triggering autocomplte, so use it sparingly.
    */
   allowFastSet?: boolean;
+
+  /**
+   * set to true to click the done button after setting the detauls to save the custom column.
+   */
+  clickDone?: boolean;
 }) {
   CustomExpressionEditor.get().as("formula");
   CustomExpressionEditor.clear();
@@ -56,6 +64,10 @@ export function enterCustomColumnDetails({
 
   if (name) {
     cy.findByTestId("expression-name").clear().type(name).blur();
+  }
+
+  if (clickDone) {
+    popover().button("Done").click();
   }
 }
 
@@ -112,6 +124,11 @@ export const CustomExpressionEditor = {
       // CodeMirror elements in Cypress. realType() would work but some of the formulas
       // contain special characters that are not supported by realType().
       CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
+
+      // invoke("text") does not trigger the validator, so we need to trigger it manually
+      // by typing something
+      CustomExpressionEditor.type(" {backspace}");
+
       return CustomExpressionEditor;
     }
 
@@ -206,6 +223,7 @@ export const CustomExpressionEditor = {
     return cy.findByLabelText("Auto-format");
   },
   format() {
+    CustomExpressionEditor.formatButton().should("be.visible");
     CustomExpressionEditor.formatButton().click();
     return CustomExpressionEditor;
   },

@@ -4,22 +4,30 @@ import {
   canResetFilter,
   createTabSlug,
   fetchDataOrError,
+  findDashCardForInlineParameter,
   getCurrentTabDashboardCards,
   getDashcardResultsError,
   getVisibleCardIds,
   hasDatabaseActionsEnabled,
+  hasInlineParameters,
   isDashcardLoading,
   parseTabSlug,
+  setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
+  createMockActionDashboardCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDatabase,
   createMockDataset,
   createMockDatasetData,
+  createMockHeadingDashboardCard,
+  createMockParameter,
+  createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createMockLocation } from "metabase-types/store/mocks";
@@ -488,5 +496,261 @@ describe("Dashboard utils", () => {
         expect(canResetFilter(parameter)).toBe(expected);
       },
     );
+  });
+
+  describe("hasInlineParameters", () => {
+    it("should return true for dashcards with inline parameters", () => {
+      const heading = createMockHeadingDashboardCard({
+        inline_parameters: ["1"],
+      });
+      const dashcard = createMockDashboardCard({
+        inline_parameters: ["2"],
+      });
+
+      expect(hasInlineParameters(heading)).toBe(true);
+      expect(hasInlineParameters(dashcard)).toBe(true);
+    });
+
+    it("should return false for dashcards with empty inline parameters list", () => {
+      const heading = createMockHeadingDashboardCard({
+        inline_parameters: [],
+      });
+      const dashcard = createMockDashboardCard({
+        inline_parameters: [],
+      });
+
+      expect(hasInlineParameters(heading)).toBe(false);
+      expect(hasInlineParameters(dashcard)).toBe(false);
+    });
+
+    it("should return false for dashcards with null-ish inline parameters", () => {
+      const heading = createMockHeadingDashboardCard({
+        inline_parameters: null,
+      });
+      const dashcard = createMockDashboardCard({
+        inline_parameters: null,
+      });
+
+      expect(hasInlineParameters(heading)).toBe(false);
+      expect(hasInlineParameters(dashcard)).toBe(false);
+    });
+
+    it("should return false for dashcards that don't support inline parameters", () => {
+      expect(hasInlineParameters(createMockActionDashboardCard())).toBe(false);
+      expect(hasInlineParameters(createMockTextDashboardCard())).toBe(false);
+
+      // Only heading cards support inline parameters
+      expect(
+        hasInlineParameters(
+          createMockTextDashboardCard({ inline_parameters: ["1"] }),
+        ),
+      ).toBe(false);
+
+      expect(
+        hasInlineParameters(
+          // @ts-expect-error — testing a normally impossible case (actions dashcards don't have inline parameters)
+          createMockActionDashboardCard({ inline_parameters: ["1"] }),
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe("findDashCardForInlineParameter", () => {
+    const dashcards = [
+      createMockActionDashboardCard({ id: 1 }),
+      createMockDashboardCard({ id: 2 }),
+      createMockHeadingDashboardCard({ id: 3, inline_parameters: null }),
+      createMockHeadingDashboardCard({ id: 4, inline_parameters: [] }),
+      createMockHeadingDashboardCard({ id: 5, inline_parameters: ["param-1"] }),
+      createMockDashboardCard({
+        id: 6,
+        inline_parameters: ["param-2", "param-3"],
+      }),
+    ];
+
+    it("should return the dashcard containing the given parameter ID", () => {
+      const dashcard1 = findDashCardForInlineParameter("param-1", dashcards);
+      expect(dashcard1?.id).toBe(5);
+
+      const dashcard2 = findDashCardForInlineParameter("param-3", dashcards);
+      expect(dashcard2?.id).toBe(6);
+    });
+
+    it("should return undefined when no dashcard contains the given parameter ID", () => {
+      const dashcard = findDashCardForInlineParameter(
+        "non-existing-param",
+        dashcards,
+      );
+      expect(dashcard).toBeUndefined();
+    });
+
+    it("should ignore dashcards that don't support inline parameters", () => {
+      const dashcard1 = findDashCardForInlineParameter("param-1", [
+        createMockTextDashboardCard({ id: -1, inline_parameters: ["param-1"] }),
+        ...dashcards,
+        createMockTextDashboardCard({ id: -2, inline_parameters: ["param-1"] }),
+      ]);
+      expect(dashcard1?.id).toBe(5);
+    });
+  });
+
+  describe("setDashboardHeaderParameterIndex", () => {
+    describe("with header parameters only", () => {
+      const parameters = [
+        createMockParameter({ id: "1" }),
+        createMockParameter({ id: "2" }),
+        createMockParameter({ id: "3" }),
+      ];
+      const headerParameterIds = parameters.map((p) => p.id);
+
+      it("should do nothing if the index is the same", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["1", "2", "3"]);
+      });
+
+      it("should move the first parameter to the end of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            2,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["2", "3", "1"]);
+      });
+
+      it("should move the first parameter to the middle of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            1,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["2", "1", "3"]);
+      });
+
+      it("should move the last parameter to the beginning of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "3",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["3", "1", "2"]);
+      });
+
+      it("should move the last parameter to the middle of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "3",
+            1,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["1", "3", "2"]);
+      });
+
+      it("should move the middle parameter to the beginning of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "2",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["2", "1", "3"]);
+      });
+
+      it("should move the middle parameter to the end of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "2",
+            2,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["1", "3", "2"]);
+      });
+    });
+
+    describe("with inline parameters", () => {
+      const parameters = [
+        createMockParameter({ id: "1" }),
+        createMockParameter({ id: "2" }),
+        createMockParameter({ id: "3" }),
+        createMockParameter({ id: "4" }),
+        createMockParameter({ id: "5" }),
+      ];
+      const headerParameterIds = ["1", "3", "4"];
+
+      it("should move a header parameter to the end", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            2,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual([
+          "2",
+          "3",
+          "4",
+          "1",
+          "5",
+        ]);
+      });
+
+      it("should move a header parameter to the beginning", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "4",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual([
+          "4",
+          "1",
+          "2",
+          "3",
+          "5",
+        ]);
+      });
+
+      it("should move a header parameter to the middle", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "4",
+            1,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual([
+          "1",
+          "4",
+          "2",
+          "3",
+          "5",
+        ]);
+      });
+    });
   });
 });

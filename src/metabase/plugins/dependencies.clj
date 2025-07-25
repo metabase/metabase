@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [environ.core :as env]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))

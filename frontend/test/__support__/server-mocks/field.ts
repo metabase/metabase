@@ -1,4 +1,4 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
 
 import type {
   Field,
@@ -6,6 +6,7 @@ import type {
   FieldValue,
   GetFieldValuesResponse,
 } from "metabase-types/api";
+import { createMockFieldValues } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
 
@@ -15,30 +16,65 @@ export function setupFieldEndpoints(field: Field) {
   fetchMock.post(`path:/api/field/${field.id}/discard_values`, {});
 }
 
-export function setupFieldValuesEndpoints(fieldValues: GetFieldValuesResponse) {
+export function setupFieldValuesEndpoint(fieldValues: GetFieldValuesResponse) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
+  fetchMock.post(
+    `path:/api/field/${fieldValues.field_id}/values`,
+    async (url) => {
+      const lastCall = fetchMock.lastCall(url);
+      return createMockFieldValues(await lastCall?.request?.json());
+    },
+  );
 }
 
-export function setupUnauthorizedFieldEndpoint(field: Field) {
-  fetchMock.get(`path:/api/field/${field.id}`, {
-    status: 403,
-    body: PERMISSION_ERROR,
-  });
+export function setupRemappedFieldValueEndpoint(
+  fieldId: FieldId,
+  remappedFieldId: FieldId,
+  value: string,
+  fieldValue: FieldValue,
+) {
+  fetchMock.get(
+    {
+      url: `path:/api/field/${fieldId}/remapping/${remappedFieldId}`,
+      query: { value },
+    },
+    fieldValue,
+    { overwriteRoutes: false },
+  );
+}
+
+export function setupUnauthorizedFieldEndpoint(
+  field: Field,
+  options?: MockOptionsMethodGet,
+) {
+  fetchMock.get(
+    `path:/api/field/${field.id}`,
+    {
+      status: 403,
+      body: PERMISSION_ERROR,
+    },
+    options,
+  );
 }
 
 export function setupUnauthorizedFieldValuesEndpoints(
-  fieldValues: GetFieldValuesResponse,
+  fieldId: FieldId,
+  options?: MockOptionsMethodGet,
 ) {
-  fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, {
-    status: 403,
-    body: PERMISSION_ERROR,
-  });
+  fetchMock.get(
+    `path:/api/field/${fieldId}/values`,
+    {
+      status: 403,
+      body: PERMISSION_ERROR,
+    },
+    options,
+  );
 }
 
 export function setupFieldsValuesEndpoints(
   fieldsValues: GetFieldValuesResponse[],
 ) {
-  fieldsValues.forEach((fieldValues) => setupFieldValuesEndpoints(fieldValues));
+  fieldsValues.forEach((fieldValues) => setupFieldValuesEndpoint(fieldValues));
 }
 
 export function setupFieldSearchValuesEndpoint(

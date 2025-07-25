@@ -64,35 +64,9 @@
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
                     :model_id (:id pulse)
-                    :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
+                    :details  {:recipients [(select-keys (mt/fetch-user :rasta) [:id :email :first_name :last_name])]
                                :filters    []}}
                    (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
-
-(deftest alert-send-event-test
-  (testing "When we send an alert, we also log the event:"
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
-                     :model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)
-                                                         :name "Test Pulse"
-                                                         :alert_condition "rows"}
-                     :model/PulseCard             _ {:pulse_id (:id pulse)
-                                                     :card_id (:id pulse-card)}
-                     :model/PulseChannel          pc {:channel_type :email
-                                                      :pulse_id     (:id pulse)
-                                                      :enabled      true}
-                     :model/PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                                     :user_id          (mt/user->id :rasta)}]
-        (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
-          (mt/with-fake-inbox
-            (mt/with-test-user :lucky
-              (pulse.send/send-pulse! pulse))
-            (is (= {:topic    :alert-send
-                    :user_id  (mt/user->id :crowberto)
-                    :model    "Pulse"
-                    :model_id (:id pulse)
-                    :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
-                               :filters    nil}}
-                   (mt/latest-audit-log-entry :alert-send (:id pulse))))))))))
 
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"

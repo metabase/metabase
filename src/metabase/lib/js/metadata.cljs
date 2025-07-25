@@ -299,9 +299,14 @@
       :field-ref                        (to-array v)
       :lib/source                       (case v
                                           "aggregation" :source/aggregations
-                                          "breakout"    :source/breakouts
+                                          ;; TODO (Cam 7/1/25) -- if we wanted to be smarter we could use `source =
+                                          ;; breakout` to populate `:lib/breakout?` but I don't really think that's
+                                          ;; super necessary.
+                                          "breakout"    nil
+                                          "fields"      nil
                                           (keyword "source" v))
       :metabase.lib.field/temporal-unit (keyword v)
+      :inherited-temporal-unit          (keyword v)
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
@@ -509,9 +514,9 @@
 (defn- metadatas-for-table
   [metadata metadata-type table-id]
   (let [k (case metadata-type
-            :metadata/column        :fields
-            :metadata/metric        :metrics
-            :metadata/segment       :segments)]
+            :metadata/column  :fields
+            :metadata/metric  :metrics
+            :metadata/segment :segments)]
     (into []
           (keep (fn [[_id dlay]]
                   (when-let [object (some-> dlay deref)]

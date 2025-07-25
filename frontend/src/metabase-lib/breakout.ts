@@ -40,6 +40,6 @@ export function breakoutColumn(
   query: Query,
   stageIndex: number,
   breakout: BreakoutClause,
-): ColumnMetadata {
+): ColumnMetadata | null {
   return ML.breakout_column(query, stageIndex, breakout);
 }

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { t } from "ttag";
+import { type ReactNode, useState } from "react";
 
 import {
   DATE_PICKER_OPERATORS,
@@ -17,16 +16,17 @@ import { DateShortcutPicker } from "./DateShortcutPicker";
 import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { RelativeDatePicker } from "./RelativeDatePicker";
 import { SpecificDatePicker } from "./SpecificDatePicker";
+import type { DatePickerSubmitButtonProps } from "./types";
+import { renderDefaultSubmitButton } from "./utils";
 
 type DatePickerProps = {
   value?: DatePickerValue;
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
   availableUnits?: DatePickerUnit[];
-  submitButtonLabel?: string;
-  backButtonLabel?: string;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderBackButton?: () => ReactNode;
   onChange: (value: DatePickerValue) => void;
-  onBack?: () => void;
 };
 
 export function DatePicker({
@@ -34,10 +34,9 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_UNITS,
-  submitButtonLabel = t`Apply`,
-  backButtonLabel,
+  renderSubmitButton = renderDefaultSubmitButton,
+  renderBackButton,
   onChange,
-  onBack,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);
 
@@ -52,7 +51,7 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
           availableUnits={availableUnits}
-          submitButtonLabel={submitButtonLabel}
+          renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
         />
@@ -62,7 +61,7 @@ export function DatePicker({
         <RelativeDatePicker
           value={value?.type === type ? value : undefined}
           availableUnits={availableUnits}
-          submitButtonLabel={submitButtonLabel}
+          renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
         />
@@ -73,7 +72,7 @@ export function DatePicker({
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
           availableUnits={availableUnits}
-          submitButtonLabel={submitButtonLabel}
+          renderSubmitButton={renderSubmitButton}
           onChange={onChange}
           onBack={handleBack}
         />
@@ -83,10 +82,9 @@ export function DatePicker({
         <DateShortcutPicker
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
-          backButtonLabel={backButtonLabel}
+          renderBackButton={renderBackButton}
           onChange={onChange}
           onSelectType={setType}
-          onBack={onBack}
         />
       );
   }

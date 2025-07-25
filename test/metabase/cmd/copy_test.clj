@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.namespace.find :as ns.find]
-   [metabase.cmd.copy :as copy]
-   [metabase.plugins.classloader :as classloader]))
+   [metabase.classloader.core :as classloader]
+   [metabase.cmd.copy :as copy]))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
   (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
@@ -29,13 +29,10 @@
     :model/CacheConfig
     :model/CardFavorite
     :model/CloudMigration
+    :model/ContentTranslation
     :model/DashboardFavorite
     :model/DatabaseRouter
-    :model/FieldUsage
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
     :model/Query
-    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField

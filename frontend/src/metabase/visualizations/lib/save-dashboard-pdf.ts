@@ -1,8 +1,13 @@
 import { t } from "ttag";
 
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
+import {
+  createBrandingElement,
+  getBrandingConfig,
+  getBrandingSize,
+} from "./exports-branding-utils";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
@@ -145,11 +150,23 @@ const HEADER_MARGIN_BOTTOM = 12;
 const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
-export const saveDashboardPdf = async (
-  selector: string,
-  dashboardName: string,
-) => {
-  const fileName = `${dashboardName}.pdf`;
+interface SavePdfProps {
+  selector: string;
+  dashboardName: string;
+  includeBranding: boolean;
+}
+
+export const saveDashboardPdf = async ({
+  selector,
+  dashboardName,
+  includeBranding,
+}: SavePdfProps) => {
+  const originalFileName = `${dashboardName}.pdf`;
+  const fileName = includeBranding
+    ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
+      `Metabase - ${originalFileName}`
+    : originalFileName;
+
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
@@ -161,7 +178,7 @@ export const saveDashboardPdf = async (
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
   const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
@@ -178,10 +195,14 @@ export const saveDashboardPdf = async (
     pdfHeader.getBoundingClientRect().height + HEADER_MARGIN_BOTTOM;
   gridNode.removeChild(pdfHeader);
 
-  const verticalOffset = headerHeight + parametersHeight;
   const contentWidth = gridNode.offsetWidth;
-  const contentHeight = gridNode.offsetHeight + verticalOffset;
   const width = contentWidth + PAGE_PADDING * 2;
+
+  const size = getBrandingSize(width);
+  const brandingHeight = getBrandingConfig(size).h;
+  const verticalOffset =
+    headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
+  const contentHeight = gridNode.offsetHeight + verticalOffset;
 
   const backgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
@@ -192,14 +213,37 @@ export const saveDashboardPdf = async (
     height: contentHeight,
     width: contentWidth,
     useCORS: true,
+    backgroundColor,
+    scale: window.devicePixelRatio || 1,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
+
+      // Handle all dashboard card containers and their children
+      const dashboardCards = node.querySelectorAll("[data-dashcard-key]");
+      dashboardCards.forEach((card) => {
+        if (card instanceof HTMLElement) {
+          // Set background color for the card container
+          card.style.backgroundColor = backgroundColor;
+
+          // Remove any box shadows that might cause grey borders
+          card.style.boxShadow = "none";
+
+          // Set a clean border if needed
+          card.style.border = "1px solid var(--mb-color-border)";
+        }
+      });
+
       if (parametersNode instanceof HTMLElement) {
         node.insertBefore(parametersNode, node.firstChild);
       }
       node.insertBefore(pdfHeader, node.firstChild);
+
+      if (includeBranding) {
+        const branding = createBrandingElement(size);
+        node.insertBefore(branding, node.firstChild);
+      }
     },
   });
 
@@ -231,6 +275,7 @@ export const saveDashboardPdf = async (
   let prevBreak = 0;
 
   pageEnds.forEach((pageBreak, index) => {
+    const isFirstPage = index === 0;
     const isLastPage = index === pageEnds.length - 1;
     const pageBreaksDiff = pageBreak - prevBreak;
 
@@ -278,6 +323,15 @@ export const saveDashboardPdf = async (
         contentWidth,
         sourceHeight,
       );
+
+      if (isFirstPage && includeBranding) {
+        const url =
+          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=pdf_export";
+
+        pdf.link(PAGE_PADDING, PAGE_PADDING, contentWidth, brandingHeight, {
+          url,
+        });
+      }
     }
 
     prevBreak = pageBreak;

@@ -5,8 +5,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.api-routes.core]
    [metabase.api.open-api]
-   [metabase.api.routes]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -20,7 +20,7 @@
 
 (defn- openapi-object []
   (merge
-   (metabase.api.open-api/root-open-api-object #'metabase.api.routes/routes)
+   (metabase.api.open-api/root-open-api-object #'metabase.api-routes.core/routes)
    scalar-config))
 
 (defn generate-dox!
@@ -35,6 +35,6 @@
          openapi-object                 (openapi-object)]
      (with-open [w (java.io.FileWriter. output-file)]
        (.write w before)
-       (json/encode-to openapi-object  w {:pretty true})
+       (json/encode-to openapi-object w {:pretty true})
        (.write w after)))
    (println "Done.")))

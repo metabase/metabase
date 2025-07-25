@@ -389,6 +389,7 @@ export const buildMetricAxis = (
     show: true,
     scale: !!settings["graph.y_axis.unpin_from_zero"],
     type: "value",
+    splitNumber: axisModel.splitNumber,
     ...range,
     ...getAxisNameDefaultOption(
       renderingContext,
@@ -396,15 +397,15 @@ export const buildMetricAxis = (
       axisModel.label,
       shouldFlipAxisName ? -90 : undefined,
     ),
-    splitLine:
-      hasSplitLine && !!settings["graph.y_axis.axis_enabled"]
-        ? {
-            lineStyle: {
-              type: 5,
-              color: renderingContext.getColor("border"),
-            },
-          }
-        : undefined,
+    splitLine: settings["graph.y_axis.axis_enabled"]
+      ? {
+          lineStyle: {
+            type: 5,
+            opacity: hasSplitLine ? 1 : 0,
+            ...renderingContext.theme.cartesian.splitLine.lineStyle,
+          },
+        }
+      : undefined,
     position,
     axisLine: {
       show: false,
@@ -491,3 +492,14 @@ export const buildAxes = (
     ),
   };
 };
+
+export const createAxisVisibilityOption = ({
+  show,
+  splitLineVisible,
+}: {
+  show: boolean;
+  splitLineVisible: boolean;
+}) => ({
+  show,
+  splitLine: { lineStyle: { opacity: splitLineVisible ? 1 : 0 } },
+});

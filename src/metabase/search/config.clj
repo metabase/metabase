@@ -1,23 +1,12 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.core :as perms]
-   [metabase.public-settings :as public-settings]
+   [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
-
-(defsetting search-typeahead-enabled
-  (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
-  :type       :boolean
-  :default    true
-  :visibility :authenticated
-  :export?    true
-  :audit      :getter)
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
@@ -121,7 +110,8 @@
    [:field            {:optional true} :string]
    [:context-key      {:optional true} :keyword]
    [:supported-value? {:optional true} ifn?]
-   [:required-feature {:optional true} :keyword]])
+   [:required-feature {:optional true} :keyword]
+   [:engine           {:optional true} :keyword]])
 
 (def ^:private Filter
   "A normalized representation, for the application to leverage."
@@ -131,16 +121,18 @@
    [:field            :string]
    [:context-key      :keyword]
    [:supported-value? ifn?]
-   [:required-feature [:maybe :keyword]]])
+   [:required-feature [:maybe :keyword]]
+   [:engine           [:maybe :keyword]]])
 
 (mu/defn- build-filter :- Filter
-  [{k :key t :type :keys [context-key field supported-value? required-feature]} :- FilterDef]
+  [{k :key t :type :keys [context-key field supported-value? required-feature engine]} :- FilterDef]
   {:key              k
    :type             (keyword "metabase.search.filter" (name t))
    :field            (or field (u/->snake_case_en (name k)))
    :context-key      (or context-key k)
    :supported-value? (or supported-value? (constantly true))
-   :required-feature required-feature})
+   :required-feature required-feature
+   :engine           (or engine :all)})
 
 (mu/defn- build-filters :- [:map-of :keyword Filter]
   [m]
@@ -150,17 +142,20 @@
 (def filters
   "Specifications for the optional search filters."
   (build-filters
-   {:archived       {:type :single-value, :context-key :archived?}
+   {:archived                {:type :single-value, :context-key :archived?}
     ;; TODO dry this alias up with the index hydration code
-    :created-at     {:type :date-range, :field "model_created_at"}
-    :creator-id     {:type :list, :context-key :created-by}
+    :created-at              {:type :date-range, :field "model_created_at"}
+    :creator-id              {:type :list, :context-key :created-by}
     ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
-    :database-id    {:type :single-value, :context-key :table-db-id}
-    :id             {:type :list, :context-key :ids, :field "model_id"}
-    :last-edited-at {:type :date-range}
-    :last-editor-id {:type :list, :context-key :last-edited-by}
-    :native-query   {:type :native-query, :context-key :search-native-query}
-    :verified       {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
+    :database-id             {:type :single-value, :context-key :table-db-id}
+    :id                      {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at          {:type :date-range}
+    :last-editor-id          {:type :list, :context-key :last-edited-by}
+    :native-query            {:type :native-query, :context-key :search-native-query}
+    :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
+    :non-temporal-dim-ids    {:type :single-value :engine :appdb}
+    :has-temporal-dim        {:type :single-value :engine :appdb}
+    :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
   {:default         {:archived               false
@@ -182,7 +177,7 @@
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   [context]
   (let [context   (or context :default)
-        overrides (public-settings/experimental-search-weight-overrides)]
+        overrides (search.settings/experimental-search-weight-overrides)]
     (if (= :all context)
       (merge-with merge static-weights overrides)
       (merge (get static-weights :default)
@@ -246,6 +241,7 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
@@ -257,7 +253,9 @@
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
-   [:include-metadata?                   {:optional true} :boolean]])
+   [:include-metadata?                   {:optional true} :boolean]
+   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
+   [:has-temporal-dim                    {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"

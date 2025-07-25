@@ -1,13 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 
 import type { MetabaseQuestion } from "./question";
 
-/**
- * @interface
- */
 export type MetabaseDataPointObject = Pick<
   ClickObject,
   "value" | "column" | "data" | "event"

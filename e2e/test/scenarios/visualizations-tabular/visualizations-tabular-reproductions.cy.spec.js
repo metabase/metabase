@@ -47,13 +47,15 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => createQuestion(id))
       .then(({ body: { id } }) => H.visitQuestion(id));
 
-    H.cartesianChartCircle().eq(0).click();
+    // Metric filters are transformed into aggregation case expression condition. The 21st point is first non filtered
+    // point.
+    H.cartesianChartCircle().eq(21).click();
 
     H.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Created At is Jan 1–31, 2024").should("be.visible");
+      cy.findByText("Created At: Month is Jan 1–31, 2024").should("be.visible");
     });
     // FIXME metrics v2 -- check that the values in column Total are above 150
   });
@@ -1291,5 +1293,218 @@ describe("issue 52339", () => {
       cy.findByText("User → Source");
       cy.findByText("Distinct values of ID");
     });
+  });
+});
+
+describe("issue 56771", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should apply correct column widths after changing query (metabase#56771)", () => {
+    H.openOrdersTable();
+    cy.log(
+      "Resize a column first to make width stored in the visualization settings",
+    );
+    H.resizeTableColumn("ID", 100);
+
+    H.openNotebook();
+    H.join();
+    H.joinTable("Products");
+    H.visualize();
+
+    cy.wait(100); // wait for the column to be resized
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Products → Category)")
+      .as("headerCell")
+      .then(($cell) => {
+        const width = $cell[0].getBoundingClientRect().width;
+        expect(width).to.be.greaterThan(160);
+      });
+  });
+});
+
+describe("issue 57132", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/dataset", function (req) {
+      req.continue((res) => {
+        // remove description from the CATEGORY column
+        const index = res.body.data.cols.findIndex(
+          (col) => col.name === "CATEGORY",
+        );
+        delete res.body.data.cols[index].description;
+      });
+    });
+  });
+
+  it("should render more values when hovering colum header without description (metabase#57132)", () => {
+    H.openProductsTable();
+    H.tableInteractive().findByText("Category").realHover();
+
+    cy.log("The popover should be wide enough to show at least some values");
+    H.popover()
+      .findByText(/^Doohickey, Gadget, Gizmo/)
+      .should("be.visible");
+  });
+});
+
+describe("issue 52333", () => {
+  const baseQuery = `
+SELECT *
+FROM (
+  SELECT
+    category,
+    source,
+    state,
+    SUM(orders.discount) AS discount,
+    SUM(orders.total) AS total,
+    SUM(orders.quantity) AS quantity
+  FROM
+    orders
+    LEFT JOIN products ON orders.product_id = products.id
+    LEFT JOIN people ON orders.user_id = people.id
+  GROUP BY category, source, state
+) AS filtered_orders
+WHERE NOT (
+  category = 'Gizmo'
+  AND (
+    source IN ('Facebook', 'Google', 'Organic', 'Twitter')
+    OR state NOT IN ('AK')
+  )
+);`;
+
+  const baseQuestionDetails = {
+    name: "52333",
+    display: "table",
+    native: {
+      query: baseQuery,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("pivot table should show subtotals for a group of a single value (metabase#52333)", () => {
+    H.createNativeQuestion(baseQuestionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+
+    cy.get("@questionId").then((id) => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${id}`,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CATEGORY",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "SOURCE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+            [
+              "field",
+              "STATE",
+              {
+                "base-type": "type/Text",
+              },
+            ],
+          ],
+        },
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+            columns: [],
+            values: ["count", "avg"],
+          },
+          "pivot_table.column_widths": {
+            leftHeaderWidths: [104, 92, 80],
+            totalLeftHeaderWidths: 276,
+            valueHeaderWidths: {},
+          },
+          "pivot_table.collapsed_rows": {
+            value: ['["Doohickey"]', '["Gadget"]', '["Widget"]'],
+            rows: ["CATEGORY", "SOURCE", "STATE"],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    H.queryBuilderMain().within(() => {
+      cy.findByText("Affiliate");
+      cy.findByText("AK");
+
+      // Ensure it does not show subtotals for the single value by default
+      cy.findByText("Totals for Affiliate").should("not.exist");
+
+      H.openVizSettingsSidebar();
+    });
+
+    H.sidebar().findByText("Condense duplicate totals").click();
+
+    // Ensure it shows subtotals for the single value
+    H.queryBuilderMain()
+      .findByText("Totals for Affiliate")
+      .should("be.visible");
+  });
+});
+
+describe("issue 55673", { tags: "@flaky" }, () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("should be able to close a header popover using Escape (metabase#55673)", () => {
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
+  });
+});
+
+describe("issue 55637", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show column metadata popovers when header cell is clicked (metabase#55637)", () => {
+    H.openOrdersTable();
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("exist");
+
+    H.tableHeaderColumn("ID").click();
+
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("not.exist");
+
+    H.tableHeaderColumn("Tax").realHover();
+    cy.findByTestId("column-info").should("not.exist");
   });
 });

@@ -1,9 +1,18 @@
 import cx from "classnames";
 import { useMount } from "react-use";
+import { P, match } from "ts-pattern";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Link from "metabase/core/components/Link";
-import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Link from "metabase/common/components/Link";
+import {
+  Box,
+  Flex,
+  Image,
+  Stack,
+  Text,
+  Title,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
@@ -37,11 +46,12 @@ export type UpsellCardProps = {
   title: string;
   buttonText: string;
   campaign: string;
-  source: string;
+  location: string;
   illustrationSrc?: string;
   children: React.ReactNode;
   large?: boolean;
   style?: React.CSSProperties;
+  onClick?: () => void;
 } & CardWidthProps &
   CardLinkProps;
 
@@ -50,23 +60,24 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
   buttonText,
   buttonLink,
   campaign,
-  source,
+  location,
   illustrationSrc,
   internalLink,
   children,
   fullWidth,
   maxWidth,
   large = false,
+  onClick,
   ...props
 }: UpsellCardProps) => {
   const url = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
-    source,
+    location,
   });
 
   useMount(() => {
-    trackUpsellViewed({ source, campaign });
+    trackUpsellViewed({ location, campaign });
   });
 
   const gemSize = large ? "24px" : undefined;
@@ -88,7 +99,7 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
       <Stack className={S.MainStack} gap={0}>
         <Flex align="center" gap="sm" p="1rem" pb="0.75rem">
           <UpsellGem size={gemSize} />
-          <Title lh={1.25} order={2} className={S.Title}>
+          <Title lh={1.25} order={3} className={S.Title}>
             {title}
           </Title>
         </Flex>
@@ -97,23 +108,62 @@ export const _UpsellCard: React.FC<UpsellCardProps> = ({
             {children}
           </Text>
           <Box mx="md" mb="lg">
-            {buttonLink !== undefined ? (
-              <ExternalLink
-                onClickCapture={() => trackUpsellClicked({ source, campaign })}
-                href={url}
-                className={S.UpsellCTALink}
-              >
-                {buttonText}
-              </ExternalLink>
-            ) : (
-              <Link
-                onClickCapture={() => trackUpsellClicked({ source, campaign })}
-                to={internalLink}
-                className={S.UpsellCTALink}
-              >
-                {buttonText}
-              </Link>
-            )}
+            {match({ onClick, buttonLink, internalLink })
+              .with(
+                {
+                  onClick: P.nonNullable,
+                  buttonLink: P.any,
+                  internalLink: P.nullish,
+                },
+                (args) => (
+                  <UnstyledButton
+                    onClick={() => {
+                      trackUpsellClicked({ location, campaign });
+                      args.onClick();
+                    }}
+                    className={S.UpsellCTALink}
+                  >
+                    {buttonText}
+                  </UnstyledButton>
+                ),
+              )
+              .with(
+                {
+                  onClick: P.nullish,
+                  buttonLink: P.nonNullable,
+                  internalLink: P.nullish,
+                },
+                () => (
+                  <ExternalLink
+                    onClickCapture={() =>
+                      trackUpsellClicked({ location, campaign })
+                    }
+                    href={url}
+                    className={S.UpsellCTALink}
+                  >
+                    {buttonText}
+                  </ExternalLink>
+                ),
+              )
+              .with(
+                {
+                  onClick: P.any,
+                  buttonLink: P.any,
+                  internalLink: P.nonNullable,
+                },
+                (args) => (
+                  <Link
+                    onClickCapture={() =>
+                      trackUpsellClicked({ location, campaign })
+                    }
+                    to={args.internalLink}
+                    className={S.UpsellCTALink}
+                  >
+                    {buttonText}
+                  </Link>
+                ),
+              )
+              .otherwise(() => null)}
           </Box>
         </Stack>
       </Stack>

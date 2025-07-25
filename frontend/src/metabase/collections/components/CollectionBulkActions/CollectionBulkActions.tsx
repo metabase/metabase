@@ -4,9 +4,10 @@ import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import { isTrashedCollection } from "metabase/collections/utils";
-import { BulkActionBar } from "metabase/components/BulkActionBar";
-import Modal from "metabase/components/Modal";
-import { BulkMoveModal } from "metabase/containers/MoveModal";
+import { BulkActionBar } from "metabase/common/components/BulkActionBar";
+import Modal from "metabase/common/components/Modal";
+import { BulkMoveModal } from "metabase/common/components/MoveModal";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
@@ -114,6 +115,11 @@ export const CollectionBulkActions = memo(
       selected.length,
     );
 
+    // This is a little cheeky, but by virtue of the screens we show the BulkMoveModal, all
+    // selected items should have the same collection id. yatta!
+    const recentAndSearchFilter = (item: CollectionPickerItem) =>
+      item.model === "collection" && item.id === collection.id;
+
     return (
       <>
         <BulkActionBar message={actionMessage} opened={isVisible}>
@@ -156,6 +162,7 @@ export const CollectionBulkActions = memo(
             initialCollectionId={
               isTrashedCollection(collection) ? "root" : collection.id
             }
+            recentAndSearchFilter={recentAndSearchFilter}
           />
         )}
 

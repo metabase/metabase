@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.core :as search]
    [metabase.search.task.search-index :as task]
    [metabase.search.test-util :as search.tu]
    [toucan2.core :as t2]))
@@ -27,12 +28,12 @@
    ;; TODO this is coupled to appdb engines at the moment
     (t2/query (sql.helpers/drop-table (search.index/active-table)))
     (testing "It can recreate the index from scratch"
-      (is (task/reindex!))
+      (is (search/reindex!))
       (let [initial-size (index-size)
             table-name (search.index/active-table)]
         (is (pos? initial-size))
         (t2/delete! table-name (t2/select-one-pk table-name))
         (is (= (dec initial-size) (index-size)))
         (testing "It can cycle the index gracefully"
-          (is (task/reindex!))
+          (is (search/reindex!))
           (is (= initial-size (index-size))))))))

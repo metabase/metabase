@@ -98,8 +98,7 @@
                     [:/
                      [:sum [:field 42 {:base-type :type/Float}]]
                      [:coalesce [:sum [:field 36 {:base-type :type/Float}]] 1]]
-                    {:name "Avg discount", :display-name "Avg discount"}]],
-                  :aggregation-idents {0 "ZOn_HshYdSEeteY5ArmS9"}},
+                    {:name "Avg discount", :display-name "Avg discount"}]]}
                  :parameters []}]
       (is (not (me/humanize (mr/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
@@ -111,9 +110,7 @@
                  :query
                  {:source-table 5,
                   :aggregation [[:count]],
-                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]],
-                  :aggregation-idents {0 "sAl2I4RGqYvmLw1lfJinY"},
-                  :breakout-idents {0 "N7YYtmSRsForQqViDhkrg"}},
+                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]]}
                  :parameters []}]
       (is (not (me/humanize (mr/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
@@ -226,3 +223,34 @@
     [:segment 1]
     [:and [:expression "bool1"] [:expression "bool2"]]
     [:or  [:expression "bool1"] [:expression "bool2"]]))
+
+(deftest ^:parallel emptyable-filter-test
+  (are [x] (not (me/humanize (mr/explain ::mbql.s/Filter x)))
+    [:is-empty ""]
+    [:is-empty "A"]
+    [:is-empty [:field 1 nil]]
+    [:is-empty [:ltrim "A"]]
+    [:is-empty [:ltrim [:field 1 nil]]]
+    [:not-empty ""]
+    [:not-empty "A"]
+    [:not-empty [:field 1 nil]]
+    [:not-empty [:ltrim "A"]]
+    [:not-empty [:ltrim [:field 1 nil]]]))
+
+(deftest ^:parallel field-with-empty-name-test
+  (testing "We need to support fields with empty names, this is legal in SQL Server (QUE-1418)"
+    ;; we should support field names with only whitespace as well.
+    (doseq [field-name [""
+                        " "]
+            :let [field-ref [:field field-name {:base-type :type/Text}]]]
+      (testing (pr-str field-ref)
+        (are [schema] (not (me/humanize (mr/explain schema field-ref)))
+          ::mbql.s/Reference
+          ::mbql.s/field)))))
+
+(deftest ^:parallel datetime-schema-test
+  (doseq [expr [[:datetime ""]
+                [:datetime "" {}]
+                [:datetime "" {:mode :iso}]
+                [:datetime 10 {:mode :unix-seconds}]]]
+    (is (mr/validate mbql.s/datetime expr))))

@@ -542,191 +542,6 @@ describe("issue 18454", () => {
   });
 });
 
-describe("adding an additional series to a dashcard (metabase#20637)", () => {
-  function createQuestionsAndDashboard() {
-    const dashcardQuestion = {
-      name: "20637 Question 1",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", PRODUCTS.CATEGORY, null]],
-      },
-      visualization_settings: {
-        "graph.dimensions": ["CATEGORY"],
-        "graph.metrics": ["count"],
-      },
-      display: "line",
-    };
-
-    const additionalSeriesQuestion = {
-      name: "20637 Question 2",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", PRODUCTS.CATEGORY, null]],
-      },
-      visualization_settings: {
-        "graph.dimensions": ["CATEGORY"],
-        "graph.metrics": ["count"],
-      },
-      display: "bar",
-    };
-
-    H.createQuestion(additionalSeriesQuestion).then(
-      ({ body: { id: additionalSeriesId } }) => {
-        cy.intercept("POST", `/api/card/${additionalSeriesId}/query`).as(
-          "additionalSeriesCardQuery",
-        );
-
-        H.createQuestionAndDashboard({
-          questionDetails: dashcardQuestion,
-        }).then(({ body: { id, card_id, dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-            dashcards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 10,
-              },
-            ],
-          });
-
-          cy.visit(`/dashboard/${dashboard_id}`);
-
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-          ).as("dashcardQuery");
-
-          cy.intercept(
-            "POST",
-            `/api/dashboard/${dashboard_id}/dashcard/*/card/${additionalSeriesId}/query`,
-          ).as("additionalSeriesDashcardQuery");
-        });
-      },
-    );
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should use the correct query endpoints (metabase#20637)", () => {
-    createQuestionsAndDashboard();
-    cy.wait("@dashcardQuery");
-
-    // edit the dashboard and open the add series modal
-    cy.icon("pencil").click();
-    // the button is made clickable by css using :hover so we need to force it
-    cy.findByTestId("add-series-button").click({ force: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("20637 Question 2").click();
-    // make sure the card query endpoint was used
-    cy.wait("@additionalSeriesCardQuery");
-
-    cy.findByTestId("add-series-modal").button("Done").click();
-    H.saveDashboard();
-
-    // refresh the page and make sure the dashcard query endpoint was used
-    cy.reload();
-    cy.wait(["@dashcardQuery", "@additionalSeriesDashcardQuery"]);
-  });
-});
-
-describe("issue 22265", () => {
-  const baseQuestion = {
-    name: "Base question",
-    display: "scalar",
-    native: {
-      query: "SELECT 1",
-    },
-  };
-
-  const invalidQuestion = {
-    name: "Invalid question",
-    display: "scalar",
-    native: {
-      query: "SELECT 1",
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/card/*/series?limit=*").as("seriesQuery");
-  });
-
-  it("should allow editing dashcard series when added series are broken (metabase#22265)", () => {
-    H.createNativeQuestion(invalidQuestion, {
-      wrapId: true,
-      idAlias: "invalidQuestionId",
-    });
-    H.createNativeQuestionAndDashboard({ questionDetails: baseQuestion }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          dashcards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 10,
-            },
-          ],
-        });
-
-        cy.wrap(dashboard_id).as("dashboardId");
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    H.editDashboard();
-    cy.findByTestId("add-series-button").click({ force: true });
-    cy.wait("@seriesQuery");
-
-    cy.findByTestId("add-series-modal").within(() => {
-      cy.icon("warning").should("not.exist");
-      cy.findByLabelText(invalidQuestion.name).should("exist").click();
-      cy.button("Done").click();
-    });
-
-    cy.button("Save").click();
-    cy.button("Saving…").should("not.exist");
-
-    cy.log("Update the added series' question so that it's broken");
-    const questionDetailUpdate = {
-      dataset_query: {
-        type: "native",
-        native: {
-          query: "SELECT --2",
-          "template-tags": {},
-        },
-        database: 1,
-      },
-    };
-    cy.get("@invalidQuestionId").then((invalidQuestionId) => {
-      cy.request("PUT", `/api/card/${invalidQuestionId}`, questionDetailUpdate);
-    });
-
-    H.visitDashboard("@dashboardId");
-    H.editDashboard();
-    cy.findByTestId("add-series-button").click({ force: true });
-    cy.wait("@seriesQuery");
-
-    cy.findByTestId("add-series-modal").within(() => {
-      cy.findByLabelText(invalidQuestion.name).should("exist");
-      cy.icon("warning").should("not.exist");
-    });
-  });
-});
-
 describe("issue 23137", () => {
   const GAUGE_QUESTION_DETAILS = {
     display: "gauge",
@@ -877,7 +692,7 @@ describe("issues 27020 and 27105: static-viz fails to render for certain date fo
 });
 
 describe("issue 29304", () => {
-  // Couldn't import from `metabase/components/ExplicitSize` because dependency issue.
+  // Couldn't import from `metabase/common/components/ExplicitSize` because dependency issue.
   // It will fail Cypress tests.
   const WAIT_TIME = 300;
 
@@ -981,7 +796,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 39;
+        const expectedWidth = 33;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
@@ -1143,29 +958,24 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        /**
-         * should truncate value and show value tooltip on hover
-         */
-        const scalarContainer = cy.findByTestId("scalar-container");
+        cy.log("should truncate value and show value tooltip on hover");
 
-        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
+        scalarContainer().then(($element) =>
+          H.assertIsEllipsified($element[0]),
+        );
         //TODO: Need to hover on the actual text, not just the container. This is a weird one
-        scalarContainer.realHover({ position: "bottom" });
+        scalarContainer().realHover({ position: "bottom" });
 
         cy.findByRole("tooltip").findByText("18,760").should("exist");
 
-        /**
-         * should show ellipsis icon with question name in tooltip
-         */
+        cy.log("should show ellipsis icon with question name in tooltip");
         cy.findByTestId("scalar-title-icon").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SCALAR_QUESTION.name)
           .should("exist");
 
-        /**
-         * should not show description
-         */
+        cy.log("should not show description");
         cy.findByTestId("scalar-description").should("not.exist");
       });
     });
@@ -1180,38 +990,28 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        /**
-         * should not truncate value and should not show value tooltip on hover
-         */
-        const scalarContainer = cy.findByTestId("scalar-container");
-
-        scalarContainer.then(($element) =>
+        cy.log(
+          "should not truncate value and should not show value tooltip on hover",
+        );
+        scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * should not show ellipsis icon for title
-         */
+        cy.log("should not show ellipsis icon for title");
         cy.findByTestId("scalar-title-icon").should("not.exist");
 
-        /**
-         * should truncate title and show title tooltip on hover
-         */
-        const scalarTitle = cy.findByTestId("scalar-title");
-
-        scalarTitle.then(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle.realHover();
+        cy.log("should truncate title and show title tooltip on hover");
+        scalarTitle().then(($element) => H.assertIsEllipsified($element[0]));
+        scalarTitle().realHover();
 
         cy.findByRole("tooltip")
           .findByText(SCALAR_QUESTION.name)
           .should("exist");
 
-        /**
-         * should show description tooltip on hover
-         */
+        cy.log("should show description tooltip on hover");
         cy.findByTestId("scalar-description").realHover();
 
         cy.findByRole("tooltip")
@@ -1230,36 +1030,28 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        /**
-         * should not truncate value and should not show value tooltip on hover
-         */
-        const scalarContainer = cy.findByTestId("scalar-container");
-
-        scalarContainer.then(($element) =>
+        cy.log(
+          "should not truncate value and should not show value tooltip on hover",
+        );
+        scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * should not show ellipsis icon for title
-         */
+        cy.log("should not show ellipsis icon for title");
         cy.findByTestId("scalar-title-icon").should("not.exist");
 
-        /**
-         * should not truncate title and should not show title tooltip on hover
-         */
-        const scalarTitle = cy.findByTestId("scalar-title");
-
-        scalarTitle.then(($element) => H.assertIsNotEllipsified($element[0]));
-        scalarTitle.realHover();
+        cy.log(
+          "should not truncate title and should not show title tooltip on hover",
+        );
+        scalarTitle().then(($element) => H.assertIsNotEllipsified($element[0]));
+        scalarTitle().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * should show description tooltip on hover
-         */
+        cy.log("should show description tooltip on hover");
         cy.findByTestId("scalar-description").realHover();
 
         H.tooltip().findByText(SCALAR_QUESTION.description).should("exist");
@@ -1307,38 +1099,32 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        /**
-         * it should not truncate value and should not show value tooltip on hover
-         */
-        const scalarContainer = cy.findByTestId("scalar-container");
-
-        scalarContainer.then(($element) =>
+        cy.log(
+          "it should not truncate value and should not show value tooltip on hover",
+        );
+        scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * it should not display period because the card height is too small to fit it
-         */
+        cy.log(
+          "it should not display period because the card height is too small to fit it",
+        );
         cy.findByTestId("scalar-period").should("not.exist");
 
-        /**
-         * it should truncate title and show title tooltip on hover
-         */
-        const scalarTitle = cy.findByTestId("legend-caption-title");
-
-        scalarTitle.then(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle.realHover();
+        cy.log("it should truncate title and show title tooltip on hover");
+        cy.findByTestId("legend-caption-title")
+          .as("title")
+          .then(($element) => H.assertIsEllipsified($element[0]));
+        cy.get("@title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
-        /**
-         * it should show previous value tooltip on hover
-         */
+        cy.log("it should show previous value tooltip on hover");
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").within(() => {
@@ -1346,58 +1132,37 @@ describe("issue 31628", () => {
           cy.contains("• vs. previous month: 527").should("exist");
         });
 
-        /**
-         * it should show previous value as a percentage only (without truncation)
-         */
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        cy.log(
+          "it should show previous value as a percentage only (without truncation)",
+        );
+        previousValue()
+          .should("contain", "35%")
+          .and("not.contain", "• vs. previous month: 527");
 
-        previousValue.within(() => {
-          cy.contains("34.7%").should("exist");
-          cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
-            H.assertIsNotEllipsified($element[0]),
-          );
-        });
-      });
-
-      it("should show previous value as a percentage only up to 1 decimal place (without truncation, 1200x600)", () => {
-        cy.viewport(1200, 600);
-
-        const previousValue = cy.findByTestId("scalar-previous-value");
-
-        previousValue.within(() => {
-          cy.contains("34.7%").should("exist");
-          cy.contains("34.72%").should("not.exist");
-          cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
-            H.assertIsNotEllipsified($element[0]),
-          );
-        });
+        previousValue().then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
       });
 
       it("should show previous value as a percentage without decimal places (without truncation, 1000x600)", () => {
         cy.viewport(1000, 600);
 
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        previousValue()
+          .should("contain", "35%")
+          .and("not.contain", "34.72%")
+          .and("not.contain", "• vs. previous month: 527");
 
-        previousValue.within(() => {
-          cy.contains("35%").should("exist");
-          cy.contains("34.72%").should("not.exist");
-          cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
-            H.assertIsNotEllipsified($element[0]),
-          );
-        });
+        previousValue().then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
       });
 
       it("should truncate previous value (840x600)", () => {
         cy.viewport(840, 600);
 
-        const previousValue = cy.findByTestId("scalar-previous-value");
-
-        previousValue
+        previousValue()
           .findByText("35%")
-          .then(($element) => H.assertIsEllipsified($element[0]));
+          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 
@@ -1411,60 +1176,46 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        /**
-         * should not truncate value and should not show value tooltip on hover
-         */
-        let scalarContainer = cy.findByTestId("scalar-container");
-
-        scalarContainer.then(($element) =>
+        cy.log(
+          "should not truncate value and should not show value tooltip on hover",
+        );
+        scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * it should display the period
-         */
+        cy.log("it should display the period");
         cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
 
-        /**
-         * should truncate title and show title tooltip on hover
-         */
-        scalarContainer = cy.findByTestId("legend-caption-title");
+        cy.log("should truncate title and show title tooltip on hover");
 
-        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
-        scalarContainer.realHover();
+        cy.findByTestId("legend-caption-title")
+          .as("title")
+          .then(($element) => H.assertIsEllipsified($element[0]));
+        cy.get("@title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
-        /**
-         * should show description tooltip on hover
-         */
+        cy.log("should show description tooltip on hover");
         cy.findByTestId("legend-caption").icon("info").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.description)
           .should("exist");
 
-        /**
-         * should show previous value in full
-         */
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        cy.log("should show previous value in full");
+        previousValue()
+          .should("contain", "34.72%")
+          .and("contain", "• vs. previous month: 527");
+        previousValue().then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
 
-        previousValue.within(() => {
-          cy.contains("34.72%").should("exist");
-          cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.then(($element) =>
-            H.assertIsNotEllipsified($element[0]),
-          );
-        });
-
-        /**
-         * should not show previous value tooltip on hover
-         */
+        cy.log("should not show previous value tooltip on hover");
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1481,185 +1232,49 @@ describe("issue 31628", () => {
       });
 
       it("should follow truncation rules", () => {
-        /**
-         * should not truncate value and should not show value tooltip on hover
-         */
-        let scalarContainer = cy.findByTestId("scalar-container");
-
-        scalarContainer.then(($element) =>
+        cy.log(
+          "should not truncate value and should not show value tooltip on hover",
+        );
+        scalarContainer().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * it should display the period
-         */
+        cy.log("it should display the period");
         cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
 
-        /**
-         * should truncate title and show title tooltip on hover
-         */
-        scalarContainer = cy.findByTestId("legend-caption-title");
-
-        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
-        scalarContainer.realHover();
+        cy.log("should truncate title and show title tooltip on hover");
+        cy.findByTestId("legend-caption-title")
+          .as("title")
+          .then(($element) => H.assertIsEllipsified($element[0]));
+        cy.get("@title").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
           .should("exist");
 
-        /**
-         * should show description tooltip on hover
-         */
+        cy.log("should show description tooltip on hover");
         cy.findByTestId("legend-caption").icon("info").realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.description)
           .should("exist");
 
-        /**
-         * should show previous value in full
-         */
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        cy.log("should show previous value in full");
+        previousValue()
+          .should("contain", "34.72%")
+          .and("contain", "• vs. previous month: 527");
+        previousValue().then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
 
-        previousValue.within(() => {
-          cy.contains("34.72%").should("exist");
-          cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.then(($element) =>
-            H.assertIsNotEllipsified($element[0]),
-          );
-        });
-
-        /**
-         * should not show previous value tooltip on hover
-         */
+        cy.log("should not show previous value tooltip on hover");
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");
       });
-    });
-  });
-});
-
-describe("issue 32231", () => {
-  const baseQuestion = {
-    name: "Base question",
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["count"]],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CATEGORY"],
-      "graph.metrics": ["count"],
-    },
-    display: "bar",
-  };
-
-  const incompleteQuestion = {
-    name: "Incomplete question",
-    native: {
-      query: "select 1;",
-    },
-    visualization_settings: {
-      "graph.dimensions": [null],
-      "graph.metrics": ["1"],
-    },
-    display: "bar",
-  };
-
-  const issue32231Error =
-    "Cannot read properties of undefined (reading 'name')";
-  const multipleSeriesError = "Unable to combine these questions";
-  const defaultError = "Which fields do you want to use for the X and Y axes?";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/card/*/series?limit=*").as("seriesQuery");
-  });
-
-  it("should show user-friendly error when combining series that cannot be visualized together (metabase#32231)", () => {
-    H.createNativeQuestion(incompleteQuestion);
-    H.createQuestionAndDashboard({ questionDetails: baseQuestion }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          dashcards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 10,
-            },
-          ],
-        });
-
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    H.editDashboard();
-    cy.findByTestId("add-series-button").click({ force: true });
-    cy.wait("@seriesQuery");
-
-    cy.findByTestId("add-series-modal").within(() => {
-      H.echartsContainer().should("exist");
-      cy.findByText(issue32231Error).should("not.exist");
-      cy.findByText(multipleSeriesError).should("not.exist");
-      cy.findByText(defaultError).should("not.exist");
-
-      cy.findByLabelText(incompleteQuestion.name).click();
-
-      H.echartsContainer().should("not.exist");
-      cy.findByText(issue32231Error).should("not.exist");
-      cy.findByText(multipleSeriesError).should("exist");
-      cy.findByText(defaultError).should("not.exist");
-
-      cy.findByLabelText(incompleteQuestion.name).click();
-
-      H.echartsContainer().should("exist");
-      cy.findByText(issue32231Error).should("not.exist");
-      cy.findByText(multipleSeriesError).should("not.exist");
-      cy.findByText(defaultError).should("not.exist");
-    });
-  });
-
-  it("should show default visualization error message when the only series is incomplete", () => {
-    H.createNativeQuestionAndDashboard({
-      questionDetails: incompleteQuestion,
-    }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-        dashcards: [
-          {
-            id,
-            card_id,
-            row: 0,
-            col: 0,
-            size_x: 16,
-            size_y: 10,
-          },
-        ],
-      });
-
-      H.visitDashboard(dashboard_id);
-    });
-
-    cy.findByTestId("dashcard").findByText(defaultError).should("exist");
-
-    cy.icon("pencil").click();
-    cy.findByTestId("add-series-button").click({ force: true });
-    cy.wait("@seriesQuery");
-
-    cy.findByTestId("add-series-modal").within(() => {
-      cy.get("[data-element-id=line-area-bar-chart]").should("not.exist");
-      cy.findByText(issue32231Error).should("not.exist");
-      cy.findByText(multipleSeriesError).should("not.exist");
-      cy.findByText(defaultError).should("exist");
     });
   });
 });
@@ -1797,7 +1412,6 @@ describe("issue 48878", () => {
     // Create a dummy model so that GET /api/search does not return the model want to test.
     // If we don't do this, GET /api/search will return and put card object with dataset_query
     // attribute in the redux store (entity framework) which would prevent the issue from happening.
-    cy.visit("/model/new");
     createModel({
       name: "Dummy model",
       query: "select 1",
@@ -1805,8 +1419,6 @@ describe("issue 48878", () => {
 
     cy.log("create model");
 
-    cy.button("New").click();
-    H.popover().findByText("Model").click();
     createModel({
       name: "SQL Model",
       query: "select * from orders limit 5",
@@ -1863,12 +1475,13 @@ describe("issue 48878", () => {
   }
 
   function createModel({ name, query }) {
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use a native query")
       .click();
 
     H.NativeEditor.focus().type(query);
-    cy.findByTestId("native-query-editor-sidebar")
+    cy.findByTestId("native-query-editor-container")
       .findByTestId("run-button")
       .click();
     cy.wait("@dataset");
@@ -1960,3 +1573,7 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
     );
   });
 });
+
+const scalarContainer = () => cy.findByTestId("scalar-container");
+const scalarTitle = () => cy.findByTestId("scalar-title");
+const previousValue = () => cy.findByTestId("scalar-previous-value");

@@ -18,7 +18,7 @@ Metabase is an open-source business intelligence platform. You can use Metabase 
 
 ### Metabase Cloud
 
-The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](./cloud/cloud-vs-self-hosting.md). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
 
 ### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
@@ -49,6 +49,7 @@ Metabase's reference documentation.
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
+- [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
 - [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
@@ -94,7 +95,7 @@ Metabase's reference documentation.
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
 - [Detail](./questions/visualizations/detail.md)
-- [Funnel charts](./questions/visualizations/detail.md)
+- [Funnel charts](./questions/visualizations/funnel.md)
 - [Gauge charts](./questions/visualizations/gauge.md)
 - [Line, bar, and area charts](./questions/visualizations/line-bar-and-area-charts.md)
 - [Maps](./questions/visualizations/map.md)
@@ -138,11 +139,12 @@ Metabase's reference documentation.
 - [Basic actions](./actions/basic.md)
 - [Custom actions](./actions/custom.md)
 
-### Organization
+### Exploration and organization
 
 - [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
+- [Keyboard shortcuts](./exploration-and-organization/keyboard-shortcuts.md)
 - [History](./exploration-and-organization/history.md)
 - [Trash](./exploration-and-organization/delete-and-restore.md)
 - [Data reference](./exploration-and-organization/data-model-reference.md)
@@ -181,8 +183,11 @@ Metabase's reference documentation.
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
 - [Data sandbox examples](./permissions/data-sandbox-examples.md)
+- [Connection impersonation](./permissions/impersonation.md)
+- [Database routing](./permissions/database-routing.md)
 - [Snippets folder permissions](./permissions/snippets.md)
 - [Notification permissions](./permissions/notifications.md)
+- [Configuring permissions for embedding](./permissions/embedding.md)
 
 ### Embedding
 
@@ -192,6 +197,7 @@ Metabase's reference documentation.
 - [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
 - [Static embedding](./embedding/static-embedding.md)
 - [Parameters for static embeds](./embedding/static-embedding-parameters.md)
+- [Securing embedded Metabase](./embedding/securing-embeds.md)
 
 ### Configuration
 
@@ -217,9 +223,9 @@ Metabase's reference documentation.
 - [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
-### Cloud
+### Metabase Cloud
 
-- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
+- [Documentation for Metabase Cloud and Store](./cloud/start.md)
 
 ### Metabase API
 
@@ -252,10 +258,6 @@ Metabase's reference documentation.
 
 Share and connect with other Metabasers.
 
-### [Metabase Cloud](https://www.metabase.com/cloud/docs)
-
-For docs specific to Metabase Cloud plans.
-
 ### [Community stories](https://www.metabase.com/community)
 
 Practical advice from our community.
@@ -264,7 +266,7 @@ Practical advice from our community.
 
 News, updates, and ideas.
 
-### [Customers](https://www.metabase.com/case_studies)
+### [Customers](https://www.metabase.com/case-studies)
 
 Real companies, real data, real stories.
 
@@ -291,3 +293,5 @@ Data jargon explained.
 ### [Metabase Experts](https://www.metabase.com/partners/)
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+
+<!-- bump 2 -->

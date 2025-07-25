@@ -86,7 +86,9 @@ export const getChangeWidth = (width: number): number => {
 export const COMPARISON_SELECTOR_OPTIONS = {
   ANOTHER_COLUMN: {
     type: COMPARISON_TYPES.ANOTHER_COLUMN,
-    name: t`Value from another column…`,
+    get name() {
+      return t`Value from another column…`;
+    },
   },
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
@@ -96,11 +98,15 @@ export const COMPARISON_SELECTOR_OPTIONS = {
   },
   PREVIOUS_VALUE: {
     type: COMPARISON_TYPES.PREVIOUS_VALUE,
-    name: t`Previous value`,
+    get name() {
+      return t`Previous value`;
+    },
   },
   STATIC_NUMBER: {
     type: COMPARISON_TYPES.STATIC_NUMBER,
-    name: t`Custom value…`,
+    get name() {
+      return t`Custom value…`;
+    },
   },
 } as const;
 

@@ -1,7 +1,7 @@
 import fs from "fs";
+import path from "path";
 
 import { glob } from "glob";
-import path from "path";
 
 import { NEXTJS_DEMO_ROUTE_NAME } from "../constants/config";
 import {

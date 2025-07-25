@@ -54,3 +54,53 @@ export function isFixedPositionElementVisible(element: HTMLElement): boolean {
 
   return true;
 }
+
+/**
+ * Asserts that an element never exists from when this assertion was called
+ * up until the timeout expires, checked at every polling interval.
+ *
+ * @param shouldNotExistSelector - selector of the element that should not exist
+ * @param successSelector - selector of the element that when present, marks the assertion as successful
+ * @param rejectionMessage - message to reject with if the element exists
+ * @param pollInterval - how often to check for the element
+ * @param timeout - how long to wait before failing the test
+ */
+export function assertElementNeverExists({
+  shouldNotExistSelector,
+  successSelector,
+  rejectionMessage,
+  pollInterval,
+  timeout,
+}: {
+  shouldNotExistSelector: string;
+  successSelector: string;
+  rejectionMessage: string;
+  pollInterval: number;
+  timeout: number;
+}) {
+  cy.window().then((win) => {
+    return new Cypress.Promise((resolve, reject) => {
+      const checkInterval = setInterval(() => {
+        const shouldNotExistElement = win.document.querySelector(
+          shouldNotExistSelector,
+        );
+        const successElement = win.document.querySelector(successSelector);
+
+        if (shouldNotExistElement) {
+          clearInterval(checkInterval);
+          reject(new Error(rejectionMessage));
+        } else if (successElement) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, pollInterval);
+
+      setTimeout(() => {
+        const timeoutMessage = `timeout exceeded after ${timeout}ms. expect "${successSelector}" to eventually exist.`;
+
+        clearInterval(checkInterval);
+        reject(new Error(timeoutMessage));
+      }, timeout);
+    });
+  });
+}

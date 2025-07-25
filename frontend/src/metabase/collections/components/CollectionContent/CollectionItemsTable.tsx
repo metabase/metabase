@@ -19,14 +19,13 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
-import { ItemsTable } from "metabase/components/ItemsTable";
-import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
-import { PaginationControls } from "metabase/components/PaginationControls";
+import { ItemsTable } from "metabase/common/components/ItemsTable";
+import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Search from "metabase/entities/search";
-import { usePagination } from "metabase/hooks/use-pagination";
-import { useSelector } from "metabase/lib/redux";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -35,6 +34,7 @@ import type {
   CollectionItem,
   CollectionItemModel,
   ListCollectionItemsRequest,
+  ListCollectionItemsSortColumn,
 } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 import type { State } from "metabase-types/store";
@@ -46,7 +46,7 @@ import {
 
 const getDefaultSortingOptions = (
   collection: Collection | undefined,
-): SortingOptions => {
+): SortingOptions<ListCollectionItemsSortColumn> => {
   return isRootTrashCollection(collection)
     ? {
         sort_column: "last_edited_at",
@@ -118,10 +118,9 @@ export const CollectionItemsTable = ({
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
 }: CollectionItemsTableProps) => {
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-
-  const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
-    useState<SortingOptions>(() => getDefaultSortingOptions(collection));
+  const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState<
+    SortingOptions<ListCollectionItemsSortColumn>
+  >(() => getDefaultSortingOptions(collection));
 
   const [total, setTotal] = useState<number>();
 
@@ -136,14 +135,14 @@ export const CollectionItemsTable = ({
   }, [collectionId, resetPage]);
 
   const handleUnpinnedItemsSortingChange = useCallback(
-    (sortingOpts: SortingOptions) => {
+    (sortingOpts: SortingOptions<ListCollectionItemsSortColumn>) => {
       setUnpinnedItemsSorting(sortingOpts);
       setPage(0);
     },
     [setPage],
   );
 
-  const showAllItems = isEmbeddingSdk || isRootTrashCollection(collection);
+  const showAllItems = isEmbeddingSdk() || isRootTrashCollection(collection);
 
   return (
     <CollectionItemsTableContent
@@ -189,11 +188,13 @@ type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   loading: boolean;
   page: number;
   total: number | undefined;
-  unpinnedItemsSorting: SortingOptions;
+  unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
   unpinnedQuery: ListCollectionItemsRequest;
   onNextPage: () => void;
   onPreviousPage: () => void;
-  onUnpinnedItemsSortingChange: (unpinnedItemsSorting: SortingOptions) => void;
+  onUnpinnedItemsSortingChange: (
+    unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
+  ) => void;
 };
 
 const CollectionItemsTableContentInner = ({

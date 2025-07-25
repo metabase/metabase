@@ -6,7 +6,6 @@ import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
-import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
@@ -16,7 +15,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_METABOT } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -32,6 +31,7 @@ import {
   isRecentTableItem,
 } from "metabase-types/api";
 
+import { getAdminSettingsSections } from "../constants";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
@@ -91,10 +91,6 @@ export const useCommandPalette = ({
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
-  const settingsSections = useMemo<Record<string, any>>(
-    () => getSectionsWithPlugins(),
-    [],
-  );
 
   const docsAction = useMemo<PaletteAction[]>(() => {
     const link = debouncedSearchText
@@ -123,6 +119,9 @@ export const useCommandPalette = ({
     docsAction,
     showDocsAction,
   ]);
+
+  const metabotActions = PLUGIN_METABOT.useMetabotPalletteActions(trimmedQuery);
+  useRegisterActions(metabotActions, [metabotActions]);
 
   const searchResultActions = useMemo<PaletteAction[]>(() => {
     const searchLocation = {
@@ -285,9 +284,9 @@ export const useCommandPalette = ({
       return [];
     }
 
-    return Object.entries(settingsSections)
-      .filter(([slug, section]) => {
-        if (section.getHidden?.(settingValues)) {
+    return Object.entries(getAdminSettingsSections(settingValues))
+      .filter(([_slug, section]) => {
+        if (section.hidden) {
           return false;
         }
 
@@ -295,7 +294,7 @@ export const useCommandPalette = ({
           return false;
         }
 
-        return !slug.includes("/");
+        return true;
       })
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
@@ -307,7 +306,7 @@ export const useCommandPalette = ({
           href: `/admin/settings/${slug}`,
         },
       }));
-  }, [canUserAccessSettings, isAdmin, settingsSections, settingValues]);
+  }, [canUserAccessSettings, isAdmin, settingValues]);
 
   useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
     adminActions,

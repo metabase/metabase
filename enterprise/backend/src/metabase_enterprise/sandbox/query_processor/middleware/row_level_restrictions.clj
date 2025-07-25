@@ -8,7 +8,7 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -18,10 +18,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.database :as database]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
@@ -32,6 +31,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.models.database :as database]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -231,7 +231,7 @@
 
 (mu/defn- gtap->source :- [:map
                            [:source-query :any]
-                           [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
+                           [:source-metadata {:optional true} [:sequential ::mbql.s/legacy-column-metadata]]]
   "Get the source query associated with a `gtap`."
   [{card-id :card_id, table-id :table_id, :as gtap} :- :map]
   (-> ((if card-id
@@ -272,7 +272,7 @@
 
     (let [table-ids (sandbox->table-ids sandbox)
           table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
-          unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
+          unblocked-table-ids (filter (fn [table-id] (perms/user-has-permission-for-table?
                                                       api/*current-user-id*
                                                       :perms/view-data
                                                       :unrestricted
@@ -323,7 +323,7 @@
 (defn- apply-gtap
   "Apply a GTAP to map m (e.g. a Join or inner query), replacing its `:source-table`/`:source-query` with the GTAP
   `:source-query`."
-  [m gtap]
+  [{:keys [source-table] :as m} gtap]
   ;; Only infer source query metadata for JOINS that use `:fields :all`. That's the only situation in which we
   ;; absolutely *need* to infer source query metadata (we need to know the columns returned by the source query so we
   ;; can generate the join against ALL fields). It's better not to infer the source metadata if we don't NEED to,
@@ -331,9 +331,10 @@
   ;; columns as the Table it replaces, but this constraint is not enforced anywhere. If we infer metadata and the GTAP
   ;; turns out *not* to match exactly, the query could break. So only infer it in cases where the query would
   ;; definitely break otherwise.
-  (u/prog1 (merge
-            (dissoc m :source-table :source-query)
-            (gtap->source gtap))
+  (u/prog1 (-> (merge
+                (dissoc m :source-table :source-query)
+                (gtap->source gtap))
+               (assoc-in [:source-query :query-permissions/gtapped-table] source-table))
     (log/tracef "Applied GTAP: replaced\n%swith\n%s"
                 (u/pprint-to-str 'yellow m)
                 (u/pprint-to-str 'green <>))))
@@ -356,7 +357,8 @@
         (_ :guard (every-pred map? :source-table))
         (assoc &match ::gtap? true)))))
 
-(defn- expected-cols [query]
+(mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
+  [query :- ::mbql.s/Query]
   (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
@@ -368,7 +370,7 @@
       original-query
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
-          (update-in [::query-perms/perms :gtaps]
+          (update-in [:query-permissions/perms :gtaps]
                      (fn [required-perms] (merge required-perms
                                                  (sandboxes->required-perms (vals table-id->gtap)))))))))
 
@@ -399,10 +401,13 @@
 
 ;;;; Post-processing
 
-(defn- merge-metadata
+(mu/defn- merge-metadata :- [:map
+                             [:cols [:sequential ::mbql.s/legacy-column-metadata]]]
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
-  [original-metadata metadata]
+  [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
+   metadata          :- [:map
+                         [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
@@ -416,7 +421,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::query-perms/perms :gtaps])))
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [:query-permissions/perms :gtaps])))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

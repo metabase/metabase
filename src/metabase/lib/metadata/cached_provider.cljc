@@ -45,6 +45,13 @@
       cached-value)
     (store-in-cache! cache ks (fetch-thunk))))
 
+(defn- cached-value [cache k not-found]
+  (get @cache [::cached-value k] not-found))
+
+(defn- cache-value! [cache k v]
+  (swap! cache assoc [::cached-value k] v)
+  nil)
+
 (defn- database [cache metadata-provider]
   (get-in-cache-or-fetch cache [:metadata/database] #(lib.metadata.protocols/database metadata-provider)))
 
@@ -88,9 +95,9 @@
 
 (defn- metadatas-for-table [metadata-provider cache metadata-type table-id]
   (let [k     (case metadata-type
-                :metadata/column        ::table-fields
-                :metadata/metric        ::table-metrics
-                :metadata/segment       ::table-segments)
+                :metadata/column  ::table-fields
+                :metadata/metric  ::table-metrics
+                :metadata/segment ::table-segments)
         thunk (fn []
                 (let [objects (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id)]
                   (doseq [metadata objects]
@@ -100,7 +107,7 @@
 
 (defn- metadatas-for-card [metadata-provider cache metadata-type card-id]
   (let [k     (case metadata-type
-                :metadata/metric        ::table-metrics)
+                :metadata/metric ::table-metrics)
         thunk (fn []
                 (let [objects (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id)]
                   (doseq [metadata objects]
@@ -132,6 +139,10 @@
     (cached-metadatas cache metadata-type metadata-ids))
   (store-metadata! [_this a-metadata]
     (store-metadata! cache (:lib/type a-metadata) (:id a-metadata) a-metadata))
+  (cached-value [_this k not-found]
+    (cached-value cache k not-found))
+  (cache-value! [_this k v]
+    (cache-value! cache k v))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
@@ -147,4 +158,5 @@
 (defn cached-metadata-provider
   "Wrap `metadata-provider` with an implementation that automatically caches results."
   ^CachedProxyMetadataProvider [metadata-provider]
+  (log/debugf "Wrapping %s in CachedProxyMetadataProvider" (pr-str metadata-provider))
   (->CachedProxyMetadataProvider (atom {}) metadata-provider))

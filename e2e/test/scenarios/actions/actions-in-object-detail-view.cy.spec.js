@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
@@ -277,7 +277,7 @@ function assertInputValue(labelText, value) {
 }
 
 function assertDateInputValue(labelText, value) {
-  const expectedValue = moment(value)
+  const expectedValue = dayjs(value)
     .format()
     .replace(/-\d\d:\d\d$/, "");
 

@@ -7,6 +7,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]
    [metabase.util.time.impl-common :as u.time.impl-common]))
@@ -40,7 +41,7 @@
 
 (defmethod expression/type-of-method :dispatch-type/number
   [_non-integer-real]
-  ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types]] =(
+  ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types.core]] =(
   :type/Float)
 
 ;;; TODO -- these temporal literals could be a little stricter, right now they are pretty permissive, you shouldn't be
@@ -141,7 +142,8 @@
   [:merge
    [:ref ::common/options]
    [:map
-    [:effective-type ::common/base-type]]])
+    [:effective-type ::common/base-type]
+    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]]])
 
 ;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to
 ;;; literals, to make it easier for drivers to process queries; see

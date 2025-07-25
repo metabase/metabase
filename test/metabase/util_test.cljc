@@ -26,6 +26,7 @@
          (u/add-period "   "))))
 
 (deftest ^:parallel url?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected] (= expected
                        (u/url? s))
     "http://google.com"                                                                      true
@@ -60,7 +61,18 @@
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
 
+#?(:clj
+   (deftest ^:parallel domain?-test
+     #_{:clj-kondo/ignore [:equals-true]}
+     (are [s expected] (= expected (u/domain? s))
+       "metabase.com"         true
+       "metabase.co.uk"       true
+       "sub.metabase.com"     true
+       "https://metabase.com" false
+       "email@metabase.com"   false)))
+
 (deftest ^:parallel state?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/state? x))
     "louisiana"            true
@@ -159,6 +171,7 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected]    (= expected
                           (u/base64-string? s))
     "ABc="         true
@@ -249,7 +262,7 @@
 #?(:clj
    (deftest lower-case-en-turkish-test
      ;; TODO Can we achieve something like with-locale in CLJS?
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "id"
               (u/lower-case-en "ID"))))))
 
@@ -259,7 +272,7 @@
 
 #?(:clj
    (deftest upper-case-en-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "ID"
               (u/upper-case-en "id"))))))
 
@@ -281,7 +294,7 @@
 
 #?(:clj
    (deftest capitalize-en-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "Ibis"
               (u/capitalize-en "ibis")
               (u/capitalize-en "IBIS")
@@ -296,6 +309,7 @@
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [in-domain? email domain] (= in-domain?
                                     (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
@@ -334,7 +348,7 @@
 
 #?(:clj
    (deftest normalize-map-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= {:bird "Toucan"}
               (u/normalize-map {:BIRD "Toucan"}))))))
 
@@ -440,6 +454,7 @@
                         :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [xs expected] (= expected
                         (u/empty-or-distinct? xs))
     nil     true
@@ -555,6 +570,21 @@
         (is (= expected
                (truncate-string-to-byte-count s max-length)))))))
 
+(deftest ^:parallel index-by-test
+  (is (= {:a :a, :b :b, :c :c}
+         (into {}
+               (u/index-by identity)
+               [:a :b :c])
+         (u/index-by identity [:a :b :c])))
+  (is (= {1 {:id 1, :name "A"}
+          2 {:id 2, :name "B"}}
+         (into {}
+               (u/index-by :id)
+               [{:id 1, :name "A"}, {:id 2, :name "B"}])
+         (u/index-by :id [{:id 1, :name "A"}, {:id 2, :name "B"}])))
+  (is (= {1 4, 2 5}
+         (u/index-by first second [[1 3] [1 4] [2 5]]))))
+
 (deftest ^:parallel rconcat-test
   (is (= [2 4 6 18 16 14 12 10 8 6 4 2 0 50]
          (transduce
@@ -582,3 +612,19 @@
   (testing "safe min behaves like clojure.core/min"
     (is (= nil (u/safe-min nil)))
     (is (= 2 (u/safe-min nil 2 nil 3)))))
+
+(deftest ^:parallel find-first-map-indexed-test
+  (testing "find-first-map-indexed"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map-indexed nil [:a :b] 1)))
+      (is (= [1 {:a {:b 2}}]
+             (u/find-first-map-indexed test-maps [:a :b] 2)))
+      (is (nil? (u/find-first-map-indexed test-maps [:a :b] 5))))))
+
+(deftest ^:parallel find-first-map-test
+  (testing "find-first-map"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map nil [:a :b] 1)))
+      (is (nil? (u/find-first-map test-maps [:a :b] 5)))
+      (is (= {:a {:b 2}}
+             (u/find-first-map test-maps [:a :b] 2))))))

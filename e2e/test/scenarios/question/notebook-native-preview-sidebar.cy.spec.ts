@@ -19,7 +19,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     );
   });
 
-  it("should show empty sidebar when no data source is selected", () => {
+  it("should not an show empty sidebar when no data source is selected", () => {
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.findByLabelText("View SQL").click();
@@ -27,18 +28,13 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.findByTestId("app-bar").findByLabelText("New").click();
     H.popover().findByTextEnsureVisible("Question").click();
-    cy.wait("@nativeDataset");
     cy.findByTestId("data-step-cell").should(
       "have.text",
       "Pick your starting data",
     );
     H.entityPickerModal().button("Close").click();
 
-    cy.findByTestId("native-query-preview-sidebar").within(() => {
-      cy.findByText("SQL for this question").should("exist");
-      H.NativeEditor.get().should("not.exist");
-      cy.button("Convert this question to SQL").should("be.disabled");
-    });
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
   it("smoke test: should show the preview sidebar, update it, persist it and close it", () => {
@@ -140,7 +136,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
-    H.newButton("Model").click();
+    cy.visit("/model/new");
     cy.findByTestId("new-model-options").should("be.visible");
 
     resizeScreen("small");
@@ -330,63 +326,76 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("should work for both simple and nested questions based on previously converted GUI query", () => {
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText(MONGO_DB_NAME).click();
-        cy.findByText("Products").click();
-      });
+    it(
+      "should work for both simple and nested questions based on previously converted GUI query",
+      { tags: "@flaky" },
+      () => {
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Tables").click();
+          cy.findByText(MONGO_DB_NAME).click();
+          cy.findByText("Products").click();
+        });
 
-      cy.log("Simple question");
-      cy.findByLabelText("View native query").click();
-      cy.findByTestId("native-query-preview-sidebar").within(() => {
-        cy.findByText("Native query for this question").should("exist");
-        H.NativeEditor.get()
-          .should("be.visible")
-          .and("contain", "$project")
-          .and("contain", "$limit");
+        cy.log("Simple question");
+        cy.findByLabelText("View native query").click();
+        cy.findByTestId("native-query-preview-sidebar").within(() => {
+          cy.findByText("Native query for this question").should("exist");
+          H.NativeEditor.get()
+            .should("be.visible")
+            .and("contain", "$project")
+            .and("contain", "$limit");
 
-        cy.button("Convert this question to a native query").click();
-      });
+          cy.button("Convert this question to a native query").click();
+        });
 
-      cy.log("Database and table should be pre-selected (metabase#15946)");
-      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-      cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
+        cy.log("Database and table should be pre-selected (metabase#15946)");
+        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+        cy.findByTestId("selected-table").should("have.text", "Products");
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          "Small Marble Shoes",
+        );
 
-      cy.log("Nested question");
-      cy.log(
-        "should be possible to save a question and `Explore results` (metabase#32121)",
-      );
-      H.saveQuestion("foo", undefined, {
-        tab: "Browse",
-        path: ["Our analytics"],
-      });
-      cy.findByTestId("qb-header").findByText("Explore results").click();
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
+        cy.log("Nested question");
+        cy.log(
+          "should be possible to save a question and `Explore results` (metabase#32121)",
+        );
+        H.saveQuestion("foo", undefined, {
+          tab: "Browse",
+          path: ["Our analytics"],
+        });
+        cy.findByTestId("qb-header").findByText("Explore results").click();
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          "Small Marble Shoes",
+        );
 
-      cy.log("The generated query should be valid (metabase#38181)");
-      H.openNotebook(); // SQL sidebar state was persisted so it's already open now
-      cy.findByTestId("native-query-preview-sidebar").within(() => {
-        cy.findByText("Native query for this question").should("exist");
-        H.NativeEditor.get()
-          .should("be.visible")
-          .and("contain", "$project")
-          .and("contain", "$limit")
-          .and("not.contain", "BsonString")
-          .and("not.contain", "BsonInt32");
+        cy.log("The generated query should be valid (metabase#38181)");
+        H.openNotebook(); // SQL sidebar state was persisted so it's already open now
+        cy.findByTestId("native-query-preview-sidebar").within(() => {
+          cy.findByText("Native query for this question").should("exist");
+          H.NativeEditor.get()
+            .should("be.visible")
+            .and("contain", "$project")
+            .and("contain", "$limit")
+            .and("not.contain", "BsonString")
+            .and("not.contain", "BsonInt32");
 
-        cy.button("Convert this question to a native query").click();
-      });
+          cy.button("Convert this question to a native query").click();
+        });
 
-      cy.log(
-        "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
-      );
-      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-      cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
-    });
+        cy.log(
+          "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
+        );
+        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+        cy.findByTestId("selected-table").should("have.text", "Products");
+        cy.get("[data-testid=cell-data]").should(
+          "contain",
+          "Small Marble Shoes",
+        );
+      },
+    );
 
     it.skip("should work for a nested GUI question (metabase#40557)", () => {
       H.withDatabase(
@@ -455,24 +464,21 @@ H.describeWithSnowplow(
     it("should track `notebook_native_preview_shown|hidden` events", () => {
       cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
       H.openReviewsTable({ mode: "notebook", limit: 1 });
-      H.expectGoodSnowplowEvents(1); // page view
 
       cy.findByLabelText("View SQL").click();
       cy.wait("@nativeDataset");
       cy.findByTestId("native-query-preview-sidebar").should("exist");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "notebook_native_preview_shown",
       });
 
       cy.findByLabelText("Hide SQL").click();
       cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "notebook_native_preview_hidden",
       });
-
-      H.expectGoodSnowplowEvents(3);
     });
   },
 );

@@ -14,7 +14,8 @@ import type { MantineThemeOverride } from "metabase/ui";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
-import { createMockSettingsState } from "metabase-types/store/mocks";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
 import { TestWrapper } from "./ui";
@@ -34,11 +35,13 @@ export const ReduxProvider = ({
 export const VisualizationWrapper = ({
   theme,
   children,
+  initialStore = createMockState(),
 }: {
   children: React.ReactElement;
   theme?: MantineThemeOverride;
+  initialStore?: State;
 }) => {
-  const store = getStore(mainReducers, { settings: createMockSettingsState() });
+  const store = getStore(mainReducers, initialStore);
 
   return (
     <TestWrapper
@@ -47,6 +50,7 @@ export const VisualizationWrapper = ({
       withKBar={false}
       theme={theme}
       withDND
+      withCssVariables
     >
       {children}
     </TestWrapper>
@@ -62,12 +66,14 @@ export const VisualizationWrapper = ({
 export const SdkVisualizationWrapper = ({
   children,
   theme,
+  initialStore,
 }: {
   children: React.ReactElement;
   theme?: MetabaseTheme;
+  initialStore?: State;
 }) => (
   <Box fz="0.875rem">
-    <VisualizationWrapper>
+    <VisualizationWrapper initialStore={initialStore}>
       <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
     </VisualizationWrapper>
   </Box>
@@ -94,6 +100,25 @@ export const IsomorphicVisualizationStory = ({
           <Visualization rawSeries={rawSeries} width={500} />
         </VisualizationWrapper>
       </Box>
+    </Box>
+  );
+};
+
+/**
+ * Shows how a visualization is rendered in the SDK,
+ * using the SDK's theme provider.
+ */
+export const SdkVisualizationStory = ({
+  rawSeries,
+  theme,
+}: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
+  return (
+    <Box w={1000} h={600} bg={theme?.colors?.background}>
+      <VisualizationWrapper>
+        <SdkThemeProvider theme={theme}>
+          <Visualization rawSeries={rawSeries} width={500} />
+        </SdkThemeProvider>
+      </VisualizationWrapper>
     </Box>
   );
 };

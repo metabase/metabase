@@ -7,7 +7,7 @@
 (comment metabase-enterprise.sso.api.saml/keep-me
          metabase-enterprise.sso.api.sso/keep-me)
 
-;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
+;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api-routes.core/routes]] !!!
 ;;
 ;; TODO -- should we make a `metabase-enterprise.routes` namespace where this can live instead of injecting it
 ;; directly?
