@@ -76,11 +76,11 @@ export function NewTransformForm({ query }: NewTransformFormProps) {
         <Stack>
           <FormTextInput name="name" label={t`Name`} />
           <FormTextInput
-            name="table"
+            name="targetName"
             label={t`What should the generated table be called in the database?`}
           />
           <FormSelect
-            name="schema"
+            name="targetSchema"
             label={t`The schema where this table should go`}
             data={schemas}
           />
