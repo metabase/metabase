@@ -84,5 +84,5 @@ export async function setup({
     );
   });
 
-  await screen.findByText("Embedded Analytics SDK");
+  await screen.findByText("Embedded analytics SDK for React");
 }

@@ -27,9 +27,11 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     const toggles = screen.getAllByRole("switch");
     expect(toggles).toHaveLength(2);
 
-    expect(screen.getByText("Embedding SDK for React")).toBeInTheDocument();
+    expect(
+      screen.getByText("Embedded analytics SDK for React"),
+    ).toBeInTheDocument();
 
-    expect(screen.getByText("Simple Embedding")).toBeInTheDocument();
+    expect(screen.getByText("Simple SDK Embedding")).toBeInTheDocument();
     expect(screen.queryAllByText("Beta")).toHaveLength(1);
   });
 
@@ -44,7 +46,8 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     // Check the Simple Embedding toggle
-    await userEvent.click(screen.getByLabelText("Simple Embedding"));
+    const toggles = screen.getAllByRole("switch");
+    await userEvent.click(toggles[1]); // Second toggle is for Simple SDK Embedding
 
     // Should show the legalese modal
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -61,7 +64,8 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       showSimpleEmbedTerms: true,
     });
 
-    await userEvent.click(screen.getByLabelText("Simple Embedding"));
+    const toggles = screen.getAllByRole("switch");
+    await userEvent.click(toggles[1]); // Second toggle is for Simple SDK Embedding
     await userEvent.click(screen.getByText("Agree and continue"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -84,7 +88,9 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
         showSimpleEmbedTerms: false,
       });
 
-      expect(screen.getByText("Authorized Origins")).toBeInTheDocument();
+      expect(
+        screen.getByText("Cross-Origin Resource Sharing (CORS)"),
+      ).toBeInTheDocument();
 
       const originInput = screen.getByPlaceholderText("https://*.example.com");
       expect(originInput).toBeDisabled();
