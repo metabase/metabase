@@ -15,8 +15,35 @@ const userPass = "(?:(?<username>[^:/?#]+)(?::(?<password>[^@/?#]*))?@)?";
 const host = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
 const params = "(?:\\?(?<params>.*))?";
 const path = "(?:/(?<path>[^/?#]*))?";
+const semicolonParams = "([^;]*)(?<semicolonParams>.*)?";
 
 const connectionStringRegexes = {
+  "amazon-athena": new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>awsathena|athena)://" +
+      "((?<host>athena.*com)(?::(?<port>\\d+)?)?)?" +
+      ";?" +
+      "(?<semicolonParams>.*)?" +
+      "$",
+    "i",
+  ),
+  "amazon-redshift": new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>redshift)://" +
+      userPass +
+      host +
+      "(?:/(?<database>[^/?#;]*))?" +
+      ";?" +
+      "(?<semicolonParams>.*)?" +
+      "$",
+    "i",
+  ),
+  bigquery: new RegExp(
+    "^" + jdbcPrefix + "(?<protocol>bigquery)://" + semicolonParams + "$",
+    "i",
+  ),
   postgresql: new RegExp(
     "^" +
       jdbcPrefix +
@@ -28,7 +55,6 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-
   mysql: new RegExp(
     "^" +
       jdbcPrefix +
@@ -120,26 +146,9 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  bigquery: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>bigquery)://" +
-      "([^;]*);(?<semicolonParams>.*)?;",
-    "i",
-  ),
 
   clickhouse: new RegExp(
     "^" + jdbcPrefix + "(?<protocol>clickhouse)://" + userPass + host + path,
-  ),
-
-  athena: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>awsathena)://" +
-      host +
-      "([^;]*);(?<semicolonParams>.*)?" +
-      "$",
-    "i",
   ),
 };
 
@@ -149,6 +158,7 @@ export function parseConnectionUriRegex(
   for (const regex of Object.values(connectionStringRegexes)) {
     const match = connectionUri.match(regex);
     if (match) {
+      console.log({ match });
       const params = match.groups?.params
         ? Object.fromEntries(new URLSearchParams(match.groups.params))
         : undefined;
@@ -162,6 +172,7 @@ export function parseConnectionUriRegex(
             {} as Record<string, string>,
           )
         : undefined;
+      console.log(semicolonParams);
       return {
         ...match.groups,
         params: params ?? semicolonParams,

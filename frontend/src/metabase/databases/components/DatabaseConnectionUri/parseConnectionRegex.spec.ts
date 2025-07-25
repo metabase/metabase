@@ -1,5 +1,95 @@
 import { parseConnectionUriRegex } from "./parseConnectionRegex";
 
+describe("parseConnectionUriRegex - Amazon Athena", () => {
+  it("should parse a basic Amazon Athena connection string", () => {
+    const connectionString =
+      "jdbc:athena://WorkGroup=primary;Region=us-east-1;";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          WorkGroup: "primary",
+          Region: "us-east-1",
+        },
+        protocol: "athena",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+
+  it("should parse a Athena connection string with host", () => {
+    const connectionString =
+      "jdbc:awsathena://athena.us-east-1.amazonaws.com:443;User=EXAMPLEKEY;Password=EXAMPLESECRETKEY;S3OutputLocation=s3://example-bucket-name-us-east-1";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "awsathena",
+        host: "athena.us-east-1.amazonaws.com",
+        port: "443",
+        hasJdbcPrefix: true,
+        params: {
+          User: "EXAMPLEKEY",
+          Password: "EXAMPLESECRETKEY",
+          S3OutputLocation: "s3://example-bucket-name-us-east-1",
+        },
+      }),
+    );
+  });
+});
+
+describe("parseConnectionUriRegex - Amazon Redshift", () => {
+  it("should parse a Amazon Redshift connection string", () => {
+    const connectionString =
+      "jdbc:redshift://examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com:5439/dbname";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "redshift",
+        host: "examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com",
+        port: "5439",
+        database: "dbname",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+
+  it("should parse a Amazon Redshift connection string", () => {
+    const connectionString =
+      "jdbc:redshift://a.b.us-west-2.redshift.amazonaws.com:5439/dbname;UID=amazon;PWD=password%3Apassword";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "redshift",
+        host: "a.b.us-west-2.redshift.amazonaws.com",
+        port: "5439",
+        database: "dbname",
+        hasJdbcPrefix: true,
+        params: {
+          UID: "amazon",
+          PWD: "password%3Apassword",
+        },
+      }),
+    );
+  });
+});
+
+describe("parseConnectionUriRegex - BigQuery", () => {
+  it("should parse a BigQuery connection string", () => {
+    const connectionString =
+      "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "bigquery",
+        params: {
+          ProjectId: "MyBigQueryProject",
+          OAuthType: "1",
+        },
+      }),
+    );
+  });
+});
+
 describe("parseConnectionUriRegex", () => {
   it("should parse a PostgreSQL connection string", () => {
     const connectionString =
@@ -194,23 +284,6 @@ describe("parseConnectionUriRegex - Snowflake", () => {
   });
 });
 
-describe("parseConnectionUriRegex - BigQuery", () => {
-  it("should parse a BigQuery connection string", () => {
-    const connectionString =
-      "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual(
-      expect.objectContaining({
-        protocol: "bigquery",
-        params: {
-          ProjectId: "MyBigQueryProject",
-          OAuthType: "1",
-        },
-      }),
-    );
-  });
-});
-
 describe("parseConnectionUriRegex - Clickhouse", () => {
   it("should parse a Clickhouse connection string", () => {
     const connectionString = "jdbc:clickhouse://127.0.0.1:8123/myDatabase";
@@ -222,27 +295,6 @@ describe("parseConnectionUriRegex - Clickhouse", () => {
         port: "8123",
         hasJdbcPrefix: true,
         path: "myDatabase",
-      }),
-    );
-  });
-});
-
-describe("parseConnectionUriRegex - Clickhouse", () => {
-  it("should parse a Athena connection string", () => {
-    const connectionString =
-      "jdbc:awsathena://athena.us-east-1.amazonaws.com:443;User=EXAMPLEKEY;Password=EXAMPLESECRETKEY;S3OutputLocation=s3://example-bucket-name-us-east-1";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual(
-      expect.objectContaining({
-        protocol: "awsathena",
-        host: "athena.us-east-1.amazonaws.com",
-        port: "443",
-        hasJdbcPrefix: true,
-        params: {
-          User: "EXAMPLEKEY",
-          Password: "EXAMPLESECRETKEY",
-          S3OutputLocation: "s3://example-bucket-name-us-east-1",
-        },
       }),
     );
   });

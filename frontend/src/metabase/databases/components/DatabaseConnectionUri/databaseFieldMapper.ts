@@ -49,8 +49,20 @@ function mapClickhouseValues(parsedValues: RegexFields) {
 function mapAthenaValues(parsedValues: RegexFields) {
   const region = parsedValues.host?.match(/athena\.(.*)\.amazonaws\.com/)?.[1];
   const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.region", region],
+    ["details.region", region ?? parsedValues.params?.Region],
     ["details.password", parsedValues.params?.Password],
+    ["details.workgroup", parsedValues.params?.WorkGroup],
+  ]);
+  return fieldsMap;
+}
+
+function mapRedshiftValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host],
+    ["details.port", parsedValues.port],
+    ["details.dbname", parsedValues.database],
+    ["details.user", parsedValues.params?.UID],
+    ["details.password", parsedValues.params?.PWD],
   ]);
   return fieldsMap;
 }
@@ -63,6 +75,7 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
     .with("bigquery", () => mapBigQueryValues(parsedValues))
     .with("clickhouse", () => mapClickhouseValues(parsedValues))
-    .with("awsathena", () => mapAthenaValues(parsedValues))
+    .with(P.union("awsathena", "athena"), () => mapAthenaValues(parsedValues))
+    .with("redshift", () => mapRedshiftValues(parsedValues))
     .otherwise(() => new Map());
 }

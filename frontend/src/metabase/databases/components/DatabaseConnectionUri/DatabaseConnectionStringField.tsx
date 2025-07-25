@@ -14,6 +14,7 @@ const supportedEngines = new Set([
   "BigQuery",
   "ClickHouse",
   "Amazon Athena",
+  "Amazon Redshift",
 ]);
 
 export function DatabaseConnectionStringField({
