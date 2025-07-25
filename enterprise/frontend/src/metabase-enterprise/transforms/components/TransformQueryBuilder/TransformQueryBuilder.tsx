@@ -12,6 +12,7 @@ import { useQueryResults } from "./use-query-results";
 import { useQueryState } from "./use-query-state";
 
 type TransformQueryBuilderProps = {
+  name?: string;
   query: DatasetQuery;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
@@ -19,6 +20,7 @@ type TransformQueryBuilderProps = {
 };
 
 export function TransformQueryBuilder({
+  name,
   query: initialQuery,
   isSaving,
   onSave,
@@ -44,6 +46,7 @@ export function TransformQueryBuilder({
   return (
     <Flex className={S.root} direction="column" flex="1 1 0" bg="bg-white">
       <TransformHeader
+        name={name}
         isSaving={isSaving}
         onSave={handleSave}
         onCancel={onCancel}
