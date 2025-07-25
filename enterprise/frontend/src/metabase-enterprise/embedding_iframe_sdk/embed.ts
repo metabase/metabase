@@ -479,7 +479,10 @@ function createCustomElement<Arr extends readonly string[]>(
         return;
       }
 
-      const settings: Record<string, unknown> = window.metabaseConfig || {};
+      // we need to copy the settings, we don't want to accidentally mutate the shared object
+      const settings: Record<string, unknown> = {
+        ...(window.metabaseConfig || {}),
+      };
 
       // Read element-specific attributes
       attributeNames.forEach((attr) => {
