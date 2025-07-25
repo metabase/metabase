@@ -11,18 +11,12 @@ import type { Field } from "metabase-types/api";
 import S from "./SortableFieldItem.module.css";
 
 interface Props {
-  active?: boolean;
   disabled?: boolean;
   field: Field;
   parent?: Field | undefined;
 }
 
-export const SortableFieldItem = ({
-  active,
-  disabled,
-  field,
-  parent,
-}: Props) => {
+export const SortableFieldItem = ({ disabled, field, parent }: Props) => {
   const id = getRawTableFieldId(field);
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
   const label = field.display_name;
@@ -30,19 +24,16 @@ export const SortableFieldItem = ({
 
   return (
     <Sortable
-      className={cx(S.sortableField, {
-        [S.active]: active,
-      })}
+      className={cx(S.sortableField)}
       disabled={disabled}
       draggingStyle={{ opacity: 0.5 }}
       id={id}
     >
       <Card
         aria-label={label}
-        bg={active ? "brand-light" : "bg-white"}
+        bg="bg-white"
         c="text-medium"
         className={cx(S.card, {
-          [S.active]: active,
           [S.draggable]: draggable,
         })}
         draggable={draggable}
@@ -59,6 +50,15 @@ export const SortableFieldItem = ({
           w="100%"
           wrap="nowrap"
         >
+          {draggable && (
+            <Icon
+              className={S.grabber}
+              flex="0 0 auto"
+              mr="sm"
+              name="grabber"
+            />
+          )}
+
           <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
 
           {parent && (
@@ -79,15 +79,6 @@ export const SortableFieldItem = ({
           <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
             {label}
           </Text>
-
-          {draggable && (
-            <Icon
-              className={S.grabber}
-              flex="0 0 auto"
-              ml="sm"
-              name="grabber"
-            />
-          )}
         </Flex>
       </Card>
     </Sortable>

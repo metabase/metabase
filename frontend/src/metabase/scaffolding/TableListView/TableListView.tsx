@@ -56,6 +56,7 @@ export const TableListView = ({ location, params }: Props) => {
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
   // TODO: run paginated queries?
+  // TODO: use only visible fields?
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getTableQuery(table) : undefined;
   }, [table]);
@@ -117,8 +118,25 @@ export const TableListView = ({ location, params }: Props) => {
   const columns = settings.list_view.fields.map(({ field_id }) => {
     return allColumns.find((field) => field.id === field_id)!;
   });
+  const fields = settings.list_view.fields.map(({ field_id }) => {
+    return (table.fields ?? []).find((field) => field.id === field_id)!;
+  });
+  const visibleFields = settings.list_view.fields.map(({ field_id }) => {
+    return fields.find((field) => field.id === field_id)!;
+  });
+  const hiddenFields = (table.fields ?? []).filter((field) =>
+    settings.list_view.fields.every((f) => f.field_id !== field.id),
+  );
   const allRows = dataset.data.rows;
   const paginatedRows = allRows.slice(PAGE_SIZE * page, PAGE_SIZE * (page + 1));
+
+  // Transform paginatedRows to show only visible fields in their order
+  const transformedPaginatedRows = paginatedRows.map((row) => {
+    return settings.list_view.fields.map(({ field_id }) => {
+      const fieldIndex = allColumns.findIndex((col) => col.id === field_id);
+      return row[fieldIndex];
+    });
+  });
 
   return (
     <Stack gap="md" p="xl">
@@ -207,20 +225,21 @@ export const TableListView = ({ location, params }: Props) => {
             </thead>
 
             <tbody>
-              {paginatedRows.map((row, index) => {
+              {transformedPaginatedRows.map((row, index) => {
                 return (
                   <Box className={S.row} component="tr" key={index}>
                     {row.map((value, cellIndex) => {
                       return (
                         <Box
                           c={
-                            settings.list_view.fields[index].style === "dim"
+                            settings.list_view.fields[cellIndex].style === "dim"
                               ? "text-secondary"
                               : undefined
                           }
                           component="td"
                           fw={
-                            settings.list_view.fields[index].style === "bold"
+                            settings.list_view.fields[cellIndex].style ===
+                            "bold"
                               ? "bold"
                               : undefined
                           }
@@ -243,7 +262,7 @@ export const TableListView = ({ location, params }: Props) => {
                         component={Link}
                         to={
                           pkIndex != null
-                            ? `/table/${table.id}/detail/${row[pkIndex]}`
+                            ? `/table/${table.id}/detail/${paginatedRows[index][pkIndex]}`
                             : ""
                         }
                         variant="outline"
@@ -259,10 +278,21 @@ export const TableListView = ({ location, params }: Props) => {
         </Box>
 
         {isEditing && (
-          <Stack flex="0 0 auto">
+          <Stack flex="0 0 auto" miw={400}>
             <Title order={2}>{t`Display settings`}</Title>
 
-            <SortableFieldList table={table} onChange={handleOrderChange} />
+            <Title order={3}>{t`Shown columns`}</Title>
+            <SortableFieldList
+              fields={visibleFields}
+              onChange={handleOrderChange}
+            />
+
+            <Title order={3}>{t`Hidden columns`}</Title>
+            <SortableFieldList
+              disabled
+              fields={hiddenFields}
+              onChange={handleOrderChange}
+            />
           </Stack>
         )}
       </Group>
