@@ -130,6 +130,24 @@ function mapPostgresValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
+function mapPrestoValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host],
+    ["details.port", parsedValues.port],
+    ["details.catalog", parsedValues.catalog],
+    ["details.schema", parsedValues.schema],
+    ["details.ssl", parsedValues.params?.SSL],
+    [
+      "details.additional-options",
+      Object.entries(parsedValues.params ?? {})
+        .filter(([key]) => !["ssl"].includes(key))
+        .map(([key, value]) => `${key}=${value}`)
+        .join(";"),
+    ],
+  ]);
+  return fieldsMap;
+}
+
 export function mapSnowflakeValues(parsedValues: RegexFields) {
   const { db, warehouse } = parsedValues.params ?? {};
   const fieldsMap = new Map<string, string | boolean | undefined>([
@@ -153,10 +171,11 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with("clickhouse", () => mapClickhouseValues(parsedValues))
     .with("databricks", () => mapDatabricksValues(parsedValues))
     .with(P.union("druid", "avatica"), () => mapDruidValues(parsedValues))
+    .with("mysql", () => mapMysqlValues(parsedValues))
     .with(P.union("postgres", "postgresql"), () =>
       mapPostgresValues(parsedValues),
     )
-    .with("mysql", () => mapMysqlValues(parsedValues))
+    .with("presto", () => mapPrestoValues(parsedValues))
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
     .otherwise(() => new Map());
 }

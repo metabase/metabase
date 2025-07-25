@@ -18,6 +18,7 @@ const supportedEngines = new Set([
   "Druid JDBC",
   "MySQL",
   "PostgreSQL",
+  "Presto",
   "Snowflake",
 ]);
 
