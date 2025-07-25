@@ -16,6 +16,7 @@
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.humanization :as u.humanization]))
@@ -508,3 +509,38 @@
               "Q2__BIRTH_DATE"
               "Q2__count"]
              (mapv :lib/desired-column-alias (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel unambiguous-field-refs-test
+  (testing "QP metadata MUST return unambiguous field refs (if refs are ambiguous then force name refs) (QUE-1623)"
+    (let [mp            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                         meta/metadata-provider
+                         [(lib.tu.macros/mbql-query orders
+                            {:breakout    [$user-id]
+                             :aggregation [[:count]]})
+                          (lib.tu.macros/mbql-query orders
+                            {:breakout    [$user-id]
+                             :aggregation [[:count]]})
+                          (lib.tu.macros/mbql-query people
+                            {:fields [$id]
+                             :joins  [{:fields       :all
+                                       :alias        "ord1"
+                                       :source-table "card__1"
+                                       :condition    [:= $id &ord1.orders.user-id]}
+                                      {:fields       :all
+                                       :alias        "ord2"
+                                       :source-table "card__2"
+                                       :condition    [:= $id &ord2.orders.user-id]}]})])
+          query         (lib/query mp {:database (meta/id)
+                                       :type     :query
+                                       :query    {:source-table "card__3"}})
+          expected-cols (qp.preprocess/query->expected-cols query)]
+      ;; use deduplicated column name for maximum backwards compatibility with legacy FE viz settings maps that use them
+      ;; as keys.
+      (is (apply distinct? (map :field_ref expected-cols)))
+      (is (=? [{:lib/desired-column-alias "ID",            :field_ref [:field (meta/id :people :id) nil]}
+               {:lib/desired-column-alias "ord1__USER_ID", :field_ref [:field "USER_ID" {}]}
+               {:lib/desired-column-alias "ord1__count",   :field_ref [:field "count" {}]}
+               {:lib/desired-column-alias "ord2__USER_ID", :field_ref [:field "USER_ID_2" {}]}
+               {:lib/desired-column-alias "ord2__count",   :field_ref [:field "count_2" {}]}]
+              (map #(select-keys % [:lib/desired-column-alias :field_ref])
+                   expected-cols))))))

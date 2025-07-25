@@ -85,6 +85,7 @@
                         :metabase.lib.field/binning       :lib/original-binning
                         :metabase.lib.field/temporal-unit :inherited-temporal-unit
                         :metabase.lib.join/join-alias     :lib/original-join-alias})
+      ;; TODO (Cam 7/25/25) -- shouldn't this set `:lib/source` as well?
       (assoc :lib/breakout? false
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)

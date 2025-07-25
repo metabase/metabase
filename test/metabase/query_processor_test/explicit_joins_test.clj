@@ -377,9 +377,19 @@
           (let [top-card-query (mt/mbql-query people
                                  {:source-table "card__3"
                                   :limit        3})
-                [cid cuser-id ccount cuser-id2 ccount2] (->> top-card-query
-                                                             qp.preprocess/query->expected-cols
-                                                             (map :name))
+                top-card-cols (qp.preprocess/query->expected-cols top-card-query)
+                _ (testing "should return distinct field refs (QUE-1623)"
+                    (is (= [[:field (mt/id :people :id) nil]
+                            [:field "USER_ID"   {:base-type :type/Integer}]
+                            [:field "count"     {:base-type :type/Integer}]
+                            [:field "USER_ID_2" {:base-type :type/Integer}]
+                            [:field "count_2"   {:base-type :type/Integer}]]
+                           (map :field_ref top-card-cols))))
+                ;; unfortunately to maintain backward compatibility with legacy viz settings we need to return
+                ;; deduplicated names here like `USER_ID_2` instead of desired column aliases like `order__USER_ID`.
+                _ (is (= ["ID" "USER_ID" "count" "USER_ID_2" "count_2"]
+                         (map :name top-card-cols)))
+                [cid cuser-id ccount cuser-id2 ccount2] (map :name top-card-cols)
                 cid2 (str cid "_2")
                 col-data-fn   (juxt            :id       :name)
                 top-card-cols [[(mt/id :people :id)      cid]
@@ -399,25 +409,36 @@
                       card-meta (lib.metadata/card metadata-provider 3)]
                   (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} "ord1__USER_ID"]]]
                           (lib/suggested-join-conditions query card-meta))))))
-            (testing "the query runs and returns correct data"
-              (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
-                      :rows    [[1  1    1        11     1         11]
-                                [2  nil  nil      nil    nil       nil]
-                                [3  3    3        10     3         10]]}
-                     (-> (mt/mbql-query people
-                           {:joins    [{:alias        "peeps"
-                                        :source-table "card__3"
-                                        :fields       :all
-                                        :condition    [:= $id [:field cuser-id2 {:base-type :type/Integer
-                                                                                 :join-alias "peeps"}]]}]
-                            :fields [$id]
-                            :order-by [[:asc $id]]
-                            :limit    3})
-                         qp/process-query
-                         mt/rows+column-names
-                         ;; Oracle is returning java.math.BigDecimal objects
-                         (update :rows #(mt/format-rows-by
-                                         [int int int int int int] %))))))))))))
+            (let [query (mt/mbql-query people
+                          {:joins    [{:alias        "peeps"
+                                       :source-table "card__3"
+                                       :fields       :all
+                                       :condition    [:= $id [:field cuser-id2 {:base-type :type/Integer
+                                                                                :join-alias "peeps"}]]}]
+                           :fields [$id]
+                           :order-by [[:asc $id]]
+                           :limit    3})]
+              (testing "should return distinct field refs (QUE-1623)"
+                ;; the refs and names returned should use deduplicated names for consistency with legacy viz settings
+                ;; that use them as keys
+                (is (= [[:field (mt/id :people :id) nil]
+                        [:field (mt/id :people :id) {:join-alias "peeps"}]
+                        [:field "USER_ID"   {:base-type :type/Integer, :join-alias "peeps"}]
+                        [:field "count"     {:base-type :type/Integer, :join-alias "peeps"}]
+                        [:field "USER_ID_2" {:base-type :type/Integer, :join-alias "peeps"}]
+                        [:field "count_2"   {:base-type :type/Integer, :join-alias "peeps"}]]
+                       (map :field_ref (qp.preprocess/query->expected-cols query)))))
+              (testing "the query runs and returns correct data"
+                (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
+                        :rows    [[1  1    1        11     1         11]
+                                  [2  nil  nil      nil    nil       nil]
+                                  [3  3    3        10     3         10]]}
+                       (-> query
+                           qp/process-query
+                           mt/rows+column-names
+                           ;; Oracle is returning java.math.BigDecimal objects
+                           (update :rows #(mt/format-rows-by
+                                           [int int int int int int] %)))))))))))))
 
 (deftest ^:parallel join-on-field-literal-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
