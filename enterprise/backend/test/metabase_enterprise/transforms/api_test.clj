@@ -5,8 +5,6 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]))
