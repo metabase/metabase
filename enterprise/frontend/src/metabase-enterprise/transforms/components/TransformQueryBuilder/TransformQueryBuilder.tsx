@@ -27,7 +27,8 @@ export function TransformQueryBuilder({
 }: TransformQueryBuilderProps) {
   const { question, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
-  const { result, rawSeries, isRunning, runQuery } = useQueryResults(question);
+  const { result, rawSeries, isRunnable, isRunning, isResultDirty, runQuery } =
+    useQueryResults(question);
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -62,9 +63,9 @@ export function TransformQueryBuilder({
         question={question}
         result={result}
         rawSeries={rawSeries}
-        isRunnable={true}
+        isRunnable={isRunnable}
         isRunning={isRunning}
-        isResultDirty={true}
+        isResultDirty={isResultDirty}
         onRunQuery={runQuery}
         onCancelQuery={() => undefined}
       />

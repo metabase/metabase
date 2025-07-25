@@ -1,28 +1,54 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAsyncFn } from "react-use";
 
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { runQuestionQuery } from "metabase/services";
-import type Question from "metabase-lib/v1/Question";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { DatasetQuery } from "metabase-types/api";
 
 export function useQueryResults(question: Question) {
+  const metadata = useSelector(getMetadata);
+  const [lastRunQuery, setLastRunQuery] = useState<DatasetQuery | null>(null);
+
   const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
     () => runQuestionQuery(question),
     [question],
   );
 
-  const { result, rawSeries } = useMemo(() => {
+  const { result, rawSeries, isRunnable, isResultDirty } = useMemo(() => {
+    const lastRunQuestion = lastRunQuery
+      ? Question.create({ dataset_query: lastRunQuery, metadata })
+      : null;
+    const result = results ? results[0] : null;
+    const rawSeries =
+      lastRunQuestion && result
+        ? [{ card: lastRunQuestion.card(), data: result.data }]
+        : null;
+    const isRunnable = Lib.canRun(question.query(), question.type());
+    const isResultDirty =
+      lastRunQuestion == null || question.isDirtyComparedTo(lastRunQuestion);
+
     return {
-      result: results ? results[0] : null,
-      rawSeries:
-        question && results
-          ? [{ card: question.card(), data: results[0].data }]
-          : null,
+      result,
+      rawSeries,
+      isRunnable,
+      isResultDirty,
     };
-  }, [question, results]);
+  }, [question, results, metadata, lastRunQuery]);
 
   const handleRunQuery = async () => {
     await runQuery();
+    setLastRunQuery(question.datasetQuery());
   };
 
-  return { result, rawSeries, isRunning, runQuery: handleRunQuery };
+  return {
+    result,
+    rawSeries,
+    isRunnable,
+    isRunning,
+    isResultDirty,
+    runQuery: handleRunQuery,
+  };
 }
