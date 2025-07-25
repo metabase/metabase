@@ -140,7 +140,18 @@
       (throw (ex-info "Not able to execute given action yet" {:status-code 400 :scope scope :action action-def})))))
 
 (api.macros/defendpoint :post "/execute"
-  "TODO: docstring"
+  "Execute an action with a single input.
+
+   Takes:
+   - `action`            - an identifier or an expression for what we want to execute.
+   - `scope`             - where the action is being invoked from.
+   - `input`             - a single map. currently these are typically a database table row pk, or query result.
+   - `params` (optional) - a map of values for the parameters taken by the action's mapping.
+
+   The `input` and `params` are used by the relevant mapping to calculate a map argument to the underlying action fn.
+   If there is no mapping, `params` are simply used as overrides for `input`.
+
+   Returns the outputs from the performed action."
   [{}
    {}
    {:keys [action scope params input]}
@@ -148,19 +159,33 @@
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:params {:optional true} :map]
-       [:input :map]]]
+       [:input {:optional true} :map]]]
   (api/check-superuser)
   {:outputs (execute!* action scope params [input])})
 
 (api.macros/defendpoint :post "/execute-bulk"
-  "TODO: docstring"
+  "Execute an action with multiple inputs.
+
+   This is typically more efficient than calling execute with each input individually, for example by performing batch
+   SQL operations.
+
+   Takes:
+   - `action`            - an identifier or an expression for what we want to execute.
+   - `scope`             - where the action is being invoked from.
+   - `inputs`            - a list of maps. currently these are typically a database table row pk, or query result.
+   - `params` (optional) - a map of values for the parameters taken by the action's mapping.
+
+   The `inputs` and `params` are used by the relevant mapping to calculate a list of args for the underlying action fn.
+   If there is no mapping, `params` are simply used as overrides for each map within `inputs`.
+
+   Returns the outputs from the performed action."
   [{}
    {}
    {:keys [action scope inputs params]}
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
-       [:inputs [:sequential :map]]
+       [:inputs [:sequential {:min 1} :map]]
        [:params {:optional true} [:map-of :keyword :any]]]]
   (api/check-superuser)
   {:outputs (execute!* action scope params inputs)})
