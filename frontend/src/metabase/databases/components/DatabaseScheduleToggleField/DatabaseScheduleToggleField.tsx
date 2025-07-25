@@ -40,7 +40,7 @@ const DatabaseScheduleToggleField = ({
         },
         label: {
           fontWeight: "bold",
-          fontSize: "14px",
+          fontSize: "var(--mb-font-size-md)",
         },
       }}
     />
