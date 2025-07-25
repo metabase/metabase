@@ -283,13 +283,18 @@ export const TableListView = ({ location, params }: Props) => {
           </Group>
         </Group>
 
-        <Group align="flex-start" wrap="nowrap" style={{ overflow: "auto" }}>
+        <Group
+          className={S.tableContainer}
+          align="flex-start"
+          wrap="nowrap"
+          style={{ overflow: "auto" }}
+        >
           <Box bg="white" className={S.table} component="table" w="100%">
             <thead>
               <tr>
                 {columns.map((column, index) => (
                   <Box
-                    component="td"
+                    component="th"
                     key={index}
                     px={CELL_PADDING_HORIZONTAL}
                     py="md"
@@ -300,7 +305,7 @@ export const TableListView = ({ location, params }: Props) => {
                   </Box>
                 ))}
 
-                <Box component="td" px="sm" py="md" />
+                <Box component="th" px="sm" py="md" />
               </tr>
             </thead>
 
