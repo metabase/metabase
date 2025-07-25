@@ -7,7 +7,7 @@ import { Summarize } from "./Summarize";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Summarize/Summarize",
+  title: "EmbeddingSDK/SdkQuestion/Summarize/Summarize",
   component: Summarize,
   parameters: {
     layout: "fullscreen",
