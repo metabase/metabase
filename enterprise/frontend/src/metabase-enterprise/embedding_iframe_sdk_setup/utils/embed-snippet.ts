@@ -37,7 +37,6 @@ function defineMetabaseConfig(config) {
 </script>
 
 <script>
-  const { defineMetabaseConfig } = window["metabase.embed"];
   defineMetabaseConfig({
     ${getMetabaseConfigSnippet(settings, instanceUrl)}
   });
