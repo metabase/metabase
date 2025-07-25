@@ -143,7 +143,8 @@
 
 (deftest table-operations-via-action-execute-with-uuid-pk-test
   (mt/with-premium-features #{actions-feature-flag}
-    (mt/test-drivers data-editing-drivers
+    ;; MySQL does not support a UUID type (or at least if it does, our create-table syntax is wrong)
+    (mt/test-drivers (disj data-editing-drivers :mysql)
       (data-editing.tu/with-test-tables! [table-id [{:id [:uuid]
                                                      :name [:text]
                                                      :song [:text]}
