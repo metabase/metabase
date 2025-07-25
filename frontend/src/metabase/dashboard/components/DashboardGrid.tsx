@@ -1,6 +1,14 @@
 import cx from "classnames";
-import type { ComponentType, ForwardedRef } from "react";
-import { Component, forwardRef } from "react";
+import type { ComponentType } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -59,7 +67,7 @@ import {
   showClickBehaviorSidebar,
   trashDashboardQuestion,
 } from "../actions";
-import { type DashboardContextReturned, useDashboardContext } from "../context";
+import { useDashboardContext } from "../context";
 import {
   getInitialCardSizes,
   getLayoutForDashCard,
@@ -79,25 +87,6 @@ type GridBreakpoint = "desktop" | "mobile";
 type ExplicitSizeProps = {
   width: number;
 };
-
-interface DashboardGridInnerState {
-  visibleCardIds: Set<number>;
-  initialCardSizes: { [key: string]: { w: number; h: number } };
-  layouts: {
-    desktop: ReactGridLayout.Layout[];
-    mobile: ReactGridLayout.Layout[];
-  };
-  replaceCardModalDashCard: BaseDashboardCard | null;
-  isDragging: boolean;
-  isAnimationPaused: boolean;
-  dashcardCountByCardId: Record<CardId, number>;
-  _lastProps?: LastProps;
-
-  visualizerModalStatus?: {
-    dashcardId: number;
-    state: VisualizerVizDefinition;
-  };
-}
 
 /** Props from the previous render to use for comparison in getDerivedStateFromProps */
 type LastProps = {
@@ -135,131 +124,151 @@ export type DashboardGridProps = {
   handleSetEditing?: (dashboard: Dashboard | null) => void;
 } & Pick<FlexProps, "className" | "style" | "p">;
 
-type DashboardGridContext = {
-  dashboard: NonNullable<DashboardContextReturned["dashboard"]>;
-} & Pick<
-  DashboardContextReturned,
-  | "selectedTabId"
-  | "slowCards"
-  | "isEditing"
-  | "isEditingParameter"
-  | "isFullscreen"
-  | "isNightMode"
-  | "clickBehaviorSidebarDashcard"
-  | "getClickActionMode"
-  | "navigateToNewCardFromDashboard"
-  | "downloadsEnabled"
-  | "autoScrollToDashcardId"
-  | "reportAutoScrolledToDashcard"
-  | "onReplaceAllDashCardVisualizationSettings"
-  | "onUpdateDashCardVisualizationSettings"
-  | "onChangeLocation"
->;
-
 type DashboardGridForwardedRefProps = Required<DashboardGridProps> &
   DashboardGridReduxProps &
-  ExplicitSizeProps & {
-    forwardedRef?: ForwardedRef<HTMLDivElement>;
-  } & Pick<FlexProps, "className" | "style" | "p">;
+  ExplicitSizeProps &
+  Pick<FlexProps, "className" | "style" | "p">;
 
-type DashboardGridInnerProps = DashboardGridForwardedRefProps &
-  DashboardGridContext;
+const DashboardGrid = forwardRef<
+  HTMLDivElement,
+  DashboardGridForwardedRefProps
+>(function DashboardGrid({ width = 0, ...restProps }, ref) {
+  const {
+    dashboard,
+    selectedTabId,
+    isEditing = false,
+    isEditingParameter = false,
+    clickBehaviorSidebarDashcard,
+    autoScrollToDashcardId,
+    onReplaceAllDashCardVisualizationSettings,
+    onUpdateDashCardVisualizationSettings,
+  } = useDashboardContext();
 
-class DashboardGridInner extends Component<
-  DashboardGridInnerProps,
-  DashboardGridInnerState
-> {
-  static contextType = ContentViewportContext;
+  const {
+    dashcards,
+    dashcardData,
+    addUndo,
+    removeCardFromDashboard,
+    showClickBehaviorSidebar,
+    markNewCardSeen,
+    setMultipleDashCardAttributes,
+    setDashCardAttributes,
+    replaceCard,
+    replaceCardWithVisualization,
+    handleSetEditing,
+    className,
+    style,
+    p,
+  } = restProps;
 
-  _pauseAnimationTimer: ReturnType<typeof setTimeout> | null = null;
+  const contentViewportContext = useContext(ContentViewportContext);
+  const _pauseAnimationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
-  constructor(props: DashboardGridInnerProps, context: unknown) {
-    super(props, context);
+  const getDashcardCountByCardId = useCallback(
+    (cards: BaseDashboardCard[]) => _.countBy(cards, "card_id"),
+    [],
+  );
 
-    const visibleCardIds = getVisibleCardIds(
-      props.dashboard.dashcards,
-      props.dashcardData,
-    );
+  const initialVisibleCardIds = useMemo(
+    () =>
+      dashboard
+        ? getVisibleCardIds(dashboard.dashcards, dashcardData)
+        : new Set<number>(),
+    [dashboard, dashcardData],
+  );
 
-    const initialCardSizes = getInitialCardSizes(
-      props.dashboard.dashcards,
-      this.state?.initialCardSizes,
-    );
+  const [visibleCardIds, setVisibleCardIds] = useState<Set<number>>(
+    initialVisibleCardIds,
+  );
+  const [initialCardSizes, setInitialCardSizes] = useState<{
+    [key: string]: { w: number; h: number };
+  }>(() =>
+    dashboard ? getInitialCardSizes(dashboard.dashcards, undefined) : {},
+  );
+  const [layouts, setLayouts] = useState<{
+    desktop: ReactGridLayout.Layout[];
+    mobile: ReactGridLayout.Layout[];
+  }>(() =>
+    dashboard
+      ? getLayouts(dashboard.dashcards, undefined)
+      : { desktop: [], mobile: [] },
+  );
+  const [replaceCardModalDashCard, setReplaceCardModalDashCard] =
+    useState<BaseDashboardCard | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isAnimationPaused, setIsAnimationPaused] = useState(true);
+  const [dashcardCountByCardId, setDashcardCountByCardId] = useState<
+    Record<CardId, number>
+  >(() => (dashboard ? getDashcardCountByCardId(dashboard.dashcards) : {}));
+  const [visualizerModalStatus, setVisualizerModalStatus] = useState<
+    | {
+        dashcardId: number;
+        state: VisualizerVizDefinition;
+      }
+    | undefined
+  >(undefined);
 
-    this.state = {
-      visibleCardIds,
-      dashcardCountByCardId: this.getDashcardCountByCardId(
-        props.dashboard.dashcards,
-      ),
-      initialCardSizes,
-      layouts: getLayouts(
-        props.dashboard.dashcards,
-        this.state?.initialCardSizes,
-      ),
-      replaceCardModalDashCard: null,
-      isDragging: false,
-      isAnimationPaused: true,
-      _lastProps: {
-        dashboard: props.dashboard,
-        isEditing: props.isEditing,
-        selectedTabId: props.selectedTabId,
-      },
-    };
-  }
+  const lastPropsRef = useRef<LastProps>({
+    dashboard: dashboard!,
+    isEditing,
+    selectedTabId,
+  });
 
-  componentDidMount() {
+  useEffect(() => {
     // In order to skip the initial cards animation we must let the grid layout calculate
     // the initial card positions. The timer is necessary to enable animation only
     // after the grid layout has been calculated and applied to the DOM.
-    this._pauseAnimationTimer = setTimeout(() => {
-      this.setState({ isAnimationPaused: false });
+    _pauseAnimationTimerRef.current = setTimeout(() => {
+      setIsAnimationPaused(false);
     }, 0);
-  }
 
-  componentWillUnmount() {
-    if (this._pauseAnimationTimer !== null) {
-      clearTimeout(this._pauseAnimationTimer);
+    return () => {
+      if (_pauseAnimationTimerRef.current !== null) {
+        clearTimeout(_pauseAnimationTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (dashboard) {
+      setDashcardCountByCardId(getDashcardCountByCardId(dashboard.dashcards));
     }
-  }
+  }, [dashboard, getDashcardCountByCardId]);
 
-  componentDidUpdate(prevProps: DashboardGridInnerProps) {
-    if (prevProps.dashboard.dashcards !== this.props.dashboard.dashcards) {
-      this.setState({
-        dashcardCountByCardId: this.getDashcardCountByCardId(
-          this.props.dashboard.dashcards,
-        ),
-      });
+  useEffect(() => {
+    if (dashboard && visibleCardIds.size === 0) {
+      const newVisibleCardIds = getVisibleCardIds(
+        dashboard.dashcards,
+        dashcardData,
+      );
+      setVisibleCardIds(newVisibleCardIds);
     }
-  }
+  }, [dashboard, dashcardData, visibleCardIds.size]);
 
-  static getDerivedStateFromProps(
-    nextProps: DashboardGridInnerProps,
-    state: DashboardGridInnerState,
-  ): Partial<DashboardGridInnerState> {
-    const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
-    const lastProps = state._lastProps;
+  useEffect(() => {
+    if (!dashboard) {
+      return;
+    }
 
-    const visibleCardIds = !isEditing
-      ? getVisibleCardIds(
-          dashboard.dashcards,
-          dashcardData,
-          state.visibleCardIds,
-        )
-      : new Set(dashboard.dashcards.map((card) => card.id));
+    const newVisibleCardIds = !isEditing
+      ? getVisibleCardIds(dashboard.dashcards, dashcardData, visibleCardIds)
+      : new Set(dashboard.dashcards.map((card: DashboardCard) => card.id));
 
     const visibleCards = getVisibleCards(
       dashboard.dashcards,
-      visibleCardIds,
+      newVisibleCardIds,
       isEditing,
       selectedTabId,
     );
 
-    const lastVisibleCards = lastProps?.dashboard?.dashcards
+    const lastVisibleCards = lastPropsRef.current?.dashboard?.dashcards
       ? getVisibleCards(
-          lastProps.dashboard.dashcards,
-          state.visibleCardIds,
-          lastProps.isEditing,
-          lastProps.selectedTabId,
+          lastPropsRef.current.dashboard.dashcards,
+          visibleCardIds,
+          lastPropsRef.current.isEditing,
+          lastPropsRef.current.selectedTabId,
         )
       : [];
 
@@ -268,104 +277,121 @@ class DashboardGridInner extends Component<
       lastVisibleCards,
     );
 
-    const initialCardSizes =
+    const newInitialCardSizes =
       !isEditing || hasVisibleDashcardsChanged
-        ? getInitialCardSizes(visibleCards, state.initialCardSizes)
-        : state.initialCardSizes;
+        ? getInitialCardSizes(visibleCards, initialCardSizes)
+        : initialCardSizes;
 
-    return {
-      visibleCardIds,
-      initialCardSizes,
-      layouts: getLayouts(visibleCards, state.initialCardSizes),
-      _lastProps: {
-        dashboard,
-        isEditing,
-        selectedTabId,
-      },
-    };
-  }
-
-  onLayoutChange = ({
-    layout,
-    breakpoint,
-  }: {
-    layout: ReactGridLayout.Layout[];
-    breakpoint: GridBreakpoint;
-  }) => {
-    const { setMultipleDashCardAttributes, isEditing } = this.props;
-
-    // We allow moving and resizing cards only on the desktop
-    // Ensures onLayoutChange triggered by window resize,
-    // won't break the main layout
-    if (!isEditing || breakpoint !== "desktop") {
-      return;
+    if (!_.isEqual(newVisibleCardIds, visibleCardIds)) {
+      setVisibleCardIds(newVisibleCardIds);
     }
 
-    const changes: SetDashCardAttributesOpts[] = [];
-
-    layout.forEach((layoutItem) => {
-      const dashboardCard = this.getVisibleCards().find(
-        (card) => String(card.id) === layoutItem.i,
-      );
-      if (dashboardCard) {
-        const keys = ["h", "w", "x", "y"];
-        const changed = !_.isEqual(
-          _.pick(layoutItem, keys),
-          _.pick(this.getLayoutForDashCard(dashboardCard), keys),
-        );
-
-        if (changed) {
-          changes.push({
-            id: dashboardCard.id,
-            attributes: {
-              col: layoutItem.x,
-              row: layoutItem.y,
-              size_x: layoutItem.w,
-              size_y: layoutItem.h,
-            },
-          });
-        }
-      }
-    });
-
-    if (changes.length > 0) {
-      setMultipleDashCardAttributes({ dashcards: changes });
+    if (!_.isEqual(newInitialCardSizes, initialCardSizes)) {
+      setInitialCardSizes(newInitialCardSizes);
     }
-  };
 
-  getLayoutForDashCard = (dashcard: BaseDashboardCard) => {
-    return getLayoutForDashCard(dashcard, this.state?.initialCardSizes);
-  };
+    setLayouts(getLayouts(visibleCards, initialCardSizes));
 
-  getVisibleCards = (
-    cards = this.props.dashboard.dashcards,
-    visibleCardIds = this.state.visibleCardIds,
-    isEditing = this.props.isEditing,
-    selectedTabId = this.props.selectedTabId,
-  ) => {
-    return getVisibleCards(
-      cards,
-      visibleCardIds,
+    lastPropsRef.current = {
+      dashboard,
       isEditing,
       selectedTabId,
-    ) as DashboardCard[];
-  };
+    };
+  }, [
+    dashboard,
+    dashcardData,
+    isEditing,
+    selectedTabId,
+    visibleCardIds,
+    initialCardSizes,
+  ]);
 
-  getDashcardCountByCardId = (cards: BaseDashboardCard[]) =>
-    _.countBy(cards, "card_id");
+  const getLayoutForDashCardFn = useCallback(
+    (dashcard: BaseDashboardCard) => {
+      return getLayoutForDashCard(dashcard, initialCardSizes);
+    },
+    [initialCardSizes],
+  );
 
-  getIsLastDashboardQuestionDashcard = (dc: BaseDashboardCard): boolean => {
-    return Boolean(
-      dc.card.dashboard_id !== null &&
-        dc.card_id &&
-        this.state.dashcardCountByCardId[dc.card_id] <= 1,
-    );
-  };
+  const getVisibleCardsFn = useCallback(
+    (
+      cards = dashboard?.dashcards || [],
+      cardIds = visibleCardIds,
+      editing = isEditing,
+      tabId = selectedTabId,
+    ): DashboardCard[] => {
+      return getVisibleCards(cards, cardIds, editing, tabId) as DashboardCard[];
+    },
+    [dashboard?.dashcards, visibleCardIds, isEditing, selectedTabId],
+  );
 
-  getRowHeight() {
-    const { width } = this.props;
+  const onLayoutChange = useCallback(
+    ({
+      layout,
+      breakpoint,
+    }: {
+      layout: ReactGridLayout.Layout[];
+      breakpoint: GridBreakpoint;
+    }) => {
+      // We allow moving and resizing cards only on the desktop
+      // Ensures onLayoutChange triggered by window resize,
+      // won't break the main layout
+      if (!isEditing || breakpoint !== "desktop") {
+        return;
+      }
 
-    const contentViewportElement = this.context as any;
+      const changes: SetDashCardAttributesOpts[] = [];
+
+      layout.forEach((layoutItem) => {
+        const dashboardCard = getVisibleCardsFn().find(
+          (card) => String(card.id) === layoutItem.i,
+        );
+        if (dashboardCard) {
+          const keys = ["h", "w", "x", "y"];
+          const changed = !_.isEqual(
+            _.pick(layoutItem, keys),
+            _.pick(getLayoutForDashCardFn(dashboardCard), keys),
+          );
+
+          if (changed) {
+            changes.push({
+              id: dashboardCard.id,
+              attributes: {
+                col: layoutItem.x,
+                row: layoutItem.y,
+                size_x: layoutItem.w,
+                size_y: layoutItem.h,
+              },
+            });
+          }
+        }
+      });
+
+      if (changes.length > 0) {
+        setMultipleDashCardAttributes({ dashcards: changes });
+      }
+    },
+    [
+      setMultipleDashCardAttributes,
+      isEditing,
+      getVisibleCardsFn,
+      getLayoutForDashCardFn,
+    ],
+  );
+
+  const getIsLastDashboardQuestionDashcard = useCallback(
+    (dc: BaseDashboardCard): boolean => {
+      return Boolean(
+        dc.card.dashboard_id !== null &&
+          dc.card_id &&
+          dashcardCountByCardId[dc.card_id] <= 1,
+      );
+    },
+    [dashcardCountByCardId],
+  );
+
+  const getRowHeight = useCallback(() => {
+    const contentViewportElement = contentViewportContext as any;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
@@ -376,13 +402,9 @@ class DashboardGridInner extends Component<
     // prevent infinite re-rendering when the scroll bar appears/disappears
     // https://github.com/metabase/metabase/issues/17229
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
-  }
+  }, [width, contentViewportContext]);
 
-  renderReplaceCardModal() {
-    const { addUndo, replaceCard, setDashCardAttributes, dashboard } =
-      this.props;
-    const { replaceCardModalDashCard } = this.state;
-
+  const renderReplaceCardModal = useCallback(() => {
     const hasValidDashCard =
       !!replaceCardModalDashCard &&
       isQuestionDashCard(replaceCardModalDashCard);
@@ -412,7 +434,7 @@ class DashboardGridInner extends Component<
     const replaceCardModalRecentFilter = (items: RecentItem[]) => {
       return items.filter((item) => {
         if (isRecentCollectionItem(item) && item.dashboard) {
-          if (item.dashboard.id !== dashboard.id) {
+          if (item.dashboard.id !== dashboard?.id) {
             return false;
           }
         }
@@ -421,7 +443,7 @@ class DashboardGridInner extends Component<
     };
 
     const handleClose = () => {
-      this.setState({ replaceCardModalDashCard: null });
+      setReplaceCardModalDashCard(null);
     };
 
     if (!hasValidDashCard) {
@@ -442,105 +464,129 @@ class DashboardGridInner extends Component<
         recentFilter={replaceCardModalRecentFilter}
       />
     );
-  }
+  }, [
+    addUndo,
+    replaceCard,
+    setDashCardAttributes,
+    dashboard,
+    replaceCardModalDashCard,
+  ]);
 
-  // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
-  onDrag = () => {
-    if (!this.state.isDragging) {
-      this.setState({ isDragging: true });
+  const onDrag = useCallback(() => {
+    if (!isDragging) {
+      setIsDragging(true);
     }
-  };
+  }, [isDragging]);
 
-  onDragStop = () => {
-    this.setState({ isDragging: false });
-  };
+  const onDragStop = useCallback(() => {
+    setIsDragging(false);
+  }, []);
 
-  onDashCardRemove = (dc: DashboardCard) => {
-    this.props.removeCardFromDashboard({
-      dashcardId: dc.id,
-      cardId: dc.card_id,
-    });
-  };
+  const onDashCardRemove = useCallback(
+    (dc: DashboardCard) => {
+      removeCardFromDashboard({
+        dashcardId: dc.id,
+        cardId: dc.card_id,
+      });
+    },
+    [removeCardFromDashboard],
+  );
 
-  onReplaceCard = (dashcard: BaseDashboardCard) => {
-    this.setState({ replaceCardModalDashCard: dashcard });
-  };
+  const onReplaceCard = useCallback((dashcard: BaseDashboardCard) => {
+    setReplaceCardModalDashCard(dashcard);
+  }, []);
 
-  onEditVisualization = (
-    dashcard: BaseDashboardCard,
-    initialState: VisualizerVizDefinition,
-  ) => {
-    this.setState({
-      visualizerModalStatus: {
+  const handleSetEditingFn = useCallback(() => {
+    handleSetEditing?.(dashboard);
+  }, [handleSetEditing, dashboard]);
+
+  const onEditVisualization = useCallback(
+    (dashcard: BaseDashboardCard, initialState: VisualizerVizDefinition) => {
+      setVisualizerModalStatus({
         dashcardId: dashcard.id,
         state: initialState,
-      },
-    });
+      });
 
-    this.handleSetEditing();
-  };
-
-  renderDashCard(
-    dashcard: DashboardCard,
-    {
-      isMobile,
-      gridItemWidth,
-      totalNumGridCols,
-      shouldAutoScrollTo,
-    }: {
-      isMobile: boolean;
-      gridItemWidth: number;
-      totalNumGridCols: number;
-      shouldAutoScrollTo: boolean;
+      handleSetEditingFn();
     },
-  ) {
-    return (
-      <DashCard
-        className={S.Card}
-        dashcard={dashcard}
-        gridItemWidth={gridItemWidth}
-        totalNumGridCols={totalNumGridCols}
-        markNewCardSeen={this.props.markNewCardSeen}
-        isMobile={isMobile}
-        onRemove={this.onDashCardRemove}
-        onReplaceCard={this.onReplaceCard}
-        onUpdateVisualizationSettings={
-          this.props.onUpdateDashCardVisualizationSettings
-        }
-        onReplaceAllDashCardVisualizationSettings={
-          this.props.onReplaceAllDashCardVisualizationSettings
-        }
-        showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
-        clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
-        isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dashcard)}
-        onEditVisualization={this.onEditVisualization}
-        autoScroll={shouldAutoScrollTo}
-      />
-    );
-  }
+    [handleSetEditingFn],
+  );
 
-  onVisualizerModalSave = (visualization: VisualizerVizDefinition) => {
-    const { visualizerModalStatus } = this.state;
+  const renderDashCard = useCallback(
+    (
+      dashcard: DashboardCard,
+      {
+        isMobile,
+        gridItemWidth,
+        totalNumGridCols,
+        shouldAutoScrollTo,
+      }: {
+        isMobile: boolean;
+        gridItemWidth: number;
+        totalNumGridCols: number;
+        shouldAutoScrollTo: boolean;
+      },
+    ) => {
+      return (
+        <DashCard
+          className={S.Card}
+          dashcard={dashcard}
+          gridItemWidth={gridItemWidth}
+          totalNumGridCols={totalNumGridCols}
+          markNewCardSeen={markNewCardSeen}
+          isMobile={isMobile}
+          onRemove={onDashCardRemove}
+          onReplaceCard={onReplaceCard}
+          onUpdateVisualizationSettings={onUpdateDashCardVisualizationSettings}
+          onReplaceAllDashCardVisualizationSettings={
+            onReplaceAllDashCardVisualizationSettings
+          }
+          showClickBehaviorSidebar={showClickBehaviorSidebar}
+          clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
+          isTrashedOnRemove={getIsLastDashboardQuestionDashcard(dashcard)}
+          onEditVisualization={onEditVisualization}
+          autoScroll={shouldAutoScrollTo}
+        />
+      );
+    },
+    [
+      markNewCardSeen,
+      onDashCardRemove,
+      onReplaceCard,
+      onUpdateDashCardVisualizationSettings,
+      onReplaceAllDashCardVisualizationSettings,
+      showClickBehaviorSidebar,
+      clickBehaviorSidebarDashcard,
+      getIsLastDashboardQuestionDashcard,
+      onEditVisualization,
+    ],
+  );
 
-    if (!visualizerModalStatus) {
-      return;
-    }
+  const onVisualizerModalClose = useCallback(() => {
+    setVisualizerModalStatus(undefined);
+  }, []);
 
-    this.props.replaceCardWithVisualization({
-      dashcardId: visualizerModalStatus.dashcardId,
-      visualization,
-    });
+  const onVisualizerModalSave = useCallback(
+    (visualization: VisualizerVizDefinition) => {
+      if (!visualizerModalStatus) {
+        return;
+      }
 
-    this.onVisualizerModalClose();
-  };
+      replaceCardWithVisualization({
+        dashcardId: visualizerModalStatus.dashcardId,
+        visualization,
+      });
 
-  onVisualizerModalClose = () => {
-    this.setState({ visualizerModalStatus: undefined });
-  };
+      onVisualizerModalClose();
+    },
+    [
+      visualizerModalStatus,
+      replaceCardWithVisualization,
+      onVisualizerModalClose,
+    ],
+  );
 
-  renderVisualizerModal() {
-    const { dashcards } = this.props;
-    const { visualizerModalStatus } = this.state;
+  const renderVisualizerModal = useCallback(() => {
     if (!visualizerModalStatus) {
       return null;
     }
@@ -556,85 +602,84 @@ class DashboardGridInner extends Component<
 
     return (
       <VisualizerModal
-        onSave={this.onVisualizerModalSave}
-        onClose={this.onVisualizerModalClose}
+        onSave={onVisualizerModalSave}
+        onClose={onVisualizerModalClose}
         initialState={{ state: visualizerModalStatus.state }}
         saveLabel={t`Save`}
         allowSaveWhenPristine={allowSaveWhenPristine}
       />
     );
-  }
+  }, [
+    dashcards,
+    visualizerModalStatus,
+    onVisualizerModalSave,
+    onVisualizerModalClose,
+  ]);
 
-  handleSetEditing = () => {
-    this.props.handleSetEditing?.(this.props.dashboard);
-  };
-
-  get isEditingLayout() {
-    const { isEditing, isEditingParameter, clickBehaviorSidebarDashcard } =
-      this.props;
+  const isEditingLayout = useMemo(() => {
     return Boolean(
       isEditing && !isEditingParameter && clickBehaviorSidebarDashcard == null,
     );
-  }
+  }, [isEditing, isEditingParameter, clickBehaviorSidebarDashcard]);
 
-  renderGridItem = ({
-    item: dc,
-    breakpoint,
-    gridItemWidth,
-    totalNumGridCols,
-  }: {
-    item: DashboardCard;
-    breakpoint: GridBreakpoint;
-    gridItemWidth: number;
-    totalNumGridCols: number;
-  }) => {
-    const { isEditing, autoScrollToDashcardId } = this.props;
-    const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
+  const renderGridItem = useCallback(
+    ({
+      item: dc,
+      breakpoint,
+      gridItemWidth,
+      totalNumGridCols,
+    }: {
+      item: DashboardCard;
+      breakpoint: GridBreakpoint;
+      gridItemWidth: number;
+      totalNumGridCols: number;
+    }) => {
+      const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
 
-    const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
-      dc.card.display,
-      isEditing,
-    );
+      const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
+        dc.card.display,
+        isEditing,
+      );
 
-    return (
-      <Box
-        key={String(dc.id)}
-        data-testid="dashcard-container"
-        className={cx(
-          DashboardS.DashCard,
-          EmbedFrameS.DashCard,
-          LegendS.DashCard,
-          S.DashboardCardContainer,
-          {
-            [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
-            [S.isAnimationDisabled]: this.state.isAnimationPaused,
-          },
-        )}
-      >
-        {this.renderDashCard(dc, {
-          isMobile: breakpoint === "mobile",
-          gridItemWidth,
-          totalNumGridCols,
-          shouldAutoScrollTo,
-        })}
-      </Box>
-    );
-  };
+      return (
+        <Box
+          key={String(dc.id)}
+          data-testid="dashcard-container"
+          className={cx(
+            DashboardS.DashCard,
+            EmbedFrameS.DashCard,
+            LegendS.DashCard,
+            S.DashboardCardContainer,
+            {
+              [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
+              [S.isAnimationDisabled]: isAnimationPaused,
+            },
+          )}
+        >
+          {renderDashCard(dc, {
+            isMobile: breakpoint === "mobile",
+            gridItemWidth,
+            totalNumGridCols,
+            shouldAutoScrollTo,
+          })}
+        </Box>
+      );
+    },
+    [isEditing, autoScrollToDashcardId, isAnimationPaused, renderDashCard],
+  );
 
-  renderGrid() {
-    const { width } = this.props;
-    const { layouts, visualizerModalStatus } = this.state;
-    const rowHeight = this.getRowHeight();
+  const renderGrid = useCallback(() => {
+    const rowHeight = getRowHeight();
 
     return (
       <GridLayout<DashboardCard>
         className={cx({
-          [DashboardS.DashEditing]: this.isEditingLayout,
+          [DashboardS.DashEditing]: isEditingLayout,
           [DashboardS.Mobile]: width < GRID_BREAKPOINTS.mobile,
-          [DashboardS.DashDragging]: this.state.isDragging,
+          [DashboardS.DashDragging]: isDragging,
           // we use this class to hide a dashcard actions
           // panel during dragging
-          [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
+          [DashCardS.DashboardCardRootDragging]: isDragging,
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
@@ -643,45 +688,58 @@ class DashboardGridInner extends Component<
         margin={{ desktop: [6, 6], mobile: [6, 10] }}
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
-        onLayoutChange={this.onLayoutChange}
-        onDrag={this.onDrag}
-        onDragStop={this.onDragStop}
-        isEditing={this.isEditingLayout && !visualizerModalStatus}
+        onLayoutChange={onLayoutChange}
+        onDrag={onDrag}
+        onDragStop={onDragStop}
+        isEditing={isEditingLayout && !visualizerModalStatus}
         compactType="vertical"
-        items={this.getVisibleCards()}
-        itemRenderer={this.renderGridItem}
+        items={getVisibleCardsFn()}
+        itemRenderer={renderGridItem}
       />
     );
+  }, [
+    width,
+    getRowHeight,
+    isEditingLayout,
+    isDragging,
+    layouts,
+    onLayoutChange,
+    onDrag,
+    onDragStop,
+    visualizerModalStatus,
+    getVisibleCardsFn,
+    renderGridItem,
+  ]);
+
+  if (!dashboard) {
+    return null;
   }
 
-  render() {
-    const { dashboard, width, forwardedRef, className, style, p } = this.props;
-    return (
-      <Flex
-        align="center"
-        justify="center"
-        className={cx(
-          S.DashboardGridContainer,
-          {
-            [S.isFixedWidth]: dashboard?.width === "fixed",
-          },
-          className,
-        )}
-        ref={forwardedRef}
-        data-testid="dashboard-grid"
-        style={{
-          "--dashboard-fixed-width": FIXED_WIDTH,
-          ...style,
-        }}
-        p={p}
-      >
-        {width > 0 ? this.renderGrid() : <div />}
-        {this.renderReplaceCardModal()}
-        {this.renderVisualizerModal()}
-      </Flex>
-    );
-  }
-}
+  return (
+    <Flex
+      align="center"
+      justify="center"
+      className={cx(
+        S.DashboardGridContainer,
+        {
+          [S.isFixedWidth]: dashboard?.width === "fixed",
+        },
+        className,
+      )}
+      ref={ref}
+      data-testid="dashboard-grid"
+      style={{
+        "--dashboard-fixed-width": FIXED_WIDTH,
+        ...style,
+      }}
+      p={p}
+    >
+      {width > 0 ? renderGrid() : <div />}
+      {renderReplaceCardModal()}
+      {renderVisualizerModal()}
+    </Flex>
+  );
+});
 
 function isEditingTextOrHeadingCard(display: string, isEditing: boolean) {
   const isTextOrHeadingCard = display === "heading" || display === "text";
@@ -704,62 +762,6 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
 
   throw new Error(`Unknown card.type: ${type}`);
 };
-
-const DashboardGrid = forwardRef<
-  HTMLDivElement,
-  DashboardGridForwardedRefProps
->(function _DashboardGrid({ width = 0, ...restProps }, ref) {
-  const {
-    dashboard,
-    selectedTabId,
-    slowCards,
-    isEditing = false,
-    isEditingParameter = false,
-    isNightMode = false,
-    isFullscreen,
-    clickBehaviorSidebarDashcard,
-    getClickActionMode,
-    navigateToNewCardFromDashboard,
-    downloadsEnabled,
-    autoScrollToDashcardId,
-    reportAutoScrolledToDashcard,
-    onChangeLocation,
-    onReplaceAllDashCardVisualizationSettings,
-    onUpdateDashCardVisualizationSettings,
-  } = useDashboardContext();
-
-  if (!dashboard) {
-    return null;
-  }
-
-  return (
-    <DashboardGridInner
-      width={width}
-      dashboard={dashboard}
-      selectedTabId={selectedTabId}
-      slowCards={slowCards}
-      isEditing={isEditing}
-      isEditingParameter={isEditingParameter}
-      isNightMode={isNightMode}
-      isFullscreen={isFullscreen}
-      clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-      getClickActionMode={getClickActionMode}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      downloadsEnabled={downloadsEnabled}
-      autoScrollToDashcardId={autoScrollToDashcardId}
-      reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-      onChangeLocation={onChangeLocation}
-      onReplaceAllDashCardVisualizationSettings={
-        onReplaceAllDashCardVisualizationSettings
-      }
-      onUpdateDashCardVisualizationSettings={
-        onUpdateDashCardVisualizationSettings
-      }
-      {...restProps}
-      forwardedRef={ref}
-    />
-  );
-});
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
