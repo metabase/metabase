@@ -246,15 +246,13 @@ export const TableListView = ({ location, params }: Props) => {
               }}
             />
 
-            {!isEditing && (
-              <TextInput
-                leftSection={<Icon name="search" />}
-                placeholder={t`Search...`}
-                value={searchQuery}
-                w={250}
-                onChange={(event) => setSearchQuery(event.currentTarget.value)}
-              />
-            )}
+            <TextInput
+              leftSection={<Icon name="search" />}
+              placeholder={t`Search...`}
+              value={searchQuery}
+              w={250}
+              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+            />
 
             {!isSyncInProgress(table) && !isEditing && (
               <Button
