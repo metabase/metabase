@@ -142,7 +142,7 @@
                             attribute-merge-order))
                 (value-map :system true system))))
 
-(defn add-structured-attributes
+(defn- add-structured-attributes
   [{:keys [login_attributes jwt_attributes] :as user}]
   (assoc user :structured_attributes (combine {:jwt jwt_attributes :user login_attributes} nil)))
 
