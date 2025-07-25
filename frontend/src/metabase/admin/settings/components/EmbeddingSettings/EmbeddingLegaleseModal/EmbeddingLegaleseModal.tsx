@@ -1,19 +1,30 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
 
-export const EmbeddingSdkLegaleseModal = ({ opened, onClose }: ModalProps) => {
+type SettingKey = "enable-embedding-sdk" | "enable-embedding-simple";
+
+export const EmbeddingLegaleseModal = ({
+  setting,
+  opened,
+  onClose,
+}: ModalProps & { setting: SettingKey }) => {
   const [loading, setLoading] = useState(false);
   const [updateSettings] = useUpdateSettingsMutation();
 
   const onAccept = async () => {
     setLoading(true);
+
     await updateSettings({
-      "show-sdk-embed-terms": false,
-      "enable-embedding-sdk": true,
+      [setting]: true,
+
+      // hide the legalese modal and popups.
+      [getShowEmbedTermsSetting(setting)]: false,
     });
+
     setLoading(false);
     onClose();
   };
@@ -28,15 +39,13 @@ export const EmbeddingSdkLegaleseModal = ({ opened, onClose }: ModalProps) => {
       withCloseButton={false}
       closeOnClickOutside={false}
     >
-      <Text mt="xs">
-        {t`When using the Embedded analytics SDK for React, each end user should have their own Metabase account.`}
-      </Text>
+      <Text mt="xs">{getTitle(setting)}</Text>
       <List mt="xs">
         <List.Item mr="md">
           <Text>{t`Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`}</Text>
         </List.Item>
         <List.Item mr="md">
-          <Text>{t`That, and we consider shared accounts to be unfair usage. Fair usage of the SDK involves giving each end-user of the embedded analytics their own Metabase account.`}</Text>
+          <Text>{t`That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account.`}</Text>
         </List.Item>
       </List>
       <Group justify="right" mt="lg">
@@ -55,3 +64,23 @@ export const EmbeddingSdkLegaleseModal = ({ opened, onClose }: ModalProps) => {
     </Modal>
   );
 };
+
+const getTitle = (key: SettingKey) =>
+  match(key)
+    .with(
+      "enable-embedding-sdk",
+      () =>
+        t`When using the Embedded analytics SDK for React, each end user should have their own Metabase account.`,
+    )
+    .with(
+      "enable-embedding-simple",
+      () =>
+        t`When using simple embedding, each end user should have their own Metabase account.`,
+    )
+    .exhaustive();
+
+const getShowEmbedTermsSetting = (key: SettingKey) =>
+  match(key)
+    .with("enable-embedding-sdk", () => "show-sdk-embed-terms")
+    .with("enable-embedding-simple", () => "show-simple-embed-terms")
+    .exhaustive();
