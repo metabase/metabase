@@ -1,4 +1,5 @@
 (ns metabase-enterprise.semantic-search.index
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -8,7 +9,6 @@
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
    [metabase.search.filter :as search.filter]
-   [metabase.search.ingestion :as ingestion]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
