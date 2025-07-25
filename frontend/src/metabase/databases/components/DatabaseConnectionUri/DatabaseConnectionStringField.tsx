@@ -16,6 +16,7 @@ const supportedEngines = new Set([
   "Databricks",
   "Druid",
   "Druid JDBC",
+  "MySQL",
   "PostgreSQL",
   "Snowflake",
 ]);
