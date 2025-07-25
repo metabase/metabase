@@ -831,3 +831,31 @@
                 :lib/desired-column-alias "count"
                 :display-name             "Count"}]
               (lib/returned-columns query))))))
+
+(deftest ^:parallel test-QUE-1607
+  (testing "QUE-1607"
+    (is (#'metabase.lib.stage/add-cols-from-join-duplicate?
+         {:base-type                    :type/Integer
+          :display-name                 "Sum of Quantity"
+          :effective-type               :type/Integer
+          :lib/deduplicated-name        "sum"
+          :lib/desired-column-alias     "Orders__sum"
+          :lib/original-join-alias      "Orders"
+          :lib/original-name            "sum"
+          :lib/source                   :source/joins
+          :lib/source-column-alias      "sum"
+          :lib/source-uuid              "4d059464-4190-40ae-bc4e-717ff016e157"
+          :lib/type                     :metadata/column
+          :metabase.lib.join/join-alias "Orders"
+          :name                         "sum"
+          :semantic-type                :type/Quantity
+          :source-alias                 "Orders"}
+         {:base-type                    :type/Integer
+          :display-name                 "Sum"
+          :effective-type               :type/Integer
+          :lib/original-join-alias      "Orders"
+          :lib/source                   :source/joins
+          :lib/source-uuid              "91b22976-279d-4052-b269-e4cd83a6683b"
+          :lib/type                     :metadata/column
+          :metabase.lib.join/join-alias "Orders"
+          :name                         "sum"}))))

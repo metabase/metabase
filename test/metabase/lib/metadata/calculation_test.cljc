@@ -10,6 +10,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -828,3 +829,38 @@
             (is (= num-misses
                    (:misses @call-count))
                 "Another call should result in ZERO additional cache misses -- we should be returning the cached value")))))))
+
+(deftest ^:parallel returned-columns-no-duplicates-test
+  (testing "QUE-1607"
+    (let [mp    meta/metadata-provider
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                :fields       [[:field "sum" {:join-alias "Orders", :base-type :type/Integer}]]}]
+                    :fields   [$title $category]
+                    :order-by [[:asc $id]]
+                    :limit    3}))
+          cols  (lib/returned-columns query -1)]
+      (is (= ["TITLE"
+              "CATEGORY"
+              "Orders__sum"]
+             (mapv :lib/desired-column-alias cols)))
+      (is (=? [[:field {} (meta/id :products :title)]
+               [:field {} (meta/id :products :category)]
+               [:field {:join-alias "Orders"} "sum"]]
+              (mapv lib/ref cols)))
+      (let [query' (assoc-in query [:stages 0 :fields] (mapv lib/ref cols))
+            cols'  (lib/returned-columns query' -1)]
+        (is (= ["TITLE"
+                "CATEGORY"
+                "Orders__sum"]
+               (mapv :lib/desired-column-alias cols')))
+        (is (=? [[:field {} (meta/id :products :title)]
+                 [:field {} (meta/id :products :category)]
+                 [:field {:join-alias "Orders"} "sum"]]
+                (mapv lib/ref cols')))))))
