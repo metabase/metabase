@@ -462,3 +462,22 @@
            (lib.util/find-stage-index-and-clause-by-uuid query "a1898aa6-4928-4e97-837d-e440ce21085e")))
     (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000002")))
     (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query 0 "a1898aa6-4928-4e97-837d-e440ce21085e")))))
+
+(deftest ^:parallel do-not-add-extra-stages-to-join-test
+  (is (=? {:stages [{:source-table 45060
+                     :joins        [{:alias  "PRODUCTS__via__PRODUCT_ID"
+                                     :stages [{:source-table 45050
+                                               :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                              [:field 45507 {:base-type :type/Text}]]}]}]}]}
+          (lib.util/pipeline '{:database 45001
+                               :type     :query
+                               :query    {:source-table 45060
+                                          :joins        [{:strategy     :left-join
+                                                          :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                          :fk-field-id  45607
+                                                          :condition    [:=
+                                                                         [:field 45607 nil]
+                                                                         [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                          :source-query {:source-table 45050
+                                                                         :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                                                        [:field 45507 {:base-type :type/Text}]]}}]}}))))
