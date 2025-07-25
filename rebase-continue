@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-617-ability-to-showhide-title-in-staticquestion"
+    }
+  ]
 }
