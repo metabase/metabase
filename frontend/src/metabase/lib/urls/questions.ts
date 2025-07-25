@@ -61,6 +61,11 @@ export function question(
   const fallbackPath = isModel ? "model" : "question";
   let path: string = card?.type ?? fallbackPath;
 
+  // HACK: Always use "question" path for in_report cards
+  if (card?.type === "in_report") {
+    path = "question";
+  }
+
   if (!card || !card.id) {
     return `/${path}${query}${hash}`;
   }

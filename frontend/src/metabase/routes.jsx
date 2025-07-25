@@ -42,6 +42,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
+  PLUGIN_REPORTS,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -177,6 +178,8 @@ export const getRoutes = (store) => {
             title={t`Trash`}
             component={TrashCollectionLanding}
           />
+
+          {PLUGIN_REPORTS.getRoutes()}
 
           <Route
             path="embed-iframe"

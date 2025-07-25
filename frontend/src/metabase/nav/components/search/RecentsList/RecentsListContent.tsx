@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
@@ -23,23 +24,42 @@ import type { RecentItem } from "metabase-types/api";
 
 import { getItemUrl, isItemActive } from "./util";
 
+interface FooterComponentProps {
+  isSelected?: boolean;
+  onFooterSelect?: () => void;
+}
+
 type RecentsListContentProps = {
   isLoading: boolean;
   results: RecentItem[];
   onClick?: (item: RecentItem) => void;
+  footerComponent?: (props: FooterComponentProps) => JSX.Element | null;
+  onFooterSelect?: () => void;
 };
 
 export const RecentsListContent = ({
   isLoading,
   results,
   onClick,
+  footerComponent,
+  onFooterSelect,
 }: RecentsListContentProps) => {
+  const list = useMemo(() => {
+    return footerComponent ? [...results, footerComponent] : results;
+  }, [results, footerComponent]);
+
   const { getRef, cursorIndex } = useListKeyboardNavigation<
-    RecentItem,
+    (typeof list)[number],
     HTMLButtonElement
   >({
-    list: results,
-    onEnter: (item: RecentItem) => onClick?.(item),
+    list,
+    onEnter: (item) => {
+      if (typeof item === "function") {
+        onFooterSelect?.();
+      } else {
+        onClick?.(item);
+      }
+    },
   });
 
   if (isLoading) {
@@ -58,59 +78,66 @@ export const RecentsListContent = ({
   }
 
   return (
-    <Stack
-      gap="sm"
-      px="sm"
-      pt="md"
-      pb="sm"
-      data-testid="recents-list-container"
-    >
-      <Title order={4} px="sm">{t`Recently viewed`}</Title>
-      <Stack gap={0}>
-        {results.map((item, index) => {
-          const isActive = isItemActive(item);
+    <>
+      <Stack
+        gap="sm"
+        px="sm"
+        pt="md"
+        pb="sm"
+        data-testid="recents-list-container"
+      >
+        <Title order={4} px="sm">{t`Recently viewed`}</Title>
+        <Stack gap={0}>
+          {results.map((item, index) => {
+            const isActive = isItemActive(item);
 
-          return (
-            <SearchResultContainer
-              data-testid="recently-viewed-item"
-              ref={getRef(item)}
-              key={getItemKey(item)}
-              component="button"
-              onClick={() => onClick?.(item)}
-              isActive={isActive}
-              isSelected={cursorIndex === index}
-              p="sm"
-            >
-              <ItemIcon active={isActive} item={item} type={item.model} />
-              <ResultNameSection justify="center" gap="xs">
-                <Group gap="xs" align="center" wrap="nowrap">
-                  <ResultTitle
-                    data-testid="recently-viewed-item-title"
-                    truncate
-                    href={onClick ? undefined : getItemUrl(item)}
-                  >
-                    {getName(item)}
-                  </ResultTitle>
-                  <PLUGIN_MODERATION.ModerationStatusIcon
-                    status={getModeratedStatus(item)}
-                    filled
-                    size={14}
-                  />
-                </Group>
-                <SearchResultLink>
-                  {getTranslatedEntityName(item.model)}
-                </SearchResultLink>
-              </ResultNameSection>
-              {isItemLoading(item) && (
-                <LoadingSection px="xs">
-                  <Loader />
-                </LoadingSection>
-              )}
-            </SearchResultContainer>
-          );
-        })}
+            return (
+              <SearchResultContainer
+                data-testid="recently-viewed-item"
+                ref={getRef(item)}
+                key={getItemKey(item)}
+                component="button"
+                onClick={() => onClick?.(item)}
+                isActive={isActive}
+                isSelected={cursorIndex === index}
+                p="sm"
+              >
+                <ItemIcon active={isActive} item={item} type={item.model} />
+                <ResultNameSection justify="center" gap="xs">
+                  <Group gap="xs" align="center" wrap="nowrap">
+                    <ResultTitle
+                      data-testid="recently-viewed-item-title"
+                      truncate
+                      href={onClick ? undefined : getItemUrl(item)}
+                    >
+                      {getName(item)}
+                    </ResultTitle>
+                    <PLUGIN_MODERATION.ModerationStatusIcon
+                      status={getModeratedStatus(item)}
+                      filled
+                      size={14}
+                    />
+                  </Group>
+                  <SearchResultLink>
+                    {getTranslatedEntityName(item.model)}
+                  </SearchResultLink>
+                </ResultNameSection>
+                {isItemLoading(item) && (
+                  <LoadingSection px="xs">
+                    <Loader />
+                  </LoadingSection>
+                )}
+              </SearchResultContainer>
+            );
+          })}
+        </Stack>
       </Stack>
-    </Stack>
+      {footerComponent &&
+        footerComponent({
+          isSelected: cursorIndex === list.length - 1,
+          onFooterSelect,
+        })}
+    </>
   );
 };
 

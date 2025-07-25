@@ -216,6 +216,15 @@
   [dashboard-cards :- [:sequential NewDashboardCard]]
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
+      ;; Check if any of the cards being added are of type :in_report
+      (let [card-ids (keep :card_id dashboard-cards)]
+        (when (seq card-ids)
+          (let [in-report-cards (t2/select :model/Card :id [:in card-ids] :type [:in #{:in_report "in_report"}])]
+            (when (seq in-report-cards)
+              (throw (ex-info (str "Cards with type 'in_report' cannot be added to dashboards")
+                              {:status-code 400
+                               :in-report-card-ids (map :id in-report-cards)}))))))
+
       (let [dashboard-card-ids (t2/insert-returning-pks!
                                 :model/DashboardCard
                                 (for [dashcard dashboard-cards]

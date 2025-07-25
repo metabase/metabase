@@ -238,7 +238,8 @@
     "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
     "snippet"
     "no_models"
-    "timeline"})
+    "timeline"
+    "report"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -326,6 +327,19 @@
 (defmethod ^:private post-process-collection-children :default
   [_ _ _ rows]
   rows)
+
+(defmethod collection-children-query :report
+  [_ collection {:keys [archived?]}]
+  {:select [:report.id
+            :report.name
+            :report.collection_id
+            [(h2x/literal "report") :model]]
+   :from [[:report_document :report]]
+   :where [:and
+           [:= :report.collection_id (:id collection)]
+           (if archived?
+             [:= [:inline 0] [:inline 1]]
+             [:= [:inline 1] [:inline 1]])]})
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
@@ -762,7 +776,8 @@
     :dashboard  :model/Dashboard
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
-    :timeline   :model/Timeline))
+    :timeline   :model/Timeline
+    :report     :model/Report))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -948,7 +963,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :report]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)

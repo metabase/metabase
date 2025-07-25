@@ -803,3 +803,8 @@ export const PLUGIN_SMTP_OVERRIDE: {
   CloudSMTPConnectionCard: PluginPlaceholder,
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
+
+export const PLUGIN_REPORTS = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowReportInNewItemMenu: () => false,
+};
