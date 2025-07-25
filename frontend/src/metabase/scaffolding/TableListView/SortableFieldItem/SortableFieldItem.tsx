@@ -74,10 +74,22 @@ export const SortableFieldItem = ({
               flex="0 0 auto"
               mr="sm"
               name="grabber"
+              style={{
+                opacity: isHidden ? 0.5 : 1,
+              }}
             />
           )}
 
-          <Icon className={S.icon} flex="0 0 auto" mr="sm" name={icon} />
+          <Icon
+            className={S.icon}
+            flex="0 0 auto"
+            mr="sm"
+            name={icon}
+            style={{
+              color: isHidden ? "var(--mb-color-text-primary)" : undefined,
+              opacity: isHidden ? 0.5 : 1,
+            }}
+          />
 
           {parent && (
             <Box
@@ -86,6 +98,9 @@ export const SortableFieldItem = ({
               lh="normal"
               maw="50%"
               mr="xs"
+              style={{
+                opacity: isHidden ? 0.5 : 1,
+              }}
             >
               <Ellipsified lines={1} tooltip={parent.display_name}>
                 {parent.display_name}
@@ -94,7 +109,15 @@ export const SortableFieldItem = ({
             </Box>
           )}
 
-          <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
+          <Text
+            flex="1"
+            fw="bold"
+            lh="normal"
+            lineClamp={1}
+            style={{
+              opacity: isHidden ? 0.5 : 1,
+            }}
+          >
             {label}
           </Text>
 
