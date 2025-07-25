@@ -267,6 +267,7 @@
           spec      (actions.args/action-arg-map-schema action-kw)
           arg-maps  (log-before-after :trace "normalize map" arg-maps
                                       (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps))
+          _        (actions.args/validate-inputs! action-kw arg-maps)
           errors   (for [arg-map arg-maps
                          :when (not (mr/validate spec arg-map))]
                      {:message (format "Invalid Action arg map for %s: %s" action-kw (me/humanize (mr/explain spec arg-map)))

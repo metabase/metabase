@@ -13,6 +13,7 @@
 (setting/defsetting database-enable-table-editing
   (i18n/deferred-tru "Whether to enable table data editing for a specific Database.")
   :default false
+  ;; TODO should only allow being enabled? if the driver supports actions/data-editing
   :feature :table-data-editing
   :type :boolean
   :visibility :public
