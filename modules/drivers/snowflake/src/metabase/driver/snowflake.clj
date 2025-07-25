@@ -846,7 +846,6 @@
   (= (sql-jdbc/get-sql-state e) "57014"))
 
 (defmethod driver/set-database-used! :snowflake [_driver conn db]
-  (let [db-name (-> db :details :db)
-        sql (format "USE DATABASE \"%s\"" db-name)]
+  (let [sql (format "USE DATABASE \"%s\"" (db-name db))]
     (with-open [stmt (.createStatement ^java.sql.Connection conn)]
       (.execute stmt sql))))
