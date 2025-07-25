@@ -203,7 +203,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v56.2025-06-17T20:11:55
+      id: v56.2025-07-17T20:11:55
       author: edpaget
       comment: Add column to user for jwt-set attributes
       changes:
