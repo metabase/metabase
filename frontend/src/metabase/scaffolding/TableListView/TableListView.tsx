@@ -14,6 +14,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Box,
@@ -188,17 +189,6 @@ export const TableListView = ({ location, params }: Props) => {
               {t`Edit`}
             </Button>
           )}
-
-          {isEditing && (
-            <Button
-              leftSection={<Icon name="check" />}
-              type="submit"
-              variant="filled"
-              onClick={handleSubmit}
-            >
-              {t`Save`}
-            </Button>
-          )}
         </Group>
       </Group>
 
@@ -279,19 +269,59 @@ export const TableListView = ({ location, params }: Props) => {
 
         {isEditing && (
           <Stack flex="0 0 auto" miw={400}>
-            <Title order={2}>{t`Display settings`}</Title>
+            <Group align="center" gap="md" justify="space-between">
+              <Title order={2}>{t`Display settings`}</Title>
 
-            <Title order={3}>{t`Shown columns`}</Title>
+              {isEditing && (
+                <Button
+                  leftSection={<Icon name="check" />}
+                  type="submit"
+                  variant="filled"
+                  onClick={handleSubmit}
+                >
+                  {t`Save`}
+                </Button>
+              )}
+            </Group>
+
+            <Text c="text-secondary" size="lg">{t`Shown columns`}</Text>
             <SortableFieldList
               fields={visibleFields}
               onChange={handleOrderChange}
+              onToggleVisibility={(field) => {
+                setSettings((settings) => ({
+                  ...settings,
+                  list_view: {
+                    ...settings.list_view,
+                    fields: settings.list_view.fields.filter(
+                      (f) => f.field_id !== field.id,
+                    ),
+                  },
+                }));
+              }}
             />
 
-            <Title order={3}>{t`Hidden columns`}</Title>
+            <Text c="text-secondary" size="lg">{t`Hidden columns`}</Text>
             <SortableFieldList
               disabled
               fields={hiddenFields}
+              isHidden
               onChange={handleOrderChange}
+              onToggleVisibility={(field) => {
+                setSettings((settings) => ({
+                  ...settings,
+                  list_view: {
+                    ...settings.list_view,
+                    fields: [
+                      ...settings.list_view.fields,
+                      {
+                        field_id: getRawTableFieldId(field),
+                        style: "normal",
+                      },
+                    ],
+                  },
+                }));
+              }}
             />
           </Stack>
         )}

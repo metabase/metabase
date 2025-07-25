@@ -15,10 +15,18 @@ import { SortableFieldItem } from "../SortableFieldItem";
 interface Props {
   disabled?: boolean;
   fields: Field[];
+  isHidden?: boolean;
   onChange: (fieldOrder: FieldId[]) => void;
+  onToggleVisibility: (field: Field) => void;
 }
 
-export const SortableFieldList = ({ disabled, fields, onChange }: Props) => {
+export const SortableFieldList = ({
+  disabled,
+  fields,
+  isHidden,
+  onChange,
+  onToggleVisibility,
+}: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
@@ -49,8 +57,10 @@ export const SortableFieldList = ({ disabled, fields, onChange }: Props) => {
             <SortableFieldItem
               disabled={isDragDisabled}
               field={field}
+              isHidden={isHidden}
               parent={parent}
               key={id}
+              onToggleVisibility={onToggleVisibility}
             />
           );
         }}

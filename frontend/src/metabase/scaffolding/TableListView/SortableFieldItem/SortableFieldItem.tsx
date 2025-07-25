@@ -1,10 +1,20 @@
 import cx from "classnames";
+import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Card, Flex, Icon, Text, rem } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Card,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -13,10 +23,18 @@ import S from "./SortableFieldItem.module.css";
 interface Props {
   disabled?: boolean;
   field: Field;
+  isHidden?: boolean;
   parent?: Field | undefined;
+  onToggleVisibility: (field: Field) => void;
 }
 
-export const SortableFieldItem = ({ disabled, field, parent }: Props) => {
+export const SortableFieldItem = ({
+  disabled,
+  field,
+  isHidden,
+  parent,
+  onToggleVisibility,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
   const label = field.display_name;
@@ -79,6 +97,18 @@ export const SortableFieldItem = ({ disabled, field, parent }: Props) => {
           <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
             {label}
           </Text>
+
+          <Tooltip label={isHidden ? t`Unhide column` : t`Hide column`}>
+            <ActionIcon
+              aria-label={isHidden ? t`Unhide column` : t`Hide column`}
+              mb={-8}
+              mt={-6}
+              variant="transparent"
+              onClick={() => onToggleVisibility(field)}
+            >
+              <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
+            </ActionIcon>
+          </Tooltip>
         </Flex>
       </Card>
     </Sortable>
