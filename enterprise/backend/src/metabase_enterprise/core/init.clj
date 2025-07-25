@@ -16,5 +16,4 @@
    [metabase-enterprise.scim.init]
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]
-   [metabase-enterprise.transfers.init]
    [metabase-enterprise.transforms.init]))

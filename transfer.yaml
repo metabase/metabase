@@ -1,6 +1,0 @@
-lego: transfer
-source_database: 72
-source_table: gh_issue
-destination_database: 71
-destination_table: all_issues
-overwrite?: true
