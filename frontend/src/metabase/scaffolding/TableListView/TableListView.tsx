@@ -26,7 +26,11 @@ import {
   Title,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { FieldId, StructuredDatasetQuery } from "metabase-types/api";
+import type {
+  Field,
+  FieldId,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
@@ -98,6 +102,24 @@ export const TableListView = ({ location, params }: Props) => {
     }));
   };
 
+  const handleStyleChange = (
+    field: Field,
+    style: "normal" | "bold" | "dim",
+  ) => {
+    setSettings((settings) => ({
+      ...settings,
+      list_view: {
+        ...settings.list_view,
+        fields: settings.list_view.fields.map((f) => {
+          if (f.field_id === getRawTableFieldId(field)) {
+            return { ...f, style };
+          }
+          return f;
+        }),
+      },
+    }));
+  };
+
   const handleSubmit = () => {
     setIsEditing(false);
 
@@ -128,6 +150,13 @@ export const TableListView = ({ location, params }: Props) => {
   const hiddenFields = (table.fields ?? []).filter((field) =>
     settings.list_view.fields.every((f) => f.field_id !== field.id),
   );
+
+  const stylesMap = settings.list_view.fields.reduce<
+    Record<FieldId, "normal" | "bold" | "dim">
+  >((acc, field) => {
+    acc[field.field_id] = field.style;
+    return acc;
+  }, {});
   const allRows = dataset.data.rows;
   const paginatedRows = allRows.slice(PAGE_SIZE * page, PAGE_SIZE * (page + 1));
 
@@ -223,8 +252,8 @@ export const TableListView = ({ location, params }: Props) => {
                         <Box
                           c={
                             settings.list_view.fields[cellIndex].style === "dim"
-                              ? "text-secondary"
-                              : undefined
+                              ? "text-light"
+                              : "text-primary"
                           }
                           component="td"
                           fw={
@@ -287,7 +316,9 @@ export const TableListView = ({ location, params }: Props) => {
             <Text c="text-secondary" size="lg">{t`Shown columns`}</Text>
             <SortableFieldList
               fields={visibleFields}
+              stylesMap={stylesMap}
               onChange={handleOrderChange}
+              onStyleChange={handleStyleChange}
               onToggleVisibility={(field) => {
                 setSettings((settings) => ({
                   ...settings,

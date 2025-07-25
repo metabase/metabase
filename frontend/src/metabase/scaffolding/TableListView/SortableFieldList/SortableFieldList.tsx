@@ -16,7 +16,9 @@ interface Props {
   disabled?: boolean;
   fields: Field[];
   isHidden?: boolean;
+  stylesMap?: Record<FieldId, "normal" | "bold" | "dim">;
   onChange: (fieldOrder: FieldId[]) => void;
+  onStyleChange?: (field: Field, style: "normal" | "bold" | "dim") => void;
   onToggleVisibility: (field: Field) => void;
 }
 
@@ -24,8 +26,10 @@ export const SortableFieldList = ({
   disabled,
   fields,
   isHidden,
+  stylesMap,
   onChange,
   onToggleVisibility,
+  onStyleChange,
 }: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
@@ -52,6 +56,7 @@ export const SortableFieldList = ({
         renderItem={({ id, item: field }) => {
           const parentName = field.nfc_path?.[0] ?? "";
           const parent = fieldsByName[parentName];
+          const style = stylesMap?.[getRawTableFieldId(field)] ?? "normal";
 
           return (
             <SortableFieldItem
@@ -59,7 +64,9 @@ export const SortableFieldList = ({
               field={field}
               isHidden={isHidden}
               parent={parent}
+              style={style}
               key={id}
+              onStyleChange={onStyleChange}
               onToggleVisibility={onToggleVisibility}
             />
           );

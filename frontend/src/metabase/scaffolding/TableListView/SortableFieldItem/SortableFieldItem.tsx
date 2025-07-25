@@ -11,6 +11,7 @@ import {
   Card,
   Flex,
   Icon,
+  Menu,
   Text,
   Tooltip,
   rem,
@@ -25,6 +26,8 @@ interface Props {
   field: Field;
   isHidden?: boolean;
   parent?: Field | undefined;
+  style?: "normal" | "bold" | "dim";
+  onStyleChange?: (field: Field, style: "normal" | "bold" | "dim") => void;
   onToggleVisibility: (field: Field) => void;
 }
 
@@ -34,6 +37,8 @@ export const SortableFieldItem = ({
   isHidden,
   parent,
   onToggleVisibility,
+  onStyleChange,
+  style = "normal",
 }: Props) => {
   const id = getRawTableFieldId(field);
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
@@ -132,6 +137,50 @@ export const SortableFieldItem = ({
               <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
             </ActionIcon>
           </Tooltip>
+
+          {onStyleChange && (
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <Tooltip label={t`Change style`}>
+                  <ActionIcon
+                    aria-label={t`Change style`}
+                    fw={style === "bold" ? "bold" : undefined}
+                    mb={-8}
+                    mt={-5}
+                    ml={8}
+                    variant="transparent"
+                  >
+                    <Box c={style === "dim" ? "text-light" : "text-primary"}>
+                      <Icon name={style === "bold" ? "bold" : "string"} />
+                    </Box>
+                  </ActionIcon>
+                </Tooltip>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="string" />}
+                  onClick={() => onStyleChange(field, "normal")}
+                >
+                  {t`Normal`}
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icon name="bold" />}
+                  fw="bold"
+                  onClick={() => onStyleChange(field, "bold")}
+                >
+                  {t`Bold`}
+                </Menu.Item>
+                <Menu.Item
+                  c="text-light"
+                  leftSection={<Icon name="string" />}
+                  onClick={() => onStyleChange(field, "dim")}
+                >
+                  {t`Dim`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
         </Flex>
       </Card>
     </Sortable>

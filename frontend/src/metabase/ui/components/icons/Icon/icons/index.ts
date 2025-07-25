@@ -51,6 +51,8 @@ import bell_component from "./bell.svg?component";
 import bell_source from "./bell.svg?source";
 import birthday_component from "./birthday.svg?component";
 import birthday_source from "./birthday.svg?source";
+import bold_component from "./bold.svg?component";
+import bold_source from "./bold.svg?source";
 import bolt_component from "./bolt.svg?component";
 import bolt_source from "./bolt.svg?source";
 import bolt_filled_component from "./bolt_filled.svg?component";
@@ -547,6 +549,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     bookmark_filled: {
       component: bookmark_filled_component,
       source: bookmark_filled_source,
+    },
+    bold: {
+      component: bold_component,
+      source: bold_source,
     },
     bolt: {
       component: bolt_component,
@@ -1375,6 +1381,7 @@ export type IconName =
   | "birthday"
   | "bookmark"
   | "bookmark_filled"
+  | "bold"
   | "bolt"
   | "bolt_filled"
   | "breakout"
