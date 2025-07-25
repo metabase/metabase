@@ -12,9 +12,10 @@ export interface RegexFields {
 
 const jdbcPrefix = "(?<hasJdbcPrefix>jdbc:)?";
 const userPass = "(?:(?<username>[^:/?#]+)(?::(?<password>[^@/?#]*))?@)?";
-const host = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
+const hostAndPort = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
 const params = "(?:\\?(?<params>.*))?";
-const semicolonParams = "([^;]*)(?<semicolonParams>.*)?";
+const semicolonParams = ";?(?<semicolonParams>.*)?;?";
+// const semicolonParams = "([^;]*)(?<semicolonParams>.*)?";
 
 const connectionStringRegexes = {
   "amazon-athena": new RegExp(
@@ -32,7 +33,7 @@ const connectionStringRegexes = {
       jdbcPrefix +
       "(?<protocol>redshift)://" +
       userPass +
-      host +
+      hostAndPort +
       "(?:/(?<database>[^/?#;]*))?" +
       ";?" +
       "(?<semicolonParams>.*)?" +
@@ -48,16 +49,35 @@ const connectionStringRegexes = {
       jdbcPrefix +
       "(?<protocol>clickhouse)://" +
       userPass +
-      host +
+      hostAndPort +
       "(?:/(?<database>[^/?#]*))?" +
       params,
+  ),
+  databricks: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>databricks)://" +
+      hostAndPort +
+      "(?:/(?<schema>[^/?#]*))?" +
+      semicolonParams +
+      "$",
+    "i",
+  ),
+  druid: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>avatica)" +
+      ":remote:url=(https?://)?(?<host>[^:/]+):(?<port>\\d+)(?<path>/[^;]*)" +
+      semicolonParams +
+      "$",
+    "i",
   ),
   postgresql: new RegExp(
     "^" +
       jdbcPrefix +
       "(?<protocol>postgres(?:ql)?)://" +
       userPass +
-      host +
+      hostAndPort +
       "(?:/(?<database>[^/?#]*))?" +
       params +
       "$",
@@ -68,7 +88,7 @@ const connectionStringRegexes = {
       jdbcPrefix +
       "(?<protocol>mysql)://" +
       userPass +
-      host +
+      hostAndPort +
       "(?:/(?<database>[^/?#]*))?" +
       params +
       "$",
@@ -148,7 +168,7 @@ const connectionStringRegexes = {
       jdbcPrefix +
       "(?<protocol>snowflake)://" +
       userPass +
-      host +
+      hostAndPort +
       "(?:/(?<database>[^/?#]*)?)?" +
       params +
       "$",
@@ -162,7 +182,6 @@ export function parseConnectionUriRegex(
   for (const regex of Object.values(connectionStringRegexes)) {
     const match = connectionUri.match(regex);
     if (match) {
-      console.log({ match });
       const params = match.groups?.params
         ? Object.fromEntries(new URLSearchParams(match.groups.params))
         : undefined;
@@ -170,13 +189,14 @@ export function parseConnectionUriRegex(
         ? match.groups.semicolonParams.split(";").reduce(
             (acc, param) => {
               const [key, value] = param.split("=");
-              acc[key] = value;
+              if (key !== "") {
+                acc[key] = value;
+              }
               return acc;
             },
             {} as Record<string, string>,
           )
         : undefined;
-      console.log(semicolonParams);
       return {
         ...match.groups,
         params: params ?? semicolonParams,

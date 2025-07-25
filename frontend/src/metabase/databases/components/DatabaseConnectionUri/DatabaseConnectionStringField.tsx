@@ -9,12 +9,15 @@ import { mapDatabaseValues } from "./databaseFieldMapper";
 import { parseConnectionUriRegex } from "./parseConnectionRegex";
 
 const supportedEngines = new Set([
-  "PostgreSQL",
-  "Snowflake",
-  "BigQuery",
-  "ClickHouse",
   "Amazon Athena",
   "Amazon Redshift",
+  "BigQuery",
+  "ClickHouse",
+  "Databricks",
+  "Druid",
+  "Druid JDBC",
+  "PostgreSQL",
+  "Snowflake",
 ]);
 
 export function DatabaseConnectionStringField({
