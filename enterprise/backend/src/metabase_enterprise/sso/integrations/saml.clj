@@ -248,6 +248,15 @@
      :clean-continue-url clean-continue-url
      :origin origin}))
 
+(defn- filter-non-string-attributes
+  [attrs]
+  (->> attrs
+       (filter (fn [[key value]]
+                 (if (string? value)
+                   value
+                   (log/warnf "Dropping SAML attribute '%s' with non-string value: %s" (name key) value))))
+       (into {})))
+
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
@@ -289,7 +298,7 @@
                             :last-name       last-name
                             :email           email
                             :group-names     groups
-                            :user-attributes attrs
+                            :user-attributes (filter-non-string-attributes attrs)
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (system/site-url)))]
         (if token-value
