@@ -41,7 +41,7 @@ export const SdkIframeEmbedPreview = () => {
 
         script.onload = () => {
           defineMetabaseConfig({
-            instanceUrl: "http://localhost:3000",
+            instanceUrl,
             useExistingUserSession: true,
             theme: settings.theme,
             ...(localeOverride ? { locale: localeOverride } : {}),
@@ -98,7 +98,11 @@ export const SdkIframeEmbedPreview = () => {
   }, [settings, isIframeLoaded]);
 
   return (
-    <div style={{ width: "100%", height: "100%" }} id="iframe-embed-container">
+    <div
+      style={{ width: "100%", height: "100%" }}
+      id="iframe-embed-container"
+      data-iframe-loaded={isIframeLoaded}
+    >
       {/* this is populated from the useEffect so that we can share `getEmbedCustomElementSnippet` with the code snippet on the left */}
     </div>
   );

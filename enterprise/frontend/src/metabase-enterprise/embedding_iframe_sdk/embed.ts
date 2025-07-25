@@ -28,7 +28,7 @@ const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 
 // Stub of MetabaseEmbedElement to satisfy type requirements of helper utilities below.
 // The full custom elements are declared later in this file.
-class MetabaseEmbedElement extends HTMLElement {
+export class MetabaseEmbedElement extends HTMLElement {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   updateSettings(_settings: Partial<SdkIframeEmbedSettings>) {}
 }
@@ -425,6 +425,48 @@ function createCustomElement<Arr extends readonly string[]>(
 
     static get observedAttributes() {
       return attributeNames as readonly string[];
+    }
+
+    addEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
+      options?: boolean | AddEventListenerOptions,
+    ): void {
+      if (type === "ready") {
+        // Forward Metabase SDK specific events to the underlying embed instance.
+        this._embed?.addEventListener(
+          type as SdkIframeEmbedEvent["type"],
+          listener as SdkIframeEmbedEventHandler,
+        );
+        return;
+      }
+
+      // Fall back to the native HTMLElement event mechanism for all other events.
+      super.addEventListener(
+        type,
+        listener as EventListenerOrEventListenerObject,
+        options,
+      );
+    }
+
+    removeEventListener(
+      type: string,
+      listener: EventListenerOrEventListenerObject | SdkIframeEmbedEventHandler,
+      options?: boolean | EventListenerOptions,
+    ): void {
+      if (type === "ready") {
+        this._embed?.removeEventListener(
+          type as SdkIframeEmbedEvent["type"],
+          listener as SdkIframeEmbedEventHandler,
+        );
+        return;
+      }
+
+      super.removeEventListener(
+        type,
+        listener as EventListenerOrEventListenerObject,
+        options,
+      );
     }
 
     updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
