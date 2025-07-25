@@ -38,6 +38,7 @@ export function TransformQueryBuilder({
     runQuery,
     cancelQuery,
   } = useQueryResults(question);
+  const canSave = Lib.canSave(question.query(), question.type());
   const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const handleChange = async (newQuestion: Question) => {
@@ -57,6 +58,7 @@ export function TransformQueryBuilder({
       <TransformHeader
         name={name}
         isNative={isNative}
+        canSave={canSave}
         isSaving={isSaving}
         onSave={handleSave}
         onCancel={onCancel}

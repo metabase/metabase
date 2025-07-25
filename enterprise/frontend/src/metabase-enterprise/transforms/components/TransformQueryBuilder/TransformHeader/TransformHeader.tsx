@@ -8,6 +8,7 @@ import S from "./TransformHeader.module.css";
 type TransformHeaderProps = {
   name?: string;
   isNative: boolean;
+  canSave: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
@@ -16,6 +17,7 @@ type TransformHeaderProps = {
 export function TransformHeader({
   name,
   isNative,
+  canSave,
   isSaving,
   onSave,
   onCancel,
@@ -34,7 +36,12 @@ export function TransformHeader({
       <Title flex={1} order={4} c={name ? "text-dark" : "text-medium"}>
         {name ?? t`New transform`}
       </Title>
-      <Button variant="filled" loading={isSaving} onClick={onSave}>
+      <Button
+        variant="filled"
+        loading={isSaving}
+        disabled={!canSave}
+        onClick={onSave}
+      >
         {t`Save`}
       </Button>
       <Button onClick={onCancel}>{t`Cancel`}</Button>
