@@ -67,7 +67,7 @@ const getSwitchProps = (): SwitchProps => ({
     },
     label: {
       fontWeight: "bold",
-      fontSize: "14px",
+      fontSize: "var(--mb-font-size-md)",
     },
   },
 });
