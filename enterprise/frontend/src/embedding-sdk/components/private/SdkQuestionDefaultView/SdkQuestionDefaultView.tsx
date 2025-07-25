@@ -9,7 +9,6 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
@@ -28,6 +27,7 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
+import { SdkQuestion } from "../SdkQuestion/SdkQuestion";
 import { shouldShowSaveButton } from "../SdkQuestion/components";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 

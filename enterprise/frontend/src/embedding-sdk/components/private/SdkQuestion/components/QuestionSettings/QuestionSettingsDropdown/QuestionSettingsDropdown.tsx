@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
 
 import { FLEXIBLE_SIZE_DEFAULT_HEIGHT } from "embedding-sdk/components/private/FlexibleSizeComponent";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
+import { SdkQuestion } from "../../../SdkQuestion";
 import ToolbarButtonS from "../../../styles/ToolbarButton.module.css";
 import { ToolbarButton } from "../../util/ToolbarButton";
 

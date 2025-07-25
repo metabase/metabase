@@ -1,6 +1,6 @@
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
+import { SdkQuestion } from "../../SdkQuestion";
 import { useSdkQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
 

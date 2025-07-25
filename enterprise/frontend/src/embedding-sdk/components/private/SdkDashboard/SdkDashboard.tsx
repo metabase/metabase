@@ -17,7 +17,6 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -53,6 +52,7 @@ import type {
   DrillThroughQuestionProps,
   SdkQuestionProps,
 } from "../../public/SdkQuestion";
+import { SdkQuestion } from "../SdkQuestion/SdkQuestion";
 
 import {
   SdkDashboardStyledWrapper,

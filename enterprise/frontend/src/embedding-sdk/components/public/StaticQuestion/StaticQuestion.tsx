@@ -1,14 +1,15 @@
 import type { PropsWithChildren } from "react";
 
-import {
-  SdkQuestion,
-  type SdkQuestionProps,
-} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
+
+import {
+  SdkQuestion,
+  type SdkQuestionProps,
+} from "../../private/SdkQuestion/SdkQuestion";
 
 /**
  * @interface

@@ -1,7 +1,7 @@
 import {
   SdkQuestion,
   type SdkQuestionProps,
-} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
+} from "../../private/SdkQuestion/SdkQuestion";
 
 /**
  * @interface

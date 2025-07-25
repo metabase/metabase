@@ -1,12 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
-import {
-  SdkQuestion,
-  type SdkQuestionProps,
-} from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Modal, Stack } from "metabase/ui";
+
+import { SdkQuestion, type SdkQuestionProps } from "../SdkQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 

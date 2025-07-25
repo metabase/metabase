@@ -41,9 +41,9 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
-import { useSdkQuestionContext } from "../../private/SdkQuestion/context";
-
 import { type BaseSdkQuestionProps, SdkQuestion } from "./SdkQuestion";
+import { useSdkQuestionContext } from "./context";
+
 const TEST_PARAM = createMockParameter({
   type: "number/=",
   slug: "product_id",

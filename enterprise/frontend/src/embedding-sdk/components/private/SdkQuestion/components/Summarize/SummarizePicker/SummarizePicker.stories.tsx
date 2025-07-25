@@ -1,7 +1,7 @@
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Center, Popover } from "metabase/ui";
 
+import { SdkQuestion } from "../../../SdkQuestion";
 import { SummarizePicker } from "../SummarizePicker";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;

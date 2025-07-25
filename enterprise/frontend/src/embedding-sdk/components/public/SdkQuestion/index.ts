@@ -24,4 +24,4 @@ export {
   type BaseSdkQuestionProps,
   type SdkQuestionProps,
   type DrillThroughQuestionProps,
-} from "./SdkQuestion";
+} from "../../private/SdkQuestion/SdkQuestion";

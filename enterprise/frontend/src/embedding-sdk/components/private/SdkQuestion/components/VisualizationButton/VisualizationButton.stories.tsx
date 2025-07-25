@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Button, Stack, Text } from "metabase/ui";
 
+import { SdkQuestion } from "../../SdkQuestion";
 import { useRunVisualization } from "../../hooks/use-run-visualization";
 
 import { VisualizationButton } from "./VisualizationButton";

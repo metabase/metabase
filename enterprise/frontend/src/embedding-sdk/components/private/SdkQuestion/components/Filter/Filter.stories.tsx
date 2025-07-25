@@ -1,6 +1,7 @@
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Flex } from "metabase/ui";
+
+import { SdkQuestion } from "../../SdkQuestion";
 
 import { Filter } from "./Filter";
 

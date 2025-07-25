@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 
-import type { SdkQuestionProps } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
-import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import * as Urls from "metabase/lib/urls";
 import { deserializeCard, parseHash } from "metabase/query_builder/actions";
 
+import { SdkQuestion, type SdkQuestionProps } from "../SdkQuestion/SdkQuestion";
 import type { QuestionMockLocationParameters } from "../SdkQuestion/context";
 
 interface SdkAdHocQuestionProps {
