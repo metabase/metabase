@@ -1,11 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
+import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -40,9 +42,11 @@ import { downloadFile, getDownloadableMarkdown } from "./exports";
 export const ReportPage = ({
   params: { id: reportId },
   location,
+  route,
 }: {
   params: { id?: number | "new" };
   location?: { query?: { version?: string } };
+  route: Route;
 }) => {
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
@@ -442,6 +446,7 @@ export const ReportPage = ({
             }}
           />
         )}
+        <LeaveRouteConfirmModal isEnabled={hasUnsavedChanges()} route={route} />
       </Box>
     </Box>
   );
