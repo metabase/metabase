@@ -7,8 +7,6 @@ import type { DataSourcePart } from "metabase/query_builder/components/view/View
 import { ViewHeading } from "metabase/query_builder/components/view/ViewSection"; // TODO: we should not use query builder components
 import type { Database, Table } from "metabase-types/api";
 
-import { getTableViewUrl } from "../urls";
-
 type TableBreadcrumbsProps = {
   database: Database;
   table: Table;
@@ -32,9 +30,7 @@ export const TableBreadcrumbs = ({
         icon: "table" as const,
         model: "table" as const,
         name: table.display_name,
-        href: showEditBreadcrumb
-          ? getTableViewUrl(table.id, database.id)
-          : undefined,
+        href: Urls.tableRowsQuery(database.id, table.id),
       },
     ];
 
