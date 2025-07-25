@@ -1,4 +1,6 @@
 import type {
+  CollectionBrowserListColumns,
+  EmbeddingEntityType,
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
@@ -79,24 +81,40 @@ export interface ExplorationEmbedOptions {
   dashboardId?: never;
 }
 
-export interface CurateContentEmbedOptions {
-  template: "curate-content";
+/** Shared properties between the content manager templates. */
+export interface ContentManagerCommonEmbedOptions {
   initialCollection: CollectionId;
 
-  entityTypes?: CollectionBrowserEntityTypes[];
+  /** Which collections to show on the collection browser */
+  collectionVisibleColumns?: CollectionBrowserListColumns[];
+
+  /** How many items to show per page in the collection browser */
+  collectionPageSize?: number;
+
+  /** Which entities to show on the collection browser */
+  collectionEntityTypes?: CollectionBrowserEntityTypes[];
+
+  /** Which entities to show on the question's data picker */
+  dataPickerEntityTypes?: EmbeddingEntityType[];
+
+  /** Whether to show the "New Exploration" button. Defaults to true. */
+  withNewQuestion?: boolean;
 
   questionId?: never;
   dashboardId?: never;
 }
 
-export interface ViewContentEmbedOptions {
+export interface CurateContentEmbedOptions
+  extends ContentManagerCommonEmbedOptions {
+  template: "curate-content";
+
+  /** Whether to show the "New Dashboard" button. Defaults to true. */
+  withNewDashboard?: boolean;
+}
+
+export interface ViewContentEmbedOptions
+  extends ContentManagerCommonEmbedOptions {
   template: "view-content";
-  initialCollection: CollectionId;
-
-  entityTypes?: CollectionBrowserEntityTypes[];
-
-  questionId?: never;
-  dashboardId?: never;
 }
 
 type CollectionBrowserEntityTypes =
