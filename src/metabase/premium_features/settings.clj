@@ -270,6 +270,10 @@
   "Does the Metabase Cloud instance have ETL connections with PG?"
   :etl-connections-pg)
 
+(define-premium-feature table-data-editing?
+  "Should we allow users to edit the data within tables?"
+  :table-data-editing)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -310,6 +314,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :table_data_editing             (table-data-editing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 
