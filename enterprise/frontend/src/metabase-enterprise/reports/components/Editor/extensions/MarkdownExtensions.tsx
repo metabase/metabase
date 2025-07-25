@@ -1,25 +1,165 @@
 import { Extension } from "@tiptap/core";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import type { Editor as TiptapEditor } from "@tiptap/react";
+import MarkdownIt from "markdown-it";
+import {
+  MarkdownParser,
+  MarkdownSerializer as ProseMirrorMarkdownSerializer,
+  defaultMarkdownParser,
+  defaultMarkdownSerializer,
+} from "prosemirror-markdown";
 
-import { STATIC_QUESTION_REGEX } from "./QuestionStatic/QuestionStatic";
-
-export const MarkdownSerializer = Extension.create({
+export const MarkdownSerializerExtension = Extension.create<any>({
   name: "markdownSerializer",
 
-  addCommands() {
+  addCommands(): any {
     return {
       getMarkdown:
         () =>
-        ({ editor }: { editor: TiptapEditor }) => {
-          const { doc } = editor.state;
-          return serializeToMarkdown(doc);
+        ({ editor }: any) => {
+          const { schema } = editor.state;
+
+          // Log available nodes for debugging if needed
+          // console.log("Available nodes in schema for serialization:", Object.keys(schema.nodes));
+
+          // Create serializer nodes based on what's actually in the schema
+          const nodes: Record<string, any> = {};
+
+          // Add all default serializers, mapping Tiptap names to prosemirror-markdown serializers
+          if (schema.nodes.doc) {
+            nodes.doc = defaultMarkdownSerializer.nodes.doc;
+          }
+          if (schema.nodes.text) {
+            nodes.text = defaultMarkdownSerializer.nodes.text;
+          }
+          if (schema.nodes.paragraph) {
+            nodes.paragraph = defaultMarkdownSerializer.nodes.paragraph;
+          }
+          if (schema.nodes.heading) {
+            nodes.heading = defaultMarkdownSerializer.nodes.heading;
+          }
+          if (schema.nodes.codeBlock) {
+            nodes.codeBlock = defaultMarkdownSerializer.nodes.code_block;
+          }
+          if (schema.nodes.blockquote) {
+            nodes.blockquote = defaultMarkdownSerializer.nodes.blockquote;
+          }
+          if (schema.nodes.horizontalRule) {
+            nodes.horizontalRule =
+              defaultMarkdownSerializer.nodes.horizontal_rule;
+          }
+          if (schema.nodes.hardBreak) {
+            nodes.hardBreak = defaultMarkdownSerializer.nodes.hard_break;
+          }
+          if (schema.nodes.image) {
+            nodes.image = defaultMarkdownSerializer.nodes.image;
+          }
+
+          // Handle list nodes with Tiptap naming
+          if (schema.nodes.bulletList) {
+            nodes.bulletList =
+              defaultMarkdownSerializer.nodes.bullet_list ||
+              ((state: any, node: any) => {
+                state.renderList(node, "  ", () => "* ");
+              });
+          }
+          if (schema.nodes.orderedList) {
+            nodes.orderedList =
+              defaultMarkdownSerializer.nodes.ordered_list ||
+              ((state: any, node: any) => {
+                const start = node.attrs.order || 1;
+                const maxW = String(start + node.childCount - 1).length;
+                const space = " ".repeat(maxW + 2);
+                state.renderList(node, space, (i: number) => {
+                  const nStr = String(start + i);
+                  return " ".repeat(maxW - nStr.length) + nStr + ". ";
+                });
+              });
+          }
+          if (schema.nodes.listItem) {
+            nodes.listItem =
+              defaultMarkdownSerializer.nodes.list_item ||
+              ((state: any, node: any) => {
+                state.renderContent(node);
+              });
+          }
+
+          // Add our custom nodes
+          if (schema.nodes.questionEmbed) {
+            nodes.questionEmbed = (state: any, node: any) => {
+              if (node.attrs.customName) {
+                state.write(
+                  `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`,
+                );
+              } else {
+                state.write(
+                  `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}}}`,
+                );
+              }
+              state.ensureNewLine();
+            };
+          }
+
+          if (schema.nodes.questionStatic) {
+            nodes.questionStatic = (state: any, node: any) => {
+              state.write(
+                `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}`,
+              );
+              state.ensureNewLine();
+            };
+          }
+
+          if (schema.nodes.smartLink) {
+            nodes.smartLink = (state: any, node: any) => {
+              state.write(
+                `{{link:${node.attrs.url}:${node.attrs.text}:${node.attrs.icon}}}`,
+              );
+            };
+          }
+
+          // Handle marks - map Tiptap mark names to prosemirror-markdown marks
+          const marks: Record<string, any> = {};
+
+          // Log available marks for debugging if needed
+          // console.log("Available marks in schema:", Object.keys(schema.marks));
+
+          // Map common marks
+          if (schema.marks.bold) {
+            marks.bold = defaultMarkdownSerializer.marks.strong;
+          }
+          if (schema.marks.strong) {
+            marks.strong = defaultMarkdownSerializer.marks.strong;
+          }
+          if (schema.marks.italic) {
+            marks.italic = defaultMarkdownSerializer.marks.em;
+          }
+          if (schema.marks.em) {
+            marks.em = defaultMarkdownSerializer.marks.em;
+          }
+          if (schema.marks.code) {
+            marks.code = defaultMarkdownSerializer.marks.code;
+          }
+          if (schema.marks.link) {
+            marks.link = defaultMarkdownSerializer.marks.link;
+          }
+
+          // Log serializer info for debugging if needed
+          // console.log("Serializer nodes:", Object.keys(nodes));
+          // console.log("Serializer marks:", Object.keys(marks));
+
+          const serializer = new ProseMirrorMarkdownSerializer(nodes, marks);
+          return serializer.serialize(editor.state.doc);
         },
       setMarkdown:
         (markdown: string) =>
-        ({ commands }: { commands: TiptapEditor["commands"] }) => {
-          const html = parseMarkdownToHTML(markdown);
-          return commands.setContent(html);
+        ({ editor, commands }: any) => {
+          try {
+            const parser = createCustomMarkdownParser(editor.state.schema);
+            const doc = parser.parse(markdown);
+            return commands.setContent(doc.toJSON());
+          } catch (error) {
+            console.error("Error parsing markdown:", error);
+            // Fallback to setting the content as plain text
+            return commands.setContent(markdown);
+          }
         },
     };
   },
@@ -33,272 +173,280 @@ export const MarkdownSerializer = Extension.create({
   },
 });
 
-function serializeList(node: ProseMirrorNode, indent: string = ""): string {
-  let markdown = "";
+// Create custom markdown-it plugins for our syntax
+function createCustomMarkdownItPlugin(schema: any) {
+  return function (md: any) {
+    // Plugin for question embeds {{card:id:snapshotId:customName?}}
+    if (schema.nodes.questionEmbed) {
+      // First try as a block rule (when it's on its own line)
+      md.block.ruler.before(
+        "paragraph",
+        "questionEmbed",
+        function (state: any, startLine: number, endLine: number, silent: any) {
+          const pos = state.bMarks[startLine] + state.tShift[startLine];
+          const max = state.eMarks[startLine];
+          const line = state.src.slice(pos, max).trim();
 
-  node.forEach((listItem, _offset, index) => {
-    if (listItem.type.name === "listItem") {
-      let itemContent = "";
-      let nestedLists = "";
+          // Check if line matches {{card:...}}
+          const match = line.match(/^{{card:(\d+):(\d+)(?::([^}]+))?}}$/);
+          if (!match) {
+            return false;
+          }
 
-      listItem.forEach((child) => {
-        if (child.type.name === "paragraph") {
-          itemContent += child.textContent;
-        } else if (
-          child.type.name === "bulletList" ||
-          child.type.name === "orderedList"
-        ) {
-          nestedLists += serializeList(child, indent + "  ");
-        }
-      });
+          const [, questionIdStr, snapshotIdStr, customName] = match;
+          const questionId = parseInt(questionIdStr);
+          const snapshotId = parseInt(snapshotIdStr);
 
-      if (node.type.name === "bulletList") {
-        markdown += `${indent}- ${itemContent}\n`;
-      } else if (node.type.name === "orderedList") {
-        markdown += `${indent}${index + 1}. ${itemContent}\n`;
-      }
+          if (isNaN(questionId) || isNaN(snapshotId)) {
+            return false;
+          }
 
-      if (nestedLists) {
-        markdown += nestedLists;
-      }
+          if (silent) {
+            return true;
+          }
+
+          const token = state.push("questionEmbed", "", 0);
+          token.attrSet("questionId", questionId.toString());
+          token.attrSet("snapshotId", snapshotId.toString());
+          token.attrSet("questionName", customName || ""); // Default to empty string if no custom name
+          if (customName) {
+            token.attrSet("customName", customName);
+          }
+          token.attrSet("model", "card");
+          token.map = [startLine, state.line];
+          token.block = true;
+
+          state.line = startLine + 1;
+
+          return true;
+        },
+      );
     }
-  });
 
-  return markdown;
+    // Plugin for static cards {{static-card:...}}
+    if (schema.nodes.questionStatic) {
+      md.block.ruler.before(
+        "paragraph",
+        "questionStatic",
+        function (state: any, startLine: number, endLine: number, silent: any) {
+          const pos = state.bMarks[startLine] + state.tShift[startLine];
+          const max = state.eMarks[startLine];
+          const line = state.src.slice(pos, max).trim();
+
+          // Check if line matches {{static-card:...}}
+          const match = line.match(
+            /^{{static-card:([^:]+):series-([^:]+):viz-([^:]+):display-([^}]+)}}$/,
+          );
+          if (!match) {
+            return false;
+          }
+
+          const [, questionName, series, viz, display] = match;
+
+          if (silent) {
+            return true;
+          }
+
+          const token = state.push("questionStatic", "", 0);
+          token.attrSet("questionName", questionName);
+          token.attrSet("series", series);
+          token.attrSet("viz", viz);
+          token.attrSet("display", display);
+          token.map = [startLine, state.line];
+          token.block = true;
+
+          state.line = startLine + 1;
+
+          return true;
+        },
+      );
+    }
+
+    // Plugin for smart links {{link:url:text:icon}}
+    if (schema.nodes.smartLink) {
+      md.inline.ruler.push("smartLink", function (state: any, silent: any) {
+        const start = state.pos;
+        const max = state.posMax;
+
+        // Check for opening {{link:
+        if (start + 7 >= max) {
+          return false;
+        }
+        if (state.src.slice(start, start + 7) !== "{{link:") {
+          return false;
+        }
+
+        // Find the closing }}
+        let pos = start + 7;
+        let found = false;
+        while (pos < max - 1) {
+          if (state.src.slice(pos, pos + 2) === "}}") {
+            found = true;
+            break;
+          }
+          pos++;
+        }
+
+        if (!found) {
+          return false;
+        }
+
+        const content = state.src.slice(start + 7, pos);
+        const parts = content.split(":");
+
+        if (parts.length !== 3) {
+          return false;
+        }
+
+        const [url, text, icon] = parts;
+
+        if (!silent) {
+          const token = state.push("smartLink", "smartLink", 0);
+          token.attrSet("url", url);
+          token.attrSet("text", text);
+          token.attrSet("icon", icon);
+          token.markup = "{{link}}";
+          token.content = "";
+        }
+
+        state.pos = pos + 2;
+        return true;
+      });
+    }
+  };
 }
 
-export function serializeToMarkdown(doc: ProseMirrorNode): string {
-  let markdown = "";
+// Create a custom markdown parser that extends the default with our custom tokens
+function createCustomMarkdownParser(schema: any): MarkdownParser {
+  // Log available nodes for debugging if needed
+  // console.log("Available nodes in schema:", Object.keys(schema.nodes));
 
-  doc.forEach((node) => {
-    if (node.type.name === "paragraph") {
-      let paragraphContent = "";
-      node.forEach((child) => {
-        if (child.type.name === "text") {
-          let text = child.text;
-          child.marks.forEach((mark) => {
-            if (mark.type.name === "link") {
-              text = `[${text}](${mark.attrs.href})`;
-            }
-          });
-          paragraphContent += text;
-        } else if (child.type.name === "questionEmbed") {
-          const { questionId, snapshotId, customName } = child.attrs;
-          paragraphContent += customName
-            ? `{{card:${questionId}:${snapshotId}:${customName}}}`
-            : `{{card:${questionId}:${snapshotId}}}`;
-        } else if (child.type.name === "questionStatic") {
-          paragraphContent += `{{static-card:${child.attrs.questionName}:series-${child.attrs.series}:viz-${child.attrs.viz}:display-${child.attrs.display}}}`;
-        } else if (child.type.name === "smartLink") {
-          paragraphContent += `{{link:${child.attrs.url}:${child.attrs.text}:${child.attrs.icon}}}`;
-        }
-      });
-      // Every paragraph gets standard spacing, empty or not
-      markdown += paragraphContent + "\n\n";
-    } else if (node.type.name === "heading") {
-      const level = node.attrs.level || 1;
-      const prefix = "#".repeat(level);
-      markdown += `${prefix} ${node.textContent}\n\n`;
-    } else if (
-      node.type.name === "bulletList" ||
-      node.type.name === "orderedList"
-    ) {
-      markdown += serializeList(node) + "\n";
-    } else if (node.type.name === "image") {
-      markdown += `![${node.attrs.alt || ""}](${node.attrs.src})\n\n`;
-    } else if (node.type.name === "questionEmbed") {
-      const { questionId, snapshotId, customName } = node.attrs;
-      markdown += customName
-        ? `{{card:${questionId}:${snapshotId}:${customName}}}\n\n`
-        : `{{card:${questionId}:${snapshotId}}}\n\n`;
-    } else if (node.type.name === "questionStatic") {
-      markdown += `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}\n\n`;
-    } else if (node.type.name === "smartLink") {
-      markdown += `{{link:${node.attrs.url}:${node.attrs.text}:${node.attrs.icon}}}\n\n`;
-    } else if (node.type.name === "codeBlock") {
-      markdown += `\`\`\`${node.attrs.language || ""}\n${node.textContent}\n\`\`\`\n\n`;
-    } else {
-      markdown += node.textContent + "\n\n";
-    }
+  // Create a new markdown-it instance with our custom plugin
+  const customMarkdownIt = new MarkdownIt("commonmark", {
+    html: false,
+    breaks: false,
+    linkify: false,
   });
 
-  return markdown.trim();
-}
+  // Add our custom plugin
+  customMarkdownIt.use(createCustomMarkdownItPlugin(schema));
 
-export function parseMarkdownToHTML(markdown: string): string {
-  // First, replace question embeds with placeholder tokens to protect them
-  const embedTokens: string[] = [];
-  let html = markdown
-    .replace(
-      /{{card:(\d+):(\d+)(?::([^}]+))?}}/g,
-      (_match, id, snapshotId, customName) => {
-        const embed = customName
-          ? `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-custom-name="${customName}" data-model="card"></div>`
-          : `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-model="card"></div>`;
-        const token = `__EMBED_TOKEN_${embedTokens.length}__`;
-        embedTokens.push(embed);
-        return token;
-      },
-    )
-    .replace(
-      STATIC_QUESTION_REGEX,
-      (_match, questionName, series, viz, display) => {
-        const embed = `<div data-type="question-static" data-question-name="${questionName}" data-series="${series}" data-viz="${viz}" data-display="${display}"></div>`;
-        const token = `__EMBED_TOKEN_${embedTokens.length}__`;
-        embedTokens.push(embed);
-        return token;
-      },
-    )
-    .replace(/{{link:([^:]+):([^:]+):(\w+)}}/g, (_match, url, text, icon) => {
-      return `<span data-type="smart-link" data-url="${url}" data-text="${text}" data-icon="${icon}"></span>`;
-    })
-    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^# (?!#)(.*$)/gim, "<h1>$1</h1>")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(
-      /```(\w*)\n([\s\S]*?)```/g,
-      '<pre><code class="language-$1">$2</code></pre>',
-    )
-    .replace(
-      /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/gi,
-      `<img src="$2" alt="$1" />`,
-    )
-    .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi, `<a href="$2">$1</a>`)
-    .replace(/`(.+?)`/g, "<code>$1</code>");
+  // Start with all default tokens from prosemirror-markdown
+  const tokens: Record<string, any> = {};
 
-  // Handle lists before paragraph processing
-  const lines = html.split("\n");
-  const result = [];
-  let i = 0;
+  // Copy all default tokens first
+  Object.keys(defaultMarkdownParser.tokens).forEach((tokenName) => {
+    tokens[tokenName] = defaultMarkdownParser.tokens[tokenName];
+  });
 
-  while (i < lines.length) {
-    const line = lines[i];
-    const bulletMatch = line.match(/^(\s*)- (.+)$/);
-    const numberMatch = line.match(/^(\s*)\d+\. (.+)$/);
-
-    if (bulletMatch || numberMatch) {
-      // Start of a list
-      const baseIndent = bulletMatch
-        ? bulletMatch[1].length
-        : // @ts-expect-error TODO: fix this
-          numberMatch[1].length;
-      const listItems = [];
-
-      // Collect all items at this level and deeper
-      while (i < lines.length) {
-        const currentLine = lines[i];
-        const currentBullet = currentLine.match(/^(\s*)- (.+)$/);
-        const currentNumber = currentLine.match(/^(\s*)\d+\. (.+)$/);
-
-        if (!currentBullet && !currentNumber) {
-          break;
-        }
-
-        const currentIndent = currentBullet
-          ? currentBullet[1].length
-          : // @ts-expect-error TODO: fix this
-            currentNumber[1].length;
-
-        if (currentIndent < baseIndent) {
-          break;
-        }
-
-        listItems.push({
-          indent: currentIndent,
-          // @ts-expect-error TODO: fix this
-          content: currentBullet ? currentBullet[2] : currentNumber[2],
-          type: currentBullet ? "ul" : "ol",
-        });
-
-        i++;
-      }
-
-      // Convert items to HTML
-      const listHtml = buildListHtml(listItems, baseIndent);
-      result.push(listHtml);
-    } else {
-      result.push(line);
-      i++;
-    }
+  // Override with proper mappings for Tiptap node names
+  // Basic nodes
+  if (schema.nodes.paragraph) {
+    tokens.paragraph = { block: "paragraph" };
+  }
+  if (schema.nodes.heading) {
+    tokens.heading = {
+      block: "heading",
+      getAttrs: (tok: any) => ({ level: +tok.tag.slice(1) }),
+    };
+  }
+  if (schema.nodes.codeBlock) {
+    tokens.code_block = {
+      block: "codeBlock",
+      getAttrs: (tok: any) => ({ language: tok.info || null }),
+    };
+  }
+  if (schema.nodes.blockquote) {
+    tokens.blockquote = { block: "blockquote" };
+  }
+  if (schema.nodes.horizontalRule) {
+    tokens.hr = { node: "horizontalRule" };
+  }
+  if (schema.nodes.hardBreak) {
+    tokens.hardbreak = { node: "hardBreak" };
+  }
+  if (schema.nodes.image) {
+    tokens.image = {
+      node: "image",
+      getAttrs: (tok: any) => ({
+        src: tok.attrGet("src"),
+        alt: tok.attrGet("alt") || null,
+        title: tok.attrGet("title") || null,
+      }),
+    };
   }
 
-  html = result.join("\n");
-
-  function buildListHtml(
-    items: Array<{ indent: number; content: string; type: string }>,
-    baseIndent: number,
-  ): string {
-    if (items.length === 0) {
-      return "";
-    }
-
-    const firstType = items[0].type;
-    let html = `<${firstType}>`;
-    let i = 0;
-
-    while (i < items.length) {
-      const item = items[i];
-
-      if (item.indent === baseIndent) {
-        html += `<li><p>${item.content}</p>`;
-
-        // Check for nested items
-        const nestedItems = [];
-        let j = i + 1;
-        while (j < items.length && items[j].indent > baseIndent) {
-          nestedItems.push(items[j]);
-          j++;
-        }
-
-        if (nestedItems.length > 0) {
-          const nestedHtml = buildListHtml(nestedItems, items[i + 1].indent);
-          html += nestedHtml;
-          i = j - 1;
-        }
-
-        html += "</li>";
-      }
-      i++;
-    }
-
-    html += `</${firstType}>`;
-    return html;
+  // List nodes - map to Tiptap naming
+  if (schema.nodes.bulletList) {
+    tokens.bullet_list = { block: "bulletList" };
+  }
+  if (schema.nodes.orderedList) {
+    tokens.ordered_list = {
+      block: "orderedList",
+      getAttrs: (tok: any) => ({ order: +tok.attrGet("start") || 1 }),
+    };
+  }
+  if (schema.nodes.listItem) {
+    tokens.list_item = { block: "listItem" };
   }
 
-  // Now handle paragraphs
-  html = html
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/^(?!<)/, "<p>")
-    .replace(/(?!>)$/, "</p>");
+  // Add tokens for our custom nodes
+  if (schema.nodes.questionEmbed) {
+    tokens.questionEmbed = {
+      node: "questionEmbed",
+      getAttrs: (tok: any) => ({
+        questionId: parseInt(tok.attrGet("questionId")),
+        snapshotId: parseInt(tok.attrGet("snapshotId")),
+        questionName: tok.attrGet("questionName") || "",
+        customName: tok.attrGet("customName") || null,
+        model: tok.attrGet("model") || "card",
+      }),
+    };
+  }
 
-  // Now fix paragraph/embed structure by moving standalone embeds outside paragraphs
-  html = html.replace(/<p>(__EMBED_TOKEN_\d+__)<\/p>/g, "$1");
+  if (schema.nodes.questionStatic) {
+    tokens.questionStatic = {
+      node: "questionStatic",
+      getAttrs: (tok: any) => ({
+        questionName: tok.attrGet("questionName"),
+        series: tok.attrGet("series"),
+        viz: tok.attrGet("viz"),
+        display: tok.attrGet("display"),
+      }),
+    };
+  }
 
-  // Fix paragraph/heading structure by moving headings outside paragraphs
-  html = html.replace(/<p>(<h[1-6]>.*?<\/h[1-6]>)<\/p>/g, "$1");
+  if (schema.nodes.smartLink) {
+    tokens.smartLink = {
+      node: "smartLink",
+      getAttrs: (tok: any) => ({
+        url: tok.attrGet("url"),
+        text: tok.attrGet("text"),
+        icon: tok.attrGet("icon"),
+      }),
+    };
+  }
 
-  // Fix paragraph/list structure by moving lists outside paragraphs
-  html = html.replace(/<p>(<[uo]l>[\s\S]*?<\/[uo]l>)<\/p>/g, "$1");
-
-  // Clean up orphaned paragraph tags around headings
-  html = html.replace(/<\/p><p>(<h[1-6]>.*?<\/h[1-6]>)/g, "$1");
-  html = html.replace(/(<h[1-6]>.*?<\/h[1-6]>)<\/p><p>/g, "$1");
-  html = html.replace(/(<h[1-6]>.*?<\/h[1-6]>)<\/p>/g, "$1");
-
-  // Clean up orphaned paragraph tags around lists
-  html = html.replace(/<\/p><p>(<[uo]l>)/g, "$1");
-  html = html.replace(/(<\/[uo]l>)<\/p><p>/g, "$1");
-  html = html.replace(/(<\/[uo]l>)<\/p>/g, "$1");
-
-  // Remove empty paragraphs that might be created between headings
-  html = html.replace(/<p><\/p>/g, "");
-
-  // Finally, restore the actual embed HTML
-  embedTokens.forEach((embed, index) => {
-    html = html.replace(`__EMBED_TOKEN_${index}__`, embed);
+  // Remove any tokens for nodes that don't exist in the schema
+  const filteredTokens: Record<string, any> = {};
+  Object.keys(tokens).forEach((tokenName) => {
+    const token = tokens[tokenName];
+    if (token) {
+      const nodeName = token.block || token.node || token.mark;
+      if (nodeName && (schema.nodes[nodeName] || schema.marks?.[nodeName])) {
+        filteredTokens[tokenName] = token;
+      } else if (!nodeName) {
+        // Keep tokens that don't specify a node/mark (like text processing tokens)
+        filteredTokens[tokenName] = token;
+      }
+    }
   });
 
-  return html;
+  // Log filtered tokens for debugging if needed
+  // console.log("Filtered tokens:", Object.keys(filteredTokens));
+
+  return new MarkdownParser(schema, customMarkdownIt, filteredTokens);
 }
+
+// Keep the original export name for backward compatibility
+export const MarkdownSerializer = MarkdownSerializerExtension;

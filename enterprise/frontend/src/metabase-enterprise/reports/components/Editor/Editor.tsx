@@ -21,7 +21,7 @@ import { Box } from "metabase/ui";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import {
-  type QuestionEmbed,
+  type QuestionEmbed as QuestionEmbedType,
   fetchReportCard,
   fetchReportSnapshot,
 } from "../../reports.slice";
@@ -29,17 +29,14 @@ import {
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import { ColumnExtension } from "./extensions/Columns/Columns";
-import {
-  MarkdownSerializer,
-  serializeToMarkdown,
-} from "./extensions/MarkdownExtensions";
+import { MarkdownSerializer } from "./extensions/MarkdownExtensions";
 import { QuestionEmbed } from "./extensions/QuestionEmbed";
 import { QuestionStaticNode } from "./extensions/QuestionStatic/QuestionStatic";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
-  onQuestionRefsChange?: (refs: QuestionEmbed[]) => void;
+  onQuestionRefsChange?: (refs: QuestionEmbedType[]) => void;
   content: string;
   onQuestionSelect?: (questionId: number | null) => void;
   editable?: boolean;
@@ -127,7 +124,7 @@ export const Editor: React.FC<EditorProps> = ({
         editor.storage as unknown as { markdown: { getMarkdown: () => string } }
       ).markdown = {
         getMarkdown: () => {
-          const markdown = serializeToMarkdown(editor.state.doc);
+          const markdown = editor.commands.getMarkdown();
           return markdown;
         },
       };
@@ -228,8 +225,8 @@ export const Editor: React.FC<EditorProps> = ({
 const getRefs = (
   editor: TiptapEditor,
   dispatch: DispatchFn,
-): QuestionEmbed[] => {
-  const refs: QuestionEmbed[] = [];
+): QuestionEmbedType[] => {
+  const refs: QuestionEmbedType[] = [];
 
   editor.state.doc.descendants((node: any) => {
     if (node.type.name === "questionEmbed") {
