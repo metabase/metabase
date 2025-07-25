@@ -591,7 +591,6 @@
                                    (#'data-editing/batch-invalidate-field-values! [field-ids])
                                    (recur)))]
           (binding [data-editing/*field-value-invalidate-queue* test-queue]
-            ;; TODO this can flake sometimes, not sure why (left over state from other tests?)
             (is (= [] (field-values)))
 
             (create! [{:n "a"}])
