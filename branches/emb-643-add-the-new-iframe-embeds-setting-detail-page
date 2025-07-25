@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "647058ec89718c7b164f5fec1072d9de63e5dc15"
+    "hash": "f2b8b44d48e11c54eb77498302563d5968f00f46"
   },
   "upstream": {
     "branch": "emb-643-add-the-new-iframe-embeds-setting-detail-page"
