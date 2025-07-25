@@ -14,6 +14,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { SortableFieldList } from "metabase/metadata/components";
 import {
   ActionIcon,
   Box,
@@ -25,7 +26,7 @@ import {
   Title,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type { FieldId, StructuredDatasetQuery } from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
@@ -66,7 +67,7 @@ export const TableListView = ({ location, params }: Props) => {
     countQuery ? countQuery : skipToken,
   );
   const count = countDataset?.data.rows?.[0]?.[0];
-  const columns = useMemo(
+  const allColumns = useMemo(
     () => dataset?.data?.results_metadata?.columns ?? [],
     [dataset],
   );
@@ -79,7 +80,21 @@ export const TableListView = ({ location, params }: Props) => {
     table?.component_settings ?? getDefaultComponentSettings(table),
   );
 
-  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+  const pkIndex = allColumns.findIndex(isPK); // TODO: handle multiple PKs
+
+  const handleOrderChange = (fieldOrder: FieldId[]) => {
+    setSettings((settings) => ({
+      ...settings,
+      list_view: {
+        ...settings.list_view,
+        fields: fieldOrder.map((id) => {
+          return settings.list_view.fields.find(
+            (field) => field.field_id === id,
+          )!;
+        }),
+      },
+    }));
+  };
 
   const handleSubmit = () => {
     setIsEditing(false);
@@ -95,10 +110,13 @@ export const TableListView = ({ location, params }: Props) => {
     }
   }, [table]);
 
-  if (!table || !dataset || !columns) {
+  if (!table || !dataset || !allColumns) {
     return <LoadingAndErrorWrapper loading />;
   }
 
+  const columns = settings.list_view.fields.map(({ field_id }) => {
+    return allColumns.find((field) => field.id === field_id)!;
+  });
   const allRows = dataset.data.rows;
   const paginatedRows = allRows.slice(PAGE_SIZE * page, PAGE_SIZE * (page + 1));
 
@@ -166,79 +184,87 @@ export const TableListView = ({ location, params }: Props) => {
         </Group>
       </Group>
 
-      <Group align="flex-start" gap="xl">
-        <Box bg="white" className={S.table} component="table">
-          <thead>
-            <tr>
-              {columns.map((column, index) => (
-                <Box
-                  component="td"
-                  key={index}
-                  px={CELL_PADDING_HORIZONTAL}
-                  py="md"
-                >
-                  <Text c="text-secondary" size="sm">
-                    {column.display_name}
-                  </Text>
-                </Box>
-              ))}
-
-              <Box component="td" px="sm" py="md" />
-            </tr>
-          </thead>
-
-          <tbody>
-            {paginatedRows.map((row, index) => {
-              return (
-                <Box className={S.row} component="tr" key={index}>
-                  {row.map((value, cellIndex) => {
-                    return (
-                      <Box
-                        c={
-                          settings.list_view.fields[index].style === "dim"
-                            ? "text-secondary"
-                            : undefined
-                        }
-                        component="td"
-                        fw={
-                          settings.list_view.fields[index].style === "bold"
-                            ? "bold"
-                            : undefined
-                        }
-                        key={cellIndex}
-                        px={CELL_PADDING_HORIZONTAL}
-                        py={CELL_PADDING_VERTICAL}
-                      >
-                        {renderValue(tc, value, columns[cellIndex])}
-                      </Box>
-                    );
-                  })}
-
+      <Group align="flex-start" gap="xl" wrap="nowrap">
+        <Box flex="1" style={{ overflow: "auto" }}>
+          <Box bg="white" className={S.table} component="table">
+            <thead>
+              <tr>
+                {columns.map((column, index) => (
                   <Box
                     component="td"
-                    pr={CELL_PADDING_HORIZONTAL}
-                    py={CELL_PADDING_VERTICAL}
+                    key={index}
+                    px={CELL_PADDING_HORIZONTAL}
+                    py="md"
                   >
-                    <ActionIcon
-                      className={S.link}
-                      component={Link}
-                      to={
-                        pkIndex != null
-                          ? `/table/${table.id}/detail/${row[pkIndex]}`
-                          : ""
-                      }
-                      variant="outline"
-                    >
-                      <Icon name="share" />
-                    </ActionIcon>
+                    <Text c="text-secondary" size="sm">
+                      {column.display_name}
+                    </Text>
                   </Box>
-                </Box>
-              );
-            })}
-          </tbody>
+                ))}
+
+                <Box component="td" px="sm" py="md" />
+              </tr>
+            </thead>
+
+            <tbody>
+              {paginatedRows.map((row, index) => {
+                return (
+                  <Box className={S.row} component="tr" key={index}>
+                    {row.map((value, cellIndex) => {
+                      return (
+                        <Box
+                          c={
+                            settings.list_view.fields[index].style === "dim"
+                              ? "text-secondary"
+                              : undefined
+                          }
+                          component="td"
+                          fw={
+                            settings.list_view.fields[index].style === "bold"
+                              ? "bold"
+                              : undefined
+                          }
+                          key={cellIndex}
+                          px={CELL_PADDING_HORIZONTAL}
+                          py={CELL_PADDING_VERTICAL}
+                        >
+                          {renderValue(tc, value, columns[cellIndex])}
+                        </Box>
+                      );
+                    })}
+
+                    <Box
+                      component="td"
+                      pr={CELL_PADDING_HORIZONTAL}
+                      py={CELL_PADDING_VERTICAL}
+                    >
+                      <ActionIcon
+                        className={S.link}
+                        component={Link}
+                        to={
+                          pkIndex != null
+                            ? `/table/${table.id}/detail/${row[pkIndex]}`
+                            : ""
+                        }
+                        variant="outline"
+                      >
+                        <Icon name="share" />
+                      </ActionIcon>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </tbody>
+          </Box>
         </Box>
 
-        {isEditing && <Stack>{t`Settings`}</Stack>}
+        {isEditing && (
+          <Stack flex="0 0 auto">
+            <Title order={2}>{t`Display settings`}</Title>
+
+            <SortableFieldList table={table} onChange={handleOrderChange} />
+          </Stack>
+        )}
       </Group>
     </Stack>
   );
