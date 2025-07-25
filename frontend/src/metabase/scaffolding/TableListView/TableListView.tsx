@@ -363,6 +363,7 @@ export const TableListView = ({ location, params }: Props) => {
           bg="white"
           flex="0 0 auto"
           miw={400}
+          gap="lg"
           h="100%"
           p="xl"
           style={{

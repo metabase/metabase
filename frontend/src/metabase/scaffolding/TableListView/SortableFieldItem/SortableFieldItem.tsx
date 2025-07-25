@@ -134,7 +134,9 @@ export const SortableFieldItem = ({
               variant="transparent"
               onClick={() => onToggleVisibility(field)}
             >
-              <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
+              <Box c="text-medium">
+                <Icon name={isHidden ? "eye_crossed_out" : "eye"} />
+              </Box>
             </ActionIcon>
           </Tooltip>
 
