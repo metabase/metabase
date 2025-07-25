@@ -16,6 +16,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
@@ -293,7 +294,7 @@ export const TableListView = ({ location, params }: Props) => {
                 <Button
                   leftSection={<Icon name="filter" />}
                   variant="default"
-                  onClick={() => setIsFilterPickerOpen(true)}
+                  onClick={() => setIsFilterPickerOpen((value) => !value)}
                 >
                   {t`Filter`}
                 </Button>
@@ -328,6 +329,12 @@ export const TableListView = ({ location, params }: Props) => {
             )}
           </Group>
         </Group>
+
+        <FilterPanel
+          className={S.filterPanel}
+          query={dataQuery}
+          onChange={setDataQuery}
+        />
 
         <Group
           className={S.tableContainer}

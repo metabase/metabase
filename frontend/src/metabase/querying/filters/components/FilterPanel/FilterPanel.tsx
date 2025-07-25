@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 
 import { Flex } from "metabase/ui";
@@ -8,11 +9,12 @@ import { FilterPanelPopover } from "./FilterPanelPopover";
 import { getFilterItems } from "./utils";
 
 interface FilterPanelProps {
+  className?: string;
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
 }
 
-export function FilterPanel({ query, onChange }: FilterPanelProps) {
+export function FilterPanel({ className, query, onChange }: FilterPanelProps) {
   const items = useMemo(() => getFilterItems(query), [query]);
 
   const handleChange = (query: Lib.Query) => {
@@ -25,7 +27,7 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
 
   return (
     <Flex
-      className={S.FilterPanelRoot}
+      className={cx(S.FilterPanelRoot, className)}
       align="center"
       wrap="wrap"
       gap="sm"
