@@ -104,6 +104,7 @@
   (def index (:index index-state))
 
   ;; warning: deletes everything
+  (require 'next.jdbc)
   (next.jdbc/execute! pgvector ((requiring-resolve 'honey.sql/format) {:delete-from (keyword (:table-name index))} :quoted true))
   (def searchable-documents (vec ((requiring-resolve 'metabase.search.ingestion/searchable-documents))))
   (index-documents! pgvector index-metadata searchable-documents)
