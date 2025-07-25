@@ -295,6 +295,7 @@
             [a b c] (->> ["a" "b" "c"]
                          (map #(ddl.i/format-name driver/*driver* %))
                          (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
         (if (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
           (testing ":database-is-nullable should be provided"
             (is (= [false true false] (mapv :database-is-nullable [a b c]))))
@@ -309,6 +310,7 @@
             [a b c] (->> ["a" "b" "c"]
                          (map #(ddl.i/format-name driver/*driver* %))
                          (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
         (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
           (testing ":database-default should be provided"
             ;; SQL Server likes to add some parens
@@ -324,6 +326,7 @@
             [a b c] (->> ["a" "b" "c"]
                          (map #(ddl.i/format-name driver/*driver* %))
                          (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
         (if (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
           (testing ":database-is-generated should be provided"
             (is (= [false true false] (mapv :database-is-generated [a b c]))))
