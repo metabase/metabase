@@ -7,7 +7,7 @@ import { QuestionSettingsDropdown } from "./QuestionSettingsDropdown";
 const QUESTION_ID = (window as any).QUESTION_ID || 11;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/QuestionSettingsDropdown",
+  title: "EmbeddingSDK/SdkQuestion/QuestionSettingsDropdown",
   component: QuestionSettingsDropdown,
   parameters: {
     layout: "fullscreen",

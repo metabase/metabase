@@ -7,7 +7,7 @@ import { SummarizePicker } from "../SummarizePicker";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Summarize/SummarizePicker",
+  title: "EmbeddingSDK/SdkQuestion/Summarize/SummarizePicker",
   component: SummarizePicker,
   parameters: {
     layout: "fullscreen",
