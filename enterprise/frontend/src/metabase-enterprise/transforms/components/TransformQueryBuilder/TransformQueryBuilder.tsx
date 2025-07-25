@@ -1,5 +1,6 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
@@ -22,7 +23,7 @@ type TransformQueryBuilderProps = {
 export function TransformQueryBuilder({
   name,
   query: initialQuery,
-  isSaving,
+  isSaving = false,
   onSave,
   onCancel,
 }: TransformQueryBuilderProps) {
@@ -37,6 +38,7 @@ export function TransformQueryBuilder({
     runQuery,
     cancelQuery,
   } = useQueryResults(question);
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -54,12 +56,14 @@ export function TransformQueryBuilder({
     <Flex className={S.root} direction="column" flex="1 1 0" bg="bg-white">
       <TransformHeader
         name={name}
+        isNative={isNative}
         isSaving={isSaving}
         onSave={handleSave}
         onCancel={onCancel}
       />
       <TransformQueryEditor
         question={question}
+        isNative={isNative}
         isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}
@@ -71,6 +75,7 @@ export function TransformQueryBuilder({
         question={question}
         result={result}
         rawSeries={rawSeries}
+        isNative={isNative}
         isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}

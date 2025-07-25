@@ -1,6 +1,5 @@
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
@@ -10,6 +9,7 @@ type TransformVisualizationProps = {
   question: Question;
   result: Dataset | null;
   rawSeries: RawSeries | null;
+  isNative: boolean;
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
@@ -21,15 +21,13 @@ export function TransformVisualization({
   question,
   result,
   rawSeries,
+  isNative,
   isRunnable,
   isRunning,
   isResultDirty,
   onRunQuery,
   onCancelQuery,
 }: TransformVisualizationProps) {
-  const query = question.query();
-  const { isNative } = Lib.queryDisplayInfo(query);
-
   return (
     <DebouncedFrame className={S.root}>
       <QueryVisualization
