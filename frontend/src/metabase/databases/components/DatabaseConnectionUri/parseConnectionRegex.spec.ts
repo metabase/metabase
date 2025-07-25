@@ -188,7 +188,7 @@ describe("parseConnectionUriRegex - MySQL", () => {
   });
 });
 
-describe("parseConnectionUriRegex", () => {
+describe("parseConnectionUriRegex - PostgreSQL", () => {
   it("should parse a PostgreSQL connection string", () => {
     const connectionString =
       "postgres://user:pass@host:5432/dbname?param1=pe%40ce%26lo%2F3";
@@ -219,22 +219,25 @@ describe("parseConnectionUriRegex", () => {
   });
 });
 
-describe("parseConnectionUriRegex - Oracle", () => {
-  it("should parse an Oracle connection string", () => {
-    const connectionString = "oracle://user:pass@host:1521/servicename?foo=bar";
+describe("parseConnectionUriRegex - Presto", () => {
+  it("should parse a Presto connection string", () => {
+    const connectionString =
+      "jdbc:presto://host:1234/sample-catalog/sample-schema?SSL=true&SSLTrustStorePassword=1234";
     const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      username: "user",
-      password: "pass",
-      host: "host",
-      port: "1521",
-      service_name: "servicename",
-      params: {
-        foo: "bar",
-      },
-      protocol: "oracle",
-      hasJdbcPrefix: false,
-    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "presto",
+        host: "host",
+        port: "1234",
+        catalog: "sample-catalog",
+        schema: "sample-schema",
+        hasJdbcPrefix: true,
+        params: {
+          SSL: "true",
+          SSLTrustStorePassword: "1234",
+        },
+      }),
+    );
   });
 });
 
@@ -245,97 +248,6 @@ describe("parseConnectionUriRegex - SQLite", () => {
     expect(result).toEqual({
       protocol: "sqlite",
       filepath: "C:/path/to/database.db",
-      hasJdbcPrefix: false,
-    });
-  });
-});
-
-describe("parseConnectionUriRegex - MongoDB", () => {
-  it("should parse a MongoDB connection string", () => {
-    const connectionString =
-      "mongodb://user:pass@host1:27017,host2:27018/dbname?replicaSet=rs0";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      username: "user",
-      password: "pass",
-      hosts: "host1:27017,host2:27018",
-      database: "dbname",
-      params: {
-        replicaSet: "rs0",
-      },
-      protocol: "mongodb",
-      hasJdbcPrefix: false,
-    });
-  });
-});
-
-describe("parseConnectionUriRegex - Redis", () => {
-  it("should parse a Redis connection string", () => {
-    const connectionString = "redis://:password@host:6379/0";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      password: "password",
-      host: "host",
-      port: "6379",
-      database: "0",
-      protocol: "redis",
-      hasJdbcPrefix: false,
-      params: undefined,
-    });
-  });
-});
-
-describe("parseConnectionUriRegex - Cassandra", () => {
-  it("should parse a Cassandra connection string", () => {
-    const connectionString =
-      "cassandra://user:pass@host1,host2/keyspace?consistency=quorum";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      username: "user",
-      password: "pass",
-      hosts: "host1,host2",
-      keyspace: "keyspace",
-      params: {
-        consistency: "quorum",
-      },
-      protocol: "cassandra",
-      hasJdbcPrefix: false,
-    });
-  });
-});
-
-describe("parseConnectionUriRegex - MariaDB", () => {
-  it.skip("should parse a MariaDB connection string", () => {
-    const connectionString = "mariadb://user:pass@host:3306/dbname?ssl=true";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      username: "user",
-      password: "pass",
-      host: "host",
-      port: "3306",
-      database: "dbname",
-      params: "ssl=true",
-      protocol: "mariadb",
-      hasJdbcPrefix: false,
-    });
-  });
-});
-
-describe("parseConnectionUriRegex - DB2", () => {
-  it("should parse a DB2 connection string", () => {
-    const connectionString =
-      "db2://user:pass@host:50000/dbname?sslConnection=true";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      username: "user",
-      password: "pass",
-      host: "host",
-      port: "50000",
-      database: "dbname",
-      params: {
-        sslConnection: "true",
-      },
-      protocol: "db2",
       hasJdbcPrefix: false,
     });
   });

@@ -2,6 +2,8 @@ export interface RegexFields {
   host?: string;
   port?: string;
   database?: string;
+  catalog?: string;
+  schema?: string;
   username?: string;
   password?: string;
   protocol?: string;
@@ -72,6 +74,17 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
+  mysql: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>mysql)://" +
+      userPass +
+      hostAndPort +
+      "(?:/(?<database>[^/?#]*))?" +
+      params +
+      "$",
+    "i",
+  ),
   postgresql: new RegExp(
     "^" +
       jdbcPrefix +
@@ -83,13 +96,12 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-  mysql: new RegExp(
+  presto: new RegExp(
     "^" +
       jdbcPrefix +
-      "(?<protocol>mysql)://" +
-      userPass +
+      "(?<protocol>presto)://" +
       hostAndPort +
-      "(?:/(?<database>[^/?#]*))?" +
+      "(?:/(?<catalog>[^/?#]*)/(?<schema>[^/?#]*))?" +
       params +
       "$",
     "i",
