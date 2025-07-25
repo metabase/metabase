@@ -7,11 +7,13 @@ import {
   useEditor,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import cx from "classnames";
 import type React from "react";
 import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
@@ -184,7 +186,7 @@ export const Editor: React.FC<EditorProps> = ({
   }
 
   return (
-    <Box className={styles.editor}>
+    <Box className={cx(styles.editor, DND_IGNORE_CLASS_NAME)}>
       <Box
         className={styles.editorContent}
         onClick={(e) => {
