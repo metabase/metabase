@@ -432,6 +432,10 @@ export const ReportPage = ({
             title={t`Where should we save this report?`}
             onClose={hideCollectionPicker}
             value={{ id: "root", model: "collection" }}
+            options={{
+              showPersonalCollections: true,
+              showRootCollection: true,
+            }}
             onChange={(collection) => {
               handleSave(collection.id as CollectionId);
               hideCollectionPicker();
