@@ -29,7 +29,6 @@ const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 // Stub of MetabaseEmbedElement to satisfy type requirements of helper utilities below.
 // The full custom elements are declared later in this file.
 export class MetabaseEmbedElement extends HTMLElement {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   updateSettings(_settings: Partial<SdkIframeEmbedSettings>) {}
 }
 
@@ -566,7 +565,6 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any)["metabase.embed"] = {
     ...(window as any)["metabase.embed"],
     MetabaseEmbed,

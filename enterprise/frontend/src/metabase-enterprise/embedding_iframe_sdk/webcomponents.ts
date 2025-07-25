@@ -4,7 +4,6 @@ export const attributeToSettingKey = (attr: string): string =>
 
 // Naïve parsing of attribute values -> appropriate JS types (number, boolean, string)
 export const parseAttributeValue = (value: string | null): unknown => {
-  console.log("parseAttributeValue", { value });
   if (value === "[object Object]") {
     console.error(
       "You are passing an object to `setAttribute`, this is not supported as the browser will call `.toString()` to it, making it `[object Object]`.\nPlease pass a string or set the property directly, eg embed.theme = {...}",
