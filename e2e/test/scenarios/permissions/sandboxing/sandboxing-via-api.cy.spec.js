@@ -231,7 +231,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       H.modifyPermission("collection", 0, "Sandboxed");
       H.modal().findByText("Pick a column").click();
       H.popover().findByText("Category").click();
-      H.modal().findByText("Pick a user attribute").click();
+      H.modal().findByPlaceholderText("Pick a user attribute").click();
       H.popover().findByText("attr_cat").click();
       H.modal().button("Save").click();
       H.savePermissions();
