@@ -37,8 +37,16 @@ export function TransformQueryBuilder({
   };
 
   return (
-    <Box flex="1 1 0" bg="bg-white">
-      <Group className={S.header} px="md" py="sm" justify="end">
+    <Box className={S.root} flex="1 1 0" bg="bg-white">
+      <Group
+        className={S.header}
+        px="md"
+        py="sm"
+        justify="end"
+        pos="sticky"
+        top={0}
+        bg="bg-white"
+      >
         <Button
           variant="filled"
           loading={isSaving}
