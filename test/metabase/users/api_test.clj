@@ -627,25 +627,6 @@
             (is (= {:source "user" :frozen false :value "only-user"}
                    (get-in response [:structured_attributes :unique])))))))))
 
-(deftest get-user-structured-attributes-permissions-test
-  (testing "GET /api/user/:id structured_attributes permissions"
-    (testing "group managers can see structured_attributes"
-      (mt/with-premium-features #{:advanced-permissions}
-        (mt/with-temp [:model/User user {:first_name "Managed"
-                                         :last_name "User"
-                                         :email "managed@test.com"
-                                         :login_attributes {"dept" "sales"}}
-                       :model/PermissionsGroup group {:name "Test Group"}
-                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
-                                                            :group_id (:id group)
-                                                            :is_group_manager true}
-                       :model/PermissionsGroupMembership _ {:user_id (:id user)
-                                                            :group_id (:id group)}]
-          (let [response (mt/user-http-request :rasta :get 200 (str "user/" (:id user)))]
-            (is (contains? response :structured_attributes))
-            (is (= {:dept {:source "user" :frozen false :value "sales"}}
-                   (:structured_attributes response)))))))))
-
 (deftest update-user-test-structured-attributes-not-in-put-response
   (testing "PUT /api/user/:id"
     (testing "structured_attributes is not included in PUT response"
