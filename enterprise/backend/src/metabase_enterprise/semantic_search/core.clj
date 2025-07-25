@@ -3,10 +3,20 @@
   (:require
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
-   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [next.jdbc :as jdbc]))
+
+(defn- get-pgvector-datasource! []
+  (or @semantic.db/data-source (semantic.db/init-db!)))
+
+(defn- get-configured-embedding-model []
+  (semantic.embedding/get-configured-model))
+
+(defn- get-index-metadata []
+  semantic.index-metadata/default-index-metadata)
 
 (defenterprise supported?
   "Enterprise implementation of semantic search engine support check."
@@ -16,53 +26,57 @@
    (some? semantic.db/db-url)
    (semantic.settings/semantic-search-enabled)))
 
-(defn- get-active-index []
-  (semantic.index/default-index (semantic.embedding/get-active-model)))
-
 (defenterprise results
   "Enterprise implementation of semantic search results."
   :feature :semantic-search
   [search-ctx]
-  (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (semantic.index/query-index @semantic.db/data-source (get-active-index) search-ctx))
+  (semantic.pgvector-api/query
+   (get-pgvector-datasource!)
+   (get-index-metadata)
+   search-ctx))
 
 (defenterprise update-index!
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (let [documents (vec document-reducible)]
-    (when (seq documents)
-      (semantic.index/upsert-index! @semantic.db/data-source (get-active-index) documents))))
+  (semantic.pgvector-api/index-documents!
+   (get-pgvector-datasource!)
+   (get-index-metadata)
+   (vec document-reducible)))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (semantic.index/delete-from-index! @semantic.db/data-source (get-active-index) model ids))
+  (semantic.pgvector-api/delete-documents!
+   (get-pgvector-datasource!)
+   (get-index-metadata)
+   model
+   (vec ids)))
 
 ;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents _opts]
-  (let [db           (semantic.db/init-db!)
-        active-index (get-active-index)]
-    (jdbc/with-transaction [tx db]
-      (semantic.index/create-index-table! tx active-index {:force-reset? false}))
-    (semantic.index/upsert-index! db active-index (into [] searchable-documents))))
+  (let [pgvector (get-pgvector-datasource!)
+        index-metadata (get-index-metadata)
+        embedding-model (get-configured-embedding-model)]
+    (jdbc/with-transaction [tx pgvector]
+      (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
+    (semantic.pgvector-api/index-documents! pgvector index-metadata (vec searchable-documents))))
 
 (defenterprise reindex!
   "Reindex the semantic search index."
   :feature :semantic-search
   [searchable-documents _opts]
-  (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (let [db @semantic.db/data-source
-        active-index (get-active-index)]
-    (jdbc/with-transaction [tx db]
-      (semantic.index/create-index-table! tx active-index {:force-reset? false}))
-    (semantic.index/upsert-index! db active-index (into [] searchable-documents))))
+  (let [pgvector (get-pgvector-datasource!)
+        index-metadata (get-index-metadata)
+        embedding-model (get-configured-embedding-model)]
+    ;; todo force a new index
+    (jdbc/with-transaction [tx pgvector]
+      (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
+    (semantic.pgvector-api/index-documents! pgvector index-metadata (vec searchable-documents))))
 
 ;; TODO: implement
 (defenterprise reset-tracking!

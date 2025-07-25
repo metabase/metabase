@@ -152,8 +152,7 @@
         table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)]
     {:embedding-model embedding-model
      :table-name table-name
-     :embedding-index-name (str table-name "__hnsw_idx")
-     :fts-index-name (str table-name "__gin_idx")}))
+     :version 0}))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
@@ -198,13 +197,25 @@
   [connectable index]
   (jdbc/execute! connectable (drop-index-table-sql index)))
 
-(defn create-index-table!
+(defn hnsw-index-name
+  "Returns the name for a HNSW database index for the given semantic search index configuration."
+  [index]
+  (str (:table-name index) "__hnsw_idx"))
+
+(defn fts-index-name
+  "Returns the name for a full-text database index for the given semantic search index configuration."
+  [index]
+  (str (:table-name index) "__gin_idx"))
+
+(defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists."
   [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
-    (let [{:keys [embedding-model embedding-index-name fts-index-name table-name]} index
-          {:keys [vector-dimensions]}                     embedding-model]
+    (let [{:keys [embedding-model table-name]} index
+          _ (assert (not (re-find #"\s" table-name))
+                    (format "whitespace in the table name (%s) is not currently supported" table-name))
+          {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
       (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
       (when force-reset? (drop-index-table! connectable index))
@@ -216,13 +227,13 @@
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [(keyword embedding-index-name) :if-not-exists]
+            [(keyword (hnsw-index-name index)) :if-not-exists]
             [(keyword table-name) :using-hnsw [:raw "embedding vector_cosine_ops"]])
            sql-format-quoted))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [(keyword fts-index-name) :if-not-exists]
+            [(keyword (fts-index-name index)) :if-not-exists]
             [(keyword table-name) :using-gin [:raw "text_search_vector"]])
            sql-format-quoted)))
     (catch Exception e
@@ -234,7 +245,7 @@
                         :vector-dimensions 1024})
   (def index (default-index embedding-model))
   (drop-index-table! db index)
-  (create-index-table! db index)
+  (create-index-table-if-not-exists! db index)
   (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table__%'"]))
 
 (defn- search-filters
@@ -391,7 +402,7 @@
             filter-read-permitted)))))
 
 (comment
-  (def embedding-model (embedding/get-active-model))
+  (def embedding-model (embedding/get-configured-model))
   (def index (default-index embedding-model))
   (def search-ctx {:search-string "pasta"})
   (def embed (embedding/get-embedding embedding-model (:search-string search-ctx)))
@@ -426,9 +437,9 @@
    model-ids))
 
 (comment
-  (def embedding-model (embedding/get-active-model))
+  (def embedding-model (embedding/get-configured-model))
   (def index (default-index embedding-model))
-  (create-index-table! index {:force-reset? true})
+  (create-index-table-if-not-exists! index {:force-reset? true})
   (upsert-index! db index [{:model "card"
                             :id "1"
                             :searchable_text "This is a test card"}])
