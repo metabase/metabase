@@ -3,8 +3,10 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -45,12 +47,18 @@ export async function setup({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
+    setupTokenStatusEndpoint(true);
   }
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-dev_instances",
+    value: true,
+  });
 
   renderWithProviders(<EmbeddingSdkSettings />, {
     storeInitialState: state,
@@ -58,7 +66,16 @@ export async function setup({
 
   await waitFor(async () => {
     const gets = await findRequests("GET");
-    expect(gets).toHaveLength(2);
+    expect(gets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/setting"),
+        }),
+        expect.objectContaining({
+          url: expect.stringContaining("/api/session/properties"),
+        }),
+      ]),
+    );
   });
 
   await screen.findByText("Embedding SDK");

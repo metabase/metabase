@@ -22,6 +22,7 @@
   (:import
    [java.sql
     Connection
+    PreparedStatement
     ResultSet
     ResultSetMetaData
     Statement]
@@ -399,6 +400,93 @@
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
+
+(defmethod sql-jdbc.execute/set-parameter [:databricks (Class/forName "[B")]
+  [_driver ^PreparedStatement _prepared-statement ^Integer _index _object]
+  (throw (ex-info "Databricks driver cannot ingest byte array." {}))
+  ;; I really did try all of these options. Databricks team says we need to use the OSS version. See
+  ;; https://metaboat.slack.com/archives/C07L35T7UFQ/p1750703587969479
+
+  ;; .setBytes() with raw byte array
+  ;; Fails with
+  ;; HIVE_PARAMETER_QUERY_DATA_TYPE_ERR_NON_SUPPORT_DATA_TYPE
+  #_(.setBytes prepared-statement index object)
+
+  ;; byte array as object
+  ;; Ingests toString of reference and tests fail with
+  ;; [CANNOT_PARSE_TIMESTAMP] Unparseable date: "[B@3b56756d".
+  #_(.setObject prepared-statement index object)
+
+  ;; byte array as object with jdbc type BINARY
+  ;; Ingests toString of reference and tests fail with
+  ;; [CANNOT_PARSE_TIMESTAMP] Unparseable date: "[B@3b56756d".
+  #_(.setObject prepared-statement index object Types/BINARY)
+
+  ;; byte array as object with jdbc type BINARY
+  ;; Fails with
+  ;; HIVE_PARAMETER_QUERY_DATA_TYPE_ERR_NON_SUPPORT_DATA_TYPE
+  #_(.setObject prepared-statement index object Types/VARBINARY)
+
+  ;; Array of Bytes with jdbc type ARRAY
+  ;; Fails with
+  ;; [Databricks][JDBC](11500) Given type does not match given object: [Ljava.lang.Byte;@1e1ac2b6.
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)) Types/ARRAY)
+
+  ;; Array of Bytes with jdbc type BINARY
+  ;; Fails with
+  ;; [Databricks][JDBC](11500) Given type does not match given object: [Ljava.lang.Byte;@1e1ac2b6.
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)) Types/BINARY)
+
+  ;; Array of Bytes with jdbc type BINARY
+  ;; Fails with
+  ;; [Databricks][JDBC](11500) Given type does not match given object: [Ljava.lang.Byte;@1e1ac2b6.
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)) Types/VARBINARY)
+
+  ;; Array of Bytes with no jdbc type
+  ;; Fails with
+  ;; HIVE_PARAMETER_QUERY_DATA_TYPE_ERR_NON_SUPPORT_DATA_TYPE
+  #_(.setObject prepared-statement index (into-array Byte (map #(Byte/valueOf %) object)))
+
+  ;; .setArray with array of Bytes with jdbc type "BINARY"
+  ;; Fails with
+  ;; [Databricks][JDSI](20300) Data type not supported: BINARY ({1})
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "BINARY"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; .setArray with array of Bytes with jdbc type "VARBINARY"
+  ;; Fails with
+  ;; Array is not valid
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "VARBINARY"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; .setArray with array of Bytes with jdbc type "ARRAY"
+  ;; Fails with
+  ;; [Databricks][JDSI](20300) Data type not supported: ARRAY ({1})
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "ARRAY"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; .setArray with array of Bytes with jdbc type "ARRAY<BINARY>"
+  ;; Ingest "succeeds" but there are no rows in the table
+  #_(let [connection (.getConnection prepared-statement)]
+      (.setArray prepared-statement index
+                 (.createArrayOf connection "ARRAY<BINARY>"
+                                 (into-array Byte (map #(Byte/valueOf %) object)))))
+
+  ;; Hex string
+  ;; Fails with:
+  ;; [Databricks][JDBC](11500) Given type does not match given object: 3230313930343231313634333030.
+  #_(.setObject prepared-statement index (codecs/bytes->hex object) Types/BINARY)
+
+  ;; base64 string
+  ;; Fails with:
+  ;; [Databricks][JDBC](11500) Given type does not match given object: MjAxOTA0MjExNjQzMDA=.
+  #_(.setObject prepared-statement index (codecs/bytes->b64-str object) Types/BINARY))
 
 (defmethod sql.qp/->integer :databricks
   [driver value]

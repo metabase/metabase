@@ -3,7 +3,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.add-rows-truncated :as qp.add-rows-truncated]
    [metabase.query-processor.middleware.add-timezone-info :as qp.add-timezone-info]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -34,8 +34,6 @@
               (vary-meta assoc :converted-form query))))
       (with-meta (meta middleware-fn))))
 
-;;; this WILL be used in the VERY near future.
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query rff]
         (let [query (cond->> query
@@ -60,12 +58,12 @@
    (ensure-legacy #'qp.add-rows-truncated/add-rows-truncated)
    (ensure-legacy #'qp.add-timezone-info/add-timezone-info)
    (ensure-legacy #'qp.middleware.enterprise/merge-sandboxing-metadata)
-   (ensure-legacy #'qp.add-dimension-projections/remap-results)
+   (ensure-legacy #'qp.add-remaps/remap-results)
    (ensure-legacy #'pivot-export/add-data-for-pivot-export)
    (ensure-legacy #'large-int/convert-large-int-to-string)
    (ensure-legacy #'viz-settings/update-viz-settings)
    (ensure-legacy #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns)
-   (ensure-legacy #'annotate/add-column-info)
+   (ensure-pmbql #'annotate/add-column-info)
    (ensure-legacy #'fetch-source-query/add-dataset-info)])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 

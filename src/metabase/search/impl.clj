@@ -267,7 +267,10 @@
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
-   [:include-metadata?                   {:optional true} [:maybe boolean?]]])
+   [:include-metadata?                   {:optional true} [:maybe boolean?]]
+   [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
+   [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -278,6 +281,7 @@
            created-by
            current-user-id
            current-user-perms
+           display-type
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -295,7 +299,9 @@
            search-native-query
            search-string
            table-db-id
-           verified]} :- ::search-context.input]
+           verified
+           non-temporal-dim-ids
+           has-temporal-dim]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -331,7 +337,10 @@
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
-                 (seq ids)                                   (assoc :ids ids))]
+                 (seq ids)                                   (assoc :ids ids)
+                 (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
+                 (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim)
+                 (seq display-type)                          (assoc :display-type display-type))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))

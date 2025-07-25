@@ -1,13 +1,18 @@
 (ns metabase.lib.test-util.metadata-providers.mock
   (:require
+   #?@(:clj
+       ([pretty.core :as pretty]))
    [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- with-optional-lib-type
   "Create a version of `schema` where `:lib/type` is optional rather than required."
@@ -17,7 +22,7 @@
    [:map
     [:lib/type {:optional true} [:= lib-type]]]])
 
-(def MockMetadata
+(mr/def ::mock-metadata
   "Schema for the mock metadata passed in to [[mock-metadata-provider]]."
   [:map
    {:closed true}
@@ -106,7 +111,33 @@
 
   clojure.core.protocols/Datafiable
   (datafy [_this]
-    (list `mock-metadata-provider metadata)))
+    (list `mock-metadata-provider metadata))
+
+  #?@(:clj
+      (pretty/PrettyPrintable
+       (pretty [_this]
+               (list `mock-metadata-provider metadata)))))
+
+;;;
+;;; NEW!
+;;;
+;;; The mock metadata provider now supports rules for mocking out metadata, convenient if you want to do something
+;;; like mock a Card but don't want to manually specify a `:name` every time. Just add a `:decode/mock` key to the
+;;; schema properties.
+
+(mu/defn- mock-coercer :- [:=> [:cat] [:=> [:cat :map] ::mock-metadata]]
+  []
+  (mr/cached
+   ::coercer
+   ::mock-metadata
+   (fn []
+     (mc/coercer ::mock-metadata (mtx/transformer {:name :mock}) #_respond identity #_raise :value))))
+
+(mu/defn- ->mock-metadata :- ::mock-metadata
+  [m]
+  (->> m
+       ((mock-coercer))
+       (lib.normalize/normalize ::mock-metadata)))
 
 (mu/defn mock-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Create a mock metadata provider to facilitate writing tests. All keys except `:database` should be a sequence of maps
@@ -123,10 +154,9 @@
     (lib.tu/mock-metadata-provider parent-metadata-provider {...})
     =>
     (lib/composed-metadata-provider (lib.tu/mock-metadata-provider {...}) parent-metadata-provider)"
-  ([m :- MockMetadata]
+  ([m]
    (-> m
-       (update :fields #(for [field %]
-                          (u/assoc-default field :ident (u/generate-nano-id))))
+       ->mock-metadata
        ->MockMetadataProvider))
 
   ([parent-metadata-provider mock-metadata]

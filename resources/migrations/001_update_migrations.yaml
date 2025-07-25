@@ -12070,6 +12070,92 @@ databaseChangeLog:
                   type: longtext
 
 
+  - changeSet:
+      id: v55.2025-07-02T10:00:00
+      author: ranquild
+      comment: |
+        Update `has_field_values` on FK fields to match PKs. Before this change, the FE always used the corresponding
+        PKs fields for FKs fields in dashboards. Now the FE does not swap fields, and we need to set `has_field_values`
+        to prevent any changes in behavior.
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS fk
+              SET has_field_values = pk.has_field_values
+              FROM metabase_field AS pk
+              WHERE
+                pk.id = fk.fk_target_field_id AND
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field AS fk
+              JOIN metabase_field AS pk ON pk.id = fk.fk_target_field_id
+              SET fk.has_field_values = pk.has_field_values
+              WHERE
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_field AS fk
+              SET has_field_values = (
+                SELECT coalesce(pk.has_field_values, fk.has_field_values)
+                FROM metabase_field AS pk
+                WHERE pk.id = fk.fk_target_field_id
+              )
+              WHERE fk_target_field_id IS NOT NULL AND semantic_type = 'type/FK';
+      rollback: # not necessary
+
+  - changeSet:
+      id: v55.2025-07-04T15:00:00
+      author: qnkhuat
+      comment: fix v_alerts where cron string contains slash (#60427)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v4/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v4/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v3/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v3/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v3/h2-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v55.2025-07-21T10:00:00
+      author: ranquild
+      comment: Remove semantic_type when base_type is type/Boolean and semantic_type is type/Category
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: semantic_type
+                  value: NULL
+            where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
+      rollback: # not necessary
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

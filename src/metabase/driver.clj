@@ -401,6 +401,14 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti extra-info
+  "extra driver info"
+  {:added "0.56.0" :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod extra-info ::driver [_] nil)
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 
@@ -688,6 +696,9 @@
     ;; Does this driver support casting text to floats? (`float()` custom expression function)
     :expressions/float
 
+    ;; Does this driver support returning the current date? (`today()` custom expression function)
+    :expressions/today
+
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
@@ -708,7 +719,10 @@
     :test/uuids-in-create-table-statements
 
     ;; Does this driver support Metabase's database routing feature?
-    :database-routing})
+    :database-routing
+
+    ;; Does this driver support replication?
+    :database-replication})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

@@ -330,7 +330,7 @@ describe("issue 21559", { tags: "@external" }, () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(q2Details.name);
+      H.selectDataset(q2Details.name);
       cy.findByText("80.52").should("exist");
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
       cy.button("Save").click();
@@ -506,10 +506,7 @@ describe("issue 24223", () => {
       `${admin.first_name} ${admin.last_name}`,
     ]);
     cy.findByTestId("subscription-parameters-section").within(() => {
-      cy.findAllByTestId("field-set-content")
-        .filter(":contains(Doohickey)")
-        .icon("close")
-        .click();
+      H.filterWidget({ name: "Category" }).icon("close").click();
     });
 
     H.sidebar().button("Done").click();
@@ -1032,7 +1029,7 @@ describe("issue 49525", { tags: "@external" }, () => {
       // get the csv attachment file's contents
       cy.request({
         method: "GET",
-        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.fileName}`,
+        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
         encoding: "utf8",
       }).then((response) => {
         const csvContent = response.body;

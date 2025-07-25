@@ -24,8 +24,10 @@ import {
   setArchivedDashboard,
   setDashboardAttributes,
   setEditingDashboard,
+  setEditingParameter,
   setParameterDefaultValue,
   setParameterFilteringParameters,
+  setParameterIndex,
   setParameterIsMultiSelect,
   setParameterName,
   setParameterQueryType,
@@ -65,6 +67,7 @@ import {
   getDashboardComplete,
   getDashboardHeaderParameters,
   getDraftParameterValues,
+  getEditingParameter,
   getIsAddParameterPopoverOpen,
   getIsAdditionalInfoVisible,
   getIsDashCardsLoadingComplete,
@@ -97,6 +100,7 @@ export const mapStateToProps = (state: State) => ({
   isSharing: getIsSharing(state),
   dashboardBeforeEditing: getDashboardBeforeEditing(state),
   isEditingParameter: getIsEditingParameter(state),
+  editingParameter: getEditingParameter(state),
   isDirty: getIsDirty(state),
   slowCards: getSlowCards(state),
   parameterValues: getParameterValues(state),
@@ -131,7 +135,9 @@ export const mapDispatchToProps = {
   setParameterName,
   setParameterType,
   setParameterValue,
+  setParameterIndex,
   setParameterValueToDefault,
+  setEditingParameter,
   setParameterDefaultValue,
   setParameterRequired,
   setParameterTemporalUnits,
@@ -167,6 +173,8 @@ export const mapDispatchToProps = {
   undoDeleteTab,
 };
 
-export const connector = connect(mapStateToProps, mapDispatchToProps);
+export const connector = connect(mapStateToProps, mapDispatchToProps, null, {
+  forwardRef: true,
+});
 
 export type ReduxProps = ConnectedProps<typeof connector>;

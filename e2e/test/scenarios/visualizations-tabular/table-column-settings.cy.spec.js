@@ -624,7 +624,7 @@ describe("scenarios > visualizations > table column settings", () => {
       };
 
       const productIdColumn = {
-        column: "ID",
+        column: "Product → ID",
         columnName: "Product → ID",
         table: "summaries",
         sanityCheck: "Count",
@@ -809,7 +809,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const taxColumn = {
-          column: "Tax",
+          column: `Question ${card.id} → Tax`,
           columnName: `Question ${card.id} → Tax`,
           table: "test question 2",
           scrollTimes: 3,
@@ -831,7 +831,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const mathColumn = {
-          column: "Math",
+          column: `Question ${card.id} → Math`,
           columnName: `Question ${card.id} → Math`,
           table: "test question",
           needsScroll: false,

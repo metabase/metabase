@@ -13,6 +13,7 @@
 .tab {
   color: var(--mb-color-text-primary);
   max-width: 100%;
+  justify-content: start;
 
   &:hover {
     border-color: var(--mb-color-background-hover);
@@ -41,6 +42,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
+  text-align: start;
 }
 
 .tabSection[data-position="left"] {

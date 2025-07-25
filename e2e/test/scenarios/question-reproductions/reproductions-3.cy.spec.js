@@ -2,6 +2,7 @@ const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -645,7 +646,7 @@ describe("issue 33439", () => {
       name: "Date",
     });
     H.popover().within(() => {
-      cy.findByText("Unsupported function convert-timezone");
+      cy.findByText("Unsupported function convertTimezone");
       cy.button("Done").should("be.disabled");
     });
   });
@@ -783,7 +784,7 @@ describe("issue 40064", () => {
       blur: true,
     });
     H.popover().within(() => {
-      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
+      cy.findByText("Unknown column: Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });
@@ -915,14 +916,14 @@ describe("issue 32020", () => {
     H.popover().within(() => {
       cy.findByText("Sum of ...").click();
       cy.findByText(question2Details.name).click();
-      cy.findByText("Max of Longitude").click();
+      cy.findByText("Q2 → Max of Longitude").click();
     });
 
     cy.log("visualize and check results");
     H.visualize();
     H.tableInteractive().within(() => {
       cy.findByText("Sum of Sum of Total").should("be.visible");
-      cy.findByText("Sum of Q2 → Max").should("be.visible");
+      cy.findByText("Sum of Q2 → Max of Longitude").should("be.visible");
     });
   });
 });
@@ -1206,7 +1207,7 @@ describe("issue 31960", () => {
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Jul 10–16, 2022")
+      .findByText("Created At: Week is Jul 10–16, 2022")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
@@ -1446,8 +1447,8 @@ describe("issue 19894", () => {
     H.popover().findByText("Q1").click();
     H.popover().findByText("Q2").click();
 
-    H.popover().findByText("Category").should("be.visible");
-    H.popover().findByText("Sum of Price").should("be.visible");
+    H.popover().findByText("Q2 - Category → Category").should("be.visible");
+    H.popover().findByText("Q2 - Category → Sum of Price").should("be.visible");
 
     H.popover().findByText("Q1").click();
 
@@ -1707,7 +1708,7 @@ describe("issue 39771", () => {
     H.openNotebook();
     H.getNotebookStep("summarize", { stage: 1 })
       .findByTestId("breakout-step")
-      .findByText("Created At: Month: Quarter of year")
+      .findByText("Created At: Quarter of year")
       .click();
 
     H.popover().findByText("by quarter of year").realHover();
@@ -2630,13 +2631,15 @@ describe("issue 23449", () => {
 
   it("Remapped fields should work in a model (metabase#23449)", () => {
     cy.log("set the metadata for review");
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: SAMPLE_DATABASE.REVIEWS_ID,
+      fieldId: SAMPLE_DATABASE.REVIEWS.RATING,
+    });
 
-    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
-    cy.findAllByTestId("select-button").contains("Use original value").click();
-    cy.findByLabelText("Custom mapping").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
+    H.popover().findByText("Custom mapping").click();
 
     cy.findByDisplayValue("1").clear().type("A");
     cy.findByDisplayValue("2").clear().type("B");
@@ -2669,5 +2672,556 @@ describe("issue 23449", () => {
     cy.log("reload to flush cached results and check again");
     cy.findByTestId("qb-header").button("Refresh").click();
     checkTable();
+  });
+});
+
+describe("issue 12679", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("removing the first aggregation should not re-target the filter (metabase#12679)", () => {
+    const questionDetails = {
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.SUBTOTAL, null]],
+              ["sum", ["field", ORDERS.TAX, null]],
+              ["sum", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
+            ],
+          },
+          filter: [">", ["field", "sum_2", { "base-type": "type/Float" }], 100],
+        },
+      },
+    };
+
+    H.visitQuestionAdhoc(questionDetails, { mode: "notebook" });
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+
+    H.getNotebookStep("summarize").within(() => {
+      cy.findByText("Sum of Subtotal").parent().icon("close").click();
+      cy.findByText("Sum of Subtotal").should("not.exist");
+    });
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+
+    H.visualize();
+
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Sum of Tax is greater than 100")
+      .should("exist");
+    cy.findByTestId("table-header").within(() => {
+      cy.findByText("Sum of Subtotal").should("not.exist");
+      cy.findByText("Sum of Tax").should("exist");
+      cy.findByText("Sum of Total").should("exist");
+    });
+    cy.findByTestId("question-row-count")
+      .findByText("Showing 174 rows")
+      .should("exist");
+  });
+});
+
+describe("issue 51856", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const q1Details = {
+    name: "Issue 51856 Q1",
+    type: "question",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  const q2Details = {
+    name: "Issue 51856 Q2",
+    query: {
+      "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              SAMPLE_DATABASE.REVIEWS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  it("join alias deduplication should not break queries with multiple nesting levels with joins (metabase#51856)", () => {
+    H.createQuestion(q1Details, { wrapId: true, idAlias: "q1id" });
+    cy.get("@q1id").then((_q1id) => {
+      H.createQuestion(q2Details, { wrapId: true, idAlias: "q2id" });
+      cy.get("@q2id").then((_q2id) => {
+        H.startNewQuestion();
+
+        H.selectSavedQuestionsToJoin(q1Details.name, q2Details.name);
+        cy.findByTestId("join-condition-0").findByText(q1Details.name).click();
+        H.popover().findByText("Products → Category").click();
+        cy.findByTestId("join-condition-0").findByText(q2Details.name).click();
+        H.popover().findByText("Issue 51856 Q2 → Category").click();
+
+        H.visualize();
+
+        H.tableInteractiveScrollContainer().scrollTo("right");
+        cy.findByTestId("table-header").within(() => {
+          cy.findByText("Products → Category").should("exist");
+          cy.findByText(
+            "Issue 51856 Q2 - Products → Category → Category",
+          ).should("exist");
+        });
+        cy.findByTestId("question-row-count")
+          .findByText("Showing first 2,000 rows")
+          .should("exist");
+      });
+    });
+  });
+});
+
+describe("issue 33972", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  const queryDetails = {
+    name: "Issue 33972",
+    type: "question",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [
+        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+        ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+      ],
+      joins: [
+        {
+          fields: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              { "base-type": "type/Text", "join-alias": "Products" },
+            ],
+          ],
+          strategy: "left-join",
+          alias: "Products",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  };
+
+  it("should be able to distinguish explicitly and implicitly joined fields (metabase#33972)", () => {
+    H.createQuestion(queryDetails, { wrapId: true });
+    cy.get("@questionId").then((questionId) => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": "card__" + questionId,
+          },
+          type: "query",
+        },
+      });
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-list-container")
+        .findByText("Add or remove columns")
+        .click();
+      cy.findByTestId("product-table-columns").findByText("Category").click();
+      cy.findByTestId("product-table-columns").findByText("Ean").click();
+      cy.findByTestId("table-header").within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByText("Product ID").should("exist");
+        cy.findByText("Products → Category").should("exist");
+        cy.findByText("Product → Category").should("exist");
+        cy.findByText("Product → Ean").should("exist");
+      });
+      cy.findByTestId("question-row-count")
+        .findByText("Showing first 2,000 rows")
+        .should("exist");
+    });
+  });
+});
+
+describe("Issue 33835", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+
+    H.queryWritableDB("DROP TABLE IF EXISTS orders");
+    H.queryWritableDB(
+      "CREATE TABLE IF NOT EXISTS orders (id INT PRIMARY KEY, total real, discount real)",
+    );
+    H.queryWritableDB(
+      "INSERT INTO orders (id, total, discount) VALUES (1, 100, 20)",
+    );
+
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "orders" });
+
+    H.startNewQuestion();
+    H.entityPickerModal().findByText("Writable Postgres12").click();
+    H.entityPickerModal().findByText("Orders").click();
+
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().within(() => {
+      cy.findByText(/Average of/).click();
+      cy.findByText("Total").click();
+    });
+
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Discount").click();
+
+    H.saveQuestion("Test Question", {
+      wrapId: true,
+      questionId: "questionId",
+      addToDashboard: false,
+    });
+  });
+
+  it("should be possible to remove an aggregation on a non-existent column (metabase#33835)", () => {
+    H.queryWritableDB("ALTER TABLE orders DROP COLUMN total");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByText("Average of Unknown Field")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+
+  it("should be possible to remove a breakout on a non-existent column (metabase#33835)", () => {
+    H.queryWritableDB("ALTER TABLE orders DROP COLUMN discount");
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("summarize")
+      .findByText("Unknown Field: Auto binned")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+describe("Issue 42942", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.TOTAL,
+              {
+                "base-type": "type/Float",
+                binning: { strategy: "num-bins", "num-bins": 100 },
+              },
+            ],
+          ],
+        },
+      },
+    });
+  });
+
+  it("should adapt the filter widths when changing the filter value (metabase#42942)", () => {
+    H.openNotebook();
+
+    H.getNotebookStep("data").findByLabelText("Filter").click();
+
+    H.popover().within(() => {
+      cy.findByText("Total").click();
+      cy.findByPlaceholderText("Min").type("90");
+      cy.button("Add filter").click();
+    });
+    H.visualize();
+
+    H.chartPathWithFillColor("#509EE3").first().click();
+    H.popover().findByText("See these Orders").click();
+
+    cy.log(
+      "Filters should be applied correctly with the bin width from the chart",
+    );
+    H.queryBuilderFiltersPanel().findByText(
+      "Total is greater than or equal to 90",
+    );
+    H.queryBuilderFiltersPanel().findByText("Total is less than 90.75");
+  });
+});
+
+describe("Issue 48771", () => {
+  const MODEL_NAME = "M1";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion({
+      name: MODEL_NAME,
+      type: "model",
+      native: {
+        database: SAMPLE_DB_ID,
+        query: "SELECT 1 AS ID",
+      },
+    }).then(({ body: model }) => {
+      H.createQuestion(
+        {
+          type: "question",
+          query: {
+            filter: [
+              ">=",
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              0.5,
+            ],
+            "source-query": {
+              database: SAMPLE_DB_ID,
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  "source-table": `card__${model.id}`,
+                  fields: "all",
+                  alias: MODEL_NAME,
+                  strategy: "left-join",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.ID, { "base-type": "type/Integer" }],
+                    [
+                      "field",
+                      "ID",
+                      { "join-alias": MODEL_NAME, "base-type": "type/Integer" },
+                    ],
+                  ],
+                },
+              ],
+              aggregation: [["count"]],
+              breakout: [["field", ORDERS.CREATED_AT, null]],
+            },
+          },
+        },
+        { visitQuestion: true, wrapId: true },
+      );
+    });
+
+    cy.log("give nosql user access to root collection");
+    cy.updateCollectionGraph({
+      [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
+    });
+
+    cy.signOut();
+    cy.signIn("nosql");
+  });
+
+  it("should allow to add a filter after summary stage (metabase#48771)", () => {
+    H.visitQuestion("@questionId");
+    H.openNotebook();
+
+    H.getNotebookStep("filter", { stage: 1 })
+      .findByText("Count is greater than or equal to 0.5")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").clear().type("0.7");
+      cy.button("Update filter").click();
+    });
+    H.visualize();
+  });
+});
+
+describe("Issue 42817", () => {
+  const NATIVE_QUESTION_NAME = "NativeOrders";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion({
+      name: NATIVE_QUESTION_NAME,
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "SELECT ID, CREATED_AT FROM orders",
+      },
+    }).then(({ body: question }) => {
+      H.visitQuestionAdhoc({
+        display: "line",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: "all",
+                alias: NATIVE_QUESTION_NAME,
+                "source-table": `card__${question.id}`,
+                strategy: "left-join",
+                condition: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                    },
+                  ],
+                  [
+                    "field",
+                    "ID",
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": NATIVE_QUESTION_NAME,
+                    },
+                  ],
+                ],
+              },
+            ],
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                "CREATED_AT",
+
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+            ],
+            filter: [
+              "between",
+              [
+                "field",
+                "CREATED_AT",
+                {
+                  "base-type": "type/Date",
+                  "inherited-temporal-unit": "day",
+                  "temporal-unit": "day",
+                  "join-alias": "NativeOrders",
+                },
+              ],
+              "2023-06-23T00:00Z",
+              "2023-07-03T00:00Z",
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
+    H.echartsContainer().get("path[fill='#fff']").first().click();
+
+    H.popover().findByText("See this day by hour").click();
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+
+    H.echartsContainer().should("be.visible");
   });
 });

@@ -32,6 +32,24 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
+  it("shows a static question with isDrillThroughEnabled=false, withTitle=true", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+      isDrillThroughEnabled: false,
+      withTitle: true,
+    });
+
+    cy.wait("@getCardQuery");
+
+    frame.within(() => {
+      cy.log("static question must contain title, but not toolbar");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByTestId("interactive-question-result-toolbar").should(
+        "not.exist",
+      );
+    });
+  });
+
   it("shows a static dashboard using isDrillThroughEnabled=false, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -112,7 +130,6 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.log("5. clicking on the filter should drill down");
       cy.get('[type="filter"] button').first().click();
       cy.findAllByText("29.8").first().should("be.visible");
-      cy.findByText("New question").should("be.visible");
 
       cy.log("6. saving should be disabled in drill-throughs");
       cy.findByText("Save").should("not.exist");
@@ -141,7 +158,9 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.findByText(/Filter by this value/).should("be.visible");
       cy.get('[type="filter"] button').first().click();
       cy.findAllByText("29.8").first().should("be.visible");
-      cy.findByText("New question").should("be.visible");
+      cy.findByTestId("interactive-question-result-toolbar").should(
+        "be.visible",
+      );
 
       cy.log("2. saving should be enabled");
       cy.findByText("Save").click();

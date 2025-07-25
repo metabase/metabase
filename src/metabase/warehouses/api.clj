@@ -362,7 +362,8 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(mu/defn- get-database
+(mu/defn get-database
+  "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
   ([id] (get-database id {}))
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
@@ -976,9 +977,13 @@
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one :model/Database :id id)]
+          ;; the details in db and existing-database have been normalized so they are the same here
+          ;; we need to pass through details-changed? which is calculated before detail normalization
+          ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
           (events/publish-event! :event/database-update {:object db
                                                          :user-id api/*current-user-id*
-                                                         :previous-object existing-database})
+                                                         :previous-object existing-database
+                                                         :details-changed? details-changed?})
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules
@@ -1116,9 +1121,10 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (get-database id {:exclude-uneditable-details? true})]
+  (let [db (get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
-                       (mi/can-write? db)))
+                       (and (mi/can-write? db)
+                            (mi/can-read? db))))
     (->> db
          (driver/syncable-schemas (:engine db))
          (vec)

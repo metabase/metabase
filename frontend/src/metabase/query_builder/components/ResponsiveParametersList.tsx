@@ -38,7 +38,10 @@ export const ResponsiveParametersList = ({
   }, [parameters]);
 
   return (
-    <Box w={isSmallScreen && mobileShowParameterList ? "100%" : undefined}>
+    <Box
+      w={isSmallScreen && mobileShowParameterList ? "100%" : undefined}
+      style={{ alignSelf: "center" }}
+    >
       {isSmallScreen && (
         <Button
           className={ResponsiveParametersListS.filterButton}
@@ -57,6 +60,7 @@ export const ResponsiveParametersList = ({
         </Button>
       )}
       <Box
+        py="sm"
         className={cx(ResponsiveParametersListS.ParametersListContainer, {
           [ResponsiveParametersListS.isSmallScreen]: isSmallScreen,
           [ResponsiveParametersListS.isShowingMobile]: mobileShowParameterList,

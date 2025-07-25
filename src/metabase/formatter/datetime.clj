@@ -241,9 +241,12 @@
                      date-format)
           temporal-str)))))
 
+;;; TODO (Cam 6/19/25) -- this is broken, see #59803
 (defn make-temporal-str-formatter
   "Return a formatter which, given a temporal literal string, reformats it by combining time zone, column, and viz
-  setting information to create a final desired output format."
+  setting information to create a final desired output format.
+
+  HAS GLOBAL SIDE EFFECTS!"
   [timezone-id col viz-settings]
   (let [merged-viz-settings (streaming.common/normalize-keys
                              (streaming.common/viz-settings-for-col col viz-settings))]

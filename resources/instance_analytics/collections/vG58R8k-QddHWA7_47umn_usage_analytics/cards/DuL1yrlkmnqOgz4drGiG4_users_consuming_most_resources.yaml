@@ -31,8 +31,6 @@ dataset_query:
           - v_query_log
           - running_time_seconds
         - base-type: type/Float
-    aggregation-idents:
-      0: aggregation_DuL1yrlkmnqOgz4drGiG4@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -54,10 +52,6 @@ dataset_query:
         - full_name
       - base-type: type/Text
         join-alias: People - User
-    breakout-idents:
-      0: breakout_DuL1yrlkmnqOgz4drGiG4@0__0
-      1: breakout_DuL1yrlkmnqOgz4drGiG4@0__1
-      2: breakout_DuL1yrlkmnqOgz4drGiG4@0__2
     filter:
     - and
     - - time-interval

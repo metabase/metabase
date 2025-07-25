@@ -1,3 +1,4 @@
+import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
@@ -6,8 +7,11 @@ import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import type { ActionIconProps } from "metabase/ui";
 
-export const DashboardInfoButton = () => {
+export const DashboardInfoButton = (
+  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+) => {
   const { closeSidebar, setSidebar } = useDashboardContext();
   const isShowingDashboardInfoSidebar = useSelector(
     getIsShowDashboardInfoSidebar,
@@ -37,6 +41,7 @@ export const DashboardInfoButton = () => {
       isActive={isShowingDashboardInfoSidebar}
       disabled={isShowingDashboardInfoSidebar}
       onClick={handleClick}
+      {...props}
     />
   );
 };

@@ -76,47 +76,41 @@
                 :id                       (meta/id :venues :id)
                 :table-id                 (meta/id :venues)
                 :base-type                :type/BigInteger
-                :lib/source-column-alias  "ID"
-                :lib/desired-column-alias "ID"}
+                :lib/source-column-alias  "ID"}
                {:lib/type                 :metadata/column
                 :name                     "NAME"
                 :display-name             "Name"
                 :id                       (meta/id :venues :name)
                 :table-id                 (meta/id :venues)
                 :base-type                :type/Text
-                :lib/source-column-alias  "NAME"
-                :lib/desired-column-alias "NAME"}
+                :lib/source-column-alias  "NAME"}
                {:lib/type                 :metadata/column
                 :name                     "CATEGORY_ID"
                 :display-name             "Category ID"
                 :id                       (meta/id :venues :category-id)
                 :table-id                 (meta/id :venues)
-                :lib/source-column-alias  "CATEGORY_ID"
-                :lib/desired-column-alias "CATEGORY_ID"}
+                :lib/source-column-alias  "CATEGORY_ID"}
                {:lib/type                 :metadata/column
                 :name                     "LATITUDE"
                 :display-name             "Latitude"
                 :id                       (meta/id :venues :latitude)
                 :table-id                 (meta/id :venues)
                 :base-type                :type/Float
-                :lib/source-column-alias  "LATITUDE"
-                :lib/desired-column-alias "LATITUDE"}
+                :lib/source-column-alias  "LATITUDE"}
                {:lib/type                 :metadata/column
                 :name                     "LONGITUDE"
                 :display-name             "Longitude"
                 :id                       (meta/id :venues :longitude)
                 :table-id                 (meta/id :venues)
                 :base-type                :type/Float
-                :lib/source-column-alias  "LONGITUDE"
-                :lib/desired-column-alias "LONGITUDE"}
+                :lib/source-column-alias  "LONGITUDE"}
                {:lib/type                 :metadata/column
                 :name                     "PRICE"
                 :display-name             "Price"
                 :id                       (meta/id :venues :price)
                 :table-id                 (meta/id :venues)
                 :base-type                :type/Integer
-                :lib/source-column-alias  "PRICE"
-                :lib/desired-column-alias "PRICE"}
+                :lib/source-column-alias  "PRICE"}
                {:lib/type                 :metadata/column
                 :name                     "ID"
                 :display-name             "ID"
@@ -124,7 +118,7 @@
                 :table-id                 (meta/id :categories)
                 :base-type                :type/BigInteger
                 :lib/source-column-alias  "ID"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"}
+                :fk-field-id              (meta/id :venues :category-id)}
                {:lib/type                 :metadata/column
                 :name                     "NAME"
                 :display-name             "Name"
@@ -132,7 +126,7 @@
                 :table-id                 (meta/id :categories)
                 :base-type                :type/Text
                 :lib/source-column-alias  "NAME"
-                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"}]
+                :fk-field-id              (meta/id :venues :category-id)}]
               (lib/breakoutable-columns query))))))
 
 (deftest ^:parallel breakoutable-expressions-test
@@ -281,35 +275,30 @@
           :let [query (@varr)]]
     (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
       (let [columns (lib/breakoutable-columns query)]
-        (is (=? [{:name                     "USER_ID"
-                  :display-name             "User ID"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "USER_ID"}
-                 {:name                     "count"
-                  :display-name             "Count"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "count"}
+        (is (=? [{:name         "USER_ID"
+                  :display-name "User ID"
+                  :base-type    :type/Integer
+                  :lib/source   :source/card}
+                 {:name         "count"
+                  :display-name "Count"
+                  :base-type    :type/Integer
+                  :lib/source   :source/card}
                  ;; Implicitly joinable columns
-                 {:name                     "ID"
-                  :display-name             "ID"
-                  :base-type                :type/BigInteger
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__ID"
-                  :fk-field-id              (meta/id :checkins :user-id)}
-                 {:name                     "NAME"
-                  :display-name             "Name"
-                  :base-type                :type/Text
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"
-                  :fk-field-id              (meta/id :checkins :user-id)}
-                 {:name                     "LAST_LOGIN"
-                  :display-name             "Last Login"
-                  :base-type                :type/DateTime
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"
-                  :fk-field-id              (meta/id :checkins :user-id)}]
+                 {:name         "ID"
+                  :display-name "ID"
+                  :base-type    :type/BigInteger
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}
+                 {:name         "NAME"
+                  :display-name "Name"
+                  :base-type    :type/Text
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}
+                 {:name         "LAST_LOGIN"
+                  :display-name "Last Login"
+                  :base-type    :type/DateTime
+                  :lib/source   :source/implicitly-joinable
+                  :fk-field-id  (meta/id :checkins :user-id)}]
                 columns))
         (testing `lib/display-info
           (is (=? [{:name                   "USER_ID"
@@ -572,16 +561,14 @@
                                  ;; contain type info, shouldn't matter tho.
                                  "correct ref but missing :base-type/:effective-type"
                                  [:field {:lib/uuid   (str (random-uuid))
-                                          :join-alias "Categories"
-                                          :ident      (u/generate-nano-id)}
+                                          :join-alias "Categories"}
                                   (meta/id :categories :name)]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
                                  [:field {:lib/uuid  (str (random-uuid))
-                                          :base-type :type/Text
-                                          :ident     (u/generate-nano-id)}
+                                          :base-type :type/Text}
                                   (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> (lib.tu/venues-query)
@@ -600,7 +587,7 @@
                   (m/find-first #(= (:id %) (meta/id :categories :name))
                                 (lib/breakoutable-columns query)))))))))
 
-(defn- legacy-query-with-broken-breakout []
+(defn legacy-query-with-broken-breakout []
   (-> (lib.tu.mocks-31368/query-with-legacy-source-card true)
       ;; this is a bad field reference, it does not contain a `:join-alias`. For some reason the FE is generating
       ;; these in drill thrus (in MLv1). We need to figure out how to make stuff work anyway even tho this is
@@ -615,7 +602,7 @@
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
     (let [query (legacy-query-with-broken-breakout)]
       (is (=? [{:name              "CATEGORY"
-                :display-name      "Category"
+                :display-name      "Products → Category" ; display-name is always LONG when it comes from a previous stage.
                 :long-display-name "Products → Category"
                 :effective-type    :type/Text}]
               (map (partial lib/display-info query)
@@ -762,3 +749,44 @@
       (is (=? {:unit :month}
               (->> (lib/breakout-column query breakout)
                    (lib/temporal-bucket)))))))
+
+(deftest ^:parallel breakoutable-columns-do-not-suggest-remaps-test
+  (testing "Do not return column remaps in breakoutable-columns"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query mp (meta/table-metadata :orders))]
+      (is (= [["Orders"   "ID"]
+              ["Orders"   "User ID"]
+              ["Orders"   "Product ID"]
+              ["Orders"   "Subtotal"]
+              ["Orders"   "Tax"]
+              ["Orders"   "Total"]
+              ["Orders"   "Discount"]
+              ["Orders"   "Created At"]
+              ["Orders"   "Quantity"]
+              ["People"   "User → ID"]
+              ["People"   "User → Address"]
+              ["People"   "User → Email"]
+              ["People"   "User → Password"]
+              ["People"   "User → Name"]
+              ["People"   "User → City"]
+              ["People"   "User → Longitude"]
+              ["People"   "User → State"]
+              ["People"   "User → Source"]
+              ["People"   "User → Birth Date"]
+              ["People"   "User → Zip"]
+              ["People"   "User → Latitude"]
+              ["People"   "User → Created At"]
+              ["Products" "Product → ID"]
+              ["Products" "Product → Ean"]
+              ["Products" "Product → Title"]
+              ["Products" "Product → Category"]
+              ["Products" "Product → Vendor"]
+              ["Products" "Product → Price"]
+              ["Products" "Product → Rating"]
+              ["Products" "Product → Created At"]]
+             (map (comp
+                   (juxt #(get-in % [:table :long-display-name]) :long-display-name)
+                   #(lib/display-info query %))
+                  (lib/breakoutable-columns query)))))))

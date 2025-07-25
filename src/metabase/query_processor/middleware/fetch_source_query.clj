@@ -61,7 +61,7 @@
                     card-metadata (into [] (remove :remapped-from)
                                         (lib.card/card-metadata-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
-                                    (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
+                                    (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
                                     ;; This will be applied, if still appropriate, by
                                     ;; the [[metabase.query-processor.middleware.persistence]] middleware
                                     ;;
@@ -117,7 +117,9 @@
         (dep/topo-sort <>)))
     (let [card         (card query (:source-card stage))
           card-stages  (get-in card [:dataset-query :stages])
-          ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
+          ;; TODO this information WAS used
+          ;; by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]] which doesn't exist anymore
+          ;; -- do we still need it? -- Cam
           stage'        (-> stage
                             ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
                             ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over

@@ -1016,27 +1016,21 @@
     (do-with-enums-db!
      (fn [enums-db]
        (mt/with-db enums-db
-         (let [eid   (u/generate-nano-id)
-               query {:database (mt/id)
+         (let [query {:database (mt/id)
                       :type     :native
-                      :info     {:card-entity-id eid}
                       :native   {:query "select * from birds"
                                  :parameters []}}]
            (testing "results_metadata columns are correctly typed"
-             (is (=? [{:name  "name"
-                       :ident (lib/native-ident "name" eid)}
+             (is (=? [{:name "name"}
                       {:name "status"
-                       :ident (lib/native-ident "status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird_status"}
                       {:name "other_status"
-                       :ident (lib/native-ident "other_status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "\"bird_schema\".\"bird_status\""}
                       {:name "type"
-                       :ident (lib/native-ident "type" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird type"}]
@@ -1251,20 +1245,23 @@
                    (catch Throwable e
                      e)))))))))
 
+;;; see [[metabase.query-processor.middleware.annotate-test/native-query-infer-effective-type-test]] for a test that
+;;; just makes sure metadata is calculated correctly.
 (deftest ^:parallel pgobject-test
   (mt/test-driver :postgres
     (testing "Make sure PGobjects are decoded correctly"
-      (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.1) AS sleep;"}))]
+      (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.01) AS sleep;"}))]
         (testing "rows"
           (is (= [[""]]
                  (mt/rows results))))
         (testing "cols"
-          (is (=? [{:display_name "sleep"
-                    :base_type    :type/Text
+          (is (=? [{:display_name   "sleep"
+                    :base_type      :type/Text
                     :effective_type :type/Text
-                    :source       :native
-                    :field_ref    [:field "sleep" {:base-type :type/Text}]
-                    :name         "sleep"}]
+                    :database_type  "void"
+                    :source         :native
+                    :field_ref      [:field "sleep" {:base-type :type/Text}]
+                    :name           "sleep"}]
                   (mt/cols results))))))))
 
 (deftest ^:parallel id-field-parameter-test
