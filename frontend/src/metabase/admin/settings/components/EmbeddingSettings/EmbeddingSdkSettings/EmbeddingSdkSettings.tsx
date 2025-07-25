@@ -117,11 +117,11 @@ export function EmbeddingSdkSettings() {
     .otherwise(() => null);
 
   return (
-    <SettingsPageWrapper title={t`Embedded Analytics SDK`}>
+    <SettingsPageWrapper title={t`Embedding SDK`}>
       <UpsellDevInstances location="embedding-page" />
 
-      <Box p="lg" className={S.SectionCard}>
-        <Group mb="md">
+      <Flex direction="column" p="lg" className={S.SectionCard} gap="sm">
+        <Group>
           <Text size="lg" fw={600} c="text-dark">
             {t`Embedded analytics SDK for React`}
           </Text>
@@ -136,7 +136,7 @@ export function EmbeddingSdkSettings() {
 
           <Group gap="md">
             <Button
-              size="compact-sm"
+              size="compact-xs"
               variant="outline"
               component={ExternalLink}
               href={quickStartUrl}
@@ -147,7 +147,7 @@ export function EmbeddingSdkSettings() {
             </Button>
 
             <Button
-              size="compact-sm"
+              size="compact-xs"
               variant="outline"
               component={ExternalLink}
               href={documentationUrl}
@@ -158,11 +158,11 @@ export function EmbeddingSdkSettings() {
             </Button>
           </Group>
         </Group>
-      </Box>
+      </Flex>
 
       {isSimpleEmbedFeatureEnabled && (
         <Box p="lg" className={S.SectionCard}>
-          <Flex direction="column" gap="md">
+          <Flex direction="column" gap="sm">
             <Group gap="sm">
               <Text size="lg" fw={600} c="text-dark">
                 {t`Simple SDK Embedding`}
@@ -180,7 +180,7 @@ export function EmbeddingSdkSettings() {
 
               <Group gap="md">
                 <Button
-                  size="compact-sm"
+                  size="compact-xs"
                   variant="outline"
                   component={ExternalLink}
                   href={quickStartUrl}
@@ -191,7 +191,7 @@ export function EmbeddingSdkSettings() {
                 </Button>
 
                 <Button
-                  size="compact-sm"
+                  size="compact-xs"
                   variant="outline"
                   component={ExternalLink}
                   href={documentationUrl}
@@ -225,7 +225,7 @@ export function EmbeddingSdkSettings() {
 
                   <HoverCard.Dropdown>
                     <Box p="md" w={270}>
-                      <Text size="md" lh="lg" c="text-medium">
+                      <Text lh="lg" c="text-medium">
                         {t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`}
                       </Text>
                     </Box>
