@@ -45,11 +45,10 @@ saved later when it is ready."
     [:metadata-future ::future]]])
 
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
-  [{:keys [query metadata original-metadata valid-metadata? entity-id]} :- [:map
-                                                                            [:valid-metadata? :any]]]
+  [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
+                                                                  [:valid-metadata? :any]]]
   (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (-> query
-                      (assoc-in [:info :card-entity-id] entity-id)
                       legacy-result-metadata-future)
         metadata' (if valid-metadata?
                     (map mbql.normalize/normalize-source-metadata metadata)
@@ -69,11 +68,9 @@ saved later when it is ready."
       {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query entity-id]
+  [query]
   (log/debug "Querying for metadata")
-  (let [futur (-> query
-                  (assoc-in [:info :card-entity-id] entity-id)
-                  legacy-result-metadata-future)
+  (let [futur (legacy-result-metadata-future query)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
     (if (= result ::timed-out)
       {:metadata-future futur}
@@ -100,7 +97,7 @@ saved later when it is ready."
 
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata model? entity-id], :as options}]
+  [{:keys [original-query query metadata original-metadata model?], :as options}]
   (let [valid-metadata? (and metadata
                              (mr/validate analyze/ResultsMetadata metadata))]
     (cond
@@ -133,7 +130,7 @@ saved later when it is ready."
       (maybe-async-model-result-metadata (assoc options :valid-metadata? valid-metadata?))
 
       :else
-      (maybe-async-recomputed-metadata query entity-id))))
+      (maybe-async-recomputed-metadata query))))
 
 (def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15

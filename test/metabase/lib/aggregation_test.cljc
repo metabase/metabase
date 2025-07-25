@@ -13,8 +13,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -144,49 +143,42 @@
    (lib/metadata query stage clause)))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
-  (let [ident (u/generate-nano-id)]
-    (are [clause expected] (=? expected
-                               (col-info-for-aggregation-clause clause))
-      ;; :count, no field
-      [:/ {:ident ident} [:count {}] 2]
-      {:base-type    :type/Float
-       :name         "expression"
-       :ident        ident
-       :display-name "Count ÷ 2"}
+  (are [clause expected] (=? expected
+                             (col-info-for-aggregation-clause clause))
+    ;; :count, no field
+    [:/ {} [:count {}] 2]
+    {:base-type    :type/Float
+     :name         "expression"
+     :display-name "Count ÷ 2"}
 
-      ;; :sum
-      [:sum {:ident ident} [:+ {} (lib.tu/field-clause :venues :price) 1]]
-      {:base-type    :type/Integer
-       :name         "sum"
-       :ident        ident
-       :display-name "Sum of Price + 1"}
+    ;; :sum
+    [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
+    {:base-type    :type/Integer
+     :name         "sum"
+     :display-name "Sum of Price + 1"}
 
-      ;; options map
-      [:sum
-       {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger, :ident ident}
-       (lib.tu/field-clause :venues :price)]
-      {:base-type    :type/BigInteger
-       :name         "sum_2"
-       :ident        ident
-       :display-name "My custom name"})))
+    ;; options map
+    [:sum
+     {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
+     (lib.tu/field-clause :venues :price)]
+    {:base-type    :type/BigInteger
+     :name         "sum_2"
+     :display-name "My custom name"}))
 
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
     (is (=? {:base-type    :type/Integer
              :name         "sum"
-             :ident        string?
              :display-name "Sum of double-price"}
             (col-info-for-aggregation-clause
              (lib.tu/venues-query-with-last-stage
               {:expressions [[:*
                               {:lib/uuid (str (random-uuid))
-                               :lib/expression-name "double-price"
-                               :ident (u/generate-nano-id)}
+                               :lib/expression-name "double-price"}
                               (lib.tu/field-clause :venues :price {:base-type :type/Integer})
                               2]]})
              [:sum
-              {:lib/uuid (str (random-uuid))
-               :ident    (u/generate-nano-id)}
+              {:lib/uuid (str (random-uuid))}
               [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
 
 (deftest ^:parallel aggregate-test
@@ -803,8 +795,7 @@
                   (->> query
                        lib/available-aggregation-operators
                        (m/find-first #(= (:short %) :sum))
-                       lib/aggregation-operator-columns
-                       (map #(dissoc % :ident))))]
+                       lib/aggregation-operator-columns))]
       (is (= (clean built-query)
              (clean converted-query))))))
 

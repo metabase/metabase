@@ -48,6 +48,18 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
+    title: false,
+    withDownloads: false,
+    withChartTypeSelector: false,
+  },
+};
+
+export const WithCustomTitle = {
+  render: Template,
+
+  args: {
+    questionId: QUESTION_ID,
+    title: "Acme Inc. Sales Report",
     withDownloads: false,
     withChartTypeSelector: false,
   },

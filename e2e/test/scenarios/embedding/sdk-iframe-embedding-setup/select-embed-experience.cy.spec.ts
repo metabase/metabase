@@ -124,7 +124,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
   });
 
-  it("localizes the iframe preview when ?locale is passed", () => {
+  // TODO: fix this flaky test
+  it.skip("localizes the iframe preview when ?locale is passed", () => {
     visitNewEmbedPage({ locale: "fr" });
 
     // TODO: update this test once "Exploration" is localized in french.

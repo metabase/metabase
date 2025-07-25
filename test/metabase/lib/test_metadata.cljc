@@ -177,7 +177,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :categories :id)
-   :ident               "PWWBk6ty2MHhRsyVxynoW"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -209,7 +208,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :categories :name)
-   :ident               "RDOjlMfV-Fg8UwZMPWiq3"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -268,7 +266,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :id)
-   :ident               "vWsH15xQSs3zTEAnBfBpg"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -300,7 +297,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :date)
-   :ident               "A9rzjV-n0z6b6UvRgVu8G"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -333,7 +329,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :user-id)
-   :ident               "lrJ9XAr6FRGHGafMQuxKJ"
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -365,7 +360,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :venue-id)
-   :ident               "_99ifdCxbDKLesl4IkeUl"
    :position            3
    :visibility-type     :normal
    :target              nil
@@ -421,7 +415,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :id)
-   :ident               "Bo3W7NNZIr2tODiMTy4yN"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -453,7 +446,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :name)
-   :ident               "kB6mZwmTLfGs3t5zwibjn"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -491,7 +483,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :last-login)
-   :ident               "J8tIOKqMWIluDSAIk9Wvi"
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -524,7 +515,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :password)
-   :ident               "UNtexw8AUjzvrQSshcY_J"
    :position            3
    :visibility-type     :sensitive
    :target              nil
@@ -586,7 +576,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :id)
-   :ident               "aYXxJJkPa0GR3fc9uv6m2"
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -618,7 +607,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :name)
-   :ident               "5fzDTF0GuMRk21YLch7OQ"
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -656,7 +644,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :category-id)
-   :ident               "wOMa4NLLsgHe74Rj1okcc"
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -688,7 +675,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :latitude)
-   :ident               "FXhsCz8PYDMfikR2D3ccw"
    :position            3
    :visibility-type     :normal
    :target              nil
@@ -727,7 +713,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :longitude)
-   :ident               "Z7YfJn_oH2E7QDqUlhXcF"
    :position            4
    :visibility-type     :normal
    :target              nil
@@ -768,7 +753,6 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :price)
-   :ident               "oel2OtBaZRcjpBF4HkEOh"
    :position            5
    :visibility-type     :normal
    :target              nil
@@ -834,7 +818,6 @@
    :parent-id                  nil
    :id                         (id :products :id)
    :database-is-auto-increment true
-   :ident                      "zaFrUMrlem27YA4vX20PP"
    :position                   0
    :visibility-type            :normal
    :preview-display            true
@@ -866,7 +849,6 @@
    :parent-id                  nil
    :id                         (id :products :rating)
    :database-is-auto-increment false
-   :ident                      "orY0SwYoFpT0cp-NTwBtl"
    :position                   6
    :visibility-type            :normal
    :preview-display            true
@@ -904,7 +886,6 @@
    :parent-id                  nil
    :id                         (id :products :category)
    :database-is-auto-increment false
-   :ident                      "MvxP-c7scJi3Ypicz7Pko"
    :position                   3
    :visibility-type            :normal
    :preview-display            true
@@ -940,7 +921,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :price)
-   :ident                      "_Mw1CWXwjrjeEKI3Ixzil"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -978,7 +958,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :title)
-   :ident                      "cy6cxdeEcrYTdx30bDZvI"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1015,7 +994,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :created-at)
-   :ident                      "Y_E2kCrZCo7htAwby4_m-"
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1049,7 +1027,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :vendor)
-   :ident                      "SUw6OkR5bIL0MAYdN1KmV"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1086,7 +1063,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :ean)
-   :ident                      "j6KkODbzbivj5vQPjZyFv"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1149,7 +1125,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :id)
-   :ident                      "YV9abw8AQ5pCVAQhaSMVO"
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -1181,7 +1156,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :subtotal)
-   :ident                      "F31vad3vgquibQmIsVBK2"
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -1220,7 +1194,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :total)
-   :ident                      "lMq_ks9eJgnASWwo-5UCE"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -1259,7 +1232,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :tax)
-   :ident                      "aHk-zDyLzTY8XYyESg8dl"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1298,7 +1270,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :discount)
-   :ident                      "HjXFQSw4fNHOoyzyWLgPx"
    :database-is-auto-increment false
    :position                   6
    :visibility-type            :normal
@@ -1336,7 +1307,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :quantity)
-   :ident                      "qe9EvBhTR7LKgx2wRrk3f"
    :database-is-auto-increment false
    :position                   8
    :visibility-type            :normal
@@ -1374,7 +1344,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :created-at)
-   :ident                      "kLEi3k1-6i8GpgqsQ0-7k"
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1408,7 +1377,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :product-id)
-   :ident                      "V5NFZP_6JOWd6J7ULXCIs"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1440,7 +1408,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :user-id)
-   :ident                      "w6egqJWAVTNypKmv7gemF"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1499,7 +1466,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :id)
-   :ident                      "SmYetbZtPKwwFfkjGcEm3"
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -1531,7 +1497,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :state)
-   :ident                      "M6zAelR060aOQEIcUjOLR"
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1568,7 +1533,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :city)
-   :ident                      "WkzaKB-IvSHf6zZzT45vz"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -1605,7 +1569,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :address)
-   :ident                      "nOD2ARIn9IGwSwc5_5_SM"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1642,7 +1605,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :name)
-   :ident                      "XNv5jtDfnuvp2KN8WhJex"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1679,7 +1641,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :source)
-   :ident                      "dU-riH8RvUl3nMmWxRCnO"
    :database-is-auto-increment false
    :position                   8
    :visibility-type            :normal
@@ -1716,7 +1677,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :zip)
-   :ident                      "oleh-os9rLmUjdWrjKkMP"
    :database-is-auto-increment false
    :position                   10
    :visibility-type            :normal
@@ -1753,7 +1713,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :latitude)
-   :ident                      "4mOOY4ru0ZDc0RAPiMcMI"
    :database-is-auto-increment false
    :position                   11
    :visibility-type            :normal
@@ -1791,7 +1750,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :password)
-   :ident                      "8FhaFSmfDk9wjOzNN-pcP"
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -1828,7 +1786,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :birth-date)
-   :ident                      "TbRRgbOjjSXfl7Q3RYjRn"
    :database-is-auto-increment false
    :position                   9
    :visibility-type            :normal
@@ -1862,7 +1819,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :longitude)
-   :ident                      "Ey0aDHLWUBQhEBcLtzgUi"
    :database-is-auto-increment false
    :position                   6
    :visibility-type            :normal
@@ -1900,7 +1856,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :email)
-   :ident                      "51mJbNKKAk9Fzu8NHE7Z_"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1937,7 +1892,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :created-at)
-   :ident                      "7x7cvFd0i_9hCtu8KK2Fm"
    :database-is-auto-increment false
    :position                   12
    :visibility-type            :normal
@@ -2002,7 +1956,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :id)
-   :ident                      "EvuypV2uqt8DJb7L8NKPi"
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -2034,7 +1987,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :created-at)
-   :ident                      "-2YPEvQPmJ5WiBX9rNEdG"
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -2068,7 +2020,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :rating)
-   :ident                      "TwyzncoirctxX4EvM567q"
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -2106,7 +2057,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :reviewer)
-   :ident                      "esBOudUYL1gyTl_WjmWwH"
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -2143,7 +2093,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :body)
-   :ident                      "-t7C0NJxK7bCX9nHSr6zL"
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -2180,7 +2129,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :product-id)
-   :ident                      "1Zp5Muev3k5mT4RvtpPQR"
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -2237,7 +2185,6 @@
    :parent-id                  nil
    :id                         (id :ic/accounts :id)
    :last-analyzed              nil
-   :ident                      "Lu7nMH_XdHH6hqsHaKW1m"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   0
@@ -2270,7 +2217,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/accounts :name)
-   :ident                      "Wf7y6030q_c31L5mtCAK8"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   1
@@ -2329,7 +2275,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :id)
-   :ident                      "rN1WZzhva-9naWlhJOisG"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   0
@@ -2364,7 +2309,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :created-by)
-   :ident                      "_fSRZCC1h0FeFnyKBITuh"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   1
@@ -2397,7 +2341,6 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :updated-by)
-   :ident                      "dLX0Y18XnBwWkbw_SiADu"
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   2
@@ -2442,7 +2385,6 @@
    :semantic-type              :type/PK
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :id)
-   :ident                      "JKyXKw2V2cjoVVmvHvy_v"
    :name                       "ID"
    :coercion-strategy          nil
    :fingerprint-version        5
@@ -2476,7 +2418,6 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :reporter-id)
-   :ident                      "x-yxZZNE3c7LqZaxFEnWx"
    :name                       "REPORTER_ID"
    :display-name               "Reporter ID"
    :coercion-strategy          nil
@@ -2514,7 +2455,6 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :assignee-id)
-   :ident                      "9Wt9ogSynNeMVtsWuA6VX"
    :name                       "ASSIGNEE_ID"
    :display-name               "Assignee ID"
    :coercion-strategy          nil
@@ -2552,7 +2492,6 @@
    :semantic-type              :type/Category
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :is-open)
-   :ident                      "tyoebOZRaf0QbfgpFzxnd"
    :name                       "IS_OPEN"
    :display-name               "Is Open"
    :coercion-strategy          nil
@@ -2587,7 +2526,6 @@
    :semantic-type              nil
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :reported-at)
-   :ident                      "9f74xH4NWQeTmCHR0TOye"
    :name                       "REPORTED_AT"
    :display-name               "Reported At"
    :coercion-strategy          nil
@@ -2622,7 +2560,6 @@
    :semantic-type              nil
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :closed-at)
-   :ident                      "iYumlBafrHPue9CLJLsSA"
    :name                       "CLOSED_AT"
    :display-name               "Closed At"
    :coercion-strategy          nil
@@ -2682,7 +2619,6 @@
    :semantic-type              :type/PK
    :table-id                   (id :gh/users)
    :id                         (id :gh/users :id)
-   :ident                      "kGAQfykjP7sNUuKklvX9E"
    :name                       "ID"
    :display-name               "Username"
    :coercion-strategy          nil
@@ -2720,7 +2656,6 @@
    :semantic-type              nil
    :table-id                   (id :gh/users)
    :id                         (id :gh/users :birthday)
-   :ident                      "AhzW2ts1iYLtnVsN8duI2"
    :name                       "BIRTHDAY"
    :display-name               "Birthday"
    :coercion-strategy          nil
@@ -2754,7 +2689,6 @@
    :semantic-type              :type/Email
    :table-id                   (id :gh/users)
    :id                         (id :gh/users :email)
-   :ident                      "hxVljG-mcCWR2yCyLDyfI"
    :name                       "EMAIL"
    :display-name               "Email"
    :coercion-strategy          nil
@@ -2814,7 +2748,6 @@
    :semantic-type              :type/PK
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :id)
-   :ident                      "N9GPZG-iBB3fNJFw6k75L"
    :name                       "ID"
    :display-name               "ID"
    :coercion-strategy          nil
@@ -2848,7 +2781,6 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :author-id)
-   :ident                      "N8Zc29IeohSLcDhPlntTI"
    :name                       "AUTHOR_ID"
    :display-name               "Author ID"
    :coercion-strategy          nil
@@ -2886,7 +2818,6 @@
    :semantic-type              :type/CreationDate
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :posted-at)
-   :ident                      "SFZiylJmurPdeucrYWBZO"
    :name                       "POSTED_AT"
    :display-name               "Posted At"
    :coercion-strategy          nil
@@ -2921,7 +2852,6 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :reply-to)
-   :ident                      "b1ng7KzofdPc2IuDEA8M2"
    :name                       "REPLY_TO"
    :display-name               "Reply To"
    :coercion-strategy          nil
@@ -2955,7 +2885,6 @@
    :semantic-type              nil
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :body-markdown)
-   :ident                      "CidSifa32m1qX0mEeh46X"
    :name                       "BODY_MARKDOWN"
    :display-name               "Body Markdown"
    :coercion-strategy          nil
@@ -3119,8 +3048,8 @@
    field-name :- :keyword]
   (field-metadata-method table-name field-name))
 
-(mu/defn ident :- :string
+(mu/defn ^:deprecated ident :- :string
   "Convenience to get the `:ident` string for a given field, by its table and field keys."
-  [table-name :- :keyword
-   field-name :- :keyword]
-  (:ident (field-metadata table-name field-name)))
+  [_table-name :- :keyword
+   _field-name :- :keyword]
+  nil)
