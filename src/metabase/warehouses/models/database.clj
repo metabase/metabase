@@ -372,6 +372,14 @@
           (throw (ex-info (trs "The database does not support actions.")
                           {:status-code     400
                            :existing-engine existing-engine
+                           :new-engine      new-engine})))
+        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
+        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
+        (when (and (:database-enable-table-editing (or new-settings existing-settings))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
+          (throw (ex-info (trs "The database does not support table editing.")
+                          {:status-code     400
+                           :existing-engine existing-engine
                            :new-engine      new-engine})))))))
 
 (t2/define-after-update :model/Database
