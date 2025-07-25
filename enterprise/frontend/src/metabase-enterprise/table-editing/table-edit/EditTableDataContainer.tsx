@@ -1,6 +1,7 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
-import { useMemo } from "react";
-import { t } from "ttag";
+import { useCallback, useMemo } from "react";
+import { msgid, ngettext, t } from "ttag";
 
 import { useGetDatabaseQuery } from "metabase/api";
 import { GenericError } from "metabase/common/components/ErrorPages";
@@ -18,12 +19,17 @@ import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditTableDataGrid } from "./data-grid/EditTableDataGrid";
 import { CreateRowActionFormModal } from "./modals/CreateRowActionFormModal";
+import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { UpdateRowActionFormModal } from "./modals/UpdateRowActionFormModal";
 import { useEditTableData } from "./use-edit-table-data";
 import { useEditTableLoadingOverlay } from "./use-edit-table-loading-overlay";
 import { useTableCreateRow } from "./use-table-create-row";
 import { useTableCRUD } from "./use-table-crud";
-import { useTableExpandedUpdateRow } from "./use-table-expanded-update-row";
+import {
+  getRowInputAndParamsFromRow,
+  useTableExpandedUpdateRow,
+} from "./use-table-expanded-update-row";
+import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableEditingStateAdHocQueryUpdateStrategy } from "./use-table-state-adhoc-query-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -88,6 +94,7 @@ export const EditTableDataContainer = ({
     handleRowCreate,
     handleRowUpdate,
     handleRowDelete,
+    handleRowDeleteBulk,
   } = useTableCRUD({
     scope,
     datasetData,
@@ -122,6 +129,33 @@ export const EditTableDataContainer = ({
     handleRowDelete,
   });
 
+  const [deleteBulkRequested, deleteBulkModalController] = useDisclosure(false);
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
+
+  const handleDeleteBulkSubmit = useCallback(async () => {
+    if (!datasetData) {
+      return;
+    }
+
+    const { cols, rows } = datasetData;
+    const inputs = selectedRowIndices.map(
+      (index) => getRowInputAndParamsFromRow(cols, rows[index]).input,
+    );
+
+    const success = await handleRowDeleteBulk(inputs);
+    if (success) {
+      setRowSelection({});
+      deleteBulkModalController.close();
+    }
+  }, [
+    datasetData,
+    setRowSelection,
+    selectedRowIndices,
+    handleRowDeleteBulk,
+    deleteBulkModalController,
+  ]);
+
   if (database && !isDatabaseTableEditingEnabled(database)) {
     return (
       <Stack
@@ -155,6 +189,8 @@ export const EditTableDataContainer = ({
         onUndo={undo}
         onRedo={redo}
         onCreate={openCreateRowModal}
+        onRequestDeleteBulk={deleteBulkModalController.open}
+        canDeleteBulk={selectedRowIndices.length > 0}
       />
       <Box pos="relative" className={S.gridWrapper}>
         <EditTableDataOverlay {...loadingOverlayProps} />
@@ -166,12 +202,22 @@ export const EditTableDataContainer = ({
             getColumnSortDirection={getColumnSortDirection}
             onColumnSort={handleChangeColumnSort}
             onRowExpandClick={handleExpandRow}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
           />
         )}
       </Box>
 
       {rawDataset && (
         <Flex className={S.gridFooter}>
+          <Text fw="bold" size="md" c="inherit" component="span">
+            {selectedRowIndices.length > 0 &&
+              ngettext(
+                msgid`Selected ${selectedRowIndices.length} row`,
+                `Selected ${selectedRowIndices.length} rows`,
+                selectedRowIndices.length,
+              )}
+          </Text>
           <Text fw="bold" size="md" c="inherit" component="span">
             {getRowCountMessage(rawDataset)}
           </Text>
@@ -195,6 +241,14 @@ export const EditTableDataContainer = ({
         onDelete={handleExpandedRowDelete}
         isLoading={isUpdating}
         isDeleting={isDeleting}
+      />
+
+      <DeleteBulkRowConfirmationModal
+        opened={deleteBulkRequested}
+        rowCount={selectedRowIndices.length}
+        onConfirm={handleDeleteBulkSubmit}
+        isLoading={isDeleting}
+        onClose={deleteBulkModalController.close}
       />
     </Stack>
   );

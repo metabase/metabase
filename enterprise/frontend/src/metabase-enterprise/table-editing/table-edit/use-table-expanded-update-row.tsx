@@ -94,7 +94,10 @@ export function useTableExpandedUpdateRow({
   };
 }
 
-function getRowInputAndParamsFromRow(cols: DatasetColumn[], row: RowValues) {
+export function getRowInputAndParamsFromRow(
+  cols: DatasetColumn[],
+  row: RowValues,
+) {
   const input: RowCellsWithPkValue = {};
   const params: RowCellsWithPkValue = {};
 
