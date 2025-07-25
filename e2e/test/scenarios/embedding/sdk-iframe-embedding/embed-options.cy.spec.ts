@@ -112,7 +112,6 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.log("5. clicking on the filter should drill down");
       cy.get('[type="filter"] button').first().click();
       cy.findAllByText("29.8").first().should("be.visible");
-      cy.findByText("New question").should("be.visible");
 
       cy.log("6. saving should be disabled in drill-throughs");
       cy.findByText("Save").should("not.exist");
@@ -141,7 +140,9 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.findByText(/Filter by this value/).should("be.visible");
       cy.get('[type="filter"] button').first().click();
       cy.findAllByText("29.8").first().should("be.visible");
-      cy.findByText("New question").should("be.visible");
+      cy.findByTestId("interactive-question-result-toolbar").should(
+        "be.visible",
+      );
 
       cy.log("2. saving should be enabled");
       cy.findByText("Save").click();
