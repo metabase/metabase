@@ -70,7 +70,7 @@ export const ReportPage = ({
     report?.collection_id ? { id: report.collection_id } : skipToken,
   );
 
-  const canWrite = reportId === "new" ? true : !collection?.can_write;
+  const canWrite = reportId === "new" ? true : collection?.can_write;
 
   const {
     reportTitle,
