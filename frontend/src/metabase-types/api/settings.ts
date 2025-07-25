@@ -388,6 +388,7 @@ interface AdminSettings {
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
+  "show-simple-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
