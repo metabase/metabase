@@ -213,75 +213,77 @@ export const TableListView = ({ location, params }: Props) => {
   }
 
   return (
-    <Stack gap="md" p="xl">
-      <Group align="flex-start" justify="space-between">
-        <Stack gap="xs">
-          <Title>{table.display_name}</Title>
-          {typeof count === "number" && (
-            <Text c="text-secondary" size="sm">
-              {searchQuery.trim()
-                ? `${filteredRows.length} of ${count} rows`
-                : count === 1
-                  ? t`1 row`
-                  : t`${count} rows`}
-            </Text>
-          )}
-        </Stack>
+    <Group align="flex-start" gap={0} wrap="nowrap" h="100%">
+      <Stack gap="md" p="xl" flex="1" miw={0}>
+        <Group align="flex-start" justify="space-between">
+          <Stack gap="xs">
+            <Title>{table.display_name}</Title>
+            {typeof count === "number" && (
+              <Text c="text-secondary" size="sm">
+                {searchQuery.trim()
+                  ? `${filteredRows.length} of ${count} rows`
+                  : count === 1
+                    ? t`1 row`
+                    : t`${count} rows`}
+              </Text>
+            )}
+          </Stack>
 
-        <Group align="center" gap="md">
-          {!isEditing && (
-            <>
-              {!searchQuery.trim() && (
-                <PaginationControls
-                  itemsLength={paginatedRows.length}
-                  page={page}
-                  pageSize={PAGE_SIZE}
-                  onNextPage={() => {
-                    dispatch(push(`/table/${tableId}?page=${page + 1}`));
-                  }}
-                  onPreviousPage={() => {
-                    if (page === 1) {
-                      dispatch(push(`/table/${tableId}`));
-                    } else {
-                      dispatch(push(`/table/${tableId}?page=${page - 1}`));
-                    }
-                  }}
+          <Group align="center" gap="md">
+            {!isEditing && (
+              <>
+                {!searchQuery.trim() && (
+                  <PaginationControls
+                    itemsLength={paginatedRows.length}
+                    page={page}
+                    pageSize={PAGE_SIZE}
+                    onNextPage={() => {
+                      dispatch(push(`/table/${tableId}?page=${page + 1}`));
+                    }}
+                    onPreviousPage={() => {
+                      if (page === 1) {
+                        dispatch(push(`/table/${tableId}`));
+                      } else {
+                        dispatch(push(`/table/${tableId}?page=${page - 1}`));
+                      }
+                    }}
+                  />
+                )}
+
+                <TextInput
+                  leftSection={<Icon name="search" />}
+                  placeholder={t`Search...`}
+                  value={searchQuery}
+                  w={250}
+                  onChange={(event) =>
+                    setSearchQuery(event.currentTarget.value)
+                  }
                 />
-              )}
+              </>
+            )}
 
-              <TextInput
-                leftSection={<Icon name="search" />}
-                placeholder={t`Search...`}
-                value={searchQuery}
-                w={250}
-                onChange={(event) => setSearchQuery(event.currentTarget.value)}
-              />
-            </>
-          )}
+            {!isSyncInProgress(table) && !isEditing && (
+              <Button
+                component={Link}
+                leftSection={<Icon name="insight" />}
+                to={getExploreTableUrl(table)}
+                variant="primary"
+              >{t`Explore results`}</Button>
+            )}
 
-          {!isSyncInProgress(table) && !isEditing && (
-            <Button
-              component={Link}
-              leftSection={<Icon name="insight" />}
-              to={getExploreTableUrl(table)}
-              variant="primary"
-            >{t`Explore results`}</Button>
-          )}
-
-          {!isEditing && (
-            <Button
-              leftSection={<Icon name="pencil" />}
-              variant="outline"
-              onClick={() => setIsEditing(true)}
-            >
-              {t`Edit`}
-            </Button>
-          )}
+            {!isEditing && (
+              <Button
+                leftSection={<Icon name="pencil" />}
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+              >
+                {t`Edit`}
+              </Button>
+            )}
+          </Group>
         </Group>
-      </Group>
 
-      <Group align="flex-start" gap="xl" wrap="nowrap">
-        <Box flex="1" style={{ overflow: "auto" }}>
+        <Group align="flex-start" wrap="nowrap" style={{ overflow: "auto" }}>
           <Box bg="white" className={S.table} component="table" w="100%">
             <thead>
               <tr>
@@ -353,92 +355,103 @@ export const TableListView = ({ location, params }: Props) => {
               })}
             </tbody>
           </Box>
-        </Box>
+        </Group>
+      </Stack>
 
-        {isEditing && (
-          <Stack flex="0 0 auto" miw={400}>
-            <Group align="center" gap="md" justify="space-between">
-              <Title order={2}>{t`Display settings`}</Title>
+      {isEditing && (
+        <Stack
+          bg="white"
+          flex="0 0 auto"
+          miw={400}
+          h="100%"
+          p="xl"
+          style={{
+            // boxShadow: "0px 1px 4px 0px var(--mb-color-shadow)",
+            borderLeft: "1px solid var(--border-color)",
+            overflow: "auto",
+          }}
+        >
+          <Group align="center" gap="md" justify="space-between">
+            <Title order={2}>{t`Display settings`}</Title>
 
-              {isEditing && (
-                <Button
-                  leftSection={<Icon name="check" />}
-                  type="submit"
-                  variant="filled"
-                  onClick={handleSubmit}
-                >
-                  {t`Save`}
-                </Button>
-              )}
-            </Group>
+            {isEditing && (
+              <Button
+                leftSection={<Icon name="check" />}
+                type="submit"
+                variant="filled"
+                onClick={handleSubmit}
+              >
+                {t`Save`}
+              </Button>
+            )}
+          </Group>
 
-            <Select
-              data={[
-                { value: "normal", label: t`Normal` },
-                { value: "thin", label: t`Thin` },
-              ]}
-              label={t`Row height`}
-              value={settings.list_view.row_height}
-              onChange={handleRowHeightChange}
-              w="100%"
+          <Select
+            data={[
+              { value: "normal", label: t`Normal` },
+              { value: "thin", label: t`Thin` },
+            ]}
+            label={t`Row height`}
+            value={settings.list_view.row_height}
+            onChange={handleRowHeightChange}
+            w="100%"
+          />
+
+          <Stack gap={4}>
+            <Text
+              c="text-primary"
+              fw="bold"
+              lh="var(--mantine-line-height-md)"
+            >{t`Shown columns`}</Text>
+            <SortableFieldList
+              fields={visibleFields}
+              stylesMap={stylesMap}
+              onChange={handleOrderChange}
+              onStyleChange={handleStyleChange}
+              onToggleVisibility={(field) => {
+                setSettings((settings) => ({
+                  ...settings,
+                  list_view: {
+                    ...settings.list_view,
+                    fields: settings.list_view.fields.filter(
+                      (f) => f.field_id !== field.id,
+                    ),
+                  },
+                }));
+              }}
             />
-
-            <Stack gap={4}>
-              <Text
-                c="text-primary"
-                fw="bold"
-                lh="var(--mantine-line-height-md)"
-              >{t`Shown columns`}</Text>
-              <SortableFieldList
-                fields={visibleFields}
-                stylesMap={stylesMap}
-                onChange={handleOrderChange}
-                onStyleChange={handleStyleChange}
-                onToggleVisibility={(field) => {
-                  setSettings((settings) => ({
-                    ...settings,
-                    list_view: {
-                      ...settings.list_view,
-                      fields: settings.list_view.fields.filter(
-                        (f) => f.field_id !== field.id,
-                      ),
-                    },
-                  }));
-                }}
-              />
-            </Stack>
-
-            <Stack gap={4}>
-              <Text
-                c="text-primary"
-                fw="bold"
-                lh="var(--mantine-line-height-md)"
-              >{t`Hidden columns`}</Text>
-              <SortableFieldList
-                disabled
-                fields={hiddenFields}
-                isHidden
-                onChange={handleOrderChange}
-                onToggleVisibility={(field) => {
-                  setSettings((settings) => ({
-                    ...settings,
-                    list_view: {
-                      ...settings.list_view,
-                      fields: [
-                        ...settings.list_view.fields,
-                        {
-                          field_id: getRawTableFieldId(field),
-                          style: "normal",
-                        },
-                      ],
-                    },
-                  }));
-                }}
-              />
-            </Stack>
           </Stack>
-        )}
-      </Group>
-    </Stack>
+
+          <Stack gap={4}>
+            <Text
+              c="text-primary"
+              fw="bold"
+              lh="var(--mantine-line-height-md)"
+            >{t`Hidden columns`}</Text>
+            <SortableFieldList
+              disabled
+              fields={hiddenFields}
+              isHidden
+              onChange={handleOrderChange}
+              onToggleVisibility={(field) => {
+                setSettings((settings) => ({
+                  ...settings,
+                  list_view: {
+                    ...settings.list_view,
+                    fields: [
+                      ...settings.list_view.fields,
+                      {
+                        field_id: getRawTableFieldId(field),
+                        style: "normal",
+                      },
+                    ],
+                  },
+                }));
+              }}
+            />
+          </Stack>
+        </Stack>
+      )}
+    </Group>
   );
 };
