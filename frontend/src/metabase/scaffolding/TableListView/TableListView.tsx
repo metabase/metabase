@@ -23,6 +23,7 @@ import {
   Icon,
   Stack,
   Text,
+  TextInput,
   Title,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -85,6 +86,7 @@ export const TableListView = ({ location, params }: Props) => {
   const [settings, setSettings] = useState(
     table?.component_settings ?? getDefaultComponentSettings(table),
   );
+  const [searchQuery, setSearchQuery] = useState("");
 
   const pkIndex = allColumns.findIndex(isPK); // TODO: handle multiple PKs
 
@@ -134,20 +136,16 @@ export const TableListView = ({ location, params }: Props) => {
     }
   }, [table]);
 
-  if (!table || !dataset || !allColumns) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
   const columns = settings.list_view.fields.map(({ field_id }) => {
     return allColumns.find((field) => field.id === field_id)!;
   });
   const fields = settings.list_view.fields.map(({ field_id }) => {
-    return (table.fields ?? []).find((field) => field.id === field_id)!;
+    return (table?.fields ?? []).find((field) => field.id === field_id)!;
   });
   const visibleFields = settings.list_view.fields.map(({ field_id }) => {
     return fields.find((field) => field.id === field_id)!;
   });
-  const hiddenFields = (table.fields ?? []).filter((field) =>
+  const hiddenFields = (table?.fields ?? []).filter((field) =>
     settings.list_view.fields.every((f) => f.field_id !== field.id),
   );
 
@@ -157,16 +155,45 @@ export const TableListView = ({ location, params }: Props) => {
     acc[field.field_id] = field.style;
     return acc;
   }, {});
-  const allRows = dataset.data.rows;
-  const paginatedRows = allRows.slice(PAGE_SIZE * page, PAGE_SIZE * (page + 1));
+  const allRows = useMemo(() => dataset?.data?.rows ?? [], [dataset]);
+  const filteredRows = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allRows;
+    }
 
-  // Transform paginatedRows to show only visible fields in their order
-  const transformedPaginatedRows = paginatedRows.map((row) => {
-    return settings.list_view.fields.map(({ field_id }) => {
-      const fieldIndex = allColumns.findIndex((col) => col.id === field_id);
-      return row[fieldIndex];
+    const query = searchQuery.toLowerCase();
+    // TODO: do not search hidden columns
+    // TODO: use filtering for this? or search API? or... ?
+    return allRows.filter((row) => {
+      return row.some((value) => {
+        if (value == null) {
+          return false;
+        }
+
+        return String(value).toLowerCase().includes(query);
+      });
     });
-  });
+  }, [allRows, searchQuery]);
+
+  const paginatedRows = useMemo(
+    () => filteredRows.slice(PAGE_SIZE * page, PAGE_SIZE * (page + 1)),
+    [filteredRows, page],
+  );
+
+  const transformedPaginatedRows = useMemo(
+    () =>
+      paginatedRows.map((row) => {
+        return settings.list_view.fields.map(({ field_id }) => {
+          const fieldIndex = allColumns.findIndex((col) => col.id === field_id);
+          return row[fieldIndex];
+        });
+      }),
+    [settings, paginatedRows, allColumns],
+  );
+
+  if (!table || !dataset || !allColumns) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   return (
     <Stack gap="md" p="xl">
@@ -175,29 +202,44 @@ export const TableListView = ({ location, params }: Props) => {
           <Title>{table.display_name}</Title>
           {typeof count === "number" && (
             <Text c="text-secondary" size="sm">
-              {count === 1 && t`1 row`}
-              {count !== 1 && t`${count} rows`}
+              {searchQuery.trim()
+                ? `${filteredRows.length} of ${count} rows`
+                : count === 1
+                  ? t`1 row`
+                  : t`${count} rows`}
             </Text>
           )}
         </Stack>
 
         <Group align="center" gap="md">
           {!isEditing && (
-            <PaginationControls
-              itemsLength={paginatedRows.length}
-              page={page}
-              pageSize={PAGE_SIZE}
-              onNextPage={() => {
-                dispatch(push(`/table/${tableId}?page=${page + 1}`));
-              }}
-              onPreviousPage={() => {
-                if (page === 1) {
-                  dispatch(push(`/table/${tableId}`));
-                } else {
-                  dispatch(push(`/table/${tableId}?page=${page - 1}`));
-                }
-              }}
-            />
+            <>
+              {!searchQuery.trim() && (
+                <PaginationControls
+                  itemsLength={paginatedRows.length}
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  onNextPage={() => {
+                    dispatch(push(`/table/${tableId}?page=${page + 1}`));
+                  }}
+                  onPreviousPage={() => {
+                    if (page === 1) {
+                      dispatch(push(`/table/${tableId}`));
+                    } else {
+                      dispatch(push(`/table/${tableId}?page=${page - 1}`));
+                    }
+                  }}
+                />
+              )}
+
+              <TextInput
+                leftSection={<Icon name="search" />}
+                placeholder={t`Search...`}
+                value={searchQuery}
+                w={250}
+                onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              />
+            </>
           )}
 
           {!isSyncInProgress(table) && !isEditing && (
@@ -280,7 +322,7 @@ export const TableListView = ({ location, params }: Props) => {
                         className={S.link}
                         component={Link}
                         to={
-                          pkIndex != null
+                          pkIndex != null && !searchQuery.trim()
                             ? `/table/${table.id}/detail/${paginatedRows[index][pkIndex]}`
                             : ""
                         }
