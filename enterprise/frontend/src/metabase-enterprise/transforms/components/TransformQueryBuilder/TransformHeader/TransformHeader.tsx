@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { Button, Group, Title } from "metabase/ui";
@@ -7,7 +6,6 @@ import S from "./TransformHeader.module.css";
 
 type TransformHeaderProps = {
   name?: string;
-  isNative: boolean;
   canSave: boolean;
   isSaving: boolean;
   onSave: () => void;
@@ -16,7 +14,6 @@ type TransformHeaderProps = {
 
 export function TransformHeader({
   name,
-  isNative,
   canSave,
   isSaving,
   onSave,
@@ -24,9 +21,7 @@ export function TransformHeader({
 }: TransformHeaderProps) {
   return (
     <Group
-      className={cx(S.header, {
-        [S.withBorder]: !isNative,
-      })}
+      className={S.header}
       px="md"
       py="sm"
       pos="sticky"

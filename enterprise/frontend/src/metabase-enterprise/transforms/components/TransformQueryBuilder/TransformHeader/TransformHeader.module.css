@@ -1,7 +1,4 @@
 .header {
   z-index: 3;
-
-  &.withBorder {
-    border-bottom: 1px solid var(--mb-color-border);
-  }
+  border-bottom: 1px solid var(--mb-color-border);
 }
