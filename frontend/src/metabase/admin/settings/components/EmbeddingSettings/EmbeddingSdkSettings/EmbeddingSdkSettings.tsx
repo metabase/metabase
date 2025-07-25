@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -6,6 +7,7 @@ import { UpsellDevInstances } from "metabase/admin/upsells";
 import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { isEEBuild } from "metabase/lib/utils";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
@@ -17,7 +19,6 @@ import {
   Badge,
   Box,
   Button,
-  Divider,
   Flex,
   Group,
   HoverCard,
@@ -84,7 +85,11 @@ export function EmbeddingSdkSettings() {
   );
 
   const ImplementJwtLink = (
-    <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+    <ExternalLink
+      key="implement-jwt"
+      href={implementJwtUrl}
+      className={cx(CS.link, CS.textBold)}
+    >
       {t`implement JWT SSO`}
     </ExternalLink>
   );
@@ -115,62 +120,44 @@ export function EmbeddingSdkSettings() {
     <SettingsPageWrapper title={t`Embedded Analytics SDK`}>
       <UpsellDevInstances location="embedding-page" />
 
-      <Box className={S.SectionCard}>
-        <Box p="lg">
-          <Group mb="md">
-            <Text size="lg" fw={600} c="text-dark">
-              {t`Embedded analytics SDK for React`}
-            </Text>
-          </Group>
-
-          <Group gap="sm" align="center" justify="space-between" w="100%">
-            <EmbeddingToggle
-              label={t`Enabled`}
-              settingKey="enable-embedding-sdk"
-              labelPosition="right"
-            />
-
-            <Group gap="md">
-              <Button
-                size="compact-sm"
-                variant="outline"
-                component={ExternalLink}
-                href={quickStartUrl}
-                rightSection={<Icon size={12} name="external" />}
-                fz="sm"
-              >
-                {t`Quick start`}
-              </Button>
-
-              <Button
-                size="compact-sm"
-                variant="outline"
-                component={ExternalLink}
-                href={documentationUrl}
-                rightSection={<Icon size={12} name="external" />}
-                fz="sm"
-              >
-                {t`Documentation`}
-              </Button>
-            </Group>
-          </Group>
-        </Box>
-
-        <Divider />
-
-        <Alert
-          data-testid="sdk-settings-alert-info"
-          icon={
-            <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
-          }
-          px="xl"
-          bg="none"
-          bd="none"
-        >
-          <Text size="sm" c="text-medium">
-            {apiKeyBannerText}
+      <Box p="lg" className={S.SectionCard}>
+        <Group mb="md">
+          <Text size="lg" fw={600} c="text-dark">
+            {t`Embedded analytics SDK for React`}
           </Text>
-        </Alert>
+        </Group>
+
+        <Group gap="sm" align="center" justify="space-between" w="100%">
+          <EmbeddingToggle
+            label={t`Enabled`}
+            settingKey="enable-embedding-sdk"
+            labelPosition="right"
+          />
+
+          <Group gap="md">
+            <Button
+              size="compact-sm"
+              variant="outline"
+              component={ExternalLink}
+              href={quickStartUrl}
+              rightSection={<Icon size={12} name="external" />}
+              fz="sm"
+            >
+              {t`Quick start`}
+            </Button>
+
+            <Button
+              size="compact-sm"
+              variant="outline"
+              component={ExternalLink}
+              href={documentationUrl}
+              rightSection={<Icon size={12} name="external" />}
+              fz="sm"
+            >
+              {t`Documentation`}
+            </Button>
+          </Group>
+        </Group>
       </Box>
 
       {isSimpleEmbedFeatureEnabled && (
@@ -271,6 +258,20 @@ export function EmbeddingSdkSettings() {
           >{t`Request version pinning`}</Button>
         </Box>
       )}
+
+      <Alert
+        data-testid="sdk-settings-alert-info"
+        icon={
+          <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
+        }
+        px="lg"
+        bg="none"
+        bd="1px solid var(--mb-color-border)"
+      >
+        <Text size="sm" c="text-medium" lh="lg">
+          {apiKeyBannerText}
+        </Text>
+      </Alert>
     </SettingsPageWrapper>
   );
 }

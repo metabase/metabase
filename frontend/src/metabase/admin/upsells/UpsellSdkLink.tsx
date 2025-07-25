@@ -28,6 +28,8 @@ export function UpsellSdkLink() {
         c="brand"
         className={linkStyles.link}
         key="upgrade-button"
+        fw="bold"
+        fz="inherit"
       >
         {t`upgrade to Metabase Pro`}
       </UnstyledButton>
