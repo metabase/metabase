@@ -372,58 +372,70 @@ export const TableListView = ({ location, params }: Props) => {
               )}
             </Group>
 
-            <Text c="text-secondary" size="lg">{t`Row height`}</Text>
             <Select
               data={[
                 { value: "normal", label: t`Normal` },
                 { value: "thin", label: t`Thin` },
               ]}
+              label={t`Row height`}
               value={settings.list_view.row_height}
               onChange={handleRowHeightChange}
               w="100%"
             />
 
-            <Text c="text-secondary" size="lg">{t`Shown columns`}</Text>
-            <SortableFieldList
-              fields={visibleFields}
-              stylesMap={stylesMap}
-              onChange={handleOrderChange}
-              onStyleChange={handleStyleChange}
-              onToggleVisibility={(field) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    fields: settings.list_view.fields.filter(
-                      (f) => f.field_id !== field.id,
-                    ),
-                  },
-                }));
-              }}
-            />
+            <Stack gap={4}>
+              <Text
+                c="text-primary"
+                fw="bold"
+                lh="var(--mantine-line-height-md)"
+              >{t`Shown columns`}</Text>
+              <SortableFieldList
+                fields={visibleFields}
+                stylesMap={stylesMap}
+                onChange={handleOrderChange}
+                onStyleChange={handleStyleChange}
+                onToggleVisibility={(field) => {
+                  setSettings((settings) => ({
+                    ...settings,
+                    list_view: {
+                      ...settings.list_view,
+                      fields: settings.list_view.fields.filter(
+                        (f) => f.field_id !== field.id,
+                      ),
+                    },
+                  }));
+                }}
+              />
+            </Stack>
 
-            <Text c="text-secondary" size="lg">{t`Hidden columns`}</Text>
-            <SortableFieldList
-              disabled
-              fields={hiddenFields}
-              isHidden
-              onChange={handleOrderChange}
-              onToggleVisibility={(field) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    fields: [
-                      ...settings.list_view.fields,
-                      {
-                        field_id: getRawTableFieldId(field),
-                        style: "normal",
-                      },
-                    ],
-                  },
-                }));
-              }}
-            />
+            <Stack gap={4}>
+              <Text
+                c="text-primary"
+                fw="bold"
+                lh="var(--mantine-line-height-md)"
+              >{t`Hidden columns`}</Text>
+              <SortableFieldList
+                disabled
+                fields={hiddenFields}
+                isHidden
+                onChange={handleOrderChange}
+                onToggleVisibility={(field) => {
+                  setSettings((settings) => ({
+                    ...settings,
+                    list_view: {
+                      ...settings.list_view,
+                      fields: [
+                        ...settings.list_view.fields,
+                        {
+                          field_id: getRawTableFieldId(field),
+                          style: "normal",
+                        },
+                      ],
+                    },
+                  }));
+                }}
+              />
+            </Stack>
           </Stack>
         )}
       </Group>
