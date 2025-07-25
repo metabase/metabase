@@ -142,12 +142,13 @@
          (catch Exception e
            (let [error-message (.getMessage ^Exception e)
                  ;; report line number 1 indexed
-                 line-no (inc i)]
-             (throw (ex-info
-                     (tru "Error Parsing CSV at Row {0}: {1}" line-no error-message)
-                     {:status-code http-status-unprocessable
-                      :line line-no}
-                     e)))))))))
+                 line-no (inc i)
+                 error-message (tru "Error Parsing CSV at Row {0}: {1}" line-no error-message)]
+             (throw (ex-info error-message
+                             {:status-code http-status-unprocessable
+                              :errors [error-message]
+                              :line line-no}
+                             e)))))))))
 
 (defn read-and-import-csv!
   "Read CSV and catch error if the CSV is invalid."
