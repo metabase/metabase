@@ -21,6 +21,7 @@ import {
   Button,
   Group,
   Icon,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -53,7 +54,8 @@ interface Props {
 
 const PAGE_SIZE = 10;
 const CELL_PADDING_HORIZONTAL = "md" as const;
-const CELL_PADDING_VERTICAL = "xs" as const;
+const CELL_PADDING_VERTICAL_NORMAL = "sm" as const;
+const CELL_PADDING_VERTICAL_THIN = "xs" as const;
 
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
@@ -118,6 +120,16 @@ export const TableListView = ({ location, params }: Props) => {
           }
           return f;
         }),
+      },
+    }));
+  };
+
+  const handleRowHeightChange = (rowHeight: "thin" | "normal") => {
+    setSettings((settings) => ({
+      ...settings,
+      list_view: {
+        ...settings.list_view,
+        row_height: rowHeight,
       },
     }));
   };
@@ -190,6 +202,11 @@ export const TableListView = ({ location, params }: Props) => {
       }),
     [settings, paginatedRows, allColumns],
   );
+
+  const cellPaddingVertical =
+    settings.list_view.row_height === "normal"
+      ? CELL_PADDING_VERTICAL_NORMAL
+      : CELL_PADDING_VERTICAL_THIN;
 
   if (!table || !dataset || !allColumns) {
     return <LoadingAndErrorWrapper loading />;
@@ -306,7 +323,7 @@ export const TableListView = ({ location, params }: Props) => {
                           }
                           key={cellIndex}
                           px={CELL_PADDING_HORIZONTAL}
-                          py={CELL_PADDING_VERTICAL}
+                          py={cellPaddingVertical}
                         >
                           {renderValue(tc, value, columns[cellIndex])}
                         </Box>
@@ -316,7 +333,7 @@ export const TableListView = ({ location, params }: Props) => {
                     <Box
                       component="td"
                       pr={CELL_PADDING_HORIZONTAL}
-                      py={CELL_PADDING_VERTICAL}
+                      py={cellPaddingVertical}
                     >
                       <ActionIcon
                         className={S.link}
@@ -354,6 +371,17 @@ export const TableListView = ({ location, params }: Props) => {
                 </Button>
               )}
             </Group>
+
+            <Text c="text-secondary" size="lg">{t`Row height`}</Text>
+            <Select
+              data={[
+                { value: "normal", label: t`Normal` },
+                { value: "thin", label: t`Thin` },
+              ]}
+              value={settings.list_view.row_height}
+              onChange={handleRowHeightChange}
+              w="100%"
+            />
 
             <Text c="text-secondary" size="lg">{t`Shown columns`}</Text>
             <SortableFieldList
