@@ -282,7 +282,6 @@ const DashboardGrid = forwardRef<
         ? getInitialCardSizes(visibleCards, initialCardSizes)
         : initialCardSizes;
 
-    // Update state if there are changes
     if (!_.isEqual(newVisibleCardIds, visibleCardIds)) {
       setVisibleCardIds(newVisibleCardIds);
     }
@@ -293,7 +292,6 @@ const DashboardGrid = forwardRef<
 
     setLayouts(getLayouts(visibleCards, initialCardSizes));
 
-    // Update lastProps ref
     lastPropsRef.current = {
       dashboard,
       isEditing,
@@ -474,7 +472,6 @@ const DashboardGrid = forwardRef<
     replaceCardModalDashCard,
   ]);
 
-  // Event handlers converted to useCallback
   const onDrag = useCallback(() => {
     if (!isDragging) {
       setIsDragging(true);
