@@ -7,7 +7,7 @@ import { DownloadWidget, type DownloadWidgetProps } from "./DownloadWidget";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/DownloadWidget",
+  title: "EmbeddingSDK/SdkQuestion/DownloadWidget",
   component: DownloadWidget,
   parameters: {
     layout: "fullscreen",

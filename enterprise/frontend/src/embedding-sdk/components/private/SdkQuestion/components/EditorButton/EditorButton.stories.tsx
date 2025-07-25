@@ -10,7 +10,7 @@ import {
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/EditorButton",
+  title: "EmbeddingSDK/SdkQuestion/EditorButton",
   component: EditorButton,
   parameters: {
     layout: "fullscreen",
