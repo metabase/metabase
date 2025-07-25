@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Group } from "metabase/ui";
 
@@ -20,13 +20,13 @@ export const SummarizeDropdownStory = {
   render() {
     return (
       <Box p="lg">
-        <InteractiveQuestion questionId={QUESTION_ID}>
+        <SdkQuestion questionId={QUESTION_ID}>
           <Group wrap="nowrap" align="flex-start">
-            <InteractiveQuestion.Summarize />
+            <SdkQuestion.Summarize />
 
-            <InteractiveQuestion.QuestionVisualization />
+            <SdkQuestion.QuestionVisualization />
           </Group>
-        </InteractiveQuestion>
+        </SdkQuestion>
       </Box>
     );
   },

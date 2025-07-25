@@ -5,8 +5,8 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
-import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
+import { SdkAdHocQuestion } from "embedding-sdk/components/private/SdkAdHocQuestion";
+import { SdkQuestionDefaultView } from "embedding-sdk/components/private/SdkQuestionDefaultView";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
@@ -34,13 +34,13 @@ const MetabotQuestionInner = () => {
         <Message key={index} message={message} />
       ))}
       {redirectUrl && (
-        <InteractiveAdHocQuestion
+        <SdkAdHocQuestion
           questionPath={redirectUrl}
           title={false}
           onNavigateBack={() => {}}
           isSaveEnabled={false}
         >
-          <InteractiveQuestionDefaultView
+          <SdkQuestionDefaultView
             withChartTypeSelector
             title={
               <Stack gap="sm" mb="1rem">
@@ -49,7 +49,7 @@ const MetabotQuestionInner = () => {
               </Stack>
             }
           />
-        </InteractiveAdHocQuestion>
+        </SdkAdHocQuestion>
       )}
       <Disclaimer />
     </Flex>
