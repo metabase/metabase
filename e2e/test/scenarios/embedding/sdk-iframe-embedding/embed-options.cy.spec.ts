@@ -32,6 +32,24 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
+  it("shows a static question with drills=false, withTitle=true", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+      drills: false,
+      withTitle: true,
+    });
+
+    cy.wait("@getCardQuery");
+
+    frame.within(() => {
+      cy.log("static question must contain title, but not toolbar");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByTestId("interactive-question-result-toolbar").should(
+        "not.exist",
+      );
+    });
+  });
+
   it("shows a static dashboard using drills=false, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,

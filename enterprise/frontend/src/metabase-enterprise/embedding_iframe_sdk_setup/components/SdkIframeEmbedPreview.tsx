@@ -3,6 +3,7 @@ import { useSearchParam } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
+import { Card } from "metabase/ui";
 import type { MetabaseEmbedElement } from "metabase-enterprise/embedding_iframe_sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
@@ -100,12 +101,11 @@ export const SdkIframeEmbedPreview = () => {
   }, [settings, isIframeLoaded]);
 
   return (
-    <div
-      style={{ width: "100%", height: "100%" }}
+    <Card
       id="iframe-embed-container"
       data-iframe-loaded={isIframeLoaded}
-    >
-      {/* this is populated from the useEffect so that we can share `getEmbedCustomElementSnippet` with the code snippet on the left */}
-    </div>
+      bg={settings.theme?.colors?.background}
+      h="100%"
+    />
   );
 };
