@@ -1,4 +1,4 @@
-import type { BaseInteractiveQuestionProps } from "embedding-sdk";
+import type { BaseSdkQuestionProps } from "embedding-sdk";
 import { QuestionEditor } from "embedding-sdk/components/private/QuestionEditor";
 
 /**
@@ -16,7 +16,7 @@ export const ModifyQuestion = ({
   entityTypes,
   isSaveEnabled,
   targetCollection,
-}: BaseInteractiveQuestionProps) => (
+}: BaseSdkQuestionProps) => (
   <QuestionEditor
     questionId={questionId}
     plugins={plugins}

@@ -3,9 +3,9 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
-  type BaseInteractiveQuestionProps,
-  InteractiveQuestion,
-} from "embedding-sdk/components/public";
+  type BaseSdkQuestionProps,
+  SdkQuestion,
+} from "embedding-sdk/components/public/SdkQuestion";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
@@ -61,23 +61,21 @@ const QuestionEditorInner = () => {
 
           {!isSaveModalOpen && (
             <Group>
-              <InteractiveQuestion.ResetButton
+              <SdkQuestion.ResetButton
                 onClick={() => {
                   setActiveTab("editor");
                   closeSaveModal();
                 }}
               />
               {isSaveEnabled && (
-                <InteractiveQuestion.SaveButton onClick={openSaveModal} />
+                <SdkQuestion.SaveButton onClick={openSaveModal} />
               )}
             </Group>
           )}
         </Group>
 
         <Tabs.Panel value="editor" h="100%" style={{ overflow: "auto" }}>
-          <InteractiveQuestion.Editor
-            onApply={() => setActiveTab("visualization")}
-          />
+          <SdkQuestion.Editor onApply={() => setActiveTab("visualization")} />
         </Tabs.Panel>
         <Tabs.Panel
           value="visualization"
@@ -110,11 +108,11 @@ const QuestionEditorInner = () => {
             <Box className={QuestionEditorS.Main} w="100%" h="100%">
               <Box className={QuestionEditorS.ChartTypeSelector}>
                 {isVisualizationSelectorOpen && (
-                  <InteractiveQuestion.ChartTypeSelector />
+                  <SdkQuestion.ChartTypeSelector />
                 )}
               </Box>
               <Box className={QuestionEditorS.Content}>
-                <InteractiveQuestion.QuestionVisualization />
+                <SdkQuestion.QuestionVisualization />
               </Box>
             </Box>
           </Stack>
@@ -146,8 +144,8 @@ export const QuestionEditor = ({
   plugins,
   entityTypes,
   targetCollection,
-}: BaseInteractiveQuestionProps) => (
-  <InteractiveQuestion
+}: BaseSdkQuestionProps) => (
+  <SdkQuestion
     questionId={questionId}
     plugins={plugins}
     onSave={onSave}
@@ -157,5 +155,5 @@ export const QuestionEditor = ({
     targetCollection={targetCollection}
   >
     <QuestionEditorInner />
-  </InteractiveQuestion>
+  </SdkQuestion>
 );
