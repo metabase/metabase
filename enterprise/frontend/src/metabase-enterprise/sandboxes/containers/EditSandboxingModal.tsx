@@ -81,7 +81,7 @@ const EditSandboxingModalContainer = ({
     >
       <EditSandboxingModal
         policy={policy}
-        attributes={attributes || {}}
+        attributes={attributes || []}
         params={params}
         onCancel={close}
         onSave={handleSave}
