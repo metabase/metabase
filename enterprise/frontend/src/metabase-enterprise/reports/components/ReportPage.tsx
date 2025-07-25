@@ -8,7 +8,7 @@ import { t } from "ttag";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Box, Button, Icon, Loader, Menu } from "metabase/ui";
 import {
   useCreateReportMutation,
@@ -18,10 +18,10 @@ import {
 import type { CollectionId } from "metabase-types/api";
 
 import { useEditorActions, useReportActions, useReportState } from "../hooks";
-import { selectQuestion, toggleSidebar } from "../reports.slice";
+import { closeSidebar } from "../reports.slice";
 import {
-  getHasModifiedVisualizationSettings,
   getIsSidebarOpen,
+  getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
 
@@ -41,6 +41,7 @@ export const ReportPage = ({
 }) => {
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
+  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -54,7 +55,6 @@ export const ReportPage = ({
     { open: showCollectionPicker, close: hideCollectionPicker },
   ] = useDisclosure(false);
   const [sendToast] = useToast();
-  const store = useStore();
   const previousReportId = usePrevious(reportId);
 
   const selectedVersion = location?.query?.version
@@ -77,11 +77,15 @@ export const ReportPage = ({
     setReportTitle,
     reportContent,
     setReportContent,
-    questionRefs,
-    updateQuestionRefs,
+    questionEmbeds,
+    updateQuestionEmbeds,
   } = useReportState(report);
 
-  const { commitVisualizationChanges, refreshAllData } = useReportActions();
+  const {
+    commitVisualizationChanges,
+    commitAllPendingChanges,
+    refreshAllData,
+  } = useReportActions();
   const { handleQuestionClick } = useEditorActions();
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
@@ -159,22 +163,8 @@ export const ReportPage = ({
       }
 
       try {
-        const state = store.getState();
-        const modifiedCards = Object.keys(
-          (state as any).plugins?.reports?.modifiedVisualizationSettings || {},
-        )
-          .map(Number)
-          .filter((cardId) =>
-            getHasModifiedVisualizationSettings(state, cardId),
-          );
-
-        if (modifiedCards.length > 0) {
-          await Promise.all(
-            modifiedCards.map((cardId) =>
-              commitVisualizationChanges(cardId, editorInstance),
-            ),
-          );
-        }
+        // Commit all pending visualization changes before saving
+        await commitAllPendingChanges(editorInstance);
 
         const markdown = editorInstance.storage.markdown?.getMarkdown() ?? "";
         const newReportData = {
@@ -225,8 +215,7 @@ export const ReportPage = ({
       reportTitle,
       sendToast,
       dispatch,
-      store,
-      commitVisualizationChanges,
+      commitAllPendingChanges,
       reportId,
     ],
   );
@@ -252,34 +241,29 @@ export const ReportPage = ({
   }, [hasUnsavedChanges, handleSave, reportId, showCollectionPicker]);
 
   const handleToggleSidebar = useCallback(async () => {
-    // If we're closing the sidebar with a selected question, commit any pending changes
-    if (isSidebarOpen && selectedQuestionId) {
-      await commitVisualizationChanges(selectedQuestionId, editorInstance);
+    // If we're closing the sidebar with a selected embed, commit any pending changes
+    if (isSidebarOpen && selectedEmbedIndex !== null) {
+      await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
 
       // When closing sidebar with a selected question, clear editor selection first
       if (editorInstance) {
         editorInstance.commands.focus("end");
       }
-      dispatch(selectQuestion(null));
     }
-    dispatch(toggleSidebar());
+    dispatch(closeSidebar());
   }, [
     dispatch,
     isSidebarOpen,
-    selectedQuestionId,
+    selectedEmbedIndex,
     editorInstance,
     commitVisualizationChanges,
   ]);
 
-  const handleQuestionSelect = useCallback(
-    async (newQuestionId: number | null) => {
-      if (selectedQuestionId && selectedQuestionId !== newQuestionId) {
-        await commitVisualizationChanges(selectedQuestionId, editorInstance);
-      }
-      dispatch(selectQuestion(newQuestionId));
-    },
-    [selectedQuestionId, commitVisualizationChanges, dispatch, editorInstance],
-  );
+  const handleQuestionSelect = useCallback(async () => {
+    if (selectedEmbedIndex !== null) {
+      await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
+    }
+  }, [selectedEmbedIndex, commitVisualizationChanges, editorInstance]);
 
   const handleRefreshAllData = useCallback(async () => {
     await refreshAllData(editorInstance);
@@ -296,7 +280,7 @@ export const ReportPage = ({
         const rawMarkdown = editorInstance.storage.markdown?.getMarkdown();
         const processedMarkdown = await getDownloadableMarkdown(
           rawMarkdown,
-          questionRefs,
+          questionEmbeds,
         );
 
         downloadFile(processedMarkdown);
@@ -306,7 +290,7 @@ export const ReportPage = ({
         setIsDownloading(false);
       }
     })();
-  }, [questionRefs, editorInstance]);
+  }, [questionEmbeds, editorInstance]);
 
   return (
     <Box className={styles.reportPage}>
@@ -410,7 +394,7 @@ export const ReportPage = ({
             ) : (
               <Editor
                 onEditorReady={setEditorInstance}
-                onQuestionRefsChange={updateQuestionRefs}
+                onQuestionRefsChange={updateQuestionEmbeds}
                 onQuestionSelect={handleQuestionSelect}
                 content={reportContent}
                 editable={canWrite}
@@ -421,14 +405,12 @@ export const ReportPage = ({
 
         {isSidebarOpen && (
           <Box className={styles.sidebar}>
-            {selectedQuestionId ? (
+            {selectedQuestionId && selectedEmbedIndex !== null ? (
               <EmbedQuestionSettingsSidebar
                 questionId={selectedQuestionId}
-                snapshotId={
-                  questionRefs.find((ref: any) => ref.id === selectedQuestionId)
-                    ?.snapshotId || 0
-                }
-                onClose={() => dispatch(selectQuestion(null))}
+                snapshotId={questionEmbeds[selectedEmbedIndex]?.snapshotId || 0}
+                onClose={() => dispatch(closeSidebar())}
+                editorInstance={editorInstance}
               />
             ) : (
               <UsedContentSidebar

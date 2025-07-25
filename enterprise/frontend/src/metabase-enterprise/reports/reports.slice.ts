@@ -12,7 +12,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-export interface QuestionRef {
+export interface QuestionEmbed {
   id: number;
   name?: string;
   snapshotId?: number;
@@ -23,10 +23,11 @@ export interface ReportsState {
   datasets: Record<number, Dataset>;
   loadingCards: Record<CardId, boolean>;
   loadingDatasets: Record<number, boolean>;
-  selectedQuestionId: CardId | null;
+  selectedEmbedIndex: number | null; // Index in questionEmbeds array
   isSidebarOpen: boolean;
-  modifiedVisualizationSettings: Record<CardId, boolean>;
-  questionRefs: QuestionRef[];
+  // Draft state for currently editing embed
+  draftCard: Card | null;
+  questionEmbeds: QuestionEmbed[];
 }
 
 const initialState: ReportsState = {
@@ -34,10 +35,10 @@ const initialState: ReportsState = {
   datasets: {},
   loadingCards: {},
   loadingDatasets: {},
-  selectedQuestionId: null,
+  selectedEmbedIndex: null,
   isSidebarOpen: false,
-  modifiedVisualizationSettings: {},
-  questionRefs: [],
+  draftCard: null,
+  questionEmbeds: [],
 };
 
 export const fetchReportCard = createAsyncThunk<Card, CardId>(
@@ -115,12 +116,17 @@ const reportsSlice = createSlice({
   name: "reports",
   initialState,
   reducers: {
-    selectQuestion: (state, action: PayloadAction<CardId | null>) => {
-      state.selectedQuestionId = action.payload;
-    },
-    openVizSettingsSidebar: (state, action: PayloadAction<CardId>) => {
-      state.selectedQuestionId = action.payload;
+    openVizSettingsSidebar: (
+      state,
+      action: PayloadAction<{ embedIndex: number }>,
+    ) => {
+      state.selectedEmbedIndex = action.payload.embedIndex;
       state.isSidebarOpen = true;
+      // Initialize draftCard from the selected embed's card
+      const embed = state.questionEmbeds[action.payload.embedIndex];
+      if (embed && state.cards[embed.id]) {
+        state.draftCard = { ...state.cards[embed.id] };
+      }
     },
     toggleSidebar: (state) => {
       state.isSidebarOpen = !state.isSidebarOpen;
@@ -131,70 +137,58 @@ const reportsSlice = createSlice({
     updateVizSettings: (
       state,
       action: PayloadAction<{
-        cardId: CardId;
         settings: VisualizationSettings;
       }>,
     ) => {
-      const { cardId, settings } = action.payload;
-      if (state.cards[cardId]) {
-        state.cards[cardId] = {
-          ...state.cards[cardId],
-          visualization_settings: {
-            ...state.cards[cardId].visualization_settings,
-            ...settings,
-          },
+      const { settings } = action.payload;
+      if (state.draftCard) {
+        state.draftCard.visualization_settings = {
+          ...state.draftCard.visualization_settings,
+          ...settings,
         };
-        state.modifiedVisualizationSettings[cardId] = true;
       }
     },
     updateVisualizationType: (
       state,
-      action: PayloadAction<{ cardId: CardId; display: CardDisplayType }>,
+      action: PayloadAction<{ display: CardDisplayType }>,
     ) => {
-      const { cardId, display } = action.payload;
-      if (state.cards[cardId]) {
-        state.cards[cardId] = {
-          ...state.cards[cardId],
-          display,
-        };
-        state.modifiedVisualizationSettings[cardId] = true;
+      const { display } = action.payload;
+      if (state.draftCard) {
+        state.draftCard.display = display;
       }
     },
-    clearModifiedVisualizationSettings: (
-      state,
-      action: PayloadAction<CardId>,
-    ) => {
-      delete state.modifiedVisualizationSettings[action.payload];
+    clearDraftState: (state) => {
+      state.draftCard = null;
+      state.selectedEmbedIndex = null;
     },
-    setQuestionRefs: (state, action: PayloadAction<QuestionRef[]>) => {
-      state.questionRefs = action.payload;
+    closeSidebar: (state) => {
+      state.isSidebarOpen = false;
+      state.selectedEmbedIndex = null;
+      state.draftCard = null;
     },
-    updateQuestionRef: (
+    setQuestionEmbeds: (state, action: PayloadAction<QuestionEmbed[]>) => {
+      state.questionEmbeds = action.payload;
+    },
+    updateQuestionEmbed: (
       state,
-      action: PayloadAction<{ questionId: CardId; snapshotId: number }>,
+      action: PayloadAction<{ embedIndex: number; snapshotId: number }>,
     ) => {
-      const { questionId, snapshotId } = action.payload;
-      const index = state.questionRefs.findIndex(
-        (ref) => ref.id === questionId,
-      );
-      if (index !== -1) {
-        state.questionRefs[index] = {
-          ...state.questionRefs[index],
+      const { embedIndex, snapshotId } = action.payload;
+      if (state.questionEmbeds[embedIndex]) {
+        state.questionEmbeds[embedIndex] = {
+          ...state.questionEmbeds[embedIndex],
           snapshotId,
         };
       }
     },
-    updateQuestionRefs: (
+    updateQuestionEmbeds: (
       state,
-      action: PayloadAction<Array<{ questionId: CardId; snapshotId: number }>>,
+      action: PayloadAction<Array<{ embedIndex: number; snapshotId: number }>>,
     ) => {
-      action.payload.forEach(({ questionId, snapshotId }) => {
-        const index = state.questionRefs.findIndex(
-          (ref) => ref.id === questionId,
-        );
-        if (index !== -1) {
-          state.questionRefs[index] = {
-            ...state.questionRefs[index],
+      action.payload.forEach(({ embedIndex, snapshotId }) => {
+        if (state.questionEmbeds[embedIndex]) {
+          state.questionEmbeds[embedIndex] = {
+            ...state.questionEmbeds[embedIndex],
             snapshotId,
           };
         }
@@ -261,16 +255,16 @@ const reportsSlice = createSlice({
 });
 
 export const {
-  selectQuestion,
   openVizSettingsSidebar,
   toggleSidebar,
   setSidebarOpen,
   updateVizSettings,
   updateVisualizationType,
-  clearModifiedVisualizationSettings,
-  setQuestionRefs,
-  updateQuestionRef,
-  updateQuestionRefs,
+  clearDraftState,
+  closeSidebar,
+  setQuestionEmbeds,
+  updateQuestionEmbed,
+  updateQuestionEmbeds,
   resetReports,
 } = reportsSlice.actions;
 

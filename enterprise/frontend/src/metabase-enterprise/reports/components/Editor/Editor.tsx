@@ -19,7 +19,7 @@ import { Box } from "metabase/ui";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import {
-  type QuestionRef,
+  type QuestionEmbed,
   fetchReportCard,
   fetchReportSnapshot,
 } from "../../reports.slice";
@@ -36,7 +36,7 @@ import { SmartLinkEmbed } from "./extensions/SmartLink";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
-  onQuestionRefsChange?: (refs: QuestionRef[]) => void;
+  onQuestionRefsChange?: (refs: QuestionEmbed[]) => void;
   content: string;
   onQuestionSelect?: (questionId: number | null) => void;
   editable?: boolean;
@@ -221,8 +221,12 @@ export const Editor: React.FC<EditorProps> = ({
   );
 };
 
-const getRefs = (editor: TiptapEditor, dispatch: DispatchFn): QuestionRef[] => {
-  const refs: QuestionRef[] = [];
+const getRefs = (
+  editor: TiptapEditor,
+  dispatch: DispatchFn,
+): QuestionEmbed[] => {
+  const refs: QuestionEmbed[] = [];
+
   editor.state.doc.descendants((node: any) => {
     if (node.type.name === "questionEmbed") {
       refs.push({

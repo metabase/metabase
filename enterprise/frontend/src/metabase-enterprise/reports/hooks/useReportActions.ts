@@ -7,42 +7,63 @@ import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 
 import {
-  clearModifiedVisualizationSettings,
+  type QuestionEmbed,
+  clearDraftState,
   fetchReportQuestionData,
-  updateQuestionRefs,
+  updateQuestionEmbeds,
 } from "../reports.slice";
 import {
-  getHasModifiedVisualizationSettings,
-  getQuestionRefs,
+  getHasDraftChanges,
+  getQuestionEmbeds,
   getReportCard,
+  getReportCardWithDraftSettings,
+  getReportsState,
 } from "../selectors";
 
 export function useReportActions() {
   const dispatch = useDispatch();
   const store = useStore();
-  const questionRefs = useSelector(getQuestionRefs);
+  const questionEmbeds = useSelector(getQuestionEmbeds);
   const [createReportSnapshot] = useCreateReportSnapshotMutation();
   const [sendToast] = useToast();
 
   const commitVisualizationChanges = useCallback(
-    async (cardId: number, editorInstance: any) => {
+    async (embedIndex: number, editorInstance: any) => {
       const state = store.getState();
-      const card = getReportCard(state, cardId);
-      const hasModified = getHasModifiedVisualizationSettings(state, cardId);
+      const hasDraftChanges = getHasDraftChanges(state);
+      const questionEmbeds = getQuestionEmbeds(state);
 
-      if (!card || !hasModified || !editorInstance) {
+      if (
+        !hasDraftChanges ||
+        !editorInstance ||
+        embedIndex < 0 ||
+        embedIndex >= questionEmbeds.length
+      ) {
         return;
       }
 
-      if (card.id.toString().includes("static")) {
+      const embed = questionEmbeds[embedIndex];
+      const cardWithDraftSettings = getReportCardWithDraftSettings(
+        state,
+        embed.id,
+      );
+
+      if (!cardWithDraftSettings) {
+        return;
+      }
+
+      if (cardWithDraftSettings.id.toString().includes("static")) {
         const { doc } = editorInstance.state;
         const tr = editorInstance.state.tr;
 
         doc.descendants((node: any, pos: number) => {
-          if (node.type.name === "questionStatic" && node.attrs.id === cardId) {
-            const display = card.display;
+          if (
+            node.type.name === "questionStatic" &&
+            node.attrs.id === embed.id
+          ) {
+            const display = cardWithDraftSettings.display;
             const viz = utf8_to_b64url(
-              JSON.stringify(card.visualization_settings),
+              JSON.stringify(cardWithDraftSettings.visualization_settings),
             );
 
             const newAttrs = {
@@ -58,30 +79,40 @@ export function useReportActions() {
         if (tr.docChanged) {
           editorInstance.view.dispatch(tr);
         }
+        dispatch(clearDraftState());
       } else {
         try {
-          const { id, created_at, updated_at, ...cardWithoutExcluded } = card;
+          const { id, created_at, updated_at, ...cardWithoutExcluded } =
+            cardWithDraftSettings;
           const result = await createReportSnapshot({
             ...cardWithoutExcluded,
-            name: card.name,
+            name: cardWithDraftSettings.name,
           }).unwrap();
 
-          dispatch(clearModifiedVisualizationSettings(cardId));
+          dispatch(clearDraftState());
           const { doc } = editorInstance.state;
           const tr = editorInstance.state.tr;
 
+          // Only update the specific embed at this index
+          let nodeCount = 0;
+          let updated = false;
           doc.descendants((node: any, pos: number) => {
-            if (
-              node.type.name === "questionEmbed" &&
-              node.attrs.questionId === cardId
-            ) {
-              const newAttrs = {
-                ...node.attrs,
-                questionId: result.card_id,
-                snapshotId: result.snapshot_id,
-              };
-              tr.setNodeMarkup(pos, undefined, newAttrs);
+            if (updated) {
               return false;
+            } // Stop if we already updated
+
+            if (node.type.name === "questionEmbed") {
+              if (nodeCount === embedIndex) {
+                const newAttrs = {
+                  ...node.attrs,
+                  questionId: result.card_id,
+                  snapshotId: result.snapshot_id,
+                };
+                tr.setNodeMarkup(pos, undefined, newAttrs);
+                updated = true;
+                return false; // Stop traversing
+              }
+              nodeCount++;
             }
           });
 
@@ -90,8 +121,8 @@ export function useReportActions() {
           }
 
           dispatch(
-            updateQuestionRefs([
-              { questionId: cardId, snapshotId: result.snapshot_id },
+            updateQuestionEmbeds([
+              { embedIndex, snapshotId: result.snapshot_id },
             ]),
           );
         } catch (error) {
@@ -102,9 +133,28 @@ export function useReportActions() {
     [store, createReportSnapshot, dispatch],
   );
 
+  // Commit all pending changes (used when saving report)
+  const commitAllPendingChanges = useCallback(
+    async (editorInstance: any) => {
+      if (!editorInstance) {
+        return;
+      }
+
+      const state = store.getState();
+      const hasDraftChanges = getHasDraftChanges(state);
+      const selectedEmbedIndex = getReportsState(state).selectedEmbedIndex;
+
+      // Commit changes if there are any and we have a selected embed
+      if (hasDraftChanges && selectedEmbedIndex !== null) {
+        await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
+      }
+    },
+    [store, commitVisualizationChanges],
+  );
+
   const refreshAllData = useCallback(
     async (editorInstance: any) => {
-      if (!editorInstance || questionRefs.length === 0) {
+      if (!editorInstance || questionEmbeds.length === 0) {
         return;
       }
 
@@ -114,42 +164,49 @@ export function useReportActions() {
         const tr = editorInstance.state.tr;
 
         // Create new snapshots for all question embeds in parallel
-        const snapshotPromises = questionRefs.map(async (questionRef) => {
-          const card = getReportCard(state, questionRef.id);
-          if (!card || card.id.toString().includes("static")) {
-            return null;
-          }
+        const snapshotPromises = questionEmbeds.map(
+          async (questionEmbed: QuestionEmbed, index: number) => {
+            const card = getReportCard(state, questionEmbed.id);
+            if (!card || card.id.toString().includes("static")) {
+              return null;
+            }
 
-          // Create snapshot using existing card_id to maintain consistency
-          const result = await createReportSnapshot({
-            card_id: questionRef.id,
-          }).unwrap();
+            // Create snapshot using existing card_id to maintain consistency
+            const result = await createReportSnapshot({
+              card_id: questionEmbed.id,
+            }).unwrap();
 
-          return {
-            questionId: questionRef.id,
-            snapshotId: result.snapshot_id,
-          };
-        });
+            return {
+              embedIndex: index,
+              snapshotId: result.snapshot_id,
+            };
+          },
+        );
 
         const snapshotResults = await Promise.all(snapshotPromises);
         const validResults = snapshotResults.filter(Boolean);
 
-        // Update all question embeds in the document at once
+        // Update specific question embeds in the document by index
         let hasChanges = false;
-        validResults.forEach(({ questionId, snapshotId }) => {
-          doc.descendants((node: any, pos: number) => {
-            if (
-              node.type.name === "questionEmbed" &&
-              node.attrs.questionId === questionId
-            ) {
-              const newAttrs = {
-                ...node.attrs,
-                snapshotId: snapshotId,
-              };
-              tr.setNodeMarkup(pos, undefined, newAttrs);
-              hasChanges = true;
-            }
-          });
+        validResults.forEach(({ embedIndex, snapshotId }) => {
+          const embed = questionEmbeds[embedIndex];
+          if (embed) {
+            let nodeCount = 0;
+            doc.descendants((node: any, pos: number) => {
+              if (node.type.name === "questionEmbed") {
+                if (nodeCount === embedIndex) {
+                  const newAttrs = {
+                    ...node.attrs,
+                    snapshotId: snapshotId,
+                  };
+                  tr.setNodeMarkup(pos, undefined, newAttrs);
+                  hasChanges = true;
+                  return false; // Stop traversing for this specific embed
+                }
+                nodeCount++;
+              }
+            });
+          }
         });
 
         // Apply all document changes at once
@@ -157,17 +214,20 @@ export function useReportActions() {
           editorInstance.view.dispatch(tr);
         }
 
-        // Update questionRefs state with all new snapshot IDs at once
-        dispatch(updateQuestionRefs(validResults));
+        // Update questionEmbeds state with all new snapshot IDs at once
+        dispatch(updateQuestionEmbeds(validResults));
 
         // Fetch new data for all updated question embeds to refresh the visible report
-        validResults.forEach(({ questionId, snapshotId }) => {
-          dispatch(
-            fetchReportQuestionData({
-              cardId: questionId,
-              snapshotId: snapshotId,
-            }),
-          );
+        validResults.forEach(({ embedIndex, snapshotId }) => {
+          const embed = questionEmbeds[embedIndex];
+          if (embed) {
+            dispatch(
+              fetchReportQuestionData({
+                cardId: embed.id,
+                snapshotId: snapshotId,
+              }),
+            );
+          }
         });
 
         sendToast({
@@ -178,11 +238,12 @@ export function useReportActions() {
         sendToast({ message: t`Error refreshing data`, icon: "warning" });
       }
     },
-    [questionRefs, store, createReportSnapshot, dispatch, sendToast],
+    [questionEmbeds, store, createReportSnapshot, dispatch, sendToast],
   );
 
   return {
     commitVisualizationChanges,
+    commitAllPendingChanges,
     refreshAllData,
   };
 }

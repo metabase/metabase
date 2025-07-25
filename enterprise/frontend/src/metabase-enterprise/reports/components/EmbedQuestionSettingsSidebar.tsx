@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -23,29 +23,51 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { updateVisualizationType, updateVizSettings } from "../reports.slice";
+import { useReportActions } from "../hooks";
 import {
+  clearDraftState,
+  updateVisualizationType,
+  updateVizSettings,
+} from "../reports.slice";
+import {
+  getHasDraftChanges,
   getIsLoadingCard,
   getIsLoadingDataset,
   getReportCard,
+  getReportCardWithDraftSettings,
   getReportRawSeries,
+  getReportRawSeriesWithDraftSettings,
+  getSelectedEmbedIndex,
 } from "../selectors";
 
 interface EmbedQuestionSettingsSidebarProps {
   questionId: number;
   snapshotId: number;
   onClose: () => void;
+  editorInstance?: any;
 }
 
 export const EmbedQuestionSettingsSidebar = ({
   questionId,
   snapshotId,
+  editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const card = useSelector((state) => getReportCard(state, questionId));
+  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+  const hasDraftChanges = useSelector(getHasDraftChanges);
+  const { commitVisualizationChanges } = useReportActions();
+
+  // Use card with draft settings merged for the sidebar
+  const card = useSelector((state) =>
+    selectedEmbedIndex !== null
+      ? getReportCardWithDraftSettings(state, questionId)
+      : getReportCard(state, questionId),
+  );
   const series = useSelector((state) =>
-    getReportRawSeries(state, questionId, snapshotId),
+    selectedEmbedIndex !== null
+      ? getReportRawSeriesWithDraftSettings(state, questionId, snapshotId)
+      : null,
   );
   const isCardLoading = useSelector((state) =>
     getIsLoadingCard(state, questionId),
@@ -101,21 +123,33 @@ export const EmbedQuestionSettingsSidebar = ({
   );
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
-    if (card) {
-      dispatch(updateVizSettings({ cardId: card.id, settings }));
+    if (selectedEmbedIndex !== null) {
+      dispatch(updateVizSettings({ settings }));
     }
   };
 
   const handleVisualizationTypeChange = (display: CardDisplayType) => {
-    if (card) {
-      dispatch(
-        updateVisualizationType({
-          cardId: card.id,
-          display,
-        }),
-      );
+    if (selectedEmbedIndex !== null) {
+      dispatch(updateVisualizationType({ display }));
     }
   };
+
+  const handleDone = useCallback(async () => {
+    if (selectedEmbedIndex !== null) {
+      if (hasDraftChanges) {
+        await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
+      } else {
+        // No changes, just clear the draft state to show UsedContent
+        dispatch(clearDraftState());
+      }
+    }
+  }, [
+    selectedEmbedIndex,
+    hasDraftChanges,
+    commitVisualizationChanges,
+    editorInstance,
+    dispatch,
+  ]);
 
   if (isCardLoading || isResultsLoading || !series) {
     return (
@@ -158,11 +192,17 @@ export const EmbedQuestionSettingsSidebar = ({
     <Box
       style={{
         height: "100%",
-        overflow: "auto",
+        display: "flex",
+        flexDirection: "column",
         backgroundColor: "var(--mb-color-bg-white)",
       }}
     >
-      <Box>
+      <Box
+        style={{
+          borderBottom: "1px solid var(--mb-color-border)",
+          backgroundColor: "var(--mb-color-bg-white)",
+        }}
+      >
         <Group align="center" p="md">
           <Text size="md" fw="bold">
             {t`Visualize as`}
@@ -212,12 +252,25 @@ export const EmbedQuestionSettingsSidebar = ({
           </Menu>
         </Group>
       </Box>
-      <QuestionChartSettings
-        question={question as any}
-        series={series}
-        onChange={handleSettingsChange}
-        computedSettings={card.visualization_settings || {}}
-      />
+      <Box style={{ flex: 1, overflow: "auto" }}>
+        <QuestionChartSettings
+          question={question as any}
+          series={series}
+          onChange={handleSettingsChange}
+          computedSettings={card.visualization_settings || {}}
+        />
+      </Box>
+      <Box
+        style={{
+          borderTop: "1px solid var(--mb-color-border)",
+          padding: "1rem",
+          backgroundColor: "var(--mb-color-bg-white)",
+        }}
+      >
+        <Button fullWidth variant="filled" onClick={handleDone}>
+          {t`Done`}
+        </Button>
+      </Box>
     </Box>
   );
 };

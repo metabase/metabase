@@ -15,15 +15,14 @@ import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
 import { useCreateReportSnapshotMutation } from "../../../../../api/report";
-import {
-  openVizSettingsSidebar,
-  selectQuestion,
-} from "../../../../reports.slice";
+import { openVizSettingsSidebar } from "../../../../reports.slice";
 import {
   getIsLoadingCard,
   getIsLoadingDataset,
   getReportCard,
   getReportRawSeries,
+  getReportRawSeriesWithDraftSettings,
+  getSelectedEmbedIndex,
 } from "../../../../selectors";
 
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
@@ -130,9 +129,35 @@ export const QuestionEmbedComponent = memo(
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
+    let embedIndex = -1;
+
+    if (editor && getPos) {
+      const currentPos = getPos();
+      let nodeCount = 0;
+
+      // Count questionEmbed nodes that appear before this position
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "questionEmbed") {
+          if (pos < currentPos) {
+            nodeCount++;
+          } else if (pos === currentPos) {
+            embedIndex = nodeCount;
+            return false; // Stop traversing
+          }
+        }
+      });
+    }
+
     const card = useSelector((state) => getReportCard(state, questionId));
+    const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+    const isCurrentlyEditing =
+      selectedEmbedIndex === embedIndex && embedIndex !== -1;
+
+    // Use draft settings if this embed is currently being edited
     const rawSeries = useSelector((state) =>
-      getReportRawSeries(state, questionId, snapshotId),
+      isCurrentlyEditing
+        ? getReportRawSeriesWithDraftSettings(state, questionId, snapshotId)
+        : getReportRawSeries(state, questionId, snapshotId),
     );
     const isLoadingCard = useSelector((state) =>
       getIsLoadingCard(state, questionId),
@@ -232,8 +257,9 @@ export const QuestionEmbedComponent = memo(
     };
 
     const handleEditVisualizationSettings = () => {
-      dispatch(selectQuestion(questionId));
-      dispatch(openVizSettingsSidebar(questionId));
+      if (embedIndex !== -1) {
+        dispatch(openVizSettingsSidebar({ embedIndex }));
+      }
     };
 
     const handleTitleClick = () => {
