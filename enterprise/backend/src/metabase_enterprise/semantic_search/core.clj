@@ -31,16 +31,19 @@
   :feature :semantic-search
   [document-reducible]
   (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (let [documents (vec document-reducible)]
-    (when (seq documents)
-      (semantic.index/upsert-index! @semantic.db/data-source (get-active-index) documents))))
+  (let [db @semantic.db/data-source
+        active-index (get-active-index)]
+    (jdbc/with-transaction [tx db]
+      (semantic.index/create-index-table! tx active-index {:force-reset? false}))
+    (semantic.index/upsert-index! db active-index (into [] document-reducible))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (when-not @semantic.db/data-source (semantic.db/init-db!))
-  (semantic.index/delete-from-index! @semantic.db/data-source (get-active-index) model ids))
+  ;; If data-source has not been initialized, then presumably the index doesn't exist yet.
+  (when @semantic.db/data-source
+    (semantic.index/delete-from-index! @semantic.db/data-source (get-active-index) model ids)))
 
 ;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
