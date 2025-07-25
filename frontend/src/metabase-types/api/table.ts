@@ -56,17 +56,11 @@ export type ComponentSettings = {
 };
 
 export type ListViewSettings = {
-  slots: {
-    name: {
-      field_id: FieldId | null;
-    };
-    description: {
-      field_id: FieldId | null;
-    };
-    image: {
-      field_id: FieldId | null;
-    };
-  };
+  row_height: "thin" | "normal";
+  fields: {
+    field_id: FieldId;
+    style: "normal" | "bold" | "dim";
+  }[];
 };
 
 export type ObjectViewSettings = {

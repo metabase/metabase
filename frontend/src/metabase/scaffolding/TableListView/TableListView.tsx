@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -16,31 +16,23 @@ import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import {
   ActionIcon,
+  Box,
   Button,
-  Card,
   Group,
   Icon,
-  Image,
-  Select,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  ComponentSettings,
-  ListViewSettings,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
+import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
 import S from "./TableListView.module.css";
 import type { RouteParams } from "./types";
 import {
-  detectDescriptionColumn,
-  detectImageColumn,
-  detectNameColumn,
+  getDefaultComponentSettings,
   getExploreTableUrl,
   getRowCountQuery,
   getTableQuery,
@@ -53,29 +45,6 @@ interface Props {
 }
 
 const PAGE_SIZE = 10;
-
-function getDefaultComponentSettings(): ComponentSettings {
-  return {
-    list_view: getDefaultListViewSettings(),
-    object_view: {},
-  };
-}
-
-function getDefaultListViewSettings(): ListViewSettings {
-  return {
-    slots: {
-      description: {
-        field_id: null,
-      },
-      name: {
-        field_id: null,
-      },
-      image: {
-        field_id: null,
-      },
-    },
-  };
-}
 
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
@@ -105,38 +74,10 @@ export const TableListView = ({ location, params }: Props) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [settings, setSettings] = useState(
-    table?.component_settings ?? getDefaultComponentSettings(),
+    table?.component_settings ?? getDefaultComponentSettings(table),
   );
-  const slots = settings.list_view.slots;
-  const nameColumnIndex = columns.findIndex(
-    (column) => column.id === slots.name.field_id,
-  );
-  const descriptionColumnIndex = columns.findIndex(
-    (column) => column.id === slots.description.field_id,
-  );
-  const imageColumnIndex = columns.findIndex(
-    (column) => column.id === slots.image.field_id,
-  );
-  const nameColumn = columns[nameColumnIndex];
-  const descriptionColumn = columns[descriptionColumnIndex];
-  const imageColumn = columns[imageColumnIndex];
-  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
 
-  const updateSlots = useCallback(
-    (slots: Partial<ListViewSettings["slots"]>) => {
-      setSettings((settings) => ({
-        ...settings,
-        list_view: {
-          ...settings.list_view,
-          slots: {
-            ...settings.list_view.slots,
-            ...slots,
-          },
-        },
-      }));
-    },
-    [],
-  );
+  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
 
   const handleSubmit = () => {
     setIsEditing(false);
@@ -145,44 +86,12 @@ export const TableListView = ({ location, params }: Props) => {
   };
 
   useEffect(() => {
-    if (table?.component_settings) {
-      setSettings(table.component_settings);
+    if (table) {
+      setSettings(
+        table.component_settings ?? getDefaultComponentSettings(table),
+      );
     }
   }, [table]);
-
-  useEffect(() => {
-    if (!columns || table?.component_settings) {
-      return;
-    }
-
-    const nameColumn = detectNameColumn(columns);
-    const descriptionColumn = detectDescriptionColumn(columns);
-    const imageColumn = detectImageColumn(columns);
-
-    if (nameColumn) {
-      updateSlots({
-        name: {
-          field_id: nameColumn.id ?? null,
-        },
-      });
-    }
-
-    if (descriptionColumn) {
-      updateSlots({
-        description: {
-          field_id: descriptionColumn.id ?? null,
-        },
-      });
-    }
-
-    if (imageColumn) {
-      updateSlots({
-        image: {
-          field_id: imageColumn.id ?? null,
-        },
-      });
-    }
-  }, [columns, updateSlots, table?.component_settings]);
 
   if (!table || !dataset || !columns) {
     return <LoadingAndErrorWrapper loading />;
@@ -257,106 +166,37 @@ export const TableListView = ({ location, params }: Props) => {
 
       <Group align="flex-start" gap="xl">
         <Stack component="ul" gap="md" w={600}>
-          {paginatedRows.map((row, index) => {
-            return (
-              <Card className={S.row} component="li" key={index}>
-                {imageColumnIndex !== -1 && (
-                  <Card.Section mb="lg">
-                    <Image alt={t`Image`} h={160} src={row[imageColumnIndex]} />
-                  </Card.Section>
-                )}
+          <table>
+            {paginatedRows.map((row, index) => {
+              return (
+                <Box className={S.row} component="tr" key={index}>
+                  {row.map((value, cellIndex) => {
+                    return (
+                      <Box className={S.row} component="td" key={cellIndex}>
+                        {renderValue(tc, value, columns[cellIndex])}
+                      </Box>
+                    );
+                  })}
 
-                <Text fw="bold">
-                  {renderValue(tc, row[nameColumnIndex], nameColumn)}
-                </Text>
-
-                {descriptionColumn && (
-                  <Text c="text-secondary" size="sm">
-                    {renderValue(
-                      tc,
-                      row[descriptionColumnIndex],
-                      descriptionColumn,
-                    )}
-                  </Text>
-                )}
-
-                <ActionIcon
-                  className={S.link}
-                  component={Link}
-                  to={
-                    pkIndex != null
-                      ? `/table/${table.id}/detail/${row[pkIndex]}`
-                      : ""
-                  }
-                  variant="outline"
-                >
-                  <Icon name="share" />
-                </ActionIcon>
-              </Card>
-            );
-          })}
+                  <ActionIcon
+                    className={S.link}
+                    component={Link}
+                    to={
+                      pkIndex != null
+                        ? `/table/${table.id}/detail/${row[pkIndex]}`
+                        : ""
+                    }
+                    variant="outline"
+                  >
+                    <Icon name="share" />
+                  </ActionIcon>
+                </Box>
+              );
+            })}
+          </table>
         </Stack>
 
-        {isEditing && (
-          <Stack>
-            <Select
-              clearable
-              data={columns.map((column, index) => ({
-                label: column.display_name,
-                value: String(column.id),
-                index,
-              }))}
-              label={t`Name`}
-              placeholder={t`Select a column`}
-              value={String(nameColumn?.id)}
-              onChange={(value) => {
-                updateSlots({
-                  name: {
-                    field_id: parseInt(value, 10),
-                  },
-                });
-              }}
-            />
-
-            <Select
-              clearable
-              data={columns.map((column, index) => ({
-                label: column.display_name,
-                value: String(column.id),
-                index,
-              }))}
-              label={t`Description`}
-              placeholder={t`Select a column`}
-              value={String(descriptionColumn?.id)}
-              onChange={(value) => {
-                updateSlots({
-                  description: {
-                    field_id: parseInt(value, 10),
-                  },
-                });
-              }}
-            />
-
-            <Select
-              clearable
-              data={columns.map((column, index) => ({
-                label: column.display_name,
-                value: String(column.id),
-                index,
-              }))}
-              label={t`Image`}
-              placeholder={t`Select a column`}
-              value={String(imageColumn?.id)}
-              onChange={(value) => {
-                updateSlots({
-                  image: {
-                    field_id: parseInt(value, 10),
-                  },
-                });
-              }}
-            />
-          </Stack>
-        )}
+        {isEditing && <Stack>{t`Settings`}</Stack>}
       </Group>
     </Stack>
   );
