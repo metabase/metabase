@@ -24,7 +24,7 @@
   [:map
    [:type [:= "table"]]
    [:schema {:optional true} :string]
-   [:table :string]])
+   [:name :string]])
 
 (comment
   ;; Examples
@@ -37,7 +37,7 @@
                               :template-tags {}}}}
     :target {:type "table"
              :schema "transforms"
-             :table "gadget_products"}}]
+             :name "gadget_products"}}]
   -)
 
 (defn- source-database-id
@@ -102,7 +102,7 @@
   (api/check-superuser)
   (let [old (t2/select-one :model/Transform id)
         new (merge old body)
-        target-fields #(-> % :target (select-keys [:schema :table]))
+        target-fields #(-> % :target (select-keys [:schema :name]))
         query-fields #(select-keys % [:source :target])]
     (check-database-feature new)
     (when (and (not= (target-fields old) (target-fields new))

@@ -33,8 +33,7 @@
 (defn- sync-table!
   [database target]
   (let [table (or (transforms.util/target-table (:id database) target)
-                  (sync/create-table! database {:schema (:schema target)
-                                                :name (:table target)}))]
+                  (sync/create-table! database (select-keys target [:schema :name])))]
     (sync/sync-table! table)))
 
 (defn exec-transform
