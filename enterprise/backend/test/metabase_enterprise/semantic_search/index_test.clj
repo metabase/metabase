@@ -4,7 +4,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+<<<<<<< HEAD
    [metabase.test :as mt]))
+=======
+   [metabase.collections.models.collection :as collection]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [next.jdbc :as jdbc]))
+>>>>>>> 07a878edc19 (Fix collection filter impl)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -196,3 +203,60 @@
           (is (= {"card" 1, "dashboard" 1}
                  (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
           (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))))))
+
+(deftest filter-by-collection-test
+  (testing "filter-by-collection function filters documents based on personal collection preferences"
+    (let [user1-id (mt/user->id :rasta)
+          user2-id (mt/user->id :crowberto)
+          ;; Get existing personal collections for test users
+          user1-personal-coll-id (u/the-id (collection/user->personal-collection user1-id))
+          user2-personal-coll-id (u/the-id (collection/user->personal-collection user2-id))]
+      (mt/with-temp
+        ;; Create shared collection and sub-collections  
+        [:model/Collection {shared-coll-id :id} {:name "Shared Collection"}
+         :model/Collection {user1-sub-coll-id :id} {:location (str "/" user1-personal-coll-id "/") :name "User1 Sub"}
+         :model/Collection {user2-sub-coll-id :id} {:location (str "/" user2-personal-coll-id "/") :name "User2 Sub"}]
+
+        (let [;; Create test documents representing different collection scenarios
+              docs [{:id "doc1" :model "card" :collection_id user1-personal-coll-id}    ; User1's personal
+                    {:id "doc2" :model "card" :collection_id user2-personal-coll-id}    ; User2's personal  
+                    {:id "doc3" :model "card" :collection_id shared-coll-id}            ; Shared collection
+                    {:id "doc4" :model "card" :collection_id nil}                       ; No collection
+                    {:id "doc5" :model "card" :collection_id user1-sub-coll-id}         ; User1's sub-collection
+                    {:id "doc6" :model "card" :collection_id user2-sub-coll-id}]]       ; User2's sub-collection
+
+          (testing "filter-type 'all' returns all documents unchanged"
+            (let [context {:filter-items-in-personal-collection "all" :current-user-id user1-id}
+                  result (#'semantic.index/filter-by-collection docs context)]
+              (is (= 6 (count result)))
+              (is (= (set (map :id docs)) (set (map :id result))))))
+
+          (testing "filter-type nil defaults to 'all' behavior"
+            (let [context {:filter-items-in-personal-collection nil :current-user-id user1-id}
+                  result (#'semantic.index/filter-by-collection docs context)]
+              (is (= 6 (count result)))
+              (is (= (set (map :id docs)) (set (map :id result))))))
+
+          (testing "filter-type 'only-mine' returns only current user's personal collection items"
+            (let [context {:filter-items-in-personal-collection "only-mine" :current-user-id user1-id}
+                  result (#'semantic.index/filter-by-collection docs context)
+                  result-ids (set (map :id result))]
+              (is (= #{"doc1" "doc5"} result-ids))))
+
+          (testing "filter-type 'only' returns all personal collection items (any user)"
+            (let [context {:filter-items-in-personal-collection "only" :current-user-id user1-id}
+                  result (#'semantic.index/filter-by-collection docs context)
+                  result-ids (set (map :id result))]
+              (is (= #{"doc1" "doc2" "doc5" "doc6"} result-ids))))
+
+          (testing "filter-type 'exclude' returns only shared and uncollected items"
+            (let [context {:filter-items-in-personal-collection "exclude" :current-user-id user1-id}
+                  result (#'semantic.index/filter-by-collection docs context)
+                  result-ids (set (map :id result))]
+              (is (= #{"doc3" "doc4"} result-ids))))
+
+          (testing "filter-type 'exclude-others' returns user's personal items plus shared/uncollected items"
+            (let [context {:filter-items-in-personal-collection "exclude-others" :current-user-id user1-id}
+                  result (#'semantic.index/filter-by-collection docs context)
+                  result-ids (set (map :id result))]
+              (is (= #{"doc1" "doc3" "doc4" "doc5"} result-ids)))))))))

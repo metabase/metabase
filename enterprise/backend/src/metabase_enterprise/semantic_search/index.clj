@@ -1,5 +1,4 @@
 (ns metabase-enterprise.semantic-search.index
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -8,7 +7,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.core :as search]
-   [metabase.search.filter :as search.filter]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -296,7 +294,7 @@
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id filter-items-in-personal-collection current-user-id ids display-type]}]
+  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by table-db-id ids display-type]}]
   (let [conditions (filter some?
                            [(when (some? archived?)
                               [:= :archived archived?])
@@ -310,11 +308,6 @@
                               [:in :last_editor_id last-edited-by])
                             (when table-db-id
                               [:= :database_id table-db-id])
-                            (when filter-items-in-personal-collection
-                              (search.filter/personal-collections-where-clause
-                               {:filter-items-in-personal-collection filter-items-in-personal-collection
-                                :current-user-id current-user-id}
-                               :collection_id))
                             (when (seq ids)
                               [:in :model_id (map str ids)])
                             (when (seq display-type)
@@ -450,6 +443,77 @@
                               [(:id doc) (doc->t2-model doc)]))]
     (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) docs)))
 
+(defn- filter-by-collection
+  "Filter documents based on personal collection preferences.
+  Equivalent to metabase.search.filter/personal-collections-where-clause but operates on docs in memory.
+
+  | Filter         | Personal | Others' Personal | Shared Coll. | No Coll. |
+  |----------------|----------|------------------|--------------|----------|
+  | all            | ✅       | ✅               | ✅           | ✅       |
+  | only-mine      | ✅       | ❌               | ❌           | ❌       |
+  | only           | ✅       | ✅               | ❌           | ❌       |
+  | exclude        | ❌       | ❌               | ✅           | ✅       |
+  | exclude-others | ✅       | ❌               | ✅           | ✅       |
+  "
+  [docs {:keys [filter-items-in-personal-collection current-user-id] :as context}]
+  (let [filter-type (or filter-items-in-personal-collection "all")]
+    (case filter-type
+      "all" docs
+
+      "only-mine"
+      (let [user-personal-collection-id (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id])
+            user-personal-location-pattern (when user-personal-collection-id (str "/" user-personal-collection-id "/"))]
+        (filterv (fn [doc]
+                   (when-let [collection-id (:collection_id doc)]
+                     (when-let [collection (t2/select-one [:collection :personal_owner_id :location] :id collection-id)]
+                       (or (= (:personal_owner_id collection) current-user-id)
+                           ;; Sub-collection of user's personal collection
+                           (and user-personal-location-pattern
+                                (str/starts-with? (str (:location collection)) user-personal-location-pattern))))))
+                 docs))
+
+      "exclude-others"
+      (let [only-mine-docs (filter-by-collection docs {:filter-items-in-personal-collection "only-mine" :current-user-id current-user-id})
+            exclude-docs   (filter-by-collection docs {:filter-items-in-personal-collection "exclude" :current-user-id current-user-id})]
+        (vec (concat only-mine-docs exclude-docs)))
+
+      "only"
+      (filterv (fn [doc]
+                 (when-let [collection-id (:collection_id doc)]
+                   (when-let [collection (t2/select-one [:collection :personal_owner_id :location] :id collection-id)]
+                     (let [personal-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+                           child-patterns (map #(str "/" % "/") personal-ids)]
+                       (or (and (some? (:personal_owner_id collection))
+                                (= (:location collection) "/"))
+                           (some #(str/starts-with? (str (:location collection)) %) child-patterns))))))
+               docs)
+
+      "exclude"
+      (filterv (fn [doc]
+                 (let [collection-id (:collection_id doc)]
+                   (or (nil? collection-id)
+                       (when-let [collection (t2/select-one [:collection :personal_owner_id :location] :id collection-id)]
+                         (let [personal-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+                               child-patterns (map #(str "/" % "/") personal-ids)]
+                           (and (nil? (:personal_owner_id collection))
+                                (not (some #(str/starts-with? (str (:location collection)) %) child-patterns))))))))
+               docs))))
+
+(defn- apply-collection-filter
+  "Apply personal collection filtering with logging."
+  [docs search-context]
+  (let [filter-type (:filter-items-in-personal-collection search-context)]
+    (if (or (nil? filter-type) (= filter-type "all"))
+      docs
+      (let [timer (u/start-timer)
+            filtered-docs (filter-by-collection docs search-context)]
+        (log/debug "Collection filter" {:filter  filter-type
+                                        :before  (count docs)
+                                        :after   (count filtered-docs)
+                                        :dropped (- (count docs) (count filtered-docs))
+                                        :time_ms (u/since-ms timer)})
+        filtered-docs))))
+
 (defn query-index
   "Query the index for documents similar to the search string."
   [db index search-context]
@@ -465,7 +529,8 @@
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
         (-> (transduce xform conj [] reducible)
-            filter-read-permitted)))))
+            filter-read-permitted
+            (apply-collection-filter search-context))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))
