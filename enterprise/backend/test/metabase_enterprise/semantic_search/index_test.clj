@@ -212,14 +212,14 @@
           user1-personal-coll-id (u/the-id (collection/user->personal-collection user1-id))
           user2-personal-coll-id (u/the-id (collection/user->personal-collection user2-id))]
       (mt/with-temp
-        ;; Create shared collection and sub-collections  
+        ;; Create shared collection and sub-collections
         [:model/Collection {shared-coll-id :id} {:name "Shared Collection"}
          :model/Collection {user1-sub-coll-id :id} {:location (str "/" user1-personal-coll-id "/") :name "User1 Sub"}
          :model/Collection {user2-sub-coll-id :id} {:location (str "/" user2-personal-coll-id "/") :name "User2 Sub"}]
 
         (let [;; Create test documents representing different collection scenarios
               docs [{:id "doc1" :model "card" :collection_id user1-personal-coll-id}    ; User1's personal
-                    {:id "doc2" :model "card" :collection_id user2-personal-coll-id}    ; User2's personal  
+                    {:id "doc2" :model "card" :collection_id user2-personal-coll-id}    ; User2's personal
                     {:id "doc3" :model "card" :collection_id shared-coll-id}            ; Shared collection
                     {:id "doc4" :model "card" :collection_id nil}                       ; No collection
                     {:id "doc5" :model "card" :collection_id user1-sub-coll-id}         ; User1's sub-collection

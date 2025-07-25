@@ -455,7 +455,7 @@
   | exclude        | ❌       | ❌               | ✅           | ✅       |
   | exclude-others | ✅       | ❌               | ✅           | ✅       |
   "
-  [docs {:keys [filter-items-in-personal-collection current-user-id] :as context}]
+  [docs {:keys [filter-items-in-personal-collection current-user-id]}]
   (let [filter-type (or filter-items-in-personal-collection "all")]
     (case filter-type
       "all" docs
