@@ -1,3 +1,19 @@
+## [0.55.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.4...embedding-sdk-0.55.5) (2025-07-25)
+
+
+### Bug Fixes
+
+* **sdk:** make isEmbeddingSdk consistent on new iframe embed using singletons ([#60535](https://github.com/metabase/metabase/issues/60535)) ([40fe46e](https://github.com/metabase/metabase/commit/40fe46eaa336c21bb87c5b95f913a9f04cd12e33)), closes [#60349](https://github.com/metabase/metabase/issues/60349)
+* **sdk:** Remove fullscreen and refresh buttons from SDK dashboard as they don't make sense ([#60198](https://github.com/metabase/metabase/issues/60198)) ([#60611](https://github.com/metabase/metabase/issues/60611)) ([b9f95c0](https://github.com/metabase/metabase/commit/b9f95c031afd0f764ab3198bc322b99558d63a92))
+
+
+### Features
+
+* **sdk:** Add withDownloads to the static question ([#60976](https://github.com/metabase/metabase/issues/60976)) ([#61059](https://github.com/metabase/metabase/issues/61059)) ([a7ff2c3](https://github.com/metabase/metabase/commit/a7ff2c3780af2b690493cd38b62b18ea79d2a7c2))
+* **sdk:** Create new dashboard question from `EditableDashboard` ([#61068](https://github.com/metabase/metabase/issues/61068)) ([880d317](https://github.com/metabase/metabase/commit/880d317269740c127608fbfba2279c11318cc153))
+
+
+
 ## [0.55.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.3...embedding-sdk-0.55.4) (2025-07-07)
 
 
