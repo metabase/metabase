@@ -9,8 +9,16 @@ import { NewTransformModal } from "../../components/NewTransformModal";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
 import { transformListUrl } from "../../utils/urls";
 
-export function NewTransformQueryPage() {
-  const [query, setQuery] = useState(() => getInitialQuery());
+type NewTransformQueryPageParams = {
+  type?: DatasetQuery["type"];
+};
+
+type NewTransformQueryPageProps = {
+  params: NewTransformQueryPageParams;
+};
+
+export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
+  const [query, setQuery] = useState(() => getInitialQuery(params));
   const [isModalOpened, setIsModalOpened] = useState(false);
   const dispatch = useDispatch();
 
@@ -43,6 +51,6 @@ export function NewTransformQueryPage() {
   );
 }
 
-function getInitialQuery() {
-  return Question.create({ type: "query" }).datasetQuery();
+function getInitialQuery({ type }: NewTransformQueryPageParams) {
+  return Question.create({ type }).datasetQuery();
 }

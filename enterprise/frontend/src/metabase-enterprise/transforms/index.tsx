@@ -12,7 +12,7 @@ PLUGIN_TRANSFORMS.getTransformRoutes = () => (
   <>
     <Route path="transforms" component={TransformListPage} />
     <Route path="transforms/new" component={NewTransformPage} />
-    <Route path="transforms/new/query" component={NewTransformQueryPage} />
+    <Route path="transforms/new/:type" component={NewTransformQueryPage} />
     <Route path="transforms/:transformId" component={TransformListPage} />
     <Route
       path="transforms/:transformId/query"

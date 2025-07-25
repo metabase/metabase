@@ -1,4 +1,4 @@
-import type { Table, TransformId } from "metabase-types/api";
+import type { DatasetQuery, Table, TransformId } from "metabase-types/api";
 
 export function transformListUrl() {
   return "/admin/datamodel/transforms";
@@ -8,8 +8,8 @@ export function newTransformUrl() {
   return `${transformListUrl()}/new`;
 }
 
-export function newTransformQueryUrl() {
-  return `${newTransformUrl()}/query`;
+export function newTransformQueryUrl(type: DatasetQuery["type"]) {
+  return `${newTransformUrl()}/${type}`;
 }
 
 export function transformUrl(id: TransformId) {

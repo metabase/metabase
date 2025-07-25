@@ -47,13 +47,13 @@ export function NewTransformPage() {
           icon="notebook"
           label={t`Using the notebook editor`}
           description={t`This automatically inherits metadata from your source tables.`}
-          link={newTransformQueryUrl()}
+          link={newTransformQueryUrl("query")}
         />
         <NewTransformOption
           icon="sql"
           label={t`Using a native query`}
           description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
-          link={newTransformQueryUrl()}
+          link={newTransformQueryUrl("native")}
         />
         <NewTransformOption
           icon="copy"
