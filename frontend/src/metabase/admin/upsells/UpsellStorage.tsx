@@ -12,6 +12,8 @@ import { UpsellBanner } from "./components";
 export const BUY_STORAGE_URL = getStoreUrl("account/storage");
 
 export const UpsellStorage = ({ location }: { location: string }) => {
+  const campaign = "storage";
+
   const isHosted = useSetting("is-hosted?");
   const hasStorage = useHasTokenFeature("attached_dwh");
 
@@ -21,7 +23,7 @@ export const UpsellStorage = ({ location }: { location: string }) => {
 
   return (
     <UpsellBanner
-      campaign="storage"
+      campaign={campaign}
       buttonText={t`Add`}
       buttonLink={BUY_STORAGE_URL}
       location={location}

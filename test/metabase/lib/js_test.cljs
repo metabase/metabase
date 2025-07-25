@@ -13,14 +13,14 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
           q2 [nil js/undefined]]
-    (is (lib.js/query= q1 q2)))
+    (is (lib.js/query= q1 q2))))
 
+(deftest ^:parallel query=-test-2
   (testing "explicit fields vs. implied fields"
     (let [q1 #js {"query" #js {"source-table" 1}}
           q2 #js {"query" #js {"source-table" 1
@@ -40,8 +40,9 @@
           "the field-ids must be provided to populate q1")
       (is (lib.js/query= q1 q1 field-ids))
       (is (not (lib.js/query= q1 q2 (conj (vec field-ids) 2)))
-          "duplicates are tracked, so an extra dupe breaks it")))
+          "duplicates are tracked, so an extra dupe breaks it"))))
 
+(deftest ^:parallel query=-test-3
   (testing "missing and extra fields"
     (let [q1 #js {"query" #js {"source-table" 1
                                "fields" #js [#js ["field" 1 nil]
@@ -59,24 +60,17 @@
       (is (not (lib.js/query= q1 q3)))
       (is (not (lib.js/query= q2 q3))))))
 
-(deftest ^:parallel query=-idents-test
-  (testing "idents are ignored for query="
-    (testing "on legacy queries"
-      (let [q1 #js {"query" #js {"source-table"       1
-                                 "aggregation"        #js [#js ["count"]]
-                                 "aggregation-idents" #js {"0" (u/generate-nano-id)}
-                                 "breakout"           #js [#js ["field" 3 nil]]
-                                 "breakout-idents"    #js {"0" (u/generate-nano-id)}
-                                 "expressions"        #js {"some_expr" #js ["field" 12 nil]}
-                                 "expression-idents"  #js {"some_expr" (u/generate-nano-id)}}}
-            ;; Same query, but idents will be different.
-            q2 #js {"query" #js {"source-table"       1
-                                 "aggregation"        #js [#js ["count"]]
-                                 "aggregation-idents" #js {"0" (u/generate-nano-id)}
-                                 "breakout"           #js [#js ["field" 3 nil]]
-                                 "breakout-idents"    #js {"0" (u/generate-nano-id)}
-                                 "expressions"        #js {"some_expr" #js ["field" 12 nil]}
-                                 "expression-idents"  #js {"some_expr" (u/generate-nano-id)}}}]
+(deftest ^:parallel query=-test-4
+  (testing "lib/uuids are ignored for query="
+    (testing "sanity check: legacy queries should be equal"
+      (let [q1 #js {"query" #js {"source-table" 1
+                                 "aggregation"  #js [#js ["count"]]
+                                 "breakout"     #js [#js ["field" 3 nil]]
+                                 "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}
+            q2 #js {"query" #js {"source-table" 1
+                                 "aggregation"  #js [#js ["count"]]
+                                 "breakout"     #js [#js ["field" 3 nil]]
+                                 "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}]
         (is (lib.js/query= q1 q2))))
     (testing "on pMBQL queries"
       (let [q1 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

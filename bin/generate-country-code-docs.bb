@@ -30,7 +30,7 @@
     (if-not (.exists (io/file file-path))
       (throw (ex-info (str "GeoJSON file not found: " file-path)
                       {:type :file-not-found :path file-path})))
-    
+
     (with-open [reader (io/reader file-path)]
       (json/parse-stream reader true))
     (catch Exception e
@@ -43,11 +43,11 @@
   (when-not (map? geojson)
     (throw (ex-info "Invalid GeoJSON structure: expected map"
                     {:type :invalid-structure})))
-  
+
   (when-not (sequential? (:features geojson))
     (throw (ex-info "Invalid GeoJSON structure: missing or invalid features"
                     {:type :invalid-features})))
-  
+
   (let [countries (->> (:features geojson)
                        (map :properties)
                        (map (fn [{:keys [NAME ISO_A2]}]
@@ -55,14 +55,14 @@
                        (filter validate-country)
                        (sort-by :code))
         invalid-count (- (count (:features geojson)) (count countries))]
-    
+
     (when (pos? invalid-count)
       (println (format "Skipped %d entries with invalid or missing data" invalid-count)))
-    
+
     (when (empty? countries)
       (throw (ex-info "No valid countries found in GeoJSON"
                       {:type :no-valid-countries})))
-    
+
     countries))
 
 (defn- format-markdown-table
@@ -135,9 +135,9 @@
         countries (extract-countries geojson)
         countries-table (format-markdown-table countries table-headers)
         markdown-content (generate-markdown-content template-path
-                                                   countries-table 
-                                                   (count countries) 
-                                                   markdown-title)]
+                                                    countries-table
+                                                    (count countries)
+                                                    markdown-title)]
     (write-markdown-file markdown-content output-path)
     (println (format "Generated country codes reference with %d countries" (count countries)))
     (format-with-prettier output-path)
@@ -172,4 +172,4 @@
 
 ;; Auto-run when executed directly
 (when (= *file* (System/getProperty "babashka.file"))
-  (-main)) 
+  (-main))

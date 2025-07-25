@@ -22,7 +22,6 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
@@ -64,7 +63,6 @@
          lib.field/keep-me
          lib.filter.update/keep-me
          lib.filter/keep-me
-         lib.ident/keep-me
          lib.join/keep-me
          metabase.lib.join.util/keep-me
          lib.limit/keep-me
@@ -268,8 +266,6 @@
   update-lat-lon-filter
   update-numeric-filter
   update-temporal-filter]
- [lib.ident
-  random-ident]
  [lib.join
   available-join-strategies
   join

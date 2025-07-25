@@ -1,6 +1,3 @@
-import userEvent from "@testing-library/user-event";
-
-import { findRequests } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
@@ -14,61 +11,56 @@ const setup = (opts: Omit<SetupOpts, "hasEnterprisePlugins"> = {}) =>
 describe("EmbeddingSdkOptionCard (OSS)", () => {
   it("should display the correct title and badges", async () => {
     await setup();
-    expect(
-      screen.getByText("Embedded analytics SDK for React"),
-    ).toBeInTheDocument();
+
+    expect(screen.getByText("Embedded Analytics SDK")).toBeInTheDocument();
     expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });
 
   it("should show 'Try it out' button", async () => {
     await setup();
+
     expect(screen.getByText("Try it out")).toBeInTheDocument();
   });
 
-  it("should show legalese modal when the user hasn't agreed to terms yet", async () => {
+  it("should show disabled icon when neither embedding type is enabled", async () => {
     await setup({
-      showSdkEmbedTerms: true,
       isEmbeddingSdkEnabled: false,
+      isEmbeddingSimpleEnabled: false,
     });
 
-    const toggle = screen.getByRole("switch", { name: "Disabled" });
-    await userEvent.click(toggle);
-
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const icon = screen.getByTestId("sdk-icon");
+    expect(icon).toBeInTheDocument();
+    expect(icon).toHaveAttribute("fill", "none");
   });
 
-  it("should update enable-embedding-sdk directly when the user has agreed to the terms", async () => {
+  it("should show enabled icon when SDK embedding is enabled", async () => {
     await setup({
-      showSdkEmbedTerms: false,
-      isEmbeddingSdkEnabled: false,
-    });
-
-    const toggle = screen.getByRole("switch", { name: "Disabled" });
-    await userEvent.click(toggle);
-
-    const puts = await findRequests("PUT");
-    expect(puts).toHaveLength(1);
-    const [{ url, body }] = puts;
-    expect(url).toContain("api/setting/enable-embedding-sdk");
-    expect(body).toEqual({ value: true });
-  });
-
-  it("should not auto-show legalese modal when disabling the sdk", async () => {
-    await setup({
-      showSdkEmbedTerms: true,
       isEmbeddingSdkEnabled: true,
+      isEmbeddingSimpleEnabled: false,
     });
 
-    const toggle = screen.getByRole("switch", { name: "Enabled" });
-    await userEvent.click(toggle);
+    const icon = screen.getByTestId("sdk-icon");
+    expect(icon).toBeInTheDocument();
+  });
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  it("should show enabled icon when simple embedding is enabled", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: false,
+      isEmbeddingSimpleEnabled: true,
+    });
 
-    const puts = await findRequests("PUT");
-    expect(puts).toHaveLength(1);
-    const [{ url, body }] = puts;
-    expect(url).toContain("api/setting/enable-embedding-sdk");
-    expect(body).toEqual({ value: false });
+    const icon = screen.getByTestId("sdk-icon");
+    expect(icon).toBeInTheDocument();
+  });
+
+  it("should show enabled icon when both embedding types are enabled", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      isEmbeddingSimpleEnabled: true,
+    });
+
+    const icon = screen.getByTestId("sdk-icon");
+    expect(icon).toBeInTheDocument();
   });
 });
