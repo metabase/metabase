@@ -111,6 +111,7 @@
            [:time/offset-date-time
             {:error/message    "instance of java.time.OffsetDateTime"
              :encode/serialize str}]
+           ^{::mr/key "zoned date time"}
            [:time/zoned-date-time
             {:error/message    "instance of java.time.ZonedDateTime"
              :encode/serialize #(str (t/offset-date-time %))}]]

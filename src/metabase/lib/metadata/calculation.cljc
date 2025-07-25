@@ -270,7 +270,7 @@
                     qualified-keyword?
                     [:fn
                      {:error/message ":lib/type should be a :metadata/ keyword"}
-                     #(= (namespace %) "metadata")]]]])
+                     (mr/with-key #(= (namespace %) "metadata"))]]]])
 
 (mu/defn metadata :- ::metadata-map
   "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
@@ -467,13 +467,15 @@
    [:fn
     ;; should be dev-facing only, so don't need to i18n
     {:error/message "Column :lib/desired-column-alias values must be distinct for each stage!"
-     :error/fn      (fn [{:keys [value]} _]
-                      (str "Column :lib/desired-column-alias values must be distinct, got: "
-                           (pr-str (mapv :lib/desired-column-alias value))))}
-    (fn [columns]
-      (or
-       (empty? columns)
-       (apply distinct? (map :lib/desired-column-alias columns))))]])
+     :error/fn      (mr/with-key
+                      (fn [{:keys [value]} _]
+                        (str "Column :lib/desired-column-alias values must be distinct, got: "
+                             (pr-str (mapv :lib/desired-column-alias value)))))}
+    (mr/with-key
+      (fn [columns]
+        (or
+         (empty? columns)
+         (apply distinct? (map :lib/desired-column-alias columns)))))]])
 
 (mr/def ::returned-columns.options
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."

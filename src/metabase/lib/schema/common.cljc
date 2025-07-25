@@ -107,6 +107,7 @@
 
 (mr/def ::uuid
   [:string
+   ^{::mr/key "uuid-normalize"}
    {:decode/normalize (fn [x]
                         (cond-> x
                           (uuid? x) str))
@@ -121,7 +122,7 @@
   [:and
    [:keyword
     {:decode/normalize normalize-keyword}]
-   [:fn
+   [:fn ^{::mr/key "semantic-type-normalize"}
     {:error/message "valid semantic type"
      :error/fn      (fn [{:keys [value]} _]
                       (str "Not a valid semantic type: " (pr-str value)))}
@@ -134,7 +135,7 @@
   [:and
    [:keyword
     {:decode/normalize normalize-keyword}]
-   [:fn
+   [:fn ^{::mr/key "relation-type-normalize"}
     {:error/message "valid relation type"
      :error/fn      (fn [{:keys [value]} _]
                       (str "Not a valid relation type: " (pr-str value)))}
@@ -145,7 +146,7 @@
    {:description "valid semantic or relation type"}
    [:keyword
     {:decode/normalize normalize-keyword}]
-   [:fn
+   [:fn ^{::mr/key "semantic-or-relation-type-normalize"}
     {:error/message "valid semantic or relation type"
      :error/fn      (fn [{:keys [value]} _]
                       (str "Not a valid semantic or relation type: " (pr-str value)))}
@@ -158,6 +159,7 @@
   [:and
    [:keyword
     {:decode/normalize normalize-keyword}]
+   ^{::mr/key "base-type-normalize"}
    [:fn
     {:error/message "valid base type"
      :error/fn      (fn [{:keys [value]} _]

@@ -29,10 +29,11 @@
    [:map
     {:decode/normalize lib.schema.common/normalize-map}
     [:strategy [:ref ::strategy]]]
-   [:multi {:dispatch (fn [x]
-                        (keyword (some #(get x %) [:strategy "strategy"])))
-            :error/fn (fn [{:keys [value]} _]
-                        (str "Invalid binning strategy" (pr-str value)))}
+   [:multi ^{::mr/key "binning-strat"}
+    {:dispatch (fn [x]
+                 (keyword (some #(get x %) [:strategy "strategy"])))
+     :error/fn (fn [{:keys [value]} _]
+                 (str "Invalid binning strategy" (pr-str value)))}
     [:default   [:map
                  [:strategy [:= :default]]]]
     [:bin-width [:map

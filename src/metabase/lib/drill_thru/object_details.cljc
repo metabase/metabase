@@ -5,12 +5,15 @@
    [metabase.lib.drill-thru.zoom :as lib.drill-thru.zoom]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
-(mu/defn object-detail-drill :- [:maybe [:or
-                                         ::lib.schema.drill-thru/drill-thru.pk
-                                         ::lib.schema.drill-thru/drill-thru.zoom
-                                         ::lib.schema.drill-thru/drill-thru.fk-details]]
+(mr/def ::object-detail-drill-out [:maybe [:or
+                                           ::lib.schema.drill-thru/drill-thru.pk
+                                           ::lib.schema.drill-thru/drill-thru.zoom
+                                           ::lib.schema.drill-thru/drill-thru.fk-details]])
+
+(mu/defn object-detail-drill :- ::object-detail-drill-out
   "When clicking a foreign key or primary key value, drill through to the details for that specific object.
 
   Contrast [[metabase.lib.drill-thru.fk-filter/fk-filter-drill]], which filters this query to only those rows with a

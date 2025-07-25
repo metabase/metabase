@@ -192,9 +192,11 @@
 
 (mr/def ::dimension.target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
-           :error/fn (fn [{:keys [value]} _]
-                       (str "Invalid :dimension target: must be either a :field or a :template-tag, got: "
-                            (pr-str value)))}
+           :error/fn
+           ^{::mr/key "invalid dimension"}
+           (fn [{:keys [value]} _]
+             (str "Invalid :dimension target: must be either a :field or a :template-tag, got: "
+                  (pr-str value)))}
    [:field        [:ref ::legacy-field-ref]]
    [:expression   [:ref ::legacy-expression-ref]]
    [:template-tag [:ref ::template-tag]]])
@@ -226,9 +228,11 @@
 
 (mr/def ::target
   [:multi {:dispatch lib.schema.common/mbql-clause-tag
-           :error/fn (fn [{:keys [value]} _]
-                       (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
-                            (pr-str value)))}
+           :error/fn
+           ^{::mr/key "invalid target"}
+           (fn [{:keys [value]} _]
+             (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
+                  (pr-str value)))}
    [:field     [:ref ::legacy-field-ref]]
    [:dimension [:ref ::dimension]]
    [:variable  [:ref ::variable]]])

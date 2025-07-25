@@ -44,11 +44,12 @@
    ::col
    [:fn
     {:error/message "column with all kebab-cased keys"}
-    (fn [m]
-      (every? (fn [k]
-                (and (keyword? k)
-                     (not (str/includes? k "_"))))
-              (keys m)))]])
+    (mr/with-key
+      (fn [m]
+        (every? (fn [k]
+                  (and (keyword? k)
+                       (not (str/includes? k "_"))))
+                (keys m))))]])
 
 (mr/def ::cols
   [:maybe [:sequential ::col]])
@@ -374,24 +375,24 @@
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv col->legacy-metadata cols))
 
-(mu/defn returned-columns :- [:and
-                              [:sequential ::kebab-cased-map]
-                              [:fn
-                               {:error/message "columns should have unique :name(s)"}
-                               (fn [cols]
-                                 (or (empty? cols)
-                                     (apply distinct? (map :name cols))))]]
-  "Return metadata for columns returned by a pMBQL `query`.
+(letfn [(cols-have-unique-names [cols]
+          (or (empty? cols)
+              (apply distinct? (map :name cols))))]
+  (mu/defn returned-columns :- [:and
+                                [:sequential ::kebab-cased-map]
+                                [:fn {:error/message "columns should have unique :name(s)"}
+                                 cols-have-unique-names]]
+    "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
   name and base type). If provided these are merged with the columns the query is expected to return.
 
   Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-  ([query]
-   (returned-columns query []))
+    ([query]
+     (returned-columns query []))
 
-  ([query         :- ::lib.schema/query
-    initial-cols  :- ::cols]
-   (->> initial-cols
-        (add-extra-metadata query)
-        cols->legacy-metadata)))
+    ([query         :- ::lib.schema/query
+      initial-cols  :- ::cols]
+     (->> initial-cols
+          (add-extra-metadata query)
+          cols->legacy-metadata))))

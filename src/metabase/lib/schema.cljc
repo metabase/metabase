@@ -43,12 +43,13 @@
 (mr/def ::stage.native
   [:and
    [:map
-    {:decode/normalize #(->> %
-                             common/normalize-map
-                             ;; filter out null :collection keys -- see #59675
-                             (m/filter-kv (fn [k v]
-                                            (not (and (= k :collection)
-                                                      (nil? v))))))}
+    {:decode/normalize (mr/with-key
+                         #(->> %
+                               common/normalize-map
+                               ;; filter out null :collection keys -- see #59675
+                               (m/filter-kv (fn [k v]
+                                              (not (and (= k :collection)
+                                                        (nil? v)))))))}
     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
@@ -77,10 +78,10 @@
     ]
    [:fn
     {:error/message ":source-table is not allowed in a native query stage."}
-    #(not (contains? % :source-table))]
+    (mr/with-key #(not (contains? % :source-table)))]
    [:fn
     {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]
+    (mr/with-key #(not (contains? % :source-card)))]
    [:fn
     {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
     (complement :query)]])
@@ -167,8 +168,9 @@
 (mr/def ::stage.valid-refs
   [:fn
    {:error/message "Valid references for a single query stage"
-    :error/fn      (fn [{:keys [value]} _]
-                     (ref-error-for-stage value))}
+    :error/fn      (mr/with-key
+                     (fn [{:keys [value]} _]
+                       (ref-error-for-stage value)))}
    (complement ref-error-for-stage)])
 
 ;;; TODO -- should `::page` have a `:lib/type`, like all the other maps in pMBQL?
@@ -202,10 +204,10 @@
     [:page               {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
-    #(not (contains? % :source-query))]
+    (mr/with-key #(not (contains? % :source-query)))]
    [:fn
     {:error/message ":native is not allowed in an MBQL stage."}
-    #(not (contains? % :native))]
+    (mr/with-key #(not (contains? % :native)))]
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
@@ -233,12 +235,12 @@
   [:and
    {:default          {}
     :decode/normalize common/normalize-map
-    :encode/serialize #(dissoc %
-                               ;; this stuff is all added at runtime by QP middleware.
-                               :params
-                               :parameters
-                               :lib/stage-metadata
-                               :middleware)}
+    :encode/serialize (mr/with-key #(dissoc %
+                                            ;; this stuff is all added at runtime by QP middleware.
+                                            :params
+                                            :parameters
+                                            :lib/stage-metadata
+                                            :middleware))}
    [:map
     [:lib/type [:ref ::stage.type]]]
    [:multi {:dispatch      lib-type
@@ -316,8 +318,9 @@
 (mr/def ::stages.valid-refs
   [:fn
    {:error/message "Valid references for all query stages"
-    :error/fn      (fn [{stages :value} _]
-                     (ref-error-for-stages stages))}
+    :error/fn      (mr/with-key
+                     (fn [{stages :value} _]
+                       (ref-error-for-stages stages)))}
    (complement ref-error-for-stages)])
 
 (mr/def ::stages
@@ -358,47 +361,49 @@
                               (= (namespace k) "lib"))))
                    query)))
 
-(mr/def ::query
-  [:and
-   [:map
-    {:decode/normalize common/normalize-map
-     :encode/serialize serialize-query}
-    [:lib/type [:=
-                {:decode/normalize common/normalize-keyword, :default :mbql/query}
-                :mbql/query]]
-    ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
-    ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
-    ;; whatever breaks.
-    [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
-    [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
-                                 [true  ::id/saved-questions-virtual-database]
-                                 [false ::id/database]]]
-    [:stages   [:ref ::stages]]
-    [:parameters {:optional true} [:maybe [:ref ::parameter/parameters]]]
-    ;;
-    ;; OPTIONS
-    ;;
-    ;; These keys are used to tweak behavior of the Query Processor.
-    ;;
-    [:settings    {:optional true} [:maybe [:ref ::settings]]]
-    [:constraints {:optional true} [:maybe [:ref ::constraints]]]
-    [:middleware  {:optional true} [:maybe [:ref ::middleware-options]]]
-    ;; TODO -- `:viz-settings` ?
-    ;;
-    ;; INFO
-    ;;
-    ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
-    ;; User who ran it
-    [:info {:optional true} [:maybe [:ref ::info/info]]]
-    ;;
-    ;; ACTIONS
-    ;;
-    ;; This stuff is only used for Actions.
-    [:create-row {:optional true} [:maybe [:ref ::actions/row]]]
-    [:update-row {:optional true} [:maybe [:ref ::actions/row]]]]
-   ;;
-   ;; CONSTRAINTS
-   [:ref ::lib.schema.util/unique-uuids]
-   [:fn
-    {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
-    #(not (contains? % :expressions))]])
+(let [db-dispatcher (partial = id/saved-questions-virtual-database-id)
+      expressionless #(not (contains? % :expressions))]
+  (mr/def ::query
+    [:and
+     [:map
+      {:decode/normalize common/normalize-map
+       :encode/serialize serialize-query}
+      [:lib/type [:=
+                  {:decode/normalize common/normalize-keyword, :default :mbql/query}
+                  :mbql/query]]
+      ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
+      ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
+      ;; whatever breaks.
+      [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
+      [:database {:optional true} [:multi {:dispatch db-dispatcher}
+                                   [true  ::id/saved-questions-virtual-database]
+                                   [false ::id/database]]]
+      [:stages   [:ref ::stages]]
+      [:parameters {:optional true} [:maybe [:ref ::parameter/parameters]]]
+      ;;
+      ;; OPTIONS
+      ;;
+      ;; These keys are used to tweak behavior of the Query Processor.
+      ;;
+      [:settings    {:optional true} [:maybe [:ref ::settings]]]
+      [:constraints {:optional true} [:maybe [:ref ::constraints]]]
+      [:middleware  {:optional true} [:maybe [:ref ::middleware-options]]]
+      ;; TODO -- `:viz-settings` ?
+      ;;
+      ;; INFO
+      ;;
+      ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
+      ;; User who ran it
+      [:info {:optional true} [:maybe [:ref ::info/info]]]
+      ;;
+      ;; ACTIONS
+      ;;
+      ;; This stuff is only used for Actions.
+      [:create-row {:optional true} [:maybe [:ref ::actions/row]]]
+      [:update-row {:optional true} [:maybe [:ref ::actions/row]]]]
+     ;;
+     ;; CONSTRAINTS
+     [:ref ::lib.schema.util/unique-uuids]
+     [:fn
+      {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
+      expressionless]]))

@@ -36,6 +36,7 @@
 ;;; Driver implementations: This is guaranteed to be present after pre-processing.
 (mr/def ::alias
   [:schema
+   ^{::mr/key "gen"}
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
 
@@ -103,8 +104,10 @@
   [:and
    [:sequential {:min 1} [:ref ::join]]
    [:fn
+    ^{::mr/key "error"}
     {:error/fn (fn [& _]
                  (i18n/tru "Join aliases must be unique at a given stage of a query"))}
+    ^{::mr/key "unique-join-alises-only"}
     (fn ensure-unique-join-aliases [joins]
       (if-let [aliases (not-empty (filter some? (map :alias joins)))]
         (apply distinct? aliases)

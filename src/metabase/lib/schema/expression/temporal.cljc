@@ -179,8 +179,9 @@
    [:or
     (into [:enum
            {:error/message "valid timezone ID"
-            :error/fn      (fn [{:keys [value]} _]
-                             (str "invalid timezone ID: " (pr-str value)))}]
+            :error/fn      (mr/with-key
+                             (fn [{:keys [value]} _]
+                               (str "invalid timezone ID: " (pr-str value))))}]
           (sort
            #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)
@@ -205,10 +206,11 @@
    [:ref ::common/base-type]
    [:fn
     {:error/message ":absolute-datetime base-type must derive from :type/Date or :type/DateTime"}
-    (fn [base-type]
-      (some #(isa? base-type %)
-            [:type/Date
-             :type/DateTime]))]])
+    (mr/with-key
+      (fn [base-type]
+        (some #(isa? base-type %)
+              [:type/Date
+               :type/DateTime])))]])
 
 (mr/def ::absolute-datetime.options
   [:merge

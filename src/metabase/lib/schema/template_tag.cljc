@@ -89,8 +89,9 @@
 
 (mr/def ::disallow-dimension
   [:fn
-   {:decode/normalize #(dissoc % :dimension)
+   {:decode/normalize (mr/with-key #(dissoc % :dimension))
     :error/message    ":dimension is only allowed for :type :dimension template tags"}
+   ^{::mr/key "no dimenson"}
    #(not (contains? % :dimension))])
 
 ;; Example:
@@ -160,7 +161,9 @@
    {:decode/normalize common/normalize-map}
    [:map
     [:type [:ref ::type]]]
-   [:multi {:dispatch #(keyword (:type %))}
+   [:multi {:dispatch
+            ^{::mr/key "dispatch"}
+            #(keyword (:type %))}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]
     [:snippet       [:ref ::snippet]]
@@ -174,6 +177,7 @@
    ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
    [:fn
     {:error/message "keys in template tag map must match the :name of their values"}
+    ^{::mr/key "every tag"}
     (fn [m]
       (every? (fn [[tag-name tag-definition]]
                 (= tag-name (:name tag-definition)))

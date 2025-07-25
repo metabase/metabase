@@ -291,12 +291,13 @@
     [:max-value   number?]
     [:new-binning ::lib.schema.binning/binning]]])
 
+(defn invalid-drill-error-fn [{:keys [value]} _]
+  (str "Invalid drill thru (unknown :type): " (pr-str value)))
+
 (mr/def ::drill-thru
   [:and
    ::drill-thru.common
-   [:multi {:dispatch :type
-            :error/fn (fn [{:keys [value]} _]
-                        (str "Invalid drill thru (unknown :type): " (pr-str value)))}
+   [:multi {:dispatch :type :error/fn invalid-drill-error-fn}
     [:drill-thru/pk                       ::drill-thru.pk]
     [:drill-thru/fk-details               ::drill-thru.fk-details]
     [:drill-thru/zoom                     ::drill-thru.zoom]

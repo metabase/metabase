@@ -132,11 +132,12 @@
 (mr/def ::absolute-datetime
   [:multi {:error/message "valid :absolute-datetime clause"
            :doc/title     [:span [:code ":absolute-datetime"] " clause"]
-           :dispatch      (fn [x]
-                            (cond
-                              (core/not (is-clause? :absolute-datetime x)) :invalid
-                              (mr/validate ::lib.schema.literal/date (second x))      :date
-                              :else                                        :datetime))}
+           :dispatch (mr/with-key
+                       (fn [x]
+                         (cond
+                           (core/not (is-clause? :absolute-datetime x)) :invalid
+                           (mr/validate ::lib.schema.literal/date (second x))      :date
+                           :else                                        :datetime)))}
    [:invalid [:fn
               {:error/message "not an :absolute-datetime clause"}
               (constantly false)]]
@@ -327,10 +328,11 @@
 (mr/def ::require-base-type-for-field-name
   [:fn
    {:error/message ":field clauses using a string field name must specify :base-type."}
-   (fn [[_ id-or-name {:keys [base-type]}]]
-     (if (string? id-or-name)
-       base-type
-       true))])
+   (mr/with-key
+     (fn [[_ id-or-name {:keys [base-type]}]]
+       (if (string? id-or-name)
+         base-type
+         true)))])
 
 (mr/def ::field
   [:and
@@ -390,8 +392,8 @@
 (mr/def ::Reference
   [:schema
    ;; this is provided for the convenience of Lib which uses this schema for `:field-ref` in results metadata
-   {:decode/normalize (fn [x]
-                        ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) x))}
+   {:decode/normalize (mr/with-key (fn [x]
+                                     ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) x)))}
    (one-of aggregation expression field)])
 
 (def Reference
@@ -418,12 +420,13 @@
 
 (mr/def ::StringExpressionArg
   [:multi
-   {:dispatch (fn [x]
-                (cond
-                  (string? x)                     :string
-                  (is-clause? string-functions x) :string-expression
-                  (is-clause? :value x)           :value
-                  :else                           :else))}
+   {:dispatch (mr/with-key
+                (fn [x]
+                  (cond
+                    (string? x)                     :string
+                    (is-clause? string-functions x) :string-expression
+                    (is-clause? :value x)           :value
+                    :else                           :else)))}
    [:string            :string]
    [:string-expression StringExpression]
    [:value             value]
@@ -472,13 +475,14 @@
 (mr/def ::NumericExpressionArg
   [:multi
    {:error/message "numeric expression argument"
-    :dispatch      (fn [x]
-                     (cond
-                       (number? x)                      :number
-                       (is-clause? numeric-functions x) :numeric-expression
-                       (is-clause? aggregations x)      :aggregation
-                       (is-clause? :value x)            :value
-                       :else                            :field))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (cond
+                         (number? x)                      :number
+                         (is-clause? numeric-functions x) :numeric-expression
+                         (is-clause? aggregations x)      :aggregation
+                         (is-clause? :value x)            :value
+                         :else                            :field)))}
    [:number             number?]
    [:numeric-expression NumericExpression]
    [:aggregation        Aggregation]
@@ -490,12 +494,13 @@
 (mr/def ::DateTimeExpressionArg
   [:multi
    {:error/message "datetime expression argument"
-    :dispatch      (fn [x]
-                     (cond
-                       (is-clause? aggregations x)       :aggregation
-                       (is-clause? :value x)             :value
-                       (is-clause? datetime-functions x) :datetime-expression
-                       :else                             :else))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (cond
+                         (is-clause? aggregations x)       :aggregation
+                         (is-clause? :value x)             :value
+                         (is-clause? datetime-functions x) :datetime-expression
+                         :else                             :else)))}
    [:aggregation         Aggregation]
    [:value               value]
    [:datetime-expression DatetimeExpression]
@@ -507,18 +512,19 @@
 (mr/def ::ExpressionArg
   [:multi
    {:error/message "expression argument"
-    :dispatch      (fn [x]
-                     (cond
-                       (number? x)                       :number
-                       (boolean? x)                      :boolean
-                       (is-clause? boolean-functions x)  :boolean-expression
-                       (is-clause? numeric-functions x)  :numeric-expression
-                       (is-clause? datetime-functions x) :datetime-expression
-                       (is-clause? aggregations x)       :aggregation
-                       (string? x)                       :string
-                       (is-clause? string-functions x)   :string-expression
-                       (is-clause? :value x)             :value
-                       :else                             :else))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (cond
+                         (number? x)                       :number
+                         (boolean? x)                      :boolean
+                         (is-clause? boolean-functions x)  :boolean-expression
+                         (is-clause? numeric-functions x)  :numeric-expression
+                         (is-clause? datetime-functions x) :datetime-expression
+                         (is-clause? aggregations x)       :aggregation
+                         (string? x)                       :string
+                         (is-clause? string-functions x)   :string-expression
+                         (is-clause? :value x)             :value
+                         :else                             :else)))}
    [:number               number?]
    [:boolean              :boolean]
    [:boolean-expression   BooleanExpression]
@@ -546,10 +552,11 @@
 (mr/def ::IntGreaterThanZeroOrNumericExpression
   [:multi
    {:error/message "int greater than zero or numeric expression"
-    :dispatch      (fn [x]
-                     (if (number? x)
-                       :number
-                       :else))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (if (number? x)
+                         :number
+                         :else)))}
    [:number PositiveInt]
    [:else   NumericExpression]])
 
@@ -792,10 +799,11 @@
 (mr/def ::OrderComparable
   [:multi
    {:error/message "order comparable"
-    :dispatch      (fn [x]
-                     (if (is-clause? :value x)
-                       :value
-                       :else))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (if (is-clause? :value x)
+                         :value
+                         :else)))}
    [:value value]
    [:else [:or
            number?
@@ -954,15 +962,16 @@
 (mr/def ::Filter
   [:multi
    {:error/message "valid filter expression"
-    :dispatch      (fn [x]
-                     (cond
-                       (is-clause? datetime-functions x) :datetime
-                       (is-clause? numeric-functions x)  :numeric
-                       (is-clause? string-functions x)   :string
-                       (is-clause? boolean-functions x)  :boolean
-                       (is-clause? :value x)             :value
-                       (is-clause? :segment x)           :segment
-                       :else                             :else))}
+    :dispatch   (mr/with-key
+                  (fn [x]
+                    (cond
+                      (is-clause? datetime-functions x) :datetime
+                      (is-clause? numeric-functions x)  :numeric
+                      (is-clause? string-functions x)   :string
+                      (is-clause? boolean-functions x)  :boolean
+                      (is-clause? :value x)             :value
+                      (is-clause? :segment x)           :segment
+                      :else                             :else)))}
    [:datetime DatetimeExpression]
    [:numeric  NumericExpression]
    [:string   StringExpression]
@@ -1004,17 +1013,18 @@
   [:multi
    {:error/message ":field or :expression reference or expression"
     :doc/title     "expression definition"
-    :dispatch      (fn [x]
-                     (cond
-                       (is-clause? numeric-functions x)  :numeric
-                       (is-clause? string-functions x)   :string
-                       (is-clause? boolean-functions x)  :boolean
-                       (is-clause? datetime-functions x) :datetime
-                       (is-clause? :case x)              :case
-                       (is-clause? :if   x)              :if
-                       (is-clause? :offset x)            :offset
-                       (is-clause? :value x)             :value
-                       :else                             :else))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (cond
+                         (is-clause? numeric-functions x)  :numeric
+                         (is-clause? string-functions x)   :string
+                         (is-clause? boolean-functions x)  :boolean
+                         (is-clause? datetime-functions x) :datetime
+                         (is-clause? :case x)              :case
+                         (is-clause? :if   x)              :if
+                         (is-clause? :offset x)            :offset
+                         (is-clause? :value x)             :value
+                         :else                             :else)))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
@@ -1084,10 +1094,11 @@
 (mr/def ::UnnamedAggregation
   [:multi
    {:error/message "unnamed aggregation clause or numeric expression"
-    :dispatch      (fn [x]
-                     (if (is-clause? numeric-functions x)
-                       :numeric-expression
-                       :else))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (if (is-clause? numeric-functions x)
+                         :numeric-expression
+                         :else)))}
    [:numeric-expression NumericExpression]
    [:else (one-of aggregation avg cum-sum distinct distinct-where stddev sum min max metric share count-where
                   sum-where case case:if median percentile ag:var cum-count count offset)]])
@@ -1111,10 +1122,11 @@
 (mr/def ::Aggregation
   [:multi
    {:error/message "aggregation clause or numeric expression"
-    :dispatch      (fn [x]
-                     (if (is-clause? :aggregation-options x)
-                       :aggregation-options
-                       :unnamed-aggregation))}
+    :dispatch      (mr/with-key
+                     (fn [x]
+                       (if (is-clause? :aggregation-options x)
+                         :aggregation-options
+                         :unnamed-aggregation)))}
    [:aggregation-options aggregation-options]
    [:unnamed-aggregation UnnamedAggregation]])
 
@@ -1314,10 +1326,11 @@
    ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
    [:fn
     {:error/message "keys in template tag map must match the :name of their values"}
-    (fn [m]
-      (every? (fn [[tag-name tag-definition]]
-                (core/= tag-name (:name tag-definition)))
-              m))]])
+    (mr/with-key
+      (fn [m]
+        (every? (fn [[tag-name tag-definition]]
+                  (core/= tag-name (:name tag-definition)))
+                m)))]])
 
 (def ^:private NativeQuery:Common
   [:map
@@ -1346,10 +1359,11 @@
 
 (mr/def ::SourceQuery
   [:multi
-   {:dispatch (fn [x]
-                (if ((every-pred map? :native) x)
-                  :native
-                  :mbql))}
+   {:dispatch (mr/with-key
+                (fn [x]
+                  (if ((every-pred map? :native) x)
+                    :native
+                    :mbql)))}
    ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
    ;; queries).
@@ -1400,13 +1414,15 @@
                         (str/includes? (str k) disallowed-char))))]
      [:fn
       {:error/message "legacy source query metadata should use snake_case keys (except for namespaced lib keys, which should use kebab-case)"
-       :error/fn      (fn [{m :value} _]
-                        (str "legacy source query metadata should use snake_case keys (except for namespaced lib keys, which should use kebab-case), got: "
-                             (when (map? m)
-                               (into #{} (filter disallowed-key?) (keys m)))))}
-      (fn [m]
-        (core/and (map? m)
-                  (every? (complement disallowed-key?) (keys m))))])])
+       :error/fn      (mr/with-key
+                        (fn [{m :value} _]
+                          (str "legacy source query metadata should use snake_case keys (except for namespaced lib keys, which should use kebab-case), got: "
+                               (when (map? m)
+                                 (into #{} (filter disallowed-key?) (keys m))))))}
+      (mr/with-key
+        (fn [m]
+          (core/and (map? m)
+                    (every? (complement disallowed-key?) (keys m)))))])])
 
 (def source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
@@ -1532,9 +1548,10 @@
    (let [disallowed-keys #{:filter :breakout :aggreggation :expressions :joins}]
      [:fn
       {:error/message "Join should not have top-level 'inner' query keys like :fields or :filter -- they should go in :source-query"
-       :error/fn      (fn [{join :value} _]
-                        (when (map? join)
-                          (str "join should not have top-level 'inner' query keys, found " (set/intersection (set (keys join)) disallowed-keys))))}
+       :error/fn      (mr/with-key
+                        (fn [{join :value} _]
+                          (when (map? join)
+                            (str "join should not have top-level 'inner' query keys, found " (set/intersection (set (keys join)) disallowed-keys)))))}
       (complement (apply some-fn disallowed-keys))])])
 
 (def Join
@@ -1547,7 +1564,8 @@
    (helpers/non-empty [:sequential Join])
    [:fn
     {:error/message "All join aliases must be unique."}
-    #(helpers/empty-or-distinct? (filter some? (map :alias %)))]])
+    (mr/with-key
+      #(helpers/empty-or-distinct? (filter some? (map :alias %))))]])
 
 (mr/def ::Fields
   [:schema
@@ -1614,12 +1632,14 @@
    ;;
    [:fn
     {:error/message "Query must specify either `:source-table` or `:source-query`, but not both."}
-    (fn [query]
-      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))]
+    (mr/with-key
+      (fn [query]
+        (core/= 1 (core/count (select-keys query [:source-query :source-table])))))]
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
-    (fn [{:keys [breakout fields]}]
-      (empty? (set/intersection (set breakout) (set fields))))]])
+    (mr/with-key
+      (fn [{:keys [breakout fields]}]
+        (empty? (set/intersection (set breakout) (set fields)))))]])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1710,10 +1730,11 @@
 
    [:fn
     {:error/message "max-results-bare-rows must be less or equal to than max-results"}
-    (fn [{:keys [max-results max-results-bare-rows]}]
-      (if-not (core/and max-results max-results-bare-rows)
-        true
-        (core/>= max-results max-results-bare-rows)))]])
+    (mr/with-key
+      (fn [{:keys [max-results max-results-bare-rows]}]
+        (if-not (core/and max-results max-results-bare-rows)
+          true
+          (core/>= max-results max-results-bare-rows))))]])
 
 (mr/def ::MiddlewareOptions
   "Additional options that can be used to toggle middleware on or off."
@@ -1797,11 +1818,12 @@
     (complement (every-pred :native :query))]
    [:fn
     {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
-    (fn [{native :native, mbql :query, query-type :type}]
-      (core/case query-type
-        :native (core/not mbql)
-        :query  (core/not native)
-        false))]])
+    (mr/with-key
+      (fn [{native :native, mbql :query, query-type :type}]
+        (core/case query-type
+          :native (core/not mbql)
+          :query  (core/not native)
+          false)))]])
 
 (mr/def ::check-query-does-not-have-source-metadata
   "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the

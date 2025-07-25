@@ -201,18 +201,20 @@
     #_args [:* :any]]
    [:fn
     {:error/message "non-aggregation expression"}
-    #(letfn [(agg-tag? [tag]
-               (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
-             (agg-expr? [expr]
-               (and (vector? expr)
-                    (or (agg-tag? (first expr))
-                        (some agg-expr? (nnext expr)))))]
-       (not (agg-expr? %)))]])
+    (mr/with-key
+      #(letfn [(agg-tag? [tag]
+                 (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
+               (agg-expr? [expr]
+                 (and (vector? expr)
+                      (or (agg-tag? (first expr))
+                          (some agg-expr? (nnext expr)))))]
+         (not (agg-expr? %))))]])
 
 (mr/def ::expressions
   "The `:expressions` definition map as found as a top-level key in an MBQL stage."
   [:and
    [:sequential {:min 1} [:ref ::expression.definition]]
+   ^{::mr/key "unique expression names"}
    [:fn
     {:error/message "expressions must have unique names"}
     (fn [expressions]
@@ -224,15 +226,16 @@
    [:ref ::integer]
    [:fn
     {:error/message "positive integer literal or numeric expression"}
-    #(cond
-       (vector? %) ;; non-literal (checked above)
-       true
+    (mr/with-key
+      #(cond
+         (vector? %) ;; non-literal (checked above)
+         true
 
-       (not (int? %))
-       false
+         (not (int? %))
+         false
 
-       (not (pos? %))
-       false
+         (not (pos? %))
+         false
 
-       :else
-       true)]])
+         :else
+         true))]])
