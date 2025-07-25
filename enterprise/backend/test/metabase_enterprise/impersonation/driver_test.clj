@@ -672,8 +672,7 @@
     (.await ^CountDownLatch finish-latch)))
 
 (deftest nested-do-with-connection-with-options-test
-  (testing "nested calls to `do-with-connection-with-options-test` use the same
-            connection to ensure the correct connection options are set"
+  (testing "nested calls to `do-with-connection-with-options` have the correct connection options set"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                                :+features [:connection-impersonation]})
       (mt/with-premium-features #{:advanced-permissions}
@@ -690,9 +689,9 @@
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                      :details (impersonation-details driver/*driver* (mt/db))}]
               (mt/with-db database
-                (sync/sync-database! database {:scan :schema})
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                (sync/sync-database! database {:scan :schema})
                 (do-on-all-connection-in-pool
                  (fn []
                    (sql-jdbc.execute/do-with-connection-with-options
