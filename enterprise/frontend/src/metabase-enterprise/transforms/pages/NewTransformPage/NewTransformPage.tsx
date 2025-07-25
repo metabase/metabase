@@ -33,7 +33,14 @@ export function NewTransformPage() {
   };
 
   return (
-    <Flex direction="column" flex={1} h="100%" justify="center" align="center">
+    <Flex
+      direction="column"
+      flex={1}
+      p="xl"
+      h="100%"
+      justify="center"
+      align="center"
+    >
       <Stack>
         <Title order={3}>{t`Create a new transform`}</Title>
         <NewTransformOption
