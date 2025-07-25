@@ -39,20 +39,24 @@
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (semantic.pgvector-api/index-documents!
-   (get-pgvector-datasource!)
-   (get-index-metadata)
-   (vec document-reducible)))
+  (let [pgvector (get-pgvector-datasource!)
+        index-metadata (get-index-metadata)
+        embedding-model (get-configured-embedding-model)]
+    (jdbc/with-transaction [tx pgvector]
+      (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
+    (semantic.pgvector-api/index-documents! pgvector index-metadata (vec document-reducible))))
 
 (defenterprise delete-from-index!
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (semantic.pgvector-api/delete-documents!
-   (get-pgvector-datasource!)
-   (get-index-metadata)
-   model
-   (vec ids)))
+  ;; If data-source has not been initialized, then presumably the index doesn't exist yet.
+  (when @semantic.db/data-source
+    (semantic.pgvector-api/delete-documents!
+     (get-pgvector-datasource!)
+     (get-index-metadata)
+     model
+     (vec ids))))
 
 ;; TODO: add reindexing/table-swapping logic when index is detected as stale
 (defenterprise init!
