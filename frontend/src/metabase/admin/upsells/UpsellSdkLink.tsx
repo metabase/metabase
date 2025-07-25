@@ -25,7 +25,6 @@ export function UpsellSdkLink() {
     return (
       <UnstyledButton
         onClick={triggerUpsellFlow}
-        fz="sm"
         c="brand"
         className={linkStyles.link}
         key="upgrade-button"
@@ -34,6 +33,7 @@ export function UpsellSdkLink() {
       </UnstyledButton>
     );
   }
+
   return (
     <ExternalLink key="upgrade-url" href={upgradeUrl}>
       {t`upgrade to Metabase Pro`}

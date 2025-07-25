@@ -20,14 +20,16 @@ import {
   Divider,
   Flex,
   Group,
+  HoverCard,
   Icon,
-  Popover,
   Text,
 } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
 import { EmbeddingToggle } from "../EmbeddingToggle";
+
+import S from "./EmbeddingSdkSettings.module.css";
 
 const utmTags = {
   utm_source: "product",
@@ -113,11 +115,7 @@ export function EmbeddingSdkSettings() {
     <SettingsPageWrapper title={t`Embedded Analytics SDK`}>
       <UpsellDevInstances location="embedding-page" />
 
-      <Box
-        bd="1px solid var(--mb-color-border)"
-        bg="var(--mb-color-background)"
-        style={{ borderRadius: 8 }}
-      >
+      <Box className={S.SectionCard}>
         <Box p="lg">
           <Group mb="md">
             <Text size="lg" fw={600} c="text-dark">
@@ -168,7 +166,6 @@ export function EmbeddingSdkSettings() {
           px="xl"
           bg="none"
           bd="none"
-          variant="outline"
         >
           <Text size="sm" c="text-medium">
             {apiKeyBannerText}
@@ -177,12 +174,7 @@ export function EmbeddingSdkSettings() {
       </Box>
 
       {isSimpleEmbedFeatureEnabled && (
-        <Box
-          bg="var(--mb-color-background)"
-          p="lg"
-          bd="1px solid var(--mb-color-border)"
-          style={{ borderRadius: 8 }}
-        >
+        <Box p="lg" className={S.SectionCard}>
           <Flex direction="column" gap="md">
             <Group gap="sm">
               <Text size="lg" fw={600} c="text-dark">
@@ -227,38 +219,34 @@ export function EmbeddingSdkSettings() {
         </Box>
       )}
 
-      <Box
-        bg="var(--mb-color-background)"
-        p="lg"
-        bd="1px solid var(--mb-color-border)"
-        style={{ borderRadius: 8 }}
-      >
-        <Group gap="xs" mb="md">
-          <Text size="lg" fw={600} c="text-dark">
-            {t`Cross-Origin Resource Sharing (CORS)`}
-          </Text>
-          <Popover width={300} position="top" withArrow shadow="md">
-            <Popover.Target>
-              <Icon
-                size={16}
-                name="info"
-                c="text-medium"
-                style={{ cursor: "pointer" }}
-              />
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Text size="sm">
+      <Box py="lg" px="xl" className={S.SectionCard}>
+        <AdminSettingInput
+          title={t`Cross-Origin Resource Sharing (CORS)`}
+          description={
+            <Group align="center" mt="xs" gap="sm">
+              <Text c="text-medium" fz="md">
                 {isEmbeddingAvailable
-                  ? t`Enter the origins for the websites or apps where you want to allow embedding, separated by a space. These origins apply to both SDK and simple embedding. Localhost is automatically included. Changes will take effect within one minute.`
+                  ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
                   : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and enter the origins for the websites or apps where you want to allow SDK and simple embedding.`}
               </Text>
-            </Popover.Dropdown>
-          </Popover>
-        </Group>
-        <Text c="text-medium" mb="md">
-          {t`Enter the origins for the websites or apps where you want to allow SDK embedding.`}
-        </Text>
-        <AdminSettingInput
+
+              {isEmbeddingAvailable && (
+                <HoverCard position="bottom">
+                  <HoverCard.Target>
+                    <Icon name="info_filled" c="text-medium" cursor="pointer" />
+                  </HoverCard.Target>
+
+                  <HoverCard.Dropdown>
+                    <Box p="md" w={270}>
+                      <Text size="md" lh="lg" c="text-medium">
+                        {t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`}
+                      </Text>
+                    </Box>
+                  </HoverCard.Dropdown>
+                </HoverCard>
+              )}
+            </Group>
+          }
           name="embedding-app-origins-sdk"
           placeholder="https://*.example.com"
           inputType="text"
