@@ -102,6 +102,15 @@
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
 
+(defsetting enable-embedding-simple
+  (deferred-tru "Allow admins to embed Metabase via simple embedding?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :setter     (make-embedding-toggle-setter :enable-embedding-simple "simple-embedding"))
+
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
   :type       :boolean
@@ -249,7 +258,8 @@
    #_{:clj-kondo/ignore [:deprecated-var]} (enable-embedding)
    (enable-embedding-static)
    (enable-embedding-interactive)
-   (enable-embedding-sdk)))
+   (enable-embedding-sdk)
+   (enable-embedding-simple)))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
