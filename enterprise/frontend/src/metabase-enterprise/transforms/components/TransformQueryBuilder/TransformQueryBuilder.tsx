@@ -1,10 +1,9 @@
-import { t } from "ttag";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Button, Flex, Group } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
+import { TransformHeader } from "./TransformHeader";
 import { TransformNotebook } from "./TransformNotebook";
 import S from "./TransformQueryBuilder.module.css";
 import { TransformVisualization } from "./TransformVisualization";
@@ -44,20 +43,11 @@ export function TransformQueryBuilder({
 
   return (
     <Flex className={S.root} direction="column" flex="1 1 0" bg="bg-white">
-      <Group
-        className={S.header}
-        px="md"
-        py="sm"
-        justify="end"
-        pos="sticky"
-        top={0}
-        bg="bg-white"
-      >
-        <Button variant="filled" loading={isSaving} onClick={handleSave}>
-          {t`Save`}
-        </Button>
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
-      </Group>
+      <TransformHeader
+        isSaving={isSaving}
+        onSave={handleSave}
+        onCancel={onCancel}
+      />
       <TransformNotebook question={question} onChange={handleChange} />
       <TransformVisualization
         question={question}
