@@ -5,16 +5,18 @@ import type { DatasetQuery } from "metabase-types/api";
 
 import { NewTransformForm } from "./NewTransformForm";
 
+type NewTransformSource = "question" | "model";
+
 type NewTransformModalProps = {
   query: DatasetQuery;
-  label?: string;
+  source?: NewTransformSource;
   isOpened?: boolean;
   onClose: () => void;
 };
 
 export function NewTransformModal({
   query,
-  label,
+  source,
   isOpened = true,
   onClose,
 }: NewTransformModalProps) {
@@ -23,9 +25,7 @@ export function NewTransformModal({
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header>
-          <Modal.Title>
-            {label ? t`New transform from ${label}` : t`New transform`}
-          </Modal.Title>
+          <Modal.Title>{getTitle(source)}</Modal.Title>
           <Flex align="center" justify="flex-end" gap="sm">
             <Modal.CloseButton />
           </Flex>
@@ -36,4 +36,15 @@ export function NewTransformModal({
       </Modal.Content>
     </Modal.Root>
   );
+}
+
+function getTitle(source?: NewTransformSource) {
+  switch (source) {
+    case "question":
+      return t`New transform from a question`;
+    case "model":
+      return t`New transform from a model`;
+    default:
+      return t`New transform`;
+  }
 }

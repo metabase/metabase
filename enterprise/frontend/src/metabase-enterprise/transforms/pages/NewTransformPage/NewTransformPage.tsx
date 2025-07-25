@@ -65,7 +65,7 @@ export function NewTransformPage() {
       {modalType === "transform" && card != null && (
         <NewTransformModal
           query={card.dataset_query}
-          label={card.name}
+          source={card.type === "question" ? "question" : "model"}
           onClose={handleModalClose}
         />
       )}
