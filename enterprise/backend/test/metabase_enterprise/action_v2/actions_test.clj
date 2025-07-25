@@ -10,4 +10,3 @@
   (is (= "Data editing isn't supported on one of the target databases." (unsupported-dbs-msg [{:id 1} {:id 2}] [{:id 1}])))
   (is (= "Data editing isn't supported on the target databases." (unsupported-dbs-msg [{:id 1} {:id 2}] [{:id 1} {:id 2}])))
   (is (= "Data editing isn't supported on some of the target databases." (unsupported-dbs-msg [{:id 1} {:id 2} {:id 3}] [{:id 1} {:id 2}]))))
-
