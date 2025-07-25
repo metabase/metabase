@@ -14,7 +14,11 @@
    [:input_type                        [:enum "dropdown" "textarea" "date" "datetime" "text"]]
    [:semantic_type    {:optional true} :keyword]
    [:optional                          :boolean]
-   [:nullable                          :boolean]
+   ;; TODO in practice this should never be null (and we strip nils current)
+   ;;      for table editing actions, this relies on a driver feature that must be implemented for the driver to support
+   ;;      data editing, but it could still be NULL in the database when the field metadata was loaded from a serialized
+   ;;      definition from an older version.
+   [:nullable         {:optional true} :boolean]
    [:readonly                          :boolean]
    [:database_default {:optional true} :any]
    ;; value can be nil, so this is optional to avoid confusion
@@ -91,11 +95,7 @@
                           :field_id                (:id field)
                           :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
                           :optional                (not required)
-
-                          :nullable                (:database_is_nullable field
-                                                                          ;; can the remove the default "false"
-                                                                          ;; value once #60263 is merged
-                                                                          false)
+                          :nullable                (:database_is_nullable field)
                           :database_default        (:database_default field)
                           :readonly                (or (= "readonly" (:visibility param-setting))
                                                        (not (column-editable? (:name field))))

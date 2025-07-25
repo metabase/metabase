@@ -45,6 +45,19 @@
     [:action-kw :keyword]
     [:mapping [:maybe :map]]]])
 
+(mr/def ::execute-form
+  "A description of the form to render for executing an action"
+  [:map
+   [:title :string]
+   ;; TODO fully define the shape of a parameter
+   [:parameters [:sequential [:map {:closed false}
+                              [:id :string]
+                              [:display_name :string]
+                              [:input_type :string]
+                              [:optional :boolean]
+                              [:readonly :boolean]
+                              [:value {:optional true} :any]]]]])
+
 (mu/defn- fetch-unified-action :- ::action-expression
   "Resolve various flavors of action-id into plain data, making it easier to dispatch on. Fetch config etc."
   [scope :- ::types/scope.hydrated
@@ -158,7 +171,7 @@
   [{}
    {}
    ;; TODO support for bulk actions
-   {:keys [action scope input]}]
+   {:keys [action scope input]}] :- ::execute-form
   (api/check-superuser)
   (let [scope         (actions/hydrate-scope scope)
         unified       (fetch-unified-action scope action)
