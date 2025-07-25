@@ -49,7 +49,7 @@
     (let [rows [["eo" "Hello" "Hola"]]
           result (#'dictionary/process-rows rows)]
       (is (= 1 (count (:errors result))))
-      (is (re-find #"Row 2.*Invalid locale" (first (:errors result)))))))
+      (is (re-find #"Row 1.*Invalid locale" (first (:errors result)))))))
 
 (deftest ^:parallel process-rows-duplicate-keys-test
   (testing "Duplicate translation keys generate error"
@@ -140,26 +140,36 @@
           (is (= 2 (count-translations)))
           (let [translations (get-translations)]
             (is (some #(and (= (:locale %) "de") (= (:msgid %) "Thank you") (= (:msgstr %) "Danke")) translations))
-            (is (some #(and (= (:locale %) "it") (= (:msgid %) "Good morning") (= (:msgstr %) "Buongiorno")) translations))))))))
+            (is (some #(and (= (:locale %) "it") (= (:msgid %) "Good morning") (= (:msgstr %) "Buongiorno")) translations))))))
+
+    (testing "CSV with headers in different order is imported correctly"
+      (mt/with-premium-features #{:content-translation}
+        (let [csv-different-order "Translation,Language,String\nHola,es,Hello\nAu revoir,fr,Goodbye"
+              file (.getBytes csv-different-order)]
+          (dictionary/read-and-import-csv! file)
+          (is (= 2 (count-translations)))
+          (let [translations (get-translations)]
+            (is (some #(and (= (:locale %) "es") (= (:msgid %) "Hello") (= (:msgstr %) "Hola")) translations))
+            (is (some #(and (= (:locale %) "fr") (= (:msgid %) "Goodbye") (= (:msgstr %) "Au revoir")) translations))))))))
 
 (deftest ^:parallel format-row-test
   (testing "Format function standardizes locale"
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row ["pt-br" "msgid" "msgstr"])))
+         (#'dictionary/format-row [:language :string :translation] ["pt-br" "msgid" "msgstr"])))
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row ["Pt-bR" "msgid" "msgstr"])))
+         (#'dictionary/format-row [:language :string :translation] ["Pt-bR" "msgid" "msgstr"])))
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row ["pt_br" "msgid" "msgstr"])))
+         (#'dictionary/format-row [:language :string :translation] ["pt_br" "msgid" "msgstr"])))
     (is (=
          ["zh_CN" "msgid" "msgstr"]
-         (#'dictionary/format-row ["ZH-cn" "msgid" "msgstr"]))))
+         (#'dictionary/format-row [:language :string :translation] ["ZH-cn" "msgid" "msgstr"]))))
   (testing "Format function trims all fields"
     (is (=
          ["pt_BR" "msgid" "msgstr"]
-         (#'dictionary/format-row [" pt-BR " "msgid " " msgstr"])))))
+         (#'dictionary/format-row [:language :string :translation] [" pt-BR " "msgid " " msgstr"])))))
 
 (deftest import-translations-success-test
   (ct-utils/with-clean-translations!

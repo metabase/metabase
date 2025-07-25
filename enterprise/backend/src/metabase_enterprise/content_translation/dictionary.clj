@@ -50,8 +50,8 @@
 
 (defn- format-row
   "Formats a row to be inserted into the content translation table. Locales are standardized, and all fields are trimmed. Extra fields are included as well."
-  [row]
-  (let [[locale msgid msgstr & extras] row
+  [headers row]
+  (let [{locale :language msgid :string msgstr :translation} (zipmap headers row)
         normalized-locale (i18n/normalized-locale-string (str/trim locale))
         formatted-locale (if (nil? normalized-locale)
                            (str/trim locale)
@@ -59,7 +59,7 @@
         formatted-msgid (str/trim msgid)
         formatted-msgstr (str/trim msgstr)]
     (into [formatted-locale formatted-msgid formatted-msgstr]
-          extras)))
+          (subvec row 3))))
 
 (defn- row-errors
   [state index translation]
@@ -79,6 +79,14 @@
                                                     (map u/lower-case-en)
                                                     set))))
 
+(def ^:private default-headers [:language :string :translation])
+
+(defn- parse-header
+  [header-row]
+  (->> (map u/lower-case-en header-row)
+       (map keyword)
+       vec))
+
 (defn- process-rows
   "Format, validate, and process rows from a CSV. Takes a collection of vectors and returns a map with the shape
   {:translations [{:locale :msgid :msgstr}], :errors [string]}, plus the set :seen for internal use."
@@ -95,9 +103,11 @@
                   (update :translations conj translation)
                   (update :errors into errors))))]
     (let [[maybe-header & rest] rows
-          formatted-rows (map format-row (if (header? maybe-header)
-                                           rest
-                                           rows))]
+          parsed-header (if (header? maybe-header) (parse-header maybe-header) default-headers)
+          formatted-rows (map (partial format-row parsed-header)
+                              (if (header? maybe-header)
+                                rest
+                                rows))]
       (binding [*header-adjustment* (if (header? maybe-header) 1 0)]
         (reduce-kv collect-translation-and-errors
                    {:seen         #{}
