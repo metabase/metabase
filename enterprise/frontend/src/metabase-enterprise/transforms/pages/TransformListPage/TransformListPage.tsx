@@ -1,7 +1,6 @@
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import type { TransformListPageProps } from "metabase/plugins";
 import { Flex, rem } from "metabase/ui";
 import {
   useGetTransformQuery,
@@ -13,6 +12,14 @@ import { TransformList } from "./TransformList";
 import S from "./TransformListPage.module.css";
 import { TransformSettings } from "./TransformSettings";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constrants";
+
+type TransformListPageParams = {
+  transformId?: string;
+};
+
+type TransformListPageProps = {
+  params: TransformListPageParams;
+};
 
 export function TransformListPage({ params }: TransformListPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);

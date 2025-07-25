@@ -5,10 +5,17 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { TransformQueryPageProps } from "metabase/plugins";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 
 import { TransformQuerySettings } from "./TransformQuerySettings";
+
+type TransformQueryPageParams = {
+  transformId: string;
+};
+
+type TransformQueryPageProps = {
+  params: TransformQueryPageParams;
+};
 
 export function TransformQueryPage({ params }: TransformQueryPageProps) {
   const transformId = Urls.extractEntityId(params.transformId);
