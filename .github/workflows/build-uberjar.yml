@@ -47,71 +47,57 @@ jobs:
             echo "build_needed=false" >> $GITHUB_OUTPUT
           fi
 
-  # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
-    if: |
-      !cancelled() &&
-      contains(github.ref, 'release-x')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     outputs:
-      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
-      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+      java_version: ${{ steps.dependencies.outputs.java_version }}
+      node_version: ${{ steps.dependencies.outputs.node_version }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
       - name: Get build dependencies
-        uses: actions/github-script@v7
         id: dependencies
+        uses: actions/github-script@v7
         with:
           script: | # js
-            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const version = getVersionFromReleaseBranch('${{ github.ref }}');
-            const requirements = getBuildRequirements(version);
-
-            return {
-              java_version: requirements.java,
-              node_version: requirements.node,
-            };
-
-  static-viz-files-changed:
-    name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "files-changed"
-      - name: Build static-viz frontend
-        run: yarn build-static-viz
-        env:
-          MB_EDITION: ee
-      - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
-
-      - name: Check for static viz changes
-        uses: dorny/paths-filter@v3.0.0
-        id: static_viz
-        with:
-          token: ${{ github.token }}
-          filters: .github/static-viz-sources.yaml
+            let javaVersion = 21;  // default
+            let nodeVersion = 22;  // default
+            
+            // Check if this is a release branch
+            if (context.ref.includes('release-')) {
+              try {
+                const fs = require('fs');
+                const path = require('path');
+                
+                // Check if release tools exist
+                const releasePath = path.join(process.env.GITHUB_WORKSPACE, 'release');
+                if (fs.existsSync(releasePath)) {
+                  // Prepare build scripts
+                  const { execSync } = require('child_process');
+                  execSync('yarn && yarn build', { cwd: releasePath });
+                  
+                  // Get requirements from release branch
+                  const { getBuildRequirements, getVersionFromReleaseBranch } = require(path.join(releasePath, 'dist/index.cjs'));
+                  const version = getVersionFromReleaseBranch(context.ref);
+                  const requirements = getBuildRequirements(version);
+                  
+                  javaVersion = requirements.java;
+                  nodeVersion = requirements.node;
+                  console.log(`Release branch detected: Using Java ${javaVersion}, Node ${nodeVersion}`);
+                }
+              } catch (error) {
+                console.log(`Could not get release requirements: ${error.message}`);
+                console.log(`Using defaults: Java ${javaVersion}, Node ${nodeVersion}`);
+              }
+            } else {
+              console.log(`Non-release branch: Using defaults Java ${javaVersion}, Node ${nodeVersion}`);
+            }
+            
+            core.setOutput('java_version', javaVersion);
+            core.setOutput('node_version', nodeVersion);
 
   build:
-    needs: [check-build-needed, get-build-requirements, static-viz-files-changed]
+    needs: [check-build-needed, get-build-requirements]
     if: ${{ !cancelled() && needs.check-build-needed.outputs.build_needed == 'true' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -128,12 +114,12 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version || 20 }}"
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+          java-version: "${{ needs.get-build-requirements.outputs.java_version }}"
 
       - name: Build uberjar with ./bin/build.sh
         timeout-minutes: 10
@@ -144,6 +130,13 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+
+      - name: Upload Static Viz Bundle Artifact
+        if: ${{ matrix.edition == 'ee' }}  # Only upload once, from EE build
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-viz-bundle-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/frontend_client/app/dist
 
   pr-env:
     needs: [build]
