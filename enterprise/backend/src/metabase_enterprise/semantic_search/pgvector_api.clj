@@ -50,7 +50,7 @@
     (if model-changed
       (let [{:keys [index
                     index-table-exists
-                    metadata-row] :as bi}
+                    metadata-row]}
             (semantic.index-metadata/find-best-index! pgvector index-metadata embedding-model)]
         ;; Metadata might exist without table (deleted manually) or table without metadata
         ;; (created outside this system). Both cases are handled gracefully.
@@ -91,7 +91,7 @@
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/delete-from-index! pgvector index model ids)))
 
-#_{:clj-kondo/ignore [unresolved-require]}
+#_{:clj-kondo/ignore [:unresolved-require :metabase/modules]}
 (comment
   (init-semantic-search! pgvector index-metadata embedding-model)
   (index-documents! pgvector index-metadata [{:model           "card"

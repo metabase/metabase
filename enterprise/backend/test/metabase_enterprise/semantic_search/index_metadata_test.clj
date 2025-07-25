@@ -38,7 +38,7 @@
               _                (sut pgvector index-metadata)]
           (is (= table-names-snap (semantic.tu/get-table-names pgvector))))))))
 
-(defn- open-tables [pgvector index-metadata]
+(defn- open-tables! [pgvector index-metadata]
   (semantic.tu/closeable
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
    (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
@@ -47,7 +47,7 @@
   (let [pgvector       semantic.tu/db
         index-metadata (semantic.tu/unique-index-metadata)
         sut            semantic.index-metadata/drop-tables-if-exists!]
-    (with-open [_ (open-tables pgvector index-metadata)]
+    (with-open [_ (open-tables! pgvector index-metadata)]
       (let [table-names-snap (semantic.tu/get-table-names pgvector)
             _                (sut pgvector index-metadata)
             now-expected     (remove (hash-set (:control-table-name index-metadata)
@@ -59,7 +59,7 @@
   (let [pgvector       semantic.tu/db
         index-metadata (semantic.tu/unique-index-metadata)
         sut            semantic.index-metadata/ensure-control-row-exists!]
-    (with-open [_ (open-tables pgvector index-metadata)]
+    (with-open [_ (open-tables! pgvector index-metadata)]
       (testing "creates singleton control row with id=0"
         (is (= [] (semantic.tu/get-control-rows pgvector index-metadata)) "should be empty at start")
         (sut pgvector index-metadata)
@@ -77,7 +77,7 @@
         index1         (semantic.index-metadata/qualify-index (assoc un-index :table-name "i1") index-metadata)
         index2         (semantic.index-metadata/qualify-index (assoc un-index :table-name "i2") index-metadata)
         sut            semantic.index-metadata/activate-index!]
-    (with-open [_ (open-tables pgvector index-metadata)]
+    (with-open [_ (open-tables! pgvector index-metadata)]
       (let [index-id1 (semantic.index-metadata/record-new-index-table! pgvector index-metadata index1)
             index-id2 (semantic.index-metadata/record-new-index-table! pgvector index-metadata index2)]
         (testing "does nothing if no control row"
@@ -100,7 +100,7 @@
         un-index       (semantic.index/default-index semantic.tu/mock-embedding-model)
         index          (semantic.index-metadata/qualify-index un-index index-metadata)
         sut            semantic.index-metadata/get-active-index-state]
-    (with-open [_ (open-tables pgvector index-metadata)]
+    (with-open [_ (open-tables! pgvector index-metadata)]
       (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
       (testing "by default there is no active index"
         (is (nil? (sut pgvector index-metadata))))
@@ -116,18 +116,18 @@
   (-> (semantic.index/default-index embedding-model)
       (semantic.index-metadata/qualify-index index-metadata)))
 
-(defn- add-index [pgvector index-metadata embedding-model]
+(defn- add-index! [pgvector index-metadata embedding-model]
   (let [index (default-index embedding-model index-metadata)]
     (semantic.index/create-index-table-if-not-exists! pgvector index)
     {:index    index
      :index-id (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)}))
 
-(defn- setup-scenario [pgvector index-metadata {:keys [active inactive]}]
+(defn- setup-scenario! [pgvector index-metadata {:keys [active inactive]}]
   (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
   (when active
-    (let [{:keys [index-id]} (add-index pgvector index-metadata active)]
+    (let [{:keys [index-id]} (add-index! pgvector index-metadata active)]
       (semantic.index-metadata/activate-index! pgvector index-metadata index-id)))
-  (run! #(add-index pgvector index-metadata %) inactive))
+  (run! #(add-index! pgvector index-metadata %) inactive))
 
 (deftest find-best-index!-test
   (let [pgvector         semantic.tu/db
@@ -158,8 +158,8 @@
                   index'         #(default-index % index-metadata)
                   sut'           #(sut pgvector index-metadata %)]]
       (testing (str "scenario: " desc)
-        (with-open [_ (open-tables pgvector index-metadata)]
-          (setup-scenario pgvector index-metadata scenario)
+        (with-open [_ (open-tables! pgvector index-metadata)]
+          (setup-scenario! pgvector index-metadata scenario)
           (let [metadata-rows   (semantic.tu/get-metadata-rows pgvector index-metadata)
                 model-name->row (u/index-by :model_name metadata-rows)
                 model-row       (comp model-name->row :model-name)]
@@ -194,7 +194,7 @@
         embedding-model semantic.tu/mock-embedding-model
         index           (default-index embedding-model index-metadata)
         sut             semantic.index-metadata/record-new-index-table!]
-    (with-open [_ (open-tables pgvector index-metadata)]
+    (with-open [_ (open-tables! pgvector index-metadata)]
       (testing "empty to start"
         (is (= [] (semantic.tu/get-metadata-rows pgvector index-metadata))))
       (testing "records index metadata and returns assigned ID"

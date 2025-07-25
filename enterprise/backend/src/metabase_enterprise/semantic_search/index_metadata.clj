@@ -4,13 +4,14 @@
   Tracks multiple embedding model indexes through metadata tables, supporting model switching
   without data loss. Each embedding model (provider/name/dimensions) gets its own index table,
   with a control table managing which index is currently active."
-  (:require [honey.sql :as sql]
-            [honey.sql.helpers :as sql.helpers]
-            [metabase-enterprise.semantic-search.index :as semantic.index]
-            [metabase.util :as u]
-            [metabase.util.log :as log]
-            [next.jdbc :as jdbc]
-            [next.jdbc.result-set :as jdbc.rs]))
+  (:require
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]))
 
 ;; metadata and control tables allow multiple indexes to coexist
 ;; while maintaining a single active pointer.

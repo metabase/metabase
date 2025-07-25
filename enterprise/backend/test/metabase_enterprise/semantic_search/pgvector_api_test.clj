@@ -1,14 +1,15 @@
 (ns metabase-enterprise.semantic-search.pgvector-api-test
-  (:require [clojure.test :refer :all]
-            [honey.sql :as sql]
-            [metabase-enterprise.semantic-search.index :as semantic.index]
-            [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
-            [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
-            [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-            [metabase.search.ingestion :as search.ingestion]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [next.jdbc :as jdbc]))
+  (:require
+   [clojure.test :refer :all]
+   [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [next.jdbc :as jdbc]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -53,7 +54,7 @@
                        :index-table-exists true}
                       (semantic.index-metadata/find-best-index! pgvector index-metadata model2))))))))))
 
-(defn- open-semantic-search [pgvector index-metadata embedding-model]
+(defn- open-semantic-search! [pgvector index-metadata embedding-model]
   (semantic.tu/closeable
    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
    (fn [_]
@@ -79,7 +80,7 @@
         model2         (assoc semantic.tu/mock-embedding-model :model-name "embedagain")
         sut            semantic.pgvector-api/index-documents!]
     (test-not-initialized sut pgvector index-metadata model1)
-    (with-open [index-ref (open-semantic-search pgvector index-metadata model1)]
+    (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
         (let [{:keys [proxy calls]} (spy semantic.index/upsert-index!)
@@ -110,7 +111,7 @@
         documents      semantic.tu/mock-documents
         {card-ids "card", dash-ids "dashboard"} (u/group-by :model :id documents)]
     (test-not-initialized sut pgvector index-metadata model1)
-    (with-open [index-ref (open-semantic-search pgvector index-metadata model1)]
+    (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
         (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
@@ -150,7 +151,7 @@
           _              (assert semantic.tu/mock-embeddings "search string should have test embedding")
           search         {:search-string search-string}]
       (test-not-initialized sut pgvector index-metadata search)
-      (with-open [index-ref (open-semantic-search pgvector index-metadata model1)]
+      (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]
         (semantic.pgvector-api/index-documents! pgvector index-metadata (vec (search.ingestion/searchable-documents)))
         (testing "search results are the same as direct index query"
           (let [index-results (mt/as-admin (semantic.index/query-index pgvector @index-ref search))
