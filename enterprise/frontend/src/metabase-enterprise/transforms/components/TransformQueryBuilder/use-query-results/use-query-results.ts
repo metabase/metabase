@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAsyncFn } from "react-use";
 
 import { useSelector } from "metabase/lib/redux";
@@ -38,10 +38,14 @@ export function useQueryResults(question: Question) {
     };
   }, [question, results, metadata, lastRunQuery]);
 
-  const handleRunQuery = async () => {
+  const handleRunQuery = useCallback(async () => {
     await runQuery();
     setLastRunQuery(question.datasetQuery());
-  };
+  }, [question, runQuery]);
+
+  const handleCancelQuery = useCallback(() => {
+    return null;
+  }, []);
 
   return {
     result,
@@ -50,5 +54,6 @@ export function useQueryResults(question: Question) {
     isRunning,
     isResultDirty,
     runQuery: handleRunQuery,
+    cancelQuery: handleCancelQuery,
   };
 }

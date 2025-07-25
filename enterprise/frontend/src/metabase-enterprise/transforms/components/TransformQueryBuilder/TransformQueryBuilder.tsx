@@ -4,8 +4,8 @@ import type Question from "metabase-lib/v1/Question";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { TransformHeader } from "./TransformHeader";
-import { TransformNotebook } from "./TransformNotebook";
 import S from "./TransformQueryBuilder.module.css";
+import { TransformQueryEditor } from "./TransformQueryEditor";
 import { TransformVisualization } from "./TransformVisualization";
 import { useQueryMetadata } from "./use-query-metadata";
 import { useQueryResults } from "./use-query-results";
@@ -28,8 +28,15 @@ export function TransformQueryBuilder({
 }: TransformQueryBuilderProps) {
   const { question, setQuestion } = useQueryState(initialQuery);
   const { isInitiallyLoaded } = useQueryMetadata(question);
-  const { result, rawSeries, isRunnable, isRunning, isResultDirty, runQuery } =
-    useQueryResults(question);
+  const {
+    result,
+    rawSeries,
+    isRunnable,
+    isRunning,
+    isResultDirty,
+    runQuery,
+    cancelQuery,
+  } = useQueryResults(question);
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
@@ -51,7 +58,15 @@ export function TransformQueryBuilder({
         onSave={handleSave}
         onCancel={onCancel}
       />
-      <TransformNotebook question={question} onChange={handleChange} />
+      <TransformQueryEditor
+        question={question}
+        isRunnable={isRunnable}
+        isRunning={isRunning}
+        isResultDirty={isResultDirty}
+        onChange={handleChange}
+        onRunQuery={runQuery}
+        onCancelQuery={cancelQuery}
+      />
       <TransformVisualization
         question={question}
         result={result}
