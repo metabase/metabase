@@ -91,12 +91,12 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
     }
   };
 
-  const handleTargetTableChange = async (table: string) => {
+  const handleTargetTableChange = async (name: string) => {
     const { error } = await updateTransform({
       id: transform.id,
       target: {
         ...transform.target,
-        table,
+        name,
       },
     });
 
@@ -244,7 +244,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
             </Group>
             <TextInputBlurChange
               label={t`What should the generated table be called in the database?`}
-              value={transform.target.table}
+              value={transform.target.name}
               onBlurChange={(event) =>
                 handleTargetTableChange(event.target.value)
               }

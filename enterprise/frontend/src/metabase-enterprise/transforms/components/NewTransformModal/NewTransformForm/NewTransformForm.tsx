@@ -27,14 +27,14 @@ type NewTransformFormProps = {
 
 type NewTransformSettings = {
   name: string;
-  schema: string;
-  table: string;
+  targetName: string;
+  targetSchema: string;
 };
 
 const NEW_TRANSFORM_SCHEMA = Yup.object().shape({
   name: Yup.string().required(Errors.required),
-  schema: Yup.string().required(Errors.required),
-  table: Yup.string().required(Errors.required),
+  targetName: Yup.string().required(Errors.required),
+  targetSchema: Yup.string().required(Errors.required),
 });
 
 export function NewTransformForm({ query }: NewTransformFormProps) {
@@ -48,7 +48,11 @@ export function NewTransformForm({ query }: NewTransformFormProps) {
   const dispatch = useDispatch();
 
   const initialValues = useMemo(
-    () => ({ name: "", schema: schemas ? schemas[0] : "", table: "" }),
+    () => ({
+      name: "",
+      targetName: "",
+      targetSchema: schemas ? schemas[0] : "",
+    }),
     [schemas],
   );
 
@@ -102,8 +106,8 @@ function getRequest(
     },
     target: {
       type: "table",
-      schema: settings.schema,
-      table: settings.table,
+      name: settings.targetName,
+      schema: settings.targetSchema,
     },
   };
 }

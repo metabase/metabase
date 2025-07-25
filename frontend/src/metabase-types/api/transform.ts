@@ -20,8 +20,8 @@ export type TransformSource = {
 
 export type TransformTarget = {
   type: "table";
+  name: string;
   schema: string;
-  table: string;
 };
 
 export type CreateTransformRequest = {
