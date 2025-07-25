@@ -66,7 +66,7 @@
   (lib/update-options a-ref (fn [opts]
                               (-> opts
                                   (->> (m/filter-keys simple-keyword?))
-                                  (dissoc :base-type :effective-type :source-field)))))
+                                  (dissoc :base-type :effective-type)))))
 
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
@@ -80,6 +80,9 @@
    [:human-readable-field-name ::lib.schema.common/non-blank-string]]) ; Name of the FK Field to remap values to
 
 ;;;; Pre-processing
+
+;;; TODO (Cam 7/25/25) -- this seems over-complicated, can't we just
+;;; use [[metabase.lib.metadata.calculation/returned-columns]] with `{:include-remaps? true}` to calculate this stuff?
 
 (mu/defn- field-id->remapping-dimension :- [:maybe ::external-remapping]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -284,7 +287,20 @@
                            (-> info
                                (update :original-field-clause lib/with-join-alias (:alias join))
                                (update :new-field-clause      lib/with-join-alias (:alias join))))
-              new-fields (add-fk-remaps-to-fields infos fields)]
+              new-fields (into
+                          []
+                          ;; TODO (Cam 7/25/25) the join fields may already include a remap, but `:source-field` or
+                          ;; other distinguishing information doesn't get propagated in refs beyond the stage where the
+                          ;; implicit join happens; thus we should ignore any duplicates with the same `:source-field`.
+                          ;; I suspect this means that multiple remaps to the same column (e.g. VENUES.ID =>
+                          ;; CATEGORIES.NAME and VENUES.CATEGORY_ID => CATEGORIES.NAME,
+                          ;; see [[metabase.query-processor.middleware.add-remaps-test/multiple-fk-remaps-test]] for
+                          ;; example) will not work correctly inside joins.
+                          (m/distinct-by (fn [field-ref]
+                                           (-> field-ref
+                                               simplify-ref-options
+                                               (lib/update-options dissoc :source-field))))
+                          (add-fk-remaps-to-fields infos fields))]
           (assoc join :fields new-fields))))))
 
 (mu/defn- add-fk-remaps :- ::query-and-remaps

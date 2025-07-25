@@ -435,7 +435,8 @@
                              %categories.name
                              {:source-field                                         %id
                               ::qp.add-remaps/new-field-dimension-id id-dimension-id}]]})
-                (lib/->legacy-MBQL preprocessed))))
+                (lib/->legacy-MBQL preprocessed))
+            "should have 5 fields: CATEGORY_ID, ID, and NAME from the original query; then CATEGORY_ID->NAME and ID->NAME remaps"))
       (testing "Post-processing"
         (let [metadata (lib.tu.macros/$ids venues
                          {:cols [{:name         "CATEGORY_ID"
@@ -609,27 +610,9 @@
         (let [joins (get-in preprocessed [:query :joins])]
           (testing "=> 0"
             (let [first-join (first joins)]
-              (testing "=> :source-query"
-                (let [source-query (:source-query first-join)]
-                  (is (= 10
-                         (count (:fields source-query)))
-                      "first join source query should have 10 fields (9 from orders plus one from the remap)")
-                  (is (=? {:source-table (meta/id :orders)
-                           :joins        [{:alias "PEOPLE__via__USER_ID"}]
-                           :fields       [[:field (meta/id :orders :id) nil]
-                                          [:field (meta/id :orders :user-id) {::qp.add-remaps/original-field-dimension-id pos-int?}]
-                                          [:field (meta/id :orders :product-id) nil]
-                                          [:field (meta/id :orders :subtotal) nil]
-                                          [:field (meta/id :orders :tax) nil]
-                                          [:field (meta/id :orders :total) nil]
-                                          [:field (meta/id :orders :discount) nil]
-                                          [:field (meta/id :orders :created-at) nil]
-                                          [:field (meta/id :orders :quantity) nil]
-                                          ;; 1 remap for self-joined orders.user-id => people.email
-                                          [:field (meta/id :people :email) {:source-field                          (meta/id :orders :user-id)
-                                                                            :join-alias                            "PEOPLE__via__USER_ID"
-                                                                            ::qp.add-remaps/new-field-dimension-id pos-int?}]]}
-                          source-query))))
+              (is (=? {:source-table (meta/id :orders)}
+                      first-join)
+                  "join should use :source-table (:source-query is OK, but we should update this test to check its contents)")
               (is (= 10
                      (count (:fields first-join)))
                   "first join should have 10 fields (9 from orders plus one from the remap)")
@@ -685,10 +668,10 @@
                             ;; bug. The order doesn't matter at all to the FE, so if this changes in the future it's ok.
                             ;; -- Cam
                             ;;
-                            ;; 1 remap for self-joined orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "j", ::qp.add-remaps/new-field-dimension-id pos-int?}]
                             ;; 1 remap for source table orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]]}
+                            [:field (meta/id :people :email) {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]
+                            ;; 1 remap for self-joined orders.user-id => people.email
+                            [:field (meta/id :people :email) {:join-alias "j", ::qp.add-remaps/new-field-dimension-id pos-int?}]]}
                   preprocessed-query)))))))
 
 (deftest ^:parallel add-remaps-to-joins-e2e-test-2
@@ -706,11 +689,14 @@
                              :condition    [:= $id &j.orders.product-id]
                              :fields       :all}]}))]
       (is (=? {:query {:joins  [{:alias        "j"
-                                 ;; join source query (i.e., first stage) should automatically get `:fields` which should then get
+                                 ;; join source query (i.e., first stage) should automatically get `:fields` which
+                                 ;; should then get remaps
                                  :source-query {:source-table (meta/id :orders)
                                                 :joins        [{:alias "PEOPLE__via__USER_ID"}]
                                                 :order-by     [[:asc [:field (meta/id :orders :id) nil]]]
+                                                ;; should have 10 fields -- 9 from ORDERS plus the remap of ORDERS.USER_ID => PEOPLE.EMAIL
                                                 :fields       #(= (count %) 10)}
+                                 ;; should forward the 10 fields from `:source-query` without adding any more.
                                  :fields       #(= (count %) 10)}
                                 {:alias "PEOPLE__via__USER_ID"}]
                        :fields #(= (count %) 20)}}
