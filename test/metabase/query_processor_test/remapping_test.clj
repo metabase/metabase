@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
@@ -416,3 +417,58 @@
                 [nil                          nil 1 1510617.7]]
                (mt/formatted-rows [str int int 2.0]
                                   (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
+  (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"
+    (let [mp    (-> (mt/application-database-metadata-provider (mt/id))
+                    (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
+                                                    (mt/id :categories :name))
+                    (lib.tu/remap-metadata-provider (mt/id :venues :id)
+                                                    (mt/id :categories :name))
+                    ;; mock VENUES.ID being an FK to CATEGORIES.ID (required for implicit joins to work)
+                    (lib.tu/merged-mock-metadata-provider
+                     {:fields [{:id                 (mt/id :venues :id)
+                                :fk-target-field-id (mt/id :categories :id)}]}))
+          query (lib/query
+                 mp
+                 (mt/mbql-query venues
+                   {:joins    [{:source-table $$venues
+                                :alias        "J"
+                                :condition    [:= $id [:+ &J.id 1]]
+                                :fields       :all}]
+                    :fields   [$category_id
+                               $id
+                               $name]
+                    :order-by [[:asc $id]
+                               [:asc [:field %id {:join-alias "J"}]]]
+                    :filter   [:between $id 2 75]
+                    :limit    3}))
+          results (qp/process-query query)]
+      (is (= [;; 3 columns from top-level `:fields`
+              "CATEGORY_ID"
+              "ID"
+              "NAME"
+              ;; 6 columns from join against `VENUES`
+              "J__ID"
+              "J__NAME"
+              "J__CATEGORY_ID"
+              "J__LATITUDE"
+              "J__LONGITUDE"
+              "J__PRICE"
+              ;;
+              ;; The order of remaps is not important to the FE. If it changes in the future that is ok.
+              ;;
+              ;; 2 remaps from the join against `VENUES`
+              "J__NAME_2"
+              "J__NAME_3" 2
+              ;; 2 remaps for the top-level query
+              "CATEGORIES__via__CATEGORY_ID__NAME"
+              "CATEGORIES__via__ID__NAME"
+              ;; BROKEN! This is a duplicate and should not be returned.
+              "J__NAME_2_2"]
+             (map :lib/desired-column-alias (mt/cols results))))
+      ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
+      (is (= [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" "African"]
+              [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  "American"]
+              [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    "Artisan"]]
+             (mt/rows results))))))

@@ -292,10 +292,9 @@
                           ;; TODO (Cam 7/25/25) the join fields may already include a remap, but `:source-field` or
                           ;; other distinguishing information doesn't get propagated in refs beyond the stage where the
                           ;; implicit join happens; thus we should ignore any duplicates with the same `:source-field`.
-                          ;; I suspect this means that multiple remaps to the same column (e.g. VENUES.ID =>
-                          ;; CATEGORIES.NAME and VENUES.CATEGORY_ID => CATEGORIES.NAME,
-                          ;; see [[metabase.query-processor.middleware.add-remaps-test/multiple-fk-remaps-test]] for
-                          ;; example) will not work correctly inside joins.
+                          ;; Joins with multiple remaps to the same table still work because we switch to using name
+                          ;; refs e.g. `NAME` and `NAME_2` instead of duplicate ID refs in this situation --
+                          ;; see [[multiple-fk-remaps-test-in-joins-e2e-test]].
                           (m/distinct-by (fn [field-ref]
                                            (-> field-ref
                                                simplify-ref-options

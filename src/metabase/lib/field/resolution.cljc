@@ -438,7 +438,7 @@
                                  ;; calculate much metadata -- assume it comes from the previous stage so we at least
                                  ;; have a value for `:lib/source`.
                                  (when (zero? *recursive-column-resolution-depth*)
-                                   (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
+                                   (log/infof "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
                                  {:lib/source :source/previous-stage}))
          field-id          (if (integer? id-or-name)
                              id-or-name

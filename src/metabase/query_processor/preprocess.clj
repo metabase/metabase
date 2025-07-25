@@ -116,7 +116,8 @@
             (:condition form)
             (:source-table form))
        (-> (dissoc :source-table)
-           (assoc :source-query {:source-table (:source-table form)}))))
+           (assoc :source-query {:source-table                          (:source-table form)
+                                 ::do-not-collapse-to-top-level-of-join true}))))
    query))
 
 (def ^:private middleware

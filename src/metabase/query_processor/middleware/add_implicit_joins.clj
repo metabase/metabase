@@ -21,6 +21,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -120,16 +121,16 @@
   "Create implicit join maps for a set of `field-clauses-with-source-field`."
   [metadata-providerable           :- ::lib.schema.metadata/metadata-providerable
    field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
-  (let [k-field-infos (->> field-clauses-with-source-field
-                           (keep (fn [clause]
-                                   (lib.util.match/match-one clause
-                                     [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
-                                     (field-opts->fk-field-info metadata-providerable opts))))
-                           distinct
-                           not-empty)]
+  (let [fk-field-infos (->> field-clauses-with-source-field
+                            (keep (fn [clause]
+                                    (lib.util.match/match-one clause
+                                      [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
+                                      (field-opts->fk-field-info metadata-providerable opts))))
+                            distinct
+                            not-empty)]
     (into []
           (distinct)
-          (fk-field-infos->joins metadata-providerable k-field-infos))))
+          (fk-field-infos->joins metadata-providerable fk-field-infos))))
 
 (mu/defn- visible-joins :- [:sequential ::lib.schema.join/join]
   "Set of all joins that are visible in the current level of the query or in a nested source query."
