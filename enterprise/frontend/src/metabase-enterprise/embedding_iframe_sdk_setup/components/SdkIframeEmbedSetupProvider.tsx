@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { P, match } from "ts-pattern";
 
 import { useUserSetting } from "metabase/common/hooks";
 
@@ -56,37 +57,19 @@ export const SdkIframeEmbedSetupProvider = ({
     "select-embed-experience",
   );
 
-  const [experience, setExperience] =
-    useState<SdkIframeEmbedSetupExperience>("dashboard");
-
-  // Load persisted settings once
-  useEffect(() => {
-    if (!isEmbedSettingsLoaded) {
-      const hasSavedSettings =
-        persistedSettings?.dashboardId ||
-        persistedSettings?.questionId ||
-        persistedSettings?.template;
-
-      if (hasSavedSettings) {
-        setRawSettings(persistedSettings);
-
-        // Initialize experience from saved setting or infer from template
-        // TODO: check if we need it outside of migrating from old persisted settings
-        const initialExp =
-          (persistedSettings as any).experience ??
-          (persistedSettings.template === "exploration"
-            ? "exploration"
-            : persistedSettings.questionId
-              ? "chart"
-              : "dashboard");
-        setExperience(initialExp as SdkIframeEmbedSetupExperience);
-      }
-
-      setEmbedSettingsLoaded(true);
-    }
-  }, [persistedSettings, isEmbedSettingsLoaded]);
-
   const settings = rawSettings ?? defaultSettings;
+
+  // Which embed experience are we setting up?
+  const experience = useMemo(
+    () =>
+      match<SdkIframeEmbedSetupSettings, SdkIframeEmbedSetupExperience>(
+        settings,
+      )
+        .with({ questionId: P.nonNullable }, () => "chart")
+        .with({ template: "exploration" }, () => "exploration")
+        .otherwise(() => "dashboard"),
+    [settings],
+  );
 
   // Use parameter list hook for dynamic parameter loading
   const { availableParameters, isLoadingParameters } = useParameterList({
@@ -123,16 +106,15 @@ export const SdkIframeEmbedSetupProvider = ({
   const replaceSettings = useCallback(
     (nextSettings: SdkIframeEmbedSetupSettings) => {
       setRawSettings(nextSettings);
-      persistSettings({ ...nextSettings, experience });
+      persistSettings(nextSettings);
     },
-    [persistSettings, experience],
+    [persistSettings],
   );
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
     setCurrentStep,
     experience,
-    setExperience,
     settings,
     replaceSettings,
     updateSettings,
@@ -143,6 +125,25 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoadingParameters,
     availableParameters,
   };
+
+  // Once the persisted settings are loaded, check if they are valid.
+  // If they are, set them as the current settings.
+  useEffect(() => {
+    if (!isEmbedSettingsLoaded) {
+      // We consider the settings to be valid if it has at least one
+      // of the following properties set.
+      const isPersistedSettingValid =
+        persistedSettings?.dashboardId ||
+        persistedSettings?.questionId ||
+        persistedSettings?.template;
+
+      if (isPersistedSettingValid) {
+        setRawSettings(persistedSettings);
+      }
+
+      setEmbedSettingsLoaded(true);
+    }
+  }, [persistedSettings, isEmbedSettingsLoaded]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>

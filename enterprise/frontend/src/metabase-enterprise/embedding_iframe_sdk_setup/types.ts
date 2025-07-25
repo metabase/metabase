@@ -28,6 +28,4 @@ export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedBaseSettings,
   "instanceUrl"
 > &
-  SdkIframeEmbedTemplateSettings & {
-    experience?: SdkIframeEmbedSetupExperience;
-  };
+  SdkIframeEmbedTemplateSettings;

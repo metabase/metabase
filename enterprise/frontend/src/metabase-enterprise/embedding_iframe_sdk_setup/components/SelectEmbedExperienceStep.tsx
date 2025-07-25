@@ -18,7 +18,6 @@ import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting
 export const SelectEmbedExperienceStep = () => {
   const {
     experience,
-    setExperience,
     settings,
     replaceSettings,
     recentDashboards,
@@ -29,8 +28,6 @@ export const SelectEmbedExperienceStep = () => {
     experience: SdkIframeEmbedSetupExperience,
   ) => {
     trackEmbedWizardExperienceSelected(experience);
-
-    setExperience(experience);
 
     const persistedSettings = _.pick(
       settings,
@@ -45,7 +42,7 @@ export const SelectEmbedExperienceStep = () => {
         "dashboard",
         () => recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
       )
-      .with("exploration", () => "new") // resource id does not apply
+      .with("exploration", () => 0) // resource id does not apply
       .exhaustive();
 
     replaceSettings({
@@ -54,7 +51,6 @@ export const SelectEmbedExperienceStep = () => {
 
       // these settings are overridden when the embed type changes
       ...getDefaultSdkIframeEmbedSettings(experience, defaultResourceId),
-      experience,
     });
   };
 
