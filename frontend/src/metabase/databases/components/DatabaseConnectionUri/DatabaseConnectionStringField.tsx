@@ -1,4 +1,4 @@
-import { useDisclosure, useTimeout } from "@mantine/hooks";
+import { useTimeout } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -21,32 +21,50 @@ export function DatabaseConnectionStringField({
   setFieldValue,
   engine,
 }: {
-  setFieldValue: (field: string, value: string | boolean) => void;
+  setFieldValue: (field: string, value: string | boolean | undefined) => void;
   engine: Engine | undefined;
 }) {
   const [connectionString, setConnectionString] = useState("");
-  const [opened, { open, close }] = useDisclosure(false);
-  const { start: delayedClose, clear } = useTimeout(
-    () => close(),
+  const [status, setStatus] = useState<"success" | "failure" | null>(null);
+  const { start: deleayedClearStatus, clear: clearTimeout } = useTimeout(
+    () => setStatus(null),
     FEEDBACK_TIMEOUT,
   );
 
   useEffect(
     function handleConnectionStringChange() {
-      const parsedValues = parseConnectionUriRegex(connectionString);
-      if (parsedValues) {
-        const fieldsMap = mapDatabaseValues(parsedValues);
-        fieldsMap.forEach((value, field) => setFieldValue(field, value));
-        open();
-        delayedClose();
-
-        return () => {
-          clear();
-        };
+      if (!connectionString) {
+        deleayedClearStatus();
+        return () => clearTimeout();
       }
-      close();
+
+      const parsedValues = parseConnectionUriRegex(connectionString);
+
+      // it was not possible to parse the connection string
+      if (!parsedValues) {
+        setStatus("failure");
+        deleayedClearStatus();
+        return () => clearTimeout();
+      }
+
+      const fieldsMap = mapDatabaseValues(parsedValues);
+      // if there are no values, we couldn't get any details from the connection string
+      const hasValues = hasNonUndefinedValue(fieldsMap);
+      fieldsMap.forEach((value, field) => setFieldValue(field, value));
+      setStatus(hasValues ? "success" : "failure");
+      deleayedClearStatus();
+
+      return () => {
+        clearTimeout();
+      };
     },
-    [connectionString, setFieldValue, open, delayedClose, close, clear],
+    [
+      connectionString,
+      setFieldValue,
+      deleayedClearStatus,
+      clearTimeout,
+      setStatus,
+    ],
   );
 
   if (!supportedEngines.has(engine?.["driver-name"] ?? "")) {
@@ -57,7 +75,7 @@ export function DatabaseConnectionStringField({
     <Textarea
       inputWrapperOrder={["label", "input", "description", "error"]}
       label="Connection string (optional)"
-      description={<ConnectionStringDescription opened={opened} />}
+      description={<ConnectionStringDescription status={status} />}
       value={connectionString}
       onChange={(e) => setConnectionString(e.target.value)}
       mb="md"
@@ -68,10 +86,14 @@ export function DatabaseConnectionStringField({
 const FEEDBACK_TIMEOUT = 2000;
 const TRANSITION_DURATION = 250;
 
-function ConnectionStringDescription({ opened }: { opened: boolean }) {
+function ConnectionStringDescription({
+  status,
+}: {
+  status: "success" | "failure" | null;
+}) {
   const defaultDescription = (
     <Transition
-      mounted={!opened}
+      mounted={status === null}
       transition="fade-right"
       duration={TRANSITION_DURATION}
       timingFunction="ease"
@@ -85,9 +107,37 @@ function ConnectionStringDescription({ opened }: { opened: boolean }) {
     </Transition>
   );
 
+  const failureMessage = (
+    <Transition
+      mounted={status === "failure"}
+      transition="fade-right"
+      duration={TRANSITION_DURATION}
+      timingFunction="ease"
+    >
+      {(styles) => (
+        <Text
+          style={styles}
+          pos="absolute"
+          top={0}
+          c="danger"
+          fw="bold"
+          fz="sm"
+        >
+          <Group gap="xs">
+            <Icon
+              name="warning_round_filled"
+              style={{ color: "var(--mb-color-danger)" }}
+            />
+            {t`Couldn’t use this connection string.`}
+          </Group>
+        </Text>
+      )}
+    </Transition>
+  );
+
   const successMessage = (
     <Transition
-      mounted={opened}
+      mounted={status === "success"}
       transition="fade-right"
       duration={TRANSITION_DURATION}
       timingFunction="ease"
@@ -120,8 +170,13 @@ function ConnectionStringDescription({ opened }: { opened: boolean }) {
         justifyContent: "flex-start",
       }}
     >
+      {failureMessage}
       {defaultDescription}
       {successMessage}
     </Group>
   );
+}
+
+function hasNonUndefinedValue(map: Map<string, string | boolean | undefined>) {
+  return Array.from(map.values()).some((value) => value !== undefined);
 }
