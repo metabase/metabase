@@ -367,8 +367,8 @@
                     (u/id db-or-id-or-spec)     db-or-id-or-spec
                     ;; otherwise it's a spec and we can't get the db
                     :else nil)]
-      (driver/set-database-used! driver conn db)
-      (set-role-if-supported! driver conn db))
+      (set-role-if-supported! driver conn db)
+      (driver/set-database-used! driver conn db))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
