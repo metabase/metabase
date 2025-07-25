@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   skipToken,
   useGetAdhocQueryQuery,
@@ -15,24 +16,24 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
+import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
   ActionIcon,
   Box,
   Button,
   Group,
   Icon,
+  Popover,
   Select,
   Stack,
   Text,
   TextInput,
   Title,
 } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type {
-  Field,
-  FieldId,
-  StructuredDatasetQuery,
-} from "metabase-types/api";
+import type { DatasetQuery, Field, FieldId } from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
@@ -43,7 +44,6 @@ import {
   getDefaultComponentSettings,
   getExploreTableUrl,
   getRowCountQuery,
-  getTableQuery,
   parseRouteParams,
 } from "./utils";
 
@@ -63,15 +63,33 @@ export const TableListView = ({ location, params }: Props) => {
   const { page, tableId } = parseRouteParams(location, params);
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
-  // TODO: run paginated queries?
-  // TODO: use only visible fields?
-  const query = useMemo<StructuredDatasetQuery | undefined>(() => {
-    return table ? getTableQuery(table) : undefined;
+  const tableQuery = useMemo(() => {
+    if (!table) {
+      return undefined;
+    }
+
+    const metadata = createMockMetadata({
+      tables: [table],
+    });
+    const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+    const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+
+    if (!tableMetadata) {
+      return undefined;
+    }
+
+    return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
   }, [table]);
-  const countQuery = useMemo<StructuredDatasetQuery | undefined>(() => {
+
+  const [dataQuery, setDataQuery] = useState(tableQuery);
+
+  const countQuery = useMemo<DatasetQuery | undefined>(() => {
     return table ? getRowCountQuery(table) : undefined;
   }, [table]);
-  const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
+
+  const { data: dataset } = useGetAdhocQueryQuery(
+    dataQuery ? Lib.toLegacyQuery(dataQuery) : skipToken,
+  );
   const { data: countDataset } = useGetAdhocQueryQuery(
     countQuery ? countQuery : skipToken,
   );
@@ -89,6 +107,7 @@ export const TableListView = ({ location, params }: Props) => {
     table?.component_settings ?? getDefaultComponentSettings(table),
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterPickerOpen, setIsFilterPickerOpen] = useState(false);
 
   const pkIndex = allColumns.findIndex(isPK); // TODO: handle multiple PKs
 
@@ -140,6 +159,14 @@ export const TableListView = ({ location, params }: Props) => {
     updateTableComponentSettings({ id: tableId, component_settings: settings });
   };
 
+  const handleFilterChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
+    setDataQuery(newQuery);
+
+    if (opts.run) {
+      setIsFilterPickerOpen(false);
+    }
+  };
+
   useEffect(() => {
     if (table) {
       setSettings(
@@ -147,6 +174,10 @@ export const TableListView = ({ location, params }: Props) => {
       );
     }
   }, [table]);
+
+  useEffect(() => {
+    setDataQuery(tableQuery);
+  }, [tableQuery]);
 
   const columns = settings.list_view.fields.map(({ field_id }) => {
     return allColumns.find((field) => field.id === field_id)!;
@@ -208,7 +239,7 @@ export const TableListView = ({ location, params }: Props) => {
       ? CELL_PADDING_VERTICAL_NORMAL
       : CELL_PADDING_VERTICAL_THIN;
 
-  if (!table || !dataset || !allColumns) {
+  if (!table || !dataset || !allColumns || !dataQuery) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -253,6 +284,29 @@ export const TableListView = ({ location, params }: Props) => {
               w={250}
               onChange={(event) => setSearchQuery(event.currentTarget.value)}
             />
+
+            <Popover
+              opened={isFilterPickerOpen}
+              onClose={() => setIsFilterPickerOpen(false)}
+            >
+              <Popover.Target>
+                <Button
+                  leftSection={<Icon name="filter" />}
+                  variant="default"
+                  onClick={() => setIsFilterPickerOpen(true)}
+                >
+                  {t`Filter`}
+                </Button>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <MultiStageFilterPicker
+                  canAppendStage
+                  query={dataQuery}
+                  onChange={handleFilterChange}
+                  onClose={() => setIsFilterPickerOpen(false)}
+                />
+              </Popover.Dropdown>
+            </Popover>
 
             {!isSyncInProgress(table) && !isEditing && (
               <Button
