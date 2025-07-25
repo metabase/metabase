@@ -356,7 +356,7 @@
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
 ;;; should maybe have `:lib/source-uuid` but I don't think they should have `:lib/uuid`.
 (defn- remove-lib-uuids [col]
-  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref :ident))
+  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
   "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love

@@ -14,7 +14,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -105,8 +104,7 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name
-                                               :ident (lib.ident/random-ident))
+                                        (assoc :lib/expression-name a-name)
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -136,10 +134,7 @@
   (let [new-clause (if (= :expressions (first location))
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
-                                                          (expression-name target-clause)))
-                         ;; TODO (Cam 7/10/25) -- remove soon. Not removing now so I don't need to update 1000 tests
-                         #_{:clj-kondo/ignore [:deprecated-var]}
-                         (lib.common/preserve-ident-of target-clause))
+                                                          (expression-name target-clause))))
                      new-clause)]
     (m/update-existing-in
      stage
@@ -629,7 +624,6 @@
                    (fn [summary-clauses]
                      (->> a-summary-clause
                           lib.common/->op-arg
-                          lib.common/ensure-ident
                           (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query

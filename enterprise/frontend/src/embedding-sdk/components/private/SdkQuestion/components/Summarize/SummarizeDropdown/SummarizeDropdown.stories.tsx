@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Stack } from "metabase/ui";
 
@@ -19,13 +19,13 @@ export const SummarizeDropdownStory = {
   render() {
     return (
       <Box p="lg">
-        <InteractiveQuestion questionId={QUESTION_ID}>
+        <SdkQuestion questionId={QUESTION_ID}>
           <Stack>
-            <InteractiveQuestion.SummarizeDropdown />
+            <SdkQuestion.SummarizeDropdown />
 
-            <InteractiveQuestion.QuestionVisualization />
+            <SdkQuestion.QuestionVisualization />
           </Stack>
-        </InteractiveQuestion>
+        </SdkQuestion>
       </Box>
     );
   },

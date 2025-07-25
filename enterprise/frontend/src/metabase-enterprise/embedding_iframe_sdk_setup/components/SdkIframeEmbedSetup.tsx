@@ -77,7 +77,7 @@ const SidebarResizer = ({ children }: { children: React.ReactNode }) => {
       maxConstraints={[600, Infinity]}
       onResizeStop={(_, data) => setSidebarWidth(data.size.width)}
       axis="x"
-      handle={<Box className={S.ResizeHandle} />}
+      handle={<div className={S.ResizeHandle} />}
     >
       {children}
     </ResizableBox>

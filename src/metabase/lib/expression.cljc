@@ -94,7 +94,6 @@
           :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
           :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
           :lib/source          :source/expressions}
-         {:ident (lib.options/ident (resolve-expression query stage-number expression-name))}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
          (when lib.metadata.calculation/*propagate-binning-and-bucketing*
@@ -408,8 +407,7 @@
                       :lib/source-column-alias :lib/source-uuid :lib/type])
         (assoc :lib/source   :source/expressions
                :name         expression-name
-               :display-name expression-name
-               :ident        (lib.options/ident expression-definition)))))
+               :display-name expression-name))))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."

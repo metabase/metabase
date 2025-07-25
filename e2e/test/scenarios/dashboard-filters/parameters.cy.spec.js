@@ -225,8 +225,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(startsWith.name).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true, name: startsWith.name }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Remove").click();
@@ -315,7 +314,10 @@ describe("scenarios > dashboard > parameters", () => {
       cy.findByText(/Add a variable to this question/).should("be.visible");
 
       // Confirm that the correct parameter type is connected to the native question's field filter
-      cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
+      H.filterWidget({
+        isEditing: true,
+        name: matchingFilterType.name,
+      }).click();
 
       H.getDashboardCard().within(() => {
         cy.findByText("Column to filter on");
@@ -345,7 +347,10 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
-      cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
+      H.filterWidget({
+        isEditing: true,
+        name: matchingFilterType.name,
+      }).click();
       cy.findByText(
         /A text variable in this card can only be connected to a text filter with Is operator/,
       ).should("be.visible");
@@ -526,9 +531,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     it("should not see mapping options", () => {
       cy.icon("pencil").click();
-      cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .find(".Icon-gear")
-        .click();
+      H.filterWidget({ isEditing: true }).click();
 
       cy.icon("key");
     });
