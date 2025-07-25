@@ -69,11 +69,12 @@ export function TransformQueryEditor({
       isRunnable={isRunnable}
       isRunning={isRunning}
       isResultDirty={isResultDirty}
+      isInitiallyOpen
+      isNativeEditorOpen
+      hasTopBar
+      hasRunButton
       readOnly={false}
-      isInitiallyOpen={true}
-      isNativeEditorOpen={true}
-      hasTopBar={false}
-      hasEditingSidebar={true}
+      hasEditingSidebar={false}
       hasParametersList={false}
       handleResize={handleResize}
       runQuery={onRunQuery}
