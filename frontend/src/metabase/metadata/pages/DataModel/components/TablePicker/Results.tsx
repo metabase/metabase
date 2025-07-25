@@ -14,7 +14,7 @@ import type { FlatItem, TreePath } from "./types";
 import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
-const ITEM_MIN_HEIGHT = 32;
+const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
 const INDENT_OFFSET = 18;
 
 interface Props {
