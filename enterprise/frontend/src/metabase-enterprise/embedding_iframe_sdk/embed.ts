@@ -211,7 +211,6 @@ class MetabaseEmbed {
     this._settings = { ...this._settings, ...allowedSettings };
 
     this._validateEmbedSettings(this._settings);
-    // don't remove this! it's for debug
     this._sendMessage("metabase.embed.setSettings", this._settings);
   }
 
@@ -474,6 +473,8 @@ function createCustomElement<Arr extends readonly string[]>(
     }
 
     connectedCallback() {
+      this.style.display = "block";
+
       if (this._embed) {
         // already initialised
         return;
