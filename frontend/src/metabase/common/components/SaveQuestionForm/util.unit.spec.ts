@@ -105,6 +105,22 @@ describe("SaveQuestionForm utils", () => {
       expect(call._card.description).toBe(null);
     });
 
+    it("should handle actual null descriptions", async () => {
+      const onCreateSpy = jest.fn();
+      const options = {
+        ...baseCreateOptions,
+        details: {
+          ...baseCreateOptions.details,
+          description: null as unknown as string, // testing invalid type
+        },
+        onCreate: onCreateSpy,
+      };
+      await createQuestion(options);
+
+      const call = onCreateSpy.mock.calls[0][0];
+      expect(call._card.description).toBe(null);
+    });
+
     it("should use targetCollection when provided", async () => {
       const onCreateSpy = jest.fn();
       const options = {
