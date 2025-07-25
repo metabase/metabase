@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
@@ -152,6 +153,36 @@
                                                         :type "native"
                                                         :native {:query query2
                                                                  :template-tags {}}}}})))))))
+
+(deftest change-target-table-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (with-transform-cleanup! [table1-name "dookey_products"
+                              table2-name "doohickey_products"]
+      (let [query2 (make-query "Doohickey")
+            original {:name "Gadget Products"
+                      :source {:type "query"
+                               :query {:database (mt/id)
+                                       :type "native"
+                                       :native {:query (make-query "Gadget")
+                                                :template-tags {}}}}
+                      :target {:type "table"
+                               ;;:schema "transforms"
+                               :name table1-name}}
+            resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                       original)
+            updated {:name "Doohickey Products"
+                     :description "Desc"
+                     :database_id (mt/id)
+                     :source {:type "query"
+                              :query {:database (mt/id)
+                                      :type "native",
+                                      :native {:query query2
+                                               :template-tags {}}}}
+                     :target {:type "table"
+                              :name table2-name}}]
+        (is (=? updated
+                (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)))
+        (is (false? (transforms.util/target-table-exists? original)))))))
 
 (deftest delete-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
