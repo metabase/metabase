@@ -42,6 +42,14 @@
   :doc false
   :export? true)
 
+(defsetting show-simple-embed-terms
+  (deferred-tru "Check if admin should see the simple embedding terms popup")
+  :type    :boolean
+  :default true
+  :can-read-from-env? false
+  :doc false
+  :export? true)
+
 (mu/defn- make-embedding-toggle-setter
   "Creates a boolean setter for various boolean embedding-enabled flavors, all tracked by snowplow."
   [setting-key :- :keyword event-name :- :string]

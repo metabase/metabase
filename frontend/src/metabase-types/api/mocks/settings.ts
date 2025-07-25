@@ -260,6 +260,7 @@ export const createMockSettings = (
   "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
   "show-sdk-embed-terms": true,
+  "show-simple-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
