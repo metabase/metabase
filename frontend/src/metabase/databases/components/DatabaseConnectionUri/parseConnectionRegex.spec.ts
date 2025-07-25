@@ -110,6 +110,65 @@ describe("parseConnectionUriRegex - Clickhouse", () => {
   });
 });
 
+describe("parseConnectionUriRegex - Databricks", () => {
+  it("should parse a Databricks connection string", () => {
+    const connectionString =
+      "jdbc:databricks://127.0.0.1:8123;httpPath=/sql/1.0/endpoints/abc;OAuthSecret=1234567890;OAuth2ClientId=xyz";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "databricks",
+        host: "127.0.0.1",
+        port: "8123",
+        hasJdbcPrefix: true,
+        params: {
+          httpPath: "/sql/1.0/endpoints/abc",
+          OAuthSecret: "1234567890",
+          OAuth2ClientId: "xyz",
+        },
+      }),
+    );
+  });
+
+  it("should parse a Databricks connection string with personal access token", () => {
+    const connectionString =
+      "jdbc:databricks://127.0.0.1:8123;httpPath=/sql/1.0/endpoints/abc;PWD=1234567890;";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "databricks",
+        host: "127.0.0.1",
+        port: "8123",
+        hasJdbcPrefix: true,
+        params: {
+          httpPath: "/sql/1.0/endpoints/abc",
+          PWD: "1234567890",
+        },
+      }),
+    );
+  });
+});
+
+describe("parseConnectionUriRegex - Druid", () => {
+  it("should parse a Druid connection string", () => {
+    const connectionString =
+      "jdbc:avatica:remote:url=http://localhost:8888/druid/v2/sql/avatica/;transparent_reconnection=true";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "avatica",
+        host: "localhost",
+        port: "8888",
+        path: "/druid/v2/sql/avatica/",
+        hasJdbcPrefix: true,
+        params: {
+          transparent_reconnection: "true",
+        },
+      }),
+    );
+  });
+});
+
 describe("parseConnectionUriRegex", () => {
   it("should parse a PostgreSQL connection string", () => {
     const connectionString =
