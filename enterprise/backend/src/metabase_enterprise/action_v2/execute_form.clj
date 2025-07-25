@@ -87,10 +87,10 @@
                             :when (:enabled column-settings true)
                             :let [required (or pk (:database_required field))]]
 
+                        ;; TODO we should assert that the database's driver supports :actions/data-editing .
                         ;; TODO assert that the database driver implement the following features,
-                        ;;      or even better - just test the first one, and have a driver test that
-                        ;;      the it implies the latter 3 features are also true.
-                        ;:actions/data-editing
+                        ;;      or even better - have a driver test that :actions/data-editing implies them as well.
+                        ;;      .. but we're waiting on https://github.com/metabase/metabase/pull/60263
                         ;:describe-default-expr
                         ;:describe-is-generated
                         ;:describe-is-nullable
