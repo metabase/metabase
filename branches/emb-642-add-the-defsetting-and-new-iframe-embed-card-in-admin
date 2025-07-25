@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "f58709dc2059f41b4f36cffb27351601708dd7dd"
+    "hash": "647058ec89718c7b164f5fec1072d9de63e5dc15"
   },
   "upstream": {
     "branch": "emb-642-add-the-defsetting-and-new-iframe-embed-card-in-admin"
