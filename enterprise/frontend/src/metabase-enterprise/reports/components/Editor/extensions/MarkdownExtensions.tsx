@@ -137,11 +137,11 @@ export function parseMarkdownToHTML(markdown: string): string {
       /```(\w*)\n([\s\S]*?)```/g,
       '<pre><code class="language-$1">$2</code></pre>',
     )
-    .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi, `<a href="$2">$1</a>`)
     .replace(
       /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/gi,
       `<img src="$2" alt="$1" />`,
     )
+    .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi, `<a href="$2">$1</a>`)
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/\n\n/g, "</p><p>")
     .replace(/^(?!<)/, "<p>")
