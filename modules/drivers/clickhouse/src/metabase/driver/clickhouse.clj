@@ -55,7 +55,7 @@
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
                               :database-routing                false
-                              :transforms/basic                true}]
+                              :transforms/table                false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details

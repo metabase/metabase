@@ -27,6 +27,9 @@ title: Driver interface changelog
 
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
 
+- Added the driver features `:transforms/table`, `:transforms/view`, and `:transforms/matarialized-view` for drivers
+  that support transforms with table, view, and materialized view as target, respectively.
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.

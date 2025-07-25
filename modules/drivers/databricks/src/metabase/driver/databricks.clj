@@ -52,7 +52,7 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
                               :database-routing                false
-                              :transforms/basic                true}]
+                              :transforms/table                true}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
