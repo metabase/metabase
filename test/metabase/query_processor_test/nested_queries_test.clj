@@ -1213,7 +1213,6 @@
                          "ORDERS.DISCOUNT"
                          "ORDERS.CREATED_AT"
                          "ORDERS.QUANTITY"
-                         "PRODUCTS.TITLE"
                          "PRODUCTS.ID"
                          "PRODUCTS.EAN"
                          "PRODUCTS.TITLE"
@@ -1221,11 +1220,13 @@
                          "PRODUCTS.VENDOR"
                          "PRODUCTS.PRICE"
                          "PRODUCTS.RATING"
-                         "PRODUCTS.CREATED_AT"]
+                         "PRODUCTS.CREATED_AT"
+                         "PRODUCTS.TITLE"] ; <- extra remapped column
                         (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
-                        25.1 4.0 "2017-12-31T14:41:56.87Z"]
+                        25.1 4.0 "2017-12-31T14:41:56.87Z"
+                        "Awesome Concrete Shoes"] ; <- extra remapped col
                        (mt/first-row result)))))))))))
 
 (deftest ^:parallel handle-unwrapped-joined-fields-correctly-test

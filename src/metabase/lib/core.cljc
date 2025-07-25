@@ -130,6 +130,7 @@
  [lib.convert
   ->legacy-MBQL
   ->pMBQL
+  legacy-default-join-alias
   without-cleaning]
  [lib.database
   database-id]

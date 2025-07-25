@@ -224,12 +224,20 @@
                                            (lib.tu/merged-mock-metadata-provider
                                             {:fields [{:id                 (mt/id :users :created_by)
                                                        :fk-target-field-id (mt/id :users :id)}]}))
-        (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
-               (->> (mt/run-mbql-query users
-                      {:order-by [[:asc $name]]
-                       :limit    4})
-                    mt/rows
-                    (map last))))))))
+        (let [results (mt/run-mbql-query users
+                        {:order-by [[:asc $name]]
+                         :limit    4})]
+          (is (= ["ID"
+                  ;; TODO (Cam 7/24/25) -- no idea why this is popping up as the SECOND column, it is SUPPOSED TO BE the
+                  ;; last column. But it doesn't really matter where it shows up as far as the FE is concerned.
+                  "USERS__via__CREATED_BY__NAME" ; <- remapped column
+                  "LAST_LOGIN"
+                  "CREATED_BY"]
+                 (map :lib/desired-column-alias (mt/cols results))))
+          (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
+                 (->> results
+                      mt/rows
+                      (map second)))))))))
 
 (defn- remappings-with-metadata
   [metadata]

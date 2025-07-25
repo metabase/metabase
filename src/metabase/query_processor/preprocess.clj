@@ -1,5 +1,6 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -107,6 +108,17 @@
                (-> query' middleware-fn ->legacy))))))
       (with-meta (meta middleware-fn))))
 
+(defn- HECC [query]
+  (walk/postwalk
+   (fn [form]
+     (cond-> form
+       (and (map? form)
+            (:condition form)
+            (:source-table form))
+       (-> (dissoc :source-table)
+           (assoc :source-query {:source-table (:source-table form)}))))
+   query))
+
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -128,14 +140,19 @@
    (ensure-pmbql #'qp.resolve-source-table/resolve-source-tables)
    (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
+   (ensure-legacy #'HECC)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-pmbql #'qp.middleware.enterprise/apply-impersonation)
    (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
+   ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
+   ;; after adding any implicit joins. Implicit joins do not need to get remaps since we only use them for fetching
+   ;; specific columns.
+   (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
-   (ensure-legacy #'qp.resolve-fields/resolve-fields)
+   #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
    (ensure-legacy #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
