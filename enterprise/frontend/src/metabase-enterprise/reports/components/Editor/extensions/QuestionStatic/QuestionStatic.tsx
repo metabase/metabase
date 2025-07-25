@@ -4,13 +4,12 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
 } from "@tiptap/react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { Box, Loader, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { getReportRawSeries } from "metabase-enterprise/reports/selectors";
 
 import styles from "../QuestionEmbed/QuestionEmbedNode.module.css";
 
@@ -107,11 +106,33 @@ export const QuestionStaticNode = Node.create<{
 
 export const QuestionStaticComponent = memo(
   ({ node, selected }: NodeViewProps) => {
-    const { questionName, id, snapshotId } = node.attrs;
+    const { questionName, series, viz, display } = node.attrs;
 
-    const rawSeries = useSelector((state) =>
-      getReportRawSeries(state, id, snapshotId),
-    );
+    // Create raw series data from embedded node attributes
+    const rawSeries = useMemo(() => {
+      if (!series || !viz || !display) {
+        return null;
+      }
+
+      try {
+        const seriesData = JSON.parse(b64hash_to_utf8(series));
+        const vizSettings = JSON.parse(b64hash_to_utf8(viz));
+
+        return [
+          {
+            card: {
+              name: questionName,
+              display: display,
+              visualization_settings: vizSettings,
+            },
+            data: seriesData,
+          },
+        ];
+      } catch (error) {
+        console.error("Failed to parse static question data:", error);
+        return null;
+      }
+    }, [series, viz, display, questionName]);
 
     const error = !rawSeries;
 

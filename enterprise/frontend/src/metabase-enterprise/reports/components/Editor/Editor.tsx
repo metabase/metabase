@@ -15,16 +15,9 @@ import _ from "underscore";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
-import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
-import {
-  type QuestionEmbed,
-  fetchReportCard,
-  fetchReportSnapshot,
-} from "../../reports.slice";
+import type { QuestionEmbed as QuestionEmbedType } from "../../reports.slice";
 
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
@@ -39,9 +32,8 @@ import { SmartLinkEmbed } from "./extensions/SmartLink";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
-  onQuestionRefsChange?: (refs: QuestionEmbed[]) => void;
+  onQuestionRefsChange?: (refs: QuestionEmbedType[]) => void;
   content: string;
-  onQuestionSelect?: (questionId: number | null) => void;
   editable?: boolean;
 }
 
@@ -50,10 +42,7 @@ export const Editor: React.FC<EditorProps> = ({
   onQuestionRefsChange,
   content = "",
   editable = true,
-  onQuestionSelect,
 }) => {
-  const dispatch = useDispatch();
-
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -107,7 +96,7 @@ export const Editor: React.FC<EditorProps> = ({
     }
 
     const updateQuestionRefs = () => {
-      const refs = getRefs(editor, dispatch);
+      const refs = getRefs(editor);
       onQuestionRefsChange(refs);
     };
     updateQuestionRefs();
@@ -117,7 +106,7 @@ export const Editor: React.FC<EditorProps> = ({
     return () => {
       editor.off("update", updateQuestionRefs);
     };
-  }, [editor, onQuestionRefsChange, dispatch]);
+  }, [editor, onQuestionRefsChange]);
 
   // Notify parent when editor is ready
   useEffect(() => {
@@ -134,52 +123,6 @@ export const Editor: React.FC<EditorProps> = ({
       onEditorReady(editor);
     }
   }, [editor, onEditorReady]);
-
-  // Track selection changes to detect when a question embed is selected
-  useEffect(() => {
-    if (!editor || !onQuestionSelect) {
-      return;
-    }
-
-    const updateSelection = () => {
-      const { selection } = editor.state;
-      const node = editor.state.doc.nodeAt(selection.from);
-
-      if (node && node.type.name === "questionEmbed") {
-        onQuestionSelect(node.attrs.questionId);
-      }
-      if (node && node.type.name === "questionStatic") {
-        onQuestionSelect(node.attrs.id);
-      } else {
-        // Check if selection is inside a question embed
-        let foundQuestionId: number | null = null;
-        editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
-          if (node.type.name === "questionEmbed") {
-            foundQuestionId = node.attrs.questionId;
-            return false;
-          }
-        });
-        onQuestionSelect(foundQuestionId);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        // Clear selection by moving cursor to end of document
-        editor.commands.focus("end");
-        onQuestionSelect(null);
-      }
-    };
-
-    updateSelection();
-    editor.on("selectionUpdate", updateSelection);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      editor.off("selectionUpdate", updateSelection);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [editor, onQuestionSelect]);
 
   if (!editor) {
     return null;
@@ -225,11 +168,8 @@ export const Editor: React.FC<EditorProps> = ({
   );
 };
 
-const getRefs = (
-  editor: TiptapEditor,
-  dispatch: DispatchFn,
-): QuestionEmbed[] => {
-  const refs: QuestionEmbed[] = [];
+const getRefs = (editor: TiptapEditor): QuestionEmbedType[] => {
+  const refs: QuestionEmbedType[] = [];
 
   editor.state.doc.descendants((node: any) => {
     if (node.type.name === "questionEmbed") {
@@ -244,30 +184,6 @@ const getRefs = (
       if (!node.attrs.id) {
         node.attrs.id = `static-${_.uniqueId()}`;
         node.attrs.snapshotId = `static-${_.uniqueId()}`;
-
-        const { questionName, display, id, snapshotId } = node.attrs;
-        const seriesData = JSON.parse(b64hash_to_utf8(node.attrs.series));
-        const viz = JSON.parse(b64hash_to_utf8(node.attrs.viz));
-
-        dispatch({
-          type: fetchReportCard.fulfilled.toString(),
-          payload: createMockCard({
-            name: questionName,
-            display,
-            visualization_settings: viz,
-            id,
-          }),
-        });
-
-        dispatch({
-          type: fetchReportSnapshot.fulfilled.toString(),
-          payload: createMockDataset({
-            data: seriesData,
-          }),
-          meta: {
-            arg: snapshotId,
-          },
-        });
       }
       const { questionName, id, snapshotId } = node.attrs;
 

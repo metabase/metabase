@@ -269,12 +269,6 @@ export const ReportPage = ({
     commitVisualizationChanges,
   ]);
 
-  const handleQuestionSelect = useCallback(async () => {
-    if (selectedEmbedIndex !== null) {
-      await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
-    }
-  }, [selectedEmbedIndex, commitVisualizationChanges, editorInstance]);
-
   const handleRefreshAllData = useCallback(async () => {
     await refreshAllData(editorInstance);
   }, [refreshAllData, editorInstance]);
@@ -405,7 +399,6 @@ export const ReportPage = ({
               <Editor
                 onEditorReady={setEditorInstance}
                 onQuestionRefsChange={updateQuestionEmbeds}
-                onQuestionSelect={handleQuestionSelect}
                 content={reportContent}
                 editable={canWrite}
               />

@@ -1,12 +1,14 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
 import DateTime from "metabase/common/components/DateTime";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -14,16 +16,12 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
-import { useCreateReportSnapshotMutation } from "../../../../../api/report";
-import { openVizSettingsSidebar } from "../../../../reports.slice";
 import {
-  getIsLoadingCard,
-  getIsLoadingDataset,
-  getReportCard,
-  getReportRawSeries,
-  getReportRawSeriesWithDraftSettings,
-  getSelectedEmbedIndex,
-} from "../../../../selectors";
+  useCreateReportSnapshotMutation,
+  useGetReportSnapshotQuery,
+} from "../../../../../api/report";
+import { openVizSettingsSidebar } from "../../../../reports.slice";
+import { getCardForEmbedIndex } from "../../../../selectors";
 
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import styles from "./QuestionEmbedNode.module.css";
@@ -151,23 +149,34 @@ export const QuestionEmbedComponent = memo(
       });
     }
 
-    const card = useSelector((state) => getReportCard(state, questionId));
-    const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-    const isCurrentlyEditing =
-      selectedEmbedIndex === embedIndex && embedIndex !== -1;
+    // Use RTK query to fetch card data
+    const { data: card, isLoading: isLoadingCard } = useGetCardQuery(
+      questionId ? { id: questionId } : skipToken,
+    );
 
-    // Use draft settings if this embed is currently being edited
-    const rawSeries = useSelector((state) =>
-      isCurrentlyEditing
-        ? getReportRawSeriesWithDraftSettings(state, questionId, snapshotId)
-        : getReportRawSeries(state, questionId, snapshotId),
+    // Use RTK query to fetch snapshot data
+    const { data: snapshot, isLoading: isLoadingSnapshot } =
+      useGetReportSnapshotQuery(snapshotId ? snapshotId : skipToken);
+
+    // Get card with draft settings if currently editing
+    const cardWithDraft = useSelector((state) =>
+      getCardForEmbedIndex(state, embedIndex, card),
     );
-    const isLoadingCard = useSelector((state) =>
-      getIsLoadingCard(state, questionId),
-    );
-    const isLoadingDataset = useSelector((state) =>
-      getIsLoadingDataset(state, snapshotId),
-    );
+
+    // Get raw series data from card and snapshot
+    const rawSeries = useMemo(() => {
+      if (!cardWithDraft || !snapshot?.data) {
+        return null;
+      }
+      return [
+        {
+          card: cardWithDraft,
+          started_at: snapshot.started_at,
+          data: snapshot.data,
+        },
+      ];
+    }, [cardWithDraft, snapshot]);
+
     const metadata = useSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(customName || "");
@@ -175,12 +184,19 @@ export const QuestionEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [createReportSnapshot] = useCreateReportSnapshotMutation();
 
+    // Dispatch loadMetadataForCard when card is loaded
+    useEffect(() => {
+      if (card) {
+        dispatch(loadMetadataForCard(card));
+      }
+    }, [card, dispatch]);
+
     const displayName = customName || card?.name || questionName;
     const isGuiQuestion = card?.dataset_query?.type !== "native";
-    const isLoading = isLoadingCard || isLoadingDataset;
+    const isLoading = isLoadingCard || isLoadingSnapshot;
 
     // Only show error if we've tried to load and failed, not if we haven't tried yet
-    const hasTriedToLoad = card || isLoadingCard || isLoadingDataset;
+    const hasTriedToLoad = card || isLoadingCard || isLoadingSnapshot;
     const error =
       hasTriedToLoad && !isLoading && questionId && !card
         ? "Failed to load question"
@@ -230,8 +246,8 @@ export const QuestionEmbedComponent = memo(
     };
 
     const handleCopyStaticQuestion = () => {
-      if (rawSeries && card) {
-        const markdown = `{{static-card:${card.name}:series-${utf8_to_b64url(JSON.stringify(rawSeries[0].data))}:viz-${utf8_to_b64url(JSON.stringify(card.visualization_settings))}:display-${card.display}}}`;
+      if (rawSeries && cardWithDraft) {
+        const markdown = `{{static-card:${cardWithDraft.name}:series-${utf8_to_b64url(JSON.stringify(rawSeries[0].data))}:viz-${utf8_to_b64url(JSON.stringify(cardWithDraft.visualization_settings))}:display-${cardWithDraft.display}}}`;
 
         navigator.clipboard.writeText(markdown);
       }
@@ -240,7 +256,7 @@ export const QuestionEmbedComponent = memo(
     const handleReplaceStaticQuestion = () => {
       const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
 
-      if (typeof pos === "number" && card && rawSeries) {
+      if (typeof pos === "number" && cardWithDraft && rawSeries) {
         editor
           .chain()
           .focus()
@@ -249,10 +265,12 @@ export const QuestionEmbedComponent = memo(
           .insertContent({
             type: "questionStatic",
             attrs: {
-              questionName: card.name,
+              questionName: cardWithDraft.name,
               series: utf8_to_b64url(JSON.stringify(rawSeries[0].data)),
-              viz: utf8_to_b64url(JSON.stringify(card.visualization_settings)),
-              display: card.display,
+              viz: utf8_to_b64url(
+                JSON.stringify(cardWithDraft.visualization_settings),
+              ),
+              display: cardWithDraft.display,
             },
           })
           .run();
@@ -260,8 +278,8 @@ export const QuestionEmbedComponent = memo(
     };
 
     const handleEditVisualizationSettings = () => {
-      if (embedIndex !== -1) {
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+      if (embedIndex !== -1 && card) {
+        dispatch(openVizSettingsSidebar({ embedIndex, card }));
       }
     };
 
