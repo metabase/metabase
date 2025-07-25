@@ -230,36 +230,30 @@ export const TableListView = ({ location, params }: Props) => {
           </Stack>
 
           <Group align="center" gap="md">
-            {!isEditing && (
-              <>
-                {!searchQuery.trim() && (
-                  <PaginationControls
-                    itemsLength={paginatedRows.length}
-                    page={page}
-                    pageSize={PAGE_SIZE}
-                    onNextPage={() => {
-                      dispatch(push(`/table/${tableId}?page=${page + 1}`));
-                    }}
-                    onPreviousPage={() => {
-                      if (page === 1) {
-                        dispatch(push(`/table/${tableId}`));
-                      } else {
-                        dispatch(push(`/table/${tableId}?page=${page - 1}`));
-                      }
-                    }}
-                  />
-                )}
+            <PaginationControls
+              itemsLength={paginatedRows.length}
+              page={page}
+              pageSize={PAGE_SIZE}
+              onNextPage={() => {
+                dispatch(push(`/table/${tableId}?page=${page + 1}`));
+              }}
+              onPreviousPage={() => {
+                if (page === 1) {
+                  dispatch(push(`/table/${tableId}`));
+                } else {
+                  dispatch(push(`/table/${tableId}?page=${page - 1}`));
+                }
+              }}
+            />
 
-                <TextInput
-                  leftSection={<Icon name="search" />}
-                  placeholder={t`Search...`}
-                  value={searchQuery}
-                  w={250}
-                  onChange={(event) =>
-                    setSearchQuery(event.currentTarget.value)
-                  }
-                />
-              </>
+            {!isEditing && (
+              <TextInput
+                leftSection={<Icon name="search" />}
+                placeholder={t`Search...`}
+                value={searchQuery}
+                w={250}
+                onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              />
             )}
 
             {!isSyncInProgress(table) && !isEditing && (
