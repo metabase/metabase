@@ -42,7 +42,19 @@ function mapClickhouseValues(parsedValues: RegexFields) {
     ["details.user", parsedValues?.username],
     ["details.password", parsedValues?.password],
     ["details.dbname", parsedValues?.path],
+    [
+      "details.additional-options",
+      Object.entries(parsedValues?.params ?? {})
+        .map(([key, value]) => `${key}=${value}`)
+        .join("&"),
+    ],
   ]);
+
+  // if there are additional options, we need to open the advanced options section
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -69,13 +81,13 @@ function mapRedshiftValues(parsedValues: RegexFields) {
 
 export function mapDatabaseValues(parsedValues: RegexFields) {
   return match(parsedValues.protocol)
+    .with(P.union("awsathena", "athena"), () => mapAthenaValues(parsedValues))
+    .with("redshift", () => mapRedshiftValues(parsedValues))
+    .with("bigquery", () => mapBigQueryValues(parsedValues))
+    .with("clickhouse", () => mapClickhouseValues(parsedValues))
     .with(P.union("postgres", "postgresql"), () =>
       mapPostgresValues(parsedValues),
     )
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
-    .with("bigquery", () => mapBigQueryValues(parsedValues))
-    .with("clickhouse", () => mapClickhouseValues(parsedValues))
-    .with(P.union("awsathena", "athena"), () => mapAthenaValues(parsedValues))
-    .with("redshift", () => mapRedshiftValues(parsedValues))
     .otherwise(() => new Map());
 }

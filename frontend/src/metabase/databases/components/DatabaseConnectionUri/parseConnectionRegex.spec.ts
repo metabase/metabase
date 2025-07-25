@@ -90,6 +90,26 @@ describe("parseConnectionUriRegex - BigQuery", () => {
   });
 });
 
+describe("parseConnectionUriRegex - Clickhouse", () => {
+  it("should parse a Clickhouse connection string", () => {
+    const connectionString =
+      "jdbc:clickhouse://john:aa@127.0.0.1:8123/myDatabase?param1=value1";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "clickhouse",
+        host: "127.0.0.1",
+        port: "8123",
+        hasJdbcPrefix: true,
+        database: "myDatabase",
+        params: {
+          param1: "value1",
+        },
+      }),
+    );
+  });
+});
+
 describe("parseConnectionUriRegex", () => {
   it("should parse a PostgreSQL connection string", () => {
     const connectionString =
@@ -279,22 +299,6 @@ describe("parseConnectionUriRegex - Snowflake", () => {
           db: "maindb",
           warehouse: "mainwarehouse",
         },
-      }),
-    );
-  });
-});
-
-describe("parseConnectionUriRegex - Clickhouse", () => {
-  it("should parse a Clickhouse connection string", () => {
-    const connectionString = "jdbc:clickhouse://127.0.0.1:8123/myDatabase";
-    const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual(
-      expect.objectContaining({
-        protocol: "clickhouse",
-        host: "127.0.0.1",
-        port: "8123",
-        hasJdbcPrefix: true,
-        path: "myDatabase",
       }),
     );
   });
