@@ -64,6 +64,8 @@ export const SdkIframeEmbedPreview = () => {
           ) as MetabaseEmbedElement;
           embedRef.current = customElement;
 
+          customElement.style.height = "100%";
+
           embedRef.current.addEventListener("ready", () =>
             setIsIframeLoaded(true),
           );

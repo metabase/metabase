@@ -5,7 +5,10 @@ import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
 } from "metabase-enterprise/embedding_iframe_sdk/constants";
-import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type {
+  ExplorationEmbedOptions,
+  SdkIframeEmbedBaseSettings,
+} from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import type {
   SdkIframeEmbedSetupExperience,
@@ -58,8 +61,19 @@ export function getEmbedCustomElementSnippet({
     .with("exploration", () => "metabase-question")
     .exhaustive();
 
+  const settingsWithExplorationOverride = match(experience)
+    .with(
+      "exploration",
+      () =>
+        ({
+          ...settings,
+          questionId: "new" as const,
+        }) as ExplorationEmbedOptions,
+    )
+    .otherwise(() => settings);
+
   const attributes = transformEmbedSettingsToAttributes(
-    settings,
+    settingsWithExplorationOverride,
     ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 

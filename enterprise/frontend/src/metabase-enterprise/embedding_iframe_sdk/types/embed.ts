@@ -69,14 +69,16 @@ export interface QuestionEmbedOptions {
 
 export interface ExplorationEmbedOptions {
   template: "exploration";
+  questionId: "new";
 
   isSaveEnabled?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
 
   // incompatible options
-  questionId?: never;
+  drills?: never;
   dashboardId?: never;
+  initialSqlParameters?: never;
 }
 
 export interface CurateContentEmbedOptions {
