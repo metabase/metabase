@@ -127,7 +127,7 @@ export function parseMarkdownToHTML(markdown: string): string {
     })
     .replace(/^### (.*$)/gim, "<h3>$1</h3>")
     .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+    .replace(/^# (?!#)(.*$)/gim, "<h1>$1</h1>")
     .replace(/^\* (.+)/gim, "<li>$1</li>")
     .replace(/^- (.+)/gim, "<li>$1</li>")
     .replace(/^\d+\. (.+)/gim, "<li>$1</li>")
@@ -162,6 +162,17 @@ export function parseMarkdownToHTML(markdown: string): string {
 
   // Now fix paragraph/embed structure by moving standalone embeds outside paragraphs
   html = html.replace(/<p>(__EMBED_TOKEN_\d+__)<\/p>/g, "$1");
+
+  // Fix paragraph/heading structure by moving headings outside paragraphs
+  html = html.replace(/<p>(<h[1-6]>.*?<\/h[1-6]>)<\/p>/g, "$1");
+
+  // Clean up orphaned paragraph tags around headings
+  html = html.replace(/<\/p><p>(<h[1-6]>.*?<\/h[1-6]>)/g, "$1");
+  html = html.replace(/(<h[1-6]>.*?<\/h[1-6]>)<\/p><p>/g, "$1");
+  html = html.replace(/(<h[1-6]>.*?<\/h[1-6]>)<\/p>/g, "$1");
+
+  // Remove empty paragraphs that might be created between headings
+  html = html.replace(/<p><\/p>/g, "");
 
   // Finally, restore the actual embed HTML
   embedTokens.forEach((embed, index) => {
