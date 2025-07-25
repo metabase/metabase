@@ -32,6 +32,7 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
+import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetQuery, Field, FieldId } from "metabase-types/api";
@@ -58,6 +59,13 @@ const CELL_PADDING_HORIZONTAL = "md" as const;
 const CELL_PADDING_VERTICAL_NORMAL = "sm" as const;
 const CELL_PADDING_VERTICAL_THIN = "xs" as const;
 
+type SortDirection = "asc" | "desc";
+
+interface SortState {
+  columnId: FieldId;
+  direction: SortDirection;
+}
+
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
   const tc = useTranslateContent();
@@ -83,6 +91,7 @@ export const TableListView = ({ location, params }: Props) => {
   }, [table]);
 
   const [dataQuery, setDataQuery] = useState(tableQuery);
+  const [sortState, setSortState] = useState<SortState | null>(null);
 
   const countQuery = useMemo<DatasetQuery | undefined>(() => {
     return table ? getRowCountQuery(table) : undefined;
@@ -166,6 +175,45 @@ export const TableListView = ({ location, params }: Props) => {
     if (opts.run) {
       setIsFilterPickerOpen(false);
     }
+  };
+
+  const handleColumnSort = (datasetColumn: DatasetColumn) => {
+    if (!dataQuery || !table) {
+      return;
+    }
+
+    const newDirection: SortDirection =
+      sortState?.columnId === datasetColumn.id && sortState?.direction === "asc"
+        ? "desc"
+        : "asc";
+
+    setSortState({
+      columnId: datasetColumn.id!,
+      direction: newDirection,
+    });
+
+    const orderableColumns = Lib.orderableColumns(dataQuery, -1);
+    const column = orderableColumns.find((column) => {
+      const info = Lib.displayInfo(dataQuery, -1, column);
+      return info.name === datasetColumn.name;
+    });
+
+    if (!column) {
+      return;
+    }
+
+    let newQuery = dataQuery;
+
+    const existingOrderBys = Lib.orderBys(newQuery, -1);
+    newQuery = existingOrderBys.reduce(
+      (query, orderBy) => Lib.removeClause(query, -1, orderBy),
+      newQuery,
+    );
+
+    const orderByClause = Lib.orderByClause(column, newDirection);
+    newQuery = Lib.orderBy(newQuery, -1, orderByClause);
+
+    setDataQuery(newQuery);
   };
 
   useEffect(() => {
@@ -351,10 +399,26 @@ export const TableListView = ({ location, params }: Props) => {
                     key={index}
                     px={CELL_PADDING_HORIZONTAL}
                     py="md"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => handleColumnSort(column)}
                   >
-                    <Text c="text-secondary" size="sm">
-                      {column.display_name}
-                    </Text>
+                    <Group gap="sm" align="center">
+                      <Text c="text-secondary" size="sm">
+                        {column.display_name}
+                      </Text>
+
+                      {sortState && sortState.columnId === column.id && (
+                        <Icon
+                          c="text-secondary"
+                          name={
+                            sortState.direction === "asc"
+                              ? "chevronup"
+                              : "chevrondown"
+                          }
+                          size={12}
+                        />
+                      )}
+                    </Group>
                   </Box>
                 ))}
 
@@ -399,7 +463,9 @@ export const TableListView = ({ location, params }: Props) => {
                         className={S.link}
                         component={Link}
                         to={
-                          pkIndex != null && !searchQuery.trim()
+                          pkIndex !== undefined &&
+                          pkIndex >= 0 &&
+                          !searchQuery.trim()
                             ? `/table/${table.id}/detail/${paginatedRows[index][pkIndex]}`
                             : ""
                         }
