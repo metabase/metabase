@@ -70,7 +70,7 @@
                               :uuid-type                 true
                               :uploads                   true
                               :database-routing          true
-                              :transforms/basic          false}]
+                              :transforms/basic          true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))

@@ -5,6 +5,9 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -48,23 +51,36 @@
     `(mt/with-model-cleanup [:model/Transform]
        ~@body)))
 
+(defn- make-query [category]
+  (let [q (if (= :clickhouse driver/*driver*)
+            (mt/mbql-query products {:where [:= $category category]
+                                     :expressions {"clickhouse_merge_table_id" $id}})
+            (mt/mbql-query products {:where [:= $category category]}))]
+    (:query (qp.compile/compile q))))
+(comment
+  (binding [driver/*driver* :clickhouse]
+    (make-query "Gadget")))
+
 (deftest create-transform-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
       (mt/user-http-request :crowberto :post 200 "ee/transform"
                             {:name "Gadget Products"
                              :source {:type "query"
                                       :query {:database (mt/id)
                                               :type "native",
-                                              :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                              :native {:query (make-query "Gadget")
                                                        :template-tags {}}}}
+                             ;; for clickhouse (and other dbs where we do merge into), we will
+                             ;; want a primary key
+                             ;;:primary-key-column "id"
                              :target {:type "table"
                                       ;; leave out schema for now
                                       ;;:schema (str (rand-int 10000))
                                       :table table-name}}))))
 
 (deftest list-transforms-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (testing "Can list without query parameters"
       (mt/user-http-request :crowberto :get 200 "ee/transform"))
     (testing "Can list with query parameters"
@@ -74,7 +90,7 @@
                     :source {:type "query"
                              :query {:database (mt/id)
                                      :type "native",
-                                     :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                     :native {:query (make-query "Gadget")
                                               :template-tags {}}}}
                     :target {:type "table"
                              ;;:schema "transforms"
@@ -86,14 +102,14 @@
                       list-resp)))))))
 
 (deftest get-transforms-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
       (let [body {:name "Gadget Products"
                   :description "Desc"
                   :source {:type "query"
                            :query {:database (mt/id)
                                    :type "native",
-                                   :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                   :native {:query (make-query "Gadget")
                                             :template-tags {}}}}
                   :target {:type "table"
                            ;;:schema "transforms"
@@ -107,14 +123,15 @@
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest put-transforms-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
-      (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
+      (let [query2 (make-query "None")
+            resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
                                                          :type "native",
-                                                         :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                         :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
@@ -125,7 +142,7 @@
                  :source {:type "query"
                           :query {:database (mt/id)
                                   :type "native",
-                                  :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'None'"
+                                  :native {:query query2
                                            :template-tags {}}}}
                  :target {:type "table"
                           :table table-name}}
@@ -135,18 +152,18 @@
                                        :source {:type "query"
                                                 :query {:database (mt/id)
                                                         :type "native",
-                                                        :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'None'"
+                                                        :native {:query query2
                                                                  :template-tags {}}}}})))))))
 
 (deftest delete-transforms-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
       (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
                                                          :type "native",
-                                                         :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                         :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"
@@ -155,14 +172,14 @@
         (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))
 
 (deftest delete-table-transforms-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
     (with-transform-cleanup! [table-name "gadget_products"]
       (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
                                         :source {:type "query"
                                                  :query {:database (mt/id)
                                                          :type "native",
-                                                         :native {:query "SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'"
+                                                         :native {:query (make-query "Gadget")
                                                                   :template-tags {}}}}
                                         :target {:type "table"
                                                  ;;:schema "transforms"

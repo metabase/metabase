@@ -1838,10 +1838,13 @@
            metabase-enterprise.transforms.init}
    :uses #{api
            driver
+           events
            models
            permissions
            query-processor
            sync
+           task
+           task-history
            util}}
 
   enterprise/transfers
