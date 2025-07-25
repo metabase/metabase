@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { ColumnPickerSidePanel } from "../../ColumnPickerSidePanel";
+import type { FieldPickerItem } from "../../FieldPicker";
 import {
   NotebookCell,
   NotebookCellAdd,
@@ -12,7 +14,6 @@ import {
 import { JoinCondition } from "../JoinCondition";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
-import { JoinTableColumnPicker } from "../JoinTableColumnPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
 import S from "./JoinComplete.module.css";
@@ -44,6 +45,7 @@ export function JoinComplete({
   const rhsTable = useMemo(() => Lib.joinedThing(query, join), [query, join]);
   const conditions = useMemo(() => Lib.joinConditions(join), [join]);
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
+  const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
 
   const lhsTableName = useMemo(
     () => Lib.joinLHSDisplayName(query, stageIndex, join),
@@ -100,42 +102,64 @@ export function JoinComplete({
     onJoinChange(newJoin);
   };
 
+  const columns = useMemo(
+    () => Lib.joinableColumns(query, stageIndex, join),
+    [query, stageIndex, join],
+  );
+
+  const isColumnSelected = ({ columnInfo }: FieldPickerItem) => {
+    return Boolean(columnInfo.selected);
+  };
+
+  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
+    const newQuery = isSelected
+      ? Lib.addField(query, stageIndex, column)
+      : Lib.removeField(query, stageIndex, column);
+    onQueryChange(newQuery);
+  };
+
+  const handleSelectAll = () => {
+    const newJoin = Lib.withJoinFields(join, "all");
+    const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
+    onQueryChange(newQuery);
+  };
+
+  const handleSelectNone = () => {
+    const newJoin = Lib.withJoinFields(join, "none");
+    const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
+    onQueryChange(newQuery);
+  };
+
   return (
-    <Flex direction={{ base: "column", md: "row" }} gap="sm">
-      <NotebookCell className={S.JoinConditionCell} color={color}>
-        <Flex gap={6}>
-          <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
-            {lhsTableName}
-          </NotebookCellItem>
-          <JoinStrategyPicker
-            query={query}
-            stageIndex={stageIndex}
-            strategy={strategy}
-            isReadOnly={isReadOnly}
-            onChange={handleStrategyChange}
-          />
-          <JoinTablePicker
-            query={query}
-            stageIndex={stageIndex}
-            table={rhsTable}
-            color={color}
-            isReadOnly={isReadOnly}
-            columnPicker={
-              <JoinTableColumnPicker
-                query={query}
-                stageIndex={stageIndex}
-                join={join}
-                onChange={onQueryChange}
-              />
-            }
-            onChange={handleTableChange}
-          />
-        </Flex>
-      </NotebookCell>
-      <Box mt={{ md: "lg" }}>
-        <Text color="brand" fw="bold">{t`on`}</Text>
-      </Box>
-      <NotebookCell className={S.JoinConditionCell} color={color}>
+    <>
+      <Flex direction={{ base: "column", md: "row" }} gap="sm">
+        <NotebookCell className={S.JoinCell} color={color}>
+          <Flex gap={6}>
+            <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
+              {lhsTableName}
+            </NotebookCellItem>
+            <JoinStrategyPicker
+              query={query}
+              stageIndex={stageIndex}
+              strategy={strategy}
+              isReadOnly={isReadOnly}
+              onChange={handleStrategyChange}
+            />
+            <JoinTablePicker
+              query={query}
+              stageIndex={stageIndex}
+              table={rhsTable}
+              color={color}
+              isReadOnly={isReadOnly}
+              onOpenColumnPicker={() => setIsColumnPickerOpen(true)}
+              onChange={handleTableChange}
+            />
+          </Flex>
+        </NotebookCell>
+        <Box mt={{ md: "lg" }}>
+          <Text color="brand" fw="bold">{t`on`}</Text>
+        </Box>
+        <NotebookCell className={S.JoinConditionCell} color={color}>
         {conditions.map((condition, index) => {
           const testId = `join-condition-${index}`;
           const isLast = index === conditions.length - 1;
@@ -185,5 +209,20 @@ export function JoinComplete({
         )}
       </NotebookCell>
     </Flex>
+
+    <ColumnPickerSidePanel
+      isOpen={isColumnPickerOpen}
+      onClose={() => setIsColumnPickerOpen(false)}
+      query={query}
+      stageIndex={stageIndex}
+      columns={columns}
+      title={t`Pick columns`}
+      isColumnSelected={isColumnSelected}
+      onToggle={handleToggle}
+      onSelectAll={handleSelectAll}
+      onSelectNone={handleSelectNone}
+      data-testid="join-complete-column-picker"
+    />
+    </>
   );
 }

@@ -1,0 +1,1 @@
+{"version":3,"file":"main.js","sources":["webpack:///webpack/runtime/rspack_version","webpack:///webpack/runtime/rspack_unique_id"],"sourcesContent":["__webpack_require__.rv = function() { return \"1.3.11\"; }","__webpack_require__.ruid = \"bundler=rspack@1.3.11\";\n"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA,sCAAsC;;;;ACAtC"}

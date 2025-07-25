@@ -2,13 +2,14 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { Box, Flex, Text } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { ColumnPickerSidePanel } from "../../ColumnPickerSidePanel";
+import type { FieldPickerItem } from "../../FieldPicker";
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";
-import { JoinTableColumnDraftPicker } from "../JoinTableColumnDraftPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
 import S from "./JoinDraft.module.css";
@@ -46,6 +47,7 @@ export function JoinDraft({
   const [selectedRhsTableColumns, setSelectedRhsTableColumns] =
     useState(rhsTableColumns);
   const [lhsExpression, setLhsExpression] = useState<Lib.ExpressionClause>();
+  const [isColumnPickerOpen, setIsColumnPickerOpen] = useState(false);
 
   const lhsTableName = useMemo(
     () => Lib.joinLHSDisplayName(query, stageIndex, rhsTable, lhsExpression),
@@ -104,49 +106,57 @@ export function JoinDraft({
     [sourceTableId, handleResetRef],
   );
 
+  const isColumnSelected = ({ column }: FieldPickerItem) => {
+    return selectedRhsTableColumns.includes(column);
+  };
+
+  const handleToggle = (column: Lib.ColumnMetadata, isSelected: boolean) => {
+    const newSelectedColumns = [...selectedRhsTableColumns];
+    if (isSelected) {
+      newSelectedColumns.push(column);
+    } else {
+      const columnIndex = selectedRhsTableColumns.indexOf(column);
+      newSelectedColumns.splice(columnIndex, 1);
+    }
+    setSelectedRhsTableColumns(newSelectedColumns);
+  };
+
+  const handleSelectAll = () => {
+    setSelectedRhsTableColumns(rhsTableColumns);
+  };
+
+  const handleSelectNone = () => {
+    setSelectedRhsTableColumns([]);
+  };
+
   return (
-    <Flex miw="100%" gap="1rem">
-      <NotebookCell className={S.JoinCell} color={color}>
-        <Flex direction="row" gap={6}>
-          <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
-            {lhsTableName}
-          </NotebookCellItem>
-          <JoinStrategyPicker
-            query={query}
-            stageIndex={stageIndex}
-            strategy={strategy}
-            isReadOnly={isReadOnly}
-            onChange={setStrategy}
-          />
-          <JoinTablePicker
-            query={query}
-            stageIndex={stageIndex}
-            table={rhsTable}
-            color={color}
-            isReadOnly={isReadOnly}
-            columnPicker={
-              <JoinTableColumnDraftPicker
-                query={query}
-                stageIndex={stageIndex}
-                columns={rhsTableColumns}
-                selectedColumns={selectedRhsTableColumns}
-                onChange={setSelectedRhsTableColumns}
-              />
-            }
-            onChange={handleTableChange}
-          />
-        </Flex>
-      </NotebookCell>
-      {rhsTable && (
-        <>
-          <Box mt="1.5rem">
-            <Text color="brand" fw="bold">{t`on`}</Text>
-          </Box>
-          <NotebookCell
-            className={S.JoinConditionCell}
-            color={color}
-            data-testid="new-join-condition"
-          >
+    <>
+      <Flex miw="100%" gap="1rem">
+        <NotebookCell className={S.JoinCell} color={color}>
+          <Flex direction="row" gap={6}>
+            <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
+              {lhsTableName}
+            </NotebookCellItem>
+            <JoinStrategyPicker
+              query={query}
+              stageIndex={stageIndex}
+              strategy={strategy}
+              isReadOnly={isReadOnly}
+              onChange={setStrategy}
+            />
+            <JoinTablePicker
+              query={query}
+              stageIndex={stageIndex}
+              table={rhsTable}
+              color={color}
+              isReadOnly={isReadOnly}
+              onOpenColumnPicker={() => setIsColumnPickerOpen(true)}
+              onChange={handleTableChange}
+            />
+          </Flex>
+        </NotebookCell>
+        {rhsTable && (
+          <Box>
             <JoinConditionDraft
               query={query}
               stageIndex={stageIndex}
@@ -158,11 +168,28 @@ export function JoinDraft({
               isReadOnly={isReadOnly}
               isRemovable={false}
               onChange={handleConditionChange}
+              onRemove={() => {}}
               onLhsExpressionChange={setLhsExpression}
             />
-          </NotebookCell>
-        </>
+          </Box>
+        )}
+      </Flex>
+
+      {rhsTable && (
+        <ColumnPickerSidePanel
+          isOpen={isColumnPickerOpen}
+          onClose={() => setIsColumnPickerOpen(false)}
+          query={query}
+          stageIndex={stageIndex}
+          columns={rhsTableColumns}
+          title={t`Pick columns`}
+          isColumnSelected={isColumnSelected}
+          onToggle={handleToggle}
+          onSelectAll={handleSelectAll}
+          onSelectNone={handleSelectNone}
+          data-testid="join-draft-column-picker"
+        />
       )}
-    </Flex>
+    </>
   );
 }
