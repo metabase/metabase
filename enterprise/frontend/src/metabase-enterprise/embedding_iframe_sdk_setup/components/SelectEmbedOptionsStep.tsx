@@ -34,9 +34,8 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  const isDashboardOrInteractiveQuestion = Boolean(
-    experience === "dashboard" || (experience === "chart" && settings.drills),
-  );
+  const isDashboardOrInteractiveQuestion =
+    settings.dashboardId || (settings.questionId && settings.drills);
 
   return (
     <Stack gap="md">
