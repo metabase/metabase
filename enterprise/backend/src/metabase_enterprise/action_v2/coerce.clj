@@ -87,7 +87,8 @@
       str))
 
 ;; TODO Missing cases for [[metabase.actions.coerce-test/coercion-fns-static-test]]
-(def ^:private unimplemented-coercion-functions
+(def unimplemented-coercion-functions
+  "A list of coercion options we still need to implement, used to suppress our coverage tests."
   #{:Coercion/Bytes->Temporal
     :Coercion/DateTime->Date
     :Coercion/Float->Integer

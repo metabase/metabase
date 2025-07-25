@@ -1,5 +1,6 @@
 (ns metabase-enterprise.action-v2.coerce-test
   (:require
+   [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -74,7 +75,7 @@
 
   ;; TODO: fix this test by implementing all strategies
   (let [implemented (set (keys coerce/coercion-fns))
-        [unknown missing] (clojure.data/diff implemented (descendants :Coercion/*))]
+        [unknown missing] (data/diff implemented (descendants :Coercion/*))]
     (testing "There are no unnecessary transformations (or stale keywords)"
       (is (nil? unknown)))
     (testing "There are no gaps in our transformations"

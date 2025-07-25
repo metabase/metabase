@@ -298,7 +298,7 @@
           (do
             ;; TODO more granular controls
             (when-not (api/check-superuser)
-              (throw (ex-info (i18n/tru "You don't have permissions to do that.") {:status-code 403})))
+              (throw (ex-info (i18n/tru "You don''t have permissions to do that.") {:status-code 403})))
             (check-data-editing-enabled-for-database! db))))
 
       (log/with-context {:db-id (:id db)}

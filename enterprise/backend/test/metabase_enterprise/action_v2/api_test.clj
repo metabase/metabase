@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.action-v2.api-test
   (:require
+   [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -15,7 +16,6 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -502,7 +502,7 @@
   ([exclusions test-cases]
    (let [covered-fns  (into #{} (keep second) test-cases)
          expected-fns (descendants :Coercion/*)
-         [unknown missing] (clojure.data/diff covered-fns expected-fns)]
+         [unknown missing] (data/diff covered-fns expected-fns)]
      (testing "There are no unnecessary transformations (or stale keywords)"
        (is (empty? unknown)))
      (testing "All expected coercion options are tested"

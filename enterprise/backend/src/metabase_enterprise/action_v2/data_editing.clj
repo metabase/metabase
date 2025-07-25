@@ -15,6 +15,8 @@
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^ArrayBlockingQueue global-field-value-invalidate-queue
   "Queue used to recalculate the field values for updated columns in the background."
   (ArrayBlockingQueue. 1000))
@@ -142,7 +144,7 @@
                           (apply concat))]
     ;; Note that for now we only rescan field values when values are *added* and not when they are *removed*.
     (when (seq stale-fields)
-      (let [queue ^ArrayBlockingQueue (or *field-value-invalidate-queue* global-field-value-invalidate-queue)]
+      (let [^ArrayBlockingQueue queue (or *field-value-invalidate-queue* global-field-value-invalidate-queue)]
         (.offer queue stale-fields)))))
 
 ;; TODO this is fairly dirty, would be cleaner to map from db values to de-coerced values via middleware
