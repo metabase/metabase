@@ -6,10 +6,6 @@ on:
       skip:
         type: boolean
         default: false
-      skip-build:
-        type: boolean
-        default: false
-        description: "Skip building uberjars (use existing artifacts)"
       specs:
         type: string
         required: false

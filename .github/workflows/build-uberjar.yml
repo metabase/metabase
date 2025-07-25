@@ -62,25 +62,25 @@ jobs:
           script: | # js
             let javaVersion = 21;  // default
             let nodeVersion = 22;  // default
-            
+
             // Check if this is a release branch
             if (context.ref.includes('release-')) {
               try {
                 const fs = require('fs');
                 const path = require('path');
-                
+
                 // Check if release tools exist
                 const releasePath = path.join(process.env.GITHUB_WORKSPACE, 'release');
                 if (fs.existsSync(releasePath)) {
                   // Prepare build scripts
                   const { execSync } = require('child_process');
                   execSync('yarn && yarn build', { cwd: releasePath });
-                  
+
                   // Get requirements from release branch
                   const { getBuildRequirements, getVersionFromReleaseBranch } = require(path.join(releasePath, 'dist/index.cjs'));
                   const version = getVersionFromReleaseBranch(context.ref);
                   const requirements = getBuildRequirements(version);
-                  
+
                   javaVersion = requirements.java;
                   nodeVersion = requirements.node;
                   console.log(`Release branch detected: Using Java ${javaVersion}, Node ${nodeVersion}`);
@@ -92,7 +92,7 @@ jobs:
             } else {
               console.log(`Non-release branch: Using defaults Java ${javaVersion}, Node ${nodeVersion}`);
             }
-            
+
             core.setOutput('java_version', javaVersion);
             core.setOutput('node_version', nodeVersion);
 
