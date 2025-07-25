@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useLazyGetCardQuery } from "metabase/api";
@@ -7,10 +6,12 @@ import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { Box, Button, Group } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 
 import { NewTransformModal } from "../../components/NewTransformModal";
 import { newTransformQueryUrl } from "../../utils/urls";
+
+import { NewTransformOption } from "./NewTransformOption";
 
 type ModalType = "question" | "transform";
 
@@ -32,15 +33,27 @@ export function NewTransformPage() {
   };
 
   return (
-    <Box flex="1 1 0" bg="bg-white">
-      <Group>
-        <Button component={Link} to={newTransformQueryUrl()}>
-          {t`Use the notebook editor`}
-        </Button>
-        <Button
+    <Flex direction="column" flex={1} h="100%" justify="center" align="center">
+      <Stack>
+        <NewTransformOption
+          icon="notebook"
+          label={t`Use the notebook editor`}
+          description={t`This automatically inherits metadata from your source tables.`}
+          link={newTransformQueryUrl()}
+        />
+        <NewTransformOption
+          icon="sql"
+          label={t`Use a native query`}
+          description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
+          link={newTransformQueryUrl()}
+        />
+        <NewTransformOption
+          icon="copy"
+          label={t`Use an existing question or model`}
+          description={t`You can copy the query definition to a new transform.`}
           onClick={handleQuestionModalOpen}
-        >{t`Use an existing question or model`}</Button>
-      </Group>
+        />
+      </Stack>
       {modalType === "question" && (
         <QuestionPickerModal
           title={t`Pick a question or model`}
@@ -56,6 +69,6 @@ export function NewTransformPage() {
           onClose={handleModalClose}
         />
       )}
-    </Box>
+    </Flex>
   );
 }
