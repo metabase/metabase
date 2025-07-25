@@ -86,6 +86,15 @@
                             ;; dashcard column context can hide parameters (if defined)
                             :when (:enabled column-settings true)
                             :let [required (or pk (:database_required field))]]
+
+                        ;; TODO assert that the database driver implement the following features,
+                        ;;      or even better - just test the first one, and have a driver test that
+                        ;;      the it implies the latter 3 features are also true.
+                        ;:actions/data-editing
+                        ;:describe-default-expr
+                        ;:describe-is-generated
+                        ;:describe-is-nullable
+
                         (u/remove-nils
                          ;; TODO yet another comment about how field id would be a better key, due to case issues
                          {:id                      (:name field)
