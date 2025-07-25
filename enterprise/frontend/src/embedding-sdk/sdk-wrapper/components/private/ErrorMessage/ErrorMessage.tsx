@@ -3,7 +3,7 @@ import { colors } from "metabase/lib/colors/colors";
 
 // Mimics the frontend/src/metabase/common/components/Alert/Alert.styled.tsx
 export const ErrorMessage = () => (
-  <div style={{ padding: "0.5rem" }}>
+  <div style={{ padding: "0.5rem" }} data-testid="sdk-error-container">
     <div
       style={{
         display: "flex",

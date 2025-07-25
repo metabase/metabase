@@ -16,24 +16,13 @@ export function useWaitForSdkBundle() {
   const isLoading = loadingState === "loading";
   const isError = loadingState === "error";
 
-  const updateLoadingState = useCallback(
-    (loadingState: SdkBundleScriptLoadingState) => {
-      window.EMBEDDING_SDK_BUNDLE_LOADING_STATE = loadingState;
-      setLoadingState(loadingState);
-    },
-    [setLoadingState],
-  );
+  const handleSdkLoadingEvent = useCallback((event: Event) => {
+    const customEvent = event as CustomEvent<SdkBundleScriptLoadingEvent>;
 
-  const handleSdkLoadingEvent = useCallback(
-    (event: Event) => {
-      const customEvent = event as CustomEvent<SdkBundleScriptLoadingEvent>;
-
-      if (customEvent.detail.status) {
-        updateLoadingState(customEvent.detail.status);
-      }
-    },
-    [updateLoadingState],
-  );
+    if (customEvent.detail.status) {
+      setLoadingState(customEvent.detail.status);
+    }
+  }, []);
 
   useEffect(() => {
     document.addEventListener(

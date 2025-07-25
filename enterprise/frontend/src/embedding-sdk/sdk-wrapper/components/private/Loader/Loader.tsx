@@ -61,6 +61,7 @@ export const Loader = ({ className, style }: CommonStylingProps) => {
   return (
     <div
       className={className}
+      data-testid="loading-indicator"
       style={{
         width: "100%",
         height: "100%",
@@ -70,7 +71,7 @@ export const Loader = ({ className, style }: CommonStylingProps) => {
       }}
     >
       {LoaderComponent ? (
-        <LoaderComponent data-testid="loading-indicator" />
+        <LoaderComponent />
       ) : (
         <Spinner color={theme?.colors?.brand} />
       )}

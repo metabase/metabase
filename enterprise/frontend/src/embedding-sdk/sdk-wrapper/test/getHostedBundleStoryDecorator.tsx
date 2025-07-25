@@ -1,7 +1,7 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { useEffect } from "react";
 
-import { renameConflictingCljsGlobals } from "./rename-conflicting-cljs-globals";
+import { renameConflictingCljsGlobals } from "metabase/embedding-sdk/test/rename-conflicting-cljs-globals";
 
 export const getHostedBundleStoryDecorator = () =>
   function useDecorator(Story: StoryFn, context: StoryContext) {
