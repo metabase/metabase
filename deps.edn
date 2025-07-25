@@ -254,7 +254,6 @@
     djblue/portal                {:mvn/version "0.59.2"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:sha "1fe839cfa48549e21b89c6418c747895eda7e7bc"} ; test runner
-    io.github.tonsky/clj-reload  {:mvn/version "0.9.7"}                     ; reloader
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
