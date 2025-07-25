@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -8,11 +9,11 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-const getIframeContent = () => {
+const getIframeContent = (iframeIndex = 0) => {
   return cy
     .get("iframe")
     .should("be.visible")
-    .its("0.contentDocument")
+    .its(iframeIndex + ".contentDocument")
     .should("exist")
     .its("body")
     .should("not.be.empty");
@@ -204,8 +205,29 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" />
       `);
 
-      getIframeContent().findByText("Orders").should("exist");
-      getIframeContent().findByText("User ID").should("exist");
+      getIframeContent(0).findByText("Orders").should("exist");
+      getIframeContent(1).findByText("Orders, Count").should("exist");
+    });
+
+    it("should allow rendering two different questions in the same page", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+
+      <div style="display: flex; flex-direction: row; gap: 10px;">
+        <div>
+          <p>Question ${ORDERS_QUESTION_ID}</p>
+          <metabase-question question-id="${ORDERS_QUESTION_ID}" />
+        </div>
+        <div>
+          <p>Question ${ORDERS_COUNT_QUESTION_ID}</p>
+          <metabase-question question-id="${ORDERS_COUNT_QUESTION_ID}" />
+        </div>
+      </div>
+      `);
+
+      getIframeContent(0).findByText("Orders").should("exist");
+      getIframeContent(1).findByText("Orders, Count").should("exist");
     });
 
     it("should show title when with-title is true", () => {
