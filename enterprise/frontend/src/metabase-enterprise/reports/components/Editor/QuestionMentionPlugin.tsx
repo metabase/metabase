@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
@@ -182,9 +183,15 @@ export const QuestionMentionPlugin = ({
     };
   }, [editor, mentionRange, showPopover]);
 
-  const handleSelect = async (item: UnrestrictedLinkEntity) => {
+  const handleSelect = async (item: UnrestrictedLinkEntity | null) => {
     if (!mentionRange) {
       return;
+    }
+
+    if (item === null) {
+      setShowPopover(false);
+      setMentionRange(null);
+      editor.commands.focus();
     }
 
     const wrappedItem = Search.wrapEntity(item, dispatch);
@@ -202,6 +209,8 @@ export const QuestionMentionPlugin = ({
             snapshotId: snapshot.snapshot_id,
           }),
         );
+
+        const scrollId = `scroll-${_.uniqueId()}`;
         editor
           .chain()
           .focus()
@@ -213,10 +222,21 @@ export const QuestionMentionPlugin = ({
               questionId: snapshot.card_id,
               questionName: wrappedItem.name,
               model: wrappedItem.model,
+              scrollId,
             },
           })
           .setTextSelection(insertPosition + 1)
           .run();
+
+        setTimeout(() => {
+          const domElement = document.querySelector(
+            `[data-scroll-id=${scrollId}]`,
+          );
+
+          if (domElement) {
+            domElement.scrollIntoView({ block: "end" });
+          }
+        }, 300);
 
         setShowPopover(false);
         setMentionRange(null);
@@ -299,6 +319,7 @@ export const QuestionMentionPlugin = ({
               models={MODELS_TO_SEARCH}
               footerComponent={SearchResultsFooter}
               onFooterSelect={() => setModal("question-picker")}
+              showFooterOnNoResults
             />
           ) : (
             <RecentsListContent

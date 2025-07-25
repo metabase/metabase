@@ -68,6 +68,9 @@ export const QuestionEmbedNode = Node.create<{
       model: {
         default: "card",
       },
+      scrollId: {
+        default: null,
+      },
     };
   },
 
@@ -328,7 +331,10 @@ export const QuestionEmbedComponent = memo(
 
     if (isLoading) {
       return (
-        <NodeViewWrapper className={styles.embedWrapper}>
+        <NodeViewWrapper
+          className={styles.embedWrapper}
+          data-scroll-id={node.attrs.scrollId}
+        >
           <Box className={styles.loadingContainer}>
             <Loader size="sm" />
             <Text>Loading question...</Text>
@@ -339,7 +345,10 @@ export const QuestionEmbedComponent = memo(
 
     if (error) {
       return (
-        <NodeViewWrapper className={styles.embedWrapper}>
+        <NodeViewWrapper
+          className={styles.embedWrapper}
+          data-scroll-id={node.attrs.scrollId}
+        >
           <Box className={styles.errorContainer}>
             <Text color="error">{t`Failed to load question: {questionName}`}</Text>
           </Box>
@@ -348,7 +357,10 @@ export const QuestionEmbedComponent = memo(
     }
 
     return (
-      <NodeViewWrapper className={styles.embedWrapper}>
+      <NodeViewWrapper
+        className={styles.embedWrapper}
+        data-scroll-id={node.attrs.scrollId}
+      >
         <Box
           className={`${styles.questionEmbed} ${selected ? styles.selected : ""}`}
         >

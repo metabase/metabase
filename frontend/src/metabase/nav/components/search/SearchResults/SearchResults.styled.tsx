@@ -6,6 +6,9 @@ import { Stack } from "metabase/ui";
 export const EmptyStateContainer = styled.div`
   margin-top: 4rem;
   margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 `;
 
 export const SearchResultsList = styled(Stack)`
