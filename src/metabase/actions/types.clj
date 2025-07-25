@@ -3,7 +3,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-;; Maybe we want to add an origin? e.g., CRUD API versus action execute API versus v2 API. YAGNI for now.
+;; This covers some cases that we aren't yet landing support for, but the code is fairly benign and unlikely to change.
 
 (mr/def ::missing-id
   [:int {:min -1, :max -1}])
@@ -14,11 +14,11 @@
   [[:map [:dashboard-id ms/PositiveInt]]
    [:map [:dashcard-id ms/PositiveInt]]
    [:map [:card-id ms/PositiveInt]]
-   ;; We represent legacy-actions, which get called against a model, distinctly. Treated the same as card-id, mostly.
+   ;; We represent model-actions distinctly. Treated the same as card-id, mostly.
    [:map [:model-id ms/PositiveInt]]
    [:map [:table-id ms/PositiveInt]]
    [:map [:webhook-id ms/PositiveInt]]
-   [:map [:unknown [:enum :legacy-action]]]])
+   [:map [:unknown [:enum :model-action]]]])
 
 ;; Relaxed, as we support it being
 (mr/def ::scope.raw
