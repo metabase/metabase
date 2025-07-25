@@ -299,12 +299,14 @@
 (defmethod driver/compile-transform :clickhouse
   [driver {:keys [sql output-table]}]
   [(format "CREATE TABLE %s ORDER BY `clickhouse_merge_table_id` AS %s"
-           (quote-name (name output-table))
+           (cond->> (quote-name (name output-table))
+             (qualified-keyword? output-table)
+             (str (quote-name (namespace output-table)) \.))
            sql)])
 
 (comment
 
-  (driver/compile-transform :clickhouse {:sql "SELECT * FROM products" :output-table "FDFS"})
+  (driver/compile-transform :clickhouse {:sql "SELECT * FROM products" :output-table :a/FDFS})
 
   (quote-name "products")
 

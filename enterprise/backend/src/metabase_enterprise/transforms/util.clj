@@ -5,10 +5,11 @@
    [toucan2.core :as t2]))
 
 (defn qualified-table-name
-  "Return the properly escaped name of the target of a transform."
-  [driver {:keys [schema name]}]
-  (cond->> (driver/escape-alias driver name)
-    (string? schema) (str (driver/escape-alias driver schema) ".")))
+  "Return the name of the target table of a transform as a possibly qualified symbol."
+  [_driver {:keys [schema name]}]
+  (if schema
+    (keyword schema name)
+    (keyword name)))
 
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
