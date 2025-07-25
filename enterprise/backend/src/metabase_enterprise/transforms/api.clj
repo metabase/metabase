@@ -54,12 +54,13 @@
             [:name :string]
             [:description {:optional true} [:maybe :string]]
             [:source ::transform-source]
-            [:target ::transform-target]]]
+            [:target ::transform-target]
+            [:schedule {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (when (transforms.util/target-table-exists? body)
     (api/throw-403))
   (let [transform (t2/insert-returning-instance!
-                   :model/Transform (select-keys body [:name :description :source :target]))]
+                   :model/Transform (select-keys body [:name :description :source :target :schedule]))]
     (transforms.execute/exec-transform transform)
     transform))
 
@@ -80,7 +81,8 @@
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
             [:source {:optional true} ::transform-source]
-            [:target {:optional true} ::transform-target]]]
+            [:target {:optional true} ::transform-target]
+            [:schedule {:optional true} [:maybe :string]]]]
   (log/info "put transform" id)
   (api/check-superuser)
   (let [old (t2/select-one :model/Transform id)

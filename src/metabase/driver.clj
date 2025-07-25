@@ -702,7 +702,14 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
-    :transforms/basic
+    ;; Does this driver support transforms with a table as the target?
+    :transforms/table
+
+    ;; Does this driver support transforms with a view as the target?
+    :transforms/view
+
+    ;; Does this driver support transforms with a materialized view as the target?
+    :transforms/materialized-view
 
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test

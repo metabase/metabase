@@ -32,7 +32,8 @@
 (t2/define-after-insert :model/Transform
   [transform]
   (events/publish-event! :event/transform-create {:object transform
-                                                  :user-id api/*current-user-id*}))
+                                                  :user-id api/*current-user-id*})
+  transform)
 
 (t2/define-before-update :model/Transform
   [transform]
@@ -46,4 +47,5 @@
 (t2/define-before-delete :model/Transform
   [transform]
   (events/publish-event! :event/transform-delete {:object transform
-                                                  :user-id api/*current-user-id*}))
+                                                  :user-id api/*current-user-id*})
+  transform)

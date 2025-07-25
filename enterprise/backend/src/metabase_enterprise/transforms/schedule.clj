@@ -74,9 +74,9 @@
 
 (defn- delete-trigger!
   "Delete the trigger for a transform."
-  [transform-id]
-  (when-first [trigger (task/existing-triggers job-key (trigger-key transform-id))]
-    (delete-trigger-for-transform-id! transform-id trigger)))
+  [{:keys [id] :as _transform}]
+  (when-first [trigger (task/existing-triggers job-key (trigger-key id))]
+    (delete-trigger-for-transform-id! id trigger)))
 
 (task/defjob ^{:doc "Execute a transform."}
   ExecuteTransform

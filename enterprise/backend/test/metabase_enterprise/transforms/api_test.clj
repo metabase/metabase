@@ -5,8 +5,6 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -62,7 +60,7 @@
     (make-query "Gadget")))
 
 (deftest create-transform-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (with-transform-cleanup! [table-name "gadget_products"]
       (mt/user-http-request :crowberto :post 200 "ee/transform"
                             {:name "Gadget Products"
@@ -80,7 +78,7 @@
                                       :table table-name}}))))
 
 (deftest list-transforms-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (testing "Can list without query parameters"
       (mt/user-http-request :crowberto :get 200 "ee/transform"))
     (testing "Can list with query parameters"
@@ -102,7 +100,7 @@
                       list-resp)))))))
 
 (deftest get-transforms-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (with-transform-cleanup! [table-name "gadget_products"]
       (let [body {:name "Gadget Products"
                   :description "Desc"
@@ -123,7 +121,7 @@
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest put-transforms-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (with-transform-cleanup! [table-name "gadget_products"]
       (let [query2 (make-query "None")
             resp (mt/user-http-request :crowberto :post 200 "ee/transform"
@@ -156,7 +154,7 @@
                                                                  :template-tags {}}}}})))))))
 
 (deftest delete-transforms-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (with-transform-cleanup! [table-name "gadget_products"]
       (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
@@ -172,7 +170,7 @@
         (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))
 
 (deftest delete-table-transforms-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/basic)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (with-transform-cleanup! [table-name "gadget_products"]
       (let [resp (mt/user-http-request :crowberto :post 200 "ee/transform"
                                        {:name "Gadget Products"
@@ -184,4 +182,4 @@
                                         :target {:type "table"
                                                  ;;:schema "transforms"
                                                  :table table-name}})]
-        (mt/user-http-request :crowberto :delete 200 (format "ee/transform/%s/table" (:id resp)))))))
+        (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))

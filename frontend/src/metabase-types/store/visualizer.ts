@@ -33,6 +33,11 @@ export interface VisualizerVizDefinitionWithColumns
   columns: DatasetColumn[];
 }
 
+export interface VisualizerVizDefinitionWithColumnsAndFallbacks
+  extends VisualizerVizDefinitionWithColumns {
+  datasetFallbacks?: Record<number, Dataset | null | undefined>;
+}
+
 export interface VisualizerState extends VisualizerVizDefinitionWithColumns {
   initialState: VisualizerVizDefinitionWithColumns;
   cards: Card[];
