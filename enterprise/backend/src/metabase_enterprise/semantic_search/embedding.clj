@@ -154,23 +154,24 @@
       (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
     (try
       (log/debug "Generating" (count texts) "OpenAI embeddings in batch")
-      (-> (http/post endpoint
-                     {:headers {"Content-Type" "application/json"
-                                "Authorization" (str "Bearer " api-key)}
-                      :body    (json/encode {:model model-name
-                                             :input texts})})
-          :body
-          (json/decode true)
-          :data
-          (->> (map :embedding)
-               vec))
+      (let [response (-> (http/post endpoint
+                                    {:headers {"Content-Type" "application/json"
+                                               "Authorization" (str "Bearer " api-key)}
+                                     :body    (json/encode {:model model-name
+                                                            :input texts})})
+                         :body
+                         (json/decode true))]
+        (analytics/inc! :metabase-search/semantic-embedding-tokens
+                        {:provider "openai", :model model-name}
+                        (->> response :usage :total_tokens))
+        (->> response
+             :data
+             (map :embedding)
+             vec))
       (catch Exception e
         (log/error e "Failed to generate OpenAI embeddings for batch of" (count texts) "texts"
                    "with token count:" (count-tokens-batch texts))
-        (throw e)))
-    (analytics/inc! :metabase-search/semantic-embedding-tokens
-                    {:provider "openai", :model model-name}
-                    (count-tokens-batch texts))))
+        (throw e)))))
 
 (defn- openai-get-embedding [model-name text]
   (try
