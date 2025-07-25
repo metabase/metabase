@@ -7,13 +7,15 @@ import { NewTransformForm } from "./NewTransformForm";
 
 type NewTransformModalProps = {
   query: DatasetQuery;
-  isOpened: boolean;
+  label?: string;
+  isOpened?: boolean;
   onClose: () => void;
 };
 
 export function NewTransformModal({
   query,
-  isOpened,
+  label,
+  isOpened = true,
   onClose,
 }: NewTransformModalProps) {
   return (
@@ -21,7 +23,9 @@ export function NewTransformModal({
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header>
-          <Modal.Title>{t`New transform`}</Modal.Title>
+          <Modal.Title>
+            {label ? t`New transform from ${label}` : t`New transform`}
+          </Modal.Title>
           <Flex align="center" justify="flex-end" gap="sm">
             <Modal.CloseButton />
           </Flex>

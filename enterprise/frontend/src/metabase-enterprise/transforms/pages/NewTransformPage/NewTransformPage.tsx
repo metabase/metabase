@@ -2,26 +2,34 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useLazyGetCardQuery } from "metabase/api";
 import {
   QuestionPickerModal,
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { Box, Button, Group } from "metabase/ui";
 
+import { NewTransformModal } from "../../components/NewTransformModal";
 import { newTransformQueryUrl } from "../../utils/urls";
 
+type ModalType = "question" | "transform";
+
 export function NewTransformPage() {
-  const [isPickerOpened, setIsPickerOpened] = useState(false);
+  const [getCard, { data: card }] = useLazyGetCardQuery();
+  const [modalType, setModalType] = useState<ModalType>();
 
-  const handlePickerOpen = () => {
-    setIsPickerOpened(true);
+  const handleQuestionModalOpen = () => {
+    setModalType("question");
   };
 
-  const handleChangeQuestion = (_item: QuestionPickerValueItem) => {
-    return null;
+  const handleSelectQuestion = async (item: QuestionPickerValueItem) => {
+    await getCard({ id: item.id });
+    setModalType("transform");
   };
 
-  const handlePickerClose = () => {};
+  const handleModalClose = () => {
+    setModalType(undefined);
+  };
 
   return (
     <Box flex="1 1 0" bg="bg-white">
@@ -30,15 +38,22 @@ export function NewTransformPage() {
           {t`Use the notebook editor`}
         </Button>
         <Button
-          onClick={handlePickerOpen}
+          onClick={handleQuestionModalOpen}
         >{t`Use an existing question or model`}</Button>
       </Group>
-      {isPickerOpened && (
+      {modalType === "question" && (
         <QuestionPickerModal
-          title={t`Pick a question or model to copy the query from`}
+          title={t`Pick a question or model`}
           models={["card", "dataset"]}
-          onChange={handleChangeQuestion}
-          onClose={handlePickerClose}
+          onChange={handleSelectQuestion}
+          onClose={handleModalClose}
+        />
+      )}
+      {modalType === "transform" && card != null && (
+        <NewTransformModal
+          query={card.dataset_query}
+          label={card.name}
+          onClose={handleModalClose}
         />
       )}
     </Box>
