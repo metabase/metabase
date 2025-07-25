@@ -67,7 +67,12 @@ export class Api extends EventEmitter {
       headers["X-Metabase-Session"] = self.sessionToken;
     }
 
-    if (isWithinIframe()) {
+    // For simple embedding, we use "embedding-simple" instead of "embedding-iframe"
+    const isSimpleEmbedHeader =
+      typeof self.requestClient === "object" &&
+      self.requestClient.name === "embedding-simple";
+
+    if (isWithinIframe() && !isSimpleEmbedHeader) {
       // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Embedded"] = "true";
       // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
