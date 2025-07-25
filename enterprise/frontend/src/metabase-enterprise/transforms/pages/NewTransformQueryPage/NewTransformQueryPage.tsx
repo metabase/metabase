@@ -1,20 +1,23 @@
 import { useState } from "react";
 import { push } from "react-router-redux";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import Question from "metabase-lib/v1/Question";
 
 import { NewTransformModal } from "../../components/NewTransformModal";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
+import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { transformListUrl } from "../../utils/urls";
 
 export function NewTransformQueryPage() {
   const [query, setQuery] = useState(() => getInitialQuery());
-  const [isOpened, setIsOpened] = useState(false);
+  const { isLoaded } = useQueryMetadata(query);
+  const [isModalOpened, setIsModalOpened] = useState(false);
   const dispatch = useDispatch();
 
   const handleSaveClick = () => {
-    setIsOpened(true);
+    setIsModalOpened(true);
   };
 
   const handleCancelClick = () => {
@@ -22,8 +25,12 @@ export function NewTransformQueryPage() {
   };
 
   const handleCloseClick = () => {
-    setIsOpened(false);
+    setIsModalOpened(false);
   };
+
+  if (!isLoaded) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   return (
     <>
@@ -35,7 +42,7 @@ export function NewTransformQueryPage() {
       />
       <NewTransformModal
         query={query}
-        isOpened={isOpened}
+        isOpened={isModalOpened}
         onClose={handleCloseClick}
       />
     </>
