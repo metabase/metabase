@@ -34,7 +34,7 @@ jobs:
         id: changes
         run: |
           echo "Detecting dependency file changes..."
-          
+
           # Check what files changed in this push/PR
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
@@ -43,16 +43,16 @@ jobs:
             BASE_SHA="${{ github.event.before }}"
             HEAD_SHA="${{ github.sha }}"
           fi
-          
+
           echo "Comparing $BASE_SHA..$HEAD_SHA"
-          
+
           # Detect specific dependency changes
           CHANGED_FILES=$(git diff --name-only $BASE_SHA..$HEAD_SHA || echo "")
           echo "Changed files: $CHANGED_FILES"
-          
+
           # Determine cache types to bust
           CACHE_TYPES_TO_BUST=""
-          
+
           # Check for Clojure dependency changes
           if echo "$CHANGED_FILES" | grep -E "(deps\.edn|bb\.edn)" > /dev/null; then
             echo "🔍 Clojure dependencies changed"
@@ -61,7 +61,7 @@ jobs:
           else
             echo "clojure_deps_changed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Check for Node.js dependency changes
           if echo "$CHANGED_FILES" | grep -E "(package\.json|yarn\.lock|patches/)" > /dev/null; then
             echo "🔍 Node.js dependencies changed"
@@ -70,7 +70,7 @@ jobs:
           else
             echo "node_deps_changed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Check for Shadow CLJS config changes
           if echo "$CHANGED_FILES" | grep -E "shadow-cljs\.edn" > /dev/null; then
             echo "🔍 Shadow CLJS configuration changed"
@@ -78,12 +78,12 @@ jobs:
           else
             echo "shadow_config_changed=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # If dependencies changed, also bust unified caches
           if [ -n "$CACHE_TYPES_TO_BUST" ]; then
             CACHE_TYPES_TO_BUST="${CACHE_TYPES_TO_BUST}unified"
           fi
-          
+
           # Remove trailing comma
           CACHE_TYPES_TO_BUST=$(echo "$CACHE_TYPES_TO_BUST" | sed 's/,$//')
           echo "cache-types-to-bust=$CACHE_TYPES_TO_BUST" >> $GITHUB_OUTPUT
@@ -100,17 +100,17 @@ jobs:
       - name: Show dependency changes
         run: |
           echo "## 🔍 Dependency Changes" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.changes.outputs.clojure_deps_changed }}" = "true" ]; then
             echo "- Clojure: deps.edn, bb.edn" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [ "${{ steps.changes.outputs.node_deps_changed }}" = "true" ]; then
             echo "- Node.js: package.json, yarn.lock, patches/" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [ "${{ steps.changes.outputs.shadow_config_changed }}" = "true" ]; then
             echo "- Shadow CLJS: shadow-cljs.edn" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -54,12 +54,12 @@ runs:
       id: parse-types
       run: |
         CACHE_TYPES="${{ inputs.cache-types }}"
-        
+
         # Initialize all to false
         echo "bust-clojure=false" >> $GITHUB_OUTPUT
         echo "bust-nodejs=false" >> $GITHUB_OUTPUT
         echo "bust-unified=false" >> $GITHUB_OUTPUT
-        
+
         # Parse input
         if [[ "$CACHE_TYPES" == "all" ]]; then
           echo "bust-clojure=true" >> $GITHUB_OUTPUT
@@ -89,17 +89,17 @@ runs:
       if: steps.parse-types.outputs.bust-clojure == 'true'
       run: |
         CACHE_TYPES=(
-          "cljs" "uberjar" "be-tests" "be-check" "kondo" "eastwood" "cljfmt" 
+          "cljs" "uberjar" "be-tests" "be-check" "kondo" "eastwood" "cljfmt"
           "cloverage" "generative-query-test" "cross-branch-migrations" "driver"
-          "cross-version-uberjar" "release-sdk" "files-changed" "i18n" 
+          "cross-version-uberjar" "release-sdk" "files-changed" "i18n"
           "snyk" "manage-translations" "update-be-deps" "whitespace-linter"
           "lint-migrations" "build-scripts"
         )
-        
+
         BUSTED_COUNT=0
         for cache_type in "${CACHE_TYPES[@]}"; do
           CACHE_KEY="${{ runner.os }}-m2-${cache_type}-${{ steps.target-week.outputs.week }}"
-          
+
           if [ "${{ inputs.dry-run }}" = "true" ]; then
             if gh actions-cache list -R ${{ github.repository }} | grep -q "$CACHE_KEY"; then
               echo "Would delete: $CACHE_KEY"
@@ -112,7 +112,7 @@ runs:
             fi
           fi
         done
-        
+
         echo "busted-count=$BUSTED_COUNT" >> $GITHUB_OUTPUT
       shell: bash
       env:
@@ -127,7 +127,7 @@ runs:
           "${{ runner.os }}-cypress-${{ steps.target-week.outputs.week }}"
           "${{ runner.os }}-eslintcache-${{ steps.target-week.outputs.week }}"
         )
-        
+
         BUSTED_COUNT=0
         for cache_key in "${CACHE_KEYS[@]}"; do
           if [ "${{ inputs.dry-run }}" = "true" ]; then
@@ -142,7 +142,7 @@ runs:
             fi
           fi
         done
-        
+
         echo "busted-count=$BUSTED_COUNT" >> $GITHUB_OUTPUT
       shell: bash
       env:
@@ -153,11 +153,11 @@ runs:
       if: steps.parse-types.outputs.bust-unified == 'true'
       run: |
         UNIFIED_SUFFIXES=(
-          "" "cljs" "release-sdk" "files-changed" "i18n" "snyk" 
+          "" "cljs" "release-sdk" "files-changed" "i18n" "snyk"
           "manage-translations" "my-workflow" "kondo" "eastwood"
           "cloverage" "generative-query-test" "whitespace-linter"
         )
-        
+
         BUSTED_COUNT=0
         for suffix in "${UNIFIED_SUFFIXES[@]}"; do
           if [ -z "$suffix" ]; then
@@ -165,7 +165,7 @@ runs:
           else
             CACHE_KEY="${{ runner.os }}-unified-build-${suffix}-${{ steps.target-week.outputs.week }}"
           fi
-          
+
           if [ "${{ inputs.dry-run }}" = "true" ]; then
             if gh actions-cache list -R ${{ github.repository }} | grep -q "$CACHE_KEY"; then
               echo "Would delete: $CACHE_KEY"
@@ -178,7 +178,7 @@ runs:
             fi
           fi
         done
-        
+
         echo "busted-count=$BUSTED_COUNT" >> $GITHUB_OUTPUT
       shell: bash
       env:
@@ -190,7 +190,7 @@ runs:
         CLOJURE_COUNT=${{ steps.bust-clojure.outputs.busted-count || '0' }}
         NODEJS_COUNT=${{ steps.bust-nodejs.outputs.busted-count || '0' }}
         UNIFIED_COUNT=${{ steps.bust-unified.outputs.busted-count || '0' }}
-        
+
         TOTAL_BUSTED=$((CLOJURE_COUNT + NODEJS_COUNT + UNIFIED_COUNT))
         echo "total-busted=$TOTAL_BUSTED" >> $GITHUB_OUTPUT
       shell: bash
@@ -202,19 +202,19 @@ runs:
         else
           echo "## 🧹 ${{ inputs.context }}" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Week**: ${{ steps.target-week.outputs.week }}" >> $GITHUB_STEP_SUMMARY
         echo "**Types**: ${{ inputs.cache-types }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
+
         TOTAL=${{ steps.summary.outputs.total-busted }}
         if [ "${{ inputs.dry-run }}" = "true" ]; then
           echo "**Would delete**: $TOTAL caches" >> $GITHUB_STEP_SUMMARY
         else
           echo "**Deleted**: $TOTAL caches" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
         echo "- Clojure: ${{ steps.bust-clojure.outputs.busted-count || '0' }}" >> $GITHUB_STEP_SUMMARY
         echo "- Node.js: ${{ steps.bust-nodejs.outputs.busted-count || '0' }}" >> $GITHUB_STEP_SUMMARY
         echo "- Unified: ${{ steps.bust-unified.outputs.busted-count || '0' }}" >> $GITHUB_STEP_SUMMARY
