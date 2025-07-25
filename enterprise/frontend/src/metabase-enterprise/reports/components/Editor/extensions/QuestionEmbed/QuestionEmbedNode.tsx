@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -132,24 +132,27 @@ export const QuestionEmbedComponent = memo(
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
-    let embedIndex = -1;
+    const embedIndex = useMemo(() => {
+      if (editor && getPos) {
+        const currentPos = getPos();
+        if (typeof currentPos === "number") {
+          let nodeCount = 0;
 
-    if (editor && getPos) {
-      const currentPos = getPos();
-      let nodeCount = 0;
-
-      // Count questionEmbed nodes that appear before this position
-      editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === "questionEmbed") {
-          if (pos < currentPos) {
-            nodeCount++;
-          } else if (pos === currentPos) {
-            embedIndex = nodeCount;
-            return false; // Stop traversing
-          }
+          // Count questionEmbed nodes that appear before this position
+          editor.state.doc.descendants((node, pos) => {
+            if (node.type.name === "questionEmbed") {
+              if (pos < currentPos) {
+                nodeCount++;
+              } else if (pos === currentPos) {
+                return nodeCount;
+              }
+            }
+          });
         }
-      });
-    }
+      }
+
+      return -1;
+    }, [editor, getPos]);
 
     const card = useSelector((state) => getReportCard(state, questionId));
     const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
