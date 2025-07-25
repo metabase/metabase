@@ -584,7 +584,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     cy.findByText("User ID").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a user attribute").click();
+    cy.findByPlaceholderText("Pick a user attribute").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("attr_uid").click();
     cy.button("Save").click();
@@ -660,7 +660,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     });
 
     H.popover().findByText("User ID").click();
-    H.modal().findByText("Pick a user attribute").click();
+    H.modal().findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("attr_uid").click();
     H.modal().button("Save").click();
 
@@ -744,7 +744,7 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
     });
 
     H.popover().findByText("User ID").click();
-    H.modal().findByText("Pick a user attribute").click();
+    H.modal().findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("attr_uid").click();
     H.modal().button("Save").click();
 
@@ -972,7 +972,7 @@ function makeOrdersSandboxed() {
   cy.findByText("Pick a column").click();
   cy.findByText("User ID").click();
 
-  cy.findByText("Pick a user attribute").click();
+  cy.findByPlaceholderText("Pick a user attribute").click();
   cy.findByText("attr_uid").click();
   cy.button("Save").click();
 }
