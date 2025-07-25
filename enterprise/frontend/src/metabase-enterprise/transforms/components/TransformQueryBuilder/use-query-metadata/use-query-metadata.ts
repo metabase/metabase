@@ -26,8 +26,13 @@ export function useQueryMetadata(question: Question) {
     }
   }, [question]);
 
-  if (!isInitiallyLoaded && !loading) {
-    setIsInitiallyLoaded(true);
+  if (!isInitiallyLoaded) {
+    const query = question.query();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const sourceTable = question.metadata().table(sourceTableId);
+    if (!loading && (sourceTableId == null || sourceTable != null)) {
+      setIsInitiallyLoaded(true);
+    }
   }
 
   return { isInitiallyLoaded };
