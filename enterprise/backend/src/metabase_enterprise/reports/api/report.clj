@@ -24,7 +24,7 @@
    :order-by [[:report.id :asc]]
    :where    where-clause})
 
-(defn- get-report [id version]
+(defn get-report [id version]
   (api/check-404
    (api/read-check
     (t2/select-one :model/Report

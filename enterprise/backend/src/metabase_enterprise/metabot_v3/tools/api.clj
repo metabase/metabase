@@ -540,6 +540,24 @@
                          [:result_columns ::columns]]]]
    [:map [:output :string]]])
 
+(mr/def ::get-markdown-report-details-arguments
+  [:and
+   [:map
+    [:report_id                                         :int]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:report_id         :report-id})}]])
+
+(mr/def ::get-markdown-report-details-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+                         [:id :int]
+                         [:name :string]
+                         [:document :string]]]]
+   [:map [:output :string]]])
+
 (mr/def ::get-table-details-arguments
   [:and
    [:map
@@ -776,6 +794,21 @@
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/get-markdown-report-details" :- [:merge ::get-markdown-report-details-result ::tool-request]
+  "Get information about a given report."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments ::get-markdown-report-details-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :get-markdown-report-details) :llm.log/llm->be)
+  #p (let [arguments (mc/encode ::get-markdown-report-details-arguments arguments (mtx/transformer {:name :tool-api-request}))]
+       (doto (-> (mc/decode ::get-report-details-result
+                            (metabot-v3.dummy-tools/get-markdown-report-details arguments)
+                            (mtx/transformer {:name :tool-api-response}))
+                 (assoc :conversation_id conversation_id))
+         (metabot-v3.context/log :llm.log/be->llm))))
 
 (api.macros/defendpoint :post "/get-table-details" :- [:merge ::get-table-details-result ::tool-request]
   "Get information about a given table or model."

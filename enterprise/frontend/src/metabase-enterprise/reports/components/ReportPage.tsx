@@ -17,7 +17,12 @@ import {
 } from "metabase-enterprise/api";
 import type { CollectionId } from "metabase-types/api";
 
-import { useEditorActions, useReportActions, useReportState } from "../hooks";
+import {
+  useEditorActions,
+  useRegisterReportMetabotContext,
+  useReportActions,
+  useReportState,
+} from "../hooks";
 import { closeSidebar } from "../reports.slice";
 import {
   getIsSidebarOpen,
@@ -87,6 +92,7 @@ export const ReportPage = ({
     refreshAllData,
   } = useReportActions();
   const { handleQuestionClick } = useEditorActions();
+  useRegisterReportMetabotContext();
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
     return hasUnsavedChanges();
