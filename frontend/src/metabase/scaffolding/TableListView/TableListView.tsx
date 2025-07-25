@@ -45,6 +45,8 @@ interface Props {
 }
 
 const PAGE_SIZE = 10;
+const CELL_PADDING_HORIZONTAL = "md" as const;
+const CELL_PADDING_VERTICAL = "xs" as const;
 
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
@@ -165,36 +167,76 @@ export const TableListView = ({ location, params }: Props) => {
       </Group>
 
       <Group align="flex-start" gap="xl">
-        <Stack component="ul" gap="md" w={600}>
-          <table>
+        <Box bg="white" className={S.table} component="table">
+          <thead>
+            <tr>
+              {columns.map((column, index) => (
+                <Box
+                  component="td"
+                  key={index}
+                  px={CELL_PADDING_HORIZONTAL}
+                  py="md"
+                >
+                  <Text c="text-secondary" size="sm">
+                    {column.display_name}
+                  </Text>
+                </Box>
+              ))}
+
+              <Box component="td" px="sm" py="md" />
+            </tr>
+          </thead>
+
+          <tbody>
             {paginatedRows.map((row, index) => {
               return (
                 <Box className={S.row} component="tr" key={index}>
                   {row.map((value, cellIndex) => {
                     return (
-                      <Box className={S.row} component="td" key={cellIndex}>
+                      <Box
+                        c={
+                          settings.list_view.fields[index].style === "dim"
+                            ? "text-secondary"
+                            : undefined
+                        }
+                        component="td"
+                        fw={
+                          settings.list_view.fields[index].style === "bold"
+                            ? "bold"
+                            : undefined
+                        }
+                        key={cellIndex}
+                        px={CELL_PADDING_HORIZONTAL}
+                        py={CELL_PADDING_VERTICAL}
+                      >
                         {renderValue(tc, value, columns[cellIndex])}
                       </Box>
                     );
                   })}
 
-                  <ActionIcon
-                    className={S.link}
-                    component={Link}
-                    to={
-                      pkIndex != null
-                        ? `/table/${table.id}/detail/${row[pkIndex]}`
-                        : ""
-                    }
-                    variant="outline"
+                  <Box
+                    component="td"
+                    pr={CELL_PADDING_HORIZONTAL}
+                    py={CELL_PADDING_VERTICAL}
                   >
-                    <Icon name="share" />
-                  </ActionIcon>
+                    <ActionIcon
+                      className={S.link}
+                      component={Link}
+                      to={
+                        pkIndex != null
+                          ? `/table/${table.id}/detail/${row[pkIndex]}`
+                          : ""
+                      }
+                      variant="outline"
+                    >
+                      <Icon name="share" />
+                    </ActionIcon>
+                  </Box>
                 </Box>
               );
             })}
-          </table>
-        </Stack>
+          </tbody>
+        </Box>
 
         {isEditing && <Stack>{t`Settings`}</Stack>}
       </Group>

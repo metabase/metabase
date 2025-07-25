@@ -1,9 +1,13 @@
+.table {
+  border-radius: 8px;
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
 .link {
-  position: absolute;
-  right: 1rem;
-  display: none;
+  visibility: hidden;
 
   .row:hover & {
-    display: block;
+    visibility: visible;
   }
 }
