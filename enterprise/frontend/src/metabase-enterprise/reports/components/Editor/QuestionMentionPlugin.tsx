@@ -25,8 +25,6 @@ import type {
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
 
-import { fetchReportQuestionData } from "../../reports.slice";
-
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
 type InsertionMode = "mention" | "embed";
@@ -202,13 +200,6 @@ export const QuestionMentionPlugin = ({
         const snapshot = await createSnapshot({
           card_id: wrappedItem.id,
         }).unwrap();
-
-        dispatch(
-          fetchReportQuestionData({
-            cardId: snapshot.card_id,
-            snapshotId: snapshot.snapshot_id,
-          }),
-        );
 
         const scrollId = `scroll-${_.uniqueId()}`;
         editor

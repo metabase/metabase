@@ -9,14 +9,11 @@ import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 import {
   type QuestionEmbed,
   clearDraftState,
-  fetchReportQuestionData,
   updateQuestionEmbeds,
 } from "../reports.slice";
 import {
   getHasDraftChanges,
   getQuestionEmbeds,
-  getReportCard,
-  getReportCardWithDraftSettings,
   getReportsState,
 } from "../selectors";
 
@@ -43,16 +40,14 @@ export function useReportActions() {
       }
 
       const embed = questionEmbeds[embedIndex];
-      const cardWithDraftSettings = getReportCardWithDraftSettings(
-        state,
-        embed.id,
-      );
+      const reportsState = getReportsState(state);
+      const draftCard = reportsState.draftCard;
 
-      if (!cardWithDraftSettings) {
+      if (!draftCard) {
         return;
       }
 
-      if (cardWithDraftSettings.id.toString().includes("static")) {
+      if (draftCard.id.toString().includes("static")) {
         const { doc } = editorInstance.state;
         const tr = editorInstance.state.tr;
 
@@ -61,9 +56,9 @@ export function useReportActions() {
             node.type.name === "questionStatic" &&
             node.attrs.id === embed.id
           ) {
-            const display = cardWithDraftSettings.display;
+            const display = draftCard.display;
             const viz = utf8_to_b64url(
-              JSON.stringify(cardWithDraftSettings.visualization_settings),
+              JSON.stringify(draftCard.visualization_settings),
             );
 
             const newAttrs = {
@@ -83,10 +78,10 @@ export function useReportActions() {
       } else {
         try {
           const { id, created_at, updated_at, ...cardWithoutExcluded } =
-            cardWithDraftSettings;
+            draftCard;
           const result = await createReportSnapshot({
             ...cardWithoutExcluded,
-            name: cardWithDraftSettings.name,
+            name: draftCard.name,
           }).unwrap();
 
           dispatch(clearDraftState());
@@ -159,27 +154,34 @@ export function useReportActions() {
       }
 
       try {
-        const state = store.getState();
         const { doc } = editorInstance.state;
         const tr = editorInstance.state.tr;
 
         // Create new snapshots for all question embeds in parallel
         const snapshotPromises = questionEmbeds.map(
           async (questionEmbed: QuestionEmbed, index: number) => {
-            const card = getReportCard(state, questionEmbed.id);
-            if (!card || card.id.toString().includes("static")) {
+            // Skip static cards (those with string IDs containing "static")
+            if (questionEmbed.id.toString().includes("static")) {
               return null;
             }
 
-            // Create snapshot using existing card_id to maintain consistency
-            const result = await createReportSnapshot({
-              card_id: questionEmbed.id,
-            }).unwrap();
+            try {
+              // Create snapshot using existing card_id to maintain consistency
+              const result = await createReportSnapshot({
+                card_id: questionEmbed.id,
+              }).unwrap();
 
-            return {
-              embedIndex: index,
-              snapshotId: result.snapshot_id,
-            };
+              return {
+                embedIndex: index,
+                snapshotId: result.snapshot_id,
+              };
+            } catch (error) {
+              console.error(
+                `Failed to refresh data for embed ${index}:`,
+                error,
+              );
+              return null;
+            }
           },
         );
 
@@ -217,19 +219,6 @@ export function useReportActions() {
         // Update questionEmbeds state with all new snapshot IDs at once
         dispatch(updateQuestionEmbeds(validResults));
 
-        // Fetch new data for all updated question embeds to refresh the visible report
-        validResults.forEach(({ embedIndex, snapshotId }) => {
-          const embed = questionEmbeds[embedIndex];
-          if (embed) {
-            dispatch(
-              fetchReportQuestionData({
-                cardId: embed.id,
-                snapshotId: snapshotId,
-              }),
-            );
-          }
-        });
-
         sendToast({
           message: t`All data refreshed`,
         });
@@ -238,7 +227,7 @@ export function useReportActions() {
         sendToast({ message: t`Error refreshing data`, icon: "warning" });
       }
     },
-    [questionEmbeds, store, createReportSnapshot, dispatch, sendToast],
+    [questionEmbeds, createReportSnapshot, dispatch, sendToast],
   );
 
   return {

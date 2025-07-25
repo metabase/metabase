@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCardQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
@@ -23,6 +24,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { useGetReportSnapshotQuery } from "../../api/report";
 import { useReportActions } from "../hooks";
 import {
   clearDraftState,
@@ -30,13 +32,8 @@ import {
   updateVizSettings,
 } from "../reports.slice";
 import {
+  getCardForEmbedIndex,
   getHasDraftChanges,
-  getIsLoadingCard,
-  getIsLoadingDataset,
-  getReportCard,
-  getReportCardWithDraftSettings,
-  getReportRawSeries,
-  getReportRawSeriesWithDraftSettings,
   getSelectedEmbedIndex,
 } from "../selectors";
 
@@ -58,22 +55,17 @@ export const EmbedQuestionSettingsSidebar = ({
   const hasDraftChanges = useSelector(getHasDraftChanges);
   const { commitVisualizationChanges } = useReportActions();
 
-  // Use card with draft settings merged for the sidebar
+  const { data: cardData, isLoading: isCardLoading } = useGetCardQuery(
+    questionId ? { id: questionId } : skipToken,
+  );
+
+  const { data: snapshot, isLoading: isResultsLoading } =
+    useGetReportSnapshotQuery(snapshotId ? snapshotId : skipToken);
+
   const card = useSelector((state) =>
-    selectedEmbedIndex !== null
-      ? getReportCardWithDraftSettings(state, questionId)
-      : getReportCard(state, questionId),
-  );
-  const series = useSelector((state) =>
-    selectedEmbedIndex !== null
-      ? getReportRawSeriesWithDraftSettings(state, questionId, snapshotId)
-      : null,
-  );
-  const isCardLoading = useSelector((state) =>
-    getIsLoadingCard(state, questionId),
-  );
-  const isResultsLoading = useSelector((state) =>
-    getIsLoadingDataset(state, snapshotId),
+    selectedEmbedIndex !== null && cardData
+      ? getCardForEmbedIndex(state, selectedEmbedIndex, cardData)
+      : cardData,
   );
 
   const question = useMemo(
@@ -81,12 +73,23 @@ export const EmbedQuestionSettingsSidebar = ({
     [card, metadata],
   );
 
-  const dataset =
-    useSelector((state) =>
-      getReportRawSeries(state, questionId, snapshotId),
-    )?.[0]?.data || null;
+  const dataset = snapshot?.data ?? null;
+
+  const series = useMemo(() => {
+    card && dataset
+      ? [
+          {
+            card,
+            data: dataset,
+          },
+        ]
+      : null;
+  }, [card, dataset]);
 
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
+    if (!dataset) {
+      return { sensibleVisualizations: [], nonSensibleVisualizations: [] };
+    }
     return getSensibleVisualizations({ result: dataset });
   }, [dataset]);
 

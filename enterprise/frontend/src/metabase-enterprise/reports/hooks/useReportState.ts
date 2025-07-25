@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { CollectionId } from "metabase-types/api";
 
 import type { QuestionEmbed } from "../reports.slice";
-import { fetchReportQuestionData, setQuestionEmbeds } from "../reports.slice";
+import { setQuestionEmbeds } from "../reports.slice";
 import { getQuestionEmbeds } from "../selectors";
 
 export function useReportState(reportData?: {
@@ -18,20 +18,6 @@ export function useReportState(reportData?: {
   const [reportCollectionId, setReportCollectionId] =
     useState<CollectionId | null>(null);
   const previousEmbedsRef = useRef<QuestionEmbed[]>([]);
-
-  // Sync questionEmbeds changes with data fetching
-  useEffect(() => {
-    questionEmbeds.forEach((embed: QuestionEmbed) => {
-      if (embed.snapshotId) {
-        dispatch(
-          fetchReportQuestionData({
-            cardId: embed.id,
-            snapshotId: embed.snapshotId,
-          }),
-        );
-      }
-    });
-  }, [questionEmbeds, dispatch]);
 
   // Sync report data when it changes
   useEffect(() => {
