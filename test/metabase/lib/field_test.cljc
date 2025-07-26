@@ -72,9 +72,13 @@
     (testing  "simple queries"
       (doseq [query [base (lib/append-stage base)]
               :let  [cols (lib/visible-columns query)]]
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query %) cols)))
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query -1 % :long) cols)))
         (is (=? [{:display-name      "Grandparent: Parent: Child"
                   :long-display-name "Grandparent: Parent: Child"}
@@ -82,7 +86,10 @@
                   :long-display-name "Grandparent"}
                  {:display-name      "Grandparent: Parent"
                   :long-display-name "Grandparent: Parent"}]
-                (map #(lib/display-info query -1 %) cols)))))
+                (map #(lib/display-info query -1 %) cols)))))))
+
+(deftest ^:parallel nested-field-display-name-test-2
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "breakout"
       (is (=? [{:display-name      "Grandparent: Parent: Child"
                 :long-display-name "Grandparent: Parent: Child"}]
@@ -92,7 +99,10 @@
                    (lib/breakout base)
                    lib/append-stage
                    lib/visible-columns
-                   (map #(lib/display-info base -1 %))))))
+                   (map #(lib/display-info base -1 %))))))))
+
+(deftest ^:parallel nested-field-display-name-test-3
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "join"
       (let [join-column (second (lib/visible-columns base))
             base        (-> base

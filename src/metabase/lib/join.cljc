@@ -248,7 +248,11 @@
        :lib/original-join-alias   join-alias
        :lib/source                :source/joins
        ::join-alias               join-alias
-       :lib/original-display-name ((some-fn :lib/original-display-name :display-name) col))
+       ;;
+       ;; TODO (Cam 7/25/25) -- this seems like a correct thing to do but uncommenting
+       ;; it breaks [[metabase.lib.field-test/nested-field-display-name-test-3]]
+       ;;
+       #_:lib/original-display-name #_((some-fn :lib/original-display-name :display-name) col))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
