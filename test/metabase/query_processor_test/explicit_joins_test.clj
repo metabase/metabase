@@ -378,17 +378,23 @@
                                  {:source-table "card__3"
                                   :limit        3})
                 top-card-cols (qp.preprocess/query->expected-cols top-card-query)
-                _ (testing "should return distinct field refs (QUE-1623)"
-                    (is (= [[:field (mt/id :people :id) nil]
-                            [:field "USER_ID"   {:base-type :type/Integer}]
-                            [:field "count"     {:base-type :type/Integer}]
-                            [:field "USER_ID_2" {:base-type :type/Integer}]
-                            [:field "count_2"   {:base-type :type/Integer}]]
-                           (map :field_ref top-card-cols))))
                 ;; unfortunately to maintain backward compatibility with legacy viz settings we need to return
                 ;; deduplicated names here like `USER_ID_2` instead of desired column aliases like `order__USER_ID`.
-                _ (is (= ["ID" "USER_ID" "count" "USER_ID_2" "count_2"]
-                         (map :name top-card-cols)))
+                ;;
+                ;; only verifying column names for H2 since other drivers can use different casing... this is all
+                ;; calculatedd by general QP/Lib stuff anyway so if it passes for H2 we can be satisfied that it works
+                ;; as intended for all drivers
+                _ (when (= driver/*driver* :h2)
+                    (testing "should return distinct field refs (QUE-1623)"
+                      (is (= [[:field (mt/id :people :id) nil]
+                              [:field "USER_ID"   {:base-type :type/Integer}]
+                              [:field "count"     {:base-type :type/Integer}]
+                              [:field "USER_ID_2" {:base-type :type/Integer}]
+                              [:field "count_2"   {:base-type :type/Integer}]]
+                             (map :field_ref top-card-cols)))))
+                _ (when (= driver/*driver* :h2)
+                    (is (= ["ID" "USER_ID" "count" "USER_ID_2" "count_2"]
+                           (map :name top-card-cols))))
                 [cid cuser-id ccount cuser-id2 ccount2] (map :name top-card-cols)
                 cid2 (str cid "_2")
                 col-data-fn   (juxt            :id       :name)
@@ -418,16 +424,17 @@
                            :fields [$id]
                            :order-by [[:asc $id]]
                            :limit    3})]
-              (testing "should return distinct field refs (QUE-1623)"
-                ;; the refs and names returned should use deduplicated names for consistency with legacy viz settings
-                ;; that use them as keys
-                (is (= [[:field (mt/id :people :id) nil]
-                        [:field (mt/id :people :id) {:join-alias "peeps"}]
-                        [:field "USER_ID"   {:base-type :type/Integer, :join-alias "peeps"}]
-                        [:field "count"     {:base-type :type/Integer, :join-alias "peeps"}]
-                        [:field "USER_ID_2" {:base-type :type/Integer, :join-alias "peeps"}]
-                        [:field "count_2"   {:base-type :type/Integer, :join-alias "peeps"}]]
-                       (map :field_ref (qp.preprocess/query->expected-cols query)))))
+              (when (= driver/*driver* :h2)
+                (testing "should return distinct field refs (QUE-1623)"
+                  ;; the refs and names returned should use deduplicated names for consistency with legacy viz settings
+                  ;; that use them as keys
+                  (is (= [[:field (mt/id :people :id) nil]
+                          [:field (mt/id :people :id) {:join-alias "peeps"}]
+                          [:field "USER_ID"   {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "count"     {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "USER_ID_2" {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "count_2"   {:base-type :type/Integer, :join-alias "peeps"}]]
+                         (map :field_ref (qp.preprocess/query->expected-cols query))))))
               (testing "the query runs and returns correct data"
                 (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
                         :rows    [[1  1    1        11     1         11]
