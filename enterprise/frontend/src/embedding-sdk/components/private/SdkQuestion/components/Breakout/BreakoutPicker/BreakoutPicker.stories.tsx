@@ -7,7 +7,7 @@ import { BreakoutPicker } from ".";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Breakout/BreakoutPicker",
+  title: "EmbeddingSDK/SdkQuestion/Breakout/BreakoutPicker",
   component: BreakoutPicker,
   parameters: {
     layout: "fullscreen",

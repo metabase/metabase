@@ -81,6 +81,16 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("uses the embedding-sdk-react client request header", () => {
+    mountInteractiveQuestion();
+
+    cy.wait("@cardQuery").then(({ request }) => {
+      expect(request?.headers?.["x-metabase-client"]).to.equal(
+        "embedding-sdk-react",
+      );
+    });
+  });
+
   it("should not fail on aggregated question drill", () => {
     mountInteractiveQuestion();
 
