@@ -41,6 +41,7 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_METABOT,
+  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -95,6 +96,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               path="segment/:id/revisions"
               component={RevisionHistoryApp}
             />
+          </Route>
+          <Route component={DataModel}>
+            {PLUGIN_TRANSFORMS.getTransformRoutes()}
           </Route>
           <Redirect
             from="database/:databaseId/schema/:schemaId/table/:tableId/settings"

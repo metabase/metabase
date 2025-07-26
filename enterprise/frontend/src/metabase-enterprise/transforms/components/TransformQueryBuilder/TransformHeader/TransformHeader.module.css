@@ -1,0 +1,4 @@
+.header {
+  z-index: 3;
+  border-bottom: 1px solid var(--mb-color-border);
+}

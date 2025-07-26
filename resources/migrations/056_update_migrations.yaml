@@ -201,6 +201,150 @@ databaseChangeLog:
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v56.2025-07-21T20:40:00
+      author: ericnormand
+      comment: Create transforms table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: transforms
+      changes:
+        - createTable:
+            tableName: transforms
+            remarks: TODO
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  remarks: JSON of source
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  remarks: JSON of target
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the transform was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the transform was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-07-22T22:59:55
+      author: metamben
+      comment: Add schedule to transforms table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transforms
+                columnName: schedule
+      changes:
+        - addColumn:
+            tableName: transforms
+            columns:
+              - column:
+                  name: schedule
+                  type: varchar(128)
+                  remarks: the cron schedule for the automatic execution of the transform
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-23T12:49:07
+      author: metamben
+      comment: Add description to transforms table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transforms
+                columnName: description
+      changes:
+        - addColumn:
+            tableName: transforms
+            columns:
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: the description of the transforms
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-23T12:49:37
+      author: metamben
+      comment: Add database_id to transforms table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transforms
+                columnName: database_id
+      changes:
+        - addColumn:
+            tableName: transforms
+            columns:
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: the ID of database of the transform runs on
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-23T12:49:47
+      author: metamben
+      comment: Add FK constraint to transforms.database_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_transforms_metabase_database_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transforms
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_transforms_metabase_database_id
+            onDelete: CASCADE
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -2070,3 +2070,18 @@
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
+
+;;;; Transforms
+
+(defmethod driver/compile-transform :sql
+  [driver {:keys [sql output-table]}]
+  (format-honeysql driver
+                   {:create-table-as [output-table]
+                    :raw sql}
+                   #_{:select [:*]
+                      :from [[[:raw (str "(" sql ")")] (str (random-uuid))]]
+                      :into output-table}))
+
+(defmethod driver/compile-drop-table :sql
+  [driver table]
+  (format-honeysql driver {:drop-table [:if-exists table]}))

@@ -803,3 +803,13 @@ export const PLUGIN_SMTP_OVERRIDE: {
   CloudSMTPConnectionCard: PluginPlaceholder,
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
+
+export type TransformsPlugin = {
+  canAccessTransforms: (state: State) => boolean;
+  getTransformRoutes(): ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  canAccessTransforms: () => false,
+  getTransformRoutes: () => null,
+};
