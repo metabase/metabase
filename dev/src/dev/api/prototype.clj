@@ -1,5 +1,5 @@
 (ns dev.api.prototype
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [honey.sql.helpers :as sql.helpers]
             [metabase.api.common :as api]
             [metabase.api.macros :as api.macros]
             [metabase.app-db.core :as mdb]
@@ -8,16 +8,26 @@
             [metabase.util.malli.schema :as ms]
             [toucan2.core :as t2]))
 
+(defn- create-table-query []
+  (let [columns (cond
+                  (= :postgres (mdb/db-type)) [[:id :serial [:primary-key]]
+                                               [:type [:varchar 255] [:not nil]]
+                                               [:content :text [:not nil]]]
+                  (= :mysql (mdb/db-type)) [[:id :bigint [:primary-key] [:auto-increment]]
+                                            [:type [:varchar 255] [:not nil]]
+                                            [:content :text [:not nil]]]
+                  (= :h2 (mdb/db-type)) [[:id :identity [:primary-key]]
+                                         [:type [:varchar 255] [:not nil]]
+                                         [:content :text [:not nil]]]
+                  :else (throw (ex-info "Unsupported database type for prototype_data table" {:db-type (mdb/db-type)})))]
+    (-> (sql.helpers/create-table :dev_prototype_data :if-not-exists)
+        (sql.helpers/with-columns
+          columns))))
+
 (def ^:private create-table! (mdb/memoize-for-application-db
                               (fn []
                                 (log/info "Creating prototype_data table if it does not exist")
-                                (t2/with-connection [conn]
-                                  (jdbc/execute! {:connection conn}
-                                                 "create table if not exists dev_prototype_data (
-                                       id serial primary key,
-                                       type varchar(255) not null,
-                                       content text not null
-                                     )"))
+                                (t2/query (create-table-query))
                                 :dev_prototype_data)))
 
 (defn- prototype-table

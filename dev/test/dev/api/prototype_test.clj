@@ -1,7 +1,12 @@
 (ns dev.api.prototype-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]))
+   [dev.api.prototype :as proto]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(deftest create-table
+  (t2/query (#'proto/create-table-query)))
 
 (deftest e2e-test
   (let [key (name (gensym "prototype-e2e-test-"))]
