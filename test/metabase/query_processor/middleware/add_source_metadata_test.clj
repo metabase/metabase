@@ -261,7 +261,8 @@
              (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:source-query {:source-table $$venues
-                                               :fields       [$id $name]}}]}))))))
+                                               :fields       [$id $name]}
+                                :condition    [:= "A" "B"]}]}))))))
 
 (deftest ^:parallel binned-fields-test
   (testing "source metadata should handle source queries that have binned fields"

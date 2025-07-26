@@ -49,7 +49,7 @@
   (is (=? (lib.tu.macros/mbql-query venues
             {:source-query {:source-table $$venues
                             :joins        [{:strategy     :left-join
-                                            :source-table $$categories
+                                            :source-query {:source-table $$categories}
                                             :alias        "Cat"
                                             :condition    [:=
                                                            [:field %category-id {::add/source-table $$venues
@@ -92,7 +92,7 @@
 (deftest ^:parallel multiple-joins-test
   (is (=? (lib.tu.macros/mbql-query orders
             {:source-query {:source-table $$orders
-                            :joins        [{:source-table $$products
+                            :joins        [{:source-query {:source-table $$products}
                                             :alias        "P1"
                                             :condition    [:=
                                                            [:field %product-id {::add/source-alias "PRODUCT_ID"
@@ -107,7 +107,7 @@
                                                                        ::add/source-alias  "CATEGORY"
                                                                        ::add/source-table  "P1"}]]}
              :joins        [{:source-query {:source-table $$reviews
-                                            :joins        [{:source-table $$products
+                                            :joins        [{:source-query {:source-table $$products}
                                                             :alias        "P2"
                                                             :condition    [:=
                                                                            [:field
@@ -324,7 +324,7 @@
                                                                                          ::add/desired-alias "P2__CATEGORY"
                                                                                          ::add/position      0}]]]
                                         :joins        [{:strategy     :left-join
-                                                        :source-table $$products
+                                                        :source-query {:source-table $$products}
                                                         :condition    [:=
                                                                        [:field %reviews.product-id {::add/source-table $$reviews
                                                                                                     ::add/source-alias "PRODUCT_ID"}]
@@ -485,7 +485,7 @@
     (driver/with-driver ::custom-escape-spaces-to-underscores
       (is (=? (lib.tu.macros/$ids nil
                 {:source-query {:source-table $$orders
-                                :joins        [{:source-table $$products
+                                :joins        [{:source-query {:source-table $$products}
                                                 ::add/alias   "Products_Renamed"
                                                 :alias        "Products Renamed"
                                                 :condition

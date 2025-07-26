@@ -437,7 +437,7 @@
                                                      [:field (meta/id :orders :discount)   nil]
                                                      [:field (meta/id :orders :created-at) nil]
                                                      [:field (meta/id :orders :quantity)   nil]]}
-                       :joins        [{:source-table (meta/id :checkins)
+                       :joins        [{:source-query {:source-table (meta/id :checkins)}
                                        :alias        "CH"
                                        :strategy     :left-join
                                        :fields       [[:field (meta/id :checkins :id)       {:join-alias "CH"}]

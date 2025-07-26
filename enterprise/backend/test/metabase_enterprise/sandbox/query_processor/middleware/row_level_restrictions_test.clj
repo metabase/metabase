@@ -639,7 +639,7 @@
     (testing "Should work with SQL queries that return less columns than there were in the original Table\n"
       (met/with-gtaps! (mt/$ids
                          {:gtaps      {:venues   {:query      (mt/native-query
-                                                                {:query         (str "SELECT DISTINCT VENUES.ID, VENUES.NAME "
+                                                                {:query         (str "SELECT * "
                                                                                      "FROM VENUES "
                                                                                      "WHERE VENUES.ID IN ({{sandbox}})")
                                                                  :template-tags {"sandbox"
@@ -657,7 +657,7 @@
             (is (= nil
                    (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id))))
           (testing "Should be able to run the query"
-            (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
+            (is (= [[1 "Red Medicine" 1 "Red Medicine" 4 10.0646 -165.374 3]]
                    (mt/rows
                     (mt/run-mbql-query venues
                       {:fields   [$id $name] ; joined fields get appended automatically because we specify :all :below
@@ -673,7 +673,11 @@
                       :display_name "ID"}
                      {:name         "NAME"
                       :base_type    :type/Text
-                      :display_name "Name"}]
+                      :display_name "Name"}
+                     {:name "CATEGORY_ID"}
+                     {:name "LATITUDE"}
+                     {:name "LONGITUDE"}
+                     {:name "PRICE"}]
                     (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id)))))))))
 
 (defn- do-with-sql-gtap! [sql f]
@@ -708,12 +712,12 @@
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Removing columns should be ok."
       (do-with-sql-gtap!
-       (str "SELECT ID, NAME "
+       (str "SELECT * "
             "FROM VENUES "
             "WHERE ID IN ({{sandbox}})")
        (fn [{:keys [run-query]}]
          (testing "Query without weird stuff going on should work"
-           (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
+           (is (= [[1 "Red Medicine" 1 "Red Medicine" 4 10.0646 -165.374 3]]
                   (mt/rows (run-query))))))))))
 
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test-2
