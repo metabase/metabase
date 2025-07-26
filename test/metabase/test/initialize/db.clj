@@ -1,7 +1,6 @@
 (ns metabase.test.initialize.db
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.env :as mdb.env]
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -10,7 +9,6 @@
 (set! *warn-on-reflection* true)
 
 (defn init! []
-  (println "Appdb: " mdb.env/env)
   (log/info (u/format-color 'blue "Setting up %s test DB and running migrations..." (mdb/db-type)))
   (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production

@@ -83,7 +83,7 @@
         ;if the changelog has filter by dbms on sql/sqlFile tags, remove the ones that doesn't apply for the current db-type.
         ; BUT: if the changeSet has a preCondition with onFail "MARK_RAN", we keep it because that marks it as ran anyway
         ; BUT: if there is more than one change, even if they all don't get ran it gets marked as ran (https://github.com/liquibase/liquibase/issues/7153)
-         (filter (fn [{{:keys [changes id preConditions]} :changeSet}]
+         (filter (fn [{{:keys [changes preConditions]} :changeSet}]
                    (cond
                      (some #(= {:onFail "MARK_RAN"} %) preConditions)
                      true
