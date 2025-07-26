@@ -1,0 +1,84 @@
+.root {
+  cursor: pointer;
+  outline-offset: 0;
+  position: relative;
+}
+
+.root:hover {
+  outline: 1px solid blue;
+  outline-style: dashed;
+}
+
+.root.selected {
+  outline: 1px solid blue;
+}
+
+.selectedPlaceholder {
+  outline: 1px solid blue !important;
+}
+
+.addSection {
+  position: absolute;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 255, 0.288);
+  z-index: 1;
+}
+
+.add-top {
+  width: 90%;
+  left: 5%;
+  top: -15px;
+  height: 15px;
+}
+
+.add-bottom {
+  width: 90%;
+  left: 5%;
+  bottom: -15px;
+  height: 15px;
+}
+
+.add-left {
+  left: -15px;
+  top: 5%;
+  width: 15px;
+  height: 90%;
+}
+
+.add-right {
+  top: 5%;
+  right: -15px;
+  width: 15px;
+  height: 90%;
+}
+
+.root:hover > .addSection {
+  display: flex;
+}
+
+.root:hover:has(.root:hover) > .addSection {
+  display: none;
+}
+
+.root:hover:has(.root:hover) > .componentName {
+  display: none;
+}
+
+.componentName {
+  display: none;
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: blue;
+  color: white;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.root:hover > .componentName {
+  display: block;
+}
