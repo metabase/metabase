@@ -199,10 +199,21 @@ describe("issue 48712", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+
+    cy.intercept("**/api/**/*", { middleware: true }, (req) => {
+      req.on("before:response", (res) => {
+        // force all API responses to not be cached
+        res.headers["cache-control"] = "no-store";
+      });
+    });
   });
 
   it("should not reset the suggestions when the query is edited (metabase#48712)", () => {
     H.startNewNativeQuestion();
+
+    cy.intercept("**/autocomplete_suggestions?substring=*").as(
+      "autocompleteSuggestions",
+    );
 
     H.NativeEditor.type("pro");
     H.NativeEditor.completion("PRODUCTS").should("be.visible");
@@ -216,7 +227,8 @@ describe("issue 48712", () => {
     H.NativeEditor.completion("PROCEDURE").should("have.attr", "aria-selected");
 
     // wait for all completions to finish
-    cy.wait(1000);
+    cy.wait("@autocompleteSuggestions");
+
     H.NativeEditor.completion("PROCEDURE").should("have.attr", "aria-selected");
   });
 });

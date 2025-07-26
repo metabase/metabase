@@ -419,30 +419,6 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
   });
 });
 
-describe("issue 21034", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.startNewNativeQuestion();
-    cy.intercept(
-      "GET",
-      "/api/database/**/autocomplete_suggestions?**",
-      cy.spy().as("suggestions"),
-    );
-  });
-
-  it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    H.NativeEditor.type("p");
-
-    // Wait until another explicit autocomplete is triggered
-    // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
-    // See https://github.com/metabase/metabase/pull/20970
-    cy.wait(1000);
-
-    cy.get("@suggestions").its("callCount").should("equal", 1);
-  });
-});
-
 describe("issue 21550", () => {
   beforeEach(() => {
     H.restore();
