@@ -4,10 +4,13 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 
+// Setting up proper CSS layers order
+import "embedding-sdk/css/layers-order.css";
+
 // Mantine styles need to be imported before any of our components so that our styles win over
 // the default mantine styles
-import "@mantine/core/styles.css";
-import "@mantine/dates/styles.css";
+import "@mantine/core/styles.layer.css";
+import "@mantine/dates/styles.layer.css";
 
 import "metabase/lib/dayjs";
 
