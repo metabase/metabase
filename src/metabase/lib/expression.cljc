@@ -405,9 +405,10 @@
         ;; not the properties of the expression.
         (select-keys [:base-type :effective-type :lib/desired-column-alias
                       :lib/source-column-alias :lib/source-uuid :lib/type])
-        (assoc :lib/source   :source/expressions
-               :name         expression-name
-               :display-name expression-name))))
+        (assoc :lib/source          :source/expressions
+               :name                expression-name
+               :display-name        expression-name
+               :lib/expression-name expression-name))))
 
 (mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
