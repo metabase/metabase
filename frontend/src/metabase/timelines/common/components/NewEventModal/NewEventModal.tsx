@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -81,7 +81,7 @@ const getInitialValues = (
     timestamp: "",
     timeline_id: defaultTimeline?.id,
     icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
-    timezone: moment.tz.guess(),
+    timezone: dayjs.tz.guess(),
     time_matters: false,
     archived: false,
     source,
