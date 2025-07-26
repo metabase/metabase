@@ -102,19 +102,20 @@
            :remapped_from_index nil,
            :base_type "type/BigInteger"}]})
 
-(deftest json-roundtrip-test
+(deftest ensure-consistent-type-test
   #?(:clj
-     (testing "Normalizes types (like BigInt/BigDecimal) by passing them through JSON encoding/decoding"
-       (is (= java.lang.Integer (type (@#'pivot/json-roundtrip 3))))
-       (is (= java.lang.Integer (type (@#'pivot/json-roundtrip 3N))))
-       (is (= java.lang.Double (type (@#'pivot/json-roundtrip 3.0))))
-       (is (= java.lang.Double (type (@#'pivot/json-roundtrip 3.0M)))))
+     (testing "Normalizes types (like BigInt/BigDecimal)"
+       (is (= java.lang.Integer (type (@#'pivot/ensure-consistent-type 3))))
+       (is (= java.lang.Integer (type (@#'pivot/ensure-consistent-type 3N))))
+       (is (= java.lang.Integer (type (@#'pivot/ensure-consistent-type (BigInteger. "3")))))
+       (is (= java.lang.Double (type (@#'pivot/ensure-consistent-type 3.0))))
+       (is (= java.lang.Double (type (@#'pivot/ensure-consistent-type 3.0M)))))
      :cljs
      (testing "Does nothing on CLJS (intentional! values are already normalized)"
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3))))
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3N))))
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3.0))))
-       (is (= js/Number (type (@#'pivot/json-roundtrip 3.0M)))))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3N))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3.0))))
+       (is (= js/Number (type (@#'pivot/ensure-consistent-type 3.0M)))))))
 
 (deftest columns-without-pivot-group-test
   (testing "Correctly filters out the pivot grouping column based on name"
