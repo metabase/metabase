@@ -7,7 +7,10 @@ import {
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
 const {
@@ -682,7 +685,7 @@ describe("issue 25113", () => {
 });
 
 describe("issue 39749", () => {
-  const modelDetails: H.StructuredQuestionDetails = {
+  const modelDetails: StructuredQuestionDetails = {
     type: "model",
     query: {
       "source-table": ORDERS_ID,
@@ -738,7 +741,7 @@ describe("issue 39749", () => {
 });
 
 describe("issue 25885", () => {
-  const mbqlModelDetails: H.StructuredQuestionDetails = {
+  const mbqlModelDetails: StructuredQuestionDetails = {
     type: "model",
     query: {
       "source-table": ORDERS_ID,
@@ -952,7 +955,7 @@ describe("issue 43088", () => {
 describe("issue 39993", () => {
   const columnName = "Exp";
 
-  const modelDetails: H.StructuredQuestionDetails = {
+  const modelDetails: StructuredQuestionDetails = {
     type: "model",
     query: {
       "source-table": ORDERS_ID,
@@ -999,7 +1002,7 @@ describe("issue 34574", () => {
   });
 
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
-    const modelDetails: H.StructuredQuestionDetails = {
+    const modelDetails: StructuredQuestionDetails = {
       name: "34574",
       type: "model",
       query: {
@@ -1079,7 +1082,7 @@ describe("issue 35840", () => {
   const modelName = "M1";
   const questionName = "Q1";
 
-  const modelDetails: H.StructuredQuestionDetails = {
+  const modelDetails: StructuredQuestionDetails = {
     type: "model",
     name: modelName,
     query: {
@@ -1090,9 +1093,7 @@ describe("issue 35840", () => {
     },
   };
 
-  const getQuestionDetails = (
-    modelId: CardId,
-  ): H.StructuredQuestionDetails => ({
+  const getQuestionDetails = (modelId: CardId): StructuredQuestionDetails => ({
     type: "question",
     name: questionName,
     query: {
@@ -1410,7 +1411,7 @@ describe.skip("issues 28270, 33708", () => {
 });
 
 describe("issue 46221", () => {
-  const modelDetails: H.NativeQuestionDetails = {
+  const modelDetails: NativeQuestionDetails = {
     name: "46221",
     native: { query: "select 42" },
     type: "model",
@@ -1446,7 +1447,7 @@ describe("issue 46221", () => {
 });
 
 describe("issue 20624", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     name: "Question",
     type: "question",
     query: {
