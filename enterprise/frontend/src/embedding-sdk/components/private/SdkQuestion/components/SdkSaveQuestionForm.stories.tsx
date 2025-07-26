@@ -11,7 +11,7 @@ import { Box, Button, Modal, Stack } from "metabase/ui";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/SaveQuestionForm",
+  title: "EmbeddingSDK/SdkQuestion/SaveQuestionForm",
   component: SdkQuestion,
   parameters: {
     layout: "fullscreen",
