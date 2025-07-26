@@ -408,10 +408,10 @@
   "Map of option keys in pMBQL to their legacy names. Keys are renamed before [[disqualify]] drops all namespaced keys."
   {:metabase.lib.field/original-temporal-unit :original-temporal-unit})
 
-(defn- options->legacy-MBQL
+(mu/defn- options->legacy-MBQL :- [:maybe [:map {:min 1}]]
   "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
   `:effective-type`, which is not used in options maps in legacy MBQL."
-  [m]
+  [m :- [:maybe :map]]
   (->> (cond-> m
          ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
          ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
@@ -430,8 +430,11 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod aggregation->legacy-MBQL :default
-  [[tag options & args]]
+(mu/defmethod aggregation->legacy-MBQL :default
+  [[tag options & args] :- [:cat
+                            :keyword
+                            :map
+                            [:* :any]]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case or :if expression is in the options
         ;; in legacy MBQL
@@ -605,7 +608,11 @@
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base     (cond-> (disqualify join)
-                   (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))
+                   (and *clean-query*
+                        (str/starts-with? (:alias join) legacy-default-join-alias)
+                        ;; added by [[metabase.query-processor.middleware.resolve-joins]]
+                        (not (:qp/keep-default-join-alias join)))
+                   (dissoc :alias))
         metadata (:lib/stage-metadata (last (:stages join)))]
     (merge (-> base
                (dissoc :stages :conditions)
@@ -615,10 +622,12 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (when (seq (:columns metadata))
              {:source-metadata (stage-metadata->legacy-metadata metadata)})
-           (let [inner-query (chain-stages base {:top-level? false})]
+           (let [inner-query (chain-stages
+                              (dissoc base :fields :conditions)
+                              {:top-level? false})]
              ;; if [[chain-stages]] returns any additional keys like `:filter` at the top-level then we need to wrap
-             ;; it all in `:source-query` (QUE-1566)
-             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :fields :source-metadata}))
+             ;; it all in `:source-query` (QUE-1566, QUE-1603)
+             (if (seq (set/difference (set (keys inner-query)) #{:source-table :source-query :source-metadata}))
                {:source-query inner-query}
                inner-query)))))
 

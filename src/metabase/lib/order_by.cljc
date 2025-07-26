@@ -11,6 +11,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.i18n :as i18n]
@@ -72,6 +73,11 @@
    (-> (order-by-clause-method orderable)
        (with-direction (or direction :asc)))))
 
+(defn- order-by-distinct-key
+  "Key for determining whether two order bys are distinct of not for purposes of ignoring duplicates in [[order-by]]."
+  [[_dir _opts expr]]
+  (lib.schema.util/remove-lib-uuids expr))
+
 (mu/defn order-by
   "Add an MBQL order-by clause (i.e., `:asc` or `:desc`) from something that you can theoretically sort by -- maybe a
   Field, or `:field` clause, or expression of some sort, etc.
@@ -88,11 +94,21 @@
     stage-number :- [:maybe :int]
     orderable    :- some?
     direction    :- [:maybe [:enum :asc :desc]]]
-   (let [stage-number (or stage-number -1)
-         new-order-by (cond-> (order-by-clause-method orderable)
-                        direction (with-direction direction))]
-     (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
-                                                                        (conj (vec order-bys) new-order-by))))))
+   (let [stage-number              (or stage-number -1)
+         new-order-by              (cond-> (order-by-clause-method orderable)
+                                     direction (with-direction direction))
+
+         new-order-by-distinct-key (order-by-distinct-key new-order-by)]
+     ;; don't add the new order by if a duplicate already exists. Ignore duplicate order bys with different
+     ;; directions, since it doesn't make sense to sort by X ascending and THEN sort by X descending... the second
+     ;; sort won't change anything. (QUE-1604)
+     (lib.util/update-query-stage
+      query stage-number update :order-by
+      (fn [order-bys]
+        (if (some #(= (order-by-distinct-key %) new-order-by-distinct-key)
+                  order-bys)
+          order-bys
+          (conj (vec order-bys) new-order-by)))))))
 
 (mu/defn order-bys :- [:maybe ::lib.schema.order-by/order-bys]
   "Get the order-by clauses in a query."
