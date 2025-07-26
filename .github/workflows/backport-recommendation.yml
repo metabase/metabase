@@ -1,0 +1,82 @@
+name: Check PR Changes Apply to Release Branches
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-release-branch-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release branches
+        id: get-release-branches
+        run: |
+          RELEASE_BRANCHES=$(git branch -r | grep -E 'origin/release/v[0-9]+\.[0-9]+' | sed 's/origin\///' | tr '\n' ' ')
+          echo "branches=$RELEASE_BRANCHES" >> $GITHUB_OUTPUT
+
+      - name: Get changed files in PR
+        id: get-changed-files
+        run: |
+          PR_BRANCH="${{ github.head_ref }}"
+          git fetch origin ${{ github.base_ref }}
+          git fetch origin $PR_BRANCH
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...origin/$PR_BRANCH)
+          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+
+      - name: Check compatibility with release branches
+        id: compatibility-check
+        run: |
+          COMPATIBLE=true
+          RESULTS=""
+          for branch in ${{ steps.get-release-branches.outputs.branches }}; do
+            git checkout $branch || continue
+            for file in ${{ steps.get-changed-files.outputs.files }}; do
+              if [[ ! -e "$file" ]]; then
+                RESULTS="$RESULTS❌ $file missing in $branch\n"
+                COMPATIBLE=false
+                continue
+              fi
+              PR_DIFF=$(git diff origin/${{ github.base_ref }}...origin/${{ github.head_ref }} -- "$file")
+              if [[ -n "$PR_DIFF" ]]; then
+                echo "$PR_DIFF" | git apply --check 2>/dev/null
+                if [[ $? -eq 0 ]]; then
+                  RESULTS="$RESULTS✅ $file applies to $branch\n"
+                else
+                  RESULTS="$RESULTS❌ $file conflicts in $branch\n"
+                  COMPATIBLE=false
+                fi
+              fi
+            done
+          done
+          git checkout ${{ github.head_ref }}
+          echo "compatible=$COMPATIBLE" >> $GITHUB_OUTPUT
+          echo "results=$RESULTS" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const compatible = '${{ steps.compatibility-check.outputs.compatible }}' === 'true';
+            const results = `${{ steps.compatibility-check.outputs.results }}`;
+            const body = `## 🔄 Release Branch Compatibility Check
+
+            ${compatible ? '✅ All changes are compatible with release branches.' : '❌ Some changes are not compatible with release branches.'}
+
+            \`\`\`
+            ${results}
+            \`\`\`
+            `;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.data.find(c => c.body.includes('## 🔄 Release Branch Compatibility Check'));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
