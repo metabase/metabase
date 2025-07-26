@@ -22,7 +22,7 @@
    (router-db-or-id->destination-db-id @api/*current-user* db-or-id))
   ([user db-or-id]
    (when-let [attr-name (user-attribute db-or-id)]
-     (let [database-name (get (:login_attributes user) attr-name)]
+     (let [database-name (get (api/current-user-attributes) attr-name)]
        (cond
          ;; if database routing is EXPLICITLY off, e.g. in `POST /api/database/:id/sync_schema`, don't do any routing.
          (= :off *database-routing-on*)

@@ -118,7 +118,7 @@
      :value  (attr-value->param-value field-base-type attr-value)}))
 
 (defn- gtap->parameters [{attribute-remappings :attribute_remappings}]
-  (mapv (partial attr-remapping->parameter (:login_attributes @*current-user*))
+  (mapv (partial attr-remapping->parameter (api/current-user-attributes))
         attribute-remappings))
 
 (mu/defn- preprocess-source-query :- mbql.s/SourceQuery

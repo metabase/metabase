@@ -311,7 +311,7 @@ describe(
           .click();
         cy.findByRole("option", { name: "State" }).click();
         H.modal()
-          .findByRole("button", { name: /Pick a user attribute/ })
+          .findByPlaceholderText(/Pick a user attribute/)
           .click();
         cy.findByRole("option", { name: "state" }).click();
         cy.log("Save the sandboxing modal");

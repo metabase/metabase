@@ -33,32 +33,36 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis").first().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit user").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update").click();
+      cy.findByTestId("admin-people-list-table")
+        .icon("ellipsis")
+        .first()
+        .click();
+      H.popover().findByText("Edit user").click();
+      H.modal().within(() => {
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("3");
+        cy.findByText("Update").click();
+      });
     });
 
     it("should add key attributes to a new user", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Invite someone").click();
-      cy.findByPlaceholderText("Johnny").type("John");
-      cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
-        "john@smith.test",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add an attribute").click();
-      cy.findByPlaceholderText("Key").type("User ID");
-      cy.findByPlaceholderText("Value").type("1");
-      cy.findAllByText("Create").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
+      cy.button("Invite someone").click();
+      H.modal().within(() => {
+        cy.findByPlaceholderText("Johnny").type("John");
+        cy.findByPlaceholderText("Appleseed").type("Smith");
+        cy.findByPlaceholderText("nicetoseeyou@email.com").type(
+          "john@smith.test",
+        );
+
+        cy.findByText("Attributes").click();
+        cy.findByText("Add an attribute").click();
+        cy.findByPlaceholderText("Key").type("User ID");
+        cy.findByPlaceholderText("Value").type("1");
+        cy.findAllByText("Create").click();
+        cy.button("Done").click();
+      });
     });
   });
 
@@ -227,7 +231,7 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       H.modifyPermission("collection", 0, "Sandboxed");
       H.modal().findByText("Pick a column").click();
       H.popover().findByText("Category").click();
-      H.modal().findByText("Pick a user attribute").click();
+      H.modal().findByPlaceholderText("Pick a user attribute").click();
       H.popover().findByText("attr_cat").click();
       H.modal().button("Save").click();
       H.savePermissions();
