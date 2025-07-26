@@ -11,7 +11,7 @@ import { VisualizationButton } from "./VisualizationButton";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/VisualizationButton",
+  title: "EmbeddingSDK/SdkQuestion/VisualizationButton",
   component: VisualizationButton,
   parameters: {
     layout: "fullscreen",
