@@ -8,6 +8,8 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (def ^:private valid-order-bys
   [[:asc
     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
