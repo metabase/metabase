@@ -223,23 +223,25 @@
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                            (lib.tu/remap-metadata-provider (mt/id :users :created_by)
                                                                            (mt/id :users :name))
+                                           ;; simulate this being a real FK so implicit joins work
                                            (lib.tu/merged-mock-metadata-provider
                                             {:fields [{:id                 (mt/id :users :created_by)
                                                        :fk-target-field-id (mt/id :users :id)}]}))
         (let [results (mt/run-mbql-query users
                         {:order-by [[:asc $name]]
                          :limit    4})]
-          (is (= ["ID"
-                  ;; TODO (Cam 7/24/25) -- no idea why this is popping up as the SECOND column, it is SUPPOSED TO BE the
-                  ;; last column. But it doesn't really matter where it shows up as far as the FE is concerned.
-                  "USERS__via__CREATED_BY__NAME" ; <- remapped column
-                  "LAST_LOGIN"
-                  "CREATED_BY"]
-                 (map :lib/desired-column-alias (mt/cols results))))
-          (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
-                 (->> results
-                      mt/rows
-                      (map second)))))))))
+          (when (= driver/*driver* :h2)
+            (is (= ["ID"
+                    "NAME"
+                    "LAST_LOGIN"
+                    "CREATED_BY"
+                    "USERS__via__CREATED_BY__NAME"] ; <- remapped column
+                   (map :lib/desired-column-alias (mt/cols results)))))
+          (is (= [[14 "Broen Olujimi"       "2014-10-03T13:45:00Z" 13 "Dwight Gresham"]
+                  [7  "Conchúr Tihomir"     "2014-08-02T09:30:00Z" 6  "Shad Ferdynand"]
+                  [13 "Dwight Gresham"      "2014-08-01T10:30:00Z" 12 "Kfir Caj"]
+                  [2  "Felipinho Asklepios" "2014-12-05T15:15:00Z" 1  "Plato Yeshua"]]
+                 (mt/rows results))))))))
 
 (defn- remappings-with-metadata
   [metadata]
@@ -466,15 +468,13 @@
               ;;
               ;; 2 remaps from the join against `VENUES`
               "J__NAME_2"
-              "J__NAME_3" 2
+              "J__NAME_3"
               ;; 2 remaps for the top-level query
               "CATEGORIES__via__CATEGORY_ID__NAME"
-              "CATEGORIES__via__ID__NAME"
-              ;; BROKEN! This is a duplicate and should not be returned.
-              "J__NAME_2_2"]
+              "CATEGORIES__via__ID__NAME"]
              (map :lib/desired-column-alias (mt/cols results))))
-      ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
-      (is (= [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" "African"]
-              [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  "American"]
-              [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    "Artisan"]]
+      ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>
+      (is (= [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American"]
+              [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"]
+              [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"]]
              (mt/rows results))))))

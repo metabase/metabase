@@ -1130,9 +1130,10 @@
                                           (mt/id :products :title))
           (do-test
            (fn [results]
-             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
-                     4.0 "2017-12-31T14:41:56.87Z"]
+                     4.0 "2017-12-31T14:41:56.87Z"
+                     "Awesome Concrete Shoes"] ; <- additional remap of ORDERS.PRODUCT_ID => PRODUCTS.TITLE
                     (first (mt/rows results)))))))))))
 
 (deftest ^:parallel inception-metadata-test
