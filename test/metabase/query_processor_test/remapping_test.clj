@@ -471,10 +471,12 @@
               "J__NAME_3"
               ;; 2 remaps for the top-level query
               "CATEGORIES__via__CATEGORY_ID__NAME"
-              "CATEGORIES__via__ID__NAME"]
+              "CATEGORIES__via__ID__NAME"
+              ;; BROKEN! This is a duplicate and should not be returned.
+              "J__NAME_2_2"]
              (map :lib/desired-column-alias (mt/cols results))))
-      ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>
-      (is (= [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American"]
-              [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"]
-              [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"]]
+      ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
+      (is (= [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" "African"]
+              [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  "American"]
+              [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    "Artisan"]]
              (mt/rows results))))))
