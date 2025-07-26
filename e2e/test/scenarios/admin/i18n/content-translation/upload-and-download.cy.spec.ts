@@ -149,29 +149,21 @@ describe("scenarios > admin > embedding > static embedding> content translation"
           .should("exist");
       });
 
-      it(
-        "erases previously stored translations when a new CSV is uploaded",
-        { tags: "@flaky" },
-        () => {
-          uploadTranslationDictionary(germanFieldNames);
-          assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
-            const oneArabicFieldName = [nonAsciiFieldNames[0]];
-            uploadTranslationDictionary(oneArabicFieldName);
-            assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
-          });
-        },
-      );
+      it("erases previously stored translations when a new CSV is uploaded", () => {
+        uploadTranslationDictionary(germanFieldNames);
+        assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
+          const oneArabicFieldName = [nonAsciiFieldNames[0]];
+          uploadTranslationDictionary(oneArabicFieldName);
+          assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
+        });
+      });
 
-      it(
-        "does not erase previously stored translations when an upload fails",
-        { tags: "@flaky" },
-        () => {
-          uploadTranslationDictionary(germanFieldNames);
-          assertOnlyTheseTranslationsAreStored(germanFieldNames);
-          uploadTranslationDictionary(invalidLocaleXX);
-          assertOnlyTheseTranslationsAreStored(germanFieldNames);
-        },
-      );
+      it("does not erase previously stored translations when an upload fails", () => {
+        uploadTranslationDictionary(germanFieldNames);
+        assertOnlyTheseTranslationsAreStored(germanFieldNames);
+        uploadTranslationDictionary(invalidLocaleXX);
+        assertOnlyTheseTranslationsAreStored(germanFieldNames);
+      });
 
       it("rejects a CSV upload with invalid locales in multiple rows", () => {
         uploadTranslationDictionary(multipleInvalidLocales);
