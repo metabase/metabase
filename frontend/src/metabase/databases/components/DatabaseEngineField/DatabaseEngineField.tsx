@@ -28,7 +28,10 @@ export const DatabaseEngineField = ({
   const { values } = useFormikContext<DatabaseData>();
 
   const options = useMemo(() => {
-    return getEngineOptions(engines, engineKey, isAdvanced);
+    return getEngineOptions(engines, engineKey, isAdvanced).map((option) => ({
+      label: option.name,
+      value: option.value,
+    }));
   }, [engines, engineKey, isAdvanced]);
 
   if (isAdvanced) {

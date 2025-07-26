@@ -210,7 +210,7 @@ describe("Add data modal", () => {
 
       H.modal().within(() => {
         cy.findByText("Add a database").should("be.visible");
-        cy.findByLabelText("Database type").should("contain", "Snowflake");
+        cy.findByLabelText("Database type").should("have.value", "Snowflake");
       });
     });
 

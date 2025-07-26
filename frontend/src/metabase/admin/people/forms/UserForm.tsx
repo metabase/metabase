@@ -49,6 +49,7 @@ export const UserForm = ({
             placeholder={t`Johnny`}
             label={t`First name`}
             mb="md"
+            nullable
           />
           <FormTextInput
             name="last_name"
@@ -56,6 +57,7 @@ export const UserForm = ({
             placeholder={t`Appleseed`}
             label={t`Last name`}
             mb="md"
+            nullable
           />
           <FormTextInput
             name="email"
