@@ -660,7 +660,10 @@
                                                              :database_required false
                                                              ;; Index sync is turned off across the application as it is not used ATM.
                                                              #_#_:database_indexed  true
-                                                             :database_is_auto_increment true})
+                                                             :database_is_auto_increment true
+                                                             :database_is_generated      false
+                                                             :database_is_nullable       false
+                                                             :database_is_pk             true})
                                                            (merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
@@ -676,7 +679,10 @@
                                                              :database_required true
                                                              ;; Index sync is turned off across the application as it is not used ATM.
                                                              #_#_:database_indexed  false
-                                                             :database_is_auto_increment false})]
+                                                             :database_is_auto_increment false
+                                                             :database_is_generated      false
+                                                             :database_is_nullable       false
+                                                             :database_is_pk             nil})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)

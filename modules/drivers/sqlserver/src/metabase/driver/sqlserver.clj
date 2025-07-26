@@ -55,7 +55,10 @@
                               :index-info                             false
                               :now                                    true
                               :regex                                  false
-                              :test/jvm-timezone-setting              false}]
+                              :test/jvm-timezone-setting              false
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]

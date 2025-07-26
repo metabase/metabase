@@ -324,3 +324,5 @@
                            (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)
                            (format "DROP USER IF EXISTS %s" role-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defmethod sql.tx/generated-column-sql :redshift [_ _] nil)
