@@ -1653,43 +1653,6 @@
                                                           [:!= [:field 1 {:temporal-unit :hour-of-day}] 0 23]
                                                           [:between [:field 1 nil] "2024-10-05" "2024-12-08"]]}}))))
 
-(t/deftest ^:parallel normalizing-idents-test
-  (let [ident0 "ident0_______________"
-        ident1 "ident1_______________"
-        ident2 "ident2_______________"
-        ident3 "ident3_______________"
-        ident4 "ident4_______________"]
-    (t/testing ":aggregation-idents is normalized to have integer keys"
-      (t/is (=? {:query {:aggregation-idents {0 ident0
-                                              1 ident1
-                                              2 ident2}}}
-                (mbql.normalize/normalize
-                 {:query {:aggregation [[:count] [:count] [:count]]
-                          :aggregation-idents {0   ident0
-                                               "1" ident1
-                                               :2  ident2}}}))))
-    (t/testing ":breakout-idents is normalized to have integer keys"
-      (t/is (=? {:query {:breakout-idents {0 ident0
-                                           1 ident1
-                                           2 ident2}}}
-                (mbql.normalize/normalize
-                 {:query {:breakout [[:field 1 {}] [:field 2 {}] [:field 3 {}]]
-                          :breakout-idents {0   ident0
-                                            "1" ident1
-                                            :2  ident2}}}))))
-    (t/testing ":expression-idents is normalized to have string keys, even if they got keywordized"
-      (t/is (=? {:query {:expression-idents {"regular string"     ident0
-                                             "string/with slash"  ident1
-                                             "keyword-name"       ident2
-                                             "keyword/with-slash" ident3
-                                             "namespaced/keyword" ident4}}}
-                (mbql.normalize/normalize
-                 {:query {:expression-idents {"regular string"                 ident0
-                                              "string/with slash"              ident1
-                                              :keyword-name                    ident2
-                                              (keyword "keyword/with-slash")   ident3
-                                              (keyword "namespaced" "keyword") ident4}}}))))))
-
 (t/deftest ^:parallel normalize-datetime-test
   (t/is (= [:datetime ""]
            (mbql.normalize/normalize-tokens [:datetime ""])))

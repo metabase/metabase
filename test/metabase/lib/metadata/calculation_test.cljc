@@ -10,6 +10,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -828,3 +829,90 @@
             (is (= num-misses
                    (:misses @call-count))
                 "Another call should result in ZERO additional cache misses -- we should be returning the cached value")))))))
+
+(deftest ^:parallel returned-columns-no-duplicates-test
+  (testing "Don't return columns from a join twice (QUE-1607)"
+    (let [mp    meta/metadata-provider
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                :fields       [[:field "sum" {:join-alias "Orders", :base-type :type/Integer}]]}]
+                    :fields   [$title $category]
+                    :order-by [[:asc $id]]}))
+          cols  (lib/returned-columns query -1)]
+      (is (= ["TITLE"
+              "CATEGORY"
+              "Orders__sum"]
+             (mapv :lib/desired-column-alias cols)))
+      (is (=? [[:field {} (meta/id :products :title)]
+               [:field {} (meta/id :products :category)]
+               [:field {:join-alias "Orders"} "sum"]]
+              (mapv lib/ref cols)))
+      (testing "update stage :fields to include the columns from the join already"
+        (let [query' (assoc-in query [:stages 0 :fields] (mapv lib/ref cols))
+              cols'  (lib/returned-columns query' -1)]
+          (is (= ["TITLE"
+                  "CATEGORY"
+                  "Orders__sum"]
+                 (mapv :lib/desired-column-alias cols')))
+          (is (=? [[:field {} (meta/id :products :title)]
+                   [:field {} (meta/id :products :category)]
+                   [:field {:join-alias "Orders"} "sum"]]
+                  (mapv lib/ref cols'))))))))
+
+(deftest ^:parallel do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test
+  (testing "temporal unit should not be incorrectly propagated in returned-columns past the stage where the bucketing was done"
+    (let [query (lib/query
+                 meta/metadata-provider
+
+                 (lib.tu.macros/mbql-query people
+                   {:source-query {:source-table $$people
+                                   :breakout     [!month.created-at]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-query {:source-table $$people
+                                                   :breakout     [!month.birth-date]
+                                                   :aggregation  [[:count]]}
+                                    :alias        "Q2"
+                                    :condition    [:= !month.created-at !month.&Q2.birth-date]
+                                    :fields       [[:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                                   [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]}))]
+      (is (= [{:lib/desired-column-alias "CREATED_AT"
+               :inherited-temporal-unit  :month}
+              {:lib/desired-column-alias "count"}
+              {:lib/desired-column-alias "Q2__BIRTH_DATE"
+               :inherited-temporal-unit  :month}
+              {:lib/desired-column-alias "Q2__count"}]
+             (map #(select-keys % [:lib/desired-column-alias :metabase.lib.field/temporal-unit :inherited-temporal-unit])
+                  (lib/returned-columns query)))))))
+
+(deftest ^:parallel returned-columns-no-duplicates-test-2
+  (testing "Don't return columns from a join twice (QUE-1607)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query people
+                   {:source-query {:source-table $$people
+                                   :breakout     [!month.created-at]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-query {:source-table $$people
+                                                   :breakout     [!month.birth-date]
+                                                   :aggregation  [[:count]]}
+                                    :alias        "Q2"
+                                    :condition    [:= !month.created-at !month.&Q2.birth-date]
+                                    :fields       [[:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                                   [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]
+                    :fields       [[:field (meta/id :people :created-at) {:inherited-temporal-unit :month}]
+                                   [:field "count" {:base-type :type/Integer}]
+                                   [:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                   [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]
+                    :order-by     [[:asc !month.created-at]]}))
+          cols (lib/returned-columns query)]
+      (is (= ["CREATED_AT"
+              "count"
+              "Q2__BIRTH_DATE"
+              "Q2__count"]
+             (mapv :lib/desired-column-alias cols))))))

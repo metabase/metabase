@@ -626,6 +626,93 @@
                   :aggregation [[:count]]
                   :limit       1})))))
 
+(deftest ^:parallel fuzzy-field-info-test
+  (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (mt/with-driver :h2
+        (is (= {:field-name              "CREATED_AT"
+                :join-is-this-level?     "Q2"
+                :alias-from-join         "Products__CREATED_AT"
+                :alias-from-source-query nil
+                :override-alias?         false}
+               (#'add/expensive-field-info
+                (lib.tu.macros/$ids nil
+                  {:source-table $$reviews
+                   :joins        [{:source-query {:source-table $$reviews
+                                                  :breakout     [[:field %products.created-at
+                                                                  {::add/desired-alias "Products__CREATED_AT"
+                                                                   ::add/position      0
+                                                                   ::add/source-alias  "CREATED_AT"
+                                                                   ::add/source-table  "Products"
+                                                                   :join-alias         "Products"
+                                                                   :temporal-unit      :month}]]}
+                                   :alias        "Q2"}]})
+                [:field (meta/id :products :created-at) {:join-alias "Q2"}])))))))
+
+(deftest ^:parallel expression-from-source-query-alias-test
+  (testing "Make sure we use the exported alias from the source query for expressions (#21131)"
+    (let [source-query {:source-table 3
+                        :expressions  {"PRICE" [:+
+                                                [:field 2 {::add/source-table  3
+                                                           ::add/source-alias  "price"
+                                                           ::add/desired-alias "price"
+                                                           ::add/position      1}]
+                                                2]}
+                        :fields       [[:field 2 {::add/source-table  3
+                                                  ::add/source-alias  "price"
+                                                  ::add/desired-alias "price"
+                                                  ::add/position      1}]
+                                       [:expression "PRICE" {::add/desired-alias "PRICE_2"
+                                                             ::add/position      2}]]}]
+      (testing `add/exports
+        (is (= #{[:field 2 {::add/source-table  3
+                            ::add/source-alias  "price"
+                            ::add/desired-alias "price"
+                            ::add/position      1}]
+                 [:expression "PRICE" {::add/desired-alias "PRICE_2"
+                                       ::add/position      2}]}
+               (#'add/exports source-query))))
+      (testing `add/matching-field-in-source-query
+        (is (= [:expression "PRICE" {::add/desired-alias "PRICE_2"
+                                     ::add/position      2}]
+               (#'add/matching-field-in-source-query
+                {:source-query source-query}
+                [:field "PRICE" {:base-type :type/Float}]))))
+      (testing `add/field-alias-in-source-query
+        (is (= "PRICE_2"
+               (#'add/field-alias-in-source-query
+                {:source-query source-query}
+                [:field "PRICE" {:base-type :type/Float}])))))))
+
+(deftest ^:parallel find-matching-field-ignore-MLv2-extra-type-info-in-field-opts-test
+  (testing "MLv2 refs can include extra info like `:base-type`; make sure we ignore that when finding matching refs (#33083)"
+    (let [source-query {:source-table 1
+                        :joins        [{:alias        "Card_2"
+                                        :source-query {:source-table 2
+                                                       :breakout     [[:field 78 {:join-alias         "Products"
+                                                                                  :temporal-unit      :month
+                                                                                  ::add/source-table  "Products"
+                                                                                  ::add/source-alias  "CREATED_AT"
+                                                                                  ::add/desired-alias "Products__CREATED_AT"
+                                                                                  ::add/position      0}]]
+                                                       :aggregation  [[:aggregation-options
+                                                                       [:distinct [:field 76 {:join-alias        "Products"
+                                                                                              ::add/source-table "Products"
+                                                                                              ::add/source-alias "ID"}]]
+                                                                       {:name               "count"
+                                                                        ::add/source-alias  "count"
+                                                                        ::add/position      1
+                                                                        ::add/desired-alias "count"}]]}}]}
+          field-clause [:field 78 {:base-type :type/DateTime, :temporal-unit :month, :join-alias "Card_2"}]]
+      (is (=? [:field
+               78
+               {:join-alias         "Products"
+                :temporal-unit      :month
+                ::add/source-table  "Products"
+                ::add/source-alias  "CREATED_AT"
+                ::add/desired-alias "Products__CREATED_AT"}]
+              (#'add/matching-field-in-join-at-this-level source-query field-clause))))))
+
 (defn- metadata-provider-with-two-models []
   (let [result-metadata-for (fn [column-name]
                               {:display_name   column-name
