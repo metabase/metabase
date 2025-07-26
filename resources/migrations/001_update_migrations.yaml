@@ -8264,10 +8264,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:13
       author: johnswanson
+      dbms: h2
       comment: Populate `archived_directly` and `archive_operation_id` (H2)
       changes:
         - sqlFile:
-            dbms: h2
             path: trash/h2.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
