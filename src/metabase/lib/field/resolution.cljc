@@ -179,7 +179,9 @@
                                                   previous-stage-columns))
                                   [:lib/desired-column-alias
                                    :lib/deduplicated-name])]
-               (lib.field.util/update-keys-for-col-from-previous-stage col)))))
+               (-> col
+                   lib.field.util/update-keys-for-col-from-previous-stage
+                   (assoc :lib/source :source/previous-stage))))))
        ;; if the 'simple match' failed then try again by looking at all the visible columns.
        (when-let [visible-columns (not-empty
                                    (concat
