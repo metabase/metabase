@@ -1437,15 +1437,15 @@
                                      :stages [{:source-table 45050
                                                :fields       [[:field {:base-type :type/BigInteger} 45500]
                                                               [:field {:base-type :type/Text} 45507]]}]}]}]}
-          (lib.convert/->pMBQL '{:database 45001
-                                 :type     :query
-                                 :query    {:source-table 45060
-                                            :joins        [{:strategy     :left-join
-                                                            :alias        "PRODUCTS__via__PRODUCT_ID"
-                                                            :fk-field-id  45607
-                                                            :condition    [:=
-                                                                           [:field 45607 nil]
-                                                                           [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
-                                                            :source-query {:source-table 45050
-                                                                           :fields       [[:field 45500 {:base-type :type/BigInteger}]
-                                                                                          [:field 45507 {:base-type :type/Text}]]}}]}}))))
+          (lib.convert/->pMBQL {:database 45001
+                                :type     :query
+                                :query    {:source-table 45060
+                                           :joins        [{:strategy     :left-join
+                                                           :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                           :fk-field-id  45607
+                                                           :condition    [:=
+                                                                          [:field 45607 nil]
+                                                                          [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                           :source-query {:source-table 45050
+                                                                          :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                                                         [:field 45507 {:base-type :type/Text}]]}}]}}))))
