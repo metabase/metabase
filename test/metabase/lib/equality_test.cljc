@@ -1041,3 +1041,42 @@
               [:field {:base-type :type/BigInteger, :source-field 35, :source-field-name "USER_ID", :lib/uuid "1cb6708d-754d-48b9-b44f-660a7c91561d", :effective-type :type/BigInteger} 24]]]
     (is (= (second refs)
            (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))
+
+(deftest ^:parallel find-matching-column-prefer-exact-matches-test
+  (testing `lib.equality/find-matching-column
+    (testing "For field name refs, prefer matches that have the same [lack of] join alias and same source-column-alias"
+      (let [a-ref [:field
+                   {:lib/uuid       "00000000-0000-0000-0000-000000000000"
+                    :effective-type :type/Text
+                    :base-type      :type/Text}
+                   "Cat__NAME"]
+            ;; here we have TWO potential matches with `:lib/source-uuid` -- this happens
+            ;; in [[metabase.query-processor.util.add-alias-info]] when we search thru the concatenation of
+            ;; `returned-columns` and `visible-columns`. The first potential match has the wrong join alias and source
+            ;; column alias; the second is an exact match. We should return the second.
+            col-1 (merge
+                   (meta/field-metadata :categories :name)
+                   {:lib/deduplicated-name        "NAME"
+                    :lib/desired-column-alias     "Cat__NAME"
+                    :lib/original-join-alias      "Cat"
+                    :lib/original-name            "NAME"
+                    :lib/source-column-alias      "NAME"
+                    :lib/source-uuid              "00000000-0000-0000-0000-000000000000"
+                    :metabase.lib.join/join-alias "Cat"
+                    :name                         "NAME"})
+            col-2 (merge
+                   (meta/field-metadata :categories :name)
+                   {:lib/deduplicated-name     "NAME"
+                    :lib/desired-column-alias  "Cat__NAME"
+                    :lib/original-display-name "Name"
+                    :lib/original-join-alias   "Cat"
+                    :lib/original-name         "NAME"
+                    :lib/source                :source/previous-stage
+                    :lib/source-column-alias   "Cat__NAME"
+                    :lib/source-uuid           "00000000-0000-0000-0000-000000000000"
+                    :lib/type                  :metadata/column
+                    :name                      "NAME"})]
+        (doseq [cols [[col-1 col-2]
+                      [col-2 col-1]]]
+          (is (= col-2
+                 (lib.equality/find-matching-column a-ref cols))))))))
