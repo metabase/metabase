@@ -74,31 +74,12 @@
 (defn liquibase-file->included-ids
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.
   Ids are orderer in the order it's defined in migration file."
-  [file-path db-type conn]
-  (let [content (u.yaml/from-file (io/resource file-path))
-        lb-type (if (= "MariaDB" (.getDatabaseProductName (.getMetaData ^java.sql.Connection conn)))
-                  :mariadb
-                  db-type)]
+  [file-path db-type]
+  (let [content (u.yaml/from-file (io/resource file-path))]
     (->> (:databaseChangeLog content)
-      ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current lb-type
+      ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current db-type
          (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
-                                                        (not (str/includes? dbms (name lb-type))))))
-        ;if the changelog has filter by dbms on sql/sqlFile tags, remove the ones that doesn't apply for the current lb-type.
-        ; BUT: if the changeSet has a preCondition with onFail "MARK_RAN", we keep it because that marks it as ran anyway
-        ; BUT: if there is more than one change, even if they all don't get ran it gets marked as ran (https://github.com/liquibase/liquibase/issues/7153)
-         (filter (fn [{{:keys [changes preConditions]} :changeSet}]
-                   (cond
-                     (some #(= {:onFail "MARK_RAN"} %) preConditions)
-                     true
-
-                     (= 1 (count changes))
-                     (let [change (first changes)]
-                       (cond
-                         (:sql change) (str/includes? (get-in change [:sql :dbms] (name lb-type)) (name lb-type))
-                         (:sqlFile change) (str/includes? (get-in change [:sqlFile :dbms] (name lb-type)) (name lb-type))
-                         :else true))
-
-                     :else true)))
+                                                        (not (str/includes? dbms (name db-type))))))
       ;; remove ignored changeSets
          (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
@@ -115,5 +96,5 @@
 
 (defn all-liquibase-ids
   "Returns a set of all changeset IDs from all migration files."
-  [include-legacy? driver conn]
-  (apply concat (map #(liquibase-file->included-ids % driver conn) (all-migration-files include-legacy?))))
+  [include-legacy? driver]
+  (apply concat (map #(liquibase-file->included-ids % driver) (all-migration-files include-legacy?))))
