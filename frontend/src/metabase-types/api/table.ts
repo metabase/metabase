@@ -38,6 +38,7 @@ export type Table = {
   metrics?: Card[];
   dimension_options?: Record<string, FieldDimensionOption>;
   field_order: TableFieldOrder;
+  component_settings?: ComponentSettings;
 
   active: boolean;
   visibility_type: TableVisibilityType;
@@ -47,6 +48,23 @@ export type Table = {
   points_of_interest?: string;
   created_at: string;
   updated_at: string;
+};
+
+export type ComponentSettings = {
+  list_view: ListViewSettings;
+  object_view: ObjectViewSettings;
+};
+
+export type ListViewSettings = {
+  row_height: "thin" | "normal";
+  fields: {
+    field_id: FieldId;
+    style: "normal" | "bold" | "dim";
+  }[];
+};
+
+export type ObjectViewSettings = {
+  // TODO
 };
 
 export type SchemaName = string;
@@ -106,6 +124,11 @@ export interface UpdateTableRequest {
   points_of_interest?: string;
   show_in_getting_started?: boolean;
   field_order?: TableFieldOrder;
+}
+
+export interface UpdateTableComponentSettingsRequest {
+  id: TableId;
+  component_settings: ComponentSettings;
 }
 
 export interface UpdateTableListRequest {

@@ -5,6 +5,7 @@ import type {
   Table,
   TableId,
   TableListQuery,
+  UpdateTableComponentSettingsRequest,
   UpdateTableFieldsOrderRequest,
   UpdateTableListRequest,
   UpdateTableRequest,
@@ -74,6 +75,22 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
     }),
+    updateTableComponentSettings: builder.mutation<
+      Table,
+      UpdateTableComponentSettingsRequest
+    >({
+      query: ({ id, component_settings }) => ({
+        method: "PUT",
+        url: `/api/table/${id}/component_settings`,
+        body: component_settings,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          idTag("table", id),
+          tag("database"),
+          tag("card"),
+        ]),
+    }),
     updateTableFieldsOrder: builder.mutation<
       Table,
       UpdateTableFieldsOrderRequest
@@ -128,9 +145,11 @@ export const {
   useListTablesQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
+  useUpdateTableComponentSettingsMutation,
   useUpdateTableFieldsOrderMutation,
   useRescanTableFieldValuesMutation,
   useSyncTableSchemaMutation,
