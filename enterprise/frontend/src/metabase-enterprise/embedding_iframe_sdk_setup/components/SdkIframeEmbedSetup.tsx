@@ -19,8 +19,7 @@ import { SimpleEmbedTermsCard } from "./SimpleEmbedTermsCard";
 const SdkIframeEmbedSetupContent = () => {
   const { currentStep } = useSdkIframeEmbedSetupContext();
 
-  // TODO: change this to "enable-embedding-simple" when we split the settings
-  const embeddingSdkEnabled = useSetting("enable-embedding-sdk");
+  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const showSimpleEmbedTerms = useSetting("show-simple-embed-terms");
   const [updateSettings] = useUpdateSettingsMutation();
   const [sendToast] = useToast();
@@ -41,16 +40,14 @@ const SdkIframeEmbedSetupContent = () => {
 
   // Automatically enable the embedding SDK if it's not already enabled.
   useEffect(() => {
-    // TODO: change this to "enable-embedding-simple" when we split the settings
-    if (!embeddingSdkEnabled) {
-      updateSettings({ "enable-embedding-sdk": true });
+    if (!isSimpleEmbeddingEnabled) {
+      updateSettings({ "enable-embedding-simple": true });
 
       sendToast({
-        // TODO: change this to simple embedding when we split the settings
-        message: t`Embedded Analytics SDK is enabled. You can configure it in admin settings.`,
+        message: t`Simple embedding is enabled. You can configure it in admin settings.`,
       });
     }
-  }, [embeddingSdkEnabled, sendToast, updateSettings]);
+  }, [isSimpleEmbeddingEnabled, sendToast, updateSettings]);
 
   return (
     <Box className={S.Container}>
@@ -86,7 +83,7 @@ const SdkIframeEmbedSetupContent = () => {
         <Card p="md" h="100%">
           <Stack h="100%">
             {/** Only show the embed preview once the embedding is auto-enabled, or already enabled. */}
-            {embeddingSdkEnabled && <SdkIframeEmbedPreview />}
+            {isSimpleEmbeddingEnabled && <SdkIframeEmbedPreview />}
           </Stack>
         </Card>
       </Box>
