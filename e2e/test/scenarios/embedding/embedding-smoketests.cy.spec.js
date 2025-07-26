@@ -104,7 +104,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.location("pathname").should("eq", embeddingPage);
 
       cy.log("The second section: 'Interactive embedding'");
-      cy.findByRole("article", { name: "Interactive embedding" }).within(() => {
+      cy.findByRole("article", { name: /Interactive embedding/ }).within(() => {
         cy.findByText("Interactive embedding");
 
         cy.findByRole("link", { name: "Learn More" })

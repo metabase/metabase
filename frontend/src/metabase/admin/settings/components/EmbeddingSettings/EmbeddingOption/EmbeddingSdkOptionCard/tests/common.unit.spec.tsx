@@ -13,7 +13,6 @@ describe("EmbeddingSdkOptionCard (OSS)", () => {
     await setup();
 
     expect(screen.getByText("Embedded Analytics SDK")).toBeInTheDocument();
-    expect(screen.getByText("Pro and Enterprise")).toBeInTheDocument();
     expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });
 

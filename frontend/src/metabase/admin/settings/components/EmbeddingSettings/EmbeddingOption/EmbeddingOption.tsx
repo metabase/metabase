@@ -5,7 +5,7 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Flex, Text, Title } from "metabase/ui";
 
 type EmbeddingOptionProps = {
-  title: string;
+  title: ReactNode;
   label?: ReactNode;
   children?: ReactNode;
   description: ReactNode;

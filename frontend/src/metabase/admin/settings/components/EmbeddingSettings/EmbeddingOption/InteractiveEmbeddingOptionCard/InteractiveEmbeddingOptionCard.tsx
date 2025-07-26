@@ -1,9 +1,9 @@
 import { jt, t } from "ttag";
 
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
-import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
@@ -44,15 +44,11 @@ export const InteractiveEmbeddingOptionCard = () => {
           disabled={!isEE || !isInteractiveEmbeddingEnabled}
         />
       }
-      title={t`Interactive embedding`}
-      label={
-        <Badge
-          fz="sm"
-          px="sm"
-          py="xs"
-          color="brand"
-          uppercase
-        >{t`Pro and Enterprise`}</Badge>
+      title={
+        <Group gap="sm">
+          {!isEE && <UpsellGem />}
+          {t`Interactive embedding`}
+        </Group>
       }
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
