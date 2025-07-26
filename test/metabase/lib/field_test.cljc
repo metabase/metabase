@@ -1904,6 +1904,32 @@
              (map (juxt :lib/deduplicated-name :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
 
+(deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test-2
+  (testing "if :fields already includes a column from the join make sure the display name is still calculated correctly"
+    (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title
+                               $category
+                               [:field "sum" {:base-type :type/Integer, :join-alias "Orders"}]]
+                    :order-by [[:asc $id]]
+                    :limit    3}))]
+      (is (= [["TITLE"    "Title"]                    ; products.title
+              ["CATEGORY" "Category"]                 ; products.category
+              ["sum"      "Orders → Sum of Quantity"] ; sum(orders.quantity)
+              ["TITLE_2"  "Orders → Title"]]          ; orders.title
+             (map (juxt :lib/deduplicated-name :display-name)
+                  (lib.metadata.result-metadata/returned-columns query)))))))
+
 (deftest ^:parallel propagate-binning-display-names-test
   (testing "`<column>: <binning>` display names should get used for columns binned in previous stages"
     (let [mp    (lib.tu/mock-metadata-provider
