@@ -244,10 +244,15 @@
       (assoc
        ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
        ;; keys for join aliases.
-       :source-alias            join-alias
-       :lib/original-join-alias join-alias
-       :lib/source              :source/joins
-       ::join-alias             join-alias)
+       :source-alias              join-alias
+       :lib/original-join-alias   join-alias
+       :lib/source                :source/joins
+       ::join-alias               join-alias
+       ;;
+       ;; TODO (Cam 7/25/25) -- this seems like a correct thing to do but uncommenting
+       ;; it breaks [[metabase.lib.field-test/nested-field-display-name-test-3]]
+       ;;
+       #_:lib/original-display-name #_((some-fn :lib/original-display-name :display-name) col))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 

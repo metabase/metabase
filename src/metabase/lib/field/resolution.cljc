@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
@@ -164,7 +165,12 @@
    field-ref    :- :mbql.clause/field]
   (when (< *recursive-column-resolution-depth* 2)
     (binding [*recursive-column-resolution-depth* (inc *recursive-column-resolution-depth*)]
-      (when-let [visible-columns (not-empty (lib.metadata.calculation/visible-columns query stage-number))]
+      (when-let [visible-columns (not-empty
+                                  (concat
+                                   (lib.metadata.calculation/visible-columns query stage-number)
+                                   ;; TODO (Cam 7/25/25) -- visible columns does not include aggregations, work around
+                                   ;; it until it gets fixed
+                                   (lib.aggregation/aggregations-metadata query stage-number)))]
         (resolve-column-in-metadata query field-ref visible-columns)))))
 
 (def ^:private opts-propagated-keys

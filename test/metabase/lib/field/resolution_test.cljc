@@ -889,3 +889,32 @@
     (is (=? [{:display-name      "User → Source is Organic"
               :long-display-name "User → Source is Organic"}]
             (map #(lib/display-info query %) (lib/filters query -1))))))
+
+(deftest ^:parallel resolve-aggregation-by-name-test
+  (testing "if :fields already includes a column from the join make sure the display name is still calculated correctly"
+    (let [mp    meta/metadata-provider
+          query (lib/query
+                 mp
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :orders)
+                              :breakout     [[:field
+                                              {:lib/uuid  "11111111-1111-1111-1111-111111111111"
+                                               :base-type :type/Integer}
+                                              (meta/id :orders :product-id)]]
+                              :aggregation  [[:sum
+                                              {:lib/uuid "22222222-2222-2222-2222-222222222222"}
+                                              [:field
+                                               {:lib/uuid  "33333333-3333-3333-3333-333333333333"
+                                                :base-type :type/Integer}
+                                               (meta/id :orders :quantity)]]]}]})]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= ["Product ID"
+                "Sum of Quantity"]
+               (map :display-name (lib/returned-columns query))))
+        (is (=? {:display-name "Sum of Quantity"}
+                (lib.field.resolution/resolve-field-ref
+                 query
+                 -1
+                 [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "sum"])))))))
