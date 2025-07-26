@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.fix-bad-references
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
@@ -10,7 +9,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (mu/defn- find-source-table :- [:maybe ::lib.schema.id/table]
   [{:keys [source-table source-query], :as _join}]
@@ -105,7 +105,7 @@
   This middleware performs a best-effort DWIM transformation, and isn't smart enough to fix every broken query out
   there. If the query cannot be fixed, this log a warning and move on. See #19612 for more information."
   [query]
-  (walk/postwalk
+  (perf/postwalk
    (fn [form]
      (if (and (map? form)
               ((some-fn :source-query :source-table) form)
