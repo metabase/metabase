@@ -93,7 +93,7 @@
                source-query (assoc :source-query source-query))]
     ;; now deduplicate :fields clauses
     (lib.util.match/replace form
-      (m :guard (every-pred map? :fields))
+      (m :guard (every-pred map? :fields #(sequential? (:fields %))))
       (update m :fields distinct))))
 
 (defn- add-join-alias-to-fields-if-needed
@@ -113,6 +113,7 @@
       true
       add-join-alias-to-fields-if-needed*)))
 
+;;; TODO (Cam 7/23/25) -- give this a better name that makes its actual purpose a little clearer
 (defn resolve-joined-fields
   "Add `:join-alias` info to `:field` clauses where needed."
   [query]

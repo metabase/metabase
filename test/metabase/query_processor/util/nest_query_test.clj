@@ -227,9 +227,9 @@
                                                                [:field %price #::add{:source-table ::add/source
                                                                                      :source-alias "PRICE"}]
                                                                4]}
-                                            :fields [[:field %id #::add{:source-table  ::add/source
-                                                                        :source-alias  "ID"
-                                                                        :desired-alias "ID"}]
+                                            :fields [[:field "ID" #::add{:source-table  ::add/source
+                                                                         :source-alias  "ID"
+                                                                         :desired-alias "ID"}]
                                                      [:field "x" {:base-type          :type/Integer
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "x"
@@ -658,7 +658,7 @@
                                                                                                       ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
                                                                                                       ::add/position      3}]]
                                                     {:source-table $$orders
-                                                     :joins        [{:source-table $$products
+                                                     :joins        [{:source-query {:source-table $$products}
                                                                      :alias        "PRODUCTS__via__PRODUCT_ID"
                                                                      :condition    [:= product-id products-id]
                                                                      :strategy     :left-join
@@ -853,10 +853,8 @@
                                                              [:field %rating {}]
                                                              [:field %created-at {}]]}
                                      :expressions {"pivot-grouping" [:abs 0]}
-                                   ;; TODO -- these should PROBABLY be nominal field literal refs (string name, not
-                                   ;; integer ID), but we can fix that later.
-                                     :fields [[:field %category {}]
-                                              [:field %created-at {}]
+                                     :fields [[:field "CATEGORY" {}]
+                                              [:field "CREATED_AT" {}]
                                               [:expression "pivot-grouping" {}]]}
                       :breakout    [[:field "CATEGORY" {}]
                                     [:field "CREATED_AT" {}]

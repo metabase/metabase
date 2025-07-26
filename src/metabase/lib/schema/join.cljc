@@ -3,38 +3,36 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
-;;; The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
-;;; `:none`, `:all`, or a sequence of Field clauses.
-;;;
-;;; *  `:none`: no Fields from the joined table or nested query are included (unless indirectly included by
-;;;    breakouts or other clauses). This is the default, and what is used for automatically-generated joins.
-;;;
-;;; *  `:all`: will include all of the Fields from the joined table or query
-;;;
-;;; * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here!
-;;;    References to expressions or aggregations in the thing we're joining should use column literal (string column
-;;;    name) `:field` references. This should be non-empty and all elements should be distinct. The normalizer will
-;;;    automatically remove duplicate fields for you, and replace empty clauses with `:none`.
-;;;
-;;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
-;;; with appropriate aliases.
 (mr/def ::fields
+  "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
+  `:none`, `:all`, or a sequence of Field clauses.
+
+  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or
+     other clauses). This is the default, and what is used for automatically-generated joins.
+
+  * `:all`: will include all of the Fields from the joined table or query
+
+  * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here! References
+    to expressions or aggregations in the thing we're joining should use column literal (string column name) `:field`
+    references. This should be non-empty and all elements should be distinct (ignoring `:lib/uuid`)."
   [:multi
    {:dispatch (some-fn keyword? string?)}
    [true  [:enum {:decode/normalize common/normalize-keyword} :all :none]]
-   ;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
-   ;; twice. (#32489)
-   [false [:sequential {:min 1} [:ref :mbql.clause/field]]]])
+   [false
+    [:and
+     [:sequential {:min 1} [:ref :mbql.clause/field]]
+     [:fn
+      {:error/message "join :fields must be distinct"}
+      #'lib.schema.util/distinct-refs?]]]])
 
-;;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
-;;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
-;;; `:join-alias` in the options.
-;;;
-;;; Driver implementations: This is guaranteed to be present after pre-processing.
 (mr/def ::alias
+  "The name used to alias the joined table or query. This is usually generated automatically and generally looks like
+  `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias` in
+  the options."
   [:schema
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
@@ -97,7 +95,18 @@
     [:strategy {:optional true} ::strategy]]
    [:fn
     {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
-    (complement (some-fn :lib/stage-metadata :source-metadata))]])
+    (complement (some-fn :lib/stage-metadata :source-metadata))]
+   [:fn
+    {:error/message "All join :fields should have a :join-alias that matches the join's :alias"}
+    (fn [{join-alias :alias, fields :fields, :as _join}]
+      (or
+       (not (sequential? fields))
+       ;; a [[metabase.lib.join.util/PartialJoin]] (a join being built) might not have an alias yet; do not validate
+       ;; in that case.
+       (not join-alias)
+       (every? (fn [[_tag opts _id-or-name, :as _field-ref]]
+                 (= (:join-alias opts) join-alias))
+               fields)))]])
 
 (mr/def ::joins
   [:and
