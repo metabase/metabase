@@ -1,6 +1,7 @@
 (ns metabase.query-processor.preprocess
   (:require
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -115,9 +116,10 @@
        (and (map? form)
             (:condition form)
             (:source-table form))
-       (-> (dissoc :source-table)
-           (assoc :source-query {:source-table                          (:source-table form)
-                                 ::do-not-collapse-to-top-level-of-join true}))))
+       (-> (dissoc :source-table :source-metadata)
+           (assoc :source-query (-> {:source-table                          (:source-table form)
+                                     ::do-not-collapse-to-top-level-of-join true}
+                                    (m/assoc-some :source-metadata (:source-metadata form)))))))
    query))
 
 (def ^:private middleware
