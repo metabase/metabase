@@ -1,7 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
