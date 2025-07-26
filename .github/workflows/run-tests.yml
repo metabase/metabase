@@ -1,17 +1,16 @@
 name: Run tests
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
-  pull_request:
-    types: [opened, synchronize, reopened]
-  merge_group:
+  workflow_run:
+    workflows: ["Build Uberjar"]
+    types: [completed]
 
 jobs:
   files-changed:
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event != 'pull_request' || 
+       !contains(github.event.workflow_run.pull_requests[0].labels.*.name, 'ci skip'))
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -34,45 +33,13 @@ jobs:
           list-files: csv
           filters: .github/file-paths.yaml
 
-  static-viz-files-changed:
-    name: Check whether static-viz files changed
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "files-changed"
-      - name: Build static-viz frontend
-        run: yarn build-static-viz
-        env:
-          MB_EDITION: ee
-      - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
-
-      - name: Check for static viz changes
-        uses: dorny/paths-filter@v3.0.0
-        id: static_viz
-        with:
-          token: ${{ github.token }}
-          filters: .github/static-viz-sources.yaml
-
   backend-tests:
     if: ${{ !cancelled() }}
-    needs: [files-changed, static-viz-files-changed]
+    needs: files-changed
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   app-db-tests:
     needs: files-changed
