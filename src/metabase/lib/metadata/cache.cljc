@@ -37,13 +37,17 @@
     x            :- :any
     options      :- :any]
    (letfn [(update-map [m]
-             (-> m
-                 ;; use the hash of the metadata provider so only two queries with identical metadata providers get
-                 ;; the exact same cache key (see tests). This is mostly to satisfy tests that do crazy stuff and swap
-                 ;; out a query's metadata provider so we don't end up returning the wrong cached results for the same
-                 ;; query with a different MP
-                 (m/update-existing :lib/metadata hash)
-                 not-empty))]
+             (let [;; use the hash of the metadata provider so only two queries with identical metadata providers get
+                   ;; the exact same cache key (see tests). This is mostly to satisfy tests that do crazy stuff and swap
+                   ;; out a query's metadata provider so we don't end up returning the wrong cached results for the same
+                   ;; query with a different MP
+                   m (m/update-existing m :lib/metadata hash)]
+               (case (:lib/type m)
+                 ;; For cards and metrics being used as keys, these came from the metadata itself, so replace them
+                 ;; with stubs referencing them by :id.
+                 (:metadata/card :metadata/metric) [(:lib/type m) (:id m)]
+                 ;; Otherwise, return the original map.
+                 (not-empty m))))]
      [unique-key
       (update-map query)
       (lib.util/canonical-stage-index query stage-number)
