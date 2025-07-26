@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
@@ -14,6 +15,7 @@ import { SearchFilterKeys } from "metabase/search/constants";
 import type {
   FilterTypeKeys,
   SearchFilterComponent,
+  SearchFilterToggle,
   SearchQueryParamValue,
   URLSearchFilterQueryParams,
 } from "metabase/search/types";
@@ -25,6 +27,14 @@ type SearchSidebarProps = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
+  // TODO: don't ship this to prod
+  const DisableSemanticSearchFilter: SearchFilterToggle = {
+    label: () => t`Disable semantic search`,
+    type: "toggle",
+    fromUrl: (value) => value === "true",
+    toUrl: (value: boolean) => (value ? "true" : null),
+  };
+
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
@@ -32,17 +42,28 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+    [SearchFilterKeys.DisableSemanticSearch]: DisableSemanticSearchFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
   };
 
   const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
     if (!val) {
-      onChange(_.omit(value, key));
+      const omitKeys = _.compact([
+        key,
+        // when enabling semantic search, prevent native queries from being searched
+        key === SearchFilterKeys.DisableSemanticSearch &&
+          SearchFilterKeys.NativeQuery,
+      ]);
+      onChange(_.omit(value, omitKeys));
     } else {
       onChange({
         ...value,
         [key]: val,
+        // when enabling native queries search, prevent semantic search from being used
+        ...(key === SearchFilterKeys.NativeQuery && val
+          ? { [SearchFilterKeys.DisableSemanticSearch]: "true" }
+          : {}),
       });
     }
   };
@@ -90,6 +111,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         {getFilter(SearchFilterKeys.LastEditedAt)}
       </Stack>
       {getFilter(SearchFilterKeys.Verified)}
+      {getFilter(SearchFilterKeys.DisableSemanticSearch)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
     </Stack>

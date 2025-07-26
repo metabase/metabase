@@ -555,6 +555,7 @@ describe("AddToDashSelectDashModal", () => {
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
         context: "entity-picker",
         models: "dashboard",
+        search_engine: "appdb",
         q: typedText,
         filter_items_in_personal_collection: "only",
       });
@@ -585,6 +586,7 @@ describe("AddToDashSelectDashModal", () => {
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
         context: "entity-picker",
         models: "dashboard",
+        search_engine: "appdb",
         q: typedText,
       });
     });
