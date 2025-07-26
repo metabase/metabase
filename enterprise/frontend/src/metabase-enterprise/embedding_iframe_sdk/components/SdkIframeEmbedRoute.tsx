@@ -97,7 +97,7 @@ const SdkIframeEmbedView = ({
     .with(
       {
         dashboardId: P.nonNullable,
-        isDrillThroughEnabled: false,
+        drills: false,
       },
       (settings) => (
         <StaticDashboard
@@ -113,7 +113,7 @@ const SdkIframeEmbedView = ({
     .with(
       {
         questionId: P.nonNullable,
-        isDrillThroughEnabled: false,
+        drills: false,
       },
       (settings) => (
         <StaticQuestion
@@ -128,7 +128,7 @@ const SdkIframeEmbedView = ({
     .with(
       {
         dashboardId: P.nonNullable,
-        isDrillThroughEnabled: P.optional(true),
+        drills: P.optional(true),
       },
       (settings) => (
         <InteractiveDashboard
@@ -146,7 +146,7 @@ const SdkIframeEmbedView = ({
     .with(
       {
         questionId: P.nonNullable,
-        isDrillThroughEnabled: P.optional(true),
+        drills: P.optional(true),
       },
       (settings) => (
         <InteractiveQuestion

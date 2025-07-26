@@ -1,3 +1,5 @@
+import { match } from "ts-pattern";
+
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
@@ -184,3 +186,62 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
     );
   }
 }
+
+export const getNewEmbedScriptTag = ({
+  loadType = "defer",
+}: {
+  loadType?: "sync" | "async" | "defer";
+} = {}) => {
+  const loadTypeAttribute = match(loadType)
+    .with("sync", () => "")
+    .with("async", () => "async")
+    .with("defer", () => "defer")
+    .exhaustive();
+
+  return `
+    <script src="${EMBED_JS_PATH}" ${loadTypeAttribute}></script>
+    <script>
+      function defineMetabaseConfig(settings) {
+        window.metabaseConfig = settings;
+      }
+    </script>
+  `;
+};
+
+export const getNewEmbedConfigurationScript = ({
+  instanceUrl = "http://localhost:4000",
+  theme,
+}: {
+  instanceUrl?: string;
+  theme?: MetabaseTheme;
+} = {}) => {
+  return `
+    <script>
+      defineMetabaseConfig({
+        instanceUrl: "${instanceUrl}",
+        theme: ${JSON.stringify(theme)},
+      });
+    </script>
+  `;
+};
+
+export const visitCustomHtmlPage = (
+  html: string,
+  {
+    origin = "",
+    onVisitPage,
+  }: {
+    origin?: string;
+    onVisitPage?: () => void;
+  } = {},
+) => {
+  const testPageUrl = `${origin}/custom-html-page`;
+  cy.intercept("GET", testPageUrl, {
+    body: html,
+    headers: { "content-type": "text/html" },
+  }).as("dynamicPage");
+
+  cy.visit(testPageUrl, { onLoad: onVisitPage });
+
+  return cy;
+};

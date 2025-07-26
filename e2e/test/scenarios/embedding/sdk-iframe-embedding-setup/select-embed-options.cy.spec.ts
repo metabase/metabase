@@ -52,7 +52,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "isDrillThroughEnabled",
+      event_detail: "drills",
     });
 
     cy.log("drill-through should be disabled in the preview");
@@ -150,7 +150,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "isDrillThroughEnabled",
+      event_detail: "drills",
     });
 
     cy.log("drill-through should be disabled in chart preview");
