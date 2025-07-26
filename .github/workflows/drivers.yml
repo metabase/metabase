@@ -831,6 +831,7 @@ jobs:
       DRIVERS: redshift
       MB_REDSHIFT_TEST_USER: metabase_ci
       MB_REDSHIFT_TEST_DB: testdb
+      MB_REDSHIFT_TEST_DB_ROUTING: dev
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: ${{ matrix.job.name }}
