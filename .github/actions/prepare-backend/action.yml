@@ -24,17 +24,23 @@ runs:
       run: |
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
+    - name: Get cache week
+      id: cache-week
+      run: echo "week=$(date +%Y-W%U)" >> $GITHUB_OUTPUT
+      shell: bash
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
       shell: bash
-    - name: Get M2 cache
+    - name: Get M2 cache (week-based)
       uses: actions/cache@v4
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: |
           ~/.m2
           ~/.gitlibs
-        key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-m2-${{ inputs.m2-cache-key }}-${{ steps.cache-week.outputs.week }}
         restore-keys: |
-          ${{ runner.os }}-${{ inputs.m2-cache-key }}-
+          ${{ runner.os }}-m2-${{ inputs.m2-cache-key }}-
+          ${{ runner.os }}-m2-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn', '**/bb.edn') }}
+          ${{ runner.os }}-m2-

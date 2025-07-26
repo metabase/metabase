@@ -22,16 +22,23 @@ runs:
         chrome-version: 1097615
       id: setup-chrome
 
+    - name: Get cache week
+      id: cache-week
+      run: echo "week=$(date +%Y-W%U)" >> $GITHUB_OUTPUT
+      shell: bash
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
       shell: bash
-    - name: Get Cypress cache
+    - name: Get Cypress cache (week-based)
       uses: actions/cache@v4
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: ~/.cache/Cypress
-        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
+        key: ${{ runner.os }}-cypress-${{ steps.cache-week.outputs.week }}
+        restore-keys: |
+          ${{ runner.os }}-cypress-
+          ${{ runner.os }}-cypress-${{ hashFiles('**/yarn.lock', 'package.json') }}
     - name: Ensure that Cypress executable is ready
       run: |
         yarn cypress install
