@@ -8,7 +8,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.system.core :as system]
    [metabase.test :as mt]
@@ -137,10 +136,7 @@
                                :aggregation [[:count]]
                                :breakout [[:expression "adjective" nil]
                                           category-field]})
-                    results (binding [fix-bad-refs/*bad-field-reference-fn*
-                                      (fn [x]
-                                        (swap! bad-refs conj x))]
-                              (qp/process-query query))
+                    results (qp/process-query query)
                     persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
                 (testing "Was persisted"
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
