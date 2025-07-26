@@ -1,6 +1,7 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -247,6 +248,7 @@
        :lib/original-join-alias join-alias
        :lib/source              :source/joins
        ::join-alias             join-alias)
+      (set/rename-keys {:lib/expression-name :lib/original-expression-name})
       (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
 
 (defmethod lib.metadata.calculation/display-name-method :option/join.strategy
