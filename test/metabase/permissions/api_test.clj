@@ -138,6 +138,55 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
 
+(deftest create-group-audit-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/PermissionsGroup]
+      (let [initial-audit-count (t2/count :model/AuditLog)]
+        (testing "permissions group create is audited"
+          (let [{group-id :id} (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})]
+            (is (= (inc initial-audit-count) (t2/count :model/AuditLog)))
+            (let [audit-entry (t2/select-one :model/AuditLog
+                                             :topic "group-create"
+                                             :model_id group-id
+                                             {:order-by [[:id :desc]]})]
+              (is (some? audit-entry))
+              (is (= "PermissionsGroup" (:model audit-entry)))
+              (is (= group-id (:model_id audit-entry)))
+              (is (= "Test Group" (get-in audit-entry [:details :name]))))))))))
+
+(deftest delete-group-audit-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "permissions group delete is audited"
+      (let [{group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup {:name "Delete Me"})
+            before-delete-count (t2/count :model/AuditLog)]
+        (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
+        (is (= (inc before-delete-count) (t2/count :model/AuditLog)))
+        (let [audit-entry (t2/select-one :model/AuditLog
+                                         :topic "group-delete"
+                                         :model_id group-id
+                                         {:order-by [[:id :desc]]})]
+          (is (some? audit-entry))
+          (is (= "PermissionsGroup" (:model audit-entry)))
+          (is (= group-id (:model_id audit-entry)))
+          (is (= "Delete Me" (get-in audit-entry [:details :name]))))))))
+
+(deftest update-group-audit-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "permissions group update is audited"
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+        (let [before-update-count (t2/count :model/AuditLog)]
+          (mt/user-http-request :crowberto :put 200 (format "permissions/group/%d" group-id) {:name "Updated Group"})
+          (is (= (inc before-update-count) (t2/count :model/AuditLog)))
+          (let [audit-entry (t2/select-one :model/AuditLog
+                                           :topic "group-update"
+                                           :model_id group-id
+                                           {:order-by [[:id :desc]]})]
+            (is (some? audit-entry))
+            (is (= "PermissionsGroup" (:model audit-entry)))
+            (is (= group-id (:model_id audit-entry)))
+            (is (= "Updated Group" (get-in audit-entry [:details :new :name])))
+            (is (= "Test Group" (get-in audit-entry [:details :previous :name])))))))))
+
 (deftest fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
