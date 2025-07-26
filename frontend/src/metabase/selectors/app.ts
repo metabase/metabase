@@ -35,6 +35,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /\/metric\/.*\/metadata/,
   /\/metric\/query/,
   /\/metric\/metadata/,
+  /\/transform\/new\/.*\/query/,
 ];
 
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [

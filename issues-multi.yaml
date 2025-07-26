@@ -1,0 +1,27 @@
+steps:
+  - lego: transfer
+    source_database: 72
+    source_table: gh_issue
+    destination_database: 71
+    destination_table: all_issues
+    overwrite?: true
+  - lego: transform
+    database: 71
+    table: bugs
+    query: bugs.sql
+  - lego: transform
+    database: 71
+    table: closed_bugs
+    query: closed-bugs.sql
+  - lego: transform
+    database: 71
+    table: time_to_close_bugs
+    query: time-to-close.sql
+  - lego: transform
+    database: 71
+    table: median_time_bugs_by_team
+    query: median-by-team.sql
+  - lego: transform
+    database: 71
+    table: median_time_bugs_by_month
+    query: median-by-month.sql

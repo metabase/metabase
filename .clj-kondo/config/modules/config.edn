@@ -1832,6 +1832,30 @@
            settings
            util}}
 
+  enterprise/transforms
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms.api
+           metabase-enterprise.transforms.init}
+   :uses #{api
+           driver
+           events
+           models
+           permissions
+           query-processor
+           sync
+           task
+           task-history
+           util}}
+
+  enterprise/transfers
+  {:team "Querying"
+   :api  #{metabase-enterprise.transforms.api
+           metabase-enterprise.transforms.init}
+   :uses #{driver
+           query-processor
+           util
+           transforms}}
+
   enterprise/upload-management
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.upload-management.api}

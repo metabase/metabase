@@ -54,7 +54,8 @@
                               :describe-fks                    false
                               :actions                         false
                               :metadata/key-constraints        (not driver-api/is-test?)
-                              :database-routing                false}]
+                              :database-routing                false
+                              :transforms/basic                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -294,3 +295,17 @@
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message
   (str/starts-with? (.getMessage e) "Code: 60."))
+
+(defmethod driver/compile-transform :clickhouse
+  [driver {:keys [sql output-table]}]
+  [(format "CREATE TABLE %s ORDER BY `clickhouse_merge_table_id` AS %s"
+           (quote-name (name output-table))
+           sql)])
+
+(comment
+
+  (driver/compile-transform :clickhouse {:sql "SELECT * FROM products" :output-table "FDFS"})
+
+  (quote-name "products")
+
+  (driver/escape-alias :clickhouse "products"))

@@ -1,0 +1,4 @@
+lego: transform
+database: 38
+table: TARGET_TABLE_2
+query: SELECT * FROM PRODUCTS WHERE CATEGORY = 'Gadget'
