@@ -14,16 +14,16 @@ import { findColumnSlotForCartesianChart } from "./cartesian";
 import { findColumnSlotForFunnel } from "./funnel";
 import { findColumnSlotForPieChart } from "./pie";
 
-type CompatFn = (
+type CompatFn = (parameters: {
   state: Pick<
     VisualizerVizDefinitionWithColumns,
     "display" | "columns" | "settings"
-  >,
-  settings: ComputedVisualizationSettings,
-  datasets: Record<VisualizerDataSourceId, Dataset>,
-  dataSourceColumns: DatasetColumn[],
-  column: DatasetColumn,
-) => string | undefined;
+  >;
+  settings: ComputedVisualizationSettings;
+  datasets: Record<VisualizerDataSourceId, Dataset>;
+  dataSourceColumns: DatasetColumn[];
+  column: DatasetColumn;
+}) => string | undefined;
 
 const vizMappingFn: Record<string, CompatFn> = {
   cartesian: findColumnSlotForCartesianChart,
@@ -50,7 +50,7 @@ export function findSlotForColumn(
     vizMappingFn[isCartesianChart(display) ? "cartesian" : display];
 
   if (compatFn) {
-    return compatFn(state, settings, datasets, dataSourceColumns, column);
+    return compatFn({ state, settings, datasets, dataSourceColumns, column });
   } else {
     return undefined;
   }
@@ -78,13 +78,13 @@ export function groupColumnsBySuitableVizSettings(
       .map((column) => ({
         column,
         // TODO Fix type casting
-        slot: compatFn(
+        slot: compatFn({
           state,
           settings,
           datasets,
-          columns as DatasetColumn[],
-          column as DatasetColumn,
-        ),
+          dataSourceColumns: columns as DatasetColumn[],
+          column: column as DatasetColumn,
+        }),
       }))
       .filter((mapping) => !!mapping.slot);
     const groupedMappings = _.groupBy(mapping, (m) => m.slot as string);

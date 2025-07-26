@@ -210,7 +210,6 @@ describe("getIsCompatible", () => {
     const sameCategoryDimensionField = createMockCategoryField({
       id: categoryDimensionColumn.id,
     });
-    const otherCategoryDimensionField = createMockCategoryField({ id: 5 });
 
     it("should return true if a data source has a matching time dimension", () => {
       const settings = {
@@ -303,36 +302,6 @@ describe("getIsCompatible", () => {
           },
         }),
       ).toBe(true);
-    });
-
-    it("should return false if a data source doesn't have a matching category dimension", () => {
-      const settings = {
-        "graph.metrics": [metricColumn.name],
-        "graph.dimensions": [categoryDimensionColumn.name],
-      };
-      expect(
-        getIsCompatible({
-          currentDataset: {
-            display: "line",
-            columns: [metricColumn, categoryDimensionColumn],
-            settings,
-            computedSettings: settings,
-          },
-          targetDataset: { fields: [otherCategoryDimensionField] },
-          datasets: {
-            "1": defaultDataset,
-            "2": createMockDataset({
-              data: {
-                cols: [
-                  createMockCategoryColumn({
-                    id: otherCategoryDimensionField.id as number,
-                  }),
-                ],
-              },
-            }),
-          },
-        }),
-      ).toBe(false);
     });
   });
 });

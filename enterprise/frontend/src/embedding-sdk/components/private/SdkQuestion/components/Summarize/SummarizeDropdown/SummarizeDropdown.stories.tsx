@@ -7,7 +7,7 @@ import { SummarizeDropdown } from "./SummarizeDropdown";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Summarize/SummarizeDropdown",
+  title: "EmbeddingSDK/SdkQuestion/Summarize/SummarizeDropdown",
   component: SummarizeDropdown,
   parameters: {
     layout: "fullscreen",

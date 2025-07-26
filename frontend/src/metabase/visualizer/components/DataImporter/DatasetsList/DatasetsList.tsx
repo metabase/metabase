@@ -33,7 +33,7 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/api";
 
-import { DatasetsListItem } from "./DatasetsListItem";
+import { DatasetsListItem, type Item } from "./DatasetsListItem";
 import { getIsCompatible } from "./getIsCompatible";
 
 function shouldIncludeDashboardQuestion(
@@ -139,7 +139,8 @@ export function DatasetsList({
         include_dashboard_questions: true,
         include_metadata: true,
         ...(visualizationType &&
-          isCartesianChart(visualizationType) && {
+          isCartesianChart(visualizationType) &&
+          search.length === 0 && {
             has_temporal_dim: timeDimensions.length > 0,
             non_temporal_dim_ids: JSON.stringify(nonTemporalDimIds),
           }),
@@ -172,7 +173,7 @@ export function DatasetsList({
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
 
-  const items = useMemo(() => {
+  const items: Item[] | undefined = useMemo(() => {
     if (!search && dataSources.length === 0) {
       if (!allRecents) {
         return;
@@ -186,6 +187,7 @@ export function DatasetsList({
           ...createDataSource("card", card.id, card.name),
           display: card.display,
           result_metadata: card.result_metadata,
+          notRecommended: false,
         }));
     }
 
@@ -193,7 +195,26 @@ export function DatasetsList({
       return;
     }
 
-    return visualizationSearchResult.data
+    const isCompatible = (item: Item) => {
+      if (!item.display || !item.result_metadata) {
+        return item;
+      }
+
+      return getIsCompatible({
+        currentDataset: {
+          display: visualizationType ?? null,
+          columns,
+          settings,
+          computedSettings,
+        },
+        targetDataset: {
+          fields: item.result_metadata,
+        },
+        datasets,
+      });
+    };
+
+    let results = visualizationSearchResult.data
       .filter(
         (maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model) &&
@@ -204,26 +225,18 @@ export function DatasetsList({
         display: card.display,
         result_metadata: card.result_metadata,
       }))
-      .filter((item) => {
-        // Filter out incompatible items using client-side compatibility check
-        if (!item.display || !item.result_metadata) {
-          return false;
-        }
-
-        return getIsCompatible({
-          currentDataset: {
-            display: visualizationType ?? null,
-            columns,
-            settings,
-            computedSettings,
-          },
-          targetDataset: {
-            fields: item.result_metadata,
-          },
-          datasets,
-        });
-      })
       .sort((a, b) => a.name.localeCompare(b.name));
+
+    if (search.length > 0) {
+      results = results.map((item) => ({
+        ...item,
+        notRecommended: !isCompatible(item),
+      }));
+    } else {
+      results = results.filter(isCompatible);
+    }
+
+    return results;
   }, [
     visualizationSearchResult,
     dashboardId,
