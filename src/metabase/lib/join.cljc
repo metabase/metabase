@@ -311,7 +311,7 @@
                                               (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                          (pr-str join-alias)
                                                          (pr-str field-ref)
-                                                         (u/pprint-to-str cols)))]
+                                                         (u/pprint-to-str (map :lib/desired-column-alias cols))))]
                          :when     match]
                      (-> match
                          update-keys-for-join-returned-column
