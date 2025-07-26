@@ -22,6 +22,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
+   [metabase.query-processor.middleware.ensure-joins-use-source-query :as ensure-joins-use-source-query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
@@ -109,19 +110,6 @@
                (-> query' middleware-fn ->legacy))))))
       (with-meta (meta middleware-fn))))
 
-(defn- HECC [query]
-  (walk/postwalk
-   (fn [form]
-     (cond-> form
-       (and (map? form)
-            (:condition form)
-            (:source-table form))
-       (-> (dissoc :source-table :source-metadata)
-           (assoc :source-query (-> {:source-table                          (:source-table form)
-                                     ::do-not-collapse-to-top-level-of-join true}
-                                    (m/assoc-some :source-metadata (:source-metadata form)))))))
-   query))
-
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -142,8 +130,8 @@
    (ensure-legacy #'parameters/substitute-parameters)
    (ensure-pmbql #'qp.resolve-source-table/resolve-source-tables)
    (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
+   (ensure-pmbql #'ensure-joins-use-source-query/ensure-joins-use-source-query)
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
-   (ensure-legacy #'HECC)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-pmbql #'qp.middleware.enterprise/apply-impersonation)
    (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
