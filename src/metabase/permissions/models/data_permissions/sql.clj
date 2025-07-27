@@ -1,7 +1,7 @@
 (ns metabase.permissions.models.data-permissions.sql
   "Helper functions for models using data permissions to construct `visisble-query` methods from."
   (:require
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.types :as perms.types]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
   (:import
@@ -19,25 +19,25 @@
      CASE WHEN \"perm_value\" = 'unrestricted' THEN 0 ELSE ...
      ```
    This lets us write SQL statements to compare permissions values by their index position in the same way we do in the
-   `data-perms/at-least-as-permissive?` function"
+   `perms.types/at-least-as-permissive?` function"
   {:arglists '([perm-type column])}
   (fn [perm-type _] perm-type))
 
 (mu/defn- perm-type-to-int-case
-  [perm-type     :- data-perms/PermissionType
+  [perm-type     :- perms.types/PermissionType
    column        :- :keyword]
   (into [:case]
         (apply concat
                (map-indexed (fn [idx perm-value] [[:= column (h2x/literal perm-value)] [:inline idx]])
-                            (-> data-perms/Permissions perm-type :values)))))
+                            (-> perms.types/Permissions perm-type :values)))))
 
 (mu/defmethod perm-type-to-least-int-case :default
-  [perm-type     :- data-perms/PermissionType
+  [perm-type     :- perms.types/PermissionType
    column        :- :keyword]
   [:min (perm-type-to-int-case perm-type column)])
 
 (mu/defmethod perm-type-to-least-int-case :perms/view-data
-  [_ :- data-perms/PermissionType
+  [_ :- perms.types/PermissionType
    column :- :keyword]
   ;; blocked has a higher 'prioirty' than legacy-no-self-service when determining what permission level the user has
   (let [minimum-perm-value [:min
@@ -52,13 +52,13 @@
      [:= minimum-perm-value [:inline 2]] [:inline 1]]))
 
 (mu/defn- perm-type-to-int-inline :- [:tuple [:= :inline] nat-int?]
-  [perm-type :- data-perms/PermissionType
-   level :- data-perms/PermissionValue]
-  (let [^PersistentVector values (-> data-perms/Permissions perm-type :values)]
+  [perm-type :- perms.types/PermissionType
+   level :- perms.types/PermissionValue]
+  (let [^PersistentVector values (-> perms.types/Permissions perm-type :values)]
     [:inline (.indexOf values level)]))
 
 (mu/defn- perm-type-to-most-int-case
-  [perm-type     :- data-perms/PermissionType
+  [perm-type     :- perms.types/PermissionType
    column        :- :keyword]
   [:max (perm-type-to-int-case perm-type column)])
 
@@ -89,7 +89,7 @@
 (mu/defn- has-perms-for-table-as-honey-sql?
   "Builds an EXIST (SELECT ...) half-join to filter tables that a user has the required permissions for. It builds the subselect by as a
    GROUP BY table_id HAVING user-most-or-least-restrictive-permission <= required-permission-level. The group by allows us to map the permission
-   value column to the index of the permission value in the `data-perms/Permission` map."
+   value column to the index of the permission value in the `perms.types/Permission` map."
   [user-id          :- pos-int?
    perm-type        :- :keyword
    required-level   :- :keyword
@@ -117,8 +117,8 @@
   most or least restrictive permission a user has in any of the groups they are a member of. If that value is left out we will assume we
   want the least restrict permission value."
   [:map-of
-   data-perms/PermissionType
-   [:or data-perms/PermissionValue [:tuple data-perms/PermissionValue [:enum :most :least]]]])
+   perms.types/PermissionType
+   [:or perms.types/PermissionValue [:tuple perms.types/PermissionValue [:enum :most :least]]]])
 
 (mu/defn visible-table-filter-select
   "Selects a column from tables that are visible to the provided user given a mapping of permission types to the required value or the required
