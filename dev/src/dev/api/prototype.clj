@@ -85,3 +85,24 @@
               {:type    type
                :content (json/encode body)})
   (assoc body :id id))
+
+(api.macros/defendpoint :delete "/:type/:id"
+  "Deletes an existing record."
+  [{:keys [type id]} :- [:map
+                         [:type ms/NonBlankString]
+                         [:id ms/PositiveInt]]
+   _query-params
+   body]
+  (api/check-404 (t2/delete! (prototype-table) id))
+
+  {:id id})
+
+(api.macros/defendpoint :delete "/:type/all"
+  "Deletes all records of this type. Helpful for resetting to a clean state."
+  [{:keys [type]} :- [:map
+                      [:type ms/NonBlankString]]
+   _query-params
+   body]
+  (t2/delete! (prototype-table) :type type)
+
+  {:message "All records deleted" :type type})

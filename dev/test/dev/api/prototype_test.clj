@@ -118,4 +118,20 @@
           (testing "No matches return empty list"
             (is (empty?
                  (mt/user-http-request :crowberto :get 200
-                                       (format "dev/prototype/%s/?str-val=none" key))))))))))
+                                       (format "dev/prototype/%s/?str-val=none" key)))))
+
+          (testing "Can delete a record"
+            (is (= {:id (:id response1)} (mt/user-http-request :crowberto :delete 200
+                                                               (format "dev/prototype/%s/%s" key (:id response1)))))
+            (is (= "Not found." (mt/user-http-request :crowberto :get 404
+                                                      (format "dev/prototype/%s/%s" key (:id response1)))))
+            (testing "Didn't delete other records"
+              (is (partial= {:id (:id response2)} (mt/user-http-request :crowberto :get 200
+                                                                        (format "dev/prototype/%s/%s" key (:id response2)))))))
+
+          (testing "Can delete all records of a type"
+            (is (= {:message "All records deleted" :type key}
+                   (mt/user-http-request :crowberto :delete 200
+                                         (format "dev/prototype/%s/all" key))))
+            (is (= [] (mt/user-http-request :crowberto :get 404
+                                            (format "dev/prototype/%s/" key))))))))))
