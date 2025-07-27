@@ -133,5 +133,5 @@
             (is (= {:message "All records deleted" :type key}
                    (mt/user-http-request :crowberto :delete 200
                                          (format "dev/prototype/%s/all" key))))
-            (is (= [] (mt/user-http-request :crowberto :get 404
+            (is (= [] (mt/user-http-request :crowberto :get 200
                                             (format "dev/prototype/%s/" key))))))))))
