@@ -188,6 +188,45 @@ describe("parseConnectionUriRegex - MySQL", () => {
   });
 });
 
+describe("parseConnectionUriRegex - Oracle", () => {
+  it("should parse a Oracle connection string", () => {
+    const connectionString =
+      "jdbc:oracle:thin:@mydbhost:1521/mydbservice?ssl_server_cert_dn=ServerDN";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        host: "mydbhost",
+        port: "1521",
+        database: "mydbservice",
+        params: {
+          ssl_server_cert_dn: "ServerDN",
+        },
+        protocol: "oracle",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+  it("should parse a Oracle connection string with username and password", () => {
+    const connectionString =
+      "jdbc:oracle:thin:john/pass1234@mydbhost:1521/mydbservice?ssl_server_cert_dn=ServerDN";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        host: "mydbhost",
+        port: "1521",
+        username: "john",
+        password: "pass1234",
+        database: "mydbservice",
+        params: {
+          ssl_server_cert_dn: "ServerDN",
+        },
+        protocol: "oracle",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+});
+
 describe("parseConnectionUriRegex - PostgreSQL", () => {
   it("should parse a PostgreSQL connection string", () => {
     const connectionString =

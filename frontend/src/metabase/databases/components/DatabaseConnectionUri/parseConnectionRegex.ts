@@ -109,9 +109,10 @@ const connectionStringRegexes = {
   oracle: new RegExp(
     "^" +
       jdbcPrefix +
-      "(?<protocol>oracle)://" +
-      userPass +
-      "(?<host>[^:/?#]+)(?::(?<port>\\d+))?(?:/(?<service_name>[^/?#]+))?" +
+      "(?<protocol>oracle):(?<subprotocol>thin):" +
+      "(?:(?<username>[^@/]+)/(?<password>[^@/]+))?" +
+      "@" +
+      "(?<host>[^:/?#]+)(?::(?<port>\\d+))?(?:/(?<database>[^/?#]+))?" +
       params +
       "$",
     "i",
@@ -128,48 +129,6 @@ const connectionStringRegexes = {
       "(?<protocol>mongodb(?:\\+srv)?)://" +
       userPass +
       "(?<hosts>[^/?#]+)(?:/(?<database>[^/?#]*))?" +
-      params +
-      "$",
-    "i",
-  ),
-
-  // Redis (URI scheme)
-  redis: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>redis)://(?::(?<password>[^@]+)@)?(?<host>[^:/?#]+)(?::(?<port>\\d+))?(?:/(?<database>\\d+))?",
-    "i",
-  ),
-
-  // Cassandra (using contact points)
-  cassandra: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>cassandra)://" +
-      userPass +
-      "(?<hosts>[^/?#]+)(?:/(?<keyspace>[^/?#]*))?" +
-      params +
-      "$",
-    "i",
-  ),
-
-  // MariaDB (similar to MySQL)
-  mariadb: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>mariadb)://" +
-      userPass +
-      "(?<host>[^:/?#]+)?(?::(?<port>\\d+))?(?:/(?<database>[^/?#]*))?(?:\\?(?<params>.*))?$",
-    "i",
-  ),
-
-  // IBM DB2
-  db2: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>db2)://" +
-      userPass +
-      "(?<host>[^:/?#]+)(?::(?<port>\\d+))?(?:/(?<database>[^/?#]*))?" +
       params +
       "$",
     "i",

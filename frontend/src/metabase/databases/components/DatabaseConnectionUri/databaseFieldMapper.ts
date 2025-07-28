@@ -102,6 +102,18 @@ function mapMysqlValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
+function mapOracleValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host],
+    ["details.port", parsedValues.port],
+    ["details.service-name", parsedValues.database],
+    ["details.user", parsedValues.username],
+    ["details.password", parsedValues.password],
+  ]);
+
+  return fieldsMap;
+}
+
 function mapPostgresValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host],
@@ -213,6 +225,7 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with("databricks", () => mapDatabricksValues(parsedValues))
     .with(P.union("druid", "avatica"), () => mapDruidValues(parsedValues))
     .with("mysql", () => mapMysqlValues(parsedValues))
+    .with("oracle", () => mapOracleValues(parsedValues))
     .with(P.union("postgres", "postgresql"), () =>
       mapPostgresValues(parsedValues),
     )
