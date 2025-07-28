@@ -10,8 +10,7 @@
 
 (defn- excluded-group-ids
   []
-  #{(u/the-id (perms/all-users-group))
-    (u/the-id (perms/all-external-users-group))})
+  #{(u/the-id (perms/all-users-group))})
 
 (defn- sync-group-memeberships*!
   [user-or-id to-remove to-add]
