@@ -15,7 +15,8 @@
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [ring.util.response :as response])
+   [ring.util.response :as response]
+   [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)))
 
