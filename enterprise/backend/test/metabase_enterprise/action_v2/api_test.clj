@@ -630,10 +630,10 @@
                 scope               {:table-id table-id}]
 
             (testing "create"
-              (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text"}
-                                    {:id "int"       :display_name "Int"       :input_type "text"}
-                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
-                                    {:id "date"      :display_name "Date"      :input_type "date"}]}
+              (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text",     :readonly false}
+                                    {:id "int"       :display_name "Int"       :input_type "text",     :readonly false}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :readonly false}
+                                    {:id "date"      :display_name "Date"      :input_type "date",     :readonly false}]}
                       (mt/user-http-request :crowberto :post 200 execute-form-url
                                             {:scope     scope
                                              :action create-id}))))
