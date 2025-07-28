@@ -226,10 +226,15 @@
       ;; to think about how this works since the collection ID will be `NULL`.
       "/collection/root/" {})))
 
-(deftest cannot-grant-application-permissions-to-tenant-groups
+(deftest cannot-grant-non-subscription-application-permissions-to-tenant-groups
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
-                          (perms/grant-application-permissions! tenant-group-id :subscription)))))
+    (testing "Setting and monitoring permissions should still be blocked"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                            (perms/grant-application-permissions! tenant-group-id :setting)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                            (perms/grant-application-permissions! tenant-group-id :monitoring))))
+    (testing "Subscription permissions should be allowed"
+      (is (nil? (perms/grant-application-permissions! tenant-group-id :subscription))))))
 
 (deftest cannot-grant-collection-permissions-to-tenant-group
   ;; right now, with no tenant collections, you can't grant any permissions on any collection to a tenant group
