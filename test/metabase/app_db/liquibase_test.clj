@@ -80,16 +80,16 @@
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
 
             (testing "makes sure the change log filename are correctly set"
-              (is (= (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
+              (is (= (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" conn))
                      (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
 
-              (is (= (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
+              (is (= (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" conn))
                      (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml"))))
 
             (is (= (t2/select-fn-set :id table-name)
                    (set/union
-                    (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
-                    (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)))))))))))
+                    (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" conn))
+                    (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" conn)))))))))))
 
 (deftest wait-for-all-locks-test
   (mt/test-drivers #{:h2 :mysql :postgres}

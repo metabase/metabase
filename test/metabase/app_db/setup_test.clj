@@ -61,7 +61,7 @@
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true true)))
         (testing "migrations are executed in the order they are defined"
-          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
+          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" conn)
                  (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
 
 (deftest setup-db-no-auto-migrate-test
