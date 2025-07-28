@@ -1,82 +1,94 @@
+import type { Location } from "history";
 import { useState } from "react";
-import { t } from "ttag";
+import { push } from "react-router-redux";
 
-import { useLazyGetCardQuery } from "metabase/api";
-import {
-  QuestionPickerModal,
-  type QuestionPickerValueItem,
-} from "metabase/common/components/Pickers/QuestionPicker";
-import { Flex, Stack, Title } from "metabase/ui";
+import { skipToken, useGetCardQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import Question from "metabase-lib/v1/Question";
+import type { Card, CardId, DatasetQuery } from "metabase-types/api";
 
 import { NewTransformModal } from "../../components/NewTransformModal";
-import { newTransformQueryUrl } from "../../utils/urls";
+import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
+import { transformListUrl } from "../../utils/urls";
 
-import { NewTransformOption } from "./NewTransformOption";
+type NewTransformPageParams = {
+  type?: DatasetQuery["type"];
+  cardId?: CardId;
+};
 
-type ModalType = "question" | "transform";
+type NewTransformPageProps = {
+  location: Location;
+};
 
-export function NewTransformPage() {
-  const [getCard, { data: card }] = useLazyGetCardQuery();
-  const [modalType, setModalType] = useState<ModalType>();
+export function NewTransformPage({ location }: NewTransformPageProps) {
+  const { type, cardId } = getParsedParams(location);
+  const {
+    data: card,
+    isLoading,
+    error,
+  } = useGetCardQuery(cardId ? { id: cardId } : skipToken);
 
-  const handleQuestionModalOpen = () => {
-    setModalType("question");
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <NewTransformPageBody initialQuery={getInitialQuery(card, type)} />;
+}
+
+type NewTransformPageBodyProps = {
+  initialQuery: DatasetQuery;
+};
+
+function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
+  const [query, setQuery] = useState(initialQuery);
+  const [isModalOpened, setIsModalOpened] = useState(false);
+  const dispatch = useDispatch();
+
+  const handleSaveClick = (newQuery: DatasetQuery) => {
+    setQuery(newQuery);
+    setIsModalOpened(true);
   };
 
-  const handleSelectQuestion = async (item: QuestionPickerValueItem) => {
-    await getCard({ id: item.id });
-    setModalType("transform");
+  const handleCancelClick = () => {
+    dispatch(push(transformListUrl()));
   };
 
-  const handleModalClose = () => {
-    setModalType(undefined);
+  const handleCloseClick = () => {
+    setIsModalOpened(false);
   };
 
   return (
-    <Flex
-      direction="column"
-      flex={1}
-      p="xl"
-      h="100%"
-      justify="center"
-      align="center"
-    >
-      <Stack>
-        <Title order={3}>{t`Create a new transform`}</Title>
-        <NewTransformOption
-          icon="notebook"
-          label={t`Using the notebook editor`}
-          description={t`This automatically inherits metadata from your source tables.`}
-          link={newTransformQueryUrl("query")}
-        />
-        <NewTransformOption
-          icon="sql"
-          label={t`Using a native query`}
-          description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
-          link={newTransformQueryUrl("native")}
-        />
-        <NewTransformOption
-          icon="copy"
-          label={t`From an existing question or model`}
-          description={t`You can copy the query definition to a new transform.`}
-          onClick={handleQuestionModalOpen}
-        />
-      </Stack>
-      {modalType === "question" && (
-        <QuestionPickerModal
-          title={t`Pick a question or model`}
-          models={["card", "dataset"]}
-          onChange={handleSelectQuestion}
-          onClose={handleModalClose}
-        />
-      )}
-      {modalType === "transform" && card != null && (
-        <NewTransformModal
-          query={card.dataset_query}
-          source={card.type === "question" ? "question" : "model"}
-          onClose={handleModalClose}
-        />
-      )}
-    </Flex>
+    <>
+      <TransformQueryBuilder
+        query={query}
+        onSave={handleSaveClick}
+        onCancel={handleCancelClick}
+      />
+      <NewTransformModal
+        query={query}
+        isOpened={isModalOpened}
+        onClose={handleCloseClick}
+      />
+    </>
   );
+}
+
+function getParsedParams(location: Location): NewTransformPageParams {
+  const { type, cardId } = location.query;
+
+  return {
+    type: type === "native" ? "native" : "query",
+    cardId: Urls.extractEntityId(String(cardId)),
+  };
+}
+
+function getInitialQuery(
+  card: Card | undefined,
+  type: DatasetQuery["type"] | undefined,
+) {
+  return card != null
+    ? card.dataset_query
+    : Question.create({ type }).datasetQuery();
 }

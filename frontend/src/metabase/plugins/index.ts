@@ -807,10 +807,12 @@ export const PLUGIN_SMTP_OVERRIDE: {
 
 export type TransformsPlugin = {
   canAccessTransforms: (state: State) => boolean;
-  getTransformRoutes(): ReactNode;
+  getRoutesWithSidebar(): ReactNode;
+  getRoutesWithoutSidebar(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   canAccessTransforms: () => false,
-  getTransformRoutes: () => null,
+  getRoutesWithSidebar: () => null,
+  getRoutesWithoutSidebar: () => null,
 };
