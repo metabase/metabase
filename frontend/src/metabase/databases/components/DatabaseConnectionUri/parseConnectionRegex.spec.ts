@@ -370,3 +370,27 @@ describe("parseConnectionUriRegex - SQL Server", () => {
     );
   });
 });
+
+describe("parseConnectionUriRegex - Starburst", () => {
+  it("should parse a Starburst connection string", () => {
+    const connectionString =
+      "jdbc:trino://starburst.example.com:43011/hive/sales?user=test&password=secret&SSL=true&roles=system:myrole";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          user: "test",
+          password: "secret",
+          SSL: "true",
+          roles: "system:myrole",
+        },
+        host: "starburst.example.com",
+        port: "43011",
+        catalog: "hive",
+        schema: "sales",
+        protocol: "trino",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+});

@@ -170,6 +170,16 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
+  starburst: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>trino)://" +
+      hostAndPort +
+      "(?:/(?<catalog>[^/?#]*)/(?<schema>[^/?#]*))?" +
+      params +
+      "$",
+    "i",
+  ),
 };
 
 export function parseConnectionUriRegex(
