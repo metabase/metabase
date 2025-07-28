@@ -38,7 +38,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("dashboard title is visible");
         cy.findByText(dashboardName).should("be.visible");
 
@@ -66,7 +66,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       cy.wait("@cardQuery");
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title is visible");
         cy.findByText(questionName).should("be.visible");
       });
@@ -83,7 +83,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("data picker is visible");
         cy.findByText("Pick your starting data").should("be.visible");
       });
@@ -107,7 +107,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.findByText("Person overview").should("be.visible");
         cy.findByText("Person detail").should("be.visible");
       });
@@ -126,7 +126,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.waitForSimpleEmbedIframesToLoad();
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title of id=1 is visible");
         cy.findByText("Query log").should("be.visible");
       });
@@ -142,7 +142,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.waitForSimpleEmbedIframesToLoad();
 
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.log("data picker is localized");
       cy.findByText("Choisissez vos données de départ").should("be.visible");
     });
