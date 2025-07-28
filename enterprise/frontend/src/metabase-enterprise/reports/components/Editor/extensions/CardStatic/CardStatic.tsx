@@ -7,11 +7,11 @@ import {
 import { memo } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import { Box, Loader, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getReportRawSeries } from "metabase-enterprise/reports/selectors";
 
+import { useReportsSelector } from "../../../../redux-utils";
 import styles from "../CardEmbed/CardEmbedNode.module.css";
 
 export const STATIC_CARD_REGEX =
@@ -109,7 +109,7 @@ export const QuestionStaticComponent = memo(
   ({ node, selected }: NodeViewProps) => {
     const { questionName, id, snapshotId } = node.attrs;
 
-    const rawSeries = useSelector((state) =>
+    const rawSeries = useReportsSelector((state) =>
       getReportRawSeries(state, id, snapshotId),
     );
 

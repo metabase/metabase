@@ -50,11 +50,6 @@ export const getSelectedQuestionId = createSelector(
   },
 );
 
-export const getIsSidebarOpen = createSelector(
-  getReportsState,
-  (reports): boolean => reports.isSidebarOpen,
-);
-
 export const getReportRawSeries = createSelector(
   [
     (state: any, cardId: CardId, _snapshotId: number, _embedId?: string) =>

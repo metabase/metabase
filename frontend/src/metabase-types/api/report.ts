@@ -13,3 +13,7 @@ export type Report = {
 };
 
 export type ReportVersions = Report[];
+
+export type CreateReportRequest = Pick<Report, "name" | "document"> & {
+  collection_id?: CollectionId;
+};

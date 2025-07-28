@@ -3,10 +3,15 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 
 import type { CardEmbedRef } from "../components/Editor/types";
+import {
+  useReportsDispatch,
+  useReportsSelector,
+  useReportsStore,
+} from "../redux-utils";
 import {
   clearDraftState,
   fetchReportQuestionData,
@@ -21,9 +26,9 @@ import {
 } from "../selectors";
 
 export function useReportActions() {
-  const dispatch = useDispatch();
-  const store = useStore();
-  const cardEmbeds = useSelector(getCardEmbeds);
+  const dispatch = useReportsDispatch();
+  const store = useReportsStore();
+  const cardEmbeds = useReportsSelector(getCardEmbeds);
   const [createReportSnapshot] = useCreateReportSnapshotMutation();
   const [sendToast] = useToast();
 
@@ -179,7 +184,7 @@ export function useReportActions() {
         );
 
         const snapshotResults = await Promise.all(snapshotPromises);
-        const validResults = snapshotResults.filter(Boolean);
+        const validResults = snapshotResults.filter(isNotNull);
 
         // Update specific question embeds in the document by index
         let hasChanges = false;

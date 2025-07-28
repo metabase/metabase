@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import type { CollectionId } from "metabase-types/api";
 
 import type { CardEmbedRef } from "../components/Editor/types";
+import { useReportsSelector } from "../redux-utils";
 import { fetchReportQuestionData, setCardEmbeds } from "../reports.slice";
 import { getCardEmbeds } from "../selectors";
 
@@ -12,7 +13,7 @@ export function useReportState(reportData?: {
   document: string;
 }) {
   const dispatch = useDispatch();
-  const cardEmbeds = useSelector(getCardEmbeds);
+  const cardEmbeds = useReportsSelector(getCardEmbeds);
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
   const [reportCollectionId, setReportCollectionId] =

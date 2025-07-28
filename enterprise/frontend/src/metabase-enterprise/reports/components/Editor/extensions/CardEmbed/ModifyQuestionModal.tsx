@@ -3,7 +3,7 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -13,6 +13,7 @@ import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
 import { useCreateReportSnapshotMutation } from "../../../../../api/report";
+import { useReportsSelector } from "../../../../redux-utils";
 
 interface ModifyQuestionModalProps {
   card: Card;
@@ -33,7 +34,7 @@ export const ModifyQuestionModal = ({
 }: ModifyQuestionModalProps) => {
   const store = useStore();
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const metadata = useReportsSelector(getMetadata);
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
