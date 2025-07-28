@@ -7,7 +7,7 @@ import { Breakout } from "./Breakout";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Breakout/Breakout",
+  title: "EmbeddingSDK/SdkQuestion/Breakout/Breakout",
   component: Breakout,
   parameters: {
     layout: "fullscreen",

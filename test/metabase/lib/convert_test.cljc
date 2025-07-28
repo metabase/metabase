@@ -1276,37 +1276,36 @@
               (lib/->legacy-MBQL query))))))
 
 (deftest ^:parallel convert-join-with-fields-test
-  (testing ":fields is allowed in a join top-level, we don't need to wrap it in :source-query"
-    (let [query {:lib/type :mbql/query
-                 :stages   [{:lib/type     :mbql.stage/mbql
-                             :joins        [{:alias      "c"
-                                             :conditions [[:=
-                                                           {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
-                                                           [:field
-                                                            {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
-                                                             :base-type :type/Integer}
-                                                            33402]
-                                                           [:field
-                                                            {:join-alias "c"
-                                                             :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
-                                                             :base-type  :type/BigInteger}
-                                                            33100]]]
-                                             :lib/type   :mbql/join
-                                             :stages     [{:lib/type     :mbql.stage/mbql
-                                                           :source-table 33010
-                                                           :fields       [[:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]]}]}]
-                             :source-table 33040}]
-                 :database 33001}]
-      (is (=? {:database 33001
-               :type     :query
-               :query    {:joins        [{:alias        "c"
-                                          :condition    [:=
-                                                         [:field 33402 {:base-type :type/Integer}]
-                                                         [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
-                                          :source-table 33010
-                                          :fields       [[:field 33101 nil]]}]
-                          :source-table 33040}}
-              (lib/->legacy-MBQL query))))))
+  (let [query {:lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :joins        [{:alias      "c"
+                                           :conditions [[:=
+                                                         {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                                         [:field
+                                                          {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                           :base-type :type/Integer}
+                                                          33402]
+                                                         [:field
+                                                          {:join-alias "c"
+                                                           :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                           :base-type  :type/BigInteger}
+                                                          33100]]]
+                                           :lib/type   :mbql/join
+                                           :stages     [{:lib/type     :mbql.stage/mbql
+                                                         :source-table 33010
+                                                         :fields       [[:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]]}]}]
+                           :source-table 33040}]
+               :database 33001}]
+    (is (=? {:database 33001
+             :type     :query
+             :query    {:joins        [{:alias        "c"
+                                        :condition    [:=
+                                                       [:field 33402 {:base-type :type/Integer}]
+                                                       [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
+                                        :source-query {:source-table 33010
+                                                       :fields       [[:field 33101 nil]]}}]
+                        :source-table 33040}}
+            (lib/->legacy-MBQL query)))))
 
 (deftest ^:parallel join-native-source-query->legacy-test
   (testing "join :source-query should rename :query to :native for native stages"
@@ -1389,12 +1388,64 @@
                                                          :source-table 2
                                                          :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
                                                                         [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
-                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]}]}]}]
+                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1 2]]}]}]}]
       (is (= {:type  :query
               :query {:source-table 1
                       :joins        [{:alias        "J"
                                       :source-query {:source-table 2
                                                      :fields       [[:field 1 nil]
                                                                     [:field 2 nil]]}
-                                      :fields       [[:field 1 {:join-alias "J"}]]}]}}
-             (lib.convert/->legacy-MBQL query))))))
+                                      :fields       [[:field 1 {:join-alias "J"}]]
+                                      :condition    [:= 1 2]}]}}
+             (lib.convert/->legacy-MBQL query)
+             ;; make sure roundtripping doesn't introduce extra stages.
+             (-> query
+                 lib.convert/->legacy-MBQL
+                 lib.convert/->pMBQL
+                 lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel join-with-fields-in-last-stage-to-legacy-test-2
+  (testing "converting a join whose last stage has :fields to legacy should put :fields in :source-query even if join does not have :fields"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1
+                             :joins        [{:lib/type   :mbql/join
+                                             :alias      "J"
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 2
+                                                           :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                                                                          [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 1 2]]}]}]}]
+      (is (= {:type  :query
+              :query {:source-table 1
+                      :joins        [{:alias        "J"
+                                      :source-query {:source-table 2
+                                                     :fields       [[:field 1 nil]
+                                                                    [:field 2 nil]]}
+                                      :condition    [:= 1 2]}]}}
+             (lib.convert/->legacy-MBQL query)
+             ;; make sure roundtripping doesn't introduce extra stages.
+             (-> query
+                 lib.convert/->legacy-MBQL
+                 lib.convert/->pMBQL
+                 lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel do-not-add-extra-stages-to-join-test
+  (is (=? {:stages [{:source-table 45060
+                     :joins        [{:alias  "PRODUCTS__via__PRODUCT_ID"
+                                     :stages [{:source-table 45050
+                                               :fields       [[:field {:base-type :type/BigInteger} 45500]
+                                                              [:field {:base-type :type/Text} 45507]]}]}]}]}
+          (lib.convert/->pMBQL {:database 45001
+                                :type     :query
+                                :query    {:source-table 45060
+                                           :joins        [{:strategy     :left-join
+                                                           :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                           :fk-field-id  45607
+                                                           :condition    [:=
+                                                                          [:field 45607 nil]
+                                                                          [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                           :source-query {:source-table 45050
+                                                                          :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                                                         [:field 45507 {:base-type :type/Text}]]}}]}}))))

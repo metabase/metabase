@@ -7,7 +7,7 @@ import { Filter } from "./Filter";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Filter/Filter",
+  title: "EmbeddingSDK/SdkQuestion/Filter/Filter",
   component: Filter,
   parameters: {
     layout: "fullscreen",

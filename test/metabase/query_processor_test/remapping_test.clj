@@ -9,6 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -329,13 +330,18 @@
                          :fields   [$title $category]
                          :order-by [[:asc $id]]
                          :limit    3})]
+            (is (= ["Title"                     ; products.title
+                    "Category"                  ; products.category
+                    "Orders → Title"            ; orders.title
+                    "Orders → Sum of Quantity"] ; sum(orders.quantity)
+                   (map :display_name (qp.preprocess/query->expected-cols query))))
             (mt/with-native-query-testing-context query
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)
                   (testing "Metadata"
-                    (is (= [["TITLE"    "Title"]                     ; products.title
-                            ["CATEGORY" "Category"]                  ; products.category
-                            ["TITLE_2"  "Orders → Title"]            ; Orders.title (remapped from orders.product-id => products.title)
+                    (is (= [["TITLE"    "Title"]          ; products.title
+                            ["CATEGORY" "Category"]       ; products.category
+                            ["TITLE_2"  "Orders → Title"] ; Orders.title (remapped from orders.product-id => products.title)
                             ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
                            (map (juxt :name :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
