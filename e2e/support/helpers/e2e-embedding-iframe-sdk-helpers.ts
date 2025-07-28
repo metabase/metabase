@@ -47,6 +47,7 @@ export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
 };
 
 export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
+  waitForSimpleEmbedIframesToLoad(iframeIndex);
   return cy
     .get("iframe[data-metabase-embed]")
     .should("be.visible")

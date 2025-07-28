@@ -238,7 +238,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       </div>
       `);
 
-      waitForIframesToLoad(2);
+      H.waitForSimpleEmbedIframesToLoad(2);
 
       getSimpleEmbedIframeContent(0)
         .findByText("Orders")
