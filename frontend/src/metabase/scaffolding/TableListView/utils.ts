@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { getNextId } from "__support__/utils";
 import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
@@ -11,7 +12,8 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   ComponentSettings,
   DatasetColumn,
-  ListViewSettings,
+  ListViewTableSettings,
+  ObjectViewSettings,
   StructuredDatasetQuery,
   Table,
 } from "metabase-types/api";
@@ -96,15 +98,20 @@ export function getDefaultComponentSettings(
   table: Table | undefined,
 ): ComponentSettings {
   return {
-    list_view:
-      table?.component_settings?.list_view ?? getDefaultListViewSettings(table),
-    object_view: {},
+    list_view: {
+      table:
+        table?.component_settings?.list_view.table ??
+        getDefaultListViewTableSettings(table),
+      list: getDefaultObjectViewSettings(table),
+      gallery: getDefaultObjectViewSettings(table),
+    },
+    object_view: getDefaultObjectViewSettings(table),
   };
 }
 
-export function getDefaultListViewSettings(
+export function getDefaultListViewTableSettings(
   table: Table | undefined,
-): ListViewSettings {
+): ListViewTableSettings {
   const fields = table?.fields ?? [];
 
   return {
@@ -114,5 +121,25 @@ export function getDefaultListViewSettings(
       field_id: getRawTableFieldId(field),
       style: "normal",
     })),
+  };
+}
+
+export function getDefaultObjectViewSettings(
+  table: Table | undefined,
+): ObjectViewSettings {
+  const fields = table?.fields ?? [];
+
+  return {
+    sections: [
+      {
+        id: getNextId(),
+        title: "Info",
+        direction: "vertical",
+        fields: fields.map((field) => ({
+          field_id: getRawTableFieldId(field),
+          style: "normal",
+        })),
+      },
+    ],
   };
 }

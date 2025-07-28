@@ -126,11 +126,15 @@ export const TableListView = ({ location, params }: Props) => {
       ...settings,
       list_view: {
         ...settings.list_view,
-        fields: fieldOrder.map((id) => {
-          return settings.list_view.fields.find(
-            (field) => field.field_id === id,
-          )!;
-        }),
+        table: {
+          ...settings.list_view.table,
+
+          fields: fieldOrder.map((id) => {
+            return settings.list_view.table.fields.find(
+              (field) => field.field_id === id,
+            )!;
+          }),
+        },
       },
     }));
   };
@@ -143,12 +147,15 @@ export const TableListView = ({ location, params }: Props) => {
       ...settings,
       list_view: {
         ...settings.list_view,
-        fields: settings.list_view.fields.map((f) => {
-          if (f.field_id === getRawTableFieldId(field)) {
-            return { ...f, style };
-          }
-          return f;
-        }),
+        table: {
+          ...settings.list_view.table,
+          fields: settings.list_view.table.fields.map((f) => {
+            if (f.field_id === getRawTableFieldId(field)) {
+              return { ...f, style };
+            }
+            return f;
+          }),
+        },
       },
     }));
   };
@@ -158,7 +165,10 @@ export const TableListView = ({ location, params }: Props) => {
       ...settings,
       list_view: {
         ...settings.list_view,
-        row_height: rowHeight,
+        table: {
+          ...settings.list_view.table,
+          row_height: rowHeight,
+        },
       },
     }));
   };
@@ -238,20 +248,20 @@ export const TableListView = ({ location, params }: Props) => {
     setDataQuery(tableQuery);
   }, [tableQuery]);
 
-  const columns = settings.list_view.fields.map(({ field_id }) => {
+  const columns = settings.list_view.table.fields.map(({ field_id }) => {
     return allColumns.find((field) => field.id === field_id)!;
   });
-  const fields = settings.list_view.fields.map(({ field_id }) => {
+  const fields = settings.list_view.table.fields.map(({ field_id }) => {
     return (table?.fields ?? []).find((field) => field.id === field_id)!;
   });
-  const visibleFields = settings.list_view.fields.map(({ field_id }) => {
+  const visibleFields = settings.list_view.table.fields.map(({ field_id }) => {
     return fields.find((field) => field.id === field_id)!;
   });
   const hiddenFields = (table?.fields ?? []).filter((field) =>
-    settings.list_view.fields.every((f) => f.field_id !== field.id),
+    settings.list_view.table.fields.every((f) => f.field_id !== field.id),
   );
 
-  const stylesMap = settings.list_view.fields.reduce<
+  const stylesMap = settings.list_view.table.fields.reduce<
     Record<FieldId, "normal" | "bold" | "dim">
   >((acc, field) => {
     acc[field.field_id] = field.style;
@@ -285,7 +295,7 @@ export const TableListView = ({ location, params }: Props) => {
   const transformedPaginatedRows = useMemo(
     () =>
       paginatedRows.map((row) => {
-        return settings.list_view.fields.map(({ field_id }) => {
+        return settings.list_view.table.fields.map(({ field_id }) => {
           const fieldIndex = allColumns.findIndex((col) => col.id === field_id);
           return row[fieldIndex];
         });
@@ -294,7 +304,7 @@ export const TableListView = ({ location, params }: Props) => {
   );
 
   const cellPaddingVertical =
-    settings.list_view.row_height === "normal"
+    settings.list_view.table.row_height === "normal"
       ? CELL_PADDING_VERTICAL_NORMAL
       : CELL_PADDING_VERTICAL_THIN;
 
@@ -444,13 +454,14 @@ export const TableListView = ({ location, params }: Props) => {
                       return (
                         <Box
                           c={
-                            settings.list_view.fields[cellIndex].style === "dim"
+                            settings.list_view.table.fields[cellIndex].style ===
+                            "dim"
                               ? "text-light"
                               : "text-primary"
                           }
                           component="td"
                           fw={
-                            settings.list_view.fields[cellIndex].style ===
+                            settings.list_view.table.fields[cellIndex].style ===
                             "bold"
                               ? "bold"
                               : undefined
@@ -533,12 +544,12 @@ export const TableListView = ({ location, params }: Props) => {
               { value: "thin", label: t`Thin` },
             ]}
             label={t`Row height`}
-            value={settings.list_view.row_height}
+            value={settings.list_view.table.row_height}
             onChange={handleRowHeightChange}
             w="100%"
           />
 
-          {settings.list_view.fields.length > 0 && (
+          {settings.list_view.table.fields.length > 0 && (
             <Stack gap={8}>
               <Group justify="space-between">
                 <Text
@@ -547,7 +558,7 @@ export const TableListView = ({ location, params }: Props) => {
                   lh="var(--mantine-line-height-md)"
                 >{t`Shown columns`}</Text>
 
-                {settings.list_view.fields.length > 0 && (
+                {settings.list_view.table.fields.length > 0 && (
                   <Button
                     leftSection={<Icon name="eye_crossed_out" />}
                     variant="subtle"
@@ -558,7 +569,10 @@ export const TableListView = ({ location, params }: Props) => {
                         ...settings,
                         list_view: {
                           ...settings.list_view,
-                          fields: [],
+                          table: {
+                            ...settings.list_view.table,
+                            fields: [],
+                          },
                         },
                       }));
                     }}
@@ -576,9 +590,12 @@ export const TableListView = ({ location, params }: Props) => {
                     ...settings,
                     list_view: {
                       ...settings.list_view,
-                      fields: settings.list_view.fields.filter(
-                        (f) => f.field_id !== field.id,
-                      ),
+                      table: {
+                        ...settings.list_view.table,
+                        fields: settings.list_view.table.fields.filter(
+                          (f) => f.field_id !== field.id,
+                        ),
+                      },
                     },
                   }));
                 }}
@@ -597,7 +614,8 @@ export const TableListView = ({ location, params }: Props) => {
 
                 {table.fields &&
                   table.fields.length > 0 &&
-                  table.fields.length !== settings.list_view.fields.length && (
+                  table.fields.length !==
+                    settings.list_view.table.fields.length && (
                     <Button
                       leftSection={<Icon name="eye" />}
                       variant="subtle"
@@ -608,13 +626,16 @@ export const TableListView = ({ location, params }: Props) => {
                           ...settings,
                           list_view: {
                             ...settings.list_view,
-                            fields: [
-                              ...settings.list_view.fields,
-                              ...hiddenFields.map((field) => ({
-                                field_id: getRawTableFieldId(field),
-                                style: "normal" as const,
-                              })),
-                            ],
+                            table: {
+                              ...settings.list_view.table,
+                              fields: [
+                                ...settings.list_view.table.fields,
+                                ...hiddenFields.map((field) => ({
+                                  field_id: getRawTableFieldId(field),
+                                  style: "normal" as const,
+                                })),
+                              ],
+                            },
                           },
                         }));
                       }}
@@ -632,13 +653,16 @@ export const TableListView = ({ location, params }: Props) => {
                     ...settings,
                     list_view: {
                       ...settings.list_view,
-                      fields: [
-                        ...settings.list_view.fields,
-                        {
-                          field_id: getRawTableFieldId(field),
-                          style: "normal",
-                        },
-                      ],
+                      table: {
+                        ...settings.list_view.table,
+                        fields: [
+                          ...settings.list_view.table.fields,
+                          {
+                            field_id: getRawTableFieldId(field),
+                            style: "normal",
+                          },
+                        ],
+                      },
                     },
                   }));
                 }}
