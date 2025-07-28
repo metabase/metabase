@@ -41,7 +41,7 @@ import { renderValue } from "../utils";
 
 import { SortableFieldList } from "./SortableFieldList";
 import S from "./TableListView.module.css";
-import type { RouteParams } from "./types";
+import { type RouteParams, isComponentSettings } from "./types";
 import {
   getDefaultComponentSettings,
   getExploreTableUrl,
@@ -238,9 +238,14 @@ export const TableListView = ({ location, params }: Props) => {
 
   useEffect(() => {
     if (table) {
-      setSettings(
-        table.component_settings ?? getDefaultComponentSettings(table),
-      );
+      if (
+        !table.component_settings ||
+        !isComponentSettings(table.component_settings) // if schema change, reset settings
+      ) {
+        setSettings(getDefaultComponentSettings(table));
+      } else {
+        setSettings(table.component_settings);
+      }
     }
   }, [table]);
 
