@@ -12156,6 +12156,191 @@ databaseChangeLog:
             where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
       rollback: # not necessary
 
+  - changeSet:
+      id: v55.2025-07-22T10:00:00
+      author: igca
+      comment: Add support for stored procedures and functions
+      changes:
+        # Create table for stored procedures and functions
+        - createTable:
+            tableName: metabase_routine
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_database(id)
+                    foreignKeyName: fk_routine_database_id
+                    deleteCascade: true
+              - column:
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: routine_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+                  remarks: "PROCEDURE or FUNCTION"
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: definition
+                  type: text
+                  constraints:
+                    nullable: true
+                  remarks: "Source code of the routine if available"
+              - column:
+                  name: return_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+                  remarks: "Return type for functions"
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+        
+        # Add unique constraint to prevent race condition duplicates
+        - addUniqueConstraint:
+            tableName: metabase_routine
+            columnNames: db_id, schema, name, routine_type
+            constraintName: uk_routine_identity
+            
+        # Add index for name column (H2 doesn't support functional indexes)
+        - createIndex:
+            tableName: metabase_routine
+            indexName: idx_routine_name
+            columns:
+              - column:
+                  name: name
+        
+        # Create table for routine parameters
+        - createTable:
+            tableName: metabase_routine_parameter
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: routine_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_routine(id)
+                    foreignKeyName: fk_parameter_routine_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_mode
+                  type: varchar(10)
+                  constraints:
+                    nullable: true
+                  remarks: "IN, OUT, INOUT"
+              - column:
+                  name: data_type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ordinal_position
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: default_value
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        
+        # Add unique constraint for parameters to enable UPSERT
+        - addUniqueConstraint:
+            tableName: metabase_routine_parameter
+            columnNames: routine_id, ordinal_position
+            constraintName: uk_parameter_position
+        
+        # Create indexes for better performance
+        - createIndex:
+            tableName: metabase_routine
+            indexName: idx_routine_db_id
+            columns:
+              - column:
+                  name: db_id
+        
+        - createIndex:
+            tableName: metabase_routine
+            indexName: idx_routine_schema_name
+            columns:
+              - column:
+                  name: schema
+              - column:
+                  name: name
+        
+        - createIndex:
+            tableName: metabase_routine_parameter
+            indexName: idx_parameter_routine_id
+            columns:
+              - column:
+                  name: routine_id
+        
+        # Add composite index for autocomplete performance
+        - createIndex:
+            tableName: metabase_routine
+            indexName: idx_routine_autocomplete
+            columns:
+              - column:
+                  name: db_id
+              - column:
+                  name: active
+              - column:
+                  name: name
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -120,6 +120,32 @@
   "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."
   [:ref ::FKMetadataEntry])
 
+(mr/def ::RoutineParameterMetadata
+  [:map
+   [:name                ::lib.schema.common/non-blank-string]
+   [:parameter-mode      {:optional true} [:maybe [:enum :in :out :inout]]]
+   [:data-type           ::lib.schema.common/non-blank-string]
+   [:ordinal-position    ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   [:default-value       {:optional true} [:maybe :string]]])
+
+(def RoutineParameterMetadata
+  "Schema for routine parameter metadata."
+  [:ref ::RoutineParameterMetadata])
+
+(mr/def ::RoutineMetadataEntry
+  [:map
+   [:schema              [:maybe ::lib.schema.common/non-blank-string]]
+   [:name                ::lib.schema.common/non-blank-string]
+   [:routine-type        [:enum :procedure :function]]
+   [:description         {:optional true} [:maybe :string]]
+   [:definition          {:optional true} [:maybe :string]]
+   [:return-type         {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:parameters          {:optional true} [:maybe [:sequential RoutineParameterMetadata]]]])
+
+(def RoutineMetadataEntry
+  "Schema for an entry in the expected output of [[metabase.driver/describe-routines]]."
+  [:ref ::RoutineMetadataEntry])
+
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
 ;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
