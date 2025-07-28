@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -128,7 +128,7 @@ export const TableListView = ({ location, params }: Props) => {
     updateTableComponentSettings({ id: tableId, component_settings: settings });
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setIsEditing(false);
 
     if (table) {
@@ -136,7 +136,7 @@ export const TableListView = ({ location, params }: Props) => {
         table.component_settings ?? getDefaultComponentSettings(table),
       );
     }
-  };
+  }, [table]);
 
   const handleFilterChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
     setDataQuery(newQuery);
@@ -201,6 +201,19 @@ export const TableListView = ({ location, params }: Props) => {
   useEffect(() => {
     setDataQuery(tableQuery);
   }, [tableQuery]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isEditing) {
+        handleCancel();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isEditing, handleCancel]);
 
   const allRows = useMemo(() => dataset?.data?.rows ?? [], [dataset]);
   const filteredRows = useMemo(() => {
@@ -388,103 +401,133 @@ export const TableListView = ({ location, params }: Props) => {
         <Stack
           bg="white"
           flex="0 0 auto"
+          gap={0}
           miw={400}
-          gap="lg"
           h="100%"
-          p="xl"
           style={{
             // boxShadow: "0px 1px 4px 0px var(--mb-color-shadow)",
             borderLeft: "1px solid var(--border-color)",
-            overflow: "auto",
           }}
         >
-          <Group align="center" gap="md" justify="space-between">
-            <Title order={2}>{t`Display settings`}</Title>
+          <Box
+            bg="white"
+            p="xl"
+            style={{
+              borderBottom: "1px solid var(--border-color)",
+            }}
+          >
+            <Group justify="space-between" align="center">
+              <Title order={2}>{t`Display settings`}</Title>
 
-            {isEditing && (
-              <Group gap="md">
-                <Button size="sm" variant="outline" onClick={handleCancel}>
-                  {t`Cancel`}
-                </Button>
+              <Button
+                aria-label={t`Close`}
+                c="text-medium"
+                size="compact-sm"
+                variant="subtle"
+                onClick={handleCancel}
+              >
+                <Icon name="close" />
+              </Button>
+            </Group>
+          </Box>
 
-                <Button
-                  size="sm"
-                  type="submit"
-                  variant="filled"
-                  onClick={handleSubmit}
+          <Box flex="1" p="xl" style={{ overflow: "auto" }}>
+            <Stack gap="lg">
+              <Stack gap="xs">
+                <Text
+                  c="text-primary"
+                  fw="bold"
+                  lh="var(--mantine-line-height-md)"
                 >
-                  {t`Save`}
-                </Button>
-              </Group>
-            )}
-          </Group>
+                  {t`View`}
+                </Text>
 
-          <Stack gap="xs">
-            <Text c="text-primary" fw="bold" lh="var(--mantine-line-height-md)">
-              {t`View`}
-            </Text>
+                <SegmentedControl
+                  data={[
+                    { value: "table", label: t`Table` },
+                    { value: "list", label: t`List` },
+                    { value: "gallery", label: t`Gallery` },
+                  ]}
+                  value={settings.list_view.view}
+                  onChange={handleViewChange}
+                  w="100%"
+                />
+              </Stack>
 
-            <SegmentedControl
-              data={[
-                { value: "table", label: t`Table` },
-                { value: "list", label: t`List` },
-                { value: "gallery", label: t`Gallery` },
-              ]}
-              value={settings.list_view.view}
-              onChange={handleViewChange}
-              w="100%"
-            />
-          </Stack>
+              {settings.list_view.view === "table" && (
+                <TableSettingsPanel
+                  table={table}
+                  value={settings}
+                  onChange={setSettings}
+                />
+              )}
 
-          {settings.list_view.view === "table" && (
-            <TableSettingsPanel
-              table={table}
-              value={settings}
-              onChange={setSettings}
-            />
-          )}
+              {settings.list_view.view === "list" && (
+                <DetailViewSidebar
+                  columns={columns}
+                  sections={settings.list_view.list.sections}
+                  onUpdateSection={(id, update) => {
+                    setSettings((settings) => ({
+                      ...settings,
+                      list_view: {
+                        ...settings.list_view,
+                        list: {
+                          ...settings.list_view.list,
+                          sections: settings.list_view.list.sections.map((s) =>
+                            s.id === id ? { ...s, ...update } : s,
+                          ),
+                        },
+                      },
+                    }));
+                  }}
+                />
+              )}
 
-          {settings.list_view.view === "list" && (
-            <DetailViewSidebar
-              columns={columns}
-              sections={settings.list_view.list.sections}
-              onUpdateSection={(id, update) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    list: {
-                      ...settings.list_view.list,
-                      sections: settings.list_view.list.sections.map((s) =>
-                        s.id === id ? { ...s, ...update } : s,
-                      ),
-                    },
-                  },
-                }));
-              }}
-            />
-          )}
+              {settings.list_view.view === "gallery" && (
+                <DetailViewSidebar
+                  columns={columns}
+                  sections={settings.list_view.gallery.sections}
+                  onUpdateSection={(id, update) => {
+                    setSettings((settings) => ({
+                      ...settings,
+                      list_view: {
+                        ...settings.list_view,
+                        gallery: {
+                          ...settings.list_view.gallery,
+                          sections: settings.list_view.gallery.sections.map(
+                            (s) => (s.id === id ? { ...s, ...update } : s),
+                          ),
+                        },
+                      },
+                    }));
+                  }}
+                />
+              )}
+            </Stack>
+          </Box>
 
-          {settings.list_view.view === "gallery" && (
-            <DetailViewSidebar
-              columns={columns}
-              sections={settings.list_view.gallery.sections}
-              onUpdateSection={(id, update) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    gallery: {
-                      ...settings.list_view.gallery,
-                      sections: settings.list_view.gallery.sections.map((s) =>
-                        s.id === id ? { ...s, ...update } : s,
-                      ),
-                    },
-                  },
-                }));
-              }}
-            />
-          )}
+          <Box
+            bg="white"
+            p="xl"
+            style={{
+              borderTop: "1px solid var(--border-color)",
+            }}
+          >
+            <Group gap="md" justify="space-between">
+              <Button size="sm" variant="outline" onClick={handleCancel}>
+                {t`Cancel`}
+              </Button>
+
+              <Button
+                size="sm"
+                type="submit"
+                variant="filled"
+                onClick={handleSubmit}
+              >
+                {t`Save`}
+              </Button>
+            </Group>
+          </Box>
         </Stack>
       )}
     </Group>
