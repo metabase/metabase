@@ -630,26 +630,26 @@
                 scope               {:table-id table-id}]
 
             (testing "create"
-              (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text",     :readonly false}
-                                    {:id "int"       :display_name "Int"       :input_type "text",     :readonly false}
-                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :readonly false}
-                                    {:id "date"      :display_name "Date"      :input_type "date",     :readonly false}]}
+              (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
+                                    {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
+                                    {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
                       (mt/user-http-request :crowberto :post 200 execute-form-url
                                             {:scope     scope
                                              :action create-id}))))
 
             (testing "update"
-              (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text",     :readonly true}
-                                    {:id "text"      :display_name "Text"      :input_type "text",     :readonly false}
-                                    {:id "int"       :display_name "Int"       :input_type "text",     :readonly false}
-                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :readonly false}
-                                    {:id "date"      :display_name "Date"      :input_type "date",     :readonly false}]}
+              (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text",     :optional false, :readonly true}
+                                    {:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
+                                    {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
+                                    {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
                       (mt/user-http-request :crowberto :post 200 execute-form-url
                                             {:scope     scope
                                              :action update-id}))))
 
             (testing "delete"
-              (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text", :readonly true}]}
+              (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text", :optional false, :readonly true}]}
                       (mt/user-http-request :crowberto :post 200 execute-form-url
                                             {:scope     scope
                                              :action delete-id}))))))))))
