@@ -11,7 +11,7 @@
     (with-redefs [config/is-prod? true]
       (http-fake/with-fake-routes-in-isolation
         {{:address #"https://static.metabase.com/version-info(-ee)?.json.*"
-          :query-params {;; 3 query parameters are sent in prod:
+          :query-params {;; 2 query parameters are sent in prod:
                          ;; - A unique and stable instance UUID, and
                          ;; - The current version
                          :instance (version.settings/site-uuid-for-version-info-fetching)
