@@ -191,6 +191,7 @@ export function UpdateRowActionFormModal({
               disabled={isLoading || !isValid}
               variant="filled"
               type="submit"
+              data-testid="update-row-save-button"
             >
               {t`Save`}
             </Button>

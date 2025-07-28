@@ -149,7 +149,10 @@ const TableBrowserItemButtons = ({
           </Link>
         )}
         {canEditTables && (
-          <Link to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}>
+          <Link
+            to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}
+            data-testid="edit-table-icon"
+          >
             <Icon
               name="pencil"
               tooltip={t`Edit this table`}
