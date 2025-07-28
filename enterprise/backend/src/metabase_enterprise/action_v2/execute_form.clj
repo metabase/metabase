@@ -72,10 +72,11 @@
                                   pk?                    (= :type/PK (:semantic_type field))
                                   param-setting          (get param-map (keyword (:name field)))
                                   ;; TODO get this from action configuration, when we add it, or inherit from table conf
-                                  column-settings        nil]
+                                  column-settings        nil
+                                  auto-inc?              (:database_is_auto_increment field pk?)]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
-                                    (:table.row/create :data-grid.row/create) (not (:database_is_auto_increment field pk?))
+                                    (:table.row/create :data-grid.row/create) (not auto-inc?)
                                     ;; delete only requires pk cols
                                     (:table.row/delete :data-grid.row/delete) pk?
                                     ;; update takes both the pk and field (if not a row action)
@@ -97,7 +98,8 @@
                           :optional                (not required)
                           :nullable                (:database_is_nullable field)
                           :database_default        (:database_default field)
-                          :readonly                (or pk?
+                          :readonly                (or auto-inc?
+                                                       (and pk? (not= "create" (name action-kw)))
                                                        (= "readonly" (:visibility param-setting))
                                                        (not (column-editable? (:name field))))
                           ;; TODO oh dear, we need to worry about case sensitivity issue now (e.g. in tests)
