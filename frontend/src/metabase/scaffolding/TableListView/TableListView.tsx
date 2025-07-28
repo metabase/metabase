@@ -325,11 +325,11 @@ export const TableListView = ({ location, params }: Props) => {
 
             {!isEditing && (
               <Button
-                leftSection={<Icon name="pencil" />}
+                leftSection={<Icon name="gear" />}
                 variant="outline"
                 onClick={() => setIsEditing(true)}
               >
-                {t`Edit`}
+                {t`Display settings`}
               </Button>
             )}
 
