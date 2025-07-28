@@ -79,6 +79,34 @@ describe("scenarios > notebook > data source", () => {
         H.shouldDisplayTabs(["Tables", "Collections"]);
       });
     });
+
+    it("should include dashboard questions when computing which tabs to show (metabase#56887)", () => {
+      const QUESITON_NAME = "Find me";
+
+      H.createDashboard({
+        name: "Test Dashboard",
+      }).then((dashboard) => {
+        H.createQuestionAndAddToDashboard(
+          {
+            name: QUESITON_NAME,
+            dashboard_id: dashboard.body.id,
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboard.body.id,
+        );
+      });
+
+      H.startNewQuestion();
+
+      H.entityPickerModal().should("exist");
+      H.tabsShouldBe("Tables", ["Tables", "Collections"]);
+
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModalItem(1, "Test Dashboard").click();
+      H.entityPickerModalItem(2, QUESITON_NAME).should("exist");
+    });
   });
 
   describe("table as a source", () => {
