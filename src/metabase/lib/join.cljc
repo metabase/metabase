@@ -234,7 +234,7 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn- column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
+(mu/defn column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -254,7 +254,9 @@
        ;;
        #_:lib/original-display-name #_((some-fn :lib/original-display-name :display-name) col))
       (set/rename-keys {:lib/expression-name :lib/original-expression-name})
-      (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
+      (as-> $col (assoc $col
+                        :lib/original-display-name (lib.metadata.calculation/display-name query stage-number (dissoc $col :source-alias :lib/original-join-alias ::join-alias))
+                        :display-name              (lib.metadata.calculation/display-name query stage-number $col)))))
 
 (defmethod lib.metadata.calculation/display-name-method :option/join.strategy
   [_query _stage-number {:keys [strategy]} _style]

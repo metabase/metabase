@@ -483,9 +483,9 @@
                     (assoc :metabase.lib.field/original-temporal-unit original-temporal-unit))]
       [tag options id-or-name])))
 
-(defn- ends-with-temporal-unit?
+(defn- display-name-includes-temporal-unit?
   [s temporal-unit]
-  (str/ends-with? s (str ": " (describe-temporal-unit temporal-unit))))
+  (str/includes? s (str ": " (describe-temporal-unit temporal-unit))))
 
 (defn ensure-ends-with-temporal-unit
   "Append `temporal-unit` into a string `s` if appropriate.
@@ -495,7 +495,7 @@
   [s temporal-unit]
   (if (or (not (string? s)) ; ie. nil or something that definitely should not occur here
           (= :default temporal-unit)
-          (ends-with-temporal-unit? s temporal-unit))
+          (display-name-includes-temporal-unit? s temporal-unit))
     s
     (lib.util/format "%s: %s" s (describe-temporal-unit temporal-unit))))
 

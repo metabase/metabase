@@ -36,7 +36,8 @@
         (is (=? {:name          "sum"
                  :display-name  "sum of User ID"
                  :base-type     :type/Integer
-                 :semantic-type :type/FK}
+                 :semantic-type :type/FK
+                 :lib/source    :source/native}
                 (lib/metadata
                  (lib.tu/native-query)
                  -1
@@ -82,14 +83,13 @@
                :coercion-strategy       :Coercion/ISO8601->Date
                :id                      4
                :name                    "Field 4"
-               :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card
                :lib/source-column-alias "Field 4"
                :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
               (lib/metadata
                query
-               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
+               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} "Field 4"]))))))
 
 (deftest ^:parallel col-info-combine-parent-field-names-test
   (letfn [(col-info [a-field-clause]
@@ -154,7 +154,6 @@
                :effective-type          :type/Integer
                :id                      4
                :name                    "Field 4"
-               :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card
                :lib/source-column-alias "Field 4"
@@ -163,7 +162,7 @@
                query
                [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
 
-(deftest ^:parallel resolve-column-name-in-join-test
+(deftest ^:parallel resolve-not-from-join-in-join-test
   (testing ":field refs with string names should work if the Field comes from a :join"
     (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                              meta/metadata-provider
@@ -269,20 +268,16 @@
                                        ;; i.e., the previous stage was from a model. Added
                                        ;; by [[metabase.query-processor.middleware.fetch-source-query/resolve-source-cards-in-stage]]]
                                        :source-query/model?      true}]}]
-      (testing `lib.field.resolution/previous-stage-or-source-card-metadata
-        (is (=? {:display-name "Example Timestamp"
-                 :lib/source   :source/card}
-                (#'lib.field.resolution/previous-stage-or-source-card-metadata query -1 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/*}
-                                                                                         "EXAMPLE_TIMESTAMP"]))))
       (let [field-ref (first (lib/fields query -1))]
         (is (=? [:field {:lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"} "EXAMPLE_TIMESTAMP"]
                 field-ref))
         (testing `lib.field.resolution/options-metadata*
           (is (=? {:lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
-                  (#'lib.field.resolution/options-metadata field-ref))))
+                  (#'lib.field.resolution/options-metadata (second field-ref)))))
         (testing `lib.field.resolution/resolve-field-ref
-          (is (=? {:name            "EXAMPLE_TIMESTAMP"
-                   :display-name    "Example Timestamp"
+          (is (=? {:lib/card-id     2 ; I think 2 is a better answer here than 1 since 2 is closer to the top level/final stage
+                   :lib/source      :source/previous-stage
+                   :name            "EXAMPLE_TIMESTAMP"
                    :lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
                   (lib.field.resolution/resolve-field-ref query -1 field-ref)))
           (testing "preserve display names from field refs"
@@ -344,12 +339,13 @@
     (testing "when binning strategy is used ON AN INVALID REF, include `:binning-info`"
       (is (=? {:name                             "price"
                :base-type                        :type/Number
-               :display-name                     "Price: 10 bins: Month"
                :lib/source-uuid                  string?
                :lib/type                         :metadata/column
                :metabase.lib.field/binning       {:strategy :num-bins, :num-bins 10, :bin-width 5, :min-value -100, :max-value 100}
                :metabase.lib.field/temporal-unit :month}
-              (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1))))))))
+              (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))))
+      (is (=? [{:display-name "Price: 10 bins: Month"}]
+              (lib/returned-columns query -1))))))
 
 (deftest ^:parallel resolve-field-from-explicit-join-test
   (let [query (lib/query
@@ -359,7 +355,7 @@
                   :query {:source-table (meta/id :venues)
                           :fields       [&Categories.categories.name]
                           :joins        [{:alias        "Categories"
-                                          :source-table $$venues
+                                          :source-table $$categories
                                           :condition    [:= $category-id &Categories.categories.id]
                                           :strategy     :left-join}]}}))]
     (binding [lib.metadata.calculation/*display-name-style* :long]
@@ -381,7 +377,7 @@
                    {:fields [&Category.categories.name]
                     ;; This is a hand-rolled implicit join clause.
                     :joins  [{:alias        "Category"
-                              :source-table $$venues
+                              :source-table $$categories
                               :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                               :strategy     :left-join
                               :fk-field-id  %category-id}]}))
@@ -435,43 +431,45 @@
 
 (deftest ^:parallel join-from-model-test
   (testing "Do the right thing with joins that come from models"
-    (let [mp (lib.tu/mock-metadata-provider
-              meta/metadata-provider
-              {:cards [{:id 1
-                        :name "Model"
-                        :type :model
-                        :database-id (meta/id)
-                        :dataset-query (lib.tu.macros/mbql-query venues
-                                         {:joins [{:source-table $$categories
-                                                   :alias "C"
-                                                   :condition    [:= &C.categories.id $venues.category-id]}]
-                                          :fields [[:field
-                                                    "C__NAME"
-                                                    {:base-type :type/Text
-                                                     :temporal-unit :month
-                                                     :binning       {:strategy :default}}]]})}]})
-          query (lib/query mp {:type :query, :database (meta/id), :query {:source-table "card__1"}})
-          expected {:base-type                        :type/Text
-                    :display-name                     "C → Name: Auto binned: Month"
-                    :effective-type                   :type/Text
-                    :fingerprint                      map?
-                    :id                               (meta/id :categories :name)
-                    :inherited-temporal-unit          :month
-                    :semantic-type                    :type/Name
-                    :table-id                         (meta/id :categories)
-                    :visibility-type                  :normal
-                    :lib/original-binning             {:strategy :default}
-                    :lib/card-id                      1
-                    :lib/desired-column-alias         "C__NAME"
-                    :lib/original-display-name        "Name"
-                    :lib/original-join-alias          "C"
-                    :lib/original-name                "NAME"
-                    :lib/source                       :source/card
-                    :lib/source-uuid                  string?
-                    :lib/type                         :metadata/column
-                    :metabase.lib.field/binning       (symbol "nil #_\"key is not present.\"")
-                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
-                    :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")}
+    (let [mp        (lib.tu/mock-metadata-provider
+                     meta/metadata-provider
+                     {:cards [{:id            1
+                               :name          "Model"
+                               :type          :model
+                               :database-id   (meta/id)
+                               :dataset-query (lib.tu.macros/mbql-query venues
+                                                {:joins  [{:source-table $$categories
+                                                           :alias        "C"
+                                                           :condition    [:= &C.categories.id $venues.category-id]}]
+                                                 :fields [[:field
+                                                           "C__NAME"
+                                                           {:base-type     :type/Text
+                                                            :temporal-unit :month
+                                                            :binning       {:strategy :default}}]]})}]})
+          query     (lib/query mp {:type     :query
+                                   :database (meta/id)
+                                   :query    {:source-table "card__1"}})
+          expected  {:base-type                        :type/Text
+                     :display-name                     "C → Name: Auto binned: Month"
+                     :effective-type                   :type/Text
+                     :fingerprint                      map?
+                     :id                               (meta/id :categories :name)
+                     :inherited-temporal-unit          :month
+                     :semantic-type                    :type/Name
+                     :table-id                         (meta/id :categories)
+                     :visibility-type                  :normal
+                     :lib/original-binning             {:strategy :default}
+                     :lib/card-id                      1
+                     :lib/desired-column-alias         "C__NAME"
+                     :lib/original-display-name        "Name"
+                     :lib/original-join-alias          "C"
+                     :lib/original-name                "NAME"
+                     :lib/source                       :source/card
+                     :lib/source-uuid                  string?
+                     :lib/type                         :metadata/column
+                     :metabase.lib.field/binning       (symbol "nil #_\"key is not present.\"")
+                     :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                     :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")}
           field-ref [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text} "C__NAME"]]
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (testing "with model as :source-card (current-stage-source-card-metadata pathway)"
@@ -486,8 +484,10 @@
                                                     [(-> (first (:stages model-query))
                                                          (assoc :qp/stage-is-from-source-card 1))
                                                      (dissoc original-stage :source-card)]))]
-            (is (=? (assoc expected :lib/source-column-alias "C__NAME")
-                    (lib.field.resolution/resolve-field-ref query' -1 field-ref)))))))))
+            (is (=? [(assoc expected
+                            :lib/source-column-alias "C__NAME"
+                            :lib/source              :source/previous-stage)]
+                    (lib/returned-columns query' -1)))))))))
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
@@ -516,8 +516,7 @@
                  :semantic-type                :type/Category
                  :table-id                     (meta/id :products)
                  :visibility-type              :normal}
-                (first (lib/breakouts-metadata query)))
-            "don't set :lib/previous-stage-join-alias")))))
+                (first (lib/breakouts-metadata query))))))))
 
 (deftest ^:parallel column-filter-join-alias-test
   (testing "We should be able to resolve a ref missing join alias and add that to the metadata (#36861)"
@@ -747,22 +746,10 @@
                                                               [:field (meta/id :venues :longitude) nil]
                                                               [:field (meta/id :venues :price) nil]]}})
             field-ref [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :name)]]
-        (is (pos-int? (#'lib.field.resolution/current-stage-model-card-id query 0)))
-        (testing `lib.field.resolution/stage-attached-metadata
-          (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
-                  (m/find-first #(= (:name %) "NAME")
-                                (#'lib.field.resolution/stage-attached-metadata (lib.util/query-stage query 0))))))
         (testing `lib.field.resolution/resolve-column-in-metadata
-          (let [stage-cols (#'lib.field.resolution/stage-attached-metadata (lib.util/query-stage query 0))]
+          (let [stage-cols (get-in (lib.util/query-stage query 0) [:lib/stage-metadata :columns])]
             (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
                     (#'lib.field.resolution/resolve-column-in-metadata query field-ref stage-cols)))))
-        (testing `lib.field.resolution/current-stage-model-metadata
-          ;; TODO (Cam 6/23/25) -- not sure why name isn't propagated here =(
-          (is (=? {#_:name #_"NAME", :description "user description", :display-name "user display name"}
-                  (#'lib.field.resolution/current-stage-model-metadata query 0 field-ref))))
-        (testing `lib.field.resolution/previous-stage-or-source-card-metadata
-          (is (=? {#_:name #_"NAME", :description "user description", :display-name "user display name"}
-                  (#'lib.field.resolution/previous-stage-or-source-card-metadata query -1 field-ref))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
                   (lib.field.resolution/resolve-field-ref query -1 field-ref))))))))
@@ -830,12 +817,7 @@
                        :breakout    [[:field {} "Reviews__CREATED_AT"]]}]}
             q2))
     (is (=? {:name "PRICE", :id (meta/id :products :price)}
-            (#'lib.field.resolution/resolve-column-name
-             q2
-             0
-             [:field
-              {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Float}
-              "PRICE"])))
+            (#'lib.field.resolution/resolve-from-previous-stage-or-source q2 0 "PRICE")))
     (is (= [{:name "CREATED_AT_2", :lib/source-column-alias "Reviews__CREATED_AT"}
             {:name "sum", :lib/source-column-alias "sum"}]
            (map #(select-keys % [:name :lib/source-column-alias])
@@ -853,6 +835,7 @@
                   (lib/visible-columns q3))))
       (is (=? {:lib/source-column-alias  "Reviews__CREATED_AT"
                :lib/desired-column-alias "Reviews__CREATED_AT"
+               :lib/original-join-alias  "Reviews"
                :display-name             "Reviews → Created At"}
               (lib.field.resolution/resolve-field-ref
                q3
