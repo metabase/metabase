@@ -1,6 +1,9 @@
-import type { PropsWithChildren, ReactNode } from "react";
-
-import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
+import {
+  type PropsWithChildren,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
 type Props = {
   ssrFallback: ReactNode;
@@ -9,4 +12,12 @@ type Props = {
 export const ClientSideOnlyWrapper = ({
   children,
   ssrFallback,
-}: PropsWithChildren<Props>) => (getWindow() ? children : ssrFallback);
+}: PropsWithChildren<Props>) => {
+  const [isClientSide, setIsClientSide] = useState(false);
+
+  useEffect(() => {
+    setIsClientSide(true);
+  }, []);
+
+  return isClientSide ? children : ssrFallback;
+};
