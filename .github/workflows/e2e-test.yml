@@ -133,6 +133,12 @@ jobs:
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
+      - name: Debug timing data
+        if: always()
+        run: |
+          echo "Contents of newTimes.json:"
+          cat newTimes.json || echo "File not found"
+
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
         shell: bash
