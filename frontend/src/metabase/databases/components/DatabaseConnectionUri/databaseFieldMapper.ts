@@ -16,12 +16,7 @@ function mapClickhouseValues(parsedValues: RegexFields) {
     ["details.user", parsedValues?.username],
     ["details.password", parsedValues?.password],
     ["details.dbname", parsedValues?.path],
-    [
-      "details.additional-options",
-      Object.entries(parsedValues?.params ?? {})
-        .map(([key, value]) => `${key}=${value}`)
-        .join("&"),
-    ],
+    ["details.additional-options", objectToString(parsedValues?.params ?? {})],
   ]);
 
   // if there are additional options, we need to open the advanced options section
@@ -72,13 +67,12 @@ function mapDatabricksValues(parsedValues: RegexFields) {
 
   fieldsMap.set(
     "details.additional-options",
-    Object.entries(parsedValues.params ?? {})
-      .filter(
-        ([key]) =>
-          !["httpPath", "OAuthSecret", "OAuth2ClientId", "PWD"].includes(key),
-      )
-      .map(([key, value]) => `${key}=${value}`)
-      .join(";"),
+    objectToString(parsedValues.params ?? {}, [
+      "httpPath",
+      "OAuthSecret",
+      "OAuth2ClientId",
+      "PWD",
+    ]),
   );
 
   return fieldsMap;
@@ -102,10 +96,7 @@ function mapMysqlValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      Object.entries(parsedValues.params ?? {})
-        .filter(([key]) => !["ssl"].includes(key))
-        .map(([key, value]) => `${key}=${value}`)
-        .join(";"),
+      objectToString(parsedValues.params ?? {}, ["ssl"]),
     ],
   ]);
   return fieldsMap;
@@ -121,10 +112,7 @@ function mapPostgresValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.ssl],
     [
       "details.additional-options",
-      Object.entries(parsedValues.params ?? {})
-        .filter(([key]) => !["ssl"].includes(key))
-        .map(([key, value]) => `${key}=${value}`)
-        .join(";"),
+      objectToString(parsedValues.params ?? {}, ["ssl"]),
     ],
   ]);
   return fieldsMap;
@@ -139,10 +127,7 @@ function mapPrestoValues(parsedValues: RegexFields) {
     ["details.ssl", parsedValues.params?.SSL],
     [
       "details.additional-options",
-      Object.entries(parsedValues.params ?? {})
-        .filter(([key]) => !["ssl"].includes(key))
-        .map(([key, value]) => `${key}=${value}`)
-        .join(";"),
+      objectToString(parsedValues.params ?? {}, ["SSL"]),
     ],
   ]);
   return fieldsMap;
@@ -155,11 +140,21 @@ export function mapSnowflakeValues(parsedValues: RegexFields) {
     ["details.db", db],
     ["details.warehouse", warehouse],
     ["details.user", parsedValues.username],
+    [
+      "details.additional-options",
+      objectToString(parsedValues.params ?? {}, ["db", "warehouse"]),
+    ],
   ]);
+
   if (parsedValues.password) {
     fieldsMap.set("details.use-password", true);
     fieldsMap.set("details.password", parsedValues.password);
   }
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -178,4 +173,20 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with("presto", () => mapPrestoValues(parsedValues))
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
     .otherwise(() => new Map());
+}
+
+/**
+ * Converts an object to a semicolon-separated string.
+ * @param obj - The object to convert.
+ * @param filterProperties - The properties to filter out.
+ * @returns The semicolon-separated string.
+ */
+function objectToString(
+  obj: Record<string, string>,
+  filterProperties: Array<string> = [],
+) {
+  return Object.entries(obj)
+    .filter(([key]) => !filterProperties.includes(key))
+    .map(([key, value]) => `${key}=${value}`)
+    .join(";");
 }
