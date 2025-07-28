@@ -5,8 +5,8 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
-   [metabase.app-db.liquibase-test :as liquibase-test]
    [metabase.app-db.setup :as mdb.setup]
+   [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -61,7 +61,7 @@
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true true)))
         (testing "migrations are executed in the order they are defined"
-          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
+          (is (= (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver* conn)
                  (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
 
 (deftest setup-db-no-auto-migrate-test
