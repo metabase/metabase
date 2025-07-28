@@ -5,7 +5,9 @@ import { Sortable } from "metabase/common/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
 import { TabButton } from "metabase/common/components/TabButton";
 import { TabRow } from "metabase/common/components/TabRow";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
 import type { SelectedTabId } from "metabase-types/store";
@@ -14,7 +16,8 @@ import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
 export function DashboardTabs() {
-  const { isEditing = false } = useDashboardContext();
+  const { isEditing = false, dashboard } = useDashboardContext();
+  const { modalContent, show } = useConfirmation();
 
   const {
     tabs,
@@ -62,7 +65,28 @@ export function DashboardTabs() {
   if (hasMultipleTabs) {
     menuItems.push({
       label: t`Delete`,
-      action: (_, value) => deleteTab(value),
+      action: (_, value) => {
+        const performDelete = () => deleteTab(value);
+        const hasDashboardQuestions = dashboard?.dashcards.some(
+          (dashcard) =>
+            dashcard.dashboard_tab_id === value &&
+            !isVirtualDashCard(dashcard) &&
+            dashcard.card.dashboard_id !== null,
+        );
+        if (hasDashboardQuestions) {
+          show({
+            title: t`Delete your tab?`,
+            message: [
+              t`This will also delete the questions that are saved in it.`,
+              t`Are you sure you want to do this?`,
+            ].join(" "),
+            confirmButtonText: t`Delete tab`,
+            onConfirm: performDelete,
+          });
+        } else {
+          performDelete();
+        }
+      },
     });
   }
 
@@ -105,6 +129,7 @@ export function DashboardTabs() {
           />
         )}
       </TabRow>
+      {modalContent}
     </Flex>
   );
 }
