@@ -229,6 +229,8 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    // Keep these for later
+    // eslint-disable-next-line
     const handleCopyStaticQuestion = () => {
       if (rawSeries && card) {
         const markdown = `{{static-card:${card.name}:series-${utf8_to_b64url(JSON.stringify(rawSeries[0].data))}:viz-${utf8_to_b64url(JSON.stringify(card.visualization_settings))}:display-${card.display}}}`;
@@ -237,6 +239,7 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    // eslint-disable-next-line
     const handleReplaceStaticQuestion = () => {
       const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
 
@@ -478,15 +481,6 @@ export const CardEmbedComponent = memo(
                         disabled={!canWrite}
                       >
                         {t`Replace question`}
-                      </Menu.Item>
-                      <Menu.Item onClick={handleCopyStaticQuestion}>
-                        {t`Copy Static Question Markdown`}
-                      </Menu.Item>
-                      <Menu.Item
-                        onClick={handleReplaceStaticQuestion}
-                        disabled={!canWrite}
-                      >
-                        {t`Replace With Static Question`}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
