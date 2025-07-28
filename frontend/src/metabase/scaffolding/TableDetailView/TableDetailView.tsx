@@ -1,33 +1,47 @@
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
-import {
-  useGetTableQueryMetadataQuery,
-  useListTableForeignKeysQuery,
-} from "metabase/api/table";
+import { useGetTableQueryMetadataQuery } from "metabase/api/table";
+import EditableText from "metabase/common/components/EditableText";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
+import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
-import { MetabaseApi } from "metabase/services";
-import { Box, Flex, Stack, Text } from "metabase/ui/components";
-import { ActionIcon, Button } from "metabase/ui/components/buttons";
+import { Box, Flex, Group, Stack, Text } from "metabase/ui/components";
+import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
-import { ObjectDetailBody } from "metabase/visualizations/components/ObjectDetail/ObjectDetailBody";
-import {
-  ObjectDetailHeaderWrapper,
-  ObjectIdLabel,
-} from "metabase/visualizations/components/ObjectDetail/ObjectDetailHeader.styled";
-import { Relationships } from "metabase/visualizations/components/ObjectDetail/ObjectRelationships";
-import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import type { ForeignKey, StructuredDatasetQuery } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetColumn,
+  ObjectViewSectionSettings,
+  RowValues,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 
 import { getTableQuery } from "../TableListView/utils";
 
-interface TableDetailViewProps {
+import { DetailViewHeader } from "./DetailViewHeader";
+import { DetailViewSidebar } from "./DetailViewSidebar";
+import S from "./TableDetailView.module.css";
+import { useDetailViewSections } from "./use-detail-view-sections";
+
+interface TableDetailViewLoaderProps {
   params: {
     tableId: string;
     rowId: string;
@@ -35,45 +49,90 @@ interface TableDetailViewProps {
   isEdit?: boolean;
 }
 
-export function TableDetailView(props: TableDetailViewProps) {
-  const { isEdit = false } = props;
-  const tableId = parseInt(props.params.tableId, 10);
-  const rowId = parseInt(props.params.rowId, 10);
-  const [currentRowIndex, setCurrentRowIndex] = useState(0);
-  const dispatch = useDispatch();
+export function TableDetailView({
+  params,
+  isEdit = false,
+}: TableDetailViewLoaderProps) {
+  const tableId = parseInt(params.tableId, 10);
+  const rowId = parseInt(params.rowId, 10);
 
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
-  const { data: foreignKeys = [], isLoading: fksLoading } =
-    useListTableForeignKeysQuery(tableId);
 
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getTableQuery(table) : undefined;
   }, [table]);
+
   const { data: dataset } = useGetAdhocQueryQuery(query ? query : skipToken);
-  const columns = dataset?.data?.results_metadata?.columns;
-  const [fkReferences, setFkReferences] = useState<
-    Record<number, { status: number; value: number }>
-  >({});
 
-  const allColumnNames = columns ? columns.map((col) => col.name) : [];
-  const [visibleColumns, setVisibleColumns] =
-    useState<string[]>(allColumnNames);
+  if (!table || !dataset) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
-  useMemo(() => {
-    setVisibleColumns(allColumnNames);
-    // TODO: hack, find a better way to handle this
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns && columns.map((col) => col.name).join(",")]);
+  return (
+    <TableDetailViewInner
+      tableId={tableId}
+      rowId={rowId}
+      dataset={dataset}
+      table={table}
+      isEdit={isEdit}
+    />
+  );
+}
+
+interface TableDetailViewProps {
+  tableId: number;
+  rowId: number;
+  dataset: Dataset;
+  table: any;
+  isEdit: boolean;
+}
+
+function TableDetailViewInner({
+  tableId,
+  rowId,
+  dataset,
+  table,
+  isEdit = false,
+}: TableDetailViewProps) {
+  const [currentRowIndex, setCurrentRowIndex] = useState(0);
+  const dispatch = useDispatch();
+
+  const columns = dataset?.data?.results_metadata?.columns ?? [];
+  const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
+  const row = rows[currentRowIndex] || {};
+
+  const {
+    sections,
+    createSection,
+    updateSection,
+    removeSection,
+    handleDragEnd,
+  } = useDetailViewSections([
+    {
+      id: 1,
+      title: "Info",
+      direction: "vertical",
+      fields: columns.map((col) => ({
+        field_id: col.id as number,
+        style: "normal",
+      })),
+    },
+  ]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const handleEditClick = useCallback(() => {
-    dispatch(push(window.location.pathname + `/edit`));
-  }, [dispatch]);
+    dispatch(push(`/table/${tableId}/detail/${rowId}/edit`));
+  }, [tableId, rowId, dispatch]);
 
   const handleCloseClick = useCallback(() => {
-    dispatch(push(window.location.pathname.replace("/edit", "")));
-  }, [dispatch]);
-
-  const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
+    dispatch(push(`/table/${tableId}/detail/${rowId}`));
+  }, [tableId, rowId, dispatch]);
 
   useEffect(() => {
     if (!rows.length) {
@@ -113,311 +172,196 @@ export function TableDetailView(props: TableDetailViewProps) {
     });
   }, [dispatch, rows, tableId, isEdit]);
 
-  useEffect(() => {
-    async function getFKCount(fk: ForeignKey) {
-      const databaseId = table?.db_id;
-      const tableId = fk.origin?.table_id;
-      if (
-        !tableId ||
-        !databaseId ||
-        !fk.origin ||
-        typeof currentRowIndex === "undefined"
-      ) {
-        return;
-      }
-
-      const info = {
-        status: 0,
-        value: null,
-      };
-
-      try {
-        const result = await MetabaseApi.dataset({
-          database: databaseId,
-          type: "query",
-          query: {
-            "source-table": tableId,
-            filter: [
-              "=",
-              ["field", fk.origin.id, { "base-type": "type/Integer" }],
-              Number(rowId),
-            ],
-            aggregation: [["count"]],
-          },
-        });
-        if (
-          result &&
-          result.status === "completed" &&
-          result.data.rows.length > 0
-        ) {
-          info["value"] = result.data.rows[0][0];
-        } else {
-          info["value"] = "Unknown";
-        }
-      } finally {
-        info["status"] = 1;
-      }
-
-      return info;
-    }
-
-    async function processFkReferences() {
-      const fkReferences = {};
-      for (let i = 0; i < foreignKeys.length; i++) {
-        const fk = foreignKeys[i];
-        const info = await getFKCount(fk);
-        fkReferences[fk.origin.id] = info;
-      }
-
-      setFkReferences(fkReferences);
-    }
-
-    processFkReferences();
-  }, [currentRowIndex, foreignKeys, rowId, table?.db_id]);
-
-  if (!table || !dataset || !columns || fksLoading) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  const zoomedRow = rows[currentRowIndex] || {};
-  const hiddenColumns = allColumnNames.filter(
-    (name) => !visibleColumns.includes(name),
-  );
-
-  const showColumn = (name: string) =>
-    setVisibleColumns((cols) => [...cols, name]);
-  const hideColumn = (name: string) =>
-    setVisibleColumns((cols) => cols.filter((col) => col !== name));
-
-  // dumb settings
-  const settings = {
-    "table.columns": visibleColumns.map((name) => ({ name, enabled: true })),
-  };
-
-  // stubs
-  const onVisualizationClick = () => {};
-  const visualizationIsClickable = () => false;
-
-  // Header navigation props
-  const canZoom = rows.length > 1;
-  const canZoomPreviousRow = currentRowIndex > 0;
-  const canZoomNextRow = currentRowIndex < rows.length - 1;
-  const objectName = table.name;
-  const objectId = null; // You can enhance this to show a PK value if needed
-
-  if (!table || !dataset || !columns) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
   return (
-    <Flex align="stretch" style={{ height: "100%" }}>
-      <Box style={{ flex: 1, minWidth: 0 }}>
-        <ObjectDetailHeader
-          canZoom={canZoom}
-          objectName={objectName}
-          objectId={objectId}
-          canZoomPreviousRow={canZoomPreviousRow}
-          canZoomNextRow={canZoomNextRow}
-          viewPreviousObjectDetail={handleViewPreviousObjectDetail}
-          viewNextObjectDetail={handleViewNextObjectDetail}
-          isEdit={isEdit}
-          onEditClick={handleEditClick}
-          onCloseClick={handleCloseClick}
+    <Flex>
+      <Box m="auto" mt="md" w="70%">
+        <DetailViewHeader
           table={table}
+          isEdit={isEdit}
+          canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
+          canOpenNextItem={rows.length > 1 && currentRowIndex < rows.length - 1}
+          onEditClick={handleEditClick}
+          onPreviousItemClick={handleViewPreviousObjectDetail}
+          onNextItemClick={handleViewNextObjectDetail}
+          onCloseClick={handleCloseClick}
         />
-
-        <Flex>
-          <ObjectDetailBody
-            data={dataset.data}
-            objectName={objectName}
-            zoomedRow={zoomedRow}
-            settings={settings}
-            hasRelationships={false}
-            tableForeignKeyReferences={[]}
-            onVisualizationClick={onVisualizationClick}
-            visualizationIsClickable={visualizationIsClickable}
-          />
-          <Box>
-            <Relationships
-              objectName={objectName}
-              tableForeignKeys={foreignKeys as any}
-              tableForeignKeyReferences={fkReferences}
-            />
-          </Box>
-        </Flex>
+        <Stack gap="md" mt="lg">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={sections.map((section) => section.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {sections.map((section) => (
+                <SortableSection
+                  key={section.id}
+                  section={section}
+                  columns={columns}
+                  row={row}
+                  isEdit={isEdit}
+                  onUpdateSection={(update) =>
+                    updateSection(section.id, update)
+                  }
+                  onRemoveSection={() => removeSection(section.id)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        </Stack>
+        {isEdit && (
+          <Flex align="center" justify="center" w="100%" mt="md">
+            <Button leftSection={<Icon name="add" />} onClick={createSection} />
+          </Flex>
+        )}
       </Box>
       {isEdit && (
-        <TableDetailViewSidebar
-          visibleColumns={visibleColumns}
-          hiddenColumns={hiddenColumns}
-          showColumn={showColumn}
-          hideColumn={hideColumn}
+        <DetailViewSidebar
+          columns={columns}
+          sections={sections}
+          onUpdateSection={updateSection}
         />
       )}
     </Flex>
   );
 }
 
-interface ObjectDetailHeaderProps {
-  canZoom: boolean;
-  objectName: string;
-  objectId: ObjectId | null;
-  canZoomPreviousRow: boolean;
-  canZoomNextRow?: boolean;
-  viewPreviousObjectDetail: () => void;
-  viewNextObjectDetail: () => void;
+type SortableSectionProps = {
+  section: ObjectViewSectionSettings;
+  columns: DatasetColumn[];
+  row: RowValues;
   isEdit: boolean;
-  onEditClick: () => void;
-  onCloseClick: () => void;
-}
+  onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
+  onRemoveSection: () => void;
+};
 
-function ObjectDetailHeader({
-  canZoom,
-  objectName,
-  objectId,
-  canZoomPreviousRow,
-  canZoomNextRow,
-  viewPreviousObjectDetail,
-  viewNextObjectDetail,
-  isEdit,
-  onEditClick,
-  onCloseClick,
-  table,
-}: ObjectDetailHeaderProps & { table: any }): JSX.Element {
+function SortableSection(props: SortableSectionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
-    <Box>
-      <Box className={CS.GridCell} m="auto" ta="left">
-        <Flex component="h2" className={CS.p3} gap="sm" align="center" pb={0}>
-          <Icon name="table" size={24} c="brand" />
-          <Text fw={600}>{objectName}</Text>
-          {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
-        </Flex>
-      </Box>
-
-      <ObjectDetailHeaderWrapper className={CS.Grid}>
-        <Flex align="center" gap="0.5rem" p="1rem">
-          {canZoom && (
-            <>
-              <Button
-                size="sx"
-                variant="subtle"
-                data-testid="view-previous-object-detail"
-                disabled={!canZoomPreviousRow}
-                onClick={viewPreviousObjectDetail}
-                leftSection={<Icon name="chevronup" />}
-              />
-              <Button
-                size="sx"
-                variant="subtle"
-                data-testid="view-next-object-detail"
-                disabled={!canZoomNextRow}
-                onClick={viewNextObjectDetail}
-                leftSection={<Icon name="chevrondown" />}
-              />
-            </>
-          )}
-
-          {isEdit && (
-            <>
-              <Button
-                variant="brand"
-                data-testid="object-detail-close-button"
-                onClick={onCloseClick}
-              >{t`Save`}</Button>
-              <Button
-                variant="subtle"
-                color="error"
-                data-testid="object-detail-close-button"
-                onClick={onCloseClick}
-              >{t`Discard changes`}</Button>
-            </>
-          )}
-          {!isEdit && (
-            <Button size="md" variant="light" onClick={onEditClick} ml="md">
-              {t`Edit`}
-            </Button>
-          )}
-          <Flex p="md" gap="md">
-            <Button
-              component={Link}
-              to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-              variant="brand"
-              data-testid="table-reference-link"
-            >
-              {t`View table reference`}
-            </Button>
-
-            <Button
-              component={Link}
-              to={`/table/${table.id}`}
-              variant="brand"
-              data-testid="table-link"
-            >
-              {t`View table`}
-            </Button>
-          </Flex>
-        </Flex>
-      </ObjectDetailHeaderWrapper>
-    </Box>
+    <div ref={setNodeRef} style={style}>
+      <ObjectViewSection
+        {...props}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
+    </div>
   );
 }
 
-interface TableDetailViewSidebarProps {
-  visibleColumns: string[];
-  hiddenColumns: string[];
-  showColumn: (name: string) => void;
-  hideColumn: (name: string) => void;
-}
-function TableDetailViewSidebar({
-  visibleColumns,
-  hiddenColumns,
-  showColumn,
-  hideColumn,
-}: TableDetailViewSidebarProps) {
+type ObjectViewSectionProps = {
+  section: ObjectViewSectionSettings;
+  columns: DatasetColumn[];
+  row: RowValues;
+  isEdit: boolean;
+  onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
+  onRemoveSection: () => void;
+  dragHandleProps?: any;
+};
+
+function ObjectViewSection({
+  section,
+  columns,
+  row,
+  isEdit,
+  onUpdateSection,
+  onRemoveSection,
+  dragHandleProps,
+}: ObjectViewSectionProps) {
   return (
     <Box
-      style={{
-        width: 280,
-        borderLeft: `1px solid var(--mb-border-color)`,
-        padding: 16,
-        background: "var(--mb-bg-white)",
-        overflowY: "auto",
-      }}
+      className={S.ObjectViewSection}
+      pos="relative"
+      bg="bg-medium"
+      px="md"
+      py="sm"
+      style={{ borderRadius: "var(--default-border-radius)" }}
     >
-      <Text fw={600} size="md" mt={0} mb="xs">{t`Visible columns`}</Text>
-      <Stack gap={4}>
-        {visibleColumns.map((name) => (
-          <Flex key={name} align="center" gap={8}>
-            <Text style={{ flex: 1 }}>{name}</Text>
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label={t`Hide column`}
-              onClick={() => hideColumn(name)}
-            >
-              <Icon name="eye_crossed_out" size={18} />
-            </ActionIcon>
-          </Flex>
-        ))}
-      </Stack>
-      <Text fw={600} size="md" mt="lg" mb="xs">{t`Hidden columns`}</Text>
-      <Stack gap={4}>
-        {hiddenColumns.map((name) => (
-          <Flex key={name} align="center" gap={8}>
-            <Text style={{ flex: 1, color: "var(--mb-text-light)" }}>
-              {name}
-            </Text>
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label={t`Show column`}
-              onClick={() => showColumn(name)}
-            >
-              <Icon name="eye" size={18} />
-            </ActionIcon>
-          </Flex>
-        ))}
-      </Stack>
+      <Group gap="xs">
+        {isEdit && (
+          <Icon
+            name="grabber"
+            style={{ cursor: "grab" }}
+            role="button"
+            tabIndex={0}
+            {...dragHandleProps}
+          />
+        )}
+        <EditableText
+          initialValue={section.title}
+          isDisabled={!isEdit}
+          onChange={(title) => onUpdateSection({ title })}
+          style={{ fontWeight: 700 }}
+        />
+      </Group>
+      <Flex
+        direction={section.direction === "vertical" ? "column" : "row"}
+        gap="md"
+        mt="sm"
+        px="xs"
+      >
+        {section.fields.map(({ field_id, style }) => {
+          const columnIndex = columns.findIndex(
+            (column) => column.id === field_id,
+          );
+          const column = columns[columnIndex];
+          if (!column) {
+            return null;
+          }
+          const value = row[columnIndex];
+          return (
+            <Box key={field_id}>
+              <Text c="text-dark" fw={600} size="sm">
+                {column.display_name}
+              </Text>
+              <Text {...getStyleProps(style)}>{formatValue(value)}</Text>
+            </Box>
+          );
+        })}
+      </Flex>
+      {isEdit && (
+        <Group
+          className={S.ObjectViewSectionActions}
+          pos="absolute"
+          bg="bg-white"
+          style={{ borderRadius: "var(--default-border-radius)" }}
+          top={-5}
+          right={-5}
+        >
+          <Button
+            size="compact-xs"
+            leftSection={<Icon name="close" />}
+            onClick={onRemoveSection}
+          />
+        </Group>
+      )}
     </Box>
   );
+}
+
+function getStyleProps(style: "bold" | "dim" | "title" | "normal") {
+  switch (style) {
+    case "bold":
+      return { fw: 700 };
+    case "dim":
+      return { color: "text-light" };
+    case "title":
+      return { size: "xl", fw: 700 };
+    default:
+      return {};
+  }
 }

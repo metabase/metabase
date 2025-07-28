@@ -1,0 +1,9 @@
+.ObjectViewSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSection {
+  &:hover .ObjectViewSectionActions {
+    visibility: visible;
+  }
+}

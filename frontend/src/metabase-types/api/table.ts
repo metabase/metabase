@@ -63,8 +63,18 @@ export type ListViewSettings = {
   }[];
 };
 
+export type ObjectViewSectionSettings = {
+  id: number;
+  title: string;
+  direction: "horizontal" | "vertical";
+  fields: Array<{
+    field_id: FieldId;
+    style: "normal" | "bold" | "dim" | "title";
+  }>;
+};
+
 export type ObjectViewSettings = {
-  // TODO
+  sections: ObjectViewSectionSettings[];
 };
 
 export type SchemaName = string;
