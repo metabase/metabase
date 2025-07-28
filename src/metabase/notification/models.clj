@@ -206,11 +206,10 @@
   (validate-subscription instance)
   instance)
 
-;; TODO FIXME nocommit mallicache prereq
-#_(t2/define-after-insert :model/NotificationSubscription
-    [instance]
-    (update-subscription-trigger! instance)
-    instance)
+(t2/define-after-insert :model/NotificationSubscription
+  [instance]
+  (update-subscription-trigger! instance)
+  instance)
 
 (t2/define-before-update :model/NotificationSubscription
   [instance]
@@ -329,11 +328,6 @@
 (t2/deftransforms :model/NotificationRecipient
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
    :details mi/transform-json})
-
-#_:clj-kondo/ignore ;;nocommit
-(require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
-         '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
-         '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[malli.json-schema :as mjs])
 
 (mr/def ::NotificationRecipient
   "Schema for :model/NotificationRecipient."

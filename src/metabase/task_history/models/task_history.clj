@@ -50,11 +50,10 @@
   [status]
   (assert (task-history-status (keyword status)) "Invalid task history status"))
 
-;; TODO FIXME nocommit mallicache prereq
-#_(t2/define-after-insert :model/TaskHistory
-    [task-history]
-    (assert-task-history-status (:status task-history))
-    task-history)
+(t2/define-after-insert :model/TaskHistory
+  [task-history]
+  (assert-task-history-status (:status task-history))
+  task-history)
 
 (t2/define-before-update :model/TaskHistory
   [task-history]

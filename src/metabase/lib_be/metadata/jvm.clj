@@ -65,13 +65,12 @@
   (t2/resolve-model :model/Database) ; for side-effects
   model)
 
-;; TODO FIXME nocommit mallicache prereq
-#_(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                           #_model          :metadata/database
-                                           #_resolved-query clojure.lang.IPersistentMap]
-    [query-type model parsed-args honeysql]
-    (merge (next-method query-type model parsed-args honeysql)
-           {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :router_database_id]}))
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/database
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -92,13 +91,12 @@
   (t2/resolve-model :model/Table)
   model)
 
-;; TODO FIXME nocommit mallicache prereq
-#_(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                           #_model          :metadata/table
-                                           #_resolved-query clojure.lang.IPersistentMap]
-    [query-type model parsed-args honeysql]
-    (merge (next-method query-type model parsed-args honeysql)
-           {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/table
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -135,48 +133,47 @@
             k)]
     (next-method model honeysql k v)))
 
-;; TODO FIXME nocommit mallicache prereq
-#_(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                           #_model          :metadata/column
-                                           #_resolved-query clojure.lang.IPersistentMap]
-    [query-type model parsed-args honeysql]
-    (merge
-     (next-method query-type model parsed-args honeysql)
-     {:select    [:field/active
-                  :field/base_type
-                  :field/coercion_strategy
-                  :field/database_type
-                  :field/description
-                  :field/display_name
-                  :field/effective_type
-                  :field/fingerprint
-                  :field/fk_target_field_id
-                  :field/id
-                  :field/name
-                  :field/nfc_path
-                  :field/parent_id
-                  :field/position
-                  :field/semantic_type
-                  :field/settings
-                  :field/table_id
-                  :field/visibility_type
-                  :dimension/human_readable_field_id
-                  :dimension/id
-                  :dimension/name
-                  :dimension/type
-                  :values/human_readable_values
-                  :values/values]
-      :from      [[(t2/table-name :model/Field) :field]]
-      :left-join [[(t2/table-name :model/Table) :table]
-                  [:= :field/table_id :table/id]
-                  [(t2/table-name :model/Dimension) :dimension]
-                  [:and
-                   [:= :dimension/field_id :field/id]
-                   [:inline [:in :dimension/type ["external" "internal"]]]]
-                  [(t2/table-name :model/FieldValues) :values]
-                  [:and
-                   [:= :values/field_id :field/id]
-                   [:= :values/type [:inline "full"]]]]}))
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/column
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:field/active
+                :field/base_type
+                :field/coercion_strategy
+                :field/database_type
+                :field/description
+                :field/display_name
+                :field/effective_type
+                :field/fingerprint
+                :field/fk_target_field_id
+                :field/id
+                :field/name
+                :field/nfc_path
+                :field/parent_id
+                :field/position
+                :field/semantic_type
+                :field/settings
+                :field/table_id
+                :field/visibility_type
+                :dimension/human_readable_field_id
+                :dimension/id
+                :dimension/name
+                :dimension/type
+                :values/human_readable_values
+                :values/values]
+    :from      [[(t2/table-name :model/Field) :field]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :field/table_id :table/id]
+                [(t2/table-name :model/Dimension) :dimension]
+                [:and
+                 [:= :dimension/field_id :field/id]
+                 [:inline [:in :dimension/type ["external" "internal"]]]]
+                [(t2/table-name :model/FieldValues) :values]
+                [:and
+                 [:= :values/field_id :field/id]
+                 [:= :values/type [:inline "full"]]]]}))
 
 (t2/define-after-select :metadata/column
   [field]
@@ -230,33 +227,32 @@
             k)]
     (next-method model honeysql k v)))
 
-;; TODO FIXME nocommit mallicache prereq
-#_(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                           #_model          :metadata/card
-                                           #_resolved-query clojure.lang.IPersistentMap]
-    [query-type model parsed-args honeysql]
-    (merge
-     (next-method query-type model parsed-args honeysql)
-     {:select    [:card/collection_id
-                  :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.queries.models.card]].
-                  :card/card_schema  ; Needed for after-select logic to work.
-                  :card/database_id
-                  :card/dataset_query
-                  :card/id
-                  :card/entity_id
-                  :card/name
-                  :card/result_metadata
-                  :card/table_id
-                  :card/type
-                  :card/visualization_settings
-                  :persisted/active
-                  :persisted/state
-                  :persisted/definition
-                  :persisted/query_hash
-                  :persisted/table_name]
-      :from      [[(t2/table-name :model/Card) :card]]
-      :left-join [[(t2/table-name :model/PersistedInfo) :persisted]
-                  [:= :persisted/card_id :card/id]]}))
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/card
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:card/collection_id
+                :card/created_at   ; Needed for backfilling :entity_id on demand; see [[metabase.queries.models.card]].
+                :card/card_schema  ; Needed for after-select logic to work.
+                :card/database_id
+                :card/dataset_query
+                :card/id
+                :card/entity_id
+                :card/name
+                :card/result_metadata
+                :card/table_id
+                :card/type
+                :card/visualization_settings
+                :persisted/active
+                :persisted/state
+                :persisted/definition
+                :persisted/query_hash
+                :persisted/table_name]
+    :from      [[(t2/table-name :model/Card) :card]]
+    :left-join [[(t2/table-name :model/PersistedInfo) :persisted]
+                [:= :persisted/card_id :card/id]]}))
 
 (defn- parse-persisted-info-definition [x]
   ((get-in (t2/transforms :model/PersistedInfo) [:definition :out] identity) x))
@@ -304,22 +300,21 @@
             k)]
     (next-method model honeysql k v)))
 
-;; TODO FIXME nocommit mallicache prereq
-#_(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                           #_model          :metadata/segment
-                                           #_resolved-query clojure.lang.IPersistentMap]
-    [query-type model parsed-args honeysql]
-    (merge
-     (next-method query-type model parsed-args honeysql)
-     {:select    [:segment/id
-                  :segment/table_id
-                  :segment/name
-                  :segment/description
-                  :segment/archived
-                  :segment/definition]
-      :from      [[(t2/table-name :model/Segment) :segment]]
-      :left-join [[(t2/table-name :model/Table) :table]
-                  [:= :segment/table_id :table/id]]}))
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/segment
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:segment/id
+                :segment/table_id
+                :segment/name
+                :segment/description
+                :segment/archived
+                :segment/definition]
+    :from      [[(t2/table-name :model/Segment) :segment]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :segment/table_id :table/id]]}))
 
 (t2/define-after-select :metadata/segment
   [segment]

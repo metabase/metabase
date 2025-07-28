@@ -101,25 +101,24 @@
    (when locale
      {:locale (i18n/normalized-locale-string locale)})))
 
-;; TODO FIXME nocommit mallicache prereq
-#_(t2/define-after-insert :model/User
-    [{user-id :id, superuser? :is_superuser, :as user}]
-    (u/prog1 user
-      (let [current-version (:tag config/mb-version-info)]
-        (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
+(t2/define-after-insert :model/User
+  [{user-id :id, superuser? :is_superuser, :as user}]
+  (u/prog1 user
+    (let [current-version (:tag config/mb-version-info)]
+      (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
-        (binding [api/*current-user-id* user-id]
-          (setting/with-user-local-values (delay (atom (user-local-settings user)))
-            (setting/set! :last-acknowledged-version current-version))))
+      (binding [api/*current-user-id* user-id]
+        (setting/with-user-local-values (delay (atom (user-local-settings user)))
+          (setting/set! :last-acknowledged-version current-version))))
     ;; add the newly created user to the magic perms groups.
-      (log/infof "Adding User %s to All Users permissions group..." user-id)
-      (when superuser?
-        (log/infof "Adding User %s to All Users permissions group..." user-id))
-      (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
-                                  (when superuser? (perms/admin-group))])]
-        (perms/allow-changing-all-users-group-members
-          (perms/without-is-superuser-sync-on-add-to-admin-group
-           (perms/add-user-to-groups! user-id (map u/the-id groups)))))))
+    (log/infof "Adding User %s to All Users permissions group..." user-id)
+    (when superuser?
+      (log/infof "Adding User %s to All Users permissions group..." user-id))
+    (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
+                                (when superuser? (perms/admin-group))])]
+      (perms/allow-changing-all-users-group-members
+        (perms/without-is-superuser-sync-on-add-to-admin-group
+         (perms/add-user-to-groups! user-id (map u/the-id groups)))))))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]

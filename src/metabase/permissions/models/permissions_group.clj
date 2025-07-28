@@ -123,11 +123,10 @@
     (doseq [db-id (t2/select-pks-vec :model/Database)]
       (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users))))))
 
-;; TODO FIXME nocommit mallicache prereq
-#_(t2/define-after-insert :model/PermissionsGroup
-    [group]
-    (u/prog1 group
-      (set-default-permission-values! group)))
+(t2/define-after-insert :model/PermissionsGroup
+  [group]
+  (u/prog1 group
+    (set-default-permission-values! group)))
 
 (t2/define-before-delete :model/PermissionsGroup
   [{id :id, :as group}]
