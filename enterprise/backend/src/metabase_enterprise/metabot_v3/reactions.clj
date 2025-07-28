@@ -14,10 +14,11 @@
   "A MetaBot v3 reaction type keyword e.g. `:metabot.reaction/message`"
   [:fn
    {:error/message "Reaction type must be a kebab-case keyword starting whose namespace is `metabot.reaction`."}
-   (fn [x]
-     (and (qualified-keyword? x)
-          (= (u/->kebab-case-en (u/qualified-name x)) (u/qualified-name x))
-          (= (namespace x) "metabot.reaction")))])
+   (mr/with-key
+     (fn [x]
+       (and (qualified-keyword? x)
+            (= (u/->kebab-case-en (u/qualified-name x)) (u/qualified-name x))
+            (= (namespace x) "metabot.reaction"))))])
 
 ;;; TODO -- need Kondo hook that registers the keyword
 (mu/defn defreaction
@@ -36,7 +37,7 @@
 
 ;;; this is just a placeholder so LSP can register the place it lives for jump-to-definition functionality. Actual
 ;;; schema gets created below by [[reaction-schema]] and [[update-reaction-schema!]]
-(mr/def ::reaction any?)
+(mr/def ::reaction :any)
 
 (defn- reaction-schema
   "Build the schema for `::reaction`."

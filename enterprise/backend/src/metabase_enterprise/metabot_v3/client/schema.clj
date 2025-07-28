@@ -13,11 +13,11 @@
 (mr/def ::message
   [:and
    [:map
-    {:decode/api-response #(update-keys % metabot-v3.u/safe->kebab-case-en)}
+    {:decode/api-response (mr/with-key #(update-keys % metabot-v3.u/safe->kebab-case-en))}
     [:role                         ::role]
     [:content     {:optional true} [:maybe :string]]
     [:navigate-to {:optional true} [:maybe :string]]]
-   [:map {:encode/api-request #(update-keys % metabot-v3.u/safe->snake_case_en)}]])
+   [:map {:encode/api-request (mr/with-key #(update-keys % metabot-v3.u/safe->snake_case_en))}]])
 
 (mr/def ::messages
   [:sequential ::message])

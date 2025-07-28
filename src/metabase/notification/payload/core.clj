@@ -41,7 +41,7 @@
       [:payload
        [:map {:closed true}
         ;; TODO: event-info schema for each event type
-        [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
+        [:event_topic [:fn (mr/with-key #(= "event" (-> % keyword namespace)))]]
         [:event_info  [:maybe :map]]]]]]
     [:notification/card
      [:map
@@ -79,7 +79,7 @@
       ;; override the payload with extra context
       [:payload
        [:map {:closed true}
-        [:event_topic                   [:fn #(= "event" (-> % keyword namespace))]]
+        [:event_topic                   [:fn (mr/with-key #(= "event" (-> % keyword namespace)))]]
         [:event_info                    [:maybe :map]]
         [:custom       {:optional true} [:maybe :map]]]]]]
     [:notification/dashboard

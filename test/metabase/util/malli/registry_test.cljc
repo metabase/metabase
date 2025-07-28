@@ -9,7 +9,7 @@
    [malli.error :as me]
    [metabase.util.malli.registry :as mr]))
 
-(defn- clear-cache! []
+(defn- clear-cache []
   (reset! @#'mr/cache {}))
 
 (defn cache-size-info []
@@ -104,14 +104,18 @@
 
 (deftest ^:parallel deref-circular-refs-test
   (testing "Don't resolve circular refs"
-    (are [schema] (= [:map
-                      [:parent {:optional true} [:ref ::location]]
-                      [:name :string]
-                      [:id [:int {:min 1}]]
-                      [:id-2 [:int {:description "another ID", :min 1}]]]
-                     (mc/form (mr/resolve-schema schema)))
-      ::location
-      [:ref ::location])))
+    (is (= [:map
+            [:parent {:optional true} [:ref ::location]]
+            [:name :string]
+            [:id [:int {:min 1}]]
+            [:id-2 [:int {:description "another ID", :min 1}]]]
+           (mc/form (mr/resolve-schema ::location))))
+    (is (= [:map
+            [:parent {:optional true} [:ref ::location]]
+            [:name :string]
+            [:id [:int {:min 1}]]
+            [:id-2 [:int {:description "another ID", :min 1}]]]
+           (mc/form (mr/resolve-schema [:ref ::location]))))))
 
 (deftest ^:parallel cache-function-objects-stability-test
   (testing "Enhanced schema-cache-key function handles function objects to prevent memory leaks"
@@ -144,11 +148,12 @@
         (mr/validate schema "hello")
         (let [before-count (count (:validator @@#'mr/cache))]
           ;; These used to create new cache entries each time
-          (do (mr/validate [:fn {:error/message "non-blank string"} (complement str/blank?)] "hello")
-              (count (:validator @@#'mr/cache)))
           (mr/validate [:fn {:error/message "non-blank string"} (complement str/blank?)] "hello")
-          (is (= (count (:validator @@#'mr/cache))
-                 before-count)
+          (is (= before-count
+                 (count (:validator @@#'mr/cache))))
+          (mr/validate [:fn {:error/message "non-blank string"} (complement str/blank?)] "hello")
+          (is (= before-count
+                 (count (:validator @@#'mr/cache)))
               "Complement functions should not create multiple cache entries"))))
 
     (testing "Constant functions should be stable"
@@ -178,7 +183,7 @@
   (testing "Memory leak prevention through stable cache keys"
     (testing "Multiple identical schemas with function composition don't grow cache unboundedly"
       ;; Clear cache first
-      (clear-cache!)
+      (clear-cache)
 
       ;; Add multiple "identical" schemas that would have created different cache keys before the fix
       (dotimes [i 20]
@@ -209,7 +214,7 @@
       (mr/validate :string "hello")
       (let [before-size (:total-cache-entries (cache-size-info))]
         (is (pos? before-size) "Cache should have some entries before clearing")
-        (clear-cache!)
+        (clear-cache)
         (let [after-size (:total-cache-entries (cache-size-info))]
           (is (zero? after-size) "Cache should be empty after clearing"))))))
 
@@ -328,6 +333,7 @@
                                  {:error/message "non-blank string"}
                                  (mr/with-key (complement str/blank?))]]
                                (deferred-tru "value must be a non-blank string.")))
+
       (#'mr/schema-cache-key (mu/with-api-error-message
                                [:and
                                 {:error/message "non-blank string"

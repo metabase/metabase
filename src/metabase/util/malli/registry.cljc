@@ -3,7 +3,7 @@
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
              [net.cgrand.macrovich :as macros]))
-   [clojure.core.cache :as cache]
+   ;; TODO: consider using a ttl cache incase any bad schemas start slipping through? [clojure.core.cache :as cache]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
@@ -47,7 +47,7 @@
 (defmacro with-key
   "Adds ::mr/key metadata, which is a pr-str'd string of body, to body."
   [body]
-  (def body body)
+  (def body body) ;; nocommit
   `(with-meta ~body (merge (meta ~body) {::key ~(pr-str body)})))
 
 (defmacro stable-key?
@@ -77,7 +77,7 @@
   "Return information about the current cache size and structure for debugging memory issues."
   [cache-val]
   (let [total-entries (reduce + (map count (vals cache-val)))
-        by-type (into {} (map (fn [[k v]] [k (count v)]) cache-val))]
+        by-type (group-by (fn [[k _]] (first k)) cache-val)]
     {:total-cache-entries total-entries
      :entries-by-type by-type}))
 
@@ -175,7 +175,8 @@
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
      ([type schema]
       `(do (when-not (stable-key? ~schema)
-             (throw (ex-info "Unstable key, see the schema guidelines for more info." {})))
+             (throw (ex-info "Unstable key, see the schema guidelines for more info."
+                             {:schema schema})))
            (register! ~type ~schema)))
      ([type docstring schema]
       (assert (string? docstring))

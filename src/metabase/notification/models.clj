@@ -103,15 +103,15 @@
   [:merge
    [:map
     [:payload_type (ms/enum-decode-keyword notification-types)]]
-   [:multi {:dispatch (comp keyword :payload_type)}
+   [:multi {:dispatch (mr/with-key (comp keyword :payload_type))}
     [:notification/system-event
      [:map
       [:payload_id {:optional true} nil?]]]
     [:notification/card
      [:map
       ;; optional during creation
-      [:payload_id {:optional true} int?]
-      [:creator_id {:optional true} int?]]]
+      [:payload_id {:optional true} :int]
+      [:creator_id {:optional true} :int]]]
     [:notification/testing :any]]])
 
 (defn- validate-notification
@@ -183,7 +183,8 @@
   "Schema for :model/NotificationSubscription."
   [:merge [:map
            [:type (ms/enum-decode-keyword subscription-types)]]
-   [:multi {:dispatch (comp keyword :type)}
+   [:multi {:dispatch (mr/with-key
+                        (comp keyword :type))}
     [:notification-subscription/system-event
      [:map
       [:event_name                     [:or :keyword :string]]
@@ -205,10 +206,11 @@
   (validate-subscription instance)
   instance)
 
-(t2/define-after-insert :model/NotificationSubscription
-  [instance]
-  (update-subscription-trigger! instance)
-  instance)
+;; TODO FIXME nocommit mallicache prereq
+#_(t2/define-after-insert :model/NotificationSubscription
+    [instance]
+    (update-subscription-trigger! instance)
+    instance)
 
 (t2/define-before-update :model/NotificationSubscription
   [instance]
@@ -291,7 +293,8 @@
   [:map
    ;; optional during insertion
    [:notification_id {:optional true}       ms/PositiveInt]
-   [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
+   [:channel_type    {:decode/json keyword} [:fn (mr/with-key
+                                                   #(= "channel" (-> % keyword namespace)))]]
    [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
    [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
    [:active          {:optional true}       [:maybe :boolean]]])
@@ -327,35 +330,40 @@
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
    :details mi/transform-json})
 
+#_:clj-kondo/ignore ;;nocommit
+(require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+         '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+         '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[malli.json-schema :as mjs])
+
 (mr/def ::NotificationRecipient
   "Schema for :model/NotificationRecipient."
   [:merge [:map
            [:type (ms/enum-decode-keyword notification-recipient-types)]
            [:notification_handler_id {:optional true} ms/PositiveInt]]
-   [:multi {:dispatch (comp keyword :type)}
+   [:multi {:dispatch (mr/with-key (comp keyword :type))}
     [:notification-recipient/user
      [:map
       [:user_id                               ms/PositiveInt]
-      [:permissions_group_id {:optional true} [:fn nil?]]
-      [:details              {:optional true} [:fn empty?]]]]
+      [:permissions_group_id {:optional true} [:fn :nil]]
+      [:details              {:optional true} [:fn (mr/with-key empty?)]]]]
     [:notification-recipient/group
      [:map
       [:permissions_group_id                  ms/PositiveInt]
-      [:user_id              {:optional true} [:fn nil?]]
-      [:details              {:optional true} [:fn empty?]]]]
+      [:user_id              {:optional true} [:fn :nil]]
+      [:details              {:optional true} [:fn (mr/with-key empty?)]]]]
     [:notification-recipient/raw-value
      [:map
       [:details                               [:map {:closed true}
                                                [:value :any]]]
-      [:user_id              {:optional true} [:fn nil?]]
-      [:permissions_group_id {:optional true} [:fn nil?]]]]
+      [:user_id              {:optional true} [:fn :nil]]
+      [:permissions_group_id {:optional true} [:fn :nil]]]]
     [:notification-recipient/template
      [:map
       [:details                               [:map {:closed true}
                                                [:pattern                      :string]
                                                [:is_optional {:optional true} :boolean]]]
-      [:user_id              {:optional true} [:fn nil?]]
-      [:permissions_group_id {:optional true} [:fn nil?]]]]]])
+      [:user_id              {:optional true} [:fn :nil]]
+      [:permissions_group_id {:optional true} [:fn :nil]]]]]])
 
 (defn- check-valid-recipient
   [recipient]
@@ -502,7 +510,7 @@
                                                     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
                                                     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
                                                     [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]]]]
-   [:multi {:dispatch (comp keyword :payload_type)}
+   [:multi {:dispatch (mr/with-key (comp keyword :payload_type))}
     [:notification/card [:map
                          [:payload ::NotificationCard]]]
     [::mc/default       :map]]])
