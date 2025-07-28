@@ -30,9 +30,11 @@ const supportedEngines = new Set([
 export function DatabaseConnectionStringField({
   setFieldValue,
   engine,
+  engineKey,
 }: {
   setFieldValue: (field: string, value: string | boolean | undefined) => void;
   engine: Engine | undefined;
+  engineKey: string | undefined;
 }) {
   const [connectionString, setConnectionString] = useState("");
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
@@ -40,6 +42,10 @@ export function DatabaseConnectionStringField({
     () => setStatus(null),
     FEEDBACK_TIMEOUT,
   );
+
+  useEffect(() => {
+    setConnectionString("");
+  }, [engineKey]);
 
   useEffect(
     function handleConnectionStringChange() {

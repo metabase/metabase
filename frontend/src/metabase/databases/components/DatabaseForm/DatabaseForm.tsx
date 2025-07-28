@@ -191,6 +191,7 @@ const DatabaseFormBody = ({
       <DatabaseConnectionStringField
         setFieldValue={setFieldValue}
         engine={engine}
+        engineKey={engineKey}
       />
       {engine && (
         <DatabaseNameField
