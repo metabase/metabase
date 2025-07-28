@@ -14,7 +14,8 @@
   background-color: var(--mb-color-background);
   color: var(--mb-color-text-secondary);
   padding: 0.5rem 1.5rem;
+  padding-left: 0.5rem;
   height: 2.5rem;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
 }

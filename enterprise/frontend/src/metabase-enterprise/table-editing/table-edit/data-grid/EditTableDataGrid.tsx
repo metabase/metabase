@@ -1,3 +1,4 @@
+import type { OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -14,11 +15,17 @@ import type { TableRowUpdateHandler } from "../use-table-crud";
 
 import S from "./EditTableDataGrid.module.css";
 import { useEditDataDridColumnOptions } from "./use-edit-datagrid-column-options";
+import {
+  ROW_SELECT_COLUMN_ID,
+  useTableColumnRowSelect,
+} from "./use-table-column-row-select";
 import { useTableEditingCell } from "./use-table-editing-cell";
 
 type EditTableDataGridProps = {
   data: DatasetData;
   updateFormDescription?: DescribeActionFormResponse;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   handleRowUpdate: TableRowUpdateHandler;
   onRowExpandClick: (rowIndex: number) => void;
   getColumnSortDirection?: TableDataGetColumnSortDirection;
@@ -28,6 +35,8 @@ type EditTableDataGridProps = {
 export const EditTableDataGrid = ({
   data,
   updateFormDescription,
+  rowSelection,
+  onRowSelectionChange,
   onRowExpandClick,
   getColumnSortDirection,
   onColumnSort,
@@ -56,6 +65,8 @@ export const EditTableDataGrid = ({
     onValueUpdated: handleUpdateEditingCell,
     getCellState,
   });
+
+  const columnRowSelectOptions = useTableColumnRowSelect(true);
 
   const rowIdColumnOptions: RowIdColumnOptions = useMemo(
     () => ({
@@ -87,6 +98,13 @@ export const EditTableDataGrid = ({
     [onRowExpandClick, handleSelectEditingCell, editingCell],
   );
 
+  const columnSizingMap = useMemo(() => {
+    return {
+      [ROW_SELECT_COLUMN_ID]: 35,
+      [ROW_ID_COLUMN_ID]: 35,
+    };
+  }, []);
+
   const columnOrder = useMemo(() => cols.map(({ name }) => name), [cols]);
 
   const tableProps = useDataGridInstance({
@@ -94,6 +112,12 @@ export const EditTableDataGrid = ({
     rowId: rowIdColumnOptions,
     columnsOptions,
     columnOrder,
+    columnSizingMap,
+    columnPinning: { left: [ROW_SELECT_COLUMN_ID, ROW_ID_COLUMN_ID] },
+    enableRowSelection: true,
+    rowSelection,
+    onRowSelectionChange,
+    columnRowSelectOptions,
   });
 
   const stylingProps = useMemo(
@@ -108,11 +132,15 @@ export const EditTableDataGrid = ({
       },
 
       // Overrides theme constants and default bg
-      bodyCell: {
-        backgroundColor: undefined,
+      styles: {
+        bodyCell: {
+          backgroundColor: undefined,
+        },
       },
-      cell: {
-        backgroundColor: "",
+      theme: {
+        cell: {
+          backgroundColor: "",
+        },
       },
     }),
     [],

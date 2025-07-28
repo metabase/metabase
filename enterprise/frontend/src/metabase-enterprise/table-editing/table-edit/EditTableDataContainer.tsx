@@ -1,6 +1,7 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
-import { useMemo } from "react";
-import { t } from "ttag";
+import { useCallback, useMemo } from "react";
+import { msgid, ngettext, t } from "ttag";
 
 import { useGetDatabaseQuery } from "metabase/api";
 import { GenericError } from "metabase/common/components/ErrorPages";
@@ -11,18 +12,24 @@ import type { TableEditingActionScope } from "../api/types";
 import { TableHeader } from "../common/TableHeader";
 import { getRowCountMessage } from "../common/getRowCountMessage";
 import { useCloseNavbarOnMount } from "../common/use-close-navbar-on-mount";
-import { TableActionFormModal } from "../modals/TableActionFormModal";
 import { isDatabaseTableEditingEnabled } from "../settings";
 
 import S from "./EditTableDataContainer.module.css";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { EditTableDataGrid } from "./data-grid/EditTableDataGrid";
+import { CreateRowActionFormModal } from "./modals/CreateRowActionFormModal";
+import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
+import { UpdateRowActionFormModal } from "./modals/UpdateRowActionFormModal";
 import { useEditTableData } from "./use-edit-table-data";
 import { useEditTableLoadingOverlay } from "./use-edit-table-loading-overlay";
 import { useTableCreateRow } from "./use-table-create-row";
 import { useTableCRUD } from "./use-table-crud";
-import { useTableExpandedUpdateRow } from "./use-table-expanded-update-row";
+import {
+  getRowInputAndParamsFromRow,
+  useTableExpandedUpdateRow,
+} from "./use-table-expanded-update-row";
+import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableEditingStateAdHocQueryUpdateStrategy } from "./use-table-state-adhoc-query-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
@@ -80,12 +87,19 @@ export const EditTableDataContainer = ({
     stateUpdateStrategy,
   });
 
-  const { isInserting, isUpdating, handleRowCreate, handleRowUpdate } =
-    useTableCRUD({
-      scope,
-      datasetData,
-      stateUpdateStrategy,
-    });
+  const {
+    isInserting,
+    isUpdating,
+    isDeleting,
+    handleRowCreate,
+    handleRowUpdate,
+    handleRowDelete,
+    handleRowDeleteBulk,
+  } = useTableCRUD({
+    scope,
+    datasetData,
+    stateUpdateStrategy,
+  });
 
   const loadingOverlayProps = useEditTableLoadingOverlay({
     isDatasetLoading: isLoading,
@@ -105,9 +119,42 @@ export const EditTableDataContainer = ({
     expandedRow,
     handleExpandRow,
     handleExpandedRowUpdate,
+    handleExpandedRowDelete,
     closeExpandedRow,
     formDescription: updateFormDescription,
-  } = useTableExpandedUpdateRow({ scope, datasetData, handleRowUpdate });
+  } = useTableExpandedUpdateRow({
+    scope,
+    datasetData,
+    handleRowUpdate,
+    handleRowDelete,
+  });
+
+  const [deleteBulkRequested, deleteBulkModalController] = useDisclosure(false);
+  const { rowSelection, selectedRowIndices, setRowSelection } =
+    useEditingTableRowSelection();
+
+  const handleDeleteBulkSubmit = useCallback(async () => {
+    if (!datasetData) {
+      return;
+    }
+
+    const { cols, rows } = datasetData;
+    const inputs = selectedRowIndices.map(
+      (index) => getRowInputAndParamsFromRow(cols, rows[index]).input,
+    );
+
+    const success = await handleRowDeleteBulk(inputs);
+    if (success) {
+      setRowSelection({});
+      deleteBulkModalController.close();
+    }
+  }, [
+    datasetData,
+    setRowSelection,
+    selectedRowIndices,
+    handleRowDeleteBulk,
+    deleteBulkModalController,
+  ]);
 
   if (database && !isDatabaseTableEditingEnabled(database)) {
     return (
@@ -142,6 +189,8 @@ export const EditTableDataContainer = ({
         onUndo={undo}
         onRedo={redo}
         onCreate={openCreateRowModal}
+        onRequestDeleteBulk={deleteBulkModalController.open}
+        canDeleteBulk={selectedRowIndices.length > 0}
       />
       <Box pos="relative" className={S.gridWrapper}>
         <EditTableDataOverlay {...loadingOverlayProps} />
@@ -153,6 +202,8 @@ export const EditTableDataContainer = ({
             getColumnSortDirection={getColumnSortDirection}
             onColumnSort={handleChangeColumnSort}
             onRowExpandClick={handleExpandRow}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
           />
         )}
       </Box>
@@ -160,14 +211,20 @@ export const EditTableDataContainer = ({
       {rawDataset && (
         <Flex className={S.gridFooter}>
           <Text fw="bold" size="md" c="inherit" component="span">
+            {selectedRowIndices.length > 0 &&
+              ngettext(
+                msgid`Selected ${selectedRowIndices.length} row`,
+                `Selected ${selectedRowIndices.length} rows`,
+                selectedRowIndices.length,
+              )}
+          </Text>
+          <Text fw="bold" size="md" c="inherit" component="span">
             {getRowCountMessage(rawDataset)}
           </Text>
         </Flex>
       )}
 
-      <TableActionFormModal
-        title={t`Create a new record`}
-        submitButtonText={t`Create`}
+      <CreateRowActionFormModal
         opened={isCreateRowModalOpen}
         description={createFromDescription}
         onClose={closeCreateRowModal}
@@ -175,15 +232,23 @@ export const EditTableDataContainer = ({
         isLoading={isInserting}
       />
 
-      <TableActionFormModal
-        title={t`Update a record`}
-        submitButtonText={t`Save`}
+      <UpdateRowActionFormModal
         opened={!!expandedRow}
         initialValues={expandedRow?.params}
         description={updateFormDescription}
         onClose={closeExpandedRow}
         onSubmit={handleExpandedRowUpdate}
+        onDelete={handleExpandedRowDelete}
         isLoading={isUpdating}
+        isDeleting={isDeleting}
+      />
+
+      <DeleteBulkRowConfirmationModal
+        opened={deleteBulkRequested}
+        rowCount={selectedRowIndices.length}
+        onConfirm={handleDeleteBulkSubmit}
+        isLoading={isDeleting}
+        onClose={deleteBulkModalController.close}
       />
     </Stack>
   );

@@ -38,6 +38,10 @@
   outline: 2px solid var(--mb-base-color-dubloon-30);
   outline-offset: -2px;
   border-radius: 0.25rem;
+
+  &:hover {
+    background-color: var(--mb-base-color-dubloon-5);
+  }
 }
 
 .updatingCell {

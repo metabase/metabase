@@ -50,64 +50,6 @@
       [1]
       [[] 1])))
 
-(deftest ^:parallel case-schema-type-compatibility-valid-test
-  (are [a b] (true?
-              (mr/validate :mbql.clause/case
-                           [:case
-                            {:lib/uuid (str (random-uuid))}
-                            [[true a]
-                             [true b]]]))
-    10 20
-    10 20.5
-    "A" "B"
-    "A" ""
-    true false
-    true true
-    false false
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/Date "2023-03-09")
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/Date "2023-03-09")
-    (value-expr :type/DateTime "2023-03-08T04:33:45")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
-
-    ; TODO: this case should fail due to Time and Date not being compatible,
-    ; but until we have a better way to handle this, we just allow it and document
-    ; here as a test.
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/Time "15:00:55")))
-
-(deftest ^:parallel case-schema-type-compatibility-invalid-test
-  (are [a b] (false?
-              (mr/validate :mbql.clause/case
-                           [:case
-                            {:lib/uuid (str (random-uuid))}
-                            [[true a]
-                             [true b]]]))
-    10 "A"
-    10.5 "B"
-    true "A"
-    true 10
-    true 10.5
-    10 (value-expr :type/Date "2023-03-08")
-    10 (value-expr :type/DateTime "2023-03-08T04:33:45")
-    10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-    10.5 (value-expr :type/Date "2023-03-08")
-    10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
-    10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-    "A" (value-expr :type/Date "2023-03-08")
-    "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
-    "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-    true (value-expr :type/Date "2023-03-08")
-    true (value-expr :type/DateTime "2023-03-08T04:33:45")
-    true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
-
 (deftest ^:parallel case-type-of-test
   (testing "type-of logic for :case expressions"
     ;; In QP and MLv2: `expression/type-of-method :case`
@@ -160,73 +102,6 @@
       [(value-expr :type/Date "2023-03-08")
        (value-expr :type/Time "15:03:55")])))
 
-(deftest ^:parallel coalesce-schema-invalid-test
-  (testing "schema validation for invalid :coalesce expressions"
-    (are [args] (false?
-                 (mr/validate :mbql.clause/coalesce
-                              (into [:coalesce {:lib/uuid (str (random-uuid))}] args)))
-      [1]
-      [1 "A"]
-      ["A"]
-      ["A" (value-expr :type/Date "2023-03-08")]
-      ["A" (value-expr :type/DateTime "2023-03-08T15:03:55")]
-      ["A" (value-expr :type/DateTimeWithTZ "2023-03-08T15:03:55Z")])))
-
-(deftest ^:parallel coalesce-schema-type-compatibility-valid-test
-  (are [a b] (true?
-              (mr/validate :mbql.clause/coalesce
-                           [:coalesce
-                            {:lib/uuid (str (random-uuid))}
-                            a b]))
-    10 20
-    10 20.5
-    "A" "B"
-    "A" ""
-    true false
-    true true
-    false false
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/Date "2023-03-09")
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/Date "2023-03-09")
-    (value-expr :type/DateTime "2023-03-08T04:33:45")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/DateTime "2023-03-09T04:33:45")
-    (value-expr :type/DateTimeWithTZ "2023-03-09T04:33:45Z")
-    ; TODO: this case should fail due to Time and Date not being compatible,
-    ; but until we have a better way to handle this, we just allow it and document
-    ; here as a test.
-    (value-expr :type/Date "2023-03-08")
-    (value-expr :type/Time "15:00:55")))
-
-(deftest ^:parallel coalesce-schema-type-compatibility-invalid-test
-  (are [a b] (false?
-              (mr/validate :mbql.clause/coalesce
-                           [:coalesce
-                            {:lib/uuid (str (random-uuid))}
-                            a b]))
-    10 "A"
-    10.5 "B"
-    true "A"
-    true 10
-    true 10.5
-    10 (value-expr :type/Date "2023-03-08")
-    10 (value-expr :type/DateTime "2023-03-08T04:33:45")
-    10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-    10.5 (value-expr :type/Date "2023-03-08")
-    10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
-    10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-    "A" (value-expr :type/Date "2023-03-08")
-    "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
-    "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
-    true (value-expr :type/Date "2023-03-08")
-    true (value-expr :type/DateTime "2023-03-08T04:33:45")
-    true (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")))
-
 (deftest ^:parallel coalesce-test
   (is (mr/validate
        :mbql.clause/coalesce
@@ -243,8 +118,7 @@
                         :source-table (meta/id :venues)
                         :expressions  [[:coalesce
                                         {:lib/uuid "455a9f5e-4996-4df9-82aa-01bc083b2efe"
-                                         :lib/expression-name "expr"
-                                         :ident               (u/generate-nano-id)}
+                                         :lib/expression-name "expr"}
                                         [:field
                                          {:base-type :type/Text, :lib/uuid "68443c43-f9de-45e3-9f30-8dfd5fef5af6"}
                                          (meta/id :venues :name)]

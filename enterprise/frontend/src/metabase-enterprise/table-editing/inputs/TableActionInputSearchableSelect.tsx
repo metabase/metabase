@@ -71,14 +71,9 @@ export const TableActionInputSearchableSelect = ({
     [setValue, onChange, onBlur, combobox],
   );
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Escape") {
-        onEscape?.(value);
-      }
-    },
-    [onEscape, value],
-  );
+  const handleDismiss = useCallback(() => {
+    onEscape?.(value);
+  }, [onEscape, value]);
 
   const inputLabel = useMemo(() => {
     if (value) {
@@ -147,6 +142,7 @@ export const TableActionInputSearchableSelect = ({
       store={combobox}
       position="bottom-start"
       onOptionSubmit={handleOptionSubmit}
+      onDismiss={handleDismiss}
     >
       <Combobox.Target>
         <Input
@@ -189,7 +185,6 @@ export const TableActionInputSearchableSelect = ({
             // whereas `onDropdownOpen` is called only when dropdown is opened by clicking the button (e.g. modal editing)
             autoFocus
             ref={searchInputRef}
-            onKeyDown={handleKeyDown}
           />
         </Box>
 

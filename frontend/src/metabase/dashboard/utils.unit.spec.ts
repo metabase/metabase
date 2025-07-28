@@ -12,9 +12,11 @@ import {
   hasInlineParameters,
   isDashcardLoading,
   parseTabSlug,
+  setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockActionDashboardCard,
@@ -24,6 +26,7 @@ import {
   createMockDataset,
   createMockDatasetData,
   createMockHeadingDashboardCard,
+  createMockParameter,
   createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -588,6 +591,166 @@ describe("Dashboard utils", () => {
         createMockTextDashboardCard({ id: -2, inline_parameters: ["param-1"] }),
       ]);
       expect(dashcard1?.id).toBe(5);
+    });
+  });
+
+  describe("setDashboardHeaderParameterIndex", () => {
+    describe("with header parameters only", () => {
+      const parameters = [
+        createMockParameter({ id: "1" }),
+        createMockParameter({ id: "2" }),
+        createMockParameter({ id: "3" }),
+      ];
+      const headerParameterIds = parameters.map((p) => p.id);
+
+      it("should do nothing if the index is the same", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["1", "2", "3"]);
+      });
+
+      it("should move the first parameter to the end of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            2,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["2", "3", "1"]);
+      });
+
+      it("should move the first parameter to the middle of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            1,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["2", "1", "3"]);
+      });
+
+      it("should move the last parameter to the beginning of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "3",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["3", "1", "2"]);
+      });
+
+      it("should move the last parameter to the middle of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "3",
+            1,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["1", "3", "2"]);
+      });
+
+      it("should move the middle parameter to the beginning of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "2",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["2", "1", "3"]);
+      });
+
+      it("should move the middle parameter to the end of the list", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "2",
+            2,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual(["1", "3", "2"]);
+      });
+    });
+
+    describe("with inline parameters", () => {
+      const parameters = [
+        createMockParameter({ id: "1" }),
+        createMockParameter({ id: "2" }),
+        createMockParameter({ id: "3" }),
+        createMockParameter({ id: "4" }),
+        createMockParameter({ id: "5" }),
+      ];
+      const headerParameterIds = ["1", "3", "4"];
+
+      it("should move a header parameter to the end", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "1",
+            2,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual([
+          "2",
+          "3",
+          "4",
+          "1",
+          "5",
+        ]);
+      });
+
+      it("should move a header parameter to the beginning", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "4",
+            0,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual([
+          "4",
+          "1",
+          "2",
+          "3",
+          "5",
+        ]);
+      });
+
+      it("should move a header parameter to the middle", () => {
+        const newParameters = checkNotNull(
+          setDashboardHeaderParameterIndex(
+            parameters,
+            headerParameterIds,
+            "4",
+            1,
+          ),
+        );
+        expect(newParameters.map((p) => p.id)).toEqual([
+          "1",
+          "4",
+          "2",
+          "3",
+          "5",
+        ]);
+      });
     });
   });
 });

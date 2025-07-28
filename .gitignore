@@ -51,6 +51,7 @@ cypress.env.json
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
+/logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
 /node_modules/

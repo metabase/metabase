@@ -78,10 +78,7 @@ export function useTableEditingCell({
         const result = await handleRowUpdate({
           input: editingCell.actionInput,
           params: { [editingCell.columnId]: value },
-          optimisticUpdate: true,
-          onDismissError: () => {
-            resetCellState(editingCell.columnId, editingCell.rowIndex);
-          },
+          shouldPerformOptimisticUpdate: true,
         });
 
         if (!result) {

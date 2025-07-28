@@ -21,6 +21,8 @@ interface EditTableDataHeaderProps {
   onUndo: () => void;
   onRedo: () => void;
   onCreate: () => void;
+  onRequestDeleteBulk: () => void;
+  canDeleteBulk: boolean;
 }
 
 export const EditTableDataHeader = ({
@@ -33,6 +35,8 @@ export const EditTableDataHeader = ({
   onUndo,
   onRedo,
   onCreate,
+  onRequestDeleteBulk,
+  canDeleteBulk,
 }: EditTableDataHeaderProps) => {
   const hasFilters = useMemo(
     () =>
@@ -67,10 +71,15 @@ export const EditTableDataHeader = ({
           disabled={shouldDisableActions}
         >{t`New record`}</Button>
 
+        <Button
+          leftSection={<Icon name="trash" />}
+          variant="filled"
+          color="error"
+          onClick={onRequestDeleteBulk}
+          disabled={shouldDisableActions || !canDeleteBulk}
+        >{t`Delete`}</Button>
+
         <Flex gap="xs">
-          {/*
-              TODO: add back in when we have notifications
-            <TableNotificationsTrigger tableId={table.id} /> */}
           <ActionIcon
             onClick={onUndo}
             size="lg"
