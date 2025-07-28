@@ -549,7 +549,8 @@ export const TableListView = ({ location, params }: Props) => {
 
           <Box
             bg="white"
-            p="xl"
+            px="xl"
+            py="md"
             style={{
               borderTop: "1px solid var(--border-color)",
             }}
