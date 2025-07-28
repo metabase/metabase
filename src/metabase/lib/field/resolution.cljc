@@ -2,6 +2,7 @@
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
   (:require
+   [better-cond.core :as b]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -181,6 +182,35 @@
                   [k v])))
         opts-metadata-fns))
 
+(def ^:private model-propagated-keys
+  #{:lib/card-id
+    :lib/model-display-name
+    :lib/original-display-name
+    :lib/original-expression-name
+    :lib/original-fk-field-id
+    :lib/original-fk-field-name
+    :lib/original-fk-join-alias
+    :lib/original-join-alias
+    :lib/original-name
+    :lib/type
+    :base-type
+    :converted-timezone
+    :description
+    :display-name
+    :fingerprint
+    :id
+    :semantic-type
+    :table-id
+    :visibility-type})
+
+(defn- model-metadata [query stage-number]
+  (let [stage (lib.util/query-stage query stage-number)]
+    (when-some [card-id (:qp/stage-is-from-source-card stage)]
+      (when-some [card (lib.metadata/card query card-id)]
+        (when (= (:type card) :model)
+          (for [col (lib.metadata.calculation/returned-columns query card)]
+            (assoc col :lib/source :source/card, :lib/card-id card-id)))))))
+
 (mu/defn- resolve-in-join :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -198,8 +228,17 @@
                     (u/cprint-to-str join-alias)
                     (u/cprint-to-str stage-number))
         (let [join-cols (lib.metadata.calculation/returned-columns query stage-number join)]
-          (when-some [col (resolve-in-metadata query join-cols id-or-name)]
-            (lib.join/column-from-join query stage-number col join-alias))))
+          (when-let [col (resolve-in-metadata query join-cols id-or-name)]
+            (-> (merge
+                 ;; run this thru `update-keys-for-col-from-previous-stage` so things like binning or bucketing in the
+                 ;; last stage of the join don't get propagated incorrectly. Don't update source or desired aliases
+                 ;; tho since those should already be calculated correctly and running thru
+                 ;; `lib.field.util/update-keys-for-col-from-previous-stage` will mess them up.
+                 (-> (lib.field.util/update-keys-for-col-from-previous-stage col)
+                     (dissoc :lib/source-column-alias :lib/desired-column-alias))
+                 (select-keys col [:lib/source-column-alias :lib/desired-column-alias]))
+                ;; now make sure join alias and what not is still set correctly for a column coming directly from a join
+                (as-> $col (lib.join/column-from-join query stage-number $col join-alias))))))
       ;; a join with this alias does not exist at this stage of the query... try looking recursively in previous stage(s)
       (do
         (log/debugf "Join %s does not exist in stage %s, looking in previous stages"
@@ -275,43 +314,54 @@
    stage-number :- :int
    id-or-name   :- [:or :string ::lib.schema.id/field]]
   (log/debugf "Resolving %s from previous stage, source table, or source card" (u/cprint-to-str id-or-name))
-  (let [stage (lib.util/query-stage query stage-number)]
-    (or
-     (cond
-       (and (pos-int? id-or-name)
-            (:source-table stage))
-       (field-metadata query id-or-name)
+  (merge-metadata
+   (when-let [model-cols (not-empty (model-metadata query stage-number))]
+     (when-some [col (resolve-in-metadata query model-cols id-or-name)]
+       (-> col
+           lib.field.util/update-keys-for-col-from-previous-stage
+           (select-keys model-propagated-keys))))
+   (let [stage (lib.util/query-stage query stage-number)]
+     (or (b/cond
+           :let []
 
-       (= (:lib/type stage) :mbql.stage/native)
-       (do
-         (log/debugf "Resolving %s in native stage metadata" (u/cprint-to-str id-or-name))
-         (when-some [cols (get-in stage [:lib/stage-metadata :columns])]
-           (let [cols (lib.field.util/add-deduplicated-names cols)]
-             (when-some [col (resolve-in-metadata query cols id-or-name)]
-               (assoc col :lib/source :source/native)))))
+           (and (pos-int? id-or-name)
+                (:source-table stage))
+           (field-metadata query id-or-name)
 
-       (:source-card stage)
-       (when-some [col (resolve-in-card-or-stage-metadata query stage-number id-or-name)]
-         (assoc col :lib/source :source/card))
+           (= (:lib/type stage) :mbql.stage/native)
+           (do
+             (log/debugf "Resolving %s in native stage metadata" (u/cprint-to-str id-or-name))
+             (when-some [cols (get-in stage [:lib/stage-metadata :columns])]
+               (let [cols (lib.field.util/add-deduplicated-names cols)]
+                 (when-some [col (resolve-in-metadata query cols id-or-name)]
+                   (assoc col :lib/source :source/native)))))
 
-       (lib.util/previous-stage-number query stage-number)
-       (resolve-in-previous-stage query (lib.util/previous-stage-number query stage-number) id-or-name))
-     ;; try finding a match in joins (field ref is missing `:join-alias`)
-     (do
-       (log/info (u/format-color :red "Failed to resolve %s in stage %s" (u/cprint-to-str id-or-name) (u/cprint-to-str stage-number)))
-       (or (when (string? id-or-name)
-             (let [parts (str/split id-or-name #"__")]
-               (when (>= (count parts) 2)
-                 (let [join-alias (first parts)
-                       field-name (str/join "__" (rest parts))]
-                   (log/debugf "Split field name into join alias %s and field name %s" (u/cprint-to-str join-alias) (u/cprint-to-str field-name))
-                   (resolve-in-join query stage-number join-alias field-name)))))
-           (some (fn [join]
-                   (log/debugf "Looking for match in join %s" (u/cprint-to-str (:alias join)))
-                   (resolve-in-join query stage-number (:alias join) id-or-name))
-                 (:joins stage))))
-     ;; if we STILL can't find a match, return made-up fallback metadata.
-     (fallback-metadata id-or-name))))
+           (:source-card stage)
+           (when-some [col (resolve-in-card-or-stage-metadata query stage-number id-or-name)]
+             (assoc col :lib/source :source/card))
+
+           (lib.util/previous-stage-number query stage-number)
+           (resolve-in-previous-stage query (lib.util/previous-stage-number query stage-number) id-or-name))
+         ;; try finding a match in joins (field ref is missing `:join-alias`)
+         (do
+           (log/info (u/format-color :red "Failed to resolve %s in stage %s" (u/cprint-to-str id-or-name) (u/cprint-to-str stage-number)))
+           (or (when (string? id-or-name)
+                 (let [parts (str/split id-or-name #"__")]
+                   (when (>= (count parts) 2)
+                     (let [join-alias (first parts)
+                           field-name (str/join "__" (rest parts))]
+                       (log/debugf "Split field name into join alias %s and field name %s" (u/cprint-to-str join-alias) (u/cprint-to-str field-name))
+                       (resolve-in-join query stage-number join-alias field-name)))))
+               (some (fn [join]
+                       (log/debugf "Looking for match in join %s" (u/cprint-to-str (:alias join)))
+                       (resolve-in-join query stage-number (:alias join) id-or-name))
+                     (:joins stage))))
+         ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a Field ID ref.
+         ;; It's likely a ref that makes little or no sense (e.g. wrong table) but we can let QP code worry about that.
+         (when (pos-int? id-or-name)
+           (field-metadata query id-or-name))
+         ;; if we STILL can't find a match, return made-up fallback metadata.
+         (fallback-metadata id-or-name)))))
 
 (mu/defn resolve-field-ref :- ::lib.metadata.calculation/column-metadata-with-source
   "Resolve metadata for a `:field` ref. This is part of the implementation

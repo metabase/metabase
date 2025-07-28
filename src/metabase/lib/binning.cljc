@@ -213,17 +213,17 @@
       u/normalize-map
       (set/rename-keys {:binning-strategy :strategy})))
 
-(defn display-name-includes-binning?
+(defn ends-with-binning?
   "Decide whether string `s` has binning suffix based on `binning-options`."
   [s binning-options semantic-type]
-  (str/includes? s (str ": " (binning-display-name binning-options semantic-type))))
+  (str/ends-with? s (str ": " (binning-display-name binning-options semantic-type))))
 
 (defn ensure-ends-with-binning
   "Ensure that `s` is suffixed by appropriate binning info."
   [s binning-options semantic-type]
   (if (or (not (string? s))
           (not (:strategy binning-options))
-          (display-name-includes-binning? s binning-options semantic-type))
+          (ends-with-binning? s binning-options semantic-type))
     s
     (lib.util/format "%s: %s" s (binning-display-name binning-options semantic-type))))
 

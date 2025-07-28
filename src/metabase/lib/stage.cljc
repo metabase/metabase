@@ -22,12 +22,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.lib.card :as lib.card]
-   [metabase.lib.equality :as lib.equality]
-   [medley.core :as m]
-   [metabase.lib.ref :as lib.ref]
-   [clojure.set :as set]))
+   [metabase.util.malli :as mu]))
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
@@ -45,16 +40,9 @@
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
-    (when (or (= stage-type :mbql.stage/native)
-              source-card)
-      (when-let [metadata (or
-                           ;; if this stage has a source card and does not change the fields in any way (basically
-                           ;; an empty stage) then we can use the metadata returned by the Card (e.g. model metadata)
-                           (when (and source-card
-                                      (not ((some-fn :fields :breakout :aggregation :joins :expression)
-                                            (lib.util/query-stage query stage-number))))
-                             (lib.metadata.calculation/returned-columns query (lib.metadata/card query source-card)))
-                           (get-in stage [:lib/stage-metadata :columns]))]
+    (when-let [metadata (:lib/stage-metadata stage)]
+      (when (or (= stage-type :mbql.stage/native)
+                source-card)
         (let [source-type (case stage-type
                             :mbql.stage/native :source/native
                             :mbql.stage/mbql   :source/card)]
@@ -62,7 +50,7 @@
            (into []
                  (comp (map #(assoc % :lib/source source-type))
                        (lib.field.util/add-source-and-desired-aliases-xform query))
-                 metadata)))))))
+                 (:columns metadata))))))))
 
 (mu/defn- breakouts-columns :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   [query        :- ::lib.schema/query
@@ -289,64 +277,13 @@
           (remove duplicate-col?)
           join-cols)))
 
-(defn- model-metadata [query stage]
-  ;; this key is added by the [[metabase.query-processor.middleware.fetch-source-query]] middleware.
-  (when-let [card-id (:qp/stage-is-from-source-card stage)]
-    (when-let [card (lib.metadata/card query card-id)]
-      (when (= (:type card) :model)
-        (or
-         ;; prefer using card metadata if we can get it from the metadata provider; otherwise fall
-         ;; back to metadata attached to the stage.
-         (not-empty (lib.metadata.calculation/returned-columns query card))
-         (when-some [stage-cols (get-in stage [:lib/stage-metadata :columns])]
-           ;; make sure `:lib/source` is set to SOMETHING or we will have a really bad time.
-           (for [col stage-cols]
-             (u/assoc-default col :lib/source (case (:lib/type stage)
-                                                :mbql.stage/native :source/native
-                                                :mbql.stage/mbql   :source/previous-stage)))))))))
-
-(def ^:private model-propagated-keys
-  #{:lib/card-id
-    :lib/model-display-name
-    :lib/original-display-name
-    :lib/original-expression-name
-    :lib/original-fk-field-id
-    :lib/original-fk-field-name
-    :lib/original-fk-join-alias
-    :lib/original-join-alias
-    :lib/original-name
-    :lib/type
-    :base-type
-    :converted-timezone
-    :description
-    :display-name
-    :fingerprint
-    :id
-    :semantic-type
-    :table-id
-    :visibility-type})
-
-(defn- merge-model-metadata [query stage cols]
-  (if-let [model-cols (not-empty (model-metadata query stage))]
-    (mapv (fn [col]
-            (let [model-col (lib.equality/find-matching-column (lib.ref/ref col) model-cols)]
-              (merge
-               col
-               (when model-col
-                 (-> model-col
-                     lib.field.util/update-keys-for-col-from-previous-stage
-                     (assoc :lib/model-display-name (:display-name model-col))
-                     (u/select-non-nil-keys model-propagated-keys))))))
-          cols)
-    cols))
-
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
 (mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- ::lib.metadata.calculation/returned-columns
   [query                                  :- ::lib.schema/query
    stage-number                           :- :int
-   stage                                  :- ::lib.schema/stage
+   _stage                                 :- ::lib.schema/stage
    {:keys [include-remaps?], :as options} :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (or
    (existing-stage-metadata query stage-number)
@@ -377,8 +314,7 @@
                            source-cols
                            (expressions-metadata query stage-number {:include-late-exprs? true})
                            (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
-                           (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
-         cols (merge-model-metadata query stage cols)]
+                           (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))]
      (into []
            (comp (lib.field.util/add-source-and-desired-aliases-xform query)
                  ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break (see
