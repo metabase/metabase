@@ -14,6 +14,8 @@ Metabase lets you add and edit metadata for your tables and columns.
 
 The **Table metadata settings only affect the way Metabase displays the data. None of the settings change the data in your database.**
 
+Admins can grant access to these metadata settings to other groups. See [table metadata permissions](../permissions/data.md#manage-table-metadata-permissions).
+
 ## Table settings
 
 _Admin settings > Table metadata > Database > Table_
@@ -24,17 +26,17 @@ You can search for tables, or use the tree navigation to find each of your conne
 
 To edit a table's display name or description in the table metadata tab, click into the box that contains the current table name or description and edit it. Changes will be saved automatically once you click out of the box.
 
-Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) to help people find the right table for their use case.
+Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) and tooltips when view the table. Decscriptions help people find the right table for their use case.
 
 ### Table sync options
 
-Actions you can take to refresh the schema or field values.
+Actions you can take to refresh the schema or field values. For more, check out [syncs and scans](../databases/sync-scan.md).
 
 #### Sync table schema
 
 If you've made changes to this table in the underlying database that aren't showing up in Metabase yet, re-syncing the table schema can fix that.
 
-To update the values in your filter dropdown menus, refresh or reset the cached values. **Cache actions** include:
+To update the values in your filter dropdown menus, refresh or reset the cached values.
 
 #### Scan field values
 
@@ -42,7 +44,7 @@ Metabase uses these values to populate dropdown filters. You can also [scan valu
 
 #### Discard cached field values
 
-Clears cached values and stops them from showing up in your [filter widgets](#filtering).
+Clears cached values. Metabase will pull new values for display in your [filter widgets](#filtering).
 
 ### Table sorting
 
@@ -91,7 +93,7 @@ Click the preview button to see sample data from that field.
 
 _Admin settings > Table Metadata > Database > Table > Field_
 
-To scan or discard field values for a specific field, click on **Field values**.
+To scan or discard field values for a specific field, click on the **Field values** button. Metabase uses these values to populate dropdown menus in filter widgets. (To be clear, values aren't actually dropped from your database.)
 
 ## Field data
 
@@ -149,7 +151,7 @@ _Admin settings > Table Metadata > Database > Table > Field_
 
 ### Semantic type
 
-You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context. For example, you could set an Integer as a "Score" so people have a better idea what those integers indicate.
+You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context and enable additional functionality, such as displaying text as an image (if the text is an image URL. Another example: you could set an Integer as a "Score" so people have a better idea what those integers indicate.
 
 The semantic types you can choose from depend on the data type. If none of the options describe the values in the column, you can set this setting to "No semantic type".
 
@@ -162,18 +164,20 @@ _Admin settings > Table Metadata > Database > Table > Field_
 ### Field visibility
 
 - **Everywhere**: By default, users can see all of the columns in a table.
-- **Only in detail views**: This will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
+- **Only in detail views**: The detail view is the view you seen when you expand a single row in a table. This will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
 - **Do not include**: Columns won't show up in the query builder or data reference. You can set this option on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; **it's not a permissions feature**. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * FROM table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values.
 
 To restrict what data people can view and query, see [data permissions](../permissions/data.md).
 
 ### Filtering
 
-The **Filtering** setting changes a column's [filter widget](../dashboards/filters.md). Options include:
+The **Filtering** setting changes a column's default [filter widget](../dashboards/filters.md). Options include:
 
 - **Search box**: Display a search box and suggest autocompletions for values in that column that match the search term(s).
 - **A list of all values**: Display a search box, as well as a dropdown menu with checkboxes for values. If the number of distinct values exceeds 1000, however, Metabase will instead display a search box. See [Changing a search box filter to a dropdown filter](#changing-a-search-box-filter-to-a-dropdown-filter).
 - **Plain input box**: Display a search box, but don't suggest autocompletions.
+
+The settings here will also affect dashboard filters. For example, if you set this to plain input box, you won't be able to set up a dashboard filter that has a dropdown menu. See [dropdown list](../dashboards/filters.md#dropdown-list).
 
 #### Changing a search box filter to a dropdown filter
 
@@ -188,7 +192,7 @@ If you have columns with more than 1,000 distinct values, or columns with text-h
 
 ### Display values
 
-On numeric and foreign key types, this setting lets you map columns to display different values.
+You can map another column connected by a foreign key relationship, like mapping a `Product_ID` column to instead display the name of the product.
 
 #### Mapping values to foreign keys
 
