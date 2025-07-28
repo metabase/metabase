@@ -130,6 +130,10 @@ export function isComponentSettings(
 
   const listView = object.list_view as Record<string, unknown>;
 
+  if (typeof listView.view !== "string") {
+    return false;
+  }
+
   if (!isListViewTableSettings(listView.table)) {
     return false;
   }

@@ -52,6 +52,7 @@ export type Table = {
 
 export type ComponentSettings = {
   list_view: {
+    view: "table" | "list" | "gallery";
     table: ListViewTableSettings;
     list: ObjectViewSettings;
     gallery: ObjectViewSettings;

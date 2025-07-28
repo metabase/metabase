@@ -99,6 +99,7 @@ export function getDefaultComponentSettings(
 ): ComponentSettings {
   return {
     list_view: {
+      view: "table",
       table:
         table?.component_settings?.list_view.table ??
         getDefaultListViewTableSettings(table),
