@@ -287,7 +287,6 @@
           driver    (:engine db)]
 
       ;; -- * Authorization* --
-      ;; NOTE: policy should get subsumed by :scope
       ;; The action might not be database-centric (e.g., call a webhook)
       (when db
         (case policy
