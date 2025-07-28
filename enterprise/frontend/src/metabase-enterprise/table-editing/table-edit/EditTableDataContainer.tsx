@@ -31,7 +31,6 @@ import {
 } from "./use-table-expanded-update-row";
 import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableEditingStateAdHocQueryUpdateStrategy } from "./use-table-state-adhoc-query-update-strategy";
-import { useTableEditingUndoRedo } from "./use-table-undo-redo";
 
 type EditTableDataContainerProps = {
   params: {
@@ -81,12 +80,6 @@ export const EditTableDataContainer = ({
     [tableId],
   );
 
-  const { undo, redo, isUndoLoading, isRedoLoading } = useTableEditingUndoRedo({
-    tableId,
-    scope,
-    stateUpdateStrategy,
-  });
-
   const {
     isInserting,
     isUpdating,
@@ -104,8 +97,6 @@ export const EditTableDataContainer = ({
   const loadingOverlayProps = useEditTableLoadingOverlay({
     isDatasetLoading: isLoading,
     isDatasetFetching: isFetching,
-    isUndoLoading,
-    isRedoLoading,
   });
 
   const {
@@ -184,10 +175,6 @@ export const EditTableDataContainer = ({
         tableId={tableId}
         question={tableQuestion}
         onQuestionChange={handleTableQuestionChange}
-        isUndoLoading={isUndoLoading}
-        isRedoLoading={isRedoLoading}
-        onUndo={undo}
-        onRedo={redo}
         onCreate={openCreateRowModal}
         onRequestDeleteBulk={deleteBulkModalController.open}
         canDeleteBulk={selectedRowIndices.length > 0}
