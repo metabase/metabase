@@ -1,5 +1,6 @@
 import type {
   Card,
+  CreateReportRequest,
   Dataset,
   Report,
   ReportId,
@@ -32,7 +33,7 @@ export const reportApi = EnterpriseApi.injectEndpoints({
       providesTags: (result, error, { id }) =>
         !error ? [idTag("report", id)] : [],
     }),
-    createReport: builder.mutation<Report, Pick<Report, "name" | "document">>({
+    createReport: builder.mutation<Report, CreateReportRequest>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/report",

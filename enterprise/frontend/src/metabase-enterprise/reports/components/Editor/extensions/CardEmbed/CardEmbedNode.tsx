@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -15,6 +15,7 @@ import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
 import { useCreateReportSnapshotMutation } from "../../../../../api/report";
+import { useReportsSelector } from "../../../../redux-utils";
 import { openVizSettingsSidebar } from "../../../../reports.slice";
 import {
   getIsLoadingCard,
@@ -135,7 +136,7 @@ export const CardEmbedComponent = memo(
     let embedIndex = -1;
 
     if (editor && getPos) {
-      const currentPos = getPos();
+      const currentPos = getPos() ?? 0;
       let nodeCount = 0;
 
       // Count cardEmbed nodes that appear before this position
@@ -151,24 +152,24 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    const card = useSelector((state) => getReportCard(state, cardId));
-    const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+    const card = useReportsSelector((state) => getReportCard(state, cardId));
+    const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
     const isCurrentlyEditing =
       selectedEmbedIndex === embedIndex && embedIndex !== -1;
 
     // Use draft settings if this embed is currently being edited
-    const rawSeries = useSelector((state) =>
+    const rawSeries = useReportsSelector((state) =>
       isCurrentlyEditing
         ? getReportRawSeriesWithDraftSettings(state, cardId, snapshotId)
         : getReportRawSeries(state, cardId, snapshotId),
     );
-    const isLoadingCard = useSelector((state) =>
+    const isLoadingCard = useReportsSelector((state) =>
       getIsLoadingCard(state, cardId),
     );
-    const isLoadingDataset = useSelector((state) =>
+    const isLoadingDataset = useReportsSelector((state) =>
       getIsLoadingDataset(state, snapshotId),
     );
-    const metadata = useSelector(getMetadata);
+    const metadata = useReportsSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(customName || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
@@ -501,10 +502,12 @@ export const CardEmbedComponent = memo(
                   showTitle={false}
                 />
               </Box>
-              <Box className={styles.questionTimestamp}>
-                {t`Snapshot at:`}
-                <DateTime value={rawSeries[0].started_at} />
-              </Box>
+              {rawSeries[0].started_at && (
+                <Box className={styles.questionTimestamp}>
+                  {t`Snapshot at:`}
+                  <DateTime value={rawSeries[0].started_at} />
+                </Box>
+              )}
             </>
           ) : (
             <Box className={styles.loadingContainer}>

@@ -20,7 +20,6 @@ import {
 import type { CollectionId } from "metabase-types/api";
 
 import {
-  useEditorActions,
   useRegisterReportMetabotContext,
   useReportActions,
   useReportState,
@@ -90,7 +89,6 @@ export const ReportPage = ({
     commitAllPendingChanges,
     refreshAllData,
   } = useReportActions();
-  const { handleQuestionClick } = useEditorActions();
   useRegisterReportMetabotContext();
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes

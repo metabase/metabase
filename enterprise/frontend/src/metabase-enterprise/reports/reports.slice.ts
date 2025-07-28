@@ -1,4 +1,5 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { assocIn } from "icepick";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -196,7 +197,8 @@ const reportsSlice = createSlice({
             ...existingCard.visualization_settings,
           };
         }
-        state.cards[card.id] = card;
+        assocIn(state.cards, [card.id], card);
+
         state.loadingCards[card.id] = false;
       })
       .addCase(fetchReportCard.rejected, (state, action) => {
@@ -208,7 +210,9 @@ const reportsSlice = createSlice({
       .addCase(fetchReportSnapshot.fulfilled, (state, action) => {
         const dataset = action.payload;
         const snapshotId = action.meta.arg;
-        state.datasets[snapshotId] = dataset;
+
+        assocIn(state.datasets, [snapshotId], dataset);
+
         state.loadingDatasets[snapshotId] = false;
       })
       .addCase(fetchReportSnapshot.rejected, (state, action) => {
@@ -227,8 +231,9 @@ const reportsSlice = createSlice({
         const { card, dataset } = action.payload;
         const { snapshotId } = action.meta.arg;
 
-        state.cards[card.id] = card;
-        state.datasets[snapshotId] = dataset;
+        assocIn(state.cards, [card.id], card);
+        assocIn(state.datasets, [snapshotId], dataset);
+
         state.loadingCards[card.id] = false;
         state.loadingDatasets[snapshotId] = false;
       })
