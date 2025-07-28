@@ -640,11 +640,9 @@
                      :model/Table _ {:db_id db2-id :name "Table2"}
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
-                     :model/PermissionsGroup pg2 {}]
-
-        ;; Set up permissions: user has access to db1 and db2 via different groups, but not db3
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+                     :model/PermissionsGroup pg2 {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id pg1)}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id pg2)}]
 
         ;; Clear existing permissions for our test databases only
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
@@ -736,9 +734,8 @@
                      :model/Table {table1-id :id} {:db_id db-id :name "Table1"}
                      :model/Table {table2-id :id} {:db_id db-id :name "Table2"}
                      :model/Table _ {:db_id db-id :name "Table3"}
-                     :model/PermissionsGroup pg {}]
-
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+                     :model/PermissionsGroup pg {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id pg)}]
 
         ;; Clear existing permissions for our test database only
         (t2/delete! :model/DataPermissions :db_id db-id)
