@@ -101,7 +101,7 @@ export function getDefaultComponentSettings(
     list_view: {
       view: "table",
       table:
-        table?.component_settings?.list_view.table ??
+        table?.component_settings?.list_view?.table ??
         getDefaultListViewTableSettings(table),
       list: getDefaultObjectViewSettings(table),
       gallery: getDefaultObjectViewSettings(table),

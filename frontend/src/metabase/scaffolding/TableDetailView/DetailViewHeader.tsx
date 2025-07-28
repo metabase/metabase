@@ -15,6 +15,7 @@ interface DetailViewHeaderProps {
   onNextItemClick: () => void;
   onEditClick: () => void;
   onCloseClick: () => void;
+  onSaveClick?: () => void;
 }
 
 export function DetailViewHeader({
@@ -26,12 +27,13 @@ export function DetailViewHeader({
   onNextItemClick,
   onEditClick,
   onCloseClick,
+  onSaveClick,
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
   return (
     <Flex align="center" justify="space-between">
       <Group gap="sm">
         <Icon name="table" size={24} c="brand" />
-        <Text size="lg" fw={600}>
+        <Text component={Link} to={`/table/${table.id}`} size="lg" fw={600}>
           {table.display_name}
         </Text>
       </Group>
@@ -62,7 +64,10 @@ export function DetailViewHeader({
           size="compact-xs"
         />
         {isEdit ? (
-          <Button variant="subtle" onClick={onCloseClick}>{t`Cancel`}</Button>
+          <>
+            <Button variant="filled" onClick={onSaveClick}>{t`Save`}</Button>
+            <Button variant="subtle" onClick={onCloseClick}>{t`Cancel`}</Button>
+          </>
         ) : (
           <Button
             variant="subtle"

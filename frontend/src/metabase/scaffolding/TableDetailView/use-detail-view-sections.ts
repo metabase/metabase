@@ -1,6 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ObjectViewSectionSettings } from "metabase-types/api";
 
@@ -12,6 +12,11 @@ export function useDetailViewSections(
   initialSections: ObjectViewSectionSettings[],
 ) {
   const [sections, setSections] = useState(initialSections);
+
+  // Reset sections when initialSections changes after mutation
+  useEffect(() => {
+    setSections(initialSections);
+  }, [initialSections]);
 
   const createSection = () => {
     setSections([

@@ -18,7 +18,10 @@ import { push } from "react-router-redux";
 
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
-import { useGetTableQueryMetadataQuery } from "metabase/api/table";
+import {
+  useGetTableQueryMetadataQuery,
+  useUpdateTableComponentSettingsMutation,
+} from "metabase/api/table";
 import EditableText from "metabase/common/components/EditableText";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { formatValue } from "metabase/lib/formatting";
@@ -34,7 +37,10 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 
-import { getTableQuery } from "../TableListView/utils";
+import {
+  getDefaultObjectViewSettings,
+  getTableQuery,
+} from "../TableListView/utils";
 
 import { DetailViewHeader } from "./DetailViewHeader";
 import { DetailViewSidebar } from "./DetailViewSidebar";
@@ -92,6 +98,7 @@ interface TableDetailViewProps {
   sectionsOverride?: ObjectViewSectionSettings[];
 }
 
+const emptyColumns: DatasetColumn[] = [];
 export function TableDetailViewInner({
   tableId,
   rowId,
@@ -103,29 +110,39 @@ export function TableDetailViewInner({
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const dispatch = useDispatch();
+  const [updateTableComponentSettings] =
+    useUpdateTableComponentSettingsMutation();
 
-  const columns = dataset?.data?.results_metadata?.columns ?? [];
+  const columns = dataset?.data?.results_metadata?.columns ?? emptyColumns;
+
   const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
   const row = rows[currentRowIndex] || {};
 
+  const defaultSections = useMemo(
+    () => [getDefaultObjectViewSettings(table).sections[0]],
+    [table],
+  );
+
+  const initialSections = useMemo(() => {
+    const savedSettingsSections =
+      table?.component_settings?.object_view?.sections;
+
+    return savedSettingsSections && savedSettingsSections.length > 0
+      ? savedSettingsSections
+      : defaultSections;
+  }, [table?.component_settings?.object_view?.sections, defaultSections]);
+
   const {
-    sections: sections2,
+    sections,
     createSection,
     updateSection,
     removeSection,
     handleDragEnd,
-  } = useDetailViewSections([
-    {
-      id: 1,
-      title: "Info",
-      direction: "vertical",
-      fields: columns.map((col) => ({
-        field_id: col.id as number,
-        style: "normal",
-      })),
-    },
-  ]);
-  const sections = isListView ? (sectionsOverride ?? sections2) : sections2;
+  } = useDetailViewSections(initialSections);
+
+  const sectionsOrOverride = isListView
+    ? (sectionsOverride ?? sections)
+    : sections;
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -141,6 +158,31 @@ export function TableDetailViewInner({
   const handleCloseClick = useCallback(() => {
     dispatch(push(`/table/${tableId}/detail/${rowId}`));
   }, [tableId, rowId, dispatch]);
+
+  const handleSaveClick = useCallback(async () => {
+    try {
+      await updateTableComponentSettings({
+        id: tableId,
+        component_settings: {
+          ...(table?.component_settings ?? { list_view: {} }),
+          object_view: {
+            sections: sectionsOrOverride,
+          },
+        },
+      }).unwrap();
+
+      dispatch(push(`/table/${tableId}/detail/${rowId}`));
+    } catch (error) {
+      console.error("Failed to save component settings:", error);
+    }
+  }, [
+    updateTableComponentSettings,
+    tableId,
+    table?.component_settings,
+    sectionsOrOverride,
+    dispatch,
+    rowId,
+  ]);
 
   useEffect(() => {
     if (!rows.length) {
@@ -195,6 +237,7 @@ export function TableDetailViewInner({
             onPreviousItemClick={handleViewPreviousObjectDetail}
             onNextItemClick={handleViewNextObjectDetail}
             onCloseClick={handleCloseClick}
+            onSaveClick={handleSaveClick}
           />
         )}
         <Stack gap="md" mt="lg">
@@ -204,10 +247,10 @@ export function TableDetailViewInner({
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={sections.map((section) => section.id)}
+              items={sectionsOrOverride.map((section) => section.id)}
               strategy={verticalListSortingStrategy}
             >
-              {sections.map((section) => (
+              {sectionsOrOverride.map((section) => (
                 <SortableSection
                   key={section.id}
                   section={section}
@@ -223,7 +266,7 @@ export function TableDetailViewInner({
             </SortableContext>
           </DndContext>
         </Stack>
-        {isEdit && (
+        {isEdit && !isListView && (
           <Flex align="center" justify="center" w="100%" mt="md">
             <Button leftSection={<Icon name="add" />} onClick={createSection} />
           </Flex>
@@ -232,7 +275,7 @@ export function TableDetailViewInner({
       {isEdit && !isListView && (
         <DetailViewSidebar
           columns={columns}
-          sections={sections}
+          sections={sectionsOrOverride}
           onUpdateSection={updateSection}
         />
       )}
@@ -325,6 +368,7 @@ function ObjectViewSection({
         gap="md"
         mt="sm"
         px="xs"
+        className={S.SectionContent}
       >
         {section.fields.map(({ field_id, style }) => {
           const columnIndex = columns.findIndex(

@@ -17,3 +17,7 @@
     visibility: visible;
   }
 }
+
+.SectionContent {
+  overflow-x: auto;
+}
