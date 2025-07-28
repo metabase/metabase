@@ -1,5 +1,5 @@
-import { within } from "@storybook/test";
 import { Fragment } from "react";
+import { within } from "storybook/test";
 
 import { Group, Icon, Stack } from "metabase/ui";
 

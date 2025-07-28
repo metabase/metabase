@@ -1,5 +1,5 @@
 import { Stack } from "@mantine/core";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 
 import { Repeat } from "./Repeat";
 import { Skeleton, type SkeletonProps } from "./Skeleton";

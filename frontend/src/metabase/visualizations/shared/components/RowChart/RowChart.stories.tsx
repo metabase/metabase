@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 
 import { SdkVisualizationWrapper } from "__support__/storybook";
 import { color } from "metabase/lib/colors";
