@@ -82,7 +82,7 @@ const SdkIframeEmbedView = ({
   const rerenderKey = useParamRerenderKey(settings);
 
   return match(settings)
-    .with({ template: "exploration" }, (settings) => (
+    .with({ questionId: "new" }, (settings) => (
       <InteractiveQuestion
         questionId="new"
         height="100%"
