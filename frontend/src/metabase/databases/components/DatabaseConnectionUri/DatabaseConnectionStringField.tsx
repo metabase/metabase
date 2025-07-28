@@ -21,6 +21,7 @@ const supportedEngines = new Set([
   "Presto",
   "Snowflake",
   "Spark SQL",
+  "SQL Server",
 ]);
 
 export function DatabaseConnectionStringField({

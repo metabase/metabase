@@ -202,6 +202,15 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
+  "sql-server": new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>sqlserver)://" +
+      hostAndPort +
+      semicolonParams +
+      "$",
+    "i",
+  ),
 };
 
 export function parseConnectionUriRegex(

@@ -169,7 +169,37 @@ function mapSparkSqlValues(parsedValues: RegexFields) {
   if (fieldsMap.get("details.jdbc-flags")) {
     fieldsMap.set("details.advanced-options", true);
   }
-  console.log(fieldsMap);
+
+  return fieldsMap;
+}
+
+function mapSqlServerValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host],
+    ["details.port", parsedValues.port],
+    [
+      "details.dbname",
+      parsedValues.database ?? parsedValues.params?.databaseName,
+    ],
+    ["details.instance", parsedValues.params?.instanceName],
+    ["details.user", parsedValues.params?.username],
+    ["details.password", parsedValues.params?.password],
+    ["details.ssl", parsedValues.params?.encrypt],
+    [
+      "details.additional-options",
+      objectToString(parsedValues.params ?? {}, [
+        "databaseName",
+        "instanceName",
+        "username",
+        "password",
+        "encrypt",
+      ]),
+    ],
+  ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
 
   return fieldsMap;
 }
@@ -189,6 +219,7 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with("presto", () => mapPrestoValues(parsedValues))
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
     .with(P.union("sparksql", "hive2"), () => mapSparkSqlValues(parsedValues))
+    .with("sqlserver", () => mapSqlServerValues(parsedValues))
     .otherwise(() => new Map());
 }
 

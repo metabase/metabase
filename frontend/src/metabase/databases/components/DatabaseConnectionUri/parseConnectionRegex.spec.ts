@@ -308,3 +308,26 @@ describe("parseConnectionUriRegex - Spark SQL", () => {
     );
   });
 });
+
+describe("parseConnectionUriRegex - SQL Server", () => {
+  it("should parse a SQL Server connection string", () => {
+    const connectionString =
+      "jdbc:sqlserver://localhost:1433;encrypt=true;databaseName=AdventureWorks;integratedSecurity=true;username=john;password=password";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          encrypt: "true",
+          databaseName: "AdventureWorks",
+          integratedSecurity: "true",
+          username: "john",
+          password: "password",
+        },
+        host: "localhost",
+        port: "1433",
+        protocol: "sqlserver",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+});
