@@ -37,6 +37,7 @@ export function DatabaseReplicationSection({
 
   const engineInfo = getEngineInfo(database.engine);
 
+  // button below will need to open the modal
   return (
     <DatabaseInfoSection
       condensed

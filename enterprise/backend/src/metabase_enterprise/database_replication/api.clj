@@ -61,6 +61,8 @@
       (database-replication.settings/database-replication-connections! (dissoc conns (kw-id database-id)))
       nil)))
 
+;; preview endpoint will be around here
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-replication` routes."
   (api/+check-superuser
