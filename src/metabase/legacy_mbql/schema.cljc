@@ -1360,15 +1360,23 @@
   "Schema for a valid value for a `:source-query` clause."
   [:ref ::SourceQuery])
 
+(defn- lib-normalize-legacy-column
+  "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
+  [m]
+  (when (map? m)
+    (let [m (lib.schema.common/normalize-map-no-kebab-case m)]
+      ;; remove deprecated `:ident` key.
+      (dissoc m :ident))))
+
 (mr/def ::legacy-column-metadata
   "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
   `:metabase.lib.schema.metadata/column`."
   [:and
    [:map
     ;; this schema is allowed for Card `result_metadata` in Lib so `:decode/normalize` is used for those Lib use cases.
-    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+    {:decode/normalize lib-normalize-legacy-column}
     [:base_type          ::lib.schema.common/base-type]
-    [:display_name       ::lib.schema.common/non-blank-string]
+    [:display_name       :string]
     [:name               :string]
     [:effective_type     {:optional true} ::lib.schema.common/base-type]
     [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
@@ -1500,13 +1508,6 @@
   Driver implementations: This is guaranteed to be present after pre-processing."}
      ::lib.schema.join/alias]
 
-    [:ident
-     {:optional true
-      :description
-      "An opaque string used as a unique identifier for this join clause, even if it evolves. This string is randomly
-      generated when a join clause is created, so it can never be confused with another join of the same table."}
-     ::Ident]
-
     [:fk-field-id
      {:optional true
       :description "Mostly used only internally. When a join is implicitly generated via a `:field` clause with
@@ -1562,31 +1563,6 @@
   [:map
    [:page  PositiveInt]
    [:items PositiveInt]])
-
-(mr/def ::Ident
-  "Unique identifier string for new `:column` refs. The new refs aren't used in legacy MBQL (currently) but the
-  idents for column-introducing new clauses (joins, aggregations, breakouts, expressions) are randomly generated when
-  the clauses are created, so the idents must be preserved in legacy MBQL.
-
-  These are opaque strings under the initial design; I've made them a separate schema for documentation and
-  future-proofing."
-  [:or ::lib.schema.common/non-blank-string :keyword])
-
-(mr/def ::IndexedIdents
-  "Aggregations and breakouts get their `:ident` in legacy MBQL from a separate map, which maps the index of the
-  aggregation or breakout to its ident.
-
-  (That's super unstable, but legacy MBQL is never manipulated anymore. We just need a clean round trip through
-  legacy, so indexes work fine. Idents are stored directly on the clauses in pMBQL.)"
-  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
-  ;; queries, but I think we don't apply this schema until normalization.
-  [:map-of ::lib.schema.common/int-greater-than-or-equal-to-zero [:maybe ::Ident]])
-
-(mr/def ::ExpressionIdents
-  "Expressions get their `:ident` in legacy MBQL from a separate map, which maps expression names to idents."
-  ;; TODO: Make the ::Ident values strict once idents are always-populated? That only works for post-normalization
-  ;; queries, but I think we don't apply this schema until normalization.
-  [:map-of ::lib.schema.common/non-blank-string [:maybe ::Ident]])
 
 (mr/def ::MBQLQuery
   [:and

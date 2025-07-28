@@ -88,6 +88,23 @@ export function has24HourModeSetting() {
   return timeStyle === TIME_FORMAT_24_HOUR;
 }
 
+export function parseTime(value: moment.Moment | string) {
+  if (moment.isMoment(value)) {
+    return value;
+  } else if (typeof value === "string") {
+    // removing the timezone part if it exists, so we can parse the time correctly
+    return moment(value.split(/[+-]/)[0], [
+      "HH:mm:ss.SSSZ",
+      "HH:mm:ss.SSS",
+      "HH:mm:ss",
+      "HH:mm:ss",
+      "HH:mm",
+    ]);
+  }
+
+  return moment.utc(value);
+}
+
 type NUMERIC_UNIT_FORMATS_KEY_TYPE =
   | "minute-of-hour"
   | "hour-of-day"

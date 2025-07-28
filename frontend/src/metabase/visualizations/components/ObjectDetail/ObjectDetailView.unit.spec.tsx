@@ -524,9 +524,8 @@ async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
 }
 
 /**
- * There is no loading state for useActionListQuery & useDatabaseListQuery
- * in ObjectDetail component, so there is no easy way to wait for relevant
- * API requests to finish. This function relies on DOM changes instead.
+ * There is no loading indicator in ObjectDetail component, so there is no easy way
+ * to wait for relevant API requests to finish. This function relies on DOM changes instead.
  */
 async function findActionsMenu() {
   try {

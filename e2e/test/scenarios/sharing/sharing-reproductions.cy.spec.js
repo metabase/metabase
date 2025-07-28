@@ -506,10 +506,7 @@ describe("issue 24223", () => {
       `${admin.first_name} ${admin.last_name}`,
     ]);
     cy.findByTestId("subscription-parameters-section").within(() => {
-      cy.findAllByTestId("field-set-content")
-        .filter(":contains(Doohickey)")
-        .icon("close")
-        .click();
+      H.filterWidget({ name: "Category" }).icon("close").click();
     });
 
     H.sidebar().button("Done").click();

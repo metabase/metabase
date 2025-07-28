@@ -13,6 +13,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -809,7 +810,10 @@
                       "2018-05-15T20:25:48.517Z"]
                      (first (mt/rows result))))))
           (testing "Ok, add remapping and it should still work"
-            (mt/with-column-remappings [reviews.product_id products.title]
+            (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/id :reviews :product_id)
+                                              (mt/id :products :title))
               (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
                 (is (=? {:status    :completed
                          :row_count 8}
@@ -902,7 +906,10 @@
                                    :row_count 6}
                                   (qp/process-query drill-thru-query)))))))]
             (test-drill-thru)
-            (mt/with-column-remappings [orders.product_id products.title]
+            (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                              (mt/application-database-metadata-provider (mt/id))
+                                              (mt/id :orders :product_id)
+                                              (mt/id :products :title))
               (test-drill-thru))))))))
 
 (deftest drill-thru-on-implicit-joins-test
@@ -949,7 +956,10 @@
                       (testing "as sandboxed user"
                         (test-drill-thru-query)))))]
           (do-tests)
-          (mt/with-column-remappings [orders.product_id products.title]
+          (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                            (mt/application-database-metadata-provider (mt/id))
+                                            (mt/id :orders :product_id)
+                                            (mt/id :products :title))
             (do-tests)))))))
 
 (defn- set-query-metadata-for-gtap-card!
@@ -965,7 +975,6 @@
                       (assoc :parameters [{:type   :category
                                            :target [:variable [:template-tag param-name]]
                                            :value  param-value}])
-                      (assoc-in [:info :card-entity-id] (:entity_id card))
                       qp/process-query))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
@@ -978,7 +987,10 @@
                                                                  {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
                                                                   :products {:remappings {"user_cat" [:dimension $products.category]}}})
                                                    :attributes {"user_id" 1, "user_cat" "Widget"}}
-                                   (mt/with-column-remappings [orders.product_id products.title]
+                                   (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                                                     (mt/application-database-metadata-provider (mt/id))
+                                                                     (mt/id :orders :product_id)
+                                                                     (mt/id :products :title))
                                      (mt/run-mbql-query orders)))]
         (testing "Sanity check: merged results metadata should not get normalized incorrectly"
           (is (=? {:type {:type/Number {}}}
@@ -1009,7 +1021,10 @@
                 (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
               (when products-gtap-card-has-metadata?
                 (set-query-metadata-for-gtap-card! &group :products "cat" "Widget"))
-              (mt/with-column-remappings [orders.product_id products.title]
+              (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                                (mt/application-database-metadata-provider (mt/id))
+                                                (mt/id :orders :product_id)
+                                                (mt/id :products :title))
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
                             (-> (m/filter-keys simple-keyword? col)

@@ -137,9 +137,19 @@ export function formatFrame(frame: "first" | "last" | "mid") {
   }
 }
 
-export function parseTime(value: string) {
+export function parseTime(value: string | Dayjs) {
+  if (dayjs.isDayjs(value)) {
+    return value;
+  }
+
   if (typeof value === "string") {
-    return dayjs(value, ["HH:mm:SS", "HH:mm"]);
+    return dayjs(value.split(/[+-]/)[0], [
+      "HH:mm:ss.SSSZ",
+      "HH:mm:ss.SSS",
+      "HH:mm:ss",
+      "HH:mm:ss",
+      "HH:mm",
+    ]);
   }
 
   return dayjs.utc(value);
