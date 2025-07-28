@@ -9,7 +9,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
-const getIframeContent = (iframeIndex = 0) => {
+const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
   return cy
     .get("iframe")
     .should("be.visible")
@@ -17,6 +17,14 @@ const getIframeContent = (iframeIndex = 0) => {
     .should("exist")
     .its("body")
     .should("not.be.empty");
+};
+
+const waitForIframesToLoad = (n: number) => {
+  cy.get("iframe").should("have.length", n);
+
+  cy.get("iframe").each(($iframe) => {
+    cy.wrap($iframe).should("have.attr", "data-iframe-loaded", "true");
+  });
 };
 
 describe("scenarios > embedding > sdk iframe embedding > custom elements api", () => {
@@ -37,7 +45,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" />
       `);
 
-      getIframeContent().should("contain", "Orders in a dashboard");
+      getSimpleEmbedIframeContent().should("contain", "Orders in a dashboard");
     });
 
     it("should allow setting initial parameters and hidden parameters via `initial-parameters` and `hidden-parameters` attributes", () => {
@@ -72,7 +80,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
           <metabase-dashboard dashboard-id="${dashboardId}" initial-parameters='{"id": "123"}' hidden-parameters='["product_id"]' />
           `);
 
-          getIframeContent()
+          getSimpleEmbedIframeContent()
             .findByTestId("dashboard-parameters-widget-container")
             .within(() => {
               cy.findByLabelText("ID").should("contain", "123");
@@ -80,7 +88,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
             });
 
           // make sure the filter is applied
-          getIframeContent().findByText("1 row").should("exist");
+          getSimpleEmbedIframeContent().findByText("1 row").should("exist");
         });
       });
     });
@@ -96,7 +104,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText("User ID")
         // the color is applied via rgb, not via hex
         .should("have.css", "color", "rgb(18, 52, 86)");
@@ -109,7 +117,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText("Orders in a dashboard")
         .should("be.visible");
     });
@@ -121,7 +129,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="true" />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText("Orders in a dashboard")
         .should("be.visible");
     });
@@ -133,7 +141,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-title="false" />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText("Orders in a dashboard")
         .should("not.exist");
     });
@@ -145,7 +153,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByLabelText("Download as PDF")
         .should("be.visible");
     });
@@ -157,7 +165,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" with-downloads="false" />
       `);
 
-      getIframeContent().findByLabelText("Download as PDF").should("not.exist");
+      getSimpleEmbedIframeContent()
+        .findByLabelText("Download as PDF")
+        .should("not.exist");
     });
 
     it("should enable drill-through when drills is true", () => {
@@ -167,12 +177,12 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findAllByText("37.65")
         .first()
         .should("be.visible")
         .click();
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("be.visible");
     });
@@ -184,12 +194,12 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills="false" />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findAllByText("37.65")
         .first()
         .should("be.visible")
         .click();
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("not.exist");
     });
@@ -205,8 +215,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" />
       `);
 
-      getIframeContent(0).findByText("Orders").should("exist");
-      getIframeContent(1).findByText("Orders, Count").should("exist");
+      getSimpleEmbedIframeContent(0).findByText("Orders").should("exist");
     });
 
     it("should allow rendering two different questions in the same page", () => {
@@ -226,8 +235,14 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       </div>
       `);
 
-      getIframeContent(0).findByText("Orders").should("exist");
-      getIframeContent(1).findByText("Orders, Count").should("exist");
+      waitForIframesToLoad(2);
+
+      getSimpleEmbedIframeContent(0)
+        .findByText("Orders")
+        .should("exist", { timeout: 10000 });
+      getSimpleEmbedIframeContent(1)
+        .findByText("Orders, Count")
+        .should("exist", { timeout: 10000 });
     });
 
     it("should show title when with-title is true", () => {
@@ -237,7 +252,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title />
       `);
 
-      getIframeContent().findByText("Orders").should("be.visible");
+      getSimpleEmbedIframeContent().findByText("Orders").should("be.visible");
     });
 
     it("should hide title when with-title is false", () => {
@@ -247,7 +262,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-title="false" />
       `);
 
-      getIframeContent().findByText("Orders").should("not.exist");
+      getSimpleEmbedIframeContent().findByText("Orders").should("not.exist");
     });
 
     it("should show download button when with-downloads is true", () => {
@@ -257,7 +272,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads />
       `);
 
-      getIframeContent().findByLabelText("download icon").should("be.visible");
+      getSimpleEmbedIframeContent()
+        .findByLabelText("download icon")
+        .should("be.visible");
     });
 
     it("should hide download button when with-downloads is false", () => {
@@ -267,7 +284,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" with-downloads="false" />
       `);
 
-      getIframeContent().findByLabelText("download icon").should("not.exist");
+      getSimpleEmbedIframeContent()
+        .findByLabelText("download icon")
+        .should("not.exist");
     });
 
     it("should enable drill-through when drills is true", () => {
@@ -277,12 +296,12 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" drills />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findAllByText("37.65")
         .first()
         .should("be.visible")
         .click();
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("be.visible");
     });
@@ -294,12 +313,12 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
       `);
 
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findAllByText("37.65")
         .first()
         .should("be.visible")
         .click();
-      getIframeContent()
+      getSimpleEmbedIframeContent()
         .findByText(/Filter by this value/)
         .should("not.exist");
     });
@@ -331,11 +350,14 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         `);
 
         cy.log("Check if the dashboard is loaded");
-        getIframeContent().should("contain", "Orders in a dashboard");
+        getSimpleEmbedIframeContent().should(
+          "contain",
+          "Orders in a dashboard",
+        );
 
         cy.log("Check that the initial theme is applied");
 
-        getIframeContent()
+        getSimpleEmbedIframeContent()
           .findByText("User ID")
           .should("have.css", "color", "rgb(255, 0, 0)");
 
@@ -345,7 +367,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         // eslint-disable-next-line no-unscoped-text-selectors -- this is not the real app
         cy.findByText("Change theme").click();
 
-        getIframeContent()
+        getSimpleEmbedIframeContent()
           .findByText("User ID")
           .should("have.css", "color", "rgb(0, 255, 0)");
       });

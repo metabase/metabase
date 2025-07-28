@@ -321,6 +321,9 @@ class MetabaseEmbed {
       }
 
       this._isEmbedReady = true;
+      if (this.iframe) {
+        this.iframe.setAttribute("data-iframe-loaded", "true");
+      }
       this._setEmbedSettings(this._settings);
       this._emitEvent({ type: "ready" });
     }
