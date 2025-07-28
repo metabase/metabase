@@ -20,6 +20,7 @@ export function ModalParameterActionInput(props: ParameterActionInputProps) {
     ...rest.inputProps,
     placeholder,
     disabled,
+    "data-testid": `${parameter.display_name}-field-input`,
   };
 
   return (
