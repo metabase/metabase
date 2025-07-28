@@ -24,6 +24,7 @@ const supportedEngines = new Set([
   "Spark SQL",
   "SQL Server",
   "Starburst (Trino)",
+  "Vertica",
 ]);
 
 export function DatabaseConnectionStringField({
