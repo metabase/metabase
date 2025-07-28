@@ -9,7 +9,7 @@ import type { DictionaryArray, Series } from "metabase-types/api";
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
 export type TranslateContentStringFunction = <
-  MsgidType = string | null | undefined,
+  MsgidType = string | boolean | null | undefined,
 >(
   dictionary: DictionaryArray | undefined,
   locale: string | undefined,
@@ -26,15 +26,18 @@ export type TranslateContentStringFunction = <
 export const translateContentString: TranslateContentStringFunction = (
   dictionary,
   locale,
-  msgid,
+  rawMsgid,
 ) => {
   if (!locale) {
-    return msgid;
+    return rawMsgid;
   }
 
-  if (typeof msgid !== "string") {
-    return msgid;
+  if (typeof rawMsgid !== "string" && typeof rawMsgid !== "boolean") {
+    return rawMsgid;
   }
+
+  // Boolean values are matched against the dictionary as strings
+  const msgid = typeof rawMsgid === "boolean" ? rawMsgid.toString() : rawMsgid;
 
   if (!msgid.trim()) {
     return msgid;
