@@ -88,15 +88,14 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    field-id              :- ::lib.schema.id/field]
   (let [col (lib.metadata/field metadata-providerable field-id)]
-    (when (:lib/external-remap col)
-      (let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
-        (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
-          {:id                        remap-id
-           :name                      remap-name
-           :field-id                  (:id col)
-           :field-name                (:name col)
-           :human-readable-field-id   remap-field-id
-           :human-readable-field-name (:name remap-field)})))))
+    (when-let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
+      (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
+        {:id                        remap-id
+         :name                      remap-name
+         :field-id                  (:id col)
+         :field-name                (:name col)
+         :human-readable-field-id   remap-field-id
+         :human-readable-field-name (:name remap-field)}))))
 
 (mr/def ::remap-info
   [:and
@@ -111,7 +110,7 @@
                               :any]]]
     [:dimension             ::external-remapping]]
    [:fn
-    {:error/message "if the original field clause had a join alias, the new clause should as well"}
+    {:error/message "the new field clause should have the same join alias as the original field clause"}
     (fn [{:keys [original-field-clause new-field-clause]}]
       (= (lib/current-join-alias original-field-clause)
          (lib/current-join-alias new-field-clause)))]])
@@ -140,21 +139,21 @@
             (keep (fn [{:keys [id], :as col}]
                     (when-let [dimension (when (pos-int? id)
                                            (field-id->remapping-dimension query id))]
-                      {:original-field-clause (or (:lib/original-ref col)
-                                                  (lib/ref col))
-                       :new-field-clause      [:field
-                                               (merge
-                                                {:lib/uuid                (str (random-uuid))
-                                                 :source-field            id
-                                                 ::new-field-dimension-id (u/the-id dimension)}
-                                                (when (lib/current-join-alias (or (:lib/original-ref col)
-                                                                                  (lib/ref col)))
-                                                  (when-let [join-alias (:metabase.lib.join/join-alias col)]
-                                                    {:join-alias join-alias})))
-                                               (u/the-id (:human-readable-field-id dimension))]
-                       :dimension             (assoc dimension
-                                                     :field-name                (-> dimension :field-id unique-name)
-                                                     :human-readable-field-name (-> dimension :human-readable-field-id unique-name))}))))
+                      (let [original-ref (or (:lib/original-ref col)
+                                             (lib/ref col))]
+                        {:original-field-clause original-ref
+                         :new-field-clause      [:field
+                                                 (merge
+                                                  {:lib/uuid                (str (random-uuid))
+                                                   :source-field            id
+                                                   ::new-field-dimension-id (u/the-id dimension)}
+                                                  ;; if the original ref had a join alias, then the new one should as well
+                                                  (when-let [join-alias (lib/current-join-alias original-ref)]
+                                                    {:join-alias join-alias}))
+                                                 (u/the-id (:human-readable-field-id dimension))]
+                         :dimension             (assoc dimension
+                                                       :field-name                (-> dimension :field-id unique-name)
+                                                       :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))
            (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)))))
 
 (mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- ::lib.schema/fields

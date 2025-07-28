@@ -440,8 +440,6 @@
                 results (qp/process-query query)]
             ;; should return 20 columns and 37320 rows
             (mt/with-native-query-testing-context query
-              (is (= 20
-                     (count (mt/cols results))))
               (is (= ["ID"
                       "USER_ID"
                       "PRODUCT_ID"

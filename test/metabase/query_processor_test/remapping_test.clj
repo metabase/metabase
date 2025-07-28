@@ -452,7 +452,7 @@
                     :filter   [:between $id 2 75]
                     :limit    3}))
           results (qp/process-query query)]
-      (is (= [ ;; 3 columns from top-level `:fields`
+      (is (= [;; 3 columns from top-level `:fields`
               "CATEGORY_ID"
               "ID"
               "NAME"
