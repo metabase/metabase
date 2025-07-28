@@ -1,11 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  ActionIcon,
   Box,
   Button,
   Group,
@@ -24,6 +25,7 @@ import type {
 } from "metabase-types/api";
 
 import { useReportActions } from "../hooks";
+import { useReportsSelector } from "../redux-utils";
 import {
   clearDraftState,
   updateVisualizationType,
@@ -53,24 +55,26 @@ export const EmbedQuestionSettingsSidebar = ({
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
-  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const hasDraftChanges = useSelector(getHasDraftChanges);
+  const metadata = useReportsSelector(getMetadata);
+  const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
+  const hasDraftChanges = useReportsSelector(getHasDraftChanges);
   const { commitVisualizationChanges } = useReportActions();
 
   // Use card with draft settings merged for the sidebar
-  const card = useSelector((state) =>
+  const card = useReportsSelector((state) =>
     selectedEmbedIndex !== null
       ? getReportCardWithDraftSettings(state, cardId)
       : getReportCard(state, cardId),
   );
-  const series = useSelector((state) =>
+  const series = useReportsSelector((state) =>
     selectedEmbedIndex !== null
       ? getReportRawSeriesWithDraftSettings(state, cardId, snapshotId)
       : null,
   );
-  const isCardLoading = useSelector((state) => getIsLoadingCard(state, cardId));
-  const isResultsLoading = useSelector((state) =>
+  const isCardLoading = useReportsSelector((state) =>
+    getIsLoadingCard(state, cardId),
+  );
+  const isResultsLoading = useReportsSelector((state) =>
     getIsLoadingDataset(state, snapshotId),
   );
 
@@ -80,8 +84,9 @@ export const EmbedQuestionSettingsSidebar = ({
   );
 
   const dataset =
-    useSelector((state) => getReportRawSeries(state, cardId, snapshotId))?.[0]
-      ?.data || null;
+    useReportsSelector((state) =>
+      getReportRawSeries(state, cardId, snapshotId),
+    )?.[0]?.data || null;
 
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
     return getSensibleVisualizations({ result: dataset });
@@ -190,6 +195,7 @@ export const EmbedQuestionSettingsSidebar = ({
       style={{
         height: "100%",
         display: "flex",
+        alignItems: "stretch",
         flexDirection: "column",
         backgroundColor: "var(--mb-color-bg-white)",
       }}
@@ -200,53 +206,66 @@ export const EmbedQuestionSettingsSidebar = ({
           backgroundColor: "var(--mb-color-bg-white)",
         }}
       >
-        <Group align="center" p="md">
-          <Text size="md" fw="bold">
-            {t`Visualize as`}
-          </Text>
-          <Menu position="bottom-start">
-            <Menu.Target>
-              <Button
-                variant="default"
-                disabled={!selectedElem}
-                rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
-                leftSection={
-                  selectedElem?.iconName ? (
-                    <Icon name={selectedElem.iconName} />
-                  ) : null
-                }
-                justify="space-between"
-              >
-                {selectedElem?.label}
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {sensibleItems.map(({ iconName, label, value }, index) => (
-                <Menu.Item
-                  key={`${value}/${index}`}
-                  onClick={() => handleVisualizationTypeChange(value)}
-                  leftSection={iconName ? <Icon name={iconName} /> : null}
+        <Group w="100%" justify="space-between" align="flex-start">
+          <Group align="center" p="md">
+            <Text size="md" fw="bold">{t`Visualize as`}</Text>
+            <Menu position="bottom-start">
+              <Menu.Target>
+                <Button
+                  variant="default"
+                  disabled={!selectedElem}
+                  rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
+                  leftSection={
+                    selectedElem?.iconName ? (
+                      <Icon name={selectedElem.iconName} />
+                    ) : null
+                  }
+                  justify="space-between"
                 >
-                  {label}
-                </Menu.Item>
-              ))}
+                  {selectedElem?.label}
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {sensibleItems.map(({ iconName, label, value }, index) => (
+                  <Menu.Item
+                    key={`${value}/${index}`}
+                    onClick={() => handleVisualizationTypeChange(value)}
+                    leftSection={iconName ? <Icon name={iconName} /> : null}
+                  >
+                    {label}
+                  </Menu.Item>
+                ))}
 
-              {nonsensibleItems.length > 0 && (
-                <>
-                  <Menu.Label>{t`Other charts`}</Menu.Label>
-                  {nonsensibleItems.map(({ iconName, label, value }, index) => (
-                    <Menu.Item
-                      key={`${value}/${index}`}
-                      onClick={() => handleVisualizationTypeChange(value)}
-                      leftSection={iconName ? <Icon name={iconName} /> : null}
-                    >
-                      {label}
-                    </Menu.Item>
-                  ))}
-                </>
-              )}
-            </Menu.Dropdown>
-          </Menu>
+                {nonsensibleItems.length > 0 && (
+                  <>
+                    <Menu.Label>{t`Other charts`}</Menu.Label>
+                    {nonsensibleItems.map(
+                      ({ iconName, label, value }, index) => (
+                        <Menu.Item
+                          key={`${value}/${index}`}
+                          onClick={() => handleVisualizationTypeChange(value)}
+                          leftSection={
+                            iconName ? <Icon name={iconName} /> : null
+                          }
+                        >
+                          {label}
+                        </Menu.Item>
+                      ),
+                    )}
+                  </>
+                )}
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+
+          <ActionIcon
+            mt="1rem"
+            mr="1rem"
+            color="text-dark"
+            onClick={handleDone}
+          >
+            <Icon name="close" />
+          </ActionIcon>
         </Group>
       </Box>
       <Box style={{ flex: 1, overflow: "auto" }}>

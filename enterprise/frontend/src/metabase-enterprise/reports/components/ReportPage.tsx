@@ -10,7 +10,7 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { ActionIcon, Box, Button, Icon, Loader, Menu } from "metabase/ui";
 import {
   useCreateReportMutation,
@@ -25,17 +25,13 @@ import {
   useReportActions,
   useReportState,
 } from "../hooks";
+import { useReportsSelector } from "../redux-utils";
 import { closeSidebar } from "../reports.slice";
-import {
-  getIsSidebarOpen,
-  getSelectedEmbedIndex,
-  getSelectedQuestionId,
-} from "../selectors";
+import { getSelectedEmbedIndex, getSelectedQuestionId } from "../selectors";
 
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
-import { UsedContentSidebar } from "./UsedContent";
 import { VersionSelect } from "./VersionSelect";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
@@ -49,9 +45,8 @@ export const ReportPage = ({
   route: Route;
 }) => {
   const dispatch = useDispatch();
-  const selectedQuestionId = useSelector(getSelectedQuestionId);
-  const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const isSidebarOpen = useSelector(getIsSidebarOpen);
+  const selectedQuestionId = useReportsSelector(getSelectedQuestionId);
+  const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentEditorContent, setCurrentEditorContent] = useState<
@@ -250,25 +245,6 @@ export const ReportPage = ({
     };
   }, [hasUnsavedChanges, handleSave, reportId, showCollectionPicker]);
 
-  const handleToggleSidebar = useCallback(async () => {
-    // If we're closing the sidebar with a selected embed, commit any pending changes
-    if (isSidebarOpen && selectedEmbedIndex !== null) {
-      await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
-
-      // When closing sidebar with a selected question, clear editor selection first
-      if (editorInstance) {
-        editorInstance.commands.focus("end");
-      }
-    }
-    dispatch(closeSidebar());
-  }, [
-    dispatch,
-    isSidebarOpen,
-    selectedEmbedIndex,
-    editorInstance,
-    commitVisualizationChanges,
-  ]);
-
   const handleQuestionSelect = useCallback(async () => {
     if (selectedEmbedIndex !== null) {
       await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
@@ -306,32 +282,6 @@ export const ReportPage = ({
     <Box className={styles.reportPage}>
       <Box className={styles.contentArea}>
         <Box className={styles.mainContent}>
-          <Box
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 100,
-              display: "flex",
-              justifyContent: "flex-end",
-              padding: "0.5rem",
-              pointerEvents: "none",
-            }}
-          >
-            <ActionIcon
-              variant="subtle"
-              size="md"
-              onClick={handleToggleSidebar}
-              aria-label={isSidebarOpen ? t`Hide sidebar` : t`Show sidebar`}
-              style={{
-                pointerEvents: "auto",
-              }}
-            >
-              <Icon
-                name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"}
-                size={20}
-              />
-            </ActionIcon>
-          </Box>
           <Box className={styles.documentContainer}>
             <Box className={styles.header} mt="xl" pt="xl">
               <Box>
@@ -413,24 +363,17 @@ export const ReportPage = ({
           </Box>
         </Box>
 
-        {isSidebarOpen && (
+        {selectedQuestionId && selectedEmbedIndex !== null && (
           <Box className={styles.sidebar}>
-            {selectedQuestionId && selectedEmbedIndex !== null ? (
-              <EmbedQuestionSettingsSidebar
-                cardId={selectedQuestionId}
-                snapshotId={cardEmbeds[selectedEmbedIndex]?.snapshotId || 0}
-                onClose={() => dispatch(closeSidebar())}
-                editorInstance={editorInstance}
-              />
-            ) : (
-              <UsedContentSidebar
-                onQuestionClick={(questionId) =>
-                  handleQuestionClick(questionId, editorInstance)
-                }
-              />
-            )}
+            <EmbedQuestionSettingsSidebar
+              cardId={selectedQuestionId}
+              snapshotId={cardEmbeds[selectedEmbedIndex]?.snapshotId || 0}
+              onClose={() => dispatch(closeSidebar())}
+              editorInstance={editorInstance}
+            />
           </Box>
         )}
+
         {isShowingCollectionPicker && (
           <CollectionPickerModal
             title={t`Where should we save this report?`}

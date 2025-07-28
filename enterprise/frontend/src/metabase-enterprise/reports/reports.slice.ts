@@ -20,7 +20,6 @@ export interface ReportsState {
   loadingCards: Record<CardId, boolean>;
   loadingDatasets: Record<number, boolean>;
   selectedEmbedIndex: number | null; // Index in cardEmbeds array
-  isSidebarOpen: boolean;
   // Draft state for currently editing embed
   draftCard: Card | null;
   cardEmbeds: CardEmbedRef[];
@@ -32,7 +31,6 @@ const initialState: ReportsState = {
   loadingCards: {},
   loadingDatasets: {},
   selectedEmbedIndex: null,
-  isSidebarOpen: false,
   draftCard: null,
   cardEmbeds: [],
 };
@@ -117,18 +115,11 @@ const reportsSlice = createSlice({
       action: PayloadAction<{ embedIndex: number }>,
     ) => {
       state.selectedEmbedIndex = action.payload.embedIndex;
-      state.isSidebarOpen = true;
       // Initialize draftCard from the selected embed's card
       const embed = state.cardEmbeds[action.payload.embedIndex];
       if (embed && state.cards[embed.id]) {
         state.draftCard = { ...state.cards[embed.id] };
       }
-    },
-    toggleSidebar: (state) => {
-      state.isSidebarOpen = !state.isSidebarOpen;
-    },
-    setSidebarOpen: (state, action: PayloadAction<boolean>) => {
-      state.isSidebarOpen = action.payload;
     },
     updateVizSettings: (
       state,
@@ -158,7 +149,6 @@ const reportsSlice = createSlice({
       state.selectedEmbedIndex = null;
     },
     closeSidebar: (state) => {
-      state.isSidebarOpen = false;
       state.selectedEmbedIndex = null;
       state.draftCard = null;
     },
@@ -252,8 +242,6 @@ const reportsSlice = createSlice({
 
 export const {
   openVizSettingsSidebar,
-  toggleSidebar,
-  setSidebarOpen,
   updateVizSettings,
   updateVisualizationType,
   clearDraftState,
