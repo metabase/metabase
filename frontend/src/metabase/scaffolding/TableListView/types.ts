@@ -17,6 +17,15 @@ export type ParsedRouteParams = {
   tableId: TableId;
 };
 
+export type SortDirection = "asc" | "desc";
+
+export interface SortState {
+  columnId: FieldId;
+  direction: SortDirection;
+}
+
+// type guards
+
 function isFieldId(value: unknown): value is FieldId {
   return typeof value === "number";
 }

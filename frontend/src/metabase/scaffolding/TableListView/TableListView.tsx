@@ -12,15 +12,12 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
-  ActionIcon,
-  Box,
   Button,
   Group,
   Icon,
@@ -33,14 +30,17 @@ import {
 } from "metabase/ui";
 import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetQuery, FieldId } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
-import { renderValue } from "../utils";
-
+import { TableDataView } from "./TableDataView";
 import S from "./TableListView.module.css";
 import { TableSettingsPanel } from "./TableSettingsPanel";
-import { type RouteParams, isComponentSettings } from "./types";
+import {
+  type RouteParams,
+  type SortDirection,
+  type SortState,
+  isComponentSettings,
+} from "./types";
 import {
   getDefaultComponentSettings,
   getExploreTableUrl,
@@ -54,20 +54,9 @@ interface Props {
 }
 
 const PAGE_SIZE = 15;
-const CELL_PADDING_HORIZONTAL = "md" as const;
-const CELL_PADDING_VERTICAL_NORMAL = "sm" as const;
-const CELL_PADDING_VERTICAL_THIN = "xs" as const;
-
-type SortDirection = "asc" | "desc";
-
-interface SortState {
-  columnId: FieldId;
-  direction: SortDirection;
-}
 
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
-  const tc = useTranslateContent();
   const { page, tableId } = parseRouteParams(location, params);
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
@@ -103,7 +92,7 @@ export const TableListView = ({ location, params }: Props) => {
     countQuery ? countQuery : skipToken,
   );
   const count = countDataset?.data.rows?.[0]?.[0];
-  const allColumns = useMemo(
+  const columns = useMemo(
     () => dataset?.data?.results_metadata?.columns ?? [],
     [dataset],
   );
@@ -117,8 +106,6 @@ export const TableListView = ({ location, params }: Props) => {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterPickerOpen, setIsFilterPickerOpen] = useState(false);
-
-  const pkIndex = allColumns.findIndex(isPK); // TODO: handle multiple PKs
 
   const handleViewChange = (view: "table" | "list" | "gallery") => {
     setSettings((settings) => ({
@@ -210,10 +197,6 @@ export const TableListView = ({ location, params }: Props) => {
     setDataQuery(tableQuery);
   }, [tableQuery]);
 
-  const columns = settings.list_view.table.fields.map(({ field_id }) => {
-    return allColumns.find((field) => field.id === field_id)!;
-  });
-
   const allRows = useMemo(() => dataset?.data?.rows ?? [], [dataset]);
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -239,23 +222,7 @@ export const TableListView = ({ location, params }: Props) => {
     [filteredRows, page],
   );
 
-  const transformedPaginatedRows = useMemo(
-    () =>
-      paginatedRows.map((row) => {
-        return settings.list_view.table.fields.map(({ field_id }) => {
-          const fieldIndex = allColumns.findIndex((col) => col.id === field_id);
-          return row[fieldIndex];
-        });
-      }),
-    [settings, paginatedRows, allColumns],
-  );
-
-  const cellPaddingVertical =
-    settings.list_view.table.row_height === "normal"
-      ? CELL_PADDING_VERTICAL_NORMAL
-      : CELL_PADDING_VERTICAL_THIN;
-
-  if (!table || !dataset || !allColumns || !dataQuery) {
+  if (!table || !dataset || !columns || !dataQuery) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -351,103 +318,16 @@ export const TableListView = ({ location, params }: Props) => {
           onChange={setDataQuery}
         />
 
-        <Group
-          className={S.tableContainer}
-          align="flex-start"
-          wrap="nowrap"
-          style={{ overflow: "auto" }}
-        >
-          <Box bg="white" className={S.table} component="table" w="100%">
-            <thead>
-              <tr>
-                {columns.map((column, index) => (
-                  <Box
-                    component="th"
-                    key={index}
-                    px={CELL_PADDING_HORIZONTAL}
-                    py="md"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => handleColumnSort(column)}
-                  >
-                    <Group gap="sm" align="center" wrap="nowrap">
-                      <Text c="text-secondary" size="sm">
-                        {column.display_name}
-                      </Text>
-
-                      {sortState && sortState.columnId === column.id && (
-                        <Icon
-                          c="text-secondary"
-                          name={
-                            sortState.direction === "asc"
-                              ? "chevronup"
-                              : "chevrondown"
-                          }
-                          size={12}
-                        />
-                      )}
-                    </Group>
-                  </Box>
-                ))}
-
-                <Box component="th" px="sm" py="md" />
-              </tr>
-            </thead>
-
-            <tbody>
-              {transformedPaginatedRows.map((row, index) => {
-                return (
-                  <Box className={S.row} component="tr" key={index}>
-                    {row.map((value, cellIndex) => {
-                      return (
-                        <Box
-                          c={
-                            settings.list_view.table.fields[cellIndex].style ===
-                            "dim"
-                              ? "text-light"
-                              : "text-primary"
-                          }
-                          component="td"
-                          fw={
-                            settings.list_view.table.fields[cellIndex].style ===
-                            "bold"
-                              ? "bold"
-                              : undefined
-                          }
-                          key={cellIndex}
-                          px={CELL_PADDING_HORIZONTAL}
-                          py={cellPaddingVertical}
-                        >
-                          {renderValue(tc, value, columns[cellIndex])}
-                        </Box>
-                      );
-                    })}
-
-                    <Box
-                      component="td"
-                      pr={CELL_PADDING_HORIZONTAL}
-                      py={cellPaddingVertical}
-                    >
-                      <ActionIcon
-                        className={S.link}
-                        component={Link}
-                        to={
-                          pkIndex !== undefined &&
-                          pkIndex >= 0 &&
-                          !searchQuery.trim()
-                            ? `/table/${table.id}/detail/${paginatedRows[index][pkIndex]}`
-                            : ""
-                        }
-                        variant="outline"
-                      >
-                        <Icon name="share" />
-                      </ActionIcon>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </tbody>
-          </Box>
-        </Group>
+        {settings.list_view.view === "table" && (
+          <TableDataView
+            columns={columns}
+            rows={paginatedRows}
+            settings={settings}
+            sortState={sortState}
+            table={table}
+            onSort={handleColumnSort}
+          />
+        )}
       </Stack>
 
       {isEditing && (
@@ -489,6 +369,7 @@ export const TableListView = ({ location, params }: Props) => {
             <Text c="text-primary" fw="bold" lh="var(--mantine-line-height-md)">
               {t`View`}
             </Text>
+
             <SegmentedControl
               data={[
                 { value: "table", label: t`Table` },
@@ -501,11 +382,13 @@ export const TableListView = ({ location, params }: Props) => {
             />
           </Stack>
 
-          <TableSettingsPanel
-            table={table}
-            value={settings}
-            onChange={setSettings}
-          />
+          {settings.list_view.view === "table" && (
+            <TableSettingsPanel
+              table={table}
+              value={settings}
+              onChange={setSettings}
+            />
+          )}
         </Stack>
       )}
     </Group>
