@@ -50,10 +50,12 @@
          fields-json "\n\n"
          "Important rules:\n"
          "- Use actual field IDs from the available fields\n"
-         "- For detail/gallery views, create 2-4 logical sections\n"
-         "- For list views, select 3-6 most important fields\n"
+         "- You don't need to include all fields - select only the most relevant ones\n"
+         "- For detail/gallery views, create 2-4 logical sections with the most important fields\n"
+         "- For list views, select 3-6 most important fields to display\n"
          "- Consider semantic_type when determining field importance (e.g., type/Name, type/Title for headers)\n"
-         "- Consider field type when grouping (e.g., group dates together, group address fields together)")))
+         "- Consider field type when grouping (e.g., group dates together, group address fields together)\n"
+         "- Omit technical fields, IDs (unless they're meaningful), and fields that don't add value to the view")))
 
 (defn- get-response-schema
   "Get the JSON schema for structured output based on view type"
