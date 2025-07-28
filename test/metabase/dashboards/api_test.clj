@@ -5381,3 +5381,13 @@
                                           :size_x  4
                                           :size_y  4}]})
       (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id)))))))
+
+(deftest save-dashboard-test
+  (let [response (mt/user-http-request :crowberto :post 200 "dashboard/save" {:auto_apply_filters true,
+                                                                              :name               "Test Dashboard",
+                                                                              :description        "A test dashboard to save"
+                                                                              :creator_id         399381 ;; any passed creator_id is ignored
+                                                                              })]
+    (is (partial= {:name       "Test Dashboard"
+                   :creator_id (mt/user->id :crowberto)} response))))
+
