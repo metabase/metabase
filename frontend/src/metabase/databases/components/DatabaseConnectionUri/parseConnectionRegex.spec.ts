@@ -66,7 +66,7 @@ describe("parseConnectionUriRegex - Amazon Redshift", () => {
         hasJdbcPrefix: true,
         params: {
           UID: "amazon",
-          PWD: "password%3Apassword",
+          PWD: "password:password",
         },
       }),
     );

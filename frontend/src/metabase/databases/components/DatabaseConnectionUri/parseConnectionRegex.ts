@@ -43,7 +43,12 @@ const connectionStringRegexes = {
     "i",
   ),
   bigquery: new RegExp(
-    "^" + jdbcPrefix + "(?<protocol>bigquery)://" + semicolonParams + "$",
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>bigquery)://" +
+      "(https?://)?(?<host>[^:/]+)(?<path>/[^;]*):(?<port>\\d+)" +
+      semicolonParams +
+      "$",
     "i",
   ),
   clickhouse: new RegExp(
@@ -201,18 +206,7 @@ export function parseConnectionUriRegex(
       const params = match.groups?.params
         ? Object.fromEntries(new URLSearchParams(match.groups.params))
         : undefined;
-      const semicolonParams = match.groups?.semicolonParams
-        ? match.groups.semicolonParams.split(";").reduce(
-            (acc, param) => {
-              const [key, value] = param.split("=");
-              if (key !== "") {
-                acc[key] = value;
-              }
-              return acc;
-            },
-            {} as Record<string, string>,
-          )
-        : undefined;
+      const semicolonParams = mapSemicolonParams(match.groups?.semicolonParams);
       return {
         ...match.groups,
         params: params ?? semicolonParams,
@@ -222,4 +216,20 @@ export function parseConnectionUriRegex(
   }
 
   return null;
+}
+
+function mapSemicolonParams(semicolonParams: string | undefined) {
+  if (!semicolonParams) {
+    return undefined;
+  }
+
+  return semicolonParams
+    .split(";")
+    .reduce<Record<string, string>>((acc, param) => {
+      const [key, value] = param.split("=");
+      if (key !== "") {
+        acc[key] = decodeURIComponent(value);
+      }
+      return acc;
+    }, {});
 }
