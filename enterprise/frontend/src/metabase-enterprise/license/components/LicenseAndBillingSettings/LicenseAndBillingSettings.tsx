@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
 import {
@@ -15,7 +15,16 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { Box, Divider, Flex, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Flex,
+  type IconName,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
@@ -70,17 +79,96 @@ const getDescription = ({
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
+const iframeOrigin = "https://store-metabase-9g2rav758-metaboat.vercel.app/";
+const iframePath = "/test-for-iframe?param1=09ucsdcsd0ce0&param2=cdoicw0";
+
+function handleMessageToken(
+  event: MessageEvent,
+  onLicenseToken: (token: string) => void,
+  onMessage: (message: string) => void,
+) {
+  if (event.data.source !== "store/some-checkout") {
+    return;
+  }
+
+  const { licenseToken, message } = event.data.payload;
+
+  onLicenseToken(licenseToken);
+  onMessage(message);
+}
+
+async function sendMessageToStore(
+  storeWindow: WindowProxy,
+  notifyLicense: (args: { message: string; icon: IconName }) => void,
+) {
+  const success = Math.random() > 0.5;
+  const message = success
+    ? t`Your license is active!`
+    : t`Your license is not active!`;
+  storeWindow.postMessage(
+    {
+      type: "metabase",
+      source: "instance",
+      payload: {
+        success: Math.random() > 0.5,
+        message,
+      },
+    },
+    "*",
+  );
+  notifyLicense({ message, icon: "info" });
+}
+
 export const LicenseAndBillingSettings = () => {
   const { data: allSettings, isLoading: isLoadingToken } =
     useGetAdminSettingsDetailsQuery();
   const settingDetails = allSettings?.["premium-embedding-token"];
   const token = settingDetails?.value;
-
+  const [licenseToken, setLicenseToken] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [sendToast] = useToast();
+  const storeRef = useRef<{ window: WindowProxy | null }>({ window: null });
+  const [notifyLicense] = useToast();
 
   const sendActivatedToast = useCallback(() => {
     sendToast({ message: t`Your license is active!` });
   }, [sendToast]);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      handleMessageToken(
+        event,
+        (token) => {
+          setLicenseToken(token);
+          setIsModalOpen(false);
+          setMessage(token);
+        },
+        () => {
+          if (storeRef.current.window) {
+            sendMessageToStore(storeRef.current.window, notifyLicense);
+          }
+        },
+      );
+    }
+
+    window.addEventListener("message", onMessage);
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+    };
+  }, [notifyLicense]);
+
+  function openStore() {
+    const returnUrl = encodeURIComponent(
+      document.referrer || window.location.href,
+    );
+    storeRef.current.window = window.open(
+      `${iframeOrigin}${iframePath}?returnUrl=${returnUrl}`,
+      "_blank",
+    );
+  }
 
   const {
     loading: licenseLoading,
@@ -124,6 +212,16 @@ export const LicenseAndBillingSettings = () => {
 
   return (
     <SettingsPageWrapper title={t`License`}>
+      <Box>
+        <Button onClick={() => setIsModalOpen(true)}>{t`Open Modal`}</Button>
+        <Text>{`The license token is: ${licenseToken}`}</Text>
+      </Box>
+      <Flex gap="xl">
+        <Box>
+          <Button onClick={openStore}>{t`Open Store`}</Button>
+        </Box>
+        <Text>{`The message is: ${message}`}</Text>
+      </Flex>
       <SettingsSection>
         <Stack
           data-testid="license-and-billing-content"
@@ -165,6 +263,28 @@ export const LicenseAndBillingSettings = () => {
           {tokenStatus?.valid && shouldUpsell && <UpsellSection />}
         </Stack>
       </SettingsSection>
+      <Modal
+        opened={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        size="100%"
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        title={t`Upgrade to Metabase Pro`}
+      >
+        <Flex w="100%" h="100%">
+          <iframe
+            src={`${iframeOrigin}${iframePath}`}
+            height="600px"
+            width="100%"
+            ref={iframeRef}
+            style={{
+              border: "none",
+              outline: "none",
+              boxShadow: "none",
+              borderRadius: "0",
+            }}
+          />
+        </Flex>
+      </Modal>
     </SettingsPageWrapper>
   );
 };
