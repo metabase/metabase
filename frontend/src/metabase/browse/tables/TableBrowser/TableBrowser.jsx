@@ -153,7 +153,7 @@ const TableBrowserItemButtons = ({
             <Icon
               name="pencil"
               tooltip={t`Edit this table`}
-              color={color("text-medium")}
+              color={"var(--mb-color-text-medium)"}
             />
           </Link>
         )}

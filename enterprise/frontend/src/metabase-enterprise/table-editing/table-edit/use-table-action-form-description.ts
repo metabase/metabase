@@ -19,7 +19,7 @@ export const useActionFormDescription = ({
 
   const refetch = useCallback(() => {
     fetchModalDescription({
-      action_id: actionId,
+      action: actionId,
       scope,
     });
   }, [actionId, scope, fetchModalDescription]);

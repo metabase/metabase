@@ -48,15 +48,6 @@ export type TableDeleteRowsResponse = {
   outputs: ExecuteOutput<"deleted">[];
 };
 
-export type TableUndoRedoRequest = {
-  tableId: TableId;
-  scope?: TableEditingActionScope;
-};
-
-export type TableUndoRedoResponse = {
-  outputs?: ExecuteOutput<"created" | "updated" | "deleted">[];
-};
-
 export enum TableActionFormInputType {
   Text = "text",
   Textarea = "textarea",
@@ -80,7 +71,7 @@ export type TableActionFormParameter = {
 };
 
 export type DescribeActionFormRequest = {
-  action_id: TableActionId;
+  action: TableActionId;
   scope: TableEditingActionScope;
   input?: RowCellsWithPkValue;
 };

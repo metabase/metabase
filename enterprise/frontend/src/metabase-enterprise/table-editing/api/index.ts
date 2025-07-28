@@ -8,8 +8,6 @@ import {
   type TableDeleteRowsResponse,
   type TableInsertRowsRequest,
   type TableInsertRowsResponse,
-  type TableUndoRedoRequest,
-  type TableUndoRedoResponse,
   type TableUpdateRowsRequest,
   type TableUpdateRowsResponse,
 } from "./types";
@@ -22,8 +20,8 @@ export const tableEditingApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/action/v2/execute-bulk`,
-        body: { inputs: rows, scope, action_id: TableActionId.CreateRow },
+        url: `/api/ee/action-v2/execute-bulk`,
+        body: { inputs: rows, scope, action: TableActionId.CreateRow },
       }),
     }),
     updateTableRows: builder.mutation<
@@ -32,8 +30,8 @@ export const tableEditingApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ inputs, params, scope }) => ({
         method: "POST",
-        url: `/api/action/v2/execute-bulk`,
-        body: { inputs, params, scope, action_id: TableActionId.UpdateRow },
+        url: `/api/ee/action-v2/execute-bulk`,
+        body: { inputs, params, scope, action: TableActionId.UpdateRow },
       }),
     }),
     deleteTableRows: builder.mutation<
@@ -42,38 +40,12 @@ export const tableEditingApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ inputs, scope, params }) => ({
         method: "POST",
-        url: `/api/action/v2/execute-bulk`,
+        url: `/api/ee/action-v2/execute-bulk`,
         body: {
           inputs,
           scope,
-          action_id: TableActionId.DeleteRow,
+          action: TableActionId.DeleteRow,
           ...(params && { params }),
-        },
-      }),
-    }),
-    tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, scope }) => ({
-        method: "POST",
-        url: `/api/action/v2/execute`,
-        body: {
-          input: {
-            "table-id": tableId,
-          },
-          scope,
-          action_id: TableActionId.Undo,
-        },
-      }),
-    }),
-    tableRedo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
-      query: ({ tableId, scope }) => ({
-        method: "POST",
-        url: `/api/action/v2/execute`,
-        body: {
-          input: {
-            "table-id": tableId,
-          },
-          scope,
-          action_id: TableActionId.Redo,
         },
       }),
     }),
@@ -83,7 +55,7 @@ export const tableEditingApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: `/api/action/v2/tmp-modal`,
+        url: `/api/ee/action-v2/execute-form`,
         body,
       }),
     }),
@@ -94,7 +66,5 @@ export const {
   useInsertTableRowsMutation,
   useUpdateTableRowsMutation,
   useDeleteTableRowsMutation,
-  useTableUndoMutation,
-  useTableRedoMutation,
   useDescribeActionFormMutation,
 } = tableEditingApi;
