@@ -1,16 +1,16 @@
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import {
-  type MetabaseProviderPropsToStore,
+  type MetabaseProviderPropsStoreExternalProps,
+  type MetabaseProviderPropsStoreInternalProps,
   ensureMetabaseProviderPropsStore,
 } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 
 type Props = {
   className?: string;
-  reduxStore?: MetabaseProviderPropsToStore["reduxStore"] | null;
-  props: Omit<MetabaseProviderPropsToStore, "reduxStore">;
+  reduxStore?: MetabaseProviderPropsStoreInternalProps["reduxStore"] | null;
+  props: MetabaseProviderPropsStoreExternalProps;
   children: (state: { initialized: boolean }) => ReactNode;
 };
 
@@ -35,7 +35,6 @@ const shouldCleanup = () => {
 
 export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
   const [initialized, setInitialized] = useState(false);
-  const [reduxStoreInitialized, setReduxStoreInitialized] = useState(false);
 
   useEffect(() => {
     incrementProvidersCount();
@@ -49,8 +48,6 @@ export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
       );
     }
 
-    setInitialized(true);
-
     return () => {
       decrementProvidersCount();
 
@@ -62,15 +59,17 @@ export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
   }, []);
 
   useEffect(() => {
-    if (reduxStore && !reduxStoreInitialized) {
+    if (reduxStore && !initialized) {
       ensureMetabaseProviderPropsStore().setProps({ reduxStore });
-      setReduxStoreInitialized(true);
+
+      // Now the `MetabaseProviderPropsStore` store is initialized and the `reduxStore` prop is set in it
+      setInitialized(true);
     }
-  }, [reduxStore, reduxStoreInitialized]);
+  }, [reduxStore, initialized]);
 
   useEffect(() => {
     ensureMetabaseProviderPropsStore().setProps(props);
   }, [props]);
 
-  return <>{children({ initialized: initialized && reduxStoreInitialized })}</>;
+  return <>{children({ initialized })}</>;
 }
