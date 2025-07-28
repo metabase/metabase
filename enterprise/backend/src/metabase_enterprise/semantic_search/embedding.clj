@@ -187,29 +187,22 @@
 
 ;;;; Global embedding model
 
-(def ^:dynamic *active-model*
-  "The model being used by the current semantic search engine."
-  nil)
-
-(defn get-active-model
-  "Returns *active-model* if defined.
-
-  Otherwise get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
+(defn get-configured-model
+  "Get the environments default embedding model according to the ee-embedding-provider / ee-embedding-model settings.
 
   Requires the model dimensions to be defined in ollama-supported-models or openai-supported-models (throws if not)."
   []
-  (or *active-model*
-      (let [provider (semantic-settings/ee-embedding-provider)
-            models (case provider
-                     "ollama" ollama-supported-models
-                     "openai" openai-supported-models
-                     (throw (ex-info (format "Unknown embedding provider: %s" provider) {:provider provider})))
-            model-name (or (semantic-settings/ee-embedding-model) (default-model-for-provider provider))
-            vector-dimensions (or (get models model-name)
-                                  (throw (ex-info (format "Not a supported model: %s" model-name) {:provider provider, :model-name model-name})))]
-        {:provider provider
-         :model-name model-name
-         :vector-dimensions vector-dimensions})))
+  (let [provider (semantic-settings/ee-embedding-provider)
+        models (case provider
+                 "ollama" ollama-supported-models
+                 "openai" openai-supported-models
+                 (throw (ex-info (format "Unknown embedding provider: %s" provider) {:provider provider})))
+        model-name (or (semantic-settings/ee-embedding-model) (default-model-for-provider provider))
+        vector-dimensions (or (get models model-name)
+                              (throw (ex-info (format "Not a supported model: %s" model-name) {:provider provider, :model-name model-name})))]
+    {:provider provider
+     :model-name model-name
+     :vector-dimensions vector-dimensions}))
 
 (defn process-embeddings-streaming
   "Process texts in provider-appropriate batches, calling process-fn for each batch. process-fn will be called with
@@ -248,7 +241,7 @@
   ;;   - Ollama default: "mxbai-embed-large"
   ;; MB_EE_OPENAI_API_KEY your OpenAI API key
 
-  (def embedding-model (get-active-model))
+  (def embedding-model (get-configured-model))
 
   embedding-model
   (pull-model embedding-model)
