@@ -180,6 +180,16 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
+  vertica: new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>vertica)://" +
+      hostAndPort +
+      "(?:/(?<database>[^/?#]*))?" +
+      params +
+      "$",
+    "i",
+  ),
 };
 
 export function parseConnectionUriRegex(

@@ -394,3 +394,24 @@ describe("parseConnectionUriRegex - Starburst", () => {
     );
   });
 });
+
+describe("parseConnectionUriRegex - Vertica", () => {
+  it("should parse a Vertica connection string", () => {
+    const connectionString =
+      "jdbc:vertica://vertica.example.com:1234/databaseName?user=jane&password=pass1234";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          user: "jane",
+          password: "pass1234",
+        },
+        host: "vertica.example.com",
+        port: "1234",
+        database: "databaseName",
+        protocol: "vertica",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+});

@@ -240,6 +240,27 @@ function mapStarburstTrinoValues(parsedValues: RegexFields) {
   if (fieldsMap.get("details.additional-options")) {
     fieldsMap.set("details.advanced-options", true);
   }
+
+  return fieldsMap;
+}
+
+function mapVerticaValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host],
+    ["details.port", parsedValues.port],
+    ["details.dbname", parsedValues.database],
+    ["details.user", parsedValues.params?.user],
+    ["details.password", parsedValues.params?.password],
+    [
+      "details.additional-options",
+      objectToString(parsedValues.params ?? {}, ["user", "password"]),
+    ],
+  ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -261,6 +282,7 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with(P.union("sparksql", "hive2"), () => mapSparkSqlValues(parsedValues))
     .with("sqlserver", () => mapSqlServerValues(parsedValues))
     .with("trino", () => mapStarburstTrinoValues(parsedValues))
+    .with("vertica", () => mapVerticaValues(parsedValues))
     .otherwise(() => new Map());
 }
 
