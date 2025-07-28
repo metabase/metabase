@@ -15,7 +15,6 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
@@ -26,7 +25,7 @@ import {
   Group,
   Icon,
   Popover,
-  Select,
+  SegmentedControl,
   Stack,
   Text,
   TextInput,
@@ -35,12 +34,12 @@ import {
 import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetQuery, Field, FieldId } from "metabase-types/api";
+import type { DatasetQuery, FieldId } from "metabase-types/api";
 
 import { renderValue } from "../utils";
 
-import { SortableFieldList } from "./SortableFieldList";
 import S from "./TableListView.module.css";
+import { TableSettingsPanel } from "./TableSettingsPanel";
 import { type RouteParams, isComponentSettings } from "./types";
 import {
   getDefaultComponentSettings,
@@ -121,54 +120,12 @@ export const TableListView = ({ location, params }: Props) => {
 
   const pkIndex = allColumns.findIndex(isPK); // TODO: handle multiple PKs
 
-  const handleOrderChange = (fieldOrder: FieldId[]) => {
+  const handleViewChange = (view: "table" | "list" | "gallery") => {
     setSettings((settings) => ({
       ...settings,
       list_view: {
         ...settings.list_view,
-        table: {
-          ...settings.list_view.table,
-
-          fields: fieldOrder.map((id) => {
-            return settings.list_view.table.fields.find(
-              (field) => field.field_id === id,
-            )!;
-          }),
-        },
-      },
-    }));
-  };
-
-  const handleStyleChange = (
-    field: Field,
-    style: "normal" | "bold" | "dim",
-  ) => {
-    setSettings((settings) => ({
-      ...settings,
-      list_view: {
-        ...settings.list_view,
-        table: {
-          ...settings.list_view.table,
-          fields: settings.list_view.table.fields.map((f) => {
-            if (f.field_id === getRawTableFieldId(field)) {
-              return { ...f, style };
-            }
-            return f;
-          }),
-        },
-      },
-    }));
-  };
-
-  const handleRowHeightChange = (rowHeight: "thin" | "normal") => {
-    setSettings((settings) => ({
-      ...settings,
-      list_view: {
-        ...settings.list_view,
-        table: {
-          ...settings.list_view.table,
-          row_height: rowHeight,
-        },
+        view,
       },
     }));
   };
@@ -256,22 +213,7 @@ export const TableListView = ({ location, params }: Props) => {
   const columns = settings.list_view.table.fields.map(({ field_id }) => {
     return allColumns.find((field) => field.id === field_id)!;
   });
-  const fields = settings.list_view.table.fields.map(({ field_id }) => {
-    return (table?.fields ?? []).find((field) => field.id === field_id)!;
-  });
-  const visibleFields = settings.list_view.table.fields.map(({ field_id }) => {
-    return fields.find((field) => field.id === field_id)!;
-  });
-  const hiddenFields = (table?.fields ?? []).filter((field) =>
-    settings.list_view.table.fields.every((f) => f.field_id !== field.id),
-  );
 
-  const stylesMap = settings.list_view.table.fields.reduce<
-    Record<FieldId, "normal" | "bold" | "dim">
-  >((acc, field) => {
-    acc[field.field_id] = field.style;
-    return acc;
-  }, {});
   const allRows = useMemo(() => dataset?.data?.rows ?? [], [dataset]);
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -543,137 +485,27 @@ export const TableListView = ({ location, params }: Props) => {
             )}
           </Group>
 
-          <Select
-            data={[
-              { value: "normal", label: t`Normal` },
-              { value: "thin", label: t`Thin` },
-            ]}
-            label={t`Row height`}
-            value={settings.list_view.table.row_height}
-            onChange={handleRowHeightChange}
-            w="100%"
+          <Stack gap="xs">
+            <Text c="text-primary" fw="bold" lh="var(--mantine-line-height-md)">
+              {t`View`}
+            </Text>
+            <SegmentedControl
+              data={[
+                { value: "table", label: t`Table` },
+                { value: "list", label: t`List` },
+                { value: "gallery", label: t`Gallery` },
+              ]}
+              value={settings.list_view.view}
+              onChange={handleViewChange}
+              w="100%"
+            />
+          </Stack>
+
+          <TableSettingsPanel
+            table={table}
+            value={settings}
+            onChange={setSettings}
           />
-
-          {settings.list_view.table.fields.length > 0 && (
-            <Stack gap={8}>
-              <Group justify="space-between">
-                <Text
-                  c="text-primary"
-                  fw="bold"
-                  lh="var(--mantine-line-height-md)"
-                >{t`Shown columns`}</Text>
-
-                {settings.list_view.table.fields.length > 0 && (
-                  <Button
-                    leftSection={<Icon name="eye_crossed_out" />}
-                    variant="subtle"
-                    h={20}
-                    p={0}
-                    onClick={() => {
-                      setSettings((settings) => ({
-                        ...settings,
-                        list_view: {
-                          ...settings.list_view,
-                          table: {
-                            ...settings.list_view.table,
-                            fields: [],
-                          },
-                        },
-                      }));
-                    }}
-                  >{t`Hide all`}</Button>
-                )}
-              </Group>
-
-              <SortableFieldList
-                fields={visibleFields}
-                stylesMap={stylesMap}
-                onChange={handleOrderChange}
-                onStyleChange={handleStyleChange}
-                onToggleVisibility={(field) => {
-                  setSettings((settings) => ({
-                    ...settings,
-                    list_view: {
-                      ...settings.list_view,
-                      table: {
-                        ...settings.list_view.table,
-                        fields: settings.list_view.table.fields.filter(
-                          (f) => f.field_id !== field.id,
-                        ),
-                      },
-                    },
-                  }));
-                }}
-              />
-            </Stack>
-          )}
-
-          {hiddenFields.length > 0 && (
-            <Stack gap={8}>
-              <Group justify="space-between">
-                <Text
-                  c="text-primary"
-                  fw="bold"
-                  lh="var(--mantine-line-height-md)"
-                >{t`Hidden columns`}</Text>
-
-                {table.fields &&
-                  table.fields.length > 0 &&
-                  table.fields.length !==
-                    settings.list_view.table.fields.length && (
-                    <Button
-                      leftSection={<Icon name="eye" />}
-                      variant="subtle"
-                      h={20}
-                      p={0}
-                      onClick={() => {
-                        setSettings((settings) => ({
-                          ...settings,
-                          list_view: {
-                            ...settings.list_view,
-                            table: {
-                              ...settings.list_view.table,
-                              fields: [
-                                ...settings.list_view.table.fields,
-                                ...hiddenFields.map((field) => ({
-                                  field_id: getRawTableFieldId(field),
-                                  style: "normal" as const,
-                                })),
-                              ],
-                            },
-                          },
-                        }));
-                      }}
-                    >{t`Unhide all`}</Button>
-                  )}
-              </Group>
-
-              <SortableFieldList
-                disabled
-                fields={hiddenFields}
-                isHidden
-                onChange={handleOrderChange}
-                onToggleVisibility={(field) => {
-                  setSettings((settings) => ({
-                    ...settings,
-                    list_view: {
-                      ...settings.list_view,
-                      table: {
-                        ...settings.list_view.table,
-                        fields: [
-                          ...settings.list_view.table.fields,
-                          {
-                            field_id: getRawTableFieldId(field),
-                            style: "normal",
-                          },
-                        ],
-                      },
-                    },
-                  }));
-                }}
-              />
-            </Stack>
-          )}
         </Stack>
       )}
     </Group>
