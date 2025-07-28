@@ -412,11 +412,11 @@
   name and base type). If provided these are merged with the columns the query is expected to return.
 
   Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-    ([query]
-     (returned-columns query []))
+  ([query]
+   (returned-columns query []))
 
-    ([query         :- ::lib.schema/query
-      initial-cols  :- ::cols]
-     (->> initial-cols
-          (add-extra-metadata query)
-          cols->legacy-metadata))))
+  ([query         :- ::lib.schema/query
+    initial-cols  :- ::cols]
+   (->> initial-cols
+        (add-extra-metadata query)
+        cols->legacy-metadata)))
