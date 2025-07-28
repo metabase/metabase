@@ -1,8 +1,7 @@
 /**
-  Layers order is defined in the `layers.module.css` file.
-  This file is ignored in css-loader CSS modules transformation, so all class names are kept as is.
+ * This file is not parsed as a CSS module, so all class names are unaffected
+ * Layers are defined in the `layer.module.css`
  */
-
-@import "@mantine/core/styles.css" layer(mantine);
-@import "@mantine/dates/styles.css" layer(mantine);
-@import "../../css/vendor.css" layer(embedding-sdk-vendor);
+@import "@mantine/core/styles.css" layer(embedding-sdk.vendor);
+@import "@mantine/dates/styles.css" layer(embedding-sdk.vendor);
+@import "../../css/vendor.css" layer(embedding-sdk.vendor);

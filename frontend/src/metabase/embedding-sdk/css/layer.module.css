@@ -1,1 +1,6 @@
-@layer embedding-sdk-reset, mantine, embedding-sdk-vendor, embedding-sdk-main;
+/**
+ * Defines the CSS layers for the embedding SDK.
+ */
+@layer embedding-sdk {
+  @layer reset, vendor, main;
+}
