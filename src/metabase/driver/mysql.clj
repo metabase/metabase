@@ -66,6 +66,9 @@
                               :connection-impersonation-requires-role true
                               :describe-fields                        true
                               :describe-fks                           true
+                              :describe-default-expr                  true
+                              :describe-is-generated                  true
+                              :describe-is-nullable                   true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
@@ -989,7 +992,9 @@
          (-> col
              (update :pk? pos?)
              (update :database-required pos?)
-             (update :database-is-auto-increment pos?)))))
+             (update :database-is-auto-increment pos?)
+             (update :database-is-nullable pos?)
+             (update :database-is-generated pos?)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
@@ -1007,6 +1012,16 @@
                           [:not [:= :c.extra [:inline "auto_increment"]]]]
                          :database-required]
                         [[:= :c.column_key [:inline "PRI"]] :pk?]
+                        [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
+                        [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
+
+                        [[:and
+                          ;; mariadb
+                          [:!= :generation_expression nil]
+                          ;; mysql
+                          [:<> :generation_expression ""]]
+                         :database-is-generated]
+
                         [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
                :where
