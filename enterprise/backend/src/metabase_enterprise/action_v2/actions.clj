@@ -3,7 +3,7 @@
    [metabase-enterprise.action-v2.data-editing :as data-editing]
    [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -26,7 +26,7 @@
   (let [target-dbs      (distinct (map :database inputs))
         unsupported-dbs (->> target-dbs
                              (map actions/cached-database)
-                             (remove #(driver/database-supports? (:engine %) :actions/data-editing %)))]
+                             (remove #(driver.u/supports? (:engine %) :actions/data-editing %)))]
     (when (seq unsupported-dbs)
       (throw (ex-info (unsupported-dbs-msg target-dbs unsupported-dbs)
                       {:status-code 400 :unsupported-db-ids (map :id unsupported-dbs)})))))
