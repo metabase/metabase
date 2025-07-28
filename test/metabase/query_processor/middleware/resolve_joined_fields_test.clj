@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.resolve-joined-fields
-    :as resolve-joined-fields]
+   [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
    [metabase.test :as mt]
    [metabase.util :as u]))
 

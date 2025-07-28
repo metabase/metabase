@@ -47,7 +47,6 @@
 (defmacro with-key
   "Adds ::mr/key metadata, which is a pr-str'd string of body, to body."
   [body]
-  (def body body) ;; nocommit
   `(with-meta ~body (merge (meta ~body) {::key ~(pr-str body)})))
 
 (defmacro stable-key?

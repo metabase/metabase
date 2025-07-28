@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
@@ -16,6 +17,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -160,13 +162,35 @@
 (mu/defn- resolve-column-name :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   field-ref    :- :mbql.clause/field]
+  [query                                  :- ::lib.schema/query
+   stage-number                           :- :int
+   [_tag _opts field-name, :as field-ref] :- ::lib.schema.ref/field.literal] ; `:mbql.clause/field` but guaranteed to have a string name
   (when (< *recursive-column-resolution-depth* 2)
     (binding [*recursive-column-resolution-depth* (inc *recursive-column-resolution-depth*)]
-      (when-let [visible-columns (not-empty (lib.metadata.calculation/visible-columns query stage-number))]
-        (resolve-column-in-metadata query field-ref visible-columns)))))
+      (or
+       ;; a column with a name ref and no join alias presumably comes from the previous stage's returned columns, so
+       ;; we should first try to resolve it from there.
+       (when-not (lib.join.util/current-join-alias field-ref)
+         (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+           (when-let [previous-stage-columns (lib.metadata.calculation/returned-columns query previous-stage-number)]
+             ;; look for a match with the same `desired-column-alias`; if that fails, look for a match with using
+             ;; legacy `deduplicated-name`
+             (when-let [col (some (fn [k]
+                                    (m/find-first #(= (k %) field-name)
+                                                  previous-stage-columns))
+                                  [:lib/desired-column-alias
+                                   :lib/deduplicated-name])]
+               (-> col
+                   lib.field.util/update-keys-for-col-from-previous-stage
+                   (assoc :lib/source :source/previous-stage))))))
+       ;; if the 'simple match' failed then try again by looking at all the visible columns.
+       (when-let [visible-columns (not-empty
+                                   (concat
+                                    (lib.metadata.calculation/visible-columns query stage-number)
+                                    ;; TODO (Cam 7/25/25) -- visible columns does not include aggregations, work around
+                                    ;; it until it gets fixed
+                                    (lib.aggregation/aggregations-metadata query stage-number)))]
+         (resolve-column-in-metadata query field-ref visible-columns))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -439,7 +463,7 @@
                                  ;; calculate much metadata -- assume it comes from the previous stage so we at least
                                  ;; have a value for `:lib/source`.
                                  (when (zero? *recursive-column-resolution-depth*)
-                                   (log/warnf "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
+                                   (log/infof "Failed to resolve field ref with name %s in stage %d" (pr-str id-or-name) stage-number))
                                  {:lib/source :source/previous-stage}))
          field-id          (if (integer? id-or-name)
                              id-or-name

@@ -7,6 +7,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -900,3 +901,38 @@
                   (lib/aggregate (lib/distinct (meta/field-metadata :venues :price))))]
     (is (=? :type/Integer
             (lib/type-of query (first (lib/aggregations query)))))))
+
+(deftest ^:parallel aggregations-metadata-for-ag-using-deduplicated-name-ref-test
+  (testing "aggregations metadata should be calculated correctly if the aggregation wraps a deduplicated field name ref"
+    (let [mp    meta/metadata-provider
+          query (lib/query
+                 mp
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :orders)
+                              :aggregation  [[:count {}]]
+                              :breakout     [[:field
+                                              {:binning {:strategy :num-bins, :num-bins 10}}
+                                              (meta/id :orders :quantity)]
+                                             [:field
+                                              {:binning {:strategy :num-bins, :num-bins 50}}
+                                              (meta/id :orders :quantity)]]}
+                             {:lib/type    :mbql.stage/mbql
+                              :aggregation [[:min
+                                             {}
+                                             [:field
+                                              {:base-type :type/Integer}
+                                              "QUANTITY"]]
+                                            [:max
+                                             {}
+                                             [:field
+                                              {:base-type :type/Integer}
+                                              "QUANTITY_2"]]]}
+                             {:lib/type :mbql.stage/mbql}]})]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (=? [{:display-name "Min of Quantity: 10 bins"
+                  :name         "min"}
+                 {:display-name "Max of Quantity: 50 bins"
+                  :name         "max"}]
+                (lib/aggregations-metadata query 1)))))))
