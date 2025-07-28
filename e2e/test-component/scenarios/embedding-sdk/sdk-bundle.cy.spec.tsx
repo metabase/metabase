@@ -1,6 +1,7 @@
 import {
   InteractiveQuestion,
   MetabaseProvider,
+  useMetabaseAuthStatus,
 } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -179,6 +180,50 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           "Multiple instances of MetabaseProvider detected",
         );
       });
+    });
+  });
+
+  describe("Hooks", () => {
+    it("should call SDK hooks properly when called inside MetabaseProvider", () => {
+      const Wrapper = () => {
+        return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
+      };
+
+      cy.get<string>("@questionId").then((questionId) => {
+        cy.mount(
+          <>
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+              <Wrapper />
+
+              <InteractiveQuestion questionId={questionId} />
+            </MetabaseProvider>
+          </>,
+        );
+      });
+
+      cy.findByText("loading").should("exist");
+      cy.findByText("success").should("exist");
+    });
+
+    it("should call SDK hooks properly when called outside of MetabaseProvider", () => {
+      const Wrapper = () => {
+        return useMetabaseAuthStatus()?.status ?? "SDK Bundle Loading...";
+      };
+
+      cy.get<string>("@questionId").then((questionId) => {
+        cy.mount(
+          <>
+            <Wrapper />
+
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+              <InteractiveQuestion questionId={questionId} />
+            </MetabaseProvider>
+          </>,
+        );
+      });
+
+      cy.findByText("loading").should("exist");
+      cy.findByText("success").should("exist");
     });
   });
 
