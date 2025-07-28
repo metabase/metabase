@@ -3,30 +3,78 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.sync.core :as sync]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql
+    PreparedStatement)))
 
-(defn execute-query!
-  "Execute the `sql` query with `params` on the database specified by `db-ref` using `driver`."
-  [driver db-ref [sql & params]]
-  (let [query {:native (cond-> {:query sql}
-                         params (assoc :params params))
-               :type :native
-               :database db-ref}]
-    (qp.setup/with-qp-setup [query query]
-      (let [query (qp.preprocess/preprocess query)]
-        (driver/execute-write-query! driver query)))))
+(set! *warn-on-reflection* true)
 
-(defn execute!
-  "Execute a transform lego piece."
-  [{:keys [db-ref driver sql output-table overwrite?]}]
+(defn execute-low-level!
+  "Execute the `sql` query  on the database specified by `connection-details` using `driver`."
+  [{:keys [connection-details
+           driver
+           sql
+           primary-key
+           output-table
+           overwrite?]}]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   connection-details
+   nil
+   (fn [^java.sql.Connection source-conn]
+     (when overwrite?
+       (let [drop-table (first (driver/compile-drop-table driver output-table))]
+         (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver
+                                                                            source-conn
+                                                                            drop-table
+                                                                            nil
+                                                                            nil)]
+           (if (instance? PreparedStatement stmt)
+             (.executeUpdate ^PreparedStatement stmt)
+             (.executeUpdate stmt sql)))))
+     (let [create-table (first (driver/compile-transform driver {:sql sql :output-table output-table :primary-key primary-key}))]
+       (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver
+                                                                          source-conn
+                                                                          create-table
+                                                                          nil
+                                                                          nil)]
+         {:rows-affected (if (instance? PreparedStatement stmt)
+                           (.executeUpdate ^PreparedStatement stmt)
+                           (.executeUpdate stmt sql))})))))
+
+(comment
+  (sql.qp/format-honeysql :clickhouse {:create-table-as ["dude" [:order-by :id]]
+                                       :raw "select * from products"}))
+
+(defn data-for-transform [{:keys [db-id] :as data}]
+  (let [db (t2/select-one :model/Database db-id)
+        driver (:engine db)
+        connection-details (metabase.driver.sql-jdbc.connection/connection-details->spec
+                            driver (:details db))]
+    (-> data
+        (dissoc :db-id)
+        (assoc :connection-details connection-details)
+        (assoc :driver driver))))
+
+(defn execute-remote!
+  [{:keys [output-table] :as data}]
   (let [output-table (keyword (or output-table (str "transform_" (str/replace (random-uuid) \- \_))))
-        query (driver/compile-transform driver {:sql sql :output-table output-table :overwrite? overwrite?})]
-    (when overwrite?
-      (execute-query! driver db-ref (driver/compile-drop-table driver output-table)))
-    (execute-query! driver db-ref query)
+        data (data-for-transform (-> data
+                                     (assoc :output-table output-table)))]
+    #_(send-request-remove-server data)))
+
+(defn execute-in-process!
+  "Execute a transform lego piece."
+  [{:keys [output-table] :as data}]
+  (let [output-table (keyword (or output-table (str "transform_" (str/replace (random-uuid) \- \_))))]
+    (execute-low-level! (data-for-transform (-> data
+                                                (assoc :output-table output-table))))
     output-table))
 
 (defn- sync-table!

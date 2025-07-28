@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -297,15 +298,7 @@
   (str/starts-with? (.getMessage e) "Code: 60."))
 
 (defmethod driver/compile-transform :clickhouse
-  [driver {:keys [sql output-table]}]
-  [(format "CREATE TABLE %s ORDER BY `clickhouse_merge_table_id` AS %s"
-           (quote-name (name output-table))
-           sql)])
+  [_driver {:keys [sql output-table primary-key]}]
+  (sql.qp/format-honeysql {:create-table-as [output-table [:order-by primary-key]]
+                           :raw sql}))
 
-(comment
-
-  (driver/compile-transform :clickhouse {:sql "SELECT * FROM products" :output-table "FDFS"})
-
-  (quote-name "products")
-
-  (driver/escape-alias :clickhouse "products"))
