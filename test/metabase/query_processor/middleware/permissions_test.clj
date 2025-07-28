@@ -2286,4 +2286,3 @@
                                     :condition [:= $id [:field (mt/id :users :id) {:join-alias "u"}]]}]
                            :fields [$id $name]
                            :limit 2})))))))))))))
-
