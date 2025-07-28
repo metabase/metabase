@@ -179,21 +179,23 @@
 (mr/def ::map
   [:map
    {:gen/schema map-pairs
-    :gen/fmap   (fn [kvs]
-                  (into {} kvs))}])
+    :gen/fmap   (mr/with-key
+                  (fn [kvs]
+                    (into {} kvs)))}])
 
 (mr/def ::exprs
   [:cat
-   {:gen/fmap (fn [exprs]
-                ;; sequence of exprs can't start with a keyword, otherwise it would be an MBQL clause. Add an extra
-                ;; value at the beginning if the generated value starts with a keyword.
-                (let [exprs (if (keyword? (first exprs))
-                              (cons {:a 1} exprs)
-                              exprs)]
-                  ;; randomly return either a vector or sequence.
-                  (mg/generate [:or
-                                [:= {} (apply list exprs)]
-                                [:= {} (vec exprs)]])))}
+   {:gen/fmap (mr/with-key
+                (fn [exprs]
+                  ;; sequence of exprs can't start with a keyword, otherwise it would be an MBQL clause. Add an extra
+                  ;; value at the beginning if the generated value starts with a keyword.
+                  (let [exprs (if (keyword? (first exprs))
+                                (cons {:a 1} exprs)
+                                exprs)]
+                    ;; randomly return either a vector or sequence.
+                    (mg/generate [:or
+                                  [:= {} (apply list exprs)]
+                                  [:= {} (vec exprs)]]))))}
    [:repeat
     {:max 5}
     [:ref ::expr]]])

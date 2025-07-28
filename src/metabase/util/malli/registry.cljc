@@ -15,7 +15,7 @@
     :doc "Has the form:
           {[k cache-key] function}
           Example:
-          {[:validator ::my/int] #function[clojure.core/int]}"}
+          {[:validator ::my/int] \"#function[clojure.core/int]\"}"}
   cache (atom {}))
 
 (defn- schema-cache-key
@@ -45,12 +45,18 @@
    x))
 
 (defmacro with-key
-  "Adds ::mr/key metadata, which is a pr-str'd string of body, to body."
+  "Adds `::mr/key` metadata, which is a pr-str'd string of body, to body. Be careful not to call this
+  on functions taking parameters, since it uses the shape of the literal body passed to it as a key.
+
+  e.g.:
+    (defn my-schema [] :int)
+    (mr/with-key (my-schema))
+    If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly."
   [body]
   `(with-meta ~body (merge (meta ~body) {::key ~(pr-str body)})))
 
 (defmacro stable-key?
-  "We evaluate the schema form twice, and if it is not equal, it will not be usable as a cache key."
+  "Evaluates the schema form twice, and if the results are not equal, it is not usable as a cache key."
   [schema]
   `(let [computed-schema# (#'schema-cache-key ~schema)]
      (if (= computed-schema#
@@ -79,8 +85,6 @@
         by-type (group-by (fn [[k _]] (first k)) cache-val)]
     {:total-cache-entries total-entries
      :entries-by-type by-type}))
-
-;; (cache-size-info @cache)
 
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
@@ -139,6 +143,7 @@
   "Register a spec with our Malli spec registry."
   [schema definition]
   (swap! registry* assoc schema definition)
+  ;; TODO: Fixme cache fix prereq
   ;; (reset! cache {})
   nil)
 
@@ -222,3 +227,11 @@
              ;; not sure this option is really needed, but [[mc/deref-recursive]] sets it... turning it off doesn't
              ;; seem to make any of our tests fail so maybe I'm not capturing something
              {::mc/walk-schema-refs true})))
+
+(comment
+
+  (count @cache)
+
+  ;; inspect cache keys:
+  ;; (map (comp schema-cache-key second) (keys @cache))
+  )
