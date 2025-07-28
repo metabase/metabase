@@ -26,14 +26,16 @@ export function useDetailViewSections(
   };
 
   const removeSection = (id: number) => {
-    setSections(sections.filter((section) => section.id !== id));
+    setSections((sections) => sections.filter((section) => section.id !== id));
   };
 
   const updateSection = (
     id: number,
     update: Partial<ObjectViewSectionSettings>,
   ) => {
-    setSections(sections.map((s) => (s.id === id ? { ...s, ...update } : s)));
+    setSections((sections) =>
+      sections.map((s) => (s.id === id ? { ...s, ...update } : s)),
+    );
   };
 
   const handleDragEnd = (event: DragEndEvent) => {

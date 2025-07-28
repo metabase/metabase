@@ -98,16 +98,6 @@ export function DetailViewSidebar({
     }
 
     const activeFieldId = active.id as number;
-    const currentActiveFieldSection = sections.find((s) =>
-      s.fields.some((f) => f.field_id === activeFieldId),
-    );
-    const activeField = currentActiveFieldSection?.fields.find(
-      (f) => f.field_id === activeFieldId,
-    );
-    if (!activeField) {
-      return;
-    }
-
     const overId = over.id;
 
     // Find which container the active item is in
@@ -138,6 +128,19 @@ export function DetailViewSidebar({
         );
 
         if (targetSectionIndex !== -1) {
+          // Find the active field or create it if dragging from hidden
+          let activeField = sections
+            .find((s) => s.fields.some((f) => f.field_id === activeFieldId))
+            ?.fields.find((f) => f.field_id === activeFieldId);
+
+          if (!activeField) {
+            // Dragging from hidden columns - create a new field
+            activeField = {
+              field_id: activeFieldId,
+              style: "normal" as const,
+            };
+          }
+
           const newField = {
             ...activeField,
           };
@@ -272,7 +275,10 @@ export function DetailViewSidebar({
                 }}
               >
                 {hiddenColumns.length === 0 ? (
-                  <Text c="text-light">{t`Drop columns here to hide them`}</Text>
+                  <EmptyDropZone
+                    sectionId={HIDDEN_COLUMNS_ID}
+                    message={t`Drop columns here to hide them`}
+                  />
                 ) : (
                   <ul style={{ width: "100%" }}>
                     {hiddenColumns.map((column) => (
@@ -368,7 +374,7 @@ function SectionSettings({
         </Box>
 
         {columnIds.length === 0 ? (
-          <EmptyDropZone sectionId={section.id} />
+          <EmptyDropZone sectionId={String(section.id)} />
         ) : (
           <SortableContext
             id={String(section.id)}
@@ -503,9 +509,15 @@ function findContainer(
   return HIDDEN_COLUMNS_ID;
 }
 
-function EmptyDropZone({ sectionId }: { sectionId: number }) {
+function EmptyDropZone({
+  sectionId,
+  message = t`Drop columns here`,
+}: {
+  sectionId: string;
+  message?: string;
+}) {
   const { setNodeRef, isOver } = useDroppable({
-    id: String(sectionId),
+    id: sectionId,
   });
 
   return (
@@ -523,7 +535,7 @@ function EmptyDropZone({ sectionId }: { sectionId: number }) {
         transition: "all 0.2s",
       }}
     >
-      <Text c="text-light">{t`Drop columns here`}</Text>
+      <Text c="text-light">{message}</Text>
     </Box>
   );
 }
