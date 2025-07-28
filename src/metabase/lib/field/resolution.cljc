@@ -313,12 +313,13 @@
   ;; this is just for easier debugging
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %s" (u/cprint-to-str id-or-name) (u/cprint-to-str stage-number))
-    (merge-metadata
-     (if join-alias
-       (resolve-in-join query stage-number join-alias id-or-name)
-       (resolve-from-previous-stage-or-source query stage-number id-or-name))
-     (options-metadata opts)
-     {:lib/original-ref field-ref})))
+    (-> (merge-metadata
+         (if join-alias
+           (resolve-in-join query stage-number join-alias id-or-name)
+           (resolve-from-previous-stage-or-source query stage-number id-or-name))
+         (options-metadata opts)
+         {:lib/original-ref field-ref})
+        (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))))))
 
 ;;;
 ;;; Helper functions for other namespaces
