@@ -2,7 +2,7 @@ import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 
-import { STATIC_QUESTION_REGEX } from "./QuestionStatic/QuestionStatic";
+import { STATIC_CARD_REGEX } from "./CardStatic/CardStatic";
 
 export const MarkdownSerializer = Extension.create({
   name: "markdownSerializer",
@@ -82,12 +82,12 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
             }
           });
           paragraphContent += text;
-        } else if (child.type.name === "questionEmbed") {
-          const { questionId, snapshotId, customName } = child.attrs;
+        } else if (child.type.name === "cardEmbed") {
+          const { cardId, snapshotId, customName } = child.attrs;
           paragraphContent += customName
-            ? `{{card:${questionId}:${snapshotId}:${customName}}}`
-            : `{{card:${questionId}:${snapshotId}}}`;
-        } else if (child.type.name === "questionStatic") {
+            ? `{{card:${cardId}:${snapshotId}:${customName}}}`
+            : `{{card:${cardId}:${snapshotId}}}`;
+        } else if (child.type.name === "cardStatic") {
           paragraphContent += `{{static-card:${child.attrs.questionName}:series-${child.attrs.series}:viz-${child.attrs.viz}:display-${child.attrs.display}}}`;
         } else if (child.type.name === "smartLink") {
           paragraphContent += `{{link:${child.attrs.url}:${child.attrs.text}:${child.attrs.icon}}}`;
@@ -106,12 +106,12 @@ export function serializeToMarkdown(doc: ProseMirrorNode): string {
       markdown += serializeList(node) + "\n";
     } else if (node.type.name === "image") {
       markdown += `![${node.attrs.alt || ""}](${node.attrs.src})\n\n`;
-    } else if (node.type.name === "questionEmbed") {
-      const { questionId, snapshotId, customName } = node.attrs;
+    } else if (node.type.name === "cardEmbed") {
+      const { cardId, snapshotId, customName } = node.attrs;
       markdown += customName
-        ? `{{card:${questionId}:${snapshotId}:${customName}}}\n\n`
-        : `{{card:${questionId}:${snapshotId}}}\n\n`;
-    } else if (node.type.name === "questionStatic") {
+        ? `{{card:${cardId}:${snapshotId}:${customName}}}\n\n`
+        : `{{card:${cardId}:${snapshotId}}}\n\n`;
+    } else if (node.type.name === "cardStatic") {
       markdown += `{{static-card:${node.attrs.questionName}:series-${node.attrs.series}:viz-${node.attrs.viz}:display-${node.attrs.display}}}\n\n`;
     } else if (node.type.name === "smartLink") {
       markdown += `{{link:${node.attrs.url}:${node.attrs.text}:${node.attrs.icon}}}\n\n`;
@@ -133,15 +133,15 @@ export function parseMarkdownToHTML(markdown: string): string {
       /{{card:(\d+):(\d+)(?::([^}]+))?}}/g,
       (_match, id, snapshotId, customName) => {
         const embed = customName
-          ? `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-custom-name="${customName}" data-model="card"></div>`
-          : `<div data-type="question-embed" data-question-id="${id}" data-snapshot-id="${snapshotId}" data-model="card"></div>`;
+          ? `<div data-type="card-embed" data-card-id="${id}" data-snapshot-id="${snapshotId}" data-custom-name="${customName}" data-model="card"></div>`
+          : `<div data-type="card-embed" data-card-id="${id}" data-snapshot-id="${snapshotId}" data-model="card"></div>`;
         const token = `__EMBED_TOKEN_${embedTokens.length}__`;
         embedTokens.push(embed);
         return token;
       },
     )
     .replace(
-      STATIC_QUESTION_REGEX,
+      STATIC_CARD_REGEX,
       (_match, questionName, series, viz, display) => {
         const embed = `<div data-type="question-static" data-question-name="${questionName}" data-series="${series}" data-viz="${viz}" data-display="${display}"></div>`;
         const token = `__EMBED_TOKEN_${embedTokens.length}__`;

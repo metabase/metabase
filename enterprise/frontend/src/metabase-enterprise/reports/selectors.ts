@@ -3,7 +3,10 @@ import _ from "underscore";
 
 import type { Card, CardId } from "metabase-types/api";
 
-export const getReportsState = (state: any) => state.plugins?.reports;
+import type { ReportsStoreState } from "./types";
+
+export const getReportsState = (state: ReportsStoreState) =>
+  state.plugins?.reports;
 
 export const getReportCard = createSelector(
   [getReportsState, (_, cardId: CardId) => cardId],
@@ -39,11 +42,11 @@ export const getIsLoadingDataset = createSelector(
 export const getSelectedQuestionId = createSelector(
   getReportsState,
   (reports): CardId | null => {
-    const { selectedEmbedIndex, questionEmbeds } = reports;
-    if (selectedEmbedIndex === null || !questionEmbeds[selectedEmbedIndex]) {
+    const { selectedEmbedIndex, cardEmbeds } = reports;
+    if (selectedEmbedIndex === null || !cardEmbeds[selectedEmbedIndex]) {
       return null;
     }
-    return questionEmbeds[selectedEmbedIndex].id;
+    return cardEmbeds[selectedEmbedIndex].id;
   },
 );
 
@@ -83,18 +86,18 @@ export const getReportRawSeriesWithDraftSettings = createSelector(
   },
 );
 
-export const getQuestionEmbeds = createSelector(
+export const getCardEmbeds = createSelector(
   getReportsState,
-  (reports) => reports?.questionEmbeds ?? [],
+  (reports) => reports?.cardEmbeds ?? [],
 );
 
-export const getEnrichedQuestionEmbeds = createSelector(
+export const getEnrichedCardEmbeds = createSelector(
   [getReportsState],
   (reports) => {
-    const questionEmbeds = reports?.questionEmbeds ?? [];
+    const cardEmbeds = reports?.cardEmbeds ?? [];
     const cards = reports?.cards ?? {};
 
-    return questionEmbeds.map((embed) => ({
+    return cardEmbeds.map((embed) => ({
       ...embed,
       name: embed.name || cards[embed.id]?.name || `Question ${embed.id}`,
     }));

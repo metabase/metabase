@@ -3,19 +3,19 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { Box, Stack, Text } from "metabase/ui";
 
-import type { QuestionEmbed } from "../reports.slice";
-import { getEnrichedQuestionEmbeds } from "../selectors";
+import { getEnrichedCardEmbeds } from "../selectors";
 
+import type { CardEmbedRef } from "./Editor/types";
 import styles from "./ReportPage.module.css";
 
 interface UsedContentSidebarProps {
-  onQuestionClick: (questionId: number) => void;
+  onQuestionClick: (cardId: number) => void;
 }
 
 export const UsedContentSidebar = ({
   onQuestionClick,
 }: UsedContentSidebarProps) => {
-  const questionEmbeds = useSelector(getEnrichedQuestionEmbeds);
+  const cardEmbeds = useSelector(getEnrichedCardEmbeds);
   return (
     <Box
       style={{
@@ -29,14 +29,14 @@ export const UsedContentSidebar = ({
           <Text fw="bold" mb="md">
             {t`Used Content`}
           </Text>
-          {questionEmbeds.length === 0 ? (
+          {cardEmbeds.length === 0 ? (
             <Text c="text.2">{t`No questions embedded yet`}</Text>
           ) : (
             <Stack gap="sm">
-              {questionEmbeds.map((embed: QuestionEmbed) => (
+              {cardEmbeds.map((embed: CardEmbedRef) => (
                 <Box
                   key={embed.id}
-                  className={styles.questionRef}
+                  className={styles.cardEmbed}
                   onClick={() => onQuestionClick(embed.id)}
                 >
                   <Text>{embed.name}</Text>

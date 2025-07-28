@@ -12,21 +12,21 @@ import { Box, Loader, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getReportRawSeries } from "metabase-enterprise/reports/selectors";
 
-import styles from "../QuestionEmbed/QuestionEmbedNode.module.css";
+import styles from "../CardEmbed/CardEmbedNode.module.css";
 
-export const STATIC_QUESTION_REGEX =
+export const STATIC_CARD_REGEX =
   /{{static-card(?::(?!series-)(?!viz-)(?!display-)([^}:]+))(?::series-([^:]+))(?::viz-([^:]+))(?::display-([^:]+))}}/g;
 
-export interface QuestionEmbedAttributes {
-  questionId: number;
+export interface CardEmbedAttributes {
+  cardId: number;
   questionName: string;
   customName?: string;
   model: string;
 }
-export const QuestionStaticNode = Node.create<{
+export const CardStaticNode = Node.create<{
   HTMLAttributes: Record<string, any>;
 }>({
-  name: "questionStatic",
+  name: "cardStatic",
   group: "block",
   atom: true,
   draggable: true,
@@ -89,7 +89,7 @@ export const QuestionStaticNode = Node.create<{
   addPasteRules() {
     return [
       nodePasteRule({
-        find: STATIC_QUESTION_REGEX,
+        find: STATIC_CARD_REGEX,
         type: this.type,
         getAttributes(match) {
           const [_match, questionName, series, viz, display] = match;
@@ -128,7 +128,7 @@ export const QuestionStaticComponent = memo(
     return (
       <NodeViewWrapper className={styles.embedWrapper}>
         <Box
-          className={`${styles.questionEmbed} ${selected ? styles.selected : ""}`}
+          className={`${styles.cardEmbed} ${selected ? styles.selected : ""}`}
         >
           {questionName && (
             <Box className={styles.questionHeader}>
@@ -173,7 +173,7 @@ export const QuestionStaticComponent = memo(
     // Custom comparison function to prevent re-renders
     // Only re-render if these specific props change
     return (
-      prevProps.node.attrs.questionId === nextProps.node.attrs.questionId &&
+      prevProps.node.attrs.cardId === nextProps.node.attrs.cardId &&
       prevProps.node.attrs.questionName === nextProps.node.attrs.questionName &&
       prevProps.node.attrs.customName === nextProps.node.attrs.customName &&
       prevProps.node.attrs.series === nextProps.node.attrs.series &&

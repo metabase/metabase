@@ -4,7 +4,7 @@ import styles from "../components/ReportPage.module.css";
 
 export function useEditorActions() {
   const handleQuestionClick = useCallback(
-    (questionId: number, editorInstance: any) => {
+    (cardId: number, editorInstance: any) => {
       if (!editorInstance) {
         return;
       }
@@ -13,10 +13,7 @@ export function useEditorActions() {
       let targetPos = null;
 
       doc.descendants((node: any, pos: number) => {
-        if (
-          node.type.name === "questionEmbed" &&
-          node.attrs.questionId === questionId
-        ) {
+        if (node.type.name === "cardEmbed" && node.attrs.cardId === cardId) {
           targetPos = pos;
           return false;
         }

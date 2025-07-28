@@ -86,8 +86,8 @@ export const ReportPage = ({
     setReportTitle,
     reportContent,
     setReportContent,
-    questionEmbeds,
-    updateQuestionEmbeds,
+    cardEmbeds,
+    updateCardEmbeds,
   } = useReportState(report);
 
   const {
@@ -290,7 +290,7 @@ export const ReportPage = ({
         const rawMarkdown = editorInstance.storage.markdown?.getMarkdown();
         const processedMarkdown = await getDownloadableMarkdown(
           rawMarkdown,
-          questionEmbeds,
+          cardEmbeds,
         );
 
         downloadFile(processedMarkdown);
@@ -300,7 +300,7 @@ export const ReportPage = ({
         setIsDownloading(false);
       }
     })();
-  }, [questionEmbeds, editorInstance]);
+  }, [cardEmbeds, editorInstance]);
 
   return (
     <Box className={styles.reportPage}>
@@ -404,7 +404,7 @@ export const ReportPage = ({
             ) : (
               <Editor
                 onEditorReady={setEditorInstance}
-                onQuestionRefsChange={updateQuestionEmbeds}
+                onCardEmbedsChange={updateCardEmbeds}
                 onQuestionSelect={handleQuestionSelect}
                 content={reportContent}
                 editable={canWrite}
@@ -417,8 +417,8 @@ export const ReportPage = ({
           <Box className={styles.sidebar}>
             {selectedQuestionId && selectedEmbedIndex !== null ? (
               <EmbedQuestionSettingsSidebar
-                questionId={selectedQuestionId}
-                snapshotId={questionEmbeds[selectedEmbedIndex]?.snapshotId || 0}
+                cardId={selectedQuestionId}
+                snapshotId={cardEmbeds[selectedEmbedIndex]?.snapshotId || 0}
                 onClose={() => dispatch(closeSidebar())}
                 editorInstance={editorInstance}
               />

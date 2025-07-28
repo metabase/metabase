@@ -25,20 +25,20 @@ import {
   getSelectedEmbedIndex,
 } from "../../../../selectors";
 
+import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
-import styles from "./QuestionEmbedNode.module.css";
 
-export interface QuestionEmbedAttributes {
+export interface CardEmbedAttributes {
+  cardId: number;
   snapshotId?: number;
-  questionId: number;
   questionName: string;
   customName?: string;
   model: string;
 }
-export const QuestionEmbedNode = Node.create<{
+export const CardEmbedNode = Node.create<{
   HTMLAttributes: Record<string, any>;
 }>({
-  name: "questionEmbed",
+  name: "cardEmbed",
   group: "block",
   atom: true,
   draggable: true,
@@ -53,10 +53,10 @@ export const QuestionEmbedNode = Node.create<{
             ? parseInt(element.getAttribute("data-snapshot-id") || "0")
             : null,
       },
-      questionId: {
+      cardId: {
         default: null,
         parseHTML: (element) =>
-          parseInt(element.getAttribute("data-question-id") || "0"),
+          parseInt(element.getAttribute("data-card-id") || "0"),
       },
       questionName: {
         default: "",
@@ -77,7 +77,7 @@ export const QuestionEmbedNode = Node.create<{
   parseHTML() {
     return [
       {
-        tag: 'div[data-type="question-embed"]',
+        tag: 'div[data-type="card-embed"]',
       },
     ];
   },
@@ -88,31 +88,31 @@ export const QuestionEmbedNode = Node.create<{
       mergeAttributes(
         HTMLAttributes,
         {
-          "data-type": "question-embed",
+          "data-type": "card-embed",
           "data-snapshot-id": node.attrs.snapshotId,
-          "data-question-id": node.attrs.questionId,
+          "data-card-id": node.attrs.cardId,
           "data-question-name": node.attrs.questionName,
           "data-model": node.attrs.model,
         },
         this.options.HTMLAttributes,
       ),
       node.attrs.customName
-        ? `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`
-        : `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}}}`,
+        ? `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`
+        : `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}}}`,
     ];
   },
 
   renderText({ node }) {
     if (node.attrs.customName) {
-      return `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`;
+      return `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`;
     }
-    return `{{card:${node.attrs.questionId}:${node.attrs.snapshotId}}}`;
+    return `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}}}`;
   },
 
   addNodeView() {
     return () => {
       const dom = document.createElement("div");
-      dom.setAttribute("data-type", "question-embed");
+      dom.setAttribute("data-type", "card-embed");
       dom.className = styles.embedContainer;
 
       const content = document.createElement("div");
@@ -126,9 +126,9 @@ export const QuestionEmbedNode = Node.create<{
   },
 });
 
-export const QuestionEmbedComponent = memo(
+export const CardEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
-    const { snapshotId, questionId, questionName, customName } = node.attrs;
+    const { snapshotId, cardId, questionName, customName } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
@@ -138,9 +138,9 @@ export const QuestionEmbedComponent = memo(
       const currentPos = getPos();
       let nodeCount = 0;
 
-      // Count questionEmbed nodes that appear before this position
+      // Count cardEmbed nodes that appear before this position
       editor.state.doc.descendants((node, pos) => {
-        if (node.type.name === "questionEmbed") {
+        if (node.type.name === "cardEmbed") {
           if (pos < currentPos) {
             nodeCount++;
           } else if (pos === currentPos) {
@@ -151,7 +151,7 @@ export const QuestionEmbedComponent = memo(
       });
     }
 
-    const card = useSelector((state) => getReportCard(state, questionId));
+    const card = useSelector((state) => getReportCard(state, cardId));
     const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
     const isCurrentlyEditing =
       selectedEmbedIndex === embedIndex && embedIndex !== -1;
@@ -159,11 +159,11 @@ export const QuestionEmbedComponent = memo(
     // Use draft settings if this embed is currently being edited
     const rawSeries = useSelector((state) =>
       isCurrentlyEditing
-        ? getReportRawSeriesWithDraftSettings(state, questionId, snapshotId)
-        : getReportRawSeries(state, questionId, snapshotId),
+        ? getReportRawSeriesWithDraftSettings(state, cardId, snapshotId)
+        : getReportRawSeries(state, cardId, snapshotId),
     );
     const isLoadingCard = useSelector((state) =>
-      getIsLoadingCard(state, questionId),
+      getIsLoadingCard(state, cardId),
     );
     const isLoadingDataset = useSelector((state) =>
       getIsLoadingDataset(state, snapshotId),
@@ -182,7 +182,7 @@ export const QuestionEmbedComponent = memo(
     // Only show error if we've tried to load and failed, not if we haven't tried yet
     const hasTriedToLoad = card || isLoadingCard || isLoadingDataset;
     const error =
-      hasTriedToLoad && !isLoading && questionId && !card
+      hasTriedToLoad && !isLoading && cardId && !card
         ? "Failed to load question"
         : null;
 
@@ -247,7 +247,7 @@ export const QuestionEmbedComponent = memo(
           .setTextSelection({ from: pos, to: pos + node.nodeSize })
           .deleteSelection()
           .insertContent({
-            type: "questionStatic",
+            type: "cardStatic",
             attrs: {
               questionName: card.name,
               series: utf8_to_b64url(JSON.stringify(rawSeries[0].data)),
@@ -284,7 +284,7 @@ export const QuestionEmbedComponent = memo(
 
       try {
         const result = await createReportSnapshot({
-          card_id: questionId,
+          card_id: cardId,
         }).unwrap();
 
         updateAttributes({
@@ -362,7 +362,7 @@ export const QuestionEmbedComponent = memo(
         data-scroll-id={node.attrs.scrollId}
       >
         <Box
-          className={`${styles.questionEmbed} ${selected ? styles.selected : ""}`}
+          className={`${styles.cardEmbed} ${selected ? styles.selected : ""}`}
         >
           {card && (
             <Box className={styles.questionHeader}>
@@ -526,7 +526,7 @@ export const QuestionEmbedComponent = memo(
             onClose={() => setIsModifyModalOpen(false)}
             onSave={(result) => {
               updateAttributes({
-                questionId: result.card_id,
+                cardId: result.card_id,
                 questionName: result.name,
                 snapshotId: result.snapshot_id,
                 customName: null,
@@ -543,7 +543,7 @@ export const QuestionEmbedComponent = memo(
     // Only re-render if these specific props change
     return (
       prevProps.node.attrs.snapshotId === nextProps.node.attrs.snapshotId &&
-      prevProps.node.attrs.questionId === nextProps.node.attrs.questionId &&
+      prevProps.node.attrs.cardId === nextProps.node.attrs.cardId &&
       prevProps.node.attrs.questionName === nextProps.node.attrs.questionName &&
       prevProps.node.attrs.customName === nextProps.node.attrs.customName &&
       prevProps.selected === nextProps.selected
@@ -551,4 +551,4 @@ export const QuestionEmbedComponent = memo(
   },
 );
 
-QuestionEmbedComponent.displayName = "QuestionEmbedComponent";
+CardEmbedComponent.displayName = "CardEmbedComponent";

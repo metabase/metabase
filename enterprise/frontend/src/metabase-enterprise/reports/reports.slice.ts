@@ -12,22 +12,18 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-export interface QuestionEmbed {
-  id: number;
-  name?: string;
-  snapshotId?: number;
-}
+import type { CardEmbedRef } from "./components/Editor/types";
 
 export interface ReportsState {
   cards: Record<CardId, Card>;
   datasets: Record<number, Dataset>;
   loadingCards: Record<CardId, boolean>;
   loadingDatasets: Record<number, boolean>;
-  selectedEmbedIndex: number | null; // Index in questionEmbeds array
+  selectedEmbedIndex: number | null; // Index in cardEmbeds array
   isSidebarOpen: boolean;
   // Draft state for currently editing embed
   draftCard: Card | null;
-  questionEmbeds: QuestionEmbed[];
+  cardEmbeds: CardEmbedRef[];
 }
 
 const initialState: ReportsState = {
@@ -38,7 +34,7 @@ const initialState: ReportsState = {
   selectedEmbedIndex: null,
   isSidebarOpen: false,
   draftCard: null,
-  questionEmbeds: [],
+  cardEmbeds: [],
 };
 
 export const fetchReportCard = createAsyncThunk<Card, CardId>(
@@ -123,7 +119,7 @@ const reportsSlice = createSlice({
       state.selectedEmbedIndex = action.payload.embedIndex;
       state.isSidebarOpen = true;
       // Initialize draftCard from the selected embed's card
-      const embed = state.questionEmbeds[action.payload.embedIndex];
+      const embed = state.cardEmbeds[action.payload.embedIndex];
       if (embed && state.cards[embed.id]) {
         state.draftCard = { ...state.cards[embed.id] };
       }
@@ -166,29 +162,29 @@ const reportsSlice = createSlice({
       state.selectedEmbedIndex = null;
       state.draftCard = null;
     },
-    setQuestionEmbeds: (state, action: PayloadAction<QuestionEmbed[]>) => {
-      state.questionEmbeds = action.payload;
+    setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
+      state.cardEmbeds = action.payload;
     },
-    updateQuestionEmbed: (
+    updateCardEmbed: (
       state,
       action: PayloadAction<{ embedIndex: number; snapshotId: number }>,
     ) => {
       const { embedIndex, snapshotId } = action.payload;
-      if (state.questionEmbeds[embedIndex]) {
-        state.questionEmbeds[embedIndex] = {
-          ...state.questionEmbeds[embedIndex],
+      if (state.cardEmbeds[embedIndex]) {
+        state.cardEmbeds[embedIndex] = {
+          ...state.cardEmbeds[embedIndex],
           snapshotId,
         };
       }
     },
-    updateQuestionEmbeds: (
+    updateCardEmbeds: (
       state,
       action: PayloadAction<Array<{ embedIndex: number; snapshotId: number }>>,
     ) => {
       action.payload.forEach(({ embedIndex, snapshotId }) => {
-        if (state.questionEmbeds[embedIndex]) {
-          state.questionEmbeds[embedIndex] = {
-            ...state.questionEmbeds[embedIndex],
+        if (state.cardEmbeds[embedIndex]) {
+          state.cardEmbeds[embedIndex] = {
+            ...state.cardEmbeds[embedIndex],
             snapshotId,
           };
         }
@@ -262,9 +258,9 @@ export const {
   updateVisualizationType,
   clearDraftState,
   closeSidebar,
-  setQuestionEmbeds,
-  updateQuestionEmbed,
-  updateQuestionEmbeds,
+  setCardEmbeds,
+  updateCardEmbed,
+  updateCardEmbeds,
   resetReports,
 } = reportsSlice.actions;
 

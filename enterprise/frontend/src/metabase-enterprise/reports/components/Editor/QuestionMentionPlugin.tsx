@@ -216,10 +216,10 @@ export const QuestionMentionPlugin = ({
           .focus()
           .deleteRange(mentionRange)
           .insertContentAt(insertPosition, {
-            type: "questionEmbed",
+            type: "cardEmbed",
             attrs: {
               snapshotId: snapshot.snapshot_id,
-              questionId: snapshot.card_id,
+              cardId: snapshot.card_id,
               questionName: wrappedItem.name,
               model: wrappedItem.model,
               scrollId,

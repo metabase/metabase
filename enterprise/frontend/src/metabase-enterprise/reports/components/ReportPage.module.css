@@ -68,14 +68,14 @@
   overflow-y: auto;
 }
 
-.questionRef {
+.cardEmbed {
   padding: 0.5rem;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.questionRef:hover {
+.cardEmbed:hover {
   background-color: var(--mb-color-bg-medium);
 }
 

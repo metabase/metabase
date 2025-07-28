@@ -3,25 +3,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { CollectionId } from "metabase-types/api";
 
-import type { QuestionEmbed } from "../reports.slice";
-import { fetchReportQuestionData, setQuestionEmbeds } from "../reports.slice";
-import { getQuestionEmbeds } from "../selectors";
+import type { CardEmbedRef } from "../components/Editor/types";
+import { fetchReportQuestionData, setCardEmbeds } from "../reports.slice";
+import { getCardEmbeds } from "../selectors";
 
 export function useReportState(reportData?: {
   name: string;
   document: string;
 }) {
   const dispatch = useDispatch();
-  const questionEmbeds = useSelector(getQuestionEmbeds);
+  const cardEmbeds = useSelector(getCardEmbeds);
   const [reportTitle, setReportTitle] = useState("");
   const [reportContent, setReportContent] = useState("");
   const [reportCollectionId, setReportCollectionId] =
     useState<CollectionId | null>(null);
-  const previousEmbedsRef = useRef<QuestionEmbed[]>([]);
+  const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
 
-  // Sync questionEmbeds changes with data fetching
+  // Sync cardEmbeds changes with data fetching
   useEffect(() => {
-    questionEmbeds.forEach((embed: QuestionEmbed) => {
+    cardEmbeds.forEach((embed: CardEmbedRef) => {
       if (embed.snapshotId) {
         dispatch(
           fetchReportQuestionData({
@@ -31,7 +31,7 @@ export function useReportState(reportData?: {
         );
       }
     });
-  }, [questionEmbeds, dispatch]);
+  }, [cardEmbeds, dispatch]);
 
   // Sync report data when it changes
   useEffect(() => {
@@ -41,8 +41,8 @@ export function useReportState(reportData?: {
     }
   }, [reportData]);
 
-  const updateQuestionEmbeds = useCallback(
-    (newEmbeds: QuestionEmbed[]) => {
+  const updateCardEmbeds = useCallback(
+    (newEmbeds: CardEmbedRef[]) => {
       // Only dispatch if the embeds have actually changed to prevent infinite loops
       const prevEmbeds = previousEmbedsRef.current;
       const hasChanged =
@@ -57,7 +57,7 @@ export function useReportState(reportData?: {
 
       if (hasChanged) {
         previousEmbedsRef.current = newEmbeds;
-        dispatch(setQuestionEmbeds(newEmbeds));
+        dispatch(setCardEmbeds(newEmbeds));
       }
     },
     [dispatch],
@@ -70,7 +70,7 @@ export function useReportState(reportData?: {
     setReportContent,
     reportCollectionId,
     setReportCollectionId,
-    questionEmbeds,
-    updateQuestionEmbeds,
+    cardEmbeds,
+    updateCardEmbeds,
   };
 }

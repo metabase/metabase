@@ -6,15 +6,15 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 
+import type { CardEmbedRef } from "../components/Editor/types";
 import {
-  type QuestionEmbed,
   clearDraftState,
   fetchReportQuestionData,
-  updateQuestionEmbeds,
+  updateCardEmbeds,
 } from "../reports.slice";
 import {
+  getCardEmbeds,
   getHasDraftChanges,
-  getQuestionEmbeds,
   getReportCard,
   getReportCardWithDraftSettings,
   getReportsState,
@@ -23,7 +23,7 @@ import {
 export function useReportActions() {
   const dispatch = useDispatch();
   const store = useStore();
-  const questionEmbeds = useSelector(getQuestionEmbeds);
+  const cardEmbeds = useSelector(getCardEmbeds);
   const [createReportSnapshot] = useCreateReportSnapshotMutation();
   const [sendToast] = useToast();
 
@@ -31,18 +31,18 @@ export function useReportActions() {
     async (embedIndex: number, editorInstance: any) => {
       const state = store.getState();
       const hasDraftChanges = getHasDraftChanges(state);
-      const questionEmbeds = getQuestionEmbeds(state);
+      const cardEmbeds = getCardEmbeds(state);
 
       if (
         !hasDraftChanges ||
         !editorInstance ||
         embedIndex < 0 ||
-        embedIndex >= questionEmbeds.length
+        embedIndex >= cardEmbeds.length
       ) {
         return;
       }
 
-      const embed = questionEmbeds[embedIndex];
+      const embed = cardEmbeds[embedIndex];
       const cardWithDraftSettings = getReportCardWithDraftSettings(
         state,
         embed.id,
@@ -57,10 +57,7 @@ export function useReportActions() {
         const tr = editorInstance.state.tr;
 
         doc.descendants((node: any, pos: number) => {
-          if (
-            node.type.name === "questionStatic" &&
-            node.attrs.id === embed.id
-          ) {
+          if (node.type.name === "cardStatic" && node.attrs.id === embed.id) {
             const display = cardWithDraftSettings.display;
             const viz = utf8_to_b64url(
               JSON.stringify(cardWithDraftSettings.visualization_settings),
@@ -101,11 +98,11 @@ export function useReportActions() {
               return false;
             } // Stop if we already updated
 
-            if (node.type.name === "questionEmbed") {
+            if (node.type.name === "cardEmbed") {
               if (nodeCount === embedIndex) {
                 const newAttrs = {
                   ...node.attrs,
-                  questionId: result.card_id,
+                  cardId: result.card_id,
                   snapshotId: result.snapshot_id,
                 };
                 tr.setNodeMarkup(pos, undefined, newAttrs);
@@ -121,9 +118,7 @@ export function useReportActions() {
           }
 
           dispatch(
-            updateQuestionEmbeds([
-              { embedIndex, snapshotId: result.snapshot_id },
-            ]),
+            updateCardEmbeds([{ embedIndex, snapshotId: result.snapshot_id }]),
           );
         } catch (error) {
           console.error("Failed to commit visualization changes:", error);
@@ -154,7 +149,7 @@ export function useReportActions() {
 
   const refreshAllData = useCallback(
     async (editorInstance: any) => {
-      if (!editorInstance || questionEmbeds.length === 0) {
+      if (!editorInstance || cardEmbeds.length === 0) {
         return;
       }
 
@@ -164,16 +159,16 @@ export function useReportActions() {
         const tr = editorInstance.state.tr;
 
         // Create new snapshots for all question embeds in parallel
-        const snapshotPromises = questionEmbeds.map(
-          async (questionEmbed: QuestionEmbed, index: number) => {
-            const card = getReportCard(state, questionEmbed.id);
+        const snapshotPromises = cardEmbeds.map(
+          async (cardEmbed: CardEmbedRef, index: number) => {
+            const card = getReportCard(state, cardEmbed.id);
             if (!card || card.id.toString().includes("static")) {
               return null;
             }
 
             // Create snapshot using existing card_id to maintain consistency
             const result = await createReportSnapshot({
-              card_id: questionEmbed.id,
+              card_id: cardEmbed.id,
             }).unwrap();
 
             return {
@@ -189,11 +184,11 @@ export function useReportActions() {
         // Update specific question embeds in the document by index
         let hasChanges = false;
         validResults.forEach(({ embedIndex, snapshotId }) => {
-          const embed = questionEmbeds[embedIndex];
+          const embed = cardEmbeds[embedIndex];
           if (embed) {
             let nodeCount = 0;
             doc.descendants((node: any, pos: number) => {
-              if (node.type.name === "questionEmbed") {
+              if (node.type.name === "cardEmbed") {
                 if (nodeCount === embedIndex) {
                   const newAttrs = {
                     ...node.attrs,
@@ -214,12 +209,12 @@ export function useReportActions() {
           editorInstance.view.dispatch(tr);
         }
 
-        // Update questionEmbeds state with all new snapshot IDs at once
-        dispatch(updateQuestionEmbeds(validResults));
+        // Update cardEmbeds state with all new snapshot IDs at once
+        dispatch(updateCardEmbeds(validResults));
 
         // Fetch new data for all updated question embeds to refresh the visible report
         validResults.forEach(({ embedIndex, snapshotId }) => {
-          const embed = questionEmbeds[embedIndex];
+          const embed = cardEmbeds[embedIndex];
           if (embed) {
             dispatch(
               fetchReportQuestionData({
@@ -238,7 +233,7 @@ export function useReportActions() {
         sendToast({ message: t`Error refreshing data`, icon: "warning" });
       }
     },
-    [questionEmbeds, store, createReportSnapshot, dispatch, sendToast],
+    [cardEmbeds, store, createReportSnapshot, dispatch, sendToast],
   );
 
   return {

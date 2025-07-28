@@ -41,14 +41,14 @@ import {
 } from "../selectors";
 
 interface EmbedQuestionSettingsSidebarProps {
-  questionId: number;
+  cardId: number;
   snapshotId: number;
   onClose: () => void;
   editorInstance?: any;
 }
 
 export const EmbedQuestionSettingsSidebar = ({
-  questionId,
+  cardId,
   snapshotId,
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
@@ -61,17 +61,15 @@ export const EmbedQuestionSettingsSidebar = ({
   // Use card with draft settings merged for the sidebar
   const card = useSelector((state) =>
     selectedEmbedIndex !== null
-      ? getReportCardWithDraftSettings(state, questionId)
-      : getReportCard(state, questionId),
+      ? getReportCardWithDraftSettings(state, cardId)
+      : getReportCard(state, cardId),
   );
   const series = useSelector((state) =>
     selectedEmbedIndex !== null
-      ? getReportRawSeriesWithDraftSettings(state, questionId, snapshotId)
+      ? getReportRawSeriesWithDraftSettings(state, cardId, snapshotId)
       : null,
   );
-  const isCardLoading = useSelector((state) =>
-    getIsLoadingCard(state, questionId),
-  );
+  const isCardLoading = useSelector((state) => getIsLoadingCard(state, cardId));
   const isResultsLoading = useSelector((state) =>
     getIsLoadingDataset(state, snapshotId),
   );
@@ -82,9 +80,8 @@ export const EmbedQuestionSettingsSidebar = ({
   );
 
   const dataset =
-    useSelector((state) =>
-      getReportRawSeries(state, questionId, snapshotId),
-    )?.[0]?.data || null;
+    useSelector((state) => getReportRawSeries(state, cardId, snapshotId))?.[0]
+      ?.data || null;
 
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
     return getSensibleVisualizations({ result: dataset });
