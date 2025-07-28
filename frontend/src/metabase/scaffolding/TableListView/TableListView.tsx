@@ -18,6 +18,7 @@ import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
+  Box,
   Button,
   Group,
   Icon,
@@ -30,7 +31,10 @@ import {
 } from "metabase/ui";
 import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetQuery } from "metabase-types/api";
+
+import { TableDetailViewInner } from "../TableDetailView/TableDetailView";
 
 import { TableDataView } from "./TableDataView";
 import S from "./TableListView.module.css";
@@ -222,6 +226,8 @@ export const TableListView = ({ location, params }: Props) => {
     [filteredRows, page],
   );
 
+  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+
   if (!table || !dataset || !columns || !dataQuery) {
     return <LoadingAndErrorWrapper loading />;
   }
@@ -327,6 +333,44 @@ export const TableListView = ({ location, params }: Props) => {
             table={table}
             onSort={handleColumnSort}
           />
+        )}
+
+        {settings.list_view.view === "list" && (
+          <Stack gap="md">
+            {paginatedRows.map((row, index) => {
+              return (
+                <TableDetailViewInner
+                  key={index}
+                  tableId={table.id as number}
+                  rowId={row[pkIndex] as number}
+                  dataset={dataset}
+                  table={table}
+                  isEdit={isEditing}
+                  isListView
+                />
+              );
+            })}
+          </Stack>
+        )}
+
+        {settings.list_view.view === "gallery" && (
+          <Box
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}
+          >
+            {paginatedRows.map((row, index) => {
+              return (
+                <TableDetailViewInner
+                  key={index}
+                  tableId={table.id as number}
+                  rowId={row[pkIndex] as number}
+                  dataset={dataset}
+                  table={table}
+                  isEdit={isEditing}
+                  isListView
+                />
+              );
+            })}
+          </Box>
         )}
       </Stack>
 

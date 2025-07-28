@@ -47,11 +47,13 @@ interface TableDetailViewLoaderProps {
     rowId: string;
   };
   isEdit?: boolean;
+  isListView?: boolean;
 }
 
 export function TableDetailView({
   params,
   isEdit = false,
+  isListView = false,
 }: TableDetailViewLoaderProps) {
   const tableId = parseInt(params.tableId, 10);
   const rowId = parseInt(params.rowId, 10);
@@ -75,6 +77,7 @@ export function TableDetailView({
       dataset={dataset}
       table={table}
       isEdit={isEdit}
+      isListView={isListView}
     />
   );
 }
@@ -85,14 +88,16 @@ interface TableDetailViewProps {
   dataset: Dataset;
   table: any;
   isEdit: boolean;
+  isListView?: boolean;
 }
 
-function TableDetailViewInner({
+export function TableDetailViewInner({
   tableId,
   rowId,
   dataset,
   table,
   isEdit = false,
+  isListView = false,
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const dispatch = useDispatch();
@@ -175,16 +180,20 @@ function TableDetailViewInner({
   return (
     <Flex>
       <Box m="auto" mt="md" w="70%">
-        <DetailViewHeader
-          table={table}
-          isEdit={isEdit}
-          canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
-          canOpenNextItem={rows.length > 1 && currentRowIndex < rows.length - 1}
-          onEditClick={handleEditClick}
-          onPreviousItemClick={handleViewPreviousObjectDetail}
-          onNextItemClick={handleViewNextObjectDetail}
-          onCloseClick={handleCloseClick}
-        />
+        {!isListView && (
+          <DetailViewHeader
+            table={table}
+            isEdit={isEdit}
+            canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
+            canOpenNextItem={
+              rows.length > 1 && currentRowIndex < rows.length - 1
+            }
+            onEditClick={handleEditClick}
+            onPreviousItemClick={handleViewPreviousObjectDetail}
+            onNextItemClick={handleViewNextObjectDetail}
+            onCloseClick={handleCloseClick}
+          />
+        )}
         <Stack gap="md" mt="lg">
           <DndContext
             sensors={sensors}
@@ -217,7 +226,7 @@ function TableDetailViewInner({
           </Flex>
         )}
       </Box>
-      {isEdit && (
+      {isEdit && !isListView && (
         <DetailViewSidebar
           columns={columns}
           sections={sections}
