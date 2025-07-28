@@ -89,6 +89,7 @@ interface TableDetailViewProps {
   table: any;
   isEdit: boolean;
   isListView?: boolean;
+  sectionsOverride?: ObjectViewSectionSettings[];
 }
 
 export function TableDetailViewInner({
@@ -98,6 +99,7 @@ export function TableDetailViewInner({
   table,
   isEdit = false,
   isListView = false,
+  sectionsOverride,
 }: TableDetailViewProps) {
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const dispatch = useDispatch();
@@ -107,7 +109,7 @@ export function TableDetailViewInner({
   const row = rows[currentRowIndex] || {};
 
   const {
-    sections,
+    sections: sections2,
     createSection,
     updateSection,
     removeSection,
@@ -123,6 +125,7 @@ export function TableDetailViewInner({
       })),
     },
   ]);
+  const sections = isListView ? (sectionsOverride ?? sections2) : sections2;
 
   const sensors = useSensors(
     useSensor(PointerSensor),

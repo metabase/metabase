@@ -34,6 +34,7 @@ import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetQuery } from "metabase-types/api";
 
+import { DetailViewSidebar } from "../TableDetailView/DetailViewSidebar";
 import { TableDetailViewInner } from "../TableDetailView/TableDetailView";
 
 import { TableDataView } from "./TableDataView";
@@ -354,6 +355,7 @@ export const TableListView = ({ location, params }: Props) => {
                   table={table}
                   isEdit={isEditing}
                   isListView
+                  sectionsOverride={settings.list_view.list.sections}
                 />
               );
             })}
@@ -374,6 +376,7 @@ export const TableListView = ({ location, params }: Props) => {
                   table={table}
                   isEdit={isEditing}
                   isListView
+                  sectionsOverride={settings.list_view.gallery.sections}
                 />
               );
             })}
@@ -438,6 +441,48 @@ export const TableListView = ({ location, params }: Props) => {
               table={table}
               value={settings}
               onChange={setSettings}
+            />
+          )}
+
+          {settings.list_view.view === "list" && (
+            <DetailViewSidebar
+              columns={columns}
+              sections={settings.list_view.list.sections}
+              onUpdateSection={(id, update) => {
+                setSettings((settings) => ({
+                  ...settings,
+                  list_view: {
+                    ...settings.list_view,
+                    list: {
+                      ...settings.list_view.list,
+                      sections: settings.list_view.list.sections.map((s) =>
+                        s.id === id ? { ...s, ...update } : s,
+                      ),
+                    },
+                  },
+                }));
+              }}
+            />
+          )}
+
+          {settings.list_view.view === "gallery" && (
+            <DetailViewSidebar
+              columns={columns}
+              sections={settings.list_view.gallery.sections}
+              onUpdateSection={(id, update) => {
+                setSettings((settings) => ({
+                  ...settings,
+                  list_view: {
+                    ...settings.list_view,
+                    gallery: {
+                      ...settings.list_view.gallery,
+                      sections: settings.list_view.gallery.sections.map((s) =>
+                        s.id === id ? { ...s, ...update } : s,
+                      ),
+                    },
+                  },
+                }));
+              }}
             />
           )}
         </Stack>
