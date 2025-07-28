@@ -281,12 +281,27 @@ describe("Dashboard utils", () => {
       visualization_settings: { "card.hide_empty": true },
     });
 
+    const visualizerCardId = 4;
+    const visualizerCard = createMockDashboardCard({
+      id: visualizerCardId,
+      visualization_settings: {
+        visualization: {
+          display: "table",
+          columnValuesMapping: {},
+          settings: { "card.hide_empty": true },
+        },
+      },
+    });
+
     const loadingData = {
       [normalCardId]: {
         100: null,
       },
       [hidingWhenEmptyCardId]: {
         200: null,
+      },
+      [visualizerCardId]: {
+        300: null,
       },
     };
 
@@ -296,6 +311,9 @@ describe("Dashboard utils", () => {
       },
       [hidingWhenEmptyCardId]: {
         200: createMockDataset(),
+      },
+      [visualizerCardId]: {
+        300: createMockDataset(),
       },
     };
 
@@ -310,9 +328,19 @@ describe("Dashboard utils", () => {
           data: createMockDatasetData({ rows: [[1]] }),
         }),
       },
+      [visualizerCardId]: {
+        300: createMockDataset({
+          data: createMockDatasetData({ rows: [[1]] }),
+        }),
+      },
     };
 
-    const cards = [virtualCard, normalCard, hidingWhenEmptyCard];
+    const cards = [
+      virtualCard,
+      normalCard,
+      hidingWhenEmptyCard,
+      visualizerCard,
+    ];
 
     it("when loading and no cards previously were visible it should show only virtual and normal cards", () => {
       const visibleIds = getVisibleCardIds(cards, loadingData);
@@ -323,10 +351,20 @@ describe("Dashboard utils", () => {
       const visibleIds = getVisibleCardIds(
         cards,
         loadingData,
-        new Set([virtualCardId, normalCardId, hidingWhenEmptyCardId]),
+        new Set([
+          virtualCardId,
+          normalCardId,
+          hidingWhenEmptyCardId,
+          visualizerCardId,
+        ]),
       );
       expect(visibleIds).toStrictEqual(
-        new Set([virtualCardId, normalCardId, hidingWhenEmptyCardId]),
+        new Set([
+          virtualCardId,
+          normalCardId,
+          hidingWhenEmptyCardId,
+          visualizerCardId,
+        ]),
       );
     });
 
@@ -338,7 +376,12 @@ describe("Dashboard utils", () => {
     it("when loaded with data it should show all of cards", () => {
       const visibleIds = getVisibleCardIds(cards, loadedWithData);
       expect(visibleIds).toStrictEqual(
-        new Set([virtualCardId, normalCardId, hidingWhenEmptyCardId]),
+        new Set([
+          virtualCardId,
+          normalCardId,
+          hidingWhenEmptyCardId,
+          visualizerCardId,
+        ]),
       );
     });
   });

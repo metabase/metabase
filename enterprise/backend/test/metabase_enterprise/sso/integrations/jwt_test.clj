@@ -199,10 +199,10 @@
               (is
                (= default-redirect-uri
                   (get-in response [:headers "Location"]))))
-            (testing "login attributes"
+            (testing "jwt_attributes"
               (is
                (= {"extra" "keypairs", "are" "also present"}
-                  (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))
+                  (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))
 
         (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
           (let [response (client/client-full-response :get 302 "/auth/sso"
@@ -231,7 +231,7 @@
             (testing "login attributes (preferred_method=jwt)"
               (is
                (= {"extra" "keypairs", "are" "also present"}
-                  (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))
+                  (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))
 
         (testing "with SAML and JWT configured, a GET request with preferred_method=saml should redirect to SAML IdP"
           (let [response (client/client-full-response :get 302 "/auth/sso"
@@ -267,7 +267,7 @@
         (testing "login attributes"
           (is
            (= {"extra" "keypairs", "are" "also present"}
-              (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))))
+              (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
   (testing "Check that we prevent open redirects to untrusted sites"
@@ -359,7 +359,7 @@
                  (=
                   {"more" "stuff"
                    "for"  "the new user"}
-                  (t2/select-one-fn :login_attributes :model/User :email "newuser@metabase.com")))))))))))
+                  (t2/select-one-fn :jwt_attributes :model/User :email "newuser@metabase.com")))))))))))
 
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."
