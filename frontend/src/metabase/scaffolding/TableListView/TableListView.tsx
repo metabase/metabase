@@ -234,7 +234,14 @@ export const TableListView = ({ location, params }: Props) => {
 
   return (
     <Group align="flex-start" gap={0} wrap="nowrap" h="100%">
-      <Stack gap="md" p="xl" flex="1" miw={0}>
+      <Stack
+        gap="md"
+        p="xl"
+        flex="1"
+        miw={0}
+        h="100%"
+        style={{ overflow: "auto" }}
+      >
         <Group align="flex-start" justify="space-between">
           <Stack gap="xs">
             <Title>{table.display_name}</Title>
