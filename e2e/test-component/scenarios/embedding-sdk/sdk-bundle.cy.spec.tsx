@@ -86,6 +86,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
           // Update props via the imperative API (via window)
           cy.window().then((win) => {
             (win as any).METABASE_PROVIDER_PROPS_STORE.setProps({
+              authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
               locale: "fr",
             });
 
