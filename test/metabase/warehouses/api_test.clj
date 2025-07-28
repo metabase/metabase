@@ -1604,7 +1604,7 @@
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel get-schemas-test
+(deftest get-schemas-test
   (testing "GET /api/database/:id/schemas"
     (testing "Multiple schemas are ordered by name"
       (mt/with-temp

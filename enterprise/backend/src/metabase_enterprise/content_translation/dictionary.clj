@@ -27,7 +27,7 @@
 (defn- collect-locale-error
   "Returns an error message if a row does not have a valid locale."
   [_state index {:keys [locale]}]
-  (when (not (i18n/available-locale? locale))
+  (when (not (i18n/included-locale? locale))
     (tru "Row {0}: Invalid locale: {1}" (adjust-index index) locale)))
 
 (defn- collect-duplication-error

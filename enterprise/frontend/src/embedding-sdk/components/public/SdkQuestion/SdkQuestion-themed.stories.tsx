@@ -15,7 +15,7 @@ import { SdkQuestion } from "./SdkQuestion";
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Themed",
+  title: "EmbeddingSDK/SdkQuestion/Themed",
   component: SdkQuestion,
   parameters: {
     layout: "fullscreen",

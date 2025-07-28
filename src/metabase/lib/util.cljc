@@ -222,14 +222,13 @@
         (assoc :lib/type :metadata/results))))
 
 (defn- join->pipeline [join]
-  (let [source (select-keys join [:source-table :source-query])
-        stages (inner-query->stages source)
-        stages (if-let [source-metadata (and (>= (count stages) 2)
-                                             (:source-metadata join))]
-                 (assoc-in stages [(- (count stages) 2) :lib/stage-metadata] (->stage-metadata source-metadata))
+  (let [stages (inner-query->stages (or (:source-query join)
+                                        (select-keys join [:source-table])))
+        stages (if-let [source-metadata (:source-metadata join)]
+                 (assoc-in stages [(dec (count stages)) :lib/stage-metadata] (->stage-metadata source-metadata))
                  stages)]
     (-> join
-        (dissoc :source-table :source-query)
+        (dissoc :source-table :source-query :source-metadata)
         (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
                :stages stages)

@@ -24,6 +24,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.types.isa :as lib.types]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -43,6 +44,7 @@
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -1257,33 +1259,60 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
+(defn- dataset-query->dimensions
+  "Extract dimensions (non-aggregation columns) from a dataset query."
+  [dataset-query-str]
+  (when dataset-query-str
+    (lib.metadata.jvm/with-metadata-provider-cache
+      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
+            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+            lib-query         (lib/query metadata-provider dataset-query)
+            columns           (lib/returned-columns lib-query)]
+        ;; Dimensions are columns that are not aggregations
+        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+
+(defn extract-non-temporal-dimension-ids
+  "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
+  [{:keys [dataset_query]}]
+  (let [dimensions (dataset-query->dimensions dataset_query)
+        dim-ids    (->> dimensions
+                        (remove lib.types/temporal?)
+                        (keep :id)
+                        sort)]
+    (json/encode (or dim-ids []))))
+
+(defn has-temporal-dimension?
+  "Return true if the query has any temporal dimensions. See PR 60912"
+  [{:keys [dataset_query]}]
+  (let [dimensions (dataset-query->dimensions dataset_query)]
+    (boolean (some lib.types/temporal? dimensions))))
+
 (defn ^:private base-search-spec
   []
   {:model        :model/Card
-   :attrs        {:archived            true
-                  :collection-id       true
-                  :creator-id          true
-                  :dashboard-id        true
-                  :dashboardcard-count {:select [:%count.*]
-                                        :from   [:report_dashboardcard]
-                                        :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id         true
-                  :last-viewed-at      :last_used_at
-                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
-                  :official-collection [:= "official" :collection.authority_level]
-                  :last-edited-at      :r.timestamp
-                  :last-editor-id      :r.user_id
-                  :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified            [:= "verified" :mr.status]
-                  :view-count          true
-                  :created-at          true
-                  :updated-at          true
-                  :display-type        :this.display
-                  ;; Visualizer compatibility filtering
-                  :has-temporal-dimensions [:case
-                                            [:and [:is-not :this.result_metadata nil]
-                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
-                                            :else false]}
+   :attrs        {:archived             true
+                  :collection-id        true
+                  :creator-id           true
+                  :dashboard-id         true
+                  :dashboardcard-count  {:select [:%count.*]
+                                         :from   [:report_dashboardcard]
+                                         :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :database-id          true
+                  :last-viewed-at       :last_used_at
+                  :native-query         (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
+                  :official-collection  [:= "official" :collection.authority_level]
+                  :last-edited-at       :r.timestamp
+                  :last-editor-id       :r.user_id
+                  :pinned               [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified             [:= "verified" :mr.status]
+                  :view-count           true
+                  :created-at           true
+                  :updated-at           true
+                  :display-type         :this.display
+                  :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
+                                         :req-fields [:dataset_query]}
+                  :has-temporal-dim     {:fn has-temporal-dimension?
+                                         :req-fields [:dataset_query]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1310,11 +1339,11 @@
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}
-                  ;; Workaround for dataflow :((((((
-                  ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
-                  ;;       and could cause a large increase in the query count for dashboard updates.
-                  ;;       (see the test failures when this hook is added back)
-                  ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
+   ;; Workaround for dataflow :((((((
+   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
+   ;;       and could cause a large increase in the query count for dashboard updates.
+   ;;       (see the test failures when this hook is added back)
+   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
    #_:end})
 
 (search/define-spec "card"

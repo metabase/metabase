@@ -47,6 +47,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     cy.log("3. persisted settings should be restored");
@@ -86,6 +87,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToEmbedOptionsStep({
       experience: "chart",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     cy.log("3. verify persisted settings are restored");
@@ -114,7 +116,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("2. reload the page");
     waitAndReload();
-    navigateToEmbedOptionsStep({ experience: "exploration" });
+    navigateToEmbedOptionsStep({
+      experience: "exploration",
+      dismissEmbedTerms: false,
+    });
 
     getEmbedSidebar().within(() => {
       cy.log("3. persisted settings should be restored");
@@ -181,6 +186,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToGetCodeStep({
       experience: "dashboard",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     getEmbedSidebar().within(() => {
@@ -238,6 +244,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     cy.log("3. parameter settings should be persisted");

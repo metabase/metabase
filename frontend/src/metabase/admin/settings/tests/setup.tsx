@@ -70,7 +70,7 @@ export const ossRoutes: RouteMap = {
   },
   embeddingSdk: {
     path: "/embedding-in-other-applications/sdk",
-    testPattern: /Enable Embedded analytics SDK/i,
+    testPattern: /Embedded analytics SDK for React/i,
   },
   license: { path: "/license", testPattern: /Looking for more/i },
   appearance: {
