@@ -344,8 +344,7 @@
                    :id           true
                    :last_name    "User"
                    :date_joined  true
-                   :common_name  "New User"
-                   :tenant_id    false}
+                   :common_name  "New User"}
                   (-> (mt/boolean-ids-and-timestamps [new-user])
                       first
                       (dissoc :last_login)))))
@@ -388,8 +387,7 @@
                   :id           true
                   :last_name    nil
                   :date_joined  true
-                  :common_name  "newuser@metabase.com"
-                  :tenant_id    false}]
+                  :common_name  "newuser@metabase.com"}]
                 (->>
                  (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login)))))))
@@ -413,8 +411,7 @@
                   :id           true
                   :last_name    "User"
                   :date_joined  true
-                  :common_name  "New User"
-                  :tenant_id    false}]
+                  :common_name  "New User"}]
                 (->>
                  (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login))))))))))))
@@ -621,36 +618,6 @@
 
           (testing "no warning for valid string attribute"
             (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))
-
-(deftest jwt-tenant-user-assigned-to-external-users-group-test
-  (testing "JWT user with tenant attribute is assigned to All External Users group when tenants are enabled"
-    (with-jwt-default-setup!
-      (mt/with-additional-premium-features #{:tenants}
-        (mt/with-temporary-setting-values [use-tenants true]
-          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "external-tenant"
-                                                        :name "External Tenant"}]
-            (with-users-with-email-deleted "tenant-user@metabase.com"
-              (let [response (client/client-real-response :get 302 "/auth/sso"
-                                                          {:request-options {:redirect-strategy :none}}
-                                                          :return_to default-redirect-uri
-                                                          :jwt
-                                                          (jwt/sign
-                                                           {:email      "tenant-user@metabase.com"
-                                                            :first_name "Tenant"
-                                                            :last_name  "User"
-                                                            :tenant     "external-tenant"}
-                                                           default-jwt-secret))]
-                (is (saml-test/successful-login? response))
-
-                (testing "user is assigned to All External Users group"
-                  (let [user-groups (group-memberships
-                                     (u/the-id (t2/select-one-pk :model/User :email "tenant-user@metabase.com")))]
-                    (is (not (contains? user-groups "All Users")))
-                    (is (contains? user-groups "All External Users"))))
-
-                (testing "user has correct tenant_id"
-                  (is (= tenant-id
-                         (t2/select-one-fn :tenant_id :model/User :email "tenant-user@metabase.com"))))))))))))
 
 (deftest jwt-token-test
   (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"

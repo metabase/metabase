@@ -518,8 +518,7 @@
                          :id           true
                          :last_name    "User"
                          :date_joined  true
-                         :common_name  "New User"
-                         :tenant_id    false}
+                         :common_name  "New User"}
                         (-> (mt/boolean-ids-and-timestamps new-user)
                             (dissoc :last_login))))
                  (testing "User Invite Event is logged."
@@ -558,8 +557,7 @@
                         :id           true
                         :last_name    nil
                         :date_joined  true
-                        :common_name  "newuser@metabase.com"
-                        :tenant_id    false}]
+                        :common_name  "newuser@metabase.com"}]
                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                            (map #(dissoc % :last_login))))))
              ;; login with the same user, but now givenname and surname attributes exist
@@ -573,8 +571,7 @@
                         :id           true
                         :last_name    "User"
                         :date_joined  true
-                        :common_name  "New User"
-                        :tenant_id    false}]
+                        :common_name  "New User"}]
                       (->> (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                            (map #(dissoc % :last_login))))))
              (finally
