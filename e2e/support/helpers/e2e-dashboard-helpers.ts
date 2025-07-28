@@ -112,6 +112,7 @@ export function saveDashboard({
   }
 
   cy.findByText(editBarText).should("not.exist");
+  cy.findByText("Loading...").should("not.exist");
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
