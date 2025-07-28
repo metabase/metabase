@@ -23,6 +23,7 @@ import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
+import { PDFGenerator } from "./extensions/GeneratePRF/GeneratePDF";
 
 interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
@@ -69,6 +70,7 @@ export const Editor: React.FC<EditorProps> = ({
           class: "smart-link",
         },
       }),
+      PDFGenerator,
     ],
     autofocus: true,
   });

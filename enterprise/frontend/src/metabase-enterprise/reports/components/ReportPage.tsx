@@ -33,6 +33,7 @@ import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
 import { VersionSelect } from "./VersionSelect";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
+import type { Editor as TiptapEditor } from "@tiptap/react";
 
 export const ReportPage = ({
   params: { id: reportId },
@@ -46,7 +47,9 @@ export const ReportPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useReportsSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
-  const [editorInstance, setEditorInstance] = useState<any>(null);
+  const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
+    null,
+  );
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentContent, setCurrentContent] = useState<string>("");
   const [createReport] = useCreateReportMutation();
@@ -263,6 +266,14 @@ export const ReportPage = ({
     })();
   }, [cardEmbeds, editorInstance]);
 
+  const handleGeneratePDF = useCallback(() => {
+    if (!editorInstance) {
+      return;
+    }
+
+    const result = editorInstance.commands.generatePDF();
+  }, [editorInstance]);
+
   return (
     <Box className={styles.reportPage}>
       <Box className={styles.contentArea}>
@@ -329,6 +340,12 @@ export const ReportPage = ({
                       disabled={!canWrite}
                     >
                       {t`Refresh all data`}
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<Icon name="share" />}
+                      onClick={handleGeneratePDF}
+                    >
+                      {t`Click me Ryan`}
                     </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
