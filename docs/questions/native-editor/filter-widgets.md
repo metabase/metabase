@@ -77,7 +77,7 @@ To override the default value, insert a new value into the filter widget.
 In the **Variable** settings sidebar, you can toggle the **Always require a value** option. If you turn this on:
 
 - You must enter a default value.
-- The default value will override any [optional syntax](./sql-parameters.md#making-variables-optional) in your code (like an optional `WHERE` clause). If no value is passed to the filter, Metabase will run the query using the default value. Click on the **Eye** icon in the editor to preview the SQL Metabase will run.
+- The default value will override any [optional syntax](./basic-sql-parameters.md#making-variables-optional) in your code (like an optional `WHERE` clause). If no value is passed to the filter, Metabase will run the query using the default value. Click on the **Eye** icon in the editor to preview the SQL Metabase will run.
 
 ## Filter widget operators
 
