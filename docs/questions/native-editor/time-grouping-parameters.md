@@ -48,7 +48,7 @@ If people don't set a value for the parameter, Metabase won't group to a date pa
 
 ## Handling aliases
 
-Just like with field filters, if you alias a table, then map a time grouping parameter to a field in that aliased table, you'll need to [tell Metabase about the table and field alias](./sql-parameters.md#specifying-the-table-and-field-alias).
+Just like with field filters, if you alias a table, then map a time grouping parameter to a field in that aliased table, you'll need to [tell Metabase about the table and field alias](./field-filters.md#specifying-the-table-and-field-alias).
 
 ## Connecting to a dashboard filter
 

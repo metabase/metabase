@@ -21,7 +21,7 @@ When you define a variable, the **variables and parameters** side panel will app
 
 Variable types include:
 
-- **[Field filter variables](#field-filters.md)**: create "smart" filter widgets with date pickers or dropdown menus. To use a field filter, you'll need to connect to a database field included in your query.
+- **[Field filter variables](./field-filters.md)**: create "smart" filter widgets with date pickers or dropdown menus. To use a field filter, you'll need to connect to a database field included in your query.
 - **[Basic variables](./basic-sql-parameters.md)**: text, number, and date variables. You'll almost always want to use field filters instead of these basic variables, as field filters create "smart" filter widgets, but Metabase provides these basic variables for situations where you can't use field filters.
 - **[Time grouping parameters](./time-grouping-parameters.md)**: allows people to change how the results are grouped by a date column: by month, week, day, etc.
 
@@ -35,7 +35,7 @@ You can include multiple variables in a single query, and Metabase will add mult
    - [Dropdown list](../../dashboards/filters.md#dropdown-list). A dropdown list shows all available values for the field in a selectable list.
    - [Search box](../../dashboards/filters.md#search-box). A search box allows people to type to search for specific values.
    - [Input box](../../dashboards/filters.md#plain-input-box). An input box provides a simple text field for entering values.
-4. If the filter is mapped to a field in an aliased table, you'll need to [specify the table and field alias](#specifying-the-table-and-field-alias).
+4. If the filter is mapped to a field in an aliased table, you'll need to [specify the table and field alias](./field-filters.md#specifying-the-table-and-field-alias).
 5. Optionally, set a **Default filter widget value**.
 
 Check out [filter widgets](./filter-widgets.md).
@@ -181,7 +181,7 @@ WHERE
 {% endraw %}
 ```
 
-That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
+That last clause uses a [field filter](./field-filters.md) (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
 
 ### Optional variables in MongoDB
 
@@ -226,7 +226,7 @@ The kind of dashboard filter that can be used with the SQL question depends on t
 4. Add a new dashboard filter (or edit an existing Location filter).
 5. Click the dropdown on the SQL question card to connect the widget to the `State` field filter.
 
-If you add a basic **Date** variable to the question (i.e., not a field filter), then it's only possible to use the dashboard filter option **Single Date**. So if you're trying to use one of the other Time options on the dashboard, you'll need to change the variable to a [field filter](#field-filter-variables) and map it to a date field.
+If you add a basic **Date** variable to the question (i.e., not a field filter), then it's only possible to use the dashboard filter option **Single Date**. So if you're trying to use one of the other Time options on the dashboard, you'll need to change the variable to a [field filter](./field-filters.md) and map it to a date field.
 
 ![Field filter](../images/state-field-filter.png)
 

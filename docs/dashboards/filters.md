@@ -44,7 +44,7 @@ There are two basic types of widgets you can add. The type of filter or paramete
     - **Question cards**. Can only be connected to cards on the current tab.
    
    Go to where you want to add a filter and click the **filter icon**.
-3. Select a [filter type](#filter-and-parameter-types).
+3. Select a [filter type](#filter-and-parameter-widgets).
 4. [Connect your filter or parameter widget to one or more dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards). Only dashboard-level widgets can be connected to cards on multiple tabs.
 5. [Configure your filter](#editing-a-filter).
 6. **Save** your changes.
@@ -108,7 +108,7 @@ There are four types of Location filters to choose from.
 
 Additionally, you can select an operator for the location filter:
 
-- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md#field-filter-variables).
+- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, a native/SQL question using a [field filter](../questions/native-editor/field-filters.md), or a basic variable set to accept [multiple values](../questions/native-editor/basic-sql-parameters.md#basic-variable-that-allows-people-to-select-multiple-values).
 - **Is not**. Exclude one or more specific values.
 - **Contains**. Match values that contain the entered text.
 - **Does not contain**. Filter out values that contain the entered text.
@@ -135,7 +135,7 @@ You can choose from:
 
 A flexible filter type that will let you create either a dropdown menu or an input box to filter on any text or category field in your cards. Options include:
 
-- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md#field-filter-variables).
+- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be a question built using the query builder, a native/SQL question using a [field filter](../questions/native-editor/field-filters.md), or a basic variable set to [multiple values](../questions/native-editor/basic-sql-parameters.md#basic-variable-that-allows-people-to-select-multiple-values).
 - **Is not**. Exclude one or more specific values.
 - **Contains**. Match values that contain the entered text.
 - **Does not contain**. Filter out values that contain the entered text.
@@ -164,7 +164,7 @@ Here we've wired up a Text filter to the "Event types" card, telling Metabase th
 
 Which cards you can connect a filter or parameter widget to depends on:
 
-- Whether the question card has the relevant field.
+- Whether the card has a relevant field (i.e., the field the widget is filtering).
 - Where the widget is located: on the dashboard, heading card, or question card. Only dashboard widgets can be connected to cards across all [dashboard tabs](./introduction.md#dashboard-tabs). Widgets on heading and question cards are restricted to the cards on their respective tabs.
 
 ## Auto-connecting filters to cards

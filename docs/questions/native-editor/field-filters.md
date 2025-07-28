@@ -9,7 +9,7 @@ summary: Field filters let you create smart filter widgets for your SQL question
 
 In general, prefer using field filter variables. They offer "smart" filter widgets with dropdown menus and dynamic date pickers.
 
-If your query lacks a database field for the filter to connect to, however, then you'll instead need to use a [basic variable](./basic-sql-parameters.md). For example, if you want to filter by a custom column you created, you'd need to use a basic variable. See other [field filter limitations](#field-filter-limitations).
+If your query lacks a database field for the filter to connect to, however, then you'll instead need to use a [basic variable](./basic-sql-parameters.md). For example, if you want to filter by a custom column you created, you'd need to use a basic variable.
 
 ## Field filter variables
 
@@ -17,7 +17,7 @@ To add a field filter:
 
 1. [Add a variable to a `WHERE` clause](#field-filter-syntax).
 2. [Connect the field filter to a database field](#connect-the-field-filter-to-a-database-field).
-3. [Configure your filter widget](#configure-your-filter-widget).
+3. [Configure your filter widget](./sql-parameters.md#configure-your-filter-widget).
 
 ### Field filter syntax
 
@@ -52,7 +52,7 @@ In order for a field filter variable to work, you'll need to associate the varia
 2. Under **Variable type**, select the "Field filter" variable type.
 3. Choose which **Field to map to** your variable (in this case, we'll map the `Category` field in the products table).
 
-You can only map a field filter to a database field. See [field filter limitations](#field-filter-limitations).
+You can only map a field filter to a database field. If you can't use a field filter, you can fall back to using a [basic variable](./basic-sql-parameters.md).
 
 ## Specifying the table and field alias
 
