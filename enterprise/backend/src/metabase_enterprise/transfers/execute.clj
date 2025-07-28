@@ -1,14 +1,15 @@
 (ns metabase-enterprise.transfers.execute
-  (:require [honey.sql.helpers :as sql.helpers]
-            [metabase-enterprise.legos.core :as legos]
-            [metabase-enterprise.transforms.core :as transforms]
-            [metabase.driver :as driver]
-            [metabase.driver.postgres :as pg]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.compile :as qp.compile]
-            [metabase.util.malli.registry :as mr]
-            [toucan2.core :as t2]))
+  (:require
+   [honey.sql.helpers :as sql.helpers]
+   [metabase-enterprise.legos.core :as legos]
+   [metabase-enterprise.transforms.core :as transforms]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (def ^:private type-map
   "Map of Field base types -> Postgres column types.
@@ -67,6 +68,17 @@
        row
        fields))
 
+(defn execute-query!
+  "Execute native sql."
+  [driver db-ref [sql & params]]
+  (let [query {:native (cond-> {:query sql}
+                         params (assoc :params params))
+               :type :native
+               :database db-ref}]
+    (qp.setup/with-qp-setup [query query]
+      (let [query (qp.preprocess/preprocess query)]
+        (driver/execute-write-query! driver query)))))
+
 (defn- insert-data [{:keys [data output-db-ref fields output-table-name]}]
   (let [cast-data (map (fn [row]
                          (cast-row row fields))
@@ -77,9 +89,11 @@
                                                                     fields)))
                   (sql.helpers/values cast-data)
                   (->> (sql.qp/format-honeysql :postgres)))]
-    (transforms/execute-query! :postgres output-db-ref query)))
+    (execute-query! :postgres output-db-ref query)))
 
-(defn execute [{:keys [input-table output-db-ref output-table-name overwrite?] :as args}]
+(defn execute
+  "Execute a transfer."
+  [{:keys [input-table output-db-ref output-table-name overwrite?] :as args}]
   (let [input-fields (t2/select :model/Field :table_id (:id input-table))
         fields (make-table {:input-fields input-fields
                             :output-db-ref output-db-ref

@@ -3,10 +3,9 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.setup :as qp.setup]
    [metabase.sync.core :as sync]
    [toucan2.core :as t2])
   (:import
@@ -52,10 +51,12 @@
   (sql.qp/format-honeysql :clickhouse {:create-table-as ["dude" [:order-by :id]]
                                        :raw "select * from products"}))
 
-(defn data-for-transform [{:keys [db-id] :as data}]
+(defn data-for-transform
+  "Transform a map including `:db-id` to one that includes `:connection-details` and `:driver`."
+  [{:keys [db-id] :as data}]
   (let [db (t2/select-one :model/Database db-id)
         driver (:engine db)
-        connection-details (metabase.driver.sql-jdbc.connection/connection-details->spec
+        connection-details (sql-jdbc.conn/connection-details->spec
                             driver (:details db))]
     (-> data
         (dissoc :db-id)
@@ -90,8 +91,8 @@
   (let [{:keys [source target]} transform
         db (get-in source [:query :database])
         {driver :engine :as database} (t2/select-one :model/Database db)]
-    (execute!
-     {:db-ref db
+    (execute-in-process!
+     {:db-id db
       :driver driver
       :sql (transforms.util/compile-source source)
       :output-table (transforms.util/qualified-table-name driver target)
