@@ -14,7 +14,8 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (t2/select-one current-user-fields, :id user-id)))
+    (-> (t2/select-one current-user-fields, :id user-id)
+        user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
