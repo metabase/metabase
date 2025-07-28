@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 
 const noop = () => {};
@@ -8,8 +8,8 @@ const noop = () => {};
 export function useLazySelector<TSelected>(
   selector: ((state: SdkStoreState) => TSelected) | null | undefined,
 ): TSelected | null {
-  const store = ensureMetabaseProviderPropsStore();
-  const reduxStore = store.getSnapshot()?.reduxStore;
+  const metabaseProviderPropsStore = useMetabaseProviderPropsStore();
+  const reduxStore = metabaseProviderPropsStore?.reduxStore;
 
   const subscribe = (notify: () => void) =>
     reduxStore && selector ? reduxStore.subscribe(notify) : noop;

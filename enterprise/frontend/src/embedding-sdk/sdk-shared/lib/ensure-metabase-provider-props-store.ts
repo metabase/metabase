@@ -11,7 +11,8 @@ export type MetabaseProviderPropsStoreExternalProps = Omit<
 >;
 
 export type MetabaseProviderPropsStoreInternalProps = {
-  reduxStore: InternalMetabaseProviderProps["reduxStore"];
+  initialized?: boolean;
+  reduxStore?: InternalMetabaseProviderProps["reduxStore"];
 };
 
 export type MetabaseProviderPropsStore = {
@@ -22,11 +23,12 @@ export type MetabaseProviderPropsStore = {
 };
 
 const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
+  "initialized",
   "reduxStore",
 ];
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
-export const EMPTY_PROPS = {} as MetabaseProviderPropsToStore;
+const EMPTY_PROPS = {} as MetabaseProviderPropsToStore;
 
 export function ensureMetabaseProviderPropsStore(
   initial?: MetabaseProviderPropsStoreExternalProps,
