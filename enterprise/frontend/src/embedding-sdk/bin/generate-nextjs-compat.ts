@@ -18,12 +18,18 @@ const writeToFile = async (filePath: string, content: string) => {
 };
 
 const nextjs_cjs = `
-const MetabaseEmbeddingSDK = require("@metabase/embedding-sdk-react");
+"use client";
+
+const MetabaseEmbeddingSDK = require("./main.bundle");
 
 module.exports = MetabaseEmbeddingSDK;
 `.trim();
 
-const nextjs_js = 'export * from "@metabase/embedding-sdk-react";';
+const nextjs_js = `
+"use client";
+
+export * from "./main.bundle.js";
+`.trim();
 
 writeToFile("nextjs.cjs", nextjs_cjs);
 writeToFile("nextjs.js", nextjs_js);
