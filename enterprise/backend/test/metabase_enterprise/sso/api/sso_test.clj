@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sso.api.sso-test
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -43,4 +44,38 @@
                               "g%2BIRZXaZ4h0mLwG7MQwyv9KCL9tH0GZ%2F3K3mqYhg3d8zDO"
                               "W6HSXlA%2FP2W1xFSMV7isYbynM%2BTPZ1vp88zQCpb0xVzDWt"
                               "%2FYw11yAqadb8%3D")
-                             (:saml-logout-url response))))))))))))))
+                             (:saml-logout-url response)))))))))))))
+
+(deftest jwt-to-session-test
+  (testing "JWT to session conversion"
+    (mt/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled                true
+                                         jwt-shared-secret          "test-secret"
+                                         jwt-attribute-email        "email"
+                                         jwt-attribute-firstname    "first_name"
+                                         jwt-attribute-lastname     "last_name"
+                                         jwt-user-provisioning-enabled true]
+        (let [jwt-token (jwt/sign {:email      "test@example.com"
+                                   :first_name "Test"
+                                   :last_name  "User"
+                                   :iat        (quot (System/currentTimeMillis) 1000)
+                                   :exp        (+ (quot (System/currentTimeMillis) 1000) 180)}
+                                  "test-secret")]
+          (testing "successful JWT to session conversion"
+            (let [response (client/client :post "/auth/sso/to_session" {:jwt jwt-token})]
+              (is (= 200 (:status response)))
+              (is (contains? response :session_token))
+              (is (contains? response :exp))
+              (is (contains? response :iat))
+              (is (string? (:session_token response)))))
+          
+          (testing "missing JWT token"
+            (let [response (client/client :post "/auth/sso/to_session" {})]
+              (is (= 400 (:status response)))
+              (is (= "error-jwt-missing" (get-in response [:body :status])))))
+          
+          (testing "JWT disabled"
+            (mt/with-temporary-setting-values [jwt-enabled false]
+              (let [response (client/client :post "/auth/sso/to_session" {:jwt jwt-token})]
+                (is (= 400 (:status response)))
+                (is (= "error-jwt-not-enabled" (get-in response [:body :status]))))))))))))

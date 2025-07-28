@@ -163,3 +163,41 @@
   (throw
    (ex-info (tru "POST not valid for JWT SSO requests")
             {:status "error-post-jwt-not-valid" :status-code 501})))
+
+(defn- jwt-to-session-data
+  "Convert JWT to session data without redirect handling"
+  [jwt request]
+  (let [jwt-data     (try
+                       (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                   {:max-age three-minutes-in-seconds})
+                       (catch Throwable e
+                         (throw
+                          (ex-info (ex-message e)
+                                   {:status      "error-jwt-bad-unsigning"
+                                    :status-code 401}))))
+        login-attrs  (jwt-data->login-attributes jwt-data)
+        email        (get jwt-data (jwt-attribute-email))
+        first-name   (get jwt-data (jwt-attribute-firstname))
+        last-name    (get jwt-data (jwt-attribute-lastname))
+        user         (fetch-or-create-user! first-name last-name email login-attrs)
+        session      (session/create-session! :sso user (request/device-info request))]
+    (sync-groups! user jwt-data)
+    {:session session, :jwt-data jwt-data}))
+
+(defmethod sso.i/sso-jwt-to-session :jwt
+  [{:keys [body params] :as request}]
+  (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
+  (when-not (sso-settings/jwt-enabled)
+    (throw
+     (ex-info (tru "JWT SSO is not enabled")
+              {:status "error-jwt-not-enabled" :status-code 400})))
+  (let [jwt (or (:jwt body) (:jwt params))]
+    (when-not jwt
+      (throw
+       (ex-info (tru "JWT token is required")
+                {:status "error-jwt-missing" :status-code 400})))
+    (let [{:keys [session jwt-data]} (jwt-to-session-data jwt request)]
+      (response/response
+       {:session_token (:key session)
+        :exp           (:exp jwt-data)
+        :iat           (:iat jwt-data)}))))

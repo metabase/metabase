@@ -44,6 +44,11 @@
   {:arglists '([request])}
   sso-backend)
 
+(defmulti sso-jwt-to-session
+  "Multi-method for converting a JWT token to a session token. This method validates the JWT and returns a session token."
+  {:arglists '([request])}
+  (fn [_] :jwt))
+
 (defn- throw-not-configured-error []
   (throw
    (ex-info (tru "SSO has not been enabled and/or configured")
@@ -59,5 +64,9 @@
   (throw-not-configured-error))
 
 (defmethod sso-handle-slo :default
+  [_]
+  (throw-not-configured-error))
+
+(defmethod sso-jwt-to-session :default
   [_]
   (throw-not-configured-error))
