@@ -27,6 +27,8 @@ You can include multiple variables in a single query, and Metabase will add mult
 
 ### Configure your filter widget
 
+When you add a field filter variable or basic variable to your SQL code, you'll need to configure it in the sidebar.
+
 1. Set the **Filter widget type**. Options will differ depending on whether you used a [field filter](./field-filters.md) (preferred) or a [basic variable](./basic-sql-parameters.md) (if you can't use a field filter).
 2. Set the **Filter widget** label.
 3. Set **How should users filter on this variable?**:
