@@ -99,7 +99,7 @@ WHERE
 
 Here, we again map the field filter to the`category` field in the `products` table. But since we use a CTE, aliased as `expensive_products`, we'd need to put `expensive_products.category` in the **Table and field alias** input for the mapping to work correctly.
 
-## Field Filters must be connected to database fields included in the query
+## Field filters must be connected to database fields included in the query
 
 Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
 
@@ -140,3 +140,7 @@ Make sure your SQL dialect matches the database you've selected. Common issues i
 | Oracle   | Schemas and tables must be quoted in double quotes. | `FROM "schema.table"`      |
 
 For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
+
+## Making a field filter optional
+
+See [optional variables](./optional-variables.md).
