@@ -8,6 +8,7 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -26,6 +27,7 @@ import type {
   Database,
   Dataset,
   EmbedDataset,
+  Parameter,
   ParameterId,
   QuestionDashboardCard,
   VirtualCard,
@@ -83,7 +85,10 @@ export function expandInlineCard(card?: Card | VirtualCard) {
 }
 
 export function isQuestionCard(card: Card | VirtualCard) {
-  return card.dataset_query != null;
+  // Some old virtual cards have dataset_query equal to {} so we need to check for null and empty object
+  return (
+    card.dataset_query != null && Object.keys(card.dataset_query).length > 0
+  );
 }
 
 export function isQuestionDashCard(
@@ -133,17 +138,20 @@ export function isIFrameDashCard(
 
 export function supportsInlineParameters(
   dashcard: BaseDashboardCard,
-): dashcard is VirtualDashboardCard {
-  return isHeadingDashCard(dashcard);
+): dashcard is QuestionDashboardCard | VirtualDashboardCard {
+  return isQuestionDashCard(dashcard) || isHeadingDashCard(dashcard);
 }
 
-type VirtualDashboardCardWithInlineFilters = VirtualDashboardCard & {
+type DashboardCardWithInlineFilters = (
+  | VirtualDashboardCard
+  | QuestionDashboardCard
+) & {
   inline_parameters: ParameterId[];
 };
 
 export function hasInlineParameters(
   dashcard: BaseDashboardCard,
-): dashcard is VirtualDashboardCardWithInlineFilters {
+): dashcard is DashboardCardWithInlineFilters {
   return (
     supportsInlineParameters(dashcard) &&
     Array.isArray(dashcard.inline_parameters) &&
@@ -153,13 +161,13 @@ export function hasInlineParameters(
 
 export function findDashCardForInlineParameter(
   parameterId: ParameterId,
-  dashcards: DashboardCard[],
-): VirtualDashboardCardWithInlineFilters | undefined {
+  dashcards: BaseDashboardCard[],
+): DashboardCardWithInlineFilters | undefined {
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
     }
-  }) as VirtualDashboardCardWithInlineFilters | undefined;
+  }) as DashboardCardWithInlineFilters | undefined;
 }
 
 export function isDashcardInlineParameter(
@@ -167,6 +175,25 @@ export function isDashcardInlineParameter(
   dashcards: DashboardCard[],
 ) {
   return !!findDashCardForInlineParameter(parameterId, dashcards);
+}
+
+export function getInlineParameterTabMap(dashboard: Dashboard) {
+  const { dashcards = [] } = dashboard;
+  const parameters = dashboard.parameters ?? [];
+
+  const result: Record<ParameterId, SelectedTabId> = {};
+
+  parameters.forEach((parameter) => {
+    const parentDashcard = findDashCardForInlineParameter(
+      parameter.id,
+      dashcards,
+    );
+    if (parentDashcard) {
+      result[parameter.id] = parentDashcard.dashboard_tab_id ?? null;
+    }
+  });
+
+  return result;
 }
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
@@ -310,7 +337,10 @@ const shouldHideCard = (
   dashcardData: Record<CardId, Dataset | null | undefined>,
   wasVisible: boolean,
 ) => {
-  const shouldHideEmpty = dashcard.visualization_settings?.["card.hide_empty"];
+  const dashcardSettings = isVisualizerDashboardCard(dashcard)
+    ? dashcard.visualization_settings?.visualization?.settings
+    : dashcard.visualization_settings;
+  const shouldHideEmpty = dashcardSettings?.["card.hide_empty"];
 
   if (isVirtualDashCard(dashcard) || !shouldHideEmpty) {
     return false;
@@ -396,7 +426,6 @@ export function createDashCard(
 export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
   return {
     name: null,
-    dataset_query: {},
     display,
     visualization_settings: {},
     archived: false,
@@ -457,4 +486,49 @@ export function getMappedParametersIds(
     const mappings = dashcard.parameter_mappings ?? [];
     return mappings.map((parameter) => parameter.parameter_id);
   });
+}
+
+/**
+ * Reorders a dashboard header parameter within the full parameters array.
+ *
+ * Since `dashboard.parameters` includes both header and inline (dashcard) parameters,
+ * this function ensures that the header parameters are correctly reordered while
+ * maintaining the integrity of the full parameters array.
+ */
+export function setDashboardHeaderParameterIndex(
+  parameters: Parameter[],
+  headerParameterIds: ParameterId[],
+  parameterId: ParameterId,
+  index: number,
+) {
+  const headerIndex = headerParameterIds.indexOf(parameterId);
+  const fullIndex = parameters.findIndex((p) => p.id === parameterId);
+
+  if (headerIndex === -1 || fullIndex === -1 || headerIndex === index) {
+    return parameters;
+  }
+
+  const reorderedHeaders = [...headerParameterIds];
+  reorderedHeaders.splice(headerIndex, 1);
+  reorderedHeaders.splice(index, 0, parameterId);
+
+  let targetIndex = 0;
+
+  if (index > 0) {
+    const prevHeaderId = reorderedHeaders[index - 1];
+    const prevIndex = parameters.findIndex((p) => p.id === prevHeaderId);
+    if (prevIndex >= 0) {
+      targetIndex = prevIndex + 1;
+    }
+  }
+
+  const result = [...parameters];
+  const [movedParam] = result.splice(fullIndex, 1);
+
+  if (fullIndex < targetIndex) {
+    targetIndex--;
+  }
+
+  result.splice(targetIndex, 0, movedParam);
+  return result;
 }

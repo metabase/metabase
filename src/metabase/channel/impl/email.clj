@@ -11,6 +11,7 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
@@ -78,8 +79,16 @@
 
     :text
     (let [inline-params   (:inline_parameters part)
-          rendered-params (when (seq inline-params) (impl.util/render-filters inline-params))]
+          rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))]
       {:content (str (markdown/process-markdown (:text part) :html)
+                     rendered-params)})
+
+    :heading
+    (let [inline-params   (:inline_parameters part)
+          rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))
+          heading-text    (:text part)
+          style           (style/style (if (seq inline-params) {:margin-bottom "4px"} {}))]
+      {:content (str (html [:h2 {:style style} heading-text])
                      rendered-params)})
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
@@ -268,7 +277,7 @@
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
                                                     :filters            (some-> (seq parameters)
                                                                                 (impl.util/remove-inline-parameters dashboard_parts)
-                                                                                (impl.util/render-filters))})
+                                                                                (render.util/render-parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 

@@ -25,9 +25,11 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 import type {
+  DraggedColumn,
   DraggedItem,
   VisualizerState,
   VisualizerVizDefinitionWithColumns,
+  VisualizerVizDefinitionWithColumnsAndFallbacks,
 } from "metabase-types/store/visualizer";
 
 import {
@@ -88,6 +90,7 @@ function getInitialState(): VisualizerState {
     loadingDatasets: {},
     error: null,
     draggedItem: null,
+    hoveredItems: null,
   };
 }
 
@@ -117,7 +120,7 @@ const initializeFromState = async (
   {
     state: initialState = {},
   }: {
-    state?: Partial<VisualizerVizDefinitionWithColumns>;
+    state?: Partial<VisualizerVizDefinitionWithColumnsAndFallbacks>;
   },
   dispatch: Dispatch,
 ) => {
@@ -133,7 +136,12 @@ const initializeFromState = async (
         const [, cardId] = sourceId.split(":");
         return [
           dispatch(fetchCard(Number(cardId))),
-          dispatch(fetchCardQuery(Number(cardId))),
+          dispatch(
+            fetchCardQuery({
+              cardId: Number(cardId),
+              fallbacks: initialState.datasetFallbacks,
+            }),
+          ),
         ];
       })
       .flat(),
@@ -141,14 +149,14 @@ const initializeFromState = async (
   return copy(initialState);
 };
 
-const initializeFromCard = async (
+export const initializeFromCard = async (
   cardId: number,
   dispatch: Dispatch,
   getState: GetState,
 ) => {
   await Promise.all([
     dispatch(fetchCard(cardId)),
-    dispatch(fetchCardQuery(cardId)),
+    dispatch(fetchCardQuery({ cardId })),
   ]);
   const { cards, datasets } = getState().visualizer.present;
   const card = cards.find((card) => card.id === cardId);
@@ -172,7 +180,9 @@ export const addDataSource = createAsyncThunk(
     if (type === "card") {
       // TODO handle rejected requests
       const cardAction = await dispatch(fetchCard(sourceId));
-      const cardQueryAction = await dispatch(fetchCardQuery(sourceId));
+      const cardQueryAction = await dispatch(
+        fetchCardQuery({ cardId: sourceId }),
+      );
 
       const card = cardAction.payload as Card;
       dataset = cardQueryAction.payload as Dataset;
@@ -264,18 +274,28 @@ const fetchCard = createAsyncThunk<Card, CardId>(
   },
 );
 
-const fetchCardQuery = createAsyncThunk<Dataset, CardId>(
-  "visualizer/fetchCardQuery",
-  async (cardId, { dispatch }) => {
-    const result = await dispatch(
-      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-    );
-    if (result.data != null) {
-      return result.data;
+const fetchCardQuery = createAsyncThunk<
+  Dataset,
+  { cardId: CardId; fallbacks?: Record<CardId, Dataset | null | undefined> }
+>("visualizer/fetchCardQuery", async ({ cardId, fallbacks }, { dispatch }) => {
+  const result = await dispatch(
+    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+  );
+  if (result.data != null) {
+    const shouldAttemptFallback =
+      result.data.error_type &&
+      !result.data.data?.rows?.length &&
+      !result.data.data?.cols?.length;
+    if (shouldAttemptFallback) {
+      const fallback = fallbacks?.[cardId];
+      if (fallback) {
+        return fallback;
+      }
     }
-    throw new Error("Failed to fetch card query");
-  },
-);
+    return result.data;
+  }
+  throw new Error("Failed to fetch card query");
+});
 
 export const undo = createAction("visualizer/undo");
 export const redo = createAction("visualizer/redo");
@@ -537,6 +557,9 @@ const visualizerSlice = createSlice({
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
+    setHoveredItems: (state, action: PayloadAction<DraggedColumn[] | null>) => {
+      state.hoveredItems = action.payload;
+    },
     _resetVisualizer: (state) => {
       Object.assign(state, getInitialState());
     },
@@ -588,14 +611,17 @@ const visualizerSlice = createSlice({
         state.error = action.error.message || "Failed to fetch card";
       })
       .addCase(fetchCardQuery.pending, (state, action) => {
-        const cardId = action.meta.arg;
+        const { cardId } = action.meta.arg;
         state.loadingDatasets[`card:${cardId}`] = true;
         state.error = null;
       })
       .addCase(
         fetchCardQuery.fulfilled,
-        (state, action: { payload: Dataset; meta: { arg: CardId } }) => {
-          const cardId = action.meta.arg;
+        (
+          state,
+          action: { payload: Dataset; meta: { arg: { cardId: CardId } } },
+        ) => {
+          const { cardId } = action.meta.arg;
           const dataset = action.payload;
 
           // `any` prevents the "Type instantiation is excessively deep" error
@@ -605,7 +631,7 @@ const visualizerSlice = createSlice({
         },
       )
       .addCase(fetchCardQuery.rejected, (state, action) => {
-        const cardId = action.meta.arg;
+        const { cardId } = action.meta.arg;
         if (cardId) {
           state.loadingDatasets[`card:${cardId}`] = false;
         }
@@ -649,6 +675,7 @@ export const {
   removeDataSource,
   setDisplay,
   setDraggedItem,
+  setHoveredItems,
 } = visualizerSlice.actions;
 
 export const reducer = undoable(visualizerSlice.reducer, {
@@ -672,7 +699,11 @@ export const reducer = undoable(visualizerSlice.reducer, {
         return true;
       }
       // Prevents history items from being added when dropping an item has no effect on the rest of the visualizer state
-      const keysToIgnore: (keyof VisualizerState)[] = ["draggedItem"];
+      // or when hovered items change — because we don't want to add history items when hovering over items
+      const keysToIgnore: (keyof VisualizerState)[] = [
+        "draggedItem",
+        "hoveredItems",
+      ];
       return !shallowEqual(
         _.omit(nextState, keysToIgnore),
         _.omit(present, keysToIgnore),

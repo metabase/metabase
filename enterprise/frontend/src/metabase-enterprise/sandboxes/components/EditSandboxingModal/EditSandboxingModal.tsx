@@ -7,11 +7,11 @@ import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import ActionButton from "metabase/common/components/ActionButton";
-import QuestionLoader from "metabase/common/components/QuestionLoader";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
+} from "metabase/common/components/Pickers/QuestionPicker";
+import QuestionLoader from "metabase/common/components/QuestionLoader";
 import Radio from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
@@ -29,11 +29,12 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   GroupTableAccessPolicy,
   Table,
-  UserAttribute,
+  UserAttributeKey,
 } from "metabase-types/api";
 
-import AttributeMappingEditor, {
+import {
   AttributeOptionsEmptyState,
+  DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -78,7 +79,7 @@ const isPolicyValid = (
 
 export interface EditSandboxingModalProps {
   policy?: GroupTableAccessPolicy;
-  attributes: UserAttribute[];
+  attributes: UserAttributeKey[];
   params: GroupTableAccessPolicyParams;
   onCancel: () => void;
   onSave: (policy: GroupTableAccessPolicy) => void;
@@ -228,7 +229,7 @@ const EditSandboxingModal = ({
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
                 </div>
               )}
-              <AttributeMappingEditor
+              <DataAttributeMappingEditor
                 value={policy.attribute_remappings}
                 policyTable={policyTable}
                 onChange={(attribute_remappings) =>

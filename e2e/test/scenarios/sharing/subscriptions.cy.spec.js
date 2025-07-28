@@ -70,7 +70,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByRole("link", { name: /configure Slack/i }).should(
         "have.attr",
         "href",
-        "/admin/settings/notifications/slack",
+        "/admin/settings/notifications",
       );
     });
   });
@@ -112,13 +112,13 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.sidebar().findByText("Email it").click();
 
-        const input = cy.findByPlaceholderText(
-          "Enter user names or email addresses",
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+        H.popover().should("be.visible").and("contain", `${admin.first_name}`);
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+        cy.findByPlaceholderText("Enter user names or email addresses").should(
+          "not.have.value",
         );
-        input.click().type(`${admin.first_name}`);
-        input.type("{esc}");
-
-        input.should("have.value", `${admin.first_name}`);
 
         cy.findByTestId("token-field-popover").should("not.exist");
       });
@@ -791,14 +791,9 @@ function assignRecipient({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  const input = cy.findByPlaceholderText("Enter user names or email addresses");
-  input.click().type(`${user.first_name} ${user.last_name}`);
-
-  cy.findByTestId("token-field-popover").within(() => {
-    cy.findByText(`${user.first_name} ${user.last_name}`).click();
-  });
-
-  input.blur(); // blur is needed to close the popover
+  cy.findByPlaceholderText("Enter user names or email addresses")
+    .type(`${user.first_name} ${user.last_name}{enter}`)
+    .blur();
 }
 
 function assignRecipients({
@@ -808,14 +803,9 @@ function assignRecipients({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  const userInput = users
-    .map((user) => `${user.first_name} ${user.last_name}{enter}`)
-    .join("");
-
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .click()
-    .type(userInput)
-    .blur(); // blur is needed to close the popover
+  cy.findByPlaceholderText("Enter user names or email addresses").click();
+  users.forEach(({ first_name }) => H.popover().contains(first_name).click());
+  cy.realPress("Escape");
 }
 
 function clickButton(name) {

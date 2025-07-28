@@ -104,20 +104,13 @@
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
-(defn- resolve-heading-inline-parameters
-  "Resolves the full parameter definitions for inline parameters on a heading dashcard, and adds them to the
-  dashcard's visualization settings so that they can be rendered in a subscription."
+(defn- resolve-inline-parameters
+  "Resolves the full parameter definitions for inline parameters on a dashcard, and adds them to the dashcard's
+  visualization settings so that they can be rendered in a subscription."
   [dashcard parameters]
   (let [inline-parameters-ids (set (:inline_parameters dashcard))
         inline-parameters     (filter #(inline-parameters-ids (:id %)) parameters)]
     (assoc-in dashcard [:visualization_settings :inline_parameters] inline-parameters)))
-
-(defn- escape-heading-markdown
-  [dashcard]
-  ;; If there's no heading text, the heading is empty, so we return nil.
-  (when (get-in dashcard [:visualization_settings :text])
-    (update-in dashcard [:visualization_settings :text]
-               #(str "## " %))))
 
 (defn- escape-markdown-chars?
   "Heading cards should not escape characters."
@@ -146,14 +139,14 @@
   1000)
 
 (defn- data-rows-to-disk!
-  [qp-result]
+  [qp-result context]
   (if (<= (:row_count qp-result) rows-to-disk-threadhold)
     (do
       (log/debugf "Less than %d rows, skip storing %d rows to disk" rows-to-disk-threadhold (:row_count qp-result))
       qp-result)
     (do
       (log/debugf "Storing %d rows to disk" (:row_count qp-result))
-      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
+      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file! context))))
 
 (defn- fixup-viz-settings
   "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
@@ -221,7 +214,9 @@
         ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
         ;; memory
         ;; TODO: we need to store series result data rows to disk too
-        (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!)))
+        (-> (execute-dashboard-subscription-card dashcard parameters)
+            (m/update-existing :result data-rows-to-disk! (select-keys dashcard [:dashboard_tab_id :card_id :dashboard_id]))
+            (m/update-existing :dashcard resolve-inline-parameters parameters))))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -239,10 +234,9 @@
     (let [parameters (merge-default-values parameters)]
       (some-> dashcard
               (process-virtual-dashcard parameters)
-              (resolve-heading-inline-parameters parameters)
-              escape-heading-markdown
+              (resolve-inline-parameters parameters)
               :visualization_settings
-              (assoc :type :text)))
+              (assoc :type :heading)))
 
     ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
@@ -315,5 +309,5 @@
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
-     :result (data-rows-to-disk! result)
+     :result (data-rows-to-disk! result {:card-id card-id})
      :type   :card}))

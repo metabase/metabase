@@ -2,8 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.test :as t]
-   [environ.core :as env]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -141,7 +139,7 @@
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
-(defn- delete-old-datsets-if-needed!
+(defn- delete-old-datasets-if-needed!
   "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
   (when (compare-and-set! deleted-old-datasets? false true)
@@ -162,7 +160,7 @@
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
     ;; clean up any old datasets that should be deleted
-    (delete-old-datsets-if-needed!)
+    (delete-old-datasets-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
@@ -211,17 +209,6 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Number}))))
-
-(defn- tracking-access-note
-  []
-  (if (:ci env/env)
-    (format "CI: %s %s %s"
-            (str t/*testing-vars*)
-            (get env/env :github-actor)
-            (get env/env :github-head-ref))
-    (format "DEV: %s %s"
-            (str t/*testing-vars*)
-            (:user env/env))))
 
 (defn- setup-tracking-db!
   "Idempotently create test tracking database"
@@ -292,7 +279,7 @@
                                                "  WHEN NOT MATCHED THEN INSERT (hash,name, accessed_at, access_note) VALUES (n.hash, n.name, n.accessed_at, n.access_note)")
                                           [(tx/hash-dataset db-def)
                                            (qualified-db-name db-def)
-                                           (tracking-access-note)])
+                                           (tx/tracking-access-note)])
                  ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
        (some-> rs resultset-seq doall)))))
 
@@ -341,6 +328,30 @@
       (jdbc/execute! spec
                      [(format "DROP ROLE IF EXISTS %s;" role-name)]
                      {:transaction? false}))))
+
+(defn set-user-public-key [details pk-user pub-key]
+  (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/execute! spec (format "ALTER USER %s SET RSA_PUBLIC_KEY = '%s'"
+                                pk-user
+                                pub-key))))
+
+(defmethod tx/drop-db-user-if-exists! :snowflake
+  [driver details db-user]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec [(format "DROP USER IF EXISTS \"%s\"" db-user)])))
+
+(defmethod tx/create-db-user! :snowflake
+  [driver details db-user]
+  (tx/drop-db-user-if-exists! driver details db-user)
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec "USE ROLE ACCOUNTADMIN")
+    (jdbc/execute! spec (format "CREATE USER %s
+                                 DEFAULT_ROLE = 'ACCOUNTADMIN'
+                                 DEFAULT_WAREHOUSE = '%s'
+                                 MUST_CHANGE_PASSWORD = FALSE;"
+                                db-user
+                                (tx/db-test-env-var-or-throw driver :warehouse)))
+    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" db-user))))
 
 (comment
   (old-dataset-names)

@@ -43,7 +43,6 @@ import {
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
-import { NativeQueryValidationError } from "./NativeQueryValidationError/NativeQueryValidationError";
 import { RightClickPopover } from "./RightClickPopover";
 import {
   MIN_EDITOR_HEIGHT_AFTER_DRAGGING,
@@ -355,8 +354,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 />
               )}
             </Flex>
-
-            <NativeQueryValidationError query={query.question().query()} />
           </ResizableBox>
         </div>
 

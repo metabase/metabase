@@ -42,7 +42,7 @@ describe("issue 13504", () => {
 
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At is Mar 1–31, 2023").should("be.visible");
+      cy.findByText("Created At: Month is Mar 1–31, 2023").should("be.visible");
     });
   });
 });
@@ -651,7 +651,7 @@ describe("issue 21665", () => {
     ).click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(Q2.name);
+      H.selectDataset(Q2.name);
       cy.button("Save").click();
     });
 

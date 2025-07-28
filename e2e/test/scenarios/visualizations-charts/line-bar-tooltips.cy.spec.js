@@ -273,7 +273,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           ],
           breakout: [
             ["field", PRODUCTS.RATING, { "source-field": ORDERS.PRODUCT_ID }],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.CATEGORY }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
         },
         type: "query",
@@ -372,7 +372,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalName, customName);
 
@@ -428,7 +430,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+      H.showDashcardVisualizerModal(0, {
+        isVisualizerCard: false,
+      });
       H.modal().within(() => {
         cy.button("Settings").click();
         updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
@@ -501,7 +505,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalAvgSeriesName, customAvgSeriesName);
       updateColumnTitle(originalCumSumSeriesName, customCumSumSeriesName);
@@ -648,7 +654,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalAvgSeriesName, updatedOriginalAvgSeriesName);
       updateColumnTitle(
@@ -726,7 +734,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalName, updatedName);
 
@@ -794,7 +804,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
       updateColumnTitle(addedSeriesName, updatedAddedSeriesName);

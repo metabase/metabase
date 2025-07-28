@@ -7,7 +7,8 @@ import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
 } from "metabase/dashboard/constants";
-import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isStorybookActive } from "metabase/env";
 import { utf8_to_b64 } from "metabase/lib/encoding";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -18,6 +19,8 @@ export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
 export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
   "saving-dom-image-display-none";
+export const SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS =
+  "saving-dom-image-overflow-visible";
 export const PARAMETERS_MARGIN_BOTTOM = 12;
 
 export const saveDomImageStyles = css`
@@ -27,6 +30,9 @@ export const saveDomImageStyles = css`
     }
     .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
       display: none;
+    }
+    .${SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS} {
+      overflow: visible;
     }
 
     .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {
@@ -45,7 +51,7 @@ export const saveDomImageStyles = css`
     /* the renderer for saving to image/pdf does not support text overflow
      with line height in custom themes in the embedding sdk.
      this is a workaround to make sure the text is not clipped vertically */
-    ${isEmbeddingSdk &&
+    ${isEmbeddingSdk() &&
     css`
       .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} * {
         overflow: visible !important;

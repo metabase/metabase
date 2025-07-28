@@ -10,6 +10,7 @@ export const popoverOverrides = {
       radius: "sm",
       shadow: "md",
       withinPortal: true,
+      hideDetached: false,
       middlewares: {
         shift: true,
         flip: true,

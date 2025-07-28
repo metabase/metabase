@@ -90,6 +90,7 @@ jobs:
       MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery
     steps:
     - uses: actions/checkout@v4
@@ -348,7 +349,7 @@ jobs:
               enable-ssl-tests: 'false'
           - name: MySQL 8.0
             junit-name: be-tests-mysql-8-0-ee
-            image: cimg/mysql:8.0
+            image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
           - name: MySQL Latest
@@ -358,28 +359,8 @@ jobs:
               enable-ssl-tests: 'true'
         job:
           - name: Driver Tests
-            build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests'
 
     services:
       mysql:
@@ -437,7 +418,6 @@ jobs:
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
-          build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -695,29 +675,8 @@ jobs:
               enable-ssl-tests: 'true'
         job:
           - name: Driver Tests
-            build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-          - name: Enterprise Tests
-            build-static-viz: false
-            test-args: >-
-              :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 1)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :exclude-tags [:mb/driver-tests]
-              :partition/total 2
-              :partition/index 0
-            exclude-tag: ':mb/driver-tests'
-          - name: EE App DB Tests (Part 2)
-            build-static-viz: true
-            test-args: >-
-              :only '"test"'
-              :partition/total 2
-              :partition/index 1
-            exclude-tag: ':mb/driver-tests'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
@@ -762,7 +721,6 @@ jobs:
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
-          build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -910,6 +868,10 @@ jobs:
       MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
       MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
       MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
       # RSA Role testing:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER

@@ -17,14 +17,14 @@ import type {
   MetabotColumnType,
   MetabotSeriesConfig,
   RawSeries,
-  Timeline,
+  TimelineEvent,
 } from "metabase-types/api";
 
 import {
   getFirstQueryResult,
   getQuestion,
   getTransformedSeries,
-  getTransformedTimelines,
+  getVisibleTimelineEvents,
   getVisualizationSettings,
 } from "../selectors";
 
@@ -144,9 +144,8 @@ export function processSeriesData(
     );
 }
 
-function processTimelineEvents(timelines: Timeline[]) {
-  return timelines
-    .flatMap((timeline) => timeline.events ?? [])
+function processTimelineEvents(timelineEvents: TimelineEvent[]) {
+  return timelineEvents
     .map((event) => ({
       name: event.name,
       description: event.description ?? "",
@@ -177,12 +176,12 @@ const getChartConfigs = async ({
   question,
   series,
   visualizationSettings,
-  timelines,
+  timelineEvents,
 }: {
   question: Question;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
-  timelines: Timeline[];
+  timelineEvents: TimelineEvent[];
 }): Promise<MetabotChartConfig[]> => {
   try {
     return [
@@ -191,7 +190,7 @@ const getChartConfigs = async ({
         title: question.displayName(),
         description: question.description(),
         series: processSeriesData(series, visualizationSettings),
-        timeline_events: processTimelineEvents(timelines),
+        timeline_events: processTimelineEvents(timelineEvents),
         query: question.datasetQuery(),
         display_type: question.display(),
       },
@@ -206,13 +205,13 @@ export const registerQueryBuilderMetabotContextFn = async ({
   question,
   series,
   visualizationSettings,
-  timelines,
+  timelineEvents,
   queryResult,
 }: {
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
-  timelines: Timeline[];
+  timelineEvents: TimelineEvent[];
   queryResult: any;
 }) => {
   if (!PLUGIN_METABOT.isEnabled()) {
@@ -238,7 +237,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
     question,
     series,
     visualizationSettings,
-    timelines,
+    timelineEvents,
   });
 
   return {
@@ -257,14 +256,14 @@ export const useRegisterQueryBuilderMetabotContext = () => {
     const question = getQuestion(state);
     const series = getTransformedSeries(state);
     const visualizationSettings = getVisualizationSettings(state);
-    const timelines = getTransformedTimelines(state);
+    const timelineEvents = getVisibleTimelineEvents(state);
     const queryResult = getFirstQueryResult(state);
 
     return registerQueryBuilderMetabotContextFn({
       question,
       series,
       visualizationSettings,
-      timelines,
+      timelineEvents,
       queryResult,
     });
   }, []);

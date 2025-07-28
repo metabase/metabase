@@ -11,7 +11,6 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -144,7 +143,9 @@
 (defn- ok-mbql-card []
   (assoc (card-with-mbql-query "OK Card"
                                :source-table (mt/id :checkins))
-         :result_metadata [{:name "num_toucans"}]))
+         :result_metadata [{:name         "num_toucans"
+                            :display_name "Num Toucans"
+                            :base_type    :type/Integer}]))
 
 (deftest ^:parallel get-database-test
   (testing "GET /api/database/:id"
@@ -410,6 +411,8 @@
 (deftest create-db-succesful-track-snowplow-test
   ;; h2 is no longer supported as a db source
   ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
+  ;;
+  ;; TODO (Cam 6/20/25) -- we should NOT be hardcoding driver names in tests
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
                          :h2 :bigquery-cloud-sdk :snowflake)
     (snowplow-test/with-fake-snowplow-collector
@@ -961,7 +964,9 @@
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
     (mt/with-temp [:model/Card _ (assoc (card-with-native-query "Some Card")
-                                        :result_metadata [{:name "col_name"}])]
+                                        :result_metadata [{:name         "col_name"
+                                                           :display_name "Col Name"
+                                                           :base_type    :type/Text}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
                 :id                 lib.schema.id/saved-questions-virtual-database-id
@@ -1011,10 +1016,13 @@
                                       [:description      [:maybe :string]]]]]])
 
 (defn- check-tables-included [response & tables]
-  (let [response-tables (set (:tables response))]
+  (let [response-tables (:tables response)]
     (doseq [table tables]
       (testing (format "Should include Table %s" (pr-str table))
-        (is (contains? response-tables table))))))
+        (let [response-table (m/find-first #(= (:id %) (:id table))
+                                           response-tables)]
+          (is (=? table
+                  response-table)))))))
 
 (defn- check-tables-not-included [response & tables]
   (let [response-tables (set (:tables response))]
@@ -1075,8 +1083,15 @@
 (deftest ^:parallel databases-list-include-saved-questions-tables-test-4
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that have ambiguous columns"
-      (mt/with-temp [:model/Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])
-                     :model/Card cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]
+      (mt/with-temp [:model/Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name         "cam"
+                                                                                                                      :display_name "Cam"
+                                                                                                                      :base_type    :type/Text}])
+                     :model/Card cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name         "cam"
+                                                                                                                      :display_name "Cam"
+                                                                                                                      :base_type    :type/Text}
+                                                                                                                     {:name         "cam_2"
+                                                                                                                      :display_name "Cam 2"
+                                                                                                                      :base_type    :type/Text}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1091,10 +1106,14 @@
                                                :dataset_query   {:database (u/the-id bad-db)
                                                                  :type     :native
                                                                  :native   {:query "[QUERY GOES HERE]"}}
-                                               :result_metadata [{:name "sparrows"}]
+                                               :result_metadata [{:name         "sparrows"
+                                                                  :display_name "Sparrows"
+                                                                  :base_type    :type/Integer}]
                                                :database_id     (u/the-id bad-db)}
                      :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                     :result_metadata [{:name "finches"}])]
+                                                     :result_metadata [{:name         "finches"
+                                                                        :display_name "Finches"
+                                                                        :base_type    :type/Integer}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1117,7 +1136,9 @@
                                                                    :source-table $$checkins
                                                                    :aggregation  [[:cum-count]]
                                                                    :breakout     [!month.date]))
-                                           {:result_metadata [{:name "num_toucans"}]})]
+                                           {:result_metadata [{:name         "num_toucans"
+                                                               :display_name "Num Toucans"
+                                                               :base_type    :type/Integer}]})]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1129,9 +1150,9 @@
     (mt/with-temp [:model/Card card (card-with-native-query
                                      "Birthday Card"
                                      :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
-                                     :result_metadata [{:name "age_in_bird_years"
-                                                        :ident (lib/native-ident "age_in_bird_years"
-                                                                                 "M6W4CLdyJxiW-DyzDbGl4")}])]
+                                     :result_metadata [{:name         "age_in_bird_years"
+                                                        :display_name "Age in Bird Years"
+                                                        :base_type    :type/Integer}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1140,11 +1161,11 @@
          response
          (assoc (virtual-table-for-card card)
                 :fields [{:name                     "age_in_bird_years"
+                          :display_name             "Age in Bird Years"
                           :table_id                 (str "card__" (u/the-id card))
-                          :id                       ["field" "age_in_bird_years" {:base-type "type/*"}]
-                          :ident                    (lib/native-ident "age_in_bird_years" "M6W4CLdyJxiW-DyzDbGl4")
+                          :id                       ["field" "age_in_bird_years" {:base-type "type/Integer"}]
                           :semantic_type            nil
-                          :base_type                nil
+                          :base_type                "type/Integer"
                           :default_dimension_option nil
                           :dimension_options        []}]))))))
 
@@ -1583,7 +1604,7 @@
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel get-schemas-test
+(deftest get-schemas-test
   (testing "GET /api/database/:id/schemas"
     (testing "Multiple schemas are ordered by name"
       (mt/with-temp
@@ -1636,6 +1657,14 @@
         (testing "Non-admins don't have permission to see syncable schemas"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
+
+(deftest get-syncable-schemas-checks-permissions-correctly
+  (testing "GET /api/database/:id/syncable_schemas"
+    (testing "Non-admins can get syncable schemas on the attached DWH"
+      (mt/with-temp [:model/Database {id :id} {:is_attached_dwh true}]
+        (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+          (is (= ["PUBLIC"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%d/syncable_schemas" id)))))))))
 
 (deftest ^:parallel get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp

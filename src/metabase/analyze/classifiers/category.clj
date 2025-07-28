@@ -11,8 +11,8 @@
   determined by the cardinality of the Field, like Category status. Thus it is entirely possible for a Field to be
   both a Category and a `list` Field."
   (:require
-   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.analyze.schema :as analyze.schema]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -29,7 +29,7 @@
   1000)
 
 (mu/defn- field-should-be-category? :- [:maybe :boolean]
-  [fingerprint :- [:maybe fingerprint.schema/Fingerprint]
+  [fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
    field       :- analyze.schema/Field]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])
         nil%           (get-in fingerprint [:global :nil%])]
@@ -46,7 +46,7 @@
 (mu/defn infer-is-category :- [:maybe analyze.schema/Field]
   "Classifier that attempts to determine whether `field` ought to be marked as a Category based on its distinct count."
   [field       :- analyze.schema/Field
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (when (and (sync-util/can-be-category? (:base_type field) (:semantic_type field))
              (field-should-be-category? fingerprint field))
     (assoc field :semantic_type :type/Category)))

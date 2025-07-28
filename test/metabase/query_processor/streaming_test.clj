@@ -6,10 +6,12 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.embedding.api.embed-test :as embed-test]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
@@ -31,7 +33,12 @@
     (map? x) (m/dissoc-in [:data :results_metadata :checksum])))
 
 (defn- expected-results* [export-format query]
-  (maybe-remove-checksum (streaming.test-util/expected-results export-format (qp/process-query query))))
+  (let [results (-> (streaming.test-util/expected-results export-format (qp/process-query query))
+                    maybe-remove-checksum)]
+    (cond-> results
+      (map? results) (update-in [:data :cols] (fn [cols]
+                                                (for [col cols]
+                                                  (m/filter-keys simple-keyword? col)))))))
 
 (defn- basic-actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
@@ -114,23 +121,23 @@
                            "Longitude" "118.26100000° W",
                            "Price" 2.0}]
                          (basic-actual-results* export-format query)))
-            (is (= (expected-results* export-format query)
-                   (basic-actual-results* export-format query)))))))))
+            (is (=? (expected-results* export-format query)
+                    (basic-actual-results* export-format query)))))))))
 
 (defn- actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))
 
 (defn- compare-results [export-format query]
-  (is (= (expected-results* export-format query)
-         (cond-> (actual-results* export-format query)
-           (= export-format :api)
-           (dissoc :cached)))))
+  (is (=? (expected-results* export-format query)
+          (cond-> (actual-results* export-format query)
+            (= export-format :api)
+            (dissoc :cached)))))
 
 (deftest ^:parallel streaming-response-test
   (testing "Test that the actual results going thru the same steps as an API response are correct."
     (compare-results :api (mt/mbql-query venues {:limit 5}))))
 
-(deftest utf8-test
+(deftest ^:parallel utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
   (doseq [export-format (disj qp.schema/export-formats :xlsx :csv)]
@@ -143,9 +150,8 @@
                                             :limit    5})))
         (testing "A query with emoji and other fancy unicode"
           (let [[sql & args] (t2.pipeline/compile* {:select [["Cam 𝌆 Saul 💩" :cam]]})]
-            (compare-results export-format (assoc-in (mt/native-query {:query  sql
-                                                                       :params args})
-                                                     [:info :card-entity-id] (u/generate-nano-id)))))))))
+            (compare-results export-format (mt/native-query {:query  sql
+                                                             :params args}))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
@@ -470,9 +476,17 @@
                                      (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
                                              [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
                                             (xlsx-test/parse-xlsx-results results))))}})))]
-    (mt/with-column-remappings [venues.category_id categories.name]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (mt/id :categories :name))
       (testfn :external))
-    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/id :venues :category_id)
+                                      (mapv first (mt/rows (qp/process-query
+                                                            (mt/mbql-query categories
+                                                              {:fields [$name], :order-by [[:asc $id]]})))))
       (testfn :internal))))
 
 (deftest join-export-test
@@ -487,7 +501,6 @@
                      :condition    ["="
                                     ["field" (mt/id :venues :category_id) nil]
                                     ["field" (mt/id :categories :id) {:join-alias "Categories"}]],
-                     :ident "PseLrIdkWYLyhn2pCfUrN"
                      :alias "Categories"}]
                    :limit 1}
                   :type "query"}
@@ -526,7 +539,6 @@
                :condition    ["="
                               ["field" (mt/id :venues :id) nil]
                               ["field" (mt/id :venues :id) {:join-alias "Venues"}]],
-               :ident        "dcCvJv4Jz73cGnXBr5ai7"
                :alias        "Venues"}]
              :order-by     [["asc" ["field" (mt/id :venues :id) nil]]]
              :limit        1}

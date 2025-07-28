@@ -246,8 +246,8 @@
           (is (= 1 (count @mt/inbox))))))))
 
 (def ^:private fake-slack-notification
-  {:channel-id  "#test-channel"
-   :attachments [{:blocks [{:type "section", :text {:type "plain_text", :text ""}}]}]})
+  {:channel  "#test-channel"
+   :blocks [{:type "section", :text {:type "plain_text", :text ""}}]})
 
 (deftest slack-notification-retry-test
   (notification.tu/with-send-notification-sync
@@ -637,6 +637,9 @@
           total-items            (* num-producers num-items-per-producer)
           received-items         (atom #{})
           producer-latch         (java.util.concurrent.CountDownLatch. 1)
+          ;; inter-consumer coordination:
+          consumer-countdown     (atom total-items)
+          ;; coordination with main test thread:
           consumer-latch         (java.util.concurrent.CountDownLatch. total-items)
           producer-fn            (fn [producer-id]
                                    (.await producer-latch)
@@ -646,14 +649,14 @@
                                        (#'notification.send/put-notification! queue item))))
           consumer-fn            (fn [consumer-id]
                                    (try
-                                     (while (pos? (.getCount consumer-latch))
+                                     (while (<= 0 (swap! consumer-countdown dec))
                                        (let [item (take-notification! queue)]
                                          (swap! received-items conj [(:id item) item {:consumer consumer-id}])
                                          (.countDown consumer-latch)))
                                      (catch Exception e
                                        (log/errorf e "Consumer %s error:" consumer-id))))
-          producers               (mapv #(doto (Thread. (fn [] (producer-fn %))) .start) (range num-producers))
-          _consumers              (mapv #(doto (Thread. (fn [] (consumer-fn %))) .start) (range num-consumers))]
+          _consumers              (mapv #(doto (Thread. (fn [] (consumer-fn %))) .start) (range num-consumers))
+          producers               (mapv #(doto (Thread. (fn [] (producer-fn %))) .start) (range num-producers))]
 
       ; Start all producers simultaneously
       (.countDown producer-latch)
@@ -757,8 +760,9 @@
           (dispatch-fn {:id 3 :payload_type :notification/testing :test-value "C"})
           (dispatch-fn {:id 4 :payload_type :notification/testing :test-value "D"})
 
-          (testing "there are 2 notifications waiting in the queue"
-            (is (= 2 (notification.send/queue-size queue))))
+          ;; why "at least 2"? because popping items off the queue is in another thread, it may not have happened yet.
+          (testing "there are at least 2 notifications waiting in the queue"
+            (is (<= 2 (notification.send/queue-size queue))))
           (testing "sanity check that notifications were not processed"
             (is (= 0 (count @processed-notifications))
                 "No notifications should be processed before latch is released"))

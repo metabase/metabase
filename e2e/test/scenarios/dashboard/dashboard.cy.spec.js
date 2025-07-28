@@ -10,7 +10,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { mapPinIcon } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
@@ -594,9 +593,12 @@ describe("scenarios > dashboard", () => {
         "a really really really really really really really really really really really really really really really really long title";
 
       it("should prevent entering a title longer than 100 chars", () => {
-        const dashboardNameInput = cy.findByTestId("dashboard-name-heading");
-        dashboardNameInput.clear().type(longTitle).blur();
-        dashboardNameInput.invoke("text").should("have.length", 100);
+        cy.findByTestId("dashboard-name-heading")
+          .as("dashboardInput")
+          .clear()
+          .type(longTitle, { delay: 0 })
+          .blur();
+        cy.get("@dashboardInput").invoke("text").should("have.length", 100);
       });
     });
 
@@ -773,9 +775,8 @@ describe("scenarios > dashboard", () => {
     H.saveDashboard();
 
     cy.log("Assert that the selected filter is present in the dashboard");
-    cy.icon("location");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Location");
+    cy.findByText("Location", { exact: false }).should("be.visible");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
@@ -897,7 +898,7 @@ describe("scenarios > dashboard", () => {
         });
 
         H.visitDashboard(dashboardId);
-        mapPinIcon().eq(0).click({ force: true });
+        H.mapPinIcon().eq(0).click({ force: true });
         cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
         cy.contains("Hudson Borer - 1");
       });
@@ -1113,7 +1114,7 @@ describe("scenarios > dashboard", () => {
       row: 0,
       col: 0,
       size_x: 16,
-      size_y: 8,
+      size_y: 9,
     };
     const paddingCard = H.getTextCardDetails({
       col: 0,
@@ -1235,10 +1236,11 @@ describe("scenarios > dashboard", () => {
 
       // edit
       H.editDashboard();
-      const card = cy
-        .findAllByTestId("dashcard-container", { scrollBehavior: false })
-        .eq(0);
-      dragOnXAxis(card, 100);
+      const card = () =>
+        cy
+          .findAllByTestId("dashcard-container", { scrollBehavior: false })
+          .eq(0);
+      dragOnXAxis(card(), 100);
       assertPreventLeave();
       H.saveDashboard();
 

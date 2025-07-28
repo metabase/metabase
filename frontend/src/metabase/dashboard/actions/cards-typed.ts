@@ -1,4 +1,6 @@
 import { createAction } from "@reduxjs/toolkit";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Questions from "metabase/entities/questions";
 import {
@@ -7,7 +9,9 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 import { createThunkAction } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { addUndo } from "metabase/redux/undo";
 import { getDefaultSize } from "metabase/visualizations";
 import {
   getCardIdsFromColumnValueMappings,
@@ -37,6 +41,7 @@ import {
   getDashboard,
   getDashboardId,
   getDashboards,
+  getDashcardList,
   getDashcards,
   getSelectedTabId,
 } from "../selectors";
@@ -60,6 +65,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
   setDashCardAttributes,
+  setDashboardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import {
@@ -400,6 +406,7 @@ export const duplicateCard = createThunkAction(
       };
 
       if (hasInlineParameters(dashcard)) {
+        const originalParameterIds = [...dashcard.inline_parameters];
         const newParameters = duplicateParameters(
           dispatch,
           getState,
@@ -408,6 +415,22 @@ export const duplicateCard = createThunkAction(
         dashcard.inline_parameters = newParameters.map(
           (parameter) => parameter.id,
         );
+        if (Array.isArray(dashcard.parameter_mappings)) {
+          dashcard.parameter_mappings = dashcard.parameter_mappings.map(
+            (mapping) => {
+              const inlineParameterIndex = originalParameterIds.indexOf(
+                mapping.parameter_id,
+              );
+              if (inlineParameterIndex !== -1) {
+                return {
+                  ...mapping,
+                  parameter_id: newParameters[inlineParameterIndex].id,
+                };
+              }
+              return mapping;
+            },
+          );
+        }
       }
 
       dispatch(
@@ -447,7 +470,14 @@ export const removeCardFromDashboard = createThunkAction(
     cardId: DashboardCard["card_id"];
   }) =>
     (dispatch, getState) => {
+      const dashboard = checkNotNull(getDashboard(getState()));
+      const dashcards = getDashcardList(getState());
       const dashcard = getDashCardById(getState(), dashcardId);
+
+      const originalParameters = dashboard.parameters
+        ? [...dashboard.parameters]
+        : dashboard.parameters;
+
       dispatch(closeAddCardAutoWireToasts());
       dispatch(cancelFetchCardData(cardId, dashcardId));
       if (hasInlineParameters(dashcard)) {
@@ -455,15 +485,52 @@ export const removeCardFromDashboard = createThunkAction(
           removeParameterAndReferences(dispatch, getState, parameterId);
         });
       }
+
+      const dashcardCountByCardId = _.countBy(dashcards, "card_id");
+      const isLastDashboardQuestionDashcard = Boolean(
+        dashcard.card_id &&
+          dashcard.card.dashboard_id !== null &&
+          dashcardCountByCardId[dashcard.card_id] <= 1,
+      );
+      dispatch(
+        addUndo({
+          message: isLastDashboardQuestionDashcard
+            ? t`Trashed and removed card`
+            : t`Removed card`,
+          undo: true,
+          action: () =>
+            dispatch(
+              undoRemoveCardFromDashboard({
+                dashcardId,
+                originalParameters: hasInlineParameters(dashcard)
+                  ? originalParameters
+                  : undefined,
+              }),
+            ),
+        }),
+      );
+
       return { dashcardId };
     },
 );
 
-export const undoRemoveCardFromDashboard = createThunkAction(
+const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
-  ({ dashcardId }) =>
+  ({ dashcardId, originalParameters }) =>
     (dispatch, getState) => {
+      const dashboardId = checkNotNull(getDashboardId(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
+
+      if (originalParameters) {
+        dispatch(
+          setDashboardAttributes({
+            id: dashboardId,
+            attributes: {
+              parameters: originalParameters,
+            },
+          }),
+        );
+      }
 
       if (!isVirtualDashCard(dashcard)) {
         const card = dashcard.card;

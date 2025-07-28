@@ -21,7 +21,7 @@
                                             $regexMatch $second
                                             $setWindowFields $size $skip $sort
                                             $strcasecmp $subtract $sum
-                                            $toLower $unwind $year]]
+                                            $toBool $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -203,12 +203,52 @@
 
 (defmethod ->rvalue :expression
   [[_ expression-name]]
-  (->rvalue (driver-api/expression-with-name (:query *query*) expression-name)))
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (cond->> (->rvalue expression-value)
+      (driver-api/is-clause? :value expression-value) (array-map $literal))))
+
+(def ^:private base64-decoder "
+function(bin) {
+          if (!bin) return null;
+          
+          try {
+            var base64 = bin.base64();
+            
+            // Manual base64 decode implementation
+            var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            var result = '';
+            var i = 0;
+            
+            // Remove any padding
+            base64 = base64.replace(/=+$/, '');
+            
+            while (i < base64.length) {
+              var a = chars.indexOf(base64.charAt(i++));
+              var b = chars.indexOf(base64.charAt(i++));
+              var c = chars.indexOf(base64.charAt(i++));
+              var d = chars.indexOf(base64.charAt(i++));
+              
+              var bitmap = (a << 18) | (b << 12) | (c << 6) | d;
+              
+              result += String.fromCharCode((bitmap >> 16) & 255);
+              if (c !== -1) result += String.fromCharCode((bitmap >> 8) & 255);
+              if (d !== -1) result += String.fromCharCode(bitmap & 255);
+            }
+            
+            return result;
+          } catch(e) {
+            return null;
+          }
+        }
+")
 
 (defmethod ->rvalue :metadata/column
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
   (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
     (cond
+      (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
+      {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
+
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
@@ -221,6 +261,21 @@
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
                           :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
+
+      (isa? coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal)
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
+
+      (isa? coercion :Coercion/ISO8601Bytes->Temporal)
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
                           :onError    field-name}}
 
       ;; mongo only supports datetime
@@ -672,10 +727,51 @@
                 rvalue]}
       :day)))
 
-(defmethod ->rvalue :datetime [[_ expr]]
+(defmethod ->rvalue :today [[_]]
+  (->rvalue [:date [:now]]))
+
+(defmethod ->rvalue :datetime [[_ expr {:keys [mode]}]]
   (let [rvalue (->rvalue expr)]
-    {"$dateFromString" {:dateString rvalue
-                        :onError    rvalue}}))
+    (case (or mode :iso)
+      :iso
+      {"$dateFromString" {:dateString rvalue
+                          :onError    rvalue}}
+
+      :simple
+      {"$dateFromString" {:dateString rvalue
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :simple-bytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :iso-bytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :onError    rvalue}}
+
+      :unix-nanoseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-microseconds
+      {:$dateFromParts {:millisecond {$divide [rvalue 1000]}, :year 1970, :timezone "UTC"}}
+
+      :unix-milliseconds
+      {:$dateFromParts {:millisecond rvalue, :year 1970, :timezone "UTC"}}
+
+      :unix-seconds
+      {:$dateFromParts {:second rvalue, :year 1970, :timezone "UTC"}}
+
+      ;; else
+      (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)
+                      {:type driver-api/qp.error-type.unsupported-feature})))))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
@@ -780,9 +876,14 @@
 (defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts "^" v nil)})
 (defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v "$")})
 
+(defn- rvalue-is-variable? [rvalue]
+  (and (string? rvalue)
+       (str/starts-with? rvalue "$$")))
+
 (defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)
-       (str/starts-with? rvalue "$")))
+       (str/starts-with? rvalue "$")
+       (not (rvalue-is-variable? rvalue))))
 
 (defn- rvalue-can-be-compared-directly?
   "Whether `rvalue` is something simple that can be compared directly e.g.
@@ -795,6 +896,7 @@
   [rvalue]
   (or (rvalue-is-field? rvalue)
       (and (not (map? rvalue))
+           (not (rvalue-is-variable? rvalue))
            (not (instance? java.util.regex.Pattern rvalue)))))
 
 (defn- filter-expr [operator field value]
@@ -850,6 +952,16 @@
 
 (defmethod compile-filter :not [[_ subclause]]
   (compile-filter (negate subclause)))
+
+(defmethod compile-filter :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-filter expression-value)))
+
+(defmethod compile-filter :field [field-clause]
+  {$expr {$toBool (->rvalue field-clause)}})
+
+(defmethod compile-filter :value [value-clause]
+  {$expr (->rvalue value-clause)})
 
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
@@ -907,6 +1019,16 @@
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
 
+(defmethod compile-cond :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-cond expression-value)))
+
+(defmethod compile-cond :field [field-clause]
+  (->rvalue field-clause))
+
+(defmethod compile-cond :value [value-clause]
+  (->rvalue value-clause))
+
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
 (defn- find-source-collection
@@ -922,8 +1044,8 @@
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
   (driver-api/replace expr
-                      [:field _ {:join-alias alias}]
-                      (update &match 2 set/rename-keys {:join-alias ::join-local})))
+    [:field _ {:join-alias alias}]
+    (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
 (defn- get-field-mappings [source-query projections]
   (when source-query
@@ -999,37 +1121,37 @@
 
 (defn- aggregation->rvalue [ag]
   (driver-api/match-one ag
-                        [:aggregation-options ag' _]
-                        (recur ag')
+    [:aggregation-options ag' _]
+    (recur ag')
 
-                        [:count]
-                        {$sum 1}
+    [:count]
+    {$sum 1}
 
-                        [:count arg]
-                        {$sum {$cond {:if   (->rvalue arg)
-                                      :then 1
-                                      :else 0}}}
+    [:count arg]
+    {$sum {$cond {:if   (->rvalue arg)
+                  :then 1
+                  :else 0}}}
 
     ;; these aggregation types can all be used in expressions as well so their implementations live above in the
     ;; general [[->rvalue]] implementations
-                        #{:avg :stddev :sum :min :max}
-                        (->rvalue &match)
+    #{:avg :stddev :sum :min :max}
+    (->rvalue &match)
 
-                        [:distinct arg]
-                        {$addToSet (->rvalue arg)}
+    [:distinct arg]
+    {$addToSet (->rvalue arg)}
 
-                        [:sum-where arg pred]
-                        {$sum {$cond {:if   (compile-cond pred)
-                                      :then (->rvalue arg)
-                                      :else 0}}}
+    [:sum-where arg pred]
+    {$sum {$cond {:if   (compile-cond pred)
+                  :then (->rvalue arg)
+                  :else 0}}}
 
-                        [:count-where pred]
-                        (recur [:sum-where [:value 1] pred])
+    [:count-where pred]
+    (recur [:sum-where [:value 1] pred])
 
-                        :else
-                        (throw
-                         (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
-                                  {:type :invalid-query, :clause ag}))))
+    :else
+    (throw
+     (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
+              {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :aggregation-options)
@@ -1339,14 +1461,14 @@
      (assoc-in
       m
       (driver-api/match-one field-clause
-                            [:field (field-id :guard integer?) _]
-                            (str/split (field-alias field-clause) #"\.")
+        [:field (field-id :guard integer?) _]
+        (str/split (field-alias field-clause) #"\.")
 
-                            [:field (field-name :guard string?) _]
-                            [field-name]
+        [:field (field-name :guard string?) _]
+        [field-name]
 
-                            [:expression expr-name _]
-                            [expr-name])
+        [:expression expr-name _]
+        [expr-name])
       (->rvalue field-clause)))
    (ordered-map/ordered-map)
    fields))
@@ -1540,12 +1662,12 @@
   "Return `:collection` from a source query, if it exists."
   [query]
   (driver-api/match-one query
-                        (_ :guard (every-pred map? :collection))
+    (_ :guard (every-pred map? :collection))
     ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
-                        (when (let [parents (set &parents)]
-                                (and (contains? parents :source-query)
-                                     (not (contains? parents :joins))))
-                          (:collection &match))))
+    (when (let [parents (set &parents)]
+            (and (contains? parents :source-query)
+                 (not (contains? parents :joins))))
+      (:collection &match))))
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
@@ -1592,9 +1714,42 @@
         (merge compiled (add-aggregation-pipeline inner-query compiled))))
     (simple-mbql->native inner-query)))
 
+;;; TODO (Cam 6/20/25) -- MongoDB QP code is completely broken and does not consistently look at the keys added
+;;; by [[driver-api/add-alias-info]]. Fixing all the busted code above is more work than I want to take on right now, so
+;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
+;;; values added by add-alias-info.
+(defn- HACK-update-aliases [form]
+  (driver-api/replace form
+    (m :guard (every-pred map?
+                          :alias
+                          driver-api/qp.add.alias
+                          #(not= (driver-api/qp.add.alias %) (:alias %))))
+    (HACK-update-aliases (assoc m :alias (driver-api/qp.add.alias m)))
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                #(not= (:name %) (driver-api/qp.add.source-alias %))))]
+    (let [id-or-name' (if (string? id-or-name)
+                        (driver-api/qp.add.source-alias opts)
+                        id-or-name)]
+      (HACK-update-aliases [:field id-or-name' (assoc opts :name (driver-api/qp.add.source-alias opts))]))
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                :join-alias
+                                                #(= (driver-api/qp.add.source-table %) driver-api/qp.add.source)))]
+    [:field id-or-name (-> opts
+                           (dissoc :join-alias)
+                           (assoc ::fixed true))]
+
+    [:field id-or-name (opts :guard (every-pred map?
+                                                :join-alias
+                                                #(string? (driver-api/qp.add.source-table %))))]
+    [:field id-or-name (assoc opts :join-alias (driver-api/qp.add.source-table opts))]))
+
 (defn- preprocess
   [inner-query]
-  (driver-api/add-alias-info inner-query))
+  (-> inner-query
+      (driver-api/add-alias-info {:globally-unique-join-aliases? true})
+      HACK-update-aliases))
 
 (defn mbql->native
   "Compile an MBQL query."
