@@ -333,17 +333,11 @@ export const TableListView = ({ location, params }: Props) => {
               </Button>
             )}
 
-            {!isSyncInProgress(table) && !isEditing && (
+            {!isSyncInProgress(table) && (
               <Menu position="bottom-end">
                 <Menu.Target>
                   <Tooltip label={t`More`}>
-                    <ActionIcon
-                      aria-label={t`More`}
-                      mb={-8}
-                      mt={-5}
-                      ml={8}
-                      variant="transparent"
-                    >
+                    <ActionIcon aria-label={t`More`} variant="transparent">
                       <Box c="text-primary">
                         <Icon name="ellipsis" />
                       </Box>
