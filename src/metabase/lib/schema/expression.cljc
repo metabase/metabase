@@ -31,7 +31,7 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mr/def ::base-type
-  [:multi {:dispatch (partial = ::type.unknown)}
+  [:multi {:dispatch (mr/with-key (partial = ::type.unknown))}
    [true  [:= ::type.unknown]]
    [false [:ref ::common/base-type]]])
 
@@ -93,7 +93,7 @@
   (boolean (and (vector? expr)
                 (#{:asc :desc} (first expr)))))
 
-(defn- expression-schema
+(defmacro ^:private expression-schema
   "Schema that matches the following rules:
 
   1a. expression is *not* an MBQL clause, OR
@@ -103,17 +103,18 @@
 
   2. expression's [[type-of]] isa? `base-type`"
   [base-type description]
-  [:and
-   ;; vector = MBQL clause, anything else = not an MBQL clause
-   [:multi
-    {:dispatch vector?}
-    [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
-    [false [:ref :metabase.lib.schema.literal/literal]]]
-   [:fn
-    {:error/message description}
-    #(and (not (non-expression-clause? %))
-          (or *suppress-expression-type-check?*
-              (type-of? % base-type)))]])
+  `[:and
+    ;; vector = MBQL clause, anything else = not an MBQL clause
+    [:multi
+     {:dispatch vector?}
+     [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
+     [false [:ref :metabase.lib.schema.literal/literal]]]
+    [:fn
+     {:error/message ~description}
+     (mr/with-key
+       #(and (not (non-expression-clause? %))
+             (or *suppress-expression-type-check?*
+                 (type-of? % ~base-type))))]])
 
 (mr/def ::boolean
   (expression-schema :type/Boolean "expression returning a boolean"))
@@ -214,12 +215,12 @@
   "The `:expressions` definition map as found as a top-level key in an MBQL stage."
   [:and
    [:sequential {:min 1} [:ref ::expression.definition]]
-   ^{::mr/key "unique expression names"}
-   [:fn
-    {:error/message "expressions must have unique names"}
-    (fn [expressions]
-      (or (empty? expressions)
-          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
+   (mr/with-key
+     [:fn
+      {:error/message "expressions must have unique names"}
+      (fn [expressions]
+        (or (empty? expressions)
+            (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))])])
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and

@@ -24,9 +24,10 @@
 (mr/def ::drill-thru.type
   [:fn
    {:error/message "valid drill-thru :type keyword"}
-   (fn [k]
-     (and (qualified-keyword? k)
-          (= (namespace k) "drill-thru")))])
+   (mr/with-key
+     (fn [k]
+       (and (qualified-keyword? k)
+            (= (namespace k) "drill-thru"))))])
 
 (mr/def ::drill-thru.common
   [:map
@@ -53,7 +54,7 @@
    ;; we should ignore NULL values for PKs and FKs -- do not add filters on them.
    [:value  [:and
              :some
-             [:fn {:error/message "Non-NULL value"} #(not= % :null)]]]])
+             [:fn {:error/message "Non-NULL value"} (mr/with-key #(not= % :null))]]]])
 
 (mr/def ::drill-thru.object-details.dimensions
   [:sequential {:min 1} [:ref ::drill-thru.object-details.dimension]])
@@ -215,7 +216,7 @@
    [:map
     [:semantic-type [:fn
                      {:error/message "Latitude semantic type"}
-                     #(isa? % :type/Latitude)]]]])
+                     (mr/with-key #(isa? % :type/Latitude))]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.column.longitude
   [:merge
@@ -223,7 +224,7 @@
    [:map
     [:semantic-type [:fn
                      {:error/message "Longitude semantic type"}
-                     #(isa? % :type/Longitude)]]]])
+                     (mr/with-key #(isa? % :type/Longitude))]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.column.county-state-city
   [:merge
@@ -231,9 +232,9 @@
    [:map
     [:semantic-type [:fn
                      {:error/message "Country/State/City semantic type"}
-                     #(some (fn [semantic-type]
-                              (isa? % semantic-type))
-                            [:type/Country :type/State :type/City])]]]])
+                     (mr/with-key #(some (fn [semantic-type]
+                                           (isa? % semantic-type))
+                                         [:type/Country :type/State :type/City]))]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon
   [:merge
@@ -275,8 +276,9 @@
      [:type    [:= :drill-thru/zoom-in.geographic]]
      [:subtype keyword?]]]
    [:multi {:dispatch :subtype
-            :error/fn (fn [{:keys [value]} _]
-                        (str "Invalid zoom-in.geographic drill thru subtype" (pr-str value)))}
+            :error/fn (mr/with-key
+                        (fn [{:keys [value]} _]
+                          (str "Invalid zoom-in.geographic drill thru subtype" (pr-str value))))}
     [:drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
      ::drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
     [:drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
@@ -352,7 +354,7 @@
    [:column-ref [:ref ::lib.schema.ref/ref]]
    [:value      [:fn
                  {:error/message ":null should not be used in context row values, only for top-level context value"}
-                 #(not= % :null)]]])
+                 (mr/with-key #(not= % :null))]]])
 
 ;;; Sequence of maps with keys `:column`, `:column-ref`, and `:value`
 ;;;

@@ -271,7 +271,7 @@
        value-type))))
 
 (mr/def ::relative-datetime.amount
-  [:multi {:dispatch (some-fn keyword? string?)}
+  [:multi {:dispatch (mr/with-key (some-fn keyword? string?))}
    [true  [:= {:decode/normalize common/normalize-keyword-lower} :current]]
    [false :int]])
 

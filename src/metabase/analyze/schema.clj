@@ -23,12 +23,13 @@
 (mr/def ::qp-results-cased-map
   [:fn
    {:error/message "Map where all simple keywords are snake_case; namespaced keywords can be any case."}
-   (fn [m]
-     (and (map? m)
-          (every? (fn [k]
-                    (or (qualified-keyword? k)
-                        (not (str/includes? (name k) "-"))))
-                  (keys m))))])
+   (mr/with-key
+     (fn [m]
+       (and (map? m)
+            (every? (fn [k]
+                      (or (qualified-keyword? k)
+                          (not (str/includes? (name k) "-"))))
+                    (keys m)))))])
 
 (mr/def ::Field
   [:and

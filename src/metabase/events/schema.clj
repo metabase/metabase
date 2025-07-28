@@ -11,7 +11,7 @@
 (mu/defn event-schema
   "Get the Malli schema we should use for events of `topic`. By default, this looks in our registry for a schema
   matching the event topic name; if it fails to find one, it falls back to `:map`."
-  [topic :- keyword?]
+  [topic :- :keyword]
   (or (mr/registered-schema topic)
       :map))
 
@@ -41,15 +41,15 @@
 
 (mr/def :event/collection-read
   [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
+   [:user-id [:int {:min 1}]]
+   [:object [:fn (mr/with-key #(t2/instance-of? :model/Collection %))]]])
 
 ;; dashboard events
 
 (mr/def ::dashboard
   [:map {:closed true}
-   [:user-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
+   [:user-id [:int {:min 1}]]
+   [:object [:fn (mr/with-key #(t2/instance-of? :model/Dashboard %))]]])
 
 (mr/def :event/dashboard-create ::dashboard)
 (mr/def :event/dashboard-update ::dashboard)
@@ -57,21 +57,22 @@
 
 (mr/def ::dashboard-with-dashcards
   (-> (event-schema ::dashboard)
-      (mut/assoc :dashcards [:sequential [:map [:id pos-int?]]])))
+      (mut/assoc :dashcards [:sequential [:map [:id [:int {:min 1}]]]])
+      mr/with-key))
 
 (mr/def :event/dashboard-remove-cards ::dashboard-with-dashcards)
 (mr/def :event/dashboard-add-cards    ::dashboard-with-dashcards)
 
 (mr/def :event/dashboard-read
   [:map {:closed true}
-   [:user-id   [:maybe pos-int?]]
-   [:object-id [:maybe pos-int?]]])
+   [:user-id   [:maybe [:int {:min 1}]]]
+   [:object-id [:maybe [:int {:min 1}]]]])
 
 ;; user events
 
 (mr/def ::user
   [:map {:closed true}
-   [:user-id pos-int?]])
+   [:user-id [:int {:min 1}]]])
 
 (mr/def :event/user-login  ::user)
 (mr/def :event/user-joined ::user)
@@ -94,8 +95,8 @@
 
 (mr/def ::segment
   [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object   [:fn #(t2/instance-of? :model/Segment %)]]])
+   [:user-id  [:int {:min 1}]]
+   [:object   [:fn (mr/with-key #(t2/instance-of? :model/Segment %))]]])
 
 (mr/def :event/segment-create ::segment)
 
@@ -112,10 +113,10 @@
 
 (mr/def ::database
   [:map {:closed true}
-   [:object [:fn #(t2/instance-of? :model/Database %)]]
-   [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
+   [:object [:fn (mr/with-key #(t2/instance-of? :model/Database %))]]
+   [:previous-object {:optional true} [:fn (mr/with-key #(t2/instance-of? :model/Database %))]]
    [:details {:optional true} :map]
-   [:user-id pos-int?]
+   [:user-id [:int {:min 1}]]
    [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mr/def :event/database-create ::database)
@@ -126,31 +127,31 @@
 
 (mr/def :event/alert-create
   [:map {:closed true}
-   (-> [:user-id pos-int?]
+   (-> [:user-id [:int {:min 1}]]
        (with-hydrate :user user-hydrate))
    [:object [:and
-             [:fn #(t2/instance-of? :model/Pulse %)]
+             [:fn (mr/with-key #(t2/instance-of? :model/Pulse %))]
              [:map
-              [:card [:fn #(t2/instance-of? :model/Card %)]]]]]])
+              [:card [:fn (mr/with-key #(t2/instance-of? :model/Card %))]]]]]])
 
 ;; pulse schemas
 
 (mr/def :event/pulse-create
   [:map {:closed true}
-   [:user-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Pulse %)]]])
+   [:user-id [:int {:min 1}]]
+   [:object [:fn (mr/with-key #(t2/instance-of? :model/Pulse %))]]])
 
 ;; table events
 
 (mr/def :event/table-read
   [:map {:closed true}
-   [:user-id  pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Table %)]]])
+   [:user-id  [:int {:min 1}]]
+   [:object [:fn (mr/with-key #(t2/instance-of? :model/Table %))]]])
 
 (mr/def ::permission-failure
   [:map {:closed true}
-   [:user-id [:maybe pos-int?]]
-   [:object [:maybe [:fn #(boolean (t2/model %))]]]
+   [:user-id [:maybe [:int {:min 1}]]]
+   [:object [:maybe [:fn (mr/with-key #(boolean (t2/model %)))]]]
    [:has-access {:optional true} [:maybe :boolean]]])
 
 (mr/def :event/read-permission-failure   ::permission-failure)
@@ -159,5 +160,5 @@
 
 (mr/def :event/create-permission-failure
   [:map {:closed true}
-   [:user-id [:maybe pos-int?]]
+   [:user-id [:maybe [:int {:min 1}]]]
    [:model [:or :keyword :string]]])

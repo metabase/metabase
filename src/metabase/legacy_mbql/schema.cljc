@@ -140,7 +140,7 @@
                            :else                                        :datetime)))}
    [:invalid [:fn
               {:error/message "not an :absolute-datetime clause"}
-              (constantly false)]]
+              (mr/with-key (constantly false))]]
    [:date (helpers/clause
            :absolute-datetime
            "date" ::lib.schema.literal/date
@@ -253,7 +253,7 @@
 (mr/def ::no-binning-options-at-top-level
   [:fn
    {:error/message ":binning keys like :strategy are not allowed at the top level of :field options."}
-   (complement :strategy)])
+   (mr/with-key (complement :strategy))])
 
 (mr/def ::FieldOptions
   [:and
@@ -1405,7 +1405,7 @@
     [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
    [:fn
     {:error/message "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"}
-    (complement :lib/type)]
+    (mr/with-key (complement :lib/type))]
    (letfn [(disallowed-key? [k]
              (core/or (core/not (keyword? k))
                       (let [disallowed-char (if (qualified-keyword? k)
@@ -1542,9 +1542,10 @@
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
-    (every-pred
-     (some-fn :source-table :source-query)
-     (complement (every-pred :source-table :source-query)))]
+    (mr/with-key
+      (every-pred
+       (some-fn :source-table :source-query)
+       (complement (every-pred :source-table :source-query))))]
    (let [disallowed-keys #{:filter :breakout :aggreggation :expressions :joins}]
      [:fn
       {:error/message "Join should not have top-level 'inner' query keys like :fields or :filter -- they should go in :source-query"
@@ -1552,7 +1553,8 @@
                         (fn [{join :value} _]
                           (when (map? join)
                             (str "join should not have top-level 'inner' query keys, found " (set/intersection (set (keys join)) disallowed-keys)))))}
-      (complement (apply some-fn disallowed-keys))])])
+      (mr/with-key
+        (complement (apply some-fn disallowed-keys)))])])
 
 (def Join
   "Alias for ::Join. Prefer that going forward."
@@ -1658,7 +1660,9 @@
 (mr/def ::dimension
   [:and
    {:doc/title [:span [:code ":dimension"] " clause"]}
-   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:fn {:error/message "must be a `:dimension` clause"}
+    (mr/with-key
+      (partial helpers/is-clause? :dimension))]
    [:catn
     [:tag [:= :dimension]]
     [:target [:schema [:or [:ref ::field-or-expression-ref] [:ref ::template-tag]]]]
@@ -1815,7 +1819,8 @@
   [:and
    [:fn
     {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
-    (complement (every-pred :native :query))]
+    (mr/with-key
+      (complement (every-pred :native :query)))]
    [:fn
     {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
     (mr/with-key
@@ -1837,7 +1842,8 @@
   properly."
   [:fn
    {:error/message "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)"}
-   (complement :source-metadata)])
+   (mr/with-key
+     (complement :source-metadata))])
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in `Card.dataset_query`."

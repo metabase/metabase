@@ -23,7 +23,7 @@
 ;;; with appropriate aliases.
 (mr/def ::fields
   [:multi
-   {:dispatch (some-fn keyword? string?)}
+   {:dispatch (mr/with-key (some-fn keyword? string?))}
    [true  [:enum {:decode/normalize common/normalize-keyword} :all :none]]
    ;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
    ;; twice. (#32489)
@@ -36,8 +36,8 @@
 ;;; Driver implementations: This is guaranteed to be present after pre-processing.
 (mr/def ::alias
   [:schema
-   ^{::mr/key "gen"}
-   {:gen/fmap #(str % "-" (random-uuid))}
+   (mr/with-key
+     {:gen/fmap #(str % "-" (random-uuid))})
    ::common/non-blank-string])
 
 (mr/def ::condition
@@ -98,20 +98,21 @@
     [:strategy {:optional true} ::strategy]]
    [:fn
     {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
-    (complement (some-fn :lib/stage-metadata :source-metadata))]])
+    (mr/with-key
+      (complement (some-fn :lib/stage-metadata :source-metadata)))]])
 
 (mr/def ::joins
   [:and
    [:sequential {:min 1} [:ref ::join]]
    [:fn
-    ^{::mr/key "error"}
-    {:error/fn (fn [& _]
-                 (i18n/tru "Join aliases must be unique at a given stage of a query"))}
-    ^{::mr/key "unique-join-alises-only"}
-    (fn ensure-unique-join-aliases [joins]
-      (if-let [aliases (not-empty (filter some? (map :alias joins)))]
-        (apply distinct? aliases)
-        true))]])
+    (mr/with-key
+      {:error/fn (fn [& _]
+                   (i18n/tru "Join aliases must be unique at a given stage of a query"))})
+    (mr/with-key
+      (fn ensure-unique-join-aliases [joins]
+        (if-let [aliases (not-empty (filter some? (map :alias joins)))]
+          (apply distinct? aliases)
+          true)))]])
 
 (mr/def ::strategy.option
   [:map

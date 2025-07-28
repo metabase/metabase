@@ -31,9 +31,10 @@
     [:lib/source ::lib.schema.metadata/column.source]]
    [:fn
     {:error/message "map with debugging output"}
-    (fn [m]
-      (or (not *debug*)
-          (::debug.origin m)))]])
+    (mr/with-key
+      (fn [m]
+        (or (not *debug*)
+            (::debug.origin m))))]])
 
 (defn- merge-metadata
   [m & more]

@@ -117,7 +117,8 @@
     :error/fn      (mr/with-key
                      (fn [{:keys [value]} _]
                        (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value)))))}
-   (comp u/empty-or-distinct? remove-lib-uuids)])
+   (mr/with-key
+     (comp u/empty-or-distinct? remove-lib-uuids))])
 
 (defn distinct-ignoring-uuids
   "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."

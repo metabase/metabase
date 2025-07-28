@@ -314,3 +314,26 @@
         ;; Should complete reasonably quickly (less than 1 second for this test)
         (is (< elapsed-ms 100)
             "Cache key generation should be fast")))))
+
+(comment
+
+  ;; good tests
+  ;;
+  '(= (#'mr/schema-cache-key (mu/with-api-error-message
+                               [:and
+                                {:error/message "non-blank string"
+                                 :json-schema   {:type "string" :minLength 1}}
+                                [:string {:min 1}]
+                                [:fn
+                                 {:error/message "non-blank string"}
+                                 (mr/with-key (complement str/blank?))]]
+                               (deferred-tru "value must be a non-blank string.")))
+      (#'mr/schema-cache-key (mu/with-api-error-message
+                               [:and
+                                {:error/message "non-blank string"
+                                 :json-schema   {:type "string" :minLength 1}}
+                                [:string {:min 1}]
+                                [:fn
+                                 {:error/message "non-blank string"}
+                                 (mr/with-key (complement str/blank?))]]
+                               (deferred-tru "value must be a non-blank string.")))))

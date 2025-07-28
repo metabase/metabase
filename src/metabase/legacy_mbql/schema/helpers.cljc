@@ -53,19 +53,19 @@
         :rest     [:* (wrap-clause-arg-schema arg-schema)]
         (wrap-clause-arg-schema vector-arg-schema)))))
 
-(defn clause
+(defmacro clause
   "Impl of [[metabase.legacy-mbql.schema.macros/defclause]] macro. Creates a Malli schema."
   [tag & arg-schemas]
-  [:and
-   {:doc/title [:span [:code (pr-str tag)] " clause"]}
-   [:fn
-    {:error/message (str "must be a `" tag "` clause")}
-    (partial is-clause? tag)]
-   (into
-    [:catn
-     ["tag" [:= tag]]]
-    (for [[arg-name arg-schema] (partition 2 arg-schemas)]
-      [arg-name (clause-arg-schema arg-schema)]))])
+  `[:and
+    {:doc/title [:span [:code (pr-str ~tag)] " clause"]}
+    [:fn
+     {:error/message (str "must be a `" ~tag "` clause")}
+     (mr/with-key (partial is-clause? ~tag))]
+    ~(into
+      [:catn
+       ["tag" [:= tag]]]
+      (for [[arg-name arg-schema] (partition 2 arg-schemas)]
+        [arg-name (clause-arg-schema arg-schema)]))])
 
 (defn- clause-tag [a-clause]
   (when (and (vector? a-clause)

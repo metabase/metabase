@@ -90,7 +90,8 @@
     [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
     [:subject                         string?]
     [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
-   [:multi {:dispatch (comp keyword :type)}
+   [:multi {:dispatch (mr/with-key
+                        (comp keyword :type))}
     [:email/handlebars-resource
      [:map
       [:path string?]]]
@@ -102,7 +103,8 @@
   "Channel Template schema."
   [:merge
    [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
+    [:channel_type [:fn (mr/with-key
+                          #(= "channel" (-> % keyword namespace)))]]]
    [:multi {:dispatch :channel_type}
     [:channel/email
      [:map

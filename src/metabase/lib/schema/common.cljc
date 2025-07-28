@@ -92,7 +92,7 @@
    [:string {:min 1}]
    [:fn
     {:error/message "non-blank string"}
-    (complement str/blank?)]])
+    (mr/with-key (complement str/blank?))]])
 
 (mr/def ::int-greater-than-or-equal-to-zero
   "Schema representing an integer than must also be greater than or equal to zero."
@@ -103,68 +103,63 @@
 (mr/def ::positive-number
   [:fn
    {:error/message "positive number"}
-   (every-pred number? pos?)])
+   (mr/with-key (every-pred number? pos?))])
 
 (mr/def ::uuid
   [:string
-   ^{::mr/key "uuid-normalize"}
-   {:decode/normalize (fn [x]
-                        (cond-> x
-                          (uuid? x) str))
-    ;; TODO -- should this be stricter?
-    :min 36
-    :max 36}])
-
-(defn- semantic-type? [x]
-  (isa? x :Semantic/*))
+   (mr/with-key
+     {:decode/normalize (mr/with-key
+                          (fn [x]
+                            (cond-> x
+                              (uuid? x) str)))
+      ;; TODO -- should this be stricter?
+      :min 36
+      :max 36})])
 
 (mr/def ::semantic-type
   [:and
    [:keyword
     {:decode/normalize normalize-keyword}]
-   [:fn ^{::mr/key "semantic-type-normalize"}
-    {:error/message "valid semantic type"
-     :error/fn      (fn [{:keys [value]} _]
-                      (str "Not a valid semantic type: " (pr-str value)))}
-    semantic-type?]])
-
-(defn- relation-type? [x]
-  (isa? x :Relation/*))
+   [:fn (mr/with-key
+          {:error/message "valid semantic type"
+           :error/fn (mr/with-key
+                       (fn [{:keys [value]} _]
+                         (str "Not a valid semantic type: " (pr-str value))))})
+    (mr/with-key #(isa? % :Semantic/*))]])
 
 (mr/def ::relation-type
   [:and
    [:keyword
     {:decode/normalize normalize-keyword}]
-   [:fn ^{::mr/key "relation-type-normalize"}
-    {:error/message "valid relation type"
-     :error/fn      (fn [{:keys [value]} _]
-                      (str "Not a valid relation type: " (pr-str value)))}
-    relation-type?]])
+   [:fn (mr/with-key
+          {:error/message "valid relation type"
+           :error/fn      (fn [{:keys [value]} _]
+                            (str "Not a valid relation type: " (pr-str value)))})
+    (mr/with-key #(isa? % :Relation/*))]])
 
 (mr/def ::semantic-or-relation-type
   [:and
    {:description "valid semantic or relation type"}
    [:keyword
     {:decode/normalize normalize-keyword}]
-   [:fn ^{::mr/key "semantic-or-relation-type-normalize"}
-    {:error/message "valid semantic or relation type"
-     :error/fn      (fn [{:keys [value]} _]
-                      (str "Not a valid semantic or relation type: " (pr-str value)))}
-    (some-fn semantic-type? relation-type?)]])
-
-(defn- base-type? [x]
-  (isa? x :type/*))
+   [:fn (mr/with-key
+          {:error/message "valid semantic or relation type"
+           :error/fn      (fn [{:keys [value]} _]
+                            (str "Not a valid semantic or relation type: " (pr-str value)))})
+    (mr/with-key
+      (some-fn #(isa? % :Semantic/*)
+               #(isa? % :Relation/*)))]])
 
 (mr/def ::base-type
   [:and
    [:keyword
     {:decode/normalize normalize-keyword}]
-   ^{::mr/key "base-type-normalize"}
-   [:fn
-    {:error/message "valid base type"
-     :error/fn      (fn [{:keys [value]} _]
-                      (str "Not a valid base type: " (pr-str value)))}
-    base-type?]])
+   (mr/with-key
+     [:fn
+      {:error/message "valid base type"
+       :error/fn      (fn [{:keys [value]} _]
+                        (str "Not a valid base type: " (pr-str value)))}
+      (mr/with-key #(isa? % :type/*))])])
 
 (defn- normalize-options-map [m]
   (let [m (normalize-map m)]
@@ -190,7 +185,7 @@
     [:display-name   {:optional true} [:maybe ::non-blank-string]]]
    [:fn
     {:error/message ":ident is deprecated and should not be included in options maps"}
-    (complement :ident)]])
+    (mr/with-key (complement :ident))]])
 
 (mr/def ::external-op
   [:map

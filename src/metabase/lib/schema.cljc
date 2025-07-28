@@ -84,7 +84,7 @@
     (mr/with-key #(not (contains? % :source-card)))]
    [:fn
     {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
-    (complement :query)]])
+    (mr/with-key (complement :query))]])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -171,7 +171,7 @@
     :error/fn      (mr/with-key
                      (fn [{:keys [value]} _]
                        (ref-error-for-stage value)))}
-   (complement ref-error-for-stage)])
+   (mr/with-key (complement ref-error-for-stage))])
 
 ;;; TODO -- should `::page` have a `:lib/type`, like all the other maps in pMBQL?
 (mr/def ::page
@@ -210,14 +210,18 @@
     (mr/with-key #(not (contains? % :native)))]
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
-    (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
+    (mr/with-key (complement (comp #(= (count %) 1) #{:source-table :source-card})))]
    [:ref ::stage.valid-refs]
-   (into [:and]
-         (map (fn [k]
-                [:fn
-                 {:error/message (str k " is deprecated and should not be used")}
-                 (complement k)]))
-         [:aggregation-idents :breakout-idents :expression-idents])])
+   [:and
+    [:fn
+     {:error/message ":aggregation-idents is deprecated and should not be used"}
+     (mr/with-key (complement :aggregation-idents))]
+    [:fn
+     {:error/message ":breakout-idents is deprecated and should not be used"}
+     (mr/with-key (complement :breakout-idents))]
+    [:fn
+     {:error/message ":expression-idents is deprecated and should not be used"}
+     (mr/with-key (complement :expression-idents))]]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -249,7 +253,7 @@
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]
    [:fn
     {:error/message "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"}
-    (complement :source-metadata)]])
+    (mr/with-key (complement :source-metadata))]])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
@@ -262,10 +266,10 @@
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native [:fn
                         {:error/message "Native stages are only allowed as the first stage of a query or join."}
-                        (constantly false)]]
+                        (mr/with-key (constantly false))]]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Only the initial stage of a query can have a :source-table or :source-card"}
-                        (complement (some-fn :source-table :source-card))]]])
+                        (mr/with-key (complement (some-fn :source-table :source-card)))]]])
 
 (defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or
@@ -321,7 +325,7 @@
     :error/fn      (mr/with-key
                      (fn [{stages :value} _]
                        (ref-error-for-stages stages)))}
-   (complement ref-error-for-stages)])
+   (mr/with-key (complement ref-error-for-stages))])
 
 (mr/def ::stages
   [:and

@@ -1,6 +1,7 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
   (:require
+   [malli.core :as mc]
    [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
@@ -83,7 +84,8 @@
 (mr/def ::FieldMetadataEntry
   (-> (mr/schema ::TableMetadataField)
       (mut/assoc :table-schema [:maybe ::lib.schema.common/non-blank-string])
-      (mut/assoc :table-name   ::lib.schema.common/non-blank-string)))
+      (mut/assoc :table-name   ::lib.schema.common/non-blank-string)
+      mc/form))
 
 (def FieldMetadataEntry
   "Schema for an item in the expected output of [[metabase.driver/describe-fields]]."

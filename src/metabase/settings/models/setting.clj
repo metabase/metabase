@@ -20,6 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -99,8 +100,9 @@
 (def ^:private Type
   [:fn
    {:error/message "Valid Setting :type"}
-   (fn [a-type]
-     (contains? (set (keys (methods get-value-of-type))) a-type))])
+   (mr/with-key
+     (fn [a-type]
+       (contains? (set (keys (methods get-value-of-type))) a-type)))])
 
 (def ^:private Visibility
   [:enum :public :authenticated :settings-manager :admin :internal])
@@ -172,11 +174,11 @@
    [:type Type]
 
    ;; different getters/setters take care of parsing/unparsing
-   [:getter ifn?]
-   [:setter ifn?]
+   [:getter 'ifn?]
+   [:setter 'ifn?]
 
    ;; an init function can be used to seed initial values
-   [:init [:maybe ifn?]]
+   [:init [:maybe 'ifn?]]
 
    ;; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    [:tag :symbol]
@@ -211,7 +213,7 @@
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
-   [:on-change [:maybe ifn?]]
+   [:on-change [:maybe 'ifn?]]
 
    ;; If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
    ;; the setting will behave the same as if `enabled?` returns `false` (see below).
@@ -219,7 +221,7 @@
 
    ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
    ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
-   [:enabled? [:maybe ifn?]]
+   [:enabled? [:maybe 'ifn?]]
 
    ;; Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
    ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`

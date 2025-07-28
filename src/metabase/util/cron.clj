@@ -14,22 +14,45 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::CronScheduleString
-  (mu/with-api-error-message
-   [:and
-    ms/NonBlankString
-    [:fn
-     {:error/fn (fn [{:keys [value]} _]
-                  (try
-                    (CronExpression/validateExpression value)
-                    (catch Throwable e
-                      (str "Invalid cron schedule string: " (.getMessage e)))))}
-     (fn [^String s]
-       (try
-         (CronExpression/validateExpression s)
-         true
-         (catch Throwable _
-           false)))]]
-   (i18n/deferred-tru "value must be a valid Quartz cron schedule string.")))
+  (mr/with-key
+    (mu/with-api-error-message
+     [:and
+      ms/NonBlankString
+      [:fn
+       {:error/fn (mr/with-key
+                    (fn [{:keys [value]} _]
+                      (try
+                        (CronExpression/validateExpression value)
+                        (catch Throwable e
+                          (str "Invalid cron schedule string: " (.getMessage e))))))}
+       (mr/with-key
+         (fn [^String s]
+           (try
+             (CronExpression/validateExpression s)
+             true
+             (catch Throwable _
+               false))))]]
+     (i18n/deferred-tru "value must be a valid Quartz cron schedule string."))))
+
+(meta (mr/with-key
+        (mu/with-api-error-message
+         [:and
+          ms/NonBlankString
+          [:fn
+           {:error/fn (mr/with-key
+                        (fn [{:keys [value]} _]
+                          (try
+                            (CronExpression/validateExpression value)
+                            (catch Throwable e
+                              (str "Invalid cron schedule string: " (.getMessage e))))))}
+           (mr/with-key
+             (fn [^String s]
+               (try
+                 (CronExpression/validateExpression s)
+                 true
+                 (catch Throwable _
+                   false))))]]
+         (i18n/deferred-tru "value must be a valid Quartz cron schedule string."))))
 
 (def CronScheduleString
   "Malli Schema for a valid cron schedule string."

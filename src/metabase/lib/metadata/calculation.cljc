@@ -484,7 +484,7 @@
     [:include-remaps? {:optional true, :default false} :boolean]]
    [:fn
     {:error/message "unique-name-fn is no longer allowed as an option."}
-    (complement :unique-name-fn)]])
+    (mr/with-key (complement :unique-name-fn))]])
 
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
