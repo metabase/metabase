@@ -522,59 +522,113 @@ export const TableListView = ({ location, params }: Props) => {
             w="100%"
           />
 
-          <Stack gap={4}>
-            <Text
-              c="text-primary"
-              fw="bold"
-              lh="var(--mantine-line-height-md)"
-            >{t`Shown columns`}</Text>
-            <SortableFieldList
-              fields={visibleFields}
-              stylesMap={stylesMap}
-              onChange={handleOrderChange}
-              onStyleChange={handleStyleChange}
-              onToggleVisibility={(field) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    fields: settings.list_view.fields.filter(
-                      (f) => f.field_id !== field.id,
-                    ),
-                  },
-                }));
-              }}
-            />
-          </Stack>
+          {settings.list_view.fields.length > 0 && (
+            <Stack gap={8}>
+              <Group justify="space-between">
+                <Text
+                  c="text-primary"
+                  fw="bold"
+                  lh="var(--mantine-line-height-md)"
+                >{t`Shown columns`}</Text>
 
-          <Stack gap={4}>
-            <Text
-              c="text-primary"
-              fw="bold"
-              lh="var(--mantine-line-height-md)"
-            >{t`Hidden columns`}</Text>
-            <SortableFieldList
-              disabled
-              fields={hiddenFields}
-              isHidden
-              onChange={handleOrderChange}
-              onToggleVisibility={(field) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    fields: [
-                      ...settings.list_view.fields,
-                      {
-                        field_id: getRawTableFieldId(field),
-                        style: "normal",
-                      },
-                    ],
-                  },
-                }));
-              }}
-            />
-          </Stack>
+                {settings.list_view.fields.length > 0 && (
+                  <Button
+                    leftSection={<Icon name="eye_crossed_out" />}
+                    variant="subtle"
+                    h={20}
+                    p={0}
+                    onClick={() => {
+                      setSettings((settings) => ({
+                        ...settings,
+                        list_view: {
+                          ...settings.list_view,
+                          fields: [],
+                        },
+                      }));
+                    }}
+                  >{t`Hide all`}</Button>
+                )}
+              </Group>
+
+              <SortableFieldList
+                fields={visibleFields}
+                stylesMap={stylesMap}
+                onChange={handleOrderChange}
+                onStyleChange={handleStyleChange}
+                onToggleVisibility={(field) => {
+                  setSettings((settings) => ({
+                    ...settings,
+                    list_view: {
+                      ...settings.list_view,
+                      fields: settings.list_view.fields.filter(
+                        (f) => f.field_id !== field.id,
+                      ),
+                    },
+                  }));
+                }}
+              />
+            </Stack>
+          )}
+
+          {hiddenFields.length > 0 && (
+            <Stack gap={8}>
+              <Group justify="space-between">
+                <Text
+                  c="text-primary"
+                  fw="bold"
+                  lh="var(--mantine-line-height-md)"
+                >{t`Hidden columns`}</Text>
+
+                {table.fields &&
+                  table.fields.length > 0 &&
+                  table.fields.length !== settings.list_view.fields.length && (
+                    <Button
+                      leftSection={<Icon name="eye" />}
+                      variant="subtle"
+                      h={20}
+                      p={0}
+                      onClick={() => {
+                        setSettings((settings) => ({
+                          ...settings,
+                          list_view: {
+                            ...settings.list_view,
+                            fields: [
+                              ...settings.list_view.fields,
+                              ...hiddenFields.map((field) => ({
+                                field_id: getRawTableFieldId(field),
+                                style: "normal" as const,
+                              })),
+                            ],
+                          },
+                        }));
+                      }}
+                    >{t`Show all`}</Button>
+                  )}
+              </Group>
+
+              <SortableFieldList
+                disabled
+                fields={hiddenFields}
+                isHidden
+                onChange={handleOrderChange}
+                onToggleVisibility={(field) => {
+                  setSettings((settings) => ({
+                    ...settings,
+                    list_view: {
+                      ...settings.list_view,
+                      fields: [
+                        ...settings.list_view.fields,
+                        {
+                          field_id: getRawTableFieldId(field),
+                          style: "normal",
+                        },
+                      ],
+                    },
+                  }));
+                }}
+              />
+            </Stack>
+          )}
         </Stack>
       )}
     </Group>
