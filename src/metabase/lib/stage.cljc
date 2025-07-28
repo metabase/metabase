@@ -330,7 +330,6 @@
   (if-let [model-cols (not-empty (model-metadata query stage))]
     (mapv (fn [col]
             (let [model-col (lib.equality/find-matching-column (lib.ref/ref col) model-cols)]
-              (println "(:display-name model-col):" (:display-name model-col)) ; NOCOMMIT
               (merge
                col
                (when model-col
@@ -381,10 +380,7 @@
                            (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
          cols (merge-model-metadata query stage cols)]
      (into []
-           (comp (map (fn [col]
-                        ;; update the display names for the columns
-                        (assoc col :display-name (lib.metadata.calculation/display-name query stage-number col))))
-                 (lib.field.util/add-source-and-desired-aliases-xform query)
+           (comp (lib.field.util/add-source-and-desired-aliases-xform query)
                  ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break (see
                  ;; longer explanation in [[metabase.lib.stage-test/returned-columns-deduplicate-names-test]]). Only
                  ;; do this if this is the last stage of the query, just like the QP does! Otherwise we might

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.field.util :as lib.field.util]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
@@ -16,8 +17,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.lib.join :as lib.join]))
+   [metabase.util.malli :as mu]))
 
 (defn- merge-metadata
   [m & more]
@@ -102,10 +102,12 @@
 (def ^:private opts-propagated-renamed-keys
   "Keys in `:field` opts that get copied into column metadata with different keys when they have non-nil values.
 
-    key-in-opts => key-in-col-metadata"
+    key-in-opts => key-in-col-metadata
+
+  `:join-alias` is not automatically propagated from opts because it may or may not be correct... [[resolve-in-join]]
+  will include the join alias in result metadata if appropriate."
   {:lib/uuid                :lib/source-uuid
    :binning                 :metabase.lib.field/binning
-   ;; :join-alias              :metabase.lib.join/join-alias
    :source-field            :fk-field-id
    :source-field-join-alias :fk-join-alias
    :source-field-name       :fk-field-name
@@ -180,7 +182,7 @@
    stage-number :- :int
    join-alias   :- ::lib.schema.join/alias
    id-or-name   :- [:or :string ::lib.schema.id/field]]
-  (log/debugf "Resolving %s in joins" (u/cprint-to-str id-or-name))
+  (log/debugf "Resolving %s (join alias = %s) in joins in stage %s" (u/cprint-to-str id-or-name) (u/cprint-to-str join-alias) (u/cprint-to-str stage-number))
   ;; find the matching join.
   (let [stage (lib.util/query-stage query stage-number)]
     (if-some [join (m/find-first #(= (:alias %) join-alias)
@@ -199,11 +201,14 @@
         (log/debugf "Join %s does not exist in stage %s, looking in previous stages"
                     (u/cprint-to-str join-alias)
                     (u/cprint-to-str stage-number))
-        (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+        (if-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
           (when-some [col (resolve-in-join query previous-stage-number join-alias id-or-name)]
             (-> col
                 lib.field.util/update-keys-for-col-from-previous-stage
-                (assoc :lib/source :source/previous-stage))))))))
+                (assoc :lib/source :source/previous-stage)))
+          (do
+            (log/debug "No more previous stages =(")
+            nil))))))
 
 (mu/defn- resolve-in-previous-stage :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   [query                 :- ::lib.schema/query
@@ -250,6 +255,19 @@
             (log/debug "stage has no attached metadata")
             nil))))))
 
+(defn- fallback-metadata [id-or-name]
+  (log/debug "Returning fallback metadata")
+  (merge
+   {:lib/type   :metadata/column
+    ;; guess that the column came from the previous stage
+    :lib/source :source/previous-stage
+    :base-type  :type/*}
+   (if (pos-int? id-or-name)
+     {:id           id-or-name
+      :name         "Unknown Field"
+      :display-name "Unknown Field"}
+     {:name id-or-name})))
+
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/column-metadata-with-source
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -291,18 +309,7 @@
                    (resolve-in-join query stage-number (:alias join) id-or-name))
                  (:joins stage))))
      ;; if we STILL can't find a match, return made-up fallback metadata.
-     (do
-       (log/debug "Returning fallback metadata")
-       (merge
-        {:lib/type   :metadata/column
-         ;; guess that the column came from the previous stage
-         :lib/source :source/previous-stage
-         :base-type  :type/*}
-        (if (pos-int? id-or-name)
-          {:id           id-or-name
-           :name         "Unknown Field"
-           :display-name "Unknown Field"}
-          {:name id-or-name}))))))
+     (fallback-metadata id-or-name))))
 
 (mu/defn resolve-field-ref :- ::lib.metadata.calculation/column-metadata-with-source
   "Resolve metadata for a `:field` ref. This is part of the implementation
@@ -314,9 +321,14 @@
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %s" (u/cprint-to-str id-or-name) (u/cprint-to-str stage-number))
     (-> (merge-metadata
-         (if join-alias
-           (resolve-in-join query stage-number join-alias id-or-name)
-           (resolve-from-previous-stage-or-source query stage-number id-or-name))
+         {:lib/type :metadata/column}
+         (or (if join-alias
+               (resolve-in-join query stage-number join-alias id-or-name)
+               (resolve-from-previous-stage-or-source query stage-number id-or-name))
+             (merge
+              (fallback-metadata id-or-name)
+              (when join-alias
+                {:metabase.lib.join/join-alias join-alias})))
          (options-metadata opts)
          {:lib/original-ref field-ref})
         (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))))))
@@ -335,6 +347,7 @@
    [_tag opts id-or-name, :as field-ref] :- :mbql.clause/field
    cols                                  :- [:sequential ::lib.schema.metadata/column]]
   (merge-metadata
+   {:lib/type :metadata/column}
    (resolve-in-metadata metadata-providerable cols id-or-name)
    (options-metadata opts)
    {:lib/original-ref field-ref}))
