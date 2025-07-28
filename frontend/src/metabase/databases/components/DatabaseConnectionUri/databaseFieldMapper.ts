@@ -216,6 +216,33 @@ function mapSqlServerValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
+function mapStarburstTrinoValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host],
+    ["details.user", parsedValues.params?.user],
+    ["details.password", parsedValues.params?.password],
+    ["details.port", parsedValues.port],
+    ["details.catalog", parsedValues.catalog],
+    ["details.schema", parsedValues.schema],
+    ["details.ssl", parsedValues.params?.SSL],
+    ["details.roles", parsedValues.params?.roles],
+    [
+      "details.additional-options",
+      objectToString(parsedValues.params ?? {}, [
+        "SSL",
+        "roles",
+        "user",
+        "password",
+      ]),
+    ],
+  ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+  return fieldsMap;
+}
+
 export function mapDatabaseValues(parsedValues: RegexFields) {
   return match(parsedValues.protocol)
     .with(P.union("awsathena", "athena"), () => mapAthenaValues(parsedValues))
@@ -233,6 +260,7 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
     .with(P.union("sparksql", "hive2"), () => mapSparkSqlValues(parsedValues))
     .with("sqlserver", () => mapSqlServerValues(parsedValues))
+    .with("trino", () => mapStarburstTrinoValues(parsedValues))
     .otherwise(() => new Map());
 }
 

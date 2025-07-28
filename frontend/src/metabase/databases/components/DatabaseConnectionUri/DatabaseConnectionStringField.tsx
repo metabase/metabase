@@ -23,6 +23,7 @@ const supportedEngines = new Set([
   "Snowflake",
   "Spark SQL",
   "SQL Server",
+  "Starburst (Trino)",
 ]);
 
 export function DatabaseConnectionStringField({
