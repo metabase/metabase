@@ -56,7 +56,6 @@ export const useInitializeMetabaseProviderPropsStore = (
         ensureMetabaseProviderPropsStore().cleanup();
       }
     };
-    // eslint-disable-next-line -- Run on mount only
   }, []);
 
   useEffect(() => {
