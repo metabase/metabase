@@ -3,21 +3,22 @@ import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { NewTransformPage } from "./pages/NewTransformPage";
-import { TransformListPage } from "./pages/TransformListPage";
+import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
+import { TransformPage } from "./pages/TransformPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
 
 PLUGIN_TRANSFORMS.getRoutesWithSidebar = () => (
   <>
-    <Route path="transforms" component={TransformListPage} />
-    <Route path="transforms/:transformId" component={TransformListPage} />
+    <Route path="transforms" component={NewTransformPage} />
+    <Route path="transforms/:transformId" component={TransformPage} />
   </>
 );
 
 PLUGIN_TRANSFORMS.getRoutesWithoutSidebar = () => (
   <>
-    <Route path="transforms/new" component={NewTransformPage} />
+    <Route path="transforms/new" component={NewTransformQueryPage} />
     <Route
       path="transforms/:transformId/query"
       component={TransformQueryPage}
