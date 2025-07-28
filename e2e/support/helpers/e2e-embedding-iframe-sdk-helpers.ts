@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
+import { getIframeBody } from "./e2e-embedding-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
 import { activateToken } from "./e2e-token-helpers";
@@ -86,7 +87,7 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
 
-  return getSimpleEmbedIframeContent();
+  return getIframeBody();
 }
 
 /**
