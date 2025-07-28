@@ -186,6 +186,22 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
+
+  "spark-sql": new RegExp(
+    "^" + jdbcPrefix + "(?<protocol>sparksql):" + semicolonParams + "$",
+    "i",
+  ),
+
+  "spark-sql-hive2": new RegExp(
+    "^" +
+      jdbcPrefix +
+      "(?<protocol>hive2)://" +
+      hostAndPort +
+      "(?:/(?<database>[^/?#;]*))?" +
+      semicolonParams +
+      "$",
+    "i",
+  ),
 };
 
 export function parseConnectionUriRegex(

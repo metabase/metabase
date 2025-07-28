@@ -158,6 +158,22 @@ export function mapSnowflakeValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
+function mapSparkSqlValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues.host ?? parsedValues.params?.Server],
+    ["details.port", parsedValues.port],
+    ["details.database", parsedValues.database],
+    ["details.jdbc-flags", objectToString(parsedValues.params ?? {})],
+  ]);
+
+  if (fieldsMap.get("details.jdbc-flags")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+  console.log(fieldsMap);
+
+  return fieldsMap;
+}
+
 export function mapDatabaseValues(parsedValues: RegexFields) {
   return match(parsedValues.protocol)
     .with(P.union("awsathena", "athena"), () => mapAthenaValues(parsedValues))
@@ -172,6 +188,7 @@ export function mapDatabaseValues(parsedValues: RegexFields) {
     )
     .with("presto", () => mapPrestoValues(parsedValues))
     .with("snowflake", () => mapSnowflakeValues(parsedValues))
+    .with(P.union("sparksql", "hive2"), () => mapSparkSqlValues(parsedValues))
     .otherwise(() => new Map());
 }
 

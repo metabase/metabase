@@ -20,6 +20,7 @@ const supportedEngines = new Set([
   "PostgreSQL",
   "Presto",
   "Snowflake",
+  "Spark SQL",
 ]);
 
 export function DatabaseConnectionStringField({
