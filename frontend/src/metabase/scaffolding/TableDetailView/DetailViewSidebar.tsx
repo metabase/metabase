@@ -26,13 +26,13 @@ import CollapseSection from "metabase/common/components/CollapseSection";
 import {
   ActionIcon,
   Box,
+  Button,
   Flex,
   Group,
   Icon,
   type IconName,
   Menu,
   Portal,
-  SegmentedControl,
   Text,
 } from "metabase/ui/components";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
@@ -40,6 +40,8 @@ import type {
   DatasetColumn,
   ObjectViewSectionSettings,
 } from "metabase-types/api";
+
+import S from "./TableDetailView.module.css";
 
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
@@ -356,23 +358,29 @@ function SectionSettings({
   return (
     <Box mt="sm">
       <CollapseSection
-        header={<Text fw="bold">{section.title}</Text>}
+        header={
+          <Flex align="center" justify="space-between" w="100%">
+            <Text display="inline-block" fw="bold">
+              {section.title}
+            </Text>
+            <Button
+              variant="outline"
+              size="compact-xs"
+              onClick={() =>
+                onUpdateSection({
+                  direction:
+                    section.direction === "vertical"
+                      ? "horizontal"
+                      : "vertical",
+                })
+              }
+            >
+              {section.direction === "vertical" ? "→" : "↓"}
+            </Button>
+          </Flex>
+        }
         initialState="expanded"
       >
-        <Box mt="xs">
-          <Text>{t`Flow`}</Text>
-          <SegmentedControl
-            value={section.direction}
-            data={[
-              { label: "↓", value: "vertical" },
-              { label: "→", value: "horizontal" },
-            ]}
-            fullWidth
-            mt="xs"
-            onChange={(direction) => onUpdateSection({ direction })}
-          />
-        </Box>
-
         {columnIds.length === 0 ? (
           <EmptyDropZone sectionId={String(section.id)} />
         ) : (
@@ -435,6 +443,7 @@ function ColumnListItem({
   return (
     <Box
       component="li"
+      className={S.ObjectViewSidebarColumn}
       mt="sm"
       style={{
         transition,
@@ -447,6 +456,7 @@ function ColumnListItem({
         <Group gap="sm">
           <Icon
             name="grabber"
+            className={S.ObjectViewSidebarColumnActionIcon}
             style={{ cursor: "grab" }}
             {...attributes}
             {...listeners}
@@ -457,6 +467,7 @@ function ColumnListItem({
         <Group gap="sm">
           {!!onHideField && (
             <ActionIcon
+              className={S.ObjectViewSidebarColumnActionIcon}
               variant="transparent"
               color="text-medium"
               onClick={onHideField}
@@ -468,6 +479,7 @@ function ColumnListItem({
             <Menu position="bottom-end">
               <Menu.Target>
                 <ActionIcon
+                  className={S.ObjectViewSidebarColumnActionIcon}
                   aria-label={t`Change style`}
                   variant="transparent"
                   color="text-medium"

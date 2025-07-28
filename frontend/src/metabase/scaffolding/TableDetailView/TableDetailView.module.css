@@ -7,3 +7,13 @@
     visibility: visible;
   }
 }
+
+.ObjectViewSidebarColumnActionIcon {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarColumn {
+  &:hover .ObjectViewSidebarColumnActionIcon {
+    visibility: visible;
+  }
+}
