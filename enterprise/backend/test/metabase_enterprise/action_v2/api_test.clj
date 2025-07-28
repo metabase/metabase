@@ -158,8 +158,8 @@
                      {:op "created", :table-id table-id, :row {:id (str id-3), :name "Farfetch'd", :song "The land of lisp"}}}
                    (set
                     (:outputs
-                     (create-rows! table-id [{:id id-1, :name "Pidgey" :song "Car alarms"}
-                                             {:id id-2, :name "Spearow" :song "Hold music"}
+                     (create-rows! table-id [{:id id-1, :name "Pidgey"     :song "Car alarms"}
+                                             {:id id-2, :name "Spearow"    :song "Hold music"}
                                              {:id id-3, :name "Farfetch'd" :song "The land of lisp"}])))))
 
             (is (= [[id-1 "Pidgey" "Car alarms"]
@@ -168,7 +168,7 @@
                    (table-rows table-id))))
 
           (testing "PUT should update the relevant rows and columns"
-            (is (= #{{:op "updated", :table-id table-id :row {:id (str id-1), :name "Pidgey", :song "Join us now and share the software"}}
+            (is (= #{{:op "updated", :table-id table-id :row {:id (str id-1), :name "Pidgey",     :song "Join us now and share the software"}}
                      {:op "updated", :table-id table-id :row {:id (str id-2), :name "Speacolumn", :song "Hold music"}}}
                    (set
                     (:outputs
@@ -181,7 +181,7 @@
                    (set (table-rows table-id)))))
 
           (testing "PUT can also do bulk updates"
-            (is (= #{{:op "updated", :table-id table-id, :row {:id (str id-1), :name "Pidgey", :song "The Star-Spangled Banner"}}
+            (is (= #{{:op "updated", :table-id table-id, :row {:id (str id-1), :name "Pidgey",     :song "The Star-Spangled Banner"}}
                      {:op "updated", :table-id table-id, :row {:id (str id-2), :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                    (set
                     (:outputs
