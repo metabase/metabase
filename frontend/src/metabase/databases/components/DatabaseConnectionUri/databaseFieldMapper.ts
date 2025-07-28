@@ -9,24 +9,6 @@ function mapBigQueryValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
-function mapClickhouseValues(parsedValues: RegexFields) {
-  const fieldsMap = new Map<string, string | boolean | undefined>([
-    ["details.host", parsedValues?.host],
-    ["details.port", parsedValues?.port],
-    ["details.user", parsedValues?.username],
-    ["details.password", parsedValues?.password],
-    ["details.dbname", parsedValues?.path],
-    ["details.additional-options", objectToString(parsedValues?.params ?? {})],
-  ]);
-
-  // if there are additional options, we need to open the advanced options section
-  if (fieldsMap.get("details.additional-options")) {
-    fieldsMap.set("details.advanced-options", true);
-  }
-
-  return fieldsMap;
-}
-
 function mapAthenaValues(parsedValues: RegexFields) {
   const region = parsedValues.host?.match(/athena\.(.*)\.amazonaws\.com/)?.[1];
   const fieldsMap = new Map<string, string | boolean | undefined>([
@@ -41,10 +23,34 @@ function mapRedshiftValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host],
     ["details.port", parsedValues.port],
-    ["details.dbname", parsedValues.database],
+    ["details.db", parsedValues.database],
     ["details.user", parsedValues.params?.UID],
     ["details.password", parsedValues.params?.PWD],
+    ["details.additional-options", objectToString(parsedValues.params ?? {})],
   ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
+  return fieldsMap;
+}
+
+function mapClickhouseValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.host", parsedValues?.host],
+    ["details.port", parsedValues?.port],
+    ["details.user", parsedValues?.username],
+    ["details.password", parsedValues?.password],
+    ["details.dbname", parsedValues?.database],
+    ["details.additional-options", objectToString(parsedValues?.params ?? {})],
+  ]);
+
+  // if there are additional options, we need to open the advanced options section
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -142,6 +148,11 @@ function mapPrestoValues(parsedValues: RegexFields) {
       objectToString(parsedValues.params ?? {}, ["SSL"]),
     ],
   ]);
+
+  if (fieldsMap.get("details.additional-options")) {
+    fieldsMap.set("details.advanced-options", true);
+  }
+
   return fieldsMap;
 }
 
@@ -174,8 +185,11 @@ function mapSparkSqlValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host ?? parsedValues.params?.Server],
     ["details.port", parsedValues.port],
-    ["details.database", parsedValues.database],
-    ["details.jdbc-flags", objectToString(parsedValues.params ?? {})],
+    ["details.dbname", parsedValues.database],
+    [
+      "details.jdbc-flags",
+      objectToString(parsedValues.params ?? {}, ["Server"]),
+    ],
   ]);
 
   if (fieldsMap.get("details.jdbc-flags")) {
@@ -189,10 +203,7 @@ function mapSqlServerValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host],
     ["details.port", parsedValues.port],
-    [
-      "details.dbname",
-      parsedValues.database ?? parsedValues.params?.databaseName,
-    ],
+    ["details.db", parsedValues.database ?? parsedValues.params?.databaseName],
     ["details.instance", parsedValues.params?.instanceName],
     ["details.user", parsedValues.params?.username],
     ["details.password", parsedValues.params?.password],
@@ -264,25 +275,36 @@ function mapVerticaValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
-export function mapDatabaseValues(parsedValues: RegexFields) {
-  return match(parsedValues.protocol)
-    .with(P.union("awsathena", "athena"), () => mapAthenaValues(parsedValues))
-    .with("redshift", () => mapRedshiftValues(parsedValues))
-    .with("bigquery", () => mapBigQueryValues(parsedValues))
-    .with("clickhouse", () => mapClickhouseValues(parsedValues))
-    .with("databricks", () => mapDatabricksValues(parsedValues))
-    .with(P.union("druid", "avatica"), () => mapDruidValues(parsedValues))
-    .with("mysql", () => mapMysqlValues(parsedValues))
-    .with("oracle", () => mapOracleValues(parsedValues))
-    .with(P.union("postgres", "postgresql"), () =>
+export function mapDatabaseValues(
+  parsedValues: RegexFields,
+  engineKey: string | undefined,
+) {
+  return match([parsedValues.protocol, engineKey])
+    .with([P.union("awsathena", "athena"), "athena"], () =>
+      mapAthenaValues(parsedValues),
+    )
+    .with(["redshift", "redshift"], () => mapRedshiftValues(parsedValues))
+    .with(["bigquery", "bigquery-cloud-sdk"], () =>
+      mapBigQueryValues(parsedValues),
+    )
+    .with(["clickhouse", "clickhouse"], () => mapClickhouseValues(parsedValues))
+    .with(["databricks", "databricks"], () => mapDatabricksValues(parsedValues))
+    .with([P.union("druid", "avatica"), P.union("druid", "druid-jdbc")], () =>
+      mapDruidValues(parsedValues),
+    )
+    .with(["mysql", "mysql"], () => mapMysqlValues(parsedValues))
+    .with(["oracle", "oracle"], () => mapOracleValues(parsedValues))
+    .with([P.union("postgres", "postgresql"), "postgres"], () =>
       mapPostgresValues(parsedValues),
     )
-    .with("presto", () => mapPrestoValues(parsedValues))
-    .with("snowflake", () => mapSnowflakeValues(parsedValues))
-    .with(P.union("sparksql", "hive2"), () => mapSparkSqlValues(parsedValues))
-    .with("sqlserver", () => mapSqlServerValues(parsedValues))
-    .with("trino", () => mapStarburstTrinoValues(parsedValues))
-    .with("vertica", () => mapVerticaValues(parsedValues))
+    .with(["presto", "presto-jdbc"], () => mapPrestoValues(parsedValues))
+    .with(["snowflake", "snowflake"], () => mapSnowflakeValues(parsedValues))
+    .with([P.union("sparksql", "hive2"), "sparksql"], () =>
+      mapSparkSqlValues(parsedValues),
+    )
+    .with(["sqlserver", "sqlserver"], () => mapSqlServerValues(parsedValues))
+    .with(["trino", "starburst"], () => mapStarburstTrinoValues(parsedValues))
+    .with(["vertica", "vertica"], () => mapVerticaValues(parsedValues))
     .otherwise(() => new Map());
 }
 

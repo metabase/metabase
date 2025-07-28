@@ -63,7 +63,7 @@ export function DatabaseConnectionStringField({
         return () => clearTimeout();
       }
 
-      const fieldsMap = mapDatabaseValues(parsedValues);
+      const fieldsMap = mapDatabaseValues(parsedValues, engineKey);
       // if there are no values, we couldn't get any details from the connection string
       const hasValues = hasNonUndefinedValue(fieldsMap);
       fieldsMap.forEach((value, field) => setFieldValue(field, value));
@@ -74,6 +74,8 @@ export function DatabaseConnectionStringField({
         clearTimeout();
       };
     },
+    // We don't want to rerun this effect when engineKey changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       connectionString,
       setFieldValue,
