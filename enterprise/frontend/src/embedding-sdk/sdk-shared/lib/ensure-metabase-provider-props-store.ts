@@ -2,10 +2,17 @@ import type { InternalMetabaseProviderProps } from "embedding-sdk/components/pub
 
 import { getWindow } from "./get-window";
 
-export type MetabaseProviderPropsToStore = Omit<
+type MetabaseProviderPropsToStore = MetabaseProviderPropsStoreExternalProps &
+  MetabaseProviderPropsStoreInternalProps;
+
+export type MetabaseProviderPropsStoreExternalProps = Omit<
   InternalMetabaseProviderProps,
-  "children" | "reduxStore"
-> & { reduxStore?: InternalMetabaseProviderProps["reduxStore"] };
+  "children" | keyof MetabaseProviderPropsStoreInternalProps
+>;
+
+export type MetabaseProviderPropsStoreInternalProps = {
+  reduxStore: InternalMetabaseProviderProps["reduxStore"];
+};
 
 export type MetabaseProviderPropsStore = {
   getSnapshot(): MetabaseProviderPropsToStore | null;
@@ -14,11 +21,15 @@ export type MetabaseProviderPropsStore = {
   cleanup(): void;
 };
 
+const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
+  "reduxStore",
+];
+
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
 export const EMPTY_PROPS = {} as MetabaseProviderPropsToStore;
 
 export function ensureMetabaseProviderPropsStore(
-  initial?: MetabaseProviderPropsToStore,
+  initial?: MetabaseProviderPropsStoreExternalProps,
 ): MetabaseProviderPropsStore {
   const win = getWindow();
 
@@ -30,7 +41,8 @@ export function ensureMetabaseProviderPropsStore(
     return win[KEY];
   }
 
-  let props = initial ?? EMPTY_PROPS;
+  let props: MetabaseProviderPropsToStore = (initial ??
+    EMPTY_PROPS) as MetabaseProviderPropsToStore;
   const listeners = new Set<() => void>();
 
   const store: MetabaseProviderPropsStore = {
@@ -41,13 +53,15 @@ export function ensureMetabaseProviderPropsStore(
       return () => listeners.delete(listener);
     },
     setProps(propsToSet) {
-      const next = { ...props, ...propsToSet };
+      const internalProps = Object.fromEntries(
+        INTERNAL_PROP_NAMES.map((key) => [key, propsToSet[key] ?? props[key]]),
+      ) as MetabaseProviderPropsStoreInternalProps;
 
-      if (Object.is(next, props)) {
-        return;
-      }
+      props = {
+        ...internalProps,
+        ...propsToSet,
+      } as MetabaseProviderPropsToStore;
 
-      props = next;
       listeners.forEach((callback) => callback());
     },
     cleanup() {
