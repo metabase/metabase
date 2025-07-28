@@ -1,10 +1,10 @@
 (ns metabase.pivot.core
   (:require
-   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n])
+   [metabase.util.i18n :as i18n]
+   [metabase.util.performance :as perf])
   (:import
    #?(:clj (java.text Collator))))
 
@@ -92,8 +92,8 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (ensure-consistent-type (mapv #(nth row %) column-indexes))
-                        values (mapv #(nth row %) val-indexes)]
+                  (let [grouping-key (ensure-consistent-type (perf/mapv #(nth row %) column-indexes))
+                        values (perf/mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
                 rows))]
@@ -136,22 +136,26 @@
         tree
         parsed-collapsed-subtotals))))
 
+(defrecord TreeNode [value children child-index isCollapsed])
+
 (defn- add-path-to-tree
-  "Adds a path of values to a row or column tree. Each level of the tree is an
-  ordered map with values as keys, each associated with a sub-map like
-  {:children (ordered-map/ordered-map)}."
-  [path tree]
-  (if (seq path)
+  "Adds a path of values to a row or column tree. The path is represented by the actual row and the list of indexes in
+  that row. Each level of the tree is a TreeNode object that has a value list of children."
+  [tree row indexes-path i]
+  (if (< i (count indexes-path))
     ;; In `add-is-collapsed` we parse JSON from the viz settings to determine
     ;; the path of values to collapse. So we have to roundtrip values from the QP
     ;; to JSON and back to make sure their types match.
-    (let [v (ensure-consistent-type (first path))]
-      (update tree v
-              (fn [node]
-                (let [subtree (or (:children node) (ordered-map/ordered-map))]
-                  (-> node
-                      (assoc :children (add-path-to-tree (rest path) subtree))
-                      (assoc :isCollapsed false))))))
+    (let [index (nth indexes-path i)
+          v (ensure-consistent-type (nth row index))
+          child-lookup (:child-index tree)
+          node (or (perf/map-get child-lookup v)
+                   (let [node (->TreeNode v (perf/make-list) (perf/make-map) false)]
+                     (perf/map-put! child-lookup v node)
+                     (perf/list-add! (:children tree) node)
+                     node))]
+      (add-path-to-tree node row indexes-path (inc i))
+      tree)
     tree))
 
 (defn- select-indexes
@@ -218,15 +222,16 @@
       nil)))
 
 (defn- sort-tree
-  "Converts each level of a tree to a sorted map as needed, based on the values
-  in `sort-orders`."
+  "Sort each level of a tree as needed, based on the values in `sort-orders`."
   [tree sort-orders]
-  (reduce-kv (fn [dest k v]
-               (assoc dest k (assoc v :children (sort-tree (:children v) (rest sort-orders)))))
-             (if-let [curr-compare-fn (compare-fn (first sort-orders))]
-               (sorted-map-by curr-compare-fn)
-               (ordered-map/ordered-map))
-             tree))
+  (let [children (:children tree)
+        rest-orders (rest sort-orders)]
+    (run! (fn [node] (sort-tree node rest-orders)) children)
+    (if-let [curr-compare-fn (compare-fn (first sort-orders))]
+      #?(:clj (.sort ^java.util.ArrayList children
+                     (fn [x y] (.compare ^java.util.Comparator compare (curr-compare-fn x) (curr-compare-fn y))))
+         :cljs (sort-by curr-compare-fn children))
+      tree)))
 
 ;; TODO: can we move this to the COLLAPSED_ROW_SETTING itself?
 #?(:cljs
@@ -244,24 +249,6 @@
                    (nth column-is-collapsible? (dec length) false)))
                all-collapsed-subtotals))))
 
-(defn- postprocess-tree
-  "Converts a tree of sorted maps to a tree of vectors. This allows the tree to
-  make a round trip to JavaScript and back to CLJS in `process-pivot-table`
-  without losing ordering information."
-  [tree]
-  (if (empty? tree)
-    []
-    (persistent!
-     (reduce-kv
-      (fn [result value tree-node]
-        (let [children (:children tree-node)
-              processed-children (postprocess-tree children)]
-          (conj! result (assoc tree-node
-                               :value value
-                               :children processed-children))))
-      (transient [])
-      tree))))
-
 (defn build-pivot-trees
   "Constructs the pivot table's tree structures for rows and columns.
 
@@ -269,16 +256,12 @@
   and columns, along with a lookup map for cell values."
   #_{:clj-kondo/ignore [:unused-binding]}
   [rows cols row-indexes col-indexes val-indexes settings col-settings]
-  (let [{:keys [row-tree col-tree]}
-        (reduce
-         (fn [{:keys [row-tree col-tree]} row]
-           (let [row-path (select-indexes row row-indexes)
-                 col-path (select-indexes row col-indexes)]
-             {:row-tree (add-path-to-tree row-path row-tree)
-              :col-tree (add-path-to-tree col-path col-tree)}))
-         {:row-tree (ordered-map/ordered-map)
-          :col-tree (ordered-map/ordered-map)}
-         rows)
+  (let [row-tree (->TreeNode nil (perf/make-list) (perf/make-map) false)
+        col-tree (->TreeNode nil (perf/make-list) (perf/make-map) false)
+        _ (run! (fn [row]
+                  (add-path-to-tree row-tree row row-indexes 0)
+                  (add-path-to-tree col-tree row col-indexes 0))
+                rows)
         ;; Only collapse row tree on the FE (in CLJS); keep it uncollapsed for exports (in CLJ)
         collapsed-row-tree #?(:cljs (add-is-collapsed
                                      row-tree
@@ -289,8 +272,8 @@
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
         sorted-col-tree (sort-tree col-tree col-sort-orders)
         values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)]
-    {:row-tree (postprocess-tree sorted-row-tree)
-     :col-tree (postprocess-tree sorted-col-tree)
+    {:row-tree (:children sorted-row-tree)
+     :col-tree (:children sorted-col-tree)
      :values-by-key values-by-key}))
 
 (defn- format-values-in-tree
@@ -301,13 +284,12 @@
   (let [formatter (first formatters)
         col-idx   (first col-indexes)]
     (mapv
-     (fn [{:keys [value children] :as node}]
-       (assoc node
-              :value (formatter value)
-              :children (format-values-in-tree children (rest formatters) (rest cols) (rest col-indexes))
-              :rawValue value
-              :clicked {:value value
-                        :colIdx col-idx}))
+     (fn [{:keys [value children]}]
+       {:value (formatter value)
+        :children (format-values-in-tree children (rest formatters) (rest cols) (rest col-indexes))
+        :rawValue value
+        :clicked {:value value
+                  :colIdx col-idx}})
      tree)))
 
 (defn- should-show-row-totals?
@@ -565,6 +547,9 @@
       #?(:cljs (clj->js result)
          :clj result))))
 
+(defrecord ResultItem [value rawValue clicked hasSubtotal isGrandTotal isValueColumn depth offset hasChildren path
+                       span maxDepthBelow])
+
 (defn- tree-to-array
   "Flattens a hierarchical tree structure into an array of nodes with positioning information.
    Each node in the result contains:
@@ -582,27 +567,21 @@
     (letfn [(process-tree [nodes depth offset path]
               (if (empty? nodes)
                 {:span 1 :max-depth 0}
-                (loop [remaining nodes
+                (loop [i 0
                        total-span 0
                        max-depth 0
                        current-offset offset]
-                  (if (empty? remaining)
+                  (if (>= i (count nodes))
                     {:span total-span :max-depth (inc max-depth)}
-                    (let [{:keys [children rawValue isGrandTotal isValueColumn] :as node} (first remaining)
+                    (let [{:keys [children rawValue isGrandTotal isValueColumn] :as node} (nth nodes i)
                           path-with-value (if (or isValueColumn isGrandTotal) nil (conj path rawValue))
-                          item            (-> (dissoc node :children)
-                                              (assoc :depth depth)
-                                              (assoc :offset current-offset)
-                                              (assoc :hasChildren (boolean (seq children)))
-                                              (assoc :path path-with-value))
-                          item-index      (count @result)
-                          _               (vswap! result conj! item)
                           result-value    (process-tree children (inc depth) current-offset path-with-value)
-                          _               (vswap! result assoc! item-index
-                                                  (-> (nth @result item-index)
-                                                      (assoc :span (:span result-value))
-                                                      (assoc :maxDepthBelow (:max-depth result-value))))]
-                      (recur (rest remaining)
+                          item            (->ResultItem (:value node) rawValue (:clicked node) (:hasSubtotal node)
+                                                        isGrandTotal isValueColumn
+                                                        depth current-offset (boolean (seq children)) path-with-value
+                                                        (:span result-value) (:max-depth result-value))]
+                      (vswap! result conj! item)
+                      (recur (inc i)
                              (long (+ total-span (:span result-value)))
                              (long (max max-depth (:max-depth result-value)))
                              (+ current-offset (:span result-value))))))))]
