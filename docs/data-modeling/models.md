@@ -85,7 +85,7 @@ For models based on SQL queries, you can tell Metabase if the column has the sam
 
 You can set the [column type][column-type]. The default is "No special type".
 
-If your model is based on a SQL query and you want people to be able to explore the results with the query builder, you'll need to set the [column type](./field-types.md) for each column in your model.
+If your model is based on a SQL query and you want people to be able to explore the results with the query builder, you'll need to set the [column type](./semantic-types.md) for each column in your model.
 
 ### This column should appear in...
 
@@ -168,7 +168,7 @@ See [Model persistence](./model-persistence.md)
 - [Models in Metabase][learn-models]
 - [Troubleshooting models][troubleshooting-models].
 
-[column-type]: ./field-types.md
+[column-type]: ./semantic-types.md
 [cte]: https://www.metabase.com/learn/sql/working-with-sql/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
 [question]: ../questions/start.md
