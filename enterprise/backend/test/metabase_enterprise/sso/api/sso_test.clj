@@ -68,12 +68,10 @@
               (is (contains? response :exp))
               (is (contains? response :iat))
               (is (string? (:session_token response)))))
-          
           (testing "missing JWT token"
             (let [response (client/client :post "/auth/sso/to_session" {})]
               (is (= 400 (:status response)))
               (is (= "error-jwt-missing" (get-in response [:body :status])))))
-          
           (testing "JWT disabled"
             (mt/with-temporary-setting-values [jwt-enabled false]
               (let [response (client/client :post "/auth/sso/to_session" {:jwt jwt-token})]
