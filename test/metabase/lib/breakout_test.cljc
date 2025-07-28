@@ -561,16 +561,14 @@
                                  ;; contain type info, shouldn't matter tho.
                                  "correct ref but missing :base-type/:effective-type"
                                  [:field {:lib/uuid   (str (random-uuid))
-                                          :join-alias "Categories"
-                                          :ident      (u/generate-nano-id)}
+                                          :join-alias "Categories"}
                                   (meta/id :categories :name)]
 
                                  ;; this is a busted Field ref, it's referring to a Field from a joined Table but
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
                                  [:field {:lib/uuid  (str (random-uuid))
-                                          :base-type :type/Text
-                                          :ident     (u/generate-nano-id)}
+                                          :base-type :type/Text}
                                   (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> (lib.tu/venues-query)

@@ -11,6 +11,7 @@ import {
   getLoginStatus,
 } from "embedding-sdk/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/lib/api";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -63,7 +64,7 @@ export const useInitData = ({
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
     api.requestClient = {
-      name: "embedding-sdk-react",
+      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
       version: EMBEDDING_SDK_VERSION,
     };
 

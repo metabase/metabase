@@ -37,7 +37,7 @@ describe("EmbeddingSettingsPage", () => {
       await screen.findByText("Interactive embedding"),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText("Embedded analytics SDK for React"),
+      await screen.findByText("Embedded Analytics SDK"),
     ).toBeInTheDocument();
   });
 

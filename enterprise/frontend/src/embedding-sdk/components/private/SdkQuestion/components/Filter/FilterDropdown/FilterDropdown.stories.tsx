@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Box, Flex } from "metabase/ui";
 
@@ -7,7 +7,7 @@ import { FilterDropdown } from "./FilterDropdown";
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/Filter/FilterDropdown",
+  title: "EmbeddingSDK/SdkQuestion/Filter/FilterDropdown",
   component: FilterDropdown,
   parameters: {
     layout: "fullscreen",
@@ -19,15 +19,15 @@ export const FilterDropdownStory = {
   render() {
     return (
       <Box p="lg">
-        <InteractiveQuestion questionId={QUESTION_ID}>
+        <SdkQuestion questionId={QUESTION_ID}>
           <Box>
             <Flex justify="space-between" w="100%">
-              <InteractiveQuestion.FilterDropdown />
+              <SdkQuestion.FilterDropdown />
             </Flex>
 
-            <InteractiveQuestion.QuestionVisualization />
+            <SdkQuestion.QuestionVisualization />
           </Box>
-        </InteractiveQuestion>
+        </SdkQuestion>
       </Box>
     );
   },

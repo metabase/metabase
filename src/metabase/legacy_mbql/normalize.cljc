@@ -37,7 +37,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -402,29 +401,31 @@
   [metadata :- :map]
   {:pre [(map? metadata)]}
   (into (empty metadata)
-        (map (fn [[k v]]
-               (let [k (keyword k)
-                     k ((if (simple-keyword? k)
-                          u/->snake_case_en
-                          u/->kebab-case-en) k)
-                     _ (when (= k :fingerprint)
-                         (when-let [base-type (first (keys (:type v)))]
-                           (assert (isa? base-type :type/*)
-                                   (str "BAD FINGERPRINT! " (pr-str v)))))
-                     v (case k
-                         (:base_type
-                          :effective_type
-                          :semantic_type
-                          :visibility_type
-                          :source
-                          :unit
-                          :lib/source) (keyword v)
-                         :field_ref    (normalize-field-ref v)
-                         :fingerprint  (#?(:clj perf/keywordize-keys :cljs walk/keywordize-keys) v)
-                         :binning_info (m/update-existing v :binning_strategy keyword)
-                         #_else
-                         v)]
-                 [k v])))
+        (comp (remove (fn [[k _v]]
+                        (= k :ident))) ; ignore legacy `:ident` key
+              (map (fn [[k v]]
+                     (let [k (keyword k)
+                           k ((if (simple-keyword? k)
+                                u/->snake_case_en
+                                u/->kebab-case-en) k)
+                           _ (when (= k :fingerprint)
+                               (when-let [base-type (first (keys (:type v)))]
+                                 (assert (isa? base-type :type/*)
+                                         (str "BAD FINGERPRINT! " (pr-str v)))))
+                           v (case k
+                               (:base_type
+                                :effective_type
+                                :semantic_type
+                                :visibility_type
+                                :source
+                                :unit
+                                :lib/source) (keyword v)
+                               :field_ref    (normalize-field-ref v)
+                               :fingerprint  (#?(:clj perf/keywordize-keys :cljs walk/keywordize-keys) v)
+                               :binning_info (m/update-existing v :binning_strategy keyword)
+                               #_else
+                               v)]
+                       [k v]))))
         metadata))
 
 (defn- normalize-native-query
@@ -438,12 +439,6 @@
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
-(defn- normalize-ident-index [index]
-  (cond
-    (string? index)  (parse-long index)
-    (keyword? index) (-> index name parse-long)
-    :else            index))
-
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -452,10 +447,7 @@
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation        normalize-ag-clause-tokens
-                     :aggregation-idents #(update-keys % normalize-ident-index)
-                     :breakout-idents    #(update-keys % normalize-ident-index)
                      :expressions        normalize-expressions-tokens
-                     :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
                      :order-by           normalize-order-by-tokens
                      :source-query       normalize-source-query
                      :source-metadata    {::sequence normalize-source-metadata}
