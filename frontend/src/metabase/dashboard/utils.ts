@@ -8,6 +8,7 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -336,7 +337,10 @@ const shouldHideCard = (
   dashcardData: Record<CardId, Dataset | null | undefined>,
   wasVisible: boolean,
 ) => {
-  const shouldHideEmpty = dashcard.visualization_settings?.["card.hide_empty"];
+  const dashcardSettings = isVisualizerDashboardCard(dashcard)
+    ? dashcard.visualization_settings?.visualization?.settings
+    : dashcard.visualization_settings;
+  const shouldHideEmpty = dashcardSettings?.["card.hide_empty"];
 
   if (isVirtualDashCard(dashcard) || !shouldHideEmpty) {
     return false;
