@@ -5,5 +5,7 @@ export const createMockPulse = (opts?: Partial<Pulse>): Pulse => ({
   cards: [],
   channels: [],
   parameters: [],
+  skip_if_empty: false,
+  attachments_only: false,
   ...opts,
 });

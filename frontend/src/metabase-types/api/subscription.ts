@@ -27,6 +27,7 @@ export interface DashboardSubscription {
   name: string;
   parameters: Parameter[];
   skip_if_empty: boolean;
+  attachments_only: boolean;
   updated_at: string;
 }
 
@@ -35,6 +36,7 @@ export interface CreateSubscriptionRequest {
   cards: Card[];
   channels: Channel[];
   skip_if_empty?: boolean;
+  attachments_only?: boolean;
   collection_id?: RegularCollectionId | null;
   collection_position?: number | null;
   dashboard_id?: DashboardId;
@@ -47,6 +49,7 @@ export interface UpdateSubscriptionRequest {
   cards?: Card[];
   channels?: Channel[];
   skip_if_empty?: boolean;
+  attachments_only?: boolean;
   collection_id?: RegularCollectionId | null;
   collection_position?: number | null;
   dashboard_id?: DashboardId;

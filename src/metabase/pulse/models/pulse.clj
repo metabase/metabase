@@ -515,6 +515,7 @@
                 [:name                                 ms/NonBlankString]
                 [:creator_id                           ms/PositiveInt]
                 [:skip_if_empty       {:optional true} [:maybe :boolean]]
+                [:attachments_only    {:optional true} [:maybe :boolean]]
                 [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
@@ -558,6 +559,7 @@
                     [:alert_above_goal    {:optional true} boolean?]
                     [:alert_first_only    {:optional true} boolean?]
                     [:skip_if_empty       {:optional true} boolean?]
+                    [:attachments_only    {:optional true} boolean?]
                     [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                     [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                     [:cards               {:optional true} [:sequential CoercibleToCardRef]]
@@ -567,7 +569,7 @@
   (t2/update! :model/Pulse (u/the-id notification)
               (u/select-keys-when notification
                                   :present [:collection_id :collection_position :archived]
-                                  :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+                                  :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :attachments_only :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))

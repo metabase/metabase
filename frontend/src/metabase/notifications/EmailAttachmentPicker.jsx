@@ -316,6 +316,28 @@ export default class EmailAttachmentPicker extends Component {
                 ))}
               </ul>
             </div>
+            <div
+              className={cx(
+                CS.textBold,
+                CS.py3,
+                CS.flex,
+                CS.justifyBetween,
+                CS.alignCenter,
+                CS.borderTop,
+              )}
+            >
+              <Text fw="bold">{t`Send only attachments (no charts)`}</Text>
+              <Toggle
+                value={this.props.pulse.attachments_only || false}
+                onChange={() => {
+                  const { pulse, setPulse } = this.props;
+                  setPulse({
+                    ...pulse,
+                    attachments_only: !pulse.attachments_only,
+                  });
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

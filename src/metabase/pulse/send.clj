@@ -66,6 +66,7 @@
                               :dashboard_id                     (:id dashboard)
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
+                              :attachments_only                 (:attachments_only pulse)
                               :dashboard_subscription_dashcards (map
                                                                  #(merge {:card_id (:id %)
                                                                           :dashboard_card_id (:dashboard_card_id %)}

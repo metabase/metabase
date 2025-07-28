@@ -54,7 +54,13 @@
             {{#unless computed.dashboard_has_tabs}}
               <hr>
             {{/unless}}
-            {{{computed.dashboard_content}}}
+            {{#unless payload.dashboard_subscription.attachments_only}}
+              {{{computed.dashboard_content}}}
+            {{else}}
+              <div style="text-align: center; padding: 20px; color: {{payload.style.color_text_light}}; font-size: 14px;">
+                Dashboard content available in attached files
+              </div>
+            {{/unless}}
             <hr>
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
               Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.

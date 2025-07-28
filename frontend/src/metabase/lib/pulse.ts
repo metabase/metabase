@@ -26,6 +26,7 @@ export const NEW_PULSE_TEMPLATE = {
   cards: [],
   channels: [],
   skip_if_empty: false,
+  attachments_only: false,
   collection_id: null,
   parameters: [],
 };

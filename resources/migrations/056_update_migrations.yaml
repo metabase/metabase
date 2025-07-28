@@ -201,6 +201,25 @@ databaseChangeLog:
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v56.2025-07-28T12:00:00
+      author: luis
+      comment: Add attachments_only column to pulse table for subscriptions that only send files
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: attachments_only
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: pulse
+            columnName: attachments_only
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

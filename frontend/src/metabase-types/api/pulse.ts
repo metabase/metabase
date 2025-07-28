@@ -6,6 +6,8 @@ export type Pulse = {
   channels: Channel[];
   name?: string;
   parameters?: any[];
+  skip_if_empty?: boolean;
+  attachments_only?: boolean;
 };
 
 export type PulseParameter = {
