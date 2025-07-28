@@ -1,0 +1,9 @@
+/**
+  Layers order is defined in the `layers.module.css` file.
+  This file is ignored in css-loader CSS modules transformation, so all class names are kept as is.
+ */
+
+@import "@mantine/core/styles.css" layer(mantine);
+@import "@mantine/dates/styles.css" layer(mantine);
+
+@import "../../css/vendor.css" layer(vendor);

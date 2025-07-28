@@ -1,0 +1,17 @@
+/**
+  Entry point for the embedding SDK CSS.
+  Should be in sync with the `metabase/css/index.module.css` but with added layers.
+
+  Layers order is defined in the `layers.module.css` file.
+ */
+
+@import "../../css/reset.module.css" layer(reset);
+@import "../../css/components/form.module.css" layer(main);
+@import "../../css/components/list.module.css" layer(main);
+@import "../../css/components/modal.module.css" layer(main);
+@import "../../css/components/tippy.module.css" layer(main);
+@import "../../css/components/grabber.module.css" layer(main);
+@import "../../css/admin.module.css" layer(main);
+@import "../../css/dashboard.module.css" layer(main);
+@import "../../css/query_builder.module.css" layer(main);
+@import "../../css/core/animation.module.css" layer(main);
