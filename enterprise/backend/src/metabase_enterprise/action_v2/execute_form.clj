@@ -97,7 +97,8 @@
                           :optional                (not required)
                           :nullable                (:database_is_nullable field)
                           :database_default        (:database_default field)
-                          :readonly                (or (= "readonly" (:visibility param-setting))
+                          :readonly                (or (= :type/PK (:semantic_type field))
+                                                       (= "readonly" (:visibility param-setting))
                                                        (not (column-editable? (:name field))))
                           ;; TODO oh dear, we need to worry about case sensitivity issue now (e.g. in tests)
                           ;; it would be much better if our mappings were based on field ids.
