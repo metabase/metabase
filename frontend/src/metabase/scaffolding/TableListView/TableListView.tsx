@@ -14,20 +14,24 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
+  ActionIcon,
   Box,
   Button,
   Group,
   Icon,
+  Menu,
   Popover,
   SegmentedControl,
   Stack,
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
@@ -259,6 +263,7 @@ export const TableListView = ({ location, params }: Props) => {
         <Group align="flex-start" justify="space-between">
           <Stack gap="xs">
             <Title>{table.display_name}</Title>
+
             {typeof count === "number" && (
               <Text c="text-secondary" size="sm">
                 {searchQuery.trim()
@@ -318,15 +323,6 @@ export const TableListView = ({ location, params }: Props) => {
               </Popover.Dropdown>
             </Popover>
 
-            {!isSyncInProgress(table) && !isEditing && (
-              <Button
-                component={Link}
-                leftSection={<Icon name="insight" />}
-                to={getExploreTableUrl(table)}
-                variant="primary"
-              >{t`Explore results`}</Button>
-            )}
-
             {!isEditing && (
               <Button
                 leftSection={<Icon name="pencil" />}
@@ -335,6 +331,57 @@ export const TableListView = ({ location, params }: Props) => {
               >
                 {t`Edit`}
               </Button>
+            )}
+
+            {!isSyncInProgress(table) && !isEditing && (
+              <Menu position="bottom-end">
+                <Menu.Target>
+                  <Tooltip label={t`More`}>
+                    <ActionIcon
+                      aria-label={t`More`}
+                      mb={-8}
+                      mt={-5}
+                      ml={8}
+                      variant="transparent"
+                    >
+                      <Box c="text-primary">
+                        <Icon name="ellipsis" />
+                      </Box>
+                    </ActionIcon>
+                  </Tooltip>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<Icon name="insight" />}
+                    component={Link}
+                    to={getExploreTableUrl(table)}
+                  >
+                    {t`Explore results`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    leftSection={<Icon name="reference" />}
+                    component={Link}
+                    to={`/reference/databases/${table.db_id}/tables/${table.id}`}
+                  >
+                    {t`Learn about this table`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    leftSection={<Icon name="table2" />}
+                    component={Link}
+                    to={getUrl({
+                      databaseId: table.db_id,
+                      schemaName: table.schema,
+                      tableId: table.id,
+                      fieldId: undefined,
+                    })}
+                  >
+                    {t`Edit table metadata`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             )}
           </Group>
         </Group>
@@ -514,7 +561,7 @@ export const TableListView = ({ location, params }: Props) => {
             }}
           >
             <Group gap="md" justify="space-between">
-              <Button size="sm" variant="outline" onClick={handleCancel}>
+              <Button size="sm" variant="subtle" onClick={handleCancel}>
                 {t`Cancel`}
               </Button>
 
