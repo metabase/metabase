@@ -207,7 +207,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
+        edition: ${{ needs.get-container-info.result == 'success' && fromJson(needs.get-container-info.outputs.editions) || fromJson('["ee", "oss"]') }}
         java-version: [21]
     steps:
       - name: Prepare JRE (Java Run-time Environment)
