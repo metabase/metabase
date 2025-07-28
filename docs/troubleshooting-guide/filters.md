@@ -32,7 +32,7 @@ If a question filter is giving you no results or the wrong results:
    - asking your database admin.
 3. Ask your Metabase admin to help you check if:
    - Metabase is [up to date](../databases/sync-scan.md) with your database,
-   - the column is [visible](../data-modeling/metadata-editing.md#column-visibility) in Metabase,
+   - the column is [visible](../data-modeling/metadata-editing.md#field-visibility) in Metabase,
    - you have the correct [data permissions](../permissions/data.md) to access the column.
 
 ### Special cases
@@ -65,7 +65,7 @@ To debug dashboard and question filters that involve timestamps, UUIDs, or numer
    - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
    - directly from the database.
 2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/filters.md#filter-types). You can:
-   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page, or
+   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#cast-to-a-specific-data-type) from the Table Metadata page, or
    - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the database schema.
 
 If you're not a Metabase admin, you might have to ask your admin to help you with some of these steps.
