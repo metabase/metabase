@@ -96,7 +96,8 @@ export function getDefaultComponentSettings(
   table: Table | undefined,
 ): ComponentSettings {
   return {
-    list_view: getDefaultListViewSettings(table),
+    list_view:
+      table?.component_settings?.list_view ?? getDefaultListViewSettings(table),
     object_view: {},
   };
 }
