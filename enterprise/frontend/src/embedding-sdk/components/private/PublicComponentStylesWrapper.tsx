@@ -63,7 +63,7 @@ export const PublicComponentStylesWrapper = forwardRef<
  */
 // note: if we move this to  css.module, remember to add :global to .mb-wrapper
 export const SCOPED_CSS_RESET = css`
-  @layer reset {
+  @layer embedding-sdk-reset {
     :where(.mb-wrapper) *:where(button) {
       border: 0;
       background-color: transparent;

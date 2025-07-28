@@ -5,5 +5,4 @@
 
 @import "@mantine/core/styles.css" layer(mantine);
 @import "@mantine/dates/styles.css" layer(mantine);
-
-@import "../../css/vendor.css" layer(vendor);
+@import "../../css/vendor.css" layer(embedding-sdk-vendor);
