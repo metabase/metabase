@@ -342,7 +342,6 @@
     "typedoc-plugin-mdn-links": "^5.0.1",
     "typedoc-plugin-merge-modules": "^7.0.0",
     "typedoc-plugin-redirect": "^1.2.0",
-    "typescript-plugin-css-modules": "^5.1.0",
     "web-streams-polyfill": "^4.1.0",
     "webpack": "5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",
@@ -477,7 +476,7 @@
     "type-check-pure": "tsc --noEmit",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
-    "generate:expression-parser": "lezer-generator frontend/src/metabase-lib/v1/expressions/tokenizer/grammar.lezer -o frontend/src/metabase-lib/v1/expressions/tokenizer/lezer.js",
+    "generate:expression-parser": "lezer-generator frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.js",
     "cloud:dev": "yarn && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && yarn concurrently -n 'FE,BE' -c 'blue,green' 'yarn build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
   },
   "lint-staged": {

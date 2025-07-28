@@ -14,7 +14,7 @@ import type {
   DatasetColumn,
   VisualizationDisplay,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
+import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase-types/store/visualizer";
 
 import {
   createDimensionColumn,
@@ -96,12 +96,12 @@ function pickColumns(
 export function getInitialStateForCardDataSource(
   card: Card,
   dataset: Dataset,
-): VisualizerVizDefinitionWithColumns {
+): VisualizerVizDefinitionWithColumnsAndFallbacks {
   const {
     data: { cols: originalColumns },
   } = dataset;
 
-  const state: VisualizerVizDefinitionWithColumns = {
+  const state: VisualizerVizDefinitionWithColumnsAndFallbacks = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
       : DEFAULT_VISUALIZER_DISPLAY,
@@ -110,6 +110,7 @@ export function getInitialStateForCardDataSource(
     settings: {
       "card.title": card.name,
     },
+    datasetFallbacks: { [card.id]: dataset },
   };
 
   const dataSource = createDataSource("card", card.id, card.name);

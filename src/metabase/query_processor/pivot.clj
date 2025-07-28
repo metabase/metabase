@@ -8,7 +8,6 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -18,7 +17,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -543,8 +542,8 @@
   (when (and (vector? breakout)
              (= (first breakout) :field))
     (not-empty (select-keys (second breakout)
-                            [::qp.add-dimension-projections/original-field-dimension-id
-                             ::qp.add-dimension-projections/new-field-dimension-id]))))
+                            [::qp.add-remaps/original-field-dimension-id
+                             ::qp.add-remaps/new-field-dimension-id]))))
 
 (defn- remapped-indexes
   [breakouts]
@@ -558,8 +557,8 @@
                              [{} 0]
                              breakouts))]
     (into {}
-          (map (juxt ::qp.add-dimension-projections/original-field-dimension-id
-                     ::qp.add-dimension-projections/new-field-dimension-id))
+          (map (juxt ::qp.add-remaps/original-field-dimension-id
+                     ::qp.add-remaps/new-field-dimension-id))
           (vals remap-pairs))))
 
 (mu/defn- splice-in-remap :- ::breakout-combination
@@ -607,10 +606,7 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [remapped-query          (->> query
-                                     lib/->legacy-MBQL
-                                     qp.add-dimension-projections/add-remapped-columns
-                                     (lib.query/query (qp.store/metadata-provider)))
+  (let [remapped-query          (qp.add-remaps/add-remapped-columns query)
         remap                   (remapped-indexes (lib/breakouts remapped-query))
         canonical-query         (add-pivot-group-breakout remapped-query 0) ; a query that returns ALL the result columns.
         canonical-cols          (lib/returned-columns canonical-query)

@@ -363,7 +363,7 @@
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
                                    (map join-col  cols)))
-                   (map #(dissoc % :ident :name)))
+                   (map #(dissoc % :name)))
               (sorted (lib/returned-columns query))))
       (testing "matches the defaults by ID"
         (doseq [col-key (meta/fields :orders)]

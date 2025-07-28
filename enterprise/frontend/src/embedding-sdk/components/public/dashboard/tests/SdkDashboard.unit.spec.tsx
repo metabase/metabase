@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 
 import type { SdkDashboardProps } from "../SdkDashboard";
@@ -132,5 +132,54 @@ describe("SdkDashboard", () => {
 
     expect(onLoad).toHaveBeenCalledTimes(1);
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+  });
+
+  it("should render a custom dashcard menu if one is provided with a user plugin", async () => {
+    const onClickCustomAction = jest.fn();
+    await setup({
+      props: {
+        withDownloads: true,
+        plugins: {
+          dashboard: {
+            dashboardCardMenu: {
+              withDownloads: true,
+              withEditLink: true,
+              customItems: [
+                {
+                  iconName: "chevronright",
+                  label: "Custom Action",
+                  onClick: onClickCustomAction,
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    expect(dashcard).toBeInTheDocument();
+
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    const dashcardMenuPopover = await screen.findByRole("menu");
+    expect(
+      within(dashcardMenuPopover).getByText("Download results"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Edit question"),
+    ).toBeInTheDocument();
+    expect(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(dashcardMenuPopover).getByText("Custom Action"),
+    );
+
+    expect(dashcardMenuPopover).not.toBeInTheDocument();
+    expect(onClickCustomAction).toHaveBeenCalled();
   });
 });

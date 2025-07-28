@@ -120,7 +120,6 @@
   driver-select
   format-name
   id
-  ident
   mbql-query
   metadata-provider
   native-query
@@ -245,6 +244,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-http-request-full-response
   user-real-request
   with-group
   with-group-for-user

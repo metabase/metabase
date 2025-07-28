@@ -32,7 +32,6 @@ export const CollapsibleDashboardParameterList = forwardRef<
 
   const parametersListCommonProps = {
     ...listProps,
-    widgetsVariant: "subtle" as const,
     isSortable: false,
     widgetsPopoverPosition: "bottom-end" as const,
   };

@@ -49,21 +49,21 @@
                  (re-find #"update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is still referenced from table \"([^\"]+)\"" error-message)]
         (merge {:type error-type}
                (case action-type
-                 :row/delete
+                 (:table.row/delete :model.row/delete)
                  {:message (tru "Other tables rely on this row so it cannot be deleted.")
                   :errors  {}}
 
-                 :row/update
+                 (:table.row/update :model.row/update)
                  {:message (tru "Unable to update the record.")
                   :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
       (when-let [[_match _table _constraint column _value _ref-table]
                  (re-find #"insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
         {:type    error-type
          :message (case action-type
-                    :row/create
+                    (:table.row/create :model.row/create)
                     (tru "Unable to create a new record.")
 
-                    :row/update
+                    (:table.row/update :model.row/update)
                     (tru "Unable to update the record."))
          :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
 
@@ -106,7 +106,7 @@
         (.releaseSavepoint conn savepoint)))))
 
 ;;; Add returning * so that we don't have to make an additional query.
-(defmethod sql-jdbc.actions/prepare-query* [:postgres :row/create]
+(defmethod sql-jdbc.actions/prepare-query* [:postgres :model.row/create]
   [_driver _action hsql-query]
   (assoc hsql-query :returning [:*]))
 
