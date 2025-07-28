@@ -338,26 +338,26 @@
     [:notification-recipient/user
      [:map
       [:user_id                               ms/PositiveInt]
-      [:permissions_group_id {:optional true} [:fn :nil]]
+      [:permissions_group_id {:optional true} :nil]
       [:details              {:optional true} [:fn (mr/with-key empty?)]]]]
     [:notification-recipient/group
      [:map
       [:permissions_group_id                  ms/PositiveInt]
-      [:user_id              {:optional true} [:fn :nil]]
+      [:user_id              {:optional true} :nil]
       [:details              {:optional true} [:fn (mr/with-key empty?)]]]]
     [:notification-recipient/raw-value
      [:map
       [:details                               [:map {:closed true}
                                                [:value :any]]]
-      [:user_id              {:optional true} [:fn :nil]]
-      [:permissions_group_id {:optional true} [:fn :nil]]]]
+      [:user_id              {:optional true} :nil]
+      [:permissions_group_id {:optional true} :nil]]]
     [:notification-recipient/template
      [:map
       [:details                               [:map {:closed true}
                                                [:pattern                      :string]
                                                [:is_optional {:optional true} :boolean]]]
-      [:user_id              {:optional true} [:fn :nil]]
-      [:permissions_group_id {:optional true} [:fn :nil]]]]]])
+      [:user_id              {:optional true} :nil]
+      [:permissions_group_id {:optional true} :nil]]]]])
 
 (defn- check-valid-recipient
   [recipient]
