@@ -272,11 +272,7 @@ const waitAndReload = () => {
 
   cy.reload();
 
-  cy.get("#iframe-embed-container").should(
-    "have.attr",
-    "data-iframe-loaded",
-    "true",
-  );
+  H.waitForSimpleEmbedIframesToLoad();
 };
 
 const parameterVisibilityToggle = (slug: string) =>

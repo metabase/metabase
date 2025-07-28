@@ -9,22 +9,25 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
+// TODO: use the ones form e2e-embedding-iframe-sdk-helpers.ts
 const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
   return cy
-    .get("iframe")
+    .get("iframe[data-metabase-embed]")
     .should("be.visible")
     .its(iframeIndex + ".contentDocument")
     .should("exist")
     .its("body")
-    .should("not.be.empty");
+    .should("not.be.empty")
+    .then(cy.wrap);
 };
 
-const waitForIframesToLoad = (n: number) => {
-  cy.get("iframe").should("have.length", n);
-
-  cy.get("iframe").each(($iframe) => {
-    cy.wrap($iframe).should("have.attr", "data-iframe-loaded", "true");
-  });
+export const waitForSimpleEmbedIframesToLoad = (n: number) => {
+  cy.get("iframe[data-metabase-embed]").should("have.length", n);
+  // the iframe can be slow to load, so we wait for it to dispatch the ready event before doing further assertions
+  cy.get("iframe[data-metabase-embed][data-iframe-loaded]").should(
+    "have.length",
+    n,
+  );
 };
 
 describe("scenarios > embedding > sdk iframe embedding > custom elements api", () => {

@@ -39,6 +39,24 @@ export interface BaseEmbedTestPageOptions {
   onVisitPage?(): void;
 }
 
+export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
+  cy.get("iframe[data-metabase-embed]").should("have.length", n);
+  cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
+    timeout: 10_000, // the iframe can slow to load, we need to wait to decrease flakiness
+  });
+};
+
+export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
+  return cy
+    .get("iframe[data-metabase-embed]")
+    .should("be.visible")
+    .its(iframeIndex + ".contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.empty")
+    .then(cy.wrap);
+};
+
 /**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
@@ -64,13 +82,7 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
 
-  return cy
-    .get("iframe")
-    .should("be.visible")
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.empty");
+  return getSimpleEmbedIframeContent();
 }
 
 /**
