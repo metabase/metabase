@@ -10,7 +10,7 @@ describe("scenarios > table-editing", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.setTokenFeatures("all");
+    H.activateToken("bleeding-edge");
     setTableEditingEnabledForDB(SAMPLE_DB_ID);
 
     cy.intercept("GET", "/api/database").as("getDatabases");
