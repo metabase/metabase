@@ -77,6 +77,13 @@ When picking a Date picker filter, Metabase will prompt you to pick an operator:
 
 Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the date picker in the query builder, choose All options.
 
+### Issues with connecting to a date variable
+
+If you get a message like "A date variable in this card can only be connectedd to a time type with the single date option", you can handle it in a couple of ways.
+
+- **If you want a date picker where people can select multiple dates**, you'll need to change the variable in your SQL code to a [field filter](../questions/native-editor/field-filters.md).
+- **If you want the filter widget to just take a single date**, you'll need to change the dashboard filter widget's type to "Single date".
+
 ## Time grouping parameter
 
 ![Time grouping](./images/time-grouping.png)
