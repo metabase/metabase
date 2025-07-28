@@ -1,5 +1,6 @@
 import type { FunctionComponent } from "react";
 
+import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { ErrorMessage } from "embedding-sdk/sdk-wrapper/components/private/ErrorMessage/ErrorMessage";
 import { Loader } from "embedding-sdk/sdk-wrapper/components/private/Loader/Loader";
@@ -14,9 +15,10 @@ const ComponentWrapperInner = <TComponentProps,>({
   getComponent,
   componentProps,
 }: Props<TComponentProps>) => {
+  const metabaseProviderStoreProps = useMetabaseProviderPropsStore();
   const { isLoading, isError } = useWaitForSdkBundle();
 
-  if (isLoading) {
+  if (isLoading || !metabaseProviderStoreProps?.reduxStore) {
     return <Loader />;
   }
 
