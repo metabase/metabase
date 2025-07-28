@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as result-metadata]
@@ -1067,3 +1068,26 @@
       (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
                {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
               (result-metadata/returned-columns query))))))
+
+(deftest ^:parallel deduplicate-field-refs-test
+  (testing "Don't return duplicate field refs, force deduplicated-name when they are ambiguous (QUE-1623)"
+    (let [cols [(-> (meta/field-metadata :venues :id)
+                    (assoc :lib/source :source/previous-stage
+                           :field-ref  [:field (meta/id :venues :id) nil]))
+                (-> (meta/field-metadata :venues :name)
+                    (assoc :lib/source               :source/joins
+                           :field-ref                [:field (meta/id :venues :name) nil]
+                           :metabase.lib.join/join-alias "v1"
+                           :lib/source-column-alias      "NAME"
+                           :lib/desired-column-alias     "v1__NAME"))
+                (-> (meta/field-metadata :venues :name)
+                    (assoc :lib/source               :source/joins
+                           :field-ref                [:field (meta/id :venues :name) nil]
+                           :metabase.lib.join/join-alias "v2"
+                           :lib/source-column-alias      "NAME"
+                           :lib/desired-column-alias     "v2__NAME"))]
+          cols (lib.field.util/add-deduplicated-names cols)]
+      (is (=? [[:field (meta/id :venues :id) nil]
+               [:field "NAME"   {}]
+               [:field "NAME_2" {}]]
+              (map :field-ref (#'result-metadata/deduplicate-field-refs cols)))))))

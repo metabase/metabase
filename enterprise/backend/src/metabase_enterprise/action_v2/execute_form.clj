@@ -69,15 +69,15 @@
     {:title      (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
      :parameters (->> (for [field (sort-by sort-key fields)
                             :let [{field-values :values} field
-                                  pk                     (= :type/PK (:semantic_type field))
+                                  pk?                    (= :type/PK (:semantic_type field))
                                   param-setting          (get param-map (keyword (:name field)))
                                   ;; TODO get this from action configuration, when we add it, or inherit from table conf
                                   column-settings        nil]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
-                                    (:table.row/create :data-grid.row/create) (not (:database_is_auto_increment field))
+                                    (:table.row/create :data-grid.row/create) (not (:database_is_auto_increment field pk?))
                                     ;; delete only requires pk cols
-                                    (:table.row/delete :data-grid.row/delete) pk
+                                    (:table.row/delete :data-grid.row/delete) pk?
                                     ;; update takes both the pk and field (if not a row action)
                                     (:table.row/update
                                      :data-grid.row/update) true)
@@ -85,7 +85,7 @@
                             :when (not= "hidden" (:visibility param-setting))
                             ;; dashcard column context can hide parameters (if defined)
                             :when (:enabled column-settings true)
-                            :let [required (or pk (:database_required field))]]
+                            :let [required (or pk? (:database_required field false))]]
 
                         ;; TODO we should assert that the database's driver supports :actions/data-editing .
                         ;; TODO assert that the database driver implement the following features,
@@ -106,7 +106,8 @@
                           :optional                (not required)
                           :nullable                (:database_is_nullable field)
                           :database_default        (:database_default field)
-                          :readonly                (or (= "readonly" (:visibility param-setting))
+                          :readonly                (or pk?
+                                                       (= "readonly" (:visibility param-setting))
                                                        (not (column-editable? (:name field))))
                           ;; TODO oh dear, we need to worry about case sensitivity issue now (e.g. in tests)
                           ;; it would be much better if our mappings were based on field ids.
