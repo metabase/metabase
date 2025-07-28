@@ -113,7 +113,7 @@
    (and (can-write? pk)
         (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
-(mu/defmethod mi/visible-filter-clause :model/Database
+(defmethod mi/visible-filter-clause :model/Database
   [_model column-or-exp user-info permission-mapping]
   [:in column-or-exp
    (perms/visible-database-filter-select user-info permission-mapping)])
