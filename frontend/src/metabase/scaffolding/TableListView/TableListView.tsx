@@ -618,7 +618,7 @@ export const TableListView = ({ location, params }: Props) => {
                           },
                         }));
                       }}
-                    >{t`Show all`}</Button>
+                    >{t`Unhide all`}</Button>
                   )}
               </Group>
 
