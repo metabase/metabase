@@ -1473,7 +1473,6 @@
             ;; Grant permissions only to specific collections
             (perms/grant-collection-read-permissions! (perms/all-users-group) parent-coll)
             (perms/grant-collection-read-permissions! (perms/all-users-group) grandchild-coll)
-            ;; Note: child-coll-1 and child-coll-2 don't have explicit permissions
 
             ;; Card 1: In parent collection (accessible)
             (let [card-1-query (mt/mbql-query venues
@@ -1482,7 +1481,6 @@
                                   :limit 3})]
               (mt/with-temp [:model/Card {card-1-id :id} {:collection_id parent-coll
                                                           :dataset_query card-1-query}]
-                ;; Card 2: In child-coll-1 (no explicit permission, but inherits from parent)
                 (let [card-2-query (mt/mbql-query nil
                                      {:source-table (format "card__%d" card-1-id)
                                       :limit 2})]
