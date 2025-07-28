@@ -726,11 +726,17 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       "Visualize another way",
     ).click();
 
+    cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
+
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.addDataset(invalidQuestion.name);
+      cy.findByTestId("funnel-chart").should("contain", "Invalid question");
       cy.button("Save").click();
     });
+
+    cy.get("@queryMetadata.all").should("have.length", 2);
+    H.getDashboardCard().should("contain", "Invalid question");
 
     H.saveDashboard();
 
