@@ -594,13 +594,12 @@
    (-> (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
                                             :type     :query
                                             :query    {:source-table table-id
-                                                       :aggregation  [[aggregation-type [:field-id field-id]]]
-                                                       :aggregation-idents {0 (u/generate-nano-id)}}})
+                                                       :aggregation  [[aggregation-type [:field-id field-id]]]}})
        first
        (merge (when (= aggregation-type :cum-count)
                 {:base_type     :type/Decimal
                  :semantic_type :type/Quantity}))
-       (dissoc :ident :lib/source-uuid :lib/source_uuid))))
+       (dissoc :lib/source-uuid :lib/source_uuid))))
 
 (defmulti count-with-template-tag-query
   "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
@@ -623,9 +622,9 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmulti field-reference
-  "Generate a sql fragment that references a particular field"
-  {:arglists `([driver field-id])}
+(defmulti make-alias
+  "Makes an alias for a given column"
+  {:arglists '([driver alias])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -1151,3 +1150,11 @@
     (format "DEV: %s %s"
             (str t/*testing-vars*)
             (:user env/env))))
+
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)

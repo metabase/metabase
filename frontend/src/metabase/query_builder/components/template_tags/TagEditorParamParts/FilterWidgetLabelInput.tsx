@@ -15,7 +15,7 @@ export function FilterWidgetLabelInput({
   return (
     <InputContainer>
       <ContainerLabel>
-        {t`Filter widget label`}
+        {getLabel(tag)}
         {!tag["display-name"] && <ErrorSpan>({t`required`})</ErrorSpan>}
       </ContainerLabel>
       <TextInputBlurChange
@@ -25,4 +25,10 @@ export function FilterWidgetLabelInput({
       />
     </InputContainer>
   );
+}
+
+function getLabel(tag: TemplateTag) {
+  return tag.type === "temporal-unit"
+    ? t`Parameter widget label`
+    : t`Filter widget label`;
 }

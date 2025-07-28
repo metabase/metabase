@@ -204,6 +204,13 @@ export type DashboardFilterCreatedEvent = ValidateEvent<{
   event_detail: string | null;
 }>;
 
+export type DashboardFilterMovedEvent = ValidateEvent<{
+  event: "dashboard_filter_moved";
+  target_id: number | null;
+  triggered_from: VisualizationDisplay | null;
+  event_detail: VisualizationDisplay | null;
+}>;
+
 export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
@@ -269,4 +276,5 @@ export type SimpleEvent =
   | AddDataModalOpenedEvent
   | AddDataModalTabEvent
   | DashboardFilterCreatedEvent
+  | DashboardFilterMovedEvent
   | EmbedWizardEvent;

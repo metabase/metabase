@@ -1,5 +1,7 @@
 // Functions that get key elements in the app
 
+import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
@@ -149,7 +151,9 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
- * @param {boolean} isEditing - whether dashboard editing mode is enabled
+ * @param {Object} options
+ * @param {boolean} [options.isEditing] - whether dashboard editing mode is enabled
+ * @param {string} [options.name] - the name of the filter widget to get
  *
  * @returns HTMLFieldSetElement
  *
@@ -167,10 +171,12 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget({ isEditing = false } = {}) {
-  return cy.findAllByTestId(
-    isEditing ? "editing-parameter-widget" : "parameter-widget",
-  );
+export function filterWidget({ isEditing = false, name = null } = {}) {
+  const selector = isEditing ? "editing-parameter-widget" : "parameter-widget";
+
+  return name != null
+    ? cy.findAllByTestId(selector).filter(`:contains(${name})`)
+    : cy.findAllByTestId(selector);
 }
 
 export function clearFilterWidget(index = 0) {
@@ -210,6 +216,18 @@ export function toggleFilterWidgetValues(
     values.forEach((value) => cy.findByText(value).click());
     cy.button(buttonLabel).click();
   });
+}
+
+/**
+ * Moves a dashboard filter to a dashcard / top nav
+ * (it must be in 'editing' mode prior to that)
+ */
+export function moveDashboardFilter(destination, { showFilter = false } = {}) {
+  dashboardParameterSidebar().findByPlaceholderText("Move filter").click();
+  popover().findByText(destination).click();
+  if (showFilter) {
+    undoToast().button("Show filter").click();
+  }
 }
 
 export const openQuestionActions = (action) => {

@@ -29,8 +29,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       resourceName: DASHBOARD_NAME,
     });
 
-    cy.wait("@persistSettings");
-
     cy.log("1. set embed settings to non-default values");
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Allow downloads")
@@ -49,6 +47,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     cy.log("3. persisted settings should be restored");
@@ -88,6 +87,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToEmbedOptionsStep({
       experience: "chart",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     cy.log("3. verify persisted settings are restored");
@@ -116,7 +116,10 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
 
     cy.log("2. reload the page");
     waitAndReload();
-    navigateToEmbedOptionsStep({ experience: "exploration" });
+    navigateToEmbedOptionsStep({
+      experience: "exploration",
+      dismissEmbedTerms: false,
+    });
 
     getEmbedSidebar().within(() => {
       cy.log("3. persisted settings should be restored");
@@ -131,8 +134,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
     });
-
-    cy.wait("@persistSettings");
 
     cy.log("1. change brand color to red");
     cy.findByLabelText("#509EE3").click();
@@ -167,8 +168,6 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
       resourceName: DASHBOARD_NAME,
     });
 
-    cy.wait("@persistSettings");
-
     cy.log("1. select sso auth method");
     getEmbedSidebar().within(() => {
       cy.log("single sign on should not be checked by default");
@@ -187,6 +186,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToGetCodeStep({
       experience: "dashboard",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     getEmbedSidebar().within(() => {
@@ -244,6 +244,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       skipResourceSelection: true,
+      dismissEmbedTerms: false,
     });
 
     cy.log("3. parameter settings should be persisted");

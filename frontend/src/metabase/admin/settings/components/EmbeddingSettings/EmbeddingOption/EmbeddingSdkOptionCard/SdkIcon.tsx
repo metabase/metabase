@@ -13,6 +13,7 @@ export const SdkIcon = ({ disabled }: EmbeddingOptionIconProps) => {
       className={cx(EmbeddingOptionS.EmbeddingOptionIcon, {
         [EmbeddingOptionS.Disabled]: disabled,
       })}
+      data-testid="sdk-icon"
     >
       <g clipPath="url(#a)">
         <rect

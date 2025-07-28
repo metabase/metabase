@@ -221,7 +221,40 @@
                        (embed.settings/enable-embedding-sdk)
                        (embed.settings/embedding-app-origins-sdk))]
           (is (= "60" (get headers "Access-Control-Max-Age"))
-              "Expected Access-Control-Max-Age header to be set to 60"))))))
+              "Expected Access-Control-Max-Age header to be set to 60")))))
+  (testing "CORS should be enabled when enable-embedding-simple is true"
+    (mt/with-temporary-setting-values [enable-embedding-simple true
+                                       enable-embedding-sdk false]
+      (let [headers (mw.security/access-control-headers "https://example.com"
+                                                        (or (embed.settings/enable-embedding-sdk)
+                                                            (embed.settings/enable-embedding-simple))
+                                                        "https://example.com")]
+        (is (= "https://example.com"
+               (get headers "Access-Control-Allow-Origin"))
+            "CORS should work when enable-embedding-simple is true even if enable-embedding-sdk is false"))))
+  (testing "CORS should be enabled when both enable-embedding-simple and enable-embedding-sdk are true"
+    (mt/with-premium-features #{:embedding-sdk}
+      (mt/with-temporary-setting-values [enable-embedding-simple true
+                                         enable-embedding-sdk true
+                                         embedding-app-origins-sdk "https://example.com"]
+        (let [headers (mw.security/access-control-headers "https://example.com"
+                                                          (or (embed.settings/enable-embedding-sdk)
+                                                              (embed.settings/enable-embedding-simple))
+                                                          (embed.settings/embedding-app-origins-sdk))]
+          (is (= "https://example.com"
+                 (get headers "Access-Control-Allow-Origin"))
+              "CORS should work when both embedding options are enabled")))))
+  (testing "CORS should be disabled when both enable-embedding-simple and enable-embedding-sdk are false"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
+                                       enable-embedding-sdk false
+                                       embedding-app-origins-sdk "https://example.com"]
+      (let [headers (mw.security/access-control-headers "https://example.com"
+                                                        (or (embed.settings/enable-embedding-sdk)
+                                                            (embed.settings/enable-embedding-simple))
+                                                        (embed.settings/embedding-app-origins-sdk))]
+        (is (= nil
+               (get headers "Access-Control-Allow-Origin"))
+            "CORS should be disabled when both embedding options are disabled")))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."

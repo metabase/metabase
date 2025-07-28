@@ -20,6 +20,7 @@ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "details-fields": [],
   source: createMockEngineSource(),
   "superseded-by": null,
+  "extra-info": null,
   ...opts,
 });
 
@@ -232,6 +233,7 @@ export const createMockSettings = (
   "non-table-chart-generated": true,
   "enable-embedding-static": false,
   "enable-embedding-sdk": false,
+  "enable-embedding-simple": false,
   "enable-embedding-interactive": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,
@@ -259,6 +261,7 @@ export const createMockSettings = (
   "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
   "show-sdk-embed-terms": true,
+  "show-simple-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
