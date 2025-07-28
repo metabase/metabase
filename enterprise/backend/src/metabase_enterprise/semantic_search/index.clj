@@ -417,19 +417,39 @@
   [row]
   (update row :metadata decode-pgobject))
 
+(defn- filter-can-read-indexed-entity
+  "Check permissions for indexed entities by resolving to their parent model / card"
+  [indexed-entity-docs]
+  (let [model-index-ids (map #(-> % :id (str/split #":") first parse-long) indexed-entity-docs)
+        model-indexes (when (seq model-index-ids)
+                        (t2/select :model/ModelIndex :id [:in model-index-ids]))
+        index-id->card (when (seq model-indexes)
+                         (let [card-ids    (map :model_id model-indexes)
+                               cards       (t2/select :model/Card :id [:in card-ids])
+                               cards-by-id (u/index-by :id cards)]
+                           (into {} (map (fn [model-index]
+                                           [(:id model-index) (get cards-by-id (:model_id model-index))])
+                                         model-indexes))))]
+    (filterv (fn [doc]
+               (when-let [model-index-id (-> doc :id (str/split #":") first parse-long)]
+                 (when-let [parent-card (get index-id->card model-index-id)]
+                   (mi/can-read? parent-card))))
+             indexed-entity-docs)))
+
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
   [docs]
   (let [doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        t2-instances  (for [[t2-model docs] (group-by doc->t2-model docs)
-                            ;; NOTE an "indexed-entity" (:model/ModelIndexValue) does not have an :id column. For now
-                            ;; we are filtering indexed-entities out and they should not appear here.
-                            t2-instance     (t2/select t2-model :id [:in (map :id docs)])]
-                        t2-instance)
-        doc->t2       (comp (u/index-by (juxt :id t2/model) t2-instances)
-                            (fn [doc]
-                              [(:id doc) (doc->t2-model doc)]))]
-    (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) docs)))
+        {indexed-entities true regular-docs false} (group-by #(= "indexed-entity" (:model %)) docs)
+        other-docs (for [[t2-model docs] (group-by doc->t2-model regular-docs)
+                         t2-instance (t2/select t2-model :id [:in (map :id docs)])]
+                     t2-instance)
+        permitted-entities (filter-can-read-indexed-entity indexed-entities)
+        doc->t2 (comp (u/index-by (juxt :id t2/model) other-docs)
+                      (fn [doc] [(:id doc) (doc->t2-model doc)]))]
+    (concat
+     (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
+     permitted-entities)))
 
 (defn query-index
   "Query the index for documents similar to the search string."

@@ -75,7 +75,7 @@
 
 (defmethod search.engine/model-set :search.engine/semantic
   [_search-ctx]
-  (disj search.config/all-models "indexed-entity"))
+  search.config/all-models)
 
 ;; NOTE if you remove this you need to also modify filter-read-permitted to handle indexed-entity docs.
 ;; See the corresponding note in metabase-enterprise.semantic-search.index/filter-read-permitted.
@@ -89,8 +89,7 @@
   [_ document-reducible]
   (try
     (log/info "Updating semantic search engine")
-    (update-index! (-> document-reducible
-                       remove-indexed-entities))
+    (update-index! document-reducible)
     (catch Exception e
       (log/error e "Error updating semantic search engine")
       {})))
@@ -108,9 +107,7 @@
   [_ opts]
   (try
     (log/info "Initializing semantic search engine")
-    (init! (-> (search.ingestion/searchable-documents)
-               remove-indexed-entities)
-           opts)
+    (init! (search.ingestion/searchable-documents) opts)
     (catch Exception e
       (log/error e "Error initializing semantic search engine")
       (throw e))))
@@ -119,9 +116,7 @@
   [_ opts]
   (try
     (log/info "Reindexing semantic search engine")
-    (reindex! (-> (search.ingestion/searchable-documents)
-                  remove-indexed-entities)
-              opts)
+    (reindex! (search.ingestion/searchable-documents) opts)
     (catch Exception e
       (log/error e "Error reindexing semantic search engine")
       (throw e))))
