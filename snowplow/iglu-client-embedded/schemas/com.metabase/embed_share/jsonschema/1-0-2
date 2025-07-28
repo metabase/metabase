@@ -20,7 +20,9 @@
         "static_embedding_enabled",
         "static_embedding_disabled",
         "interactive_embedding_enabled",
-        "interactive_embedding_disabled"
+        "interactive_embedding_disabled",
+        "simple_embedding_enabled",
+        "simple_embedding_disabled"
       ],
       "maxLength": 1024
     },
