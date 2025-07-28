@@ -169,6 +169,16 @@ export const TableListView = ({ location, params }: Props) => {
     updateTableComponentSettings({ id: tableId, component_settings: settings });
   };
 
+  const handleCancel = () => {
+    setIsEditing(false);
+
+    if (table) {
+      setSettings(
+        table.component_settings ?? getDefaultComponentSettings(table),
+      );
+    }
+  };
+
   const handleFilterChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
     setDataQuery(newQuery);
 
@@ -500,14 +510,20 @@ export const TableListView = ({ location, params }: Props) => {
             <Title order={2}>{t`Display settings`}</Title>
 
             {isEditing && (
-              <Button
-                leftSection={<Icon name="check" />}
-                type="submit"
-                variant="filled"
-                onClick={handleSubmit}
-              >
-                {t`Save`}
-              </Button>
+              <Group gap="md">
+                <Button size="sm" variant="outline" onClick={handleCancel}>
+                  {t`Cancel`}
+                </Button>
+
+                <Button
+                  size="sm"
+                  type="submit"
+                  variant="filled"
+                  onClick={handleSubmit}
+                >
+                  {t`Save`}
+                </Button>
+              </Group>
             )}
           </Group>
 
