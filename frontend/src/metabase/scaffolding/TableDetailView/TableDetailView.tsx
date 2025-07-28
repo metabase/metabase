@@ -119,7 +119,7 @@ export function TableDetailViewInner({
   const row = rows[currentRowIndex] || {};
 
   const defaultSections = useMemo(
-    () => [getDefaultObjectViewSettings(table).sections[0]],
+    () => getDefaultObjectViewSettings(table).sections,
     [table],
   );
 
@@ -143,6 +143,10 @@ export function TableDetailViewInner({
   const sectionsOrOverride = isListView
     ? (sectionsOverride ?? sections)
     : sections;
+
+  const notEmptySections = isEdit
+    ? sectionsOrOverride
+    : sectionsOrOverride.filter((section) => section.fields.length > 0);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -247,10 +251,10 @@ export function TableDetailViewInner({
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={sectionsOrOverride.map((section) => section.id)}
+              items={notEmptySections.map((section) => section.id)}
               strategy={verticalListSortingStrategy}
             >
-              {sectionsOrOverride.map((section) => (
+              {notEmptySections.map((section) => (
                 <SortableSection
                   key={section.id}
                   section={section}
