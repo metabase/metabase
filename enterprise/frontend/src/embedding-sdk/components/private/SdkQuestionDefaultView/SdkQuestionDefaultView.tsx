@@ -9,6 +9,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
@@ -23,7 +24,6 @@ import {
   Stack,
 } from "metabase/ui";
 
-import { InteractiveQuestion } from "../../public/SdkQuestion";
 import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
@@ -34,7 +34,7 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
 
-export interface InteractiveQuestionDefaultViewProps extends FlexibleSizeProps {
+export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   /**
    * Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only applicable to interactive questions when using the default layout.
    */
@@ -51,7 +51,7 @@ export interface InteractiveQuestionDefaultViewProps extends FlexibleSizeProps {
   withChartTypeSelector?: boolean;
 }
 
-export const InteractiveQuestionDefaultView = ({
+export const SdkQuestionDefaultView = ({
   height,
   width,
   className,
@@ -59,7 +59,7 @@ export const InteractiveQuestionDefaultView = ({
   title,
   withResetButton,
   withChartTypeSelector,
-}: InteractiveQuestionDefaultViewProps): ReactElement => {
+}: SdkQuestionDefaultViewProps): ReactElement => {
   const { isLocaleLoading } = useLocale();
   const {
     originalId,
@@ -126,13 +126,11 @@ export const InteractiveQuestionDefaultView = ({
         <Group justify="space-between" align="flex-end">
           <Group gap="xs">
             <Box mr="sm">
-              <InteractiveQuestion.BackButton />
+              <SdkQuestion.BackButton />
             </Box>
             <DefaultViewTitle title={title} withResetButton={withResetButton} />
           </Group>
-          {showSaveButton && (
-            <InteractiveQuestion.SaveButton onClick={openSaveModal} />
-          )}
+          {showSaveButton && <SdkQuestion.SaveButton onClick={openSaveModal} />}
         </Group>
         {queryResults && (
           <Group
@@ -157,8 +155,8 @@ export const InteractiveQuestionDefaultView = ({
                   {withChartTypeSelector && (
                     <>
                       <Button.Group>
-                        <InteractiveQuestion.ChartTypeDropdown />
-                        <InteractiveQuestion.QuestionSettingsDropdown />
+                        <SdkQuestion.ChartTypeDropdown />
+                        <SdkQuestion.QuestionSettingsDropdown />
                       </Button.Group>
                       <Divider
                         mx="xs"
@@ -168,15 +166,15 @@ export const InteractiveQuestionDefaultView = ({
                       />
                     </>
                   )}
-                  <InteractiveQuestion.FilterDropdown />
-                  <InteractiveQuestion.SummarizeDropdown />
-                  <InteractiveQuestion.BreakoutDropdown />
+                  <SdkQuestion.FilterDropdown />
+                  <SdkQuestion.SummarizeDropdown />
+                  <SdkQuestion.BreakoutDropdown />
                 </>
               )}
             </Group>
             <Group gap="sm">
-              {withDownloads && <InteractiveQuestion.DownloadWidgetDropdown />}
-              <InteractiveQuestion.EditorButton
+              {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+              <SdkQuestion.EditorButton
                 isOpen={isEditorOpen}
                 onClick={toggleEditor}
               />
@@ -188,9 +186,9 @@ export const InteractiveQuestionDefaultView = ({
       <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
         <Box className={InteractiveQuestionS.Content}>
           {isEditorOpen ? (
-            <InteractiveQuestion.Editor onApply={closeEditor} />
+            <SdkQuestion.Editor onApply={closeEditor} />
           ) : (
-            <InteractiveQuestion.QuestionVisualization height="100%" />
+            <SdkQuestion.QuestionVisualization height="100%" />
           )}
         </Box>
       </Box>

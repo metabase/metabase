@@ -30,6 +30,11 @@ export const frenchNames: NonEmpty<DictionaryArray> = [
   { locale: "fr", msgid: "Franco O'Reilly", msgstr: "O'Reilux Francor" },
 ];
 
+export const frenchBooleanTranslations: NonEmpty<DictionaryArray> = [
+  { locale: "fr", msgid: "true", msgstr: "vrai" },
+  { locale: "fr", msgid: "false", msgstr: "faux" },
+];
+
 export const portugueseFieldNames: DictionaryArray = [
   { locale: "pt-BR", msgid: "Title", msgstr: "Título" },
   { locale: "pt-BR", msgid: "Vendor", msgstr: "Fornecedor" },

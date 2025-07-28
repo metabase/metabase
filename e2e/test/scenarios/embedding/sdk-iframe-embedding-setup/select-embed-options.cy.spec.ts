@@ -63,7 +63,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
+    codeBlock().should("contain", 'drills="false"');
   });
 
   it("toggles downloads for dashboard", () => {
@@ -93,7 +93,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
+    codeBlock().should("contain", 'with-downloads="true"');
   });
 
   it("toggles dashboard title for dashboards", () => {
@@ -123,7 +123,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
+    codeBlock().should("contain", 'with-title="false"');
   });
 
   it("toggles drill-through for charts", () => {
@@ -161,7 +161,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isDrillThroughEnabled": false');
+    codeBlock().should("contain", 'drills="false"');
   });
 
   it("toggles downloads for charts", () => {
@@ -195,7 +195,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withDownloads": true');
+    codeBlock().should("contain", 'with-downloads="true"');
   });
 
   it("toggles chart title for charts", () => {
@@ -211,6 +211,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.log("turn off title");
     getEmbedSidebar()
       .findByLabelText("Show chart title")
+      .should("be.checked")
       .click()
       .should("not.be.checked");
 
@@ -221,9 +222,45 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.getIframeBody().findByText("Orders, Count").should("not.exist");
 
+    cy.log("set drills to false");
+    getEmbedSidebar()
+      .findByLabelText("Allow users to drill through on data points")
+      .should("be.checked")
+      .click()
+      .should("not.be.checked");
+
+    cy.log("chart title state should remain unchecked");
+    getEmbedSidebar()
+      .findByLabelText("Show chart title")
+      .should("not.be.checked");
+
+    cy.log("chart title should remain hidden");
+    H.getIframeBody().findByText("Orders, Count").should("not.exist");
+
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"withTitle": false');
+    codeBlock().should("contain", 'with-title="false"');
+
+    cy.log("go back to embed options step");
+    getEmbedSidebar().findByText("Back").click();
+
+    cy.log("show the chart title");
+    getEmbedSidebar()
+      .findByLabelText("Show chart title")
+      .should("not.be.checked")
+      .click()
+      .should("be.checked");
+
+    cy.log("chart title should be visible again");
+    H.getIframeBody().findByText("Orders, Count").should("be.visible");
+
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "embed_wizard_option_changed",
+        event_detail: "withTitle",
+      },
+      2,
+    );
   });
 
   it("toggles save button for exploration", () => {
@@ -256,7 +293,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", '"isSaveEnabled": false');
+    codeBlock().should("contain", 'is-save-enabled="false"');
   });
 
   it("can change brand color", () => {
@@ -294,6 +331,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
+
+    codeBlock().should("contain", '"theme": {');
+    codeBlock().should("contain", '"colors": {');
     codeBlock().should("contain", '"brand": "#FF0000"');
   });
 });

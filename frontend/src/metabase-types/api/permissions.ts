@@ -10,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import type { GroupId } from "./group";
-import type { UserAttribute } from "./user";
+import type { UserAttributeKey } from "./user";
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;
@@ -122,7 +122,7 @@ export type GroupTableAccessPolicy = {
   table_id: number;
   card_id: number | null;
   attribute_remappings: {
-    [key: UserAttribute]: DimensionRef;
+    [key: UserAttributeKey]: DimensionRef;
   };
   permission_id: number | null;
 };
@@ -130,5 +130,5 @@ export type GroupTableAccessPolicy = {
 export type Impersonation = {
   db_id: DatabaseId;
   group_id: GroupId;
-  attribute: UserAttribute;
+  attribute: UserAttributeKey;
 };

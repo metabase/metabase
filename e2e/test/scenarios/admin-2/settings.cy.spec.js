@@ -1109,13 +1109,13 @@ describe("scenarios > admin > localization", () => {
 describe("scenarios > admin > settings > map settings", () => {
   beforeEach(() => {
     H.restore();
+    cy.intercept("GET", "/api/geojson*").as("getGeoJson");
     cy.signInAsAdmin();
   });
 
   it("should be able to load and save a custom map", () => {
     cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
+    cy.button("Add a map").click();
     cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
       "Test Map",
     );
@@ -1124,20 +1124,17 @@ describe("scenarios > admin > settings > map settings", () => {
     ).type(
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    cy.wait(2000).findAllByText("Select…").first().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("NAME").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByText("Select…").last().click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByText("NAME").last().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add map").click();
-    cy.wait(3000).findByText("NAME").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Test Map");
+    cy.button("Load").click();
+    cy.wait("@getGeoJson");
+    cy.findByTestId("map-region-key-select").click();
+    H.popover().contains("NAME").click();
+    cy.findByTestId("map-region-name-select").click();
+    H.popover().contains("NAME").click();
+    cy.button("Add map").click();
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.contains("NAME").should("not.exist");
+      cy.contains("Test Map");
+    });
   });
 
   it("should be able to load a custom map even if a name has not been added yet (#14635)", () => {
