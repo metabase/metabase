@@ -825,12 +825,12 @@
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
 
-(api.macros/defendpoint :post "/table-view-config" :- [:map
-                                                       [:success :boolean]
-                                                       [:config {:optional true} :map]
-                                                       [:error {:optional true} :string]
-                                                       [:table_id :int]
-                                                       [:view_type :string]]
+(api.macros/defendpoint :post "/table-view-config" :- :any #_[:map
+                                                              [:success :boolean]
+                                                              [:config {:optional true} :map]
+                                                              [:error {:optional true} :string]
+                                                              [:table_id :int]
+                                                              [:view_type :string]]
   "Generate table view configuration using AI"
   [_route-params
    _query-params
@@ -838,7 +838,7 @@
   (metabot-v3.context/log (assoc body :api :table-view-config) :llm.log/llm->be)
   (let [result (metabot-v3.tools.table-view-config/generate-table-view-config
                 {:table-id table_id
-                 :view-type view_type})]
+                 :view-type (keyword view_type)})]
     (doto result
       (metabot-v3.context/log :llm.log/be->llm))))
 

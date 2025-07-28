@@ -107,6 +107,7 @@ function TableDetailViewInner({
     updateSection,
     removeSection,
     handleDragEnd,
+    replaceAllSections,
   } = useDetailViewSections([
     {
       id: 1,
@@ -222,6 +223,8 @@ function TableDetailViewInner({
           columns={columns}
           sections={sections}
           onUpdateSection={updateSection}
+          tableId={tableId}
+          onUpdateAllSections={replaceAllSections}
         />
       )}
     </Flex>
