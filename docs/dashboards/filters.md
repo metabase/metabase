@@ -39,7 +39,7 @@ There are two basic types of widgets you can add. The type of filter or paramete
 1. Click the **pencil icon** to enter dashboard editing mode.
 2. You can add a filter or parameter widget to:
     
-    - **The whole dashboard**. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
+    - **The whole dashboard**. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
     - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
     - **Question cards**. Can only be connected to cards on the current tab.
    
@@ -49,7 +49,7 @@ There are two basic types of widgets you can add. The type of filter or paramete
 5. [Configure your filter](#editing-a-filter).
 6. **Save** your changes.
 
-Metabase will display the filter only if the filter is connected to a card on the current dashboard tab.
+If the filter isn't connected any of the cards on the current tab, Metabase won't display the filter.
 
 ### When to add a widget to a heading or card
 
@@ -81,7 +81,7 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 ![Time grouping](./images/time-grouping.png)
 
-You can add a time grouping widget to a dashboard to change how charts are grouped by time. This widget won't filter the data; it'll change how Metabase displays the data. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the same results by other groupings: by week, by quarter, and so on.
+You can add a time grouping widget to a dashboard to change how charts are grouped by time. This widget won't filter the data; it'll change how Metabase aggregates the data. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the same results by other groupings: by week, by quarter, and so on.
 
 This widget doesn't filter data in the charts; the widget just changes the time granularity for any cards that have a datetime field connected to the widget.
 
@@ -99,7 +99,7 @@ To connect a time grouping widget to a SQL question, you'll need to insert time 
 
 ## Location filters
 
-There are four types of Location filters to choose from:
+There are four types of Location filters to choose from.
 
 - City
 - State

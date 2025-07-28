@@ -11,7 +11,7 @@ redirect_from:
 
 You can create SQL templates by adding parameters (a.k.a. variables) to your SQL queries in the [Native/SQL editor](./writing-sql.md).
 
-These variables create widgets that people can use to change the variables' values in the query.
+These variables create widgets that people can use to change the variables' values in the query. You can also connect [dashboard widgets to these parameters](../../dashboards/filters.md).
 
 You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
@@ -21,64 +21,15 @@ When you define a variable, the **variables and parameters** side panel will app
 
 Variable types include:
 
-- **[Field filter variables](#field-filter-variables)**: create "smart" filter widgets with date pickers or dropdown menus. To use a field filter, you'll need to connect to a database field included in your query.
+- **[Field filter variables](#field-filters.md)**: create "smart" filter widgets with date pickers or dropdown menus. To use a field filter, you'll need to connect to a database field included in your query.
 - **[Basic variables](./basic-sql-parameters.md)**: text, number, and date variables. You'll almost always want to use field filters instead of these basic variables, as field filters create "smart" filter widgets, but Metabase provides these basic variables for situations where you can't use field filters.
 - **[Time grouping parameters](./time-grouping-parameters.md)**: allows people to change how the results are grouped by a date column: by month, week, day, etc.
 
 You can include multiple variables in a single query, and Metabase will add multiple widgets to the question. To rearrange the order of the widgets, enter edit mode and click on any widget and drag it around.
 
-## When to use a field filter variable vs a basic variable
-
-In general, prefer using field filter variables. They offer "smart" filter widgets with dropdown menus and dynamic date pickers.
-
-If your query lacks a database field for the filter to connect to, however, then you'll instead need to use a [basic variable](./basic-sql-parameters.md). See other [field filter limitations](#field-filter-limitations).
-
-## Field filter variables
-
-To add a field filter:
-
-1. [Add a variable to a `WHERE` clause](#field-filter-syntax).
-2. [Connect the field filter to a database field](#connect-the-field-filter-to-a-database-field).
-3. [Configure your filter widget](#configure-your-filter-widget).
-
-### Field filter syntax
-
-Let's say you want to create a field filter variable that filters the `People` table by the `state` field.
-
-Here's the field filter syntax:
-
-```sql
-{% raw %}
-SELECT
-  *
-FROM
-  PEOPLE
-WHERE
-  {{state}}
-{% endraw %}
-```
-
-Note the lack of the column and operator (it's not `{% raw %}WHERE state = {{state}}{% endraw %}`, it's just `{% raw %}WHERE {{state}}{% endraw %}`). The reason you need to structure field filter variables in this way is to handle cases where Metabase generates the code for you. For example, for handling cases where someone selects _multiple_ values in the filter widget, or a _range_ of dates, Metabase will have to interpolate the SQL code to handle those inputs into the variable.
-
-In a MongoDB native query, you'll need to put the field filter in a `$match` clause.
-
-```
-{% raw %}[ {$match: {{date_var}} } ]{% endraw %}
-```
-
-### Connect the field filter to a database field
-
-In order for a field filter variable to work, you'll need to associate the variable with a database field.
-
-1. Go to the variables and parameters side panel.
-2. Under **Variable type**, select the "Field filter" variable type.
-3. Choose which **Field to map to** your variable (in this case, we'll map the `Category` field in the products table).
-
-You can only map a field filter to a database field. See [field filter limitations](#field-filter-limitations).
-
 ### Configure your filter widget
 
-1. Set the **Filter widget type**. Options will differ depending on the field's data type.
+1. Set the **Filter widget type**. Options will differ depending on whether you used a field filter or a basic variable.
 2. Set the **Filter widget** label.
 3. Set **How should users filter on this variable?**:
    - [Dropdown list](../../dashboards/filters.md#dropdown-list). A dropdown list shows all available values for the field in a selectable list.
@@ -88,114 +39,6 @@ You can only map a field filter to a database field. See [field filter limitatio
 5. Optionally, set a **Default filter widget value**.
 
 Check out [filter widgets](./filter-widgets.md).
-
-### Specifying the table and field alias
-
-If you map a filter to a field from an aliased table, you'll need to tell Metabase about that alias, or the filter won't work. 
-
-For example, let's say you want to map a field filter to the `category` field from the `products` table, but in your query you use the alias `p` for the `products` table, like so:
-
-```sql
-{% raw %}
-SELECT
-  *
-FROM
-  products AS p
-WHERE
-  {{category_filter}}
-{% endraw %}
-```
-
-If you map to the `category` field from the products table, you'll also need to fill out the **Table and field alias** input to let Metabase know about the alias. In this case, you input `p.category`.
-
-Setting this **Table and field alias** is only required if your query uses an alias to refer to a table that contains the field you want to map the filter to.
-
-Here's another example, this time with a CTE
-
-```sql
-{% raw %}
-WITH
-  expensive_products AS (
-    SELECT
-      *
-    FROM
-      products
-    WHERE
-      price > 50
-  )
-SELECT
-  *
-FROM
-  expensive_products
-WHERE
-  {{category_filter}}
-{% endraw %}
-```
-
-Here, we again map the field filter to the`category` field in the `products` table. But since we use a CTE, aliased as `expensive_products`, we'd need to put `expensive_products.category` in the **Table and field alias** input for the mapping to work correctly.
-
-## Field filter limitations
-
-Field filters:
-
-- [Must be connected to database fields included in the query](#field-filters-must-be-connected-to-database-fields-included-in-the-query)
-- [Are only compatible with certain types](#field-filters-are-only-compatible-with-certain-types)
-
-### Field Filters must be connected to database fields included in the query
-
-Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
-
-```sql
-{% raw %}
-SELECT
-  *
-FROM
-  ORDERS
-WHERE
-  {{ product_category }}
-{% endraw %}
-```
-
-Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
-
-```sql
-{% raw %}
-SELECT
-  *
-FROM
-  ORDERS
-  JOIN PRODUCTS ON ORDERS.product_id = PRODUCTS.id
-WHERE
-  {{ product_category }}
-{% endraw %}
-```
-
-### Field filters are only compatible with certain types
-
-- Category
-- Entity Name
-- Entity Key
-- Foreign Key
-- City
-- State
-- ZIP or Postal Code
-- Date
-- Timestamp
-
-The field can also be a date or timestamp, even when the field is set to "No semantic type" in the [Table Metadata](../../data-modeling/metadata-editing.md).
-
-If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the field type for that column. See [metadata editing](../../data-modeling/metadata-editing.md).
-
-## Field filters in BigQuery and Oracle
-
-Make sure your SQL dialect matches the database you've selected. Common issues involving how tables are quoted in the query:
-
-| Database | Dialect quirk                                       | Example                    |
-| -------- | --------------------------------------------------- | -------------------------- |
-| BigQuery | Schemas and tables must be quoted with backticks.   | `` FROM `dataset.table` `` |
-| Oracle   | Schemas and tables must be quoted in double quotes. | `FROM "schema.table"`      |
-
-For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
 ## Setting values for SQL variables
 
@@ -223,12 +66,6 @@ To set multiple variables, separate parameters with an ampersand (`&`):
 ```
 https://metabase.example.com/question/42-eg-question?category=Gizmo&maxprice=50
 ```
-
-## Setting a default value in the filter widget
-
-In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty).
-
-To override the default value, insert a new value into the filter widget.
 
 ### Setting complex default values in the query
 

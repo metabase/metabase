@@ -66,6 +66,12 @@ You can choose:
 
 You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
 
+## Setting a default value in the filter widget
+
+In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty).
+
+To override the default value, insert a new value into the filter widget.
+
 ## Requiring a value for a filter widget
 
 In the **Variable** settings sidebar, you can toggle the **Always require a value** option. If you turn this on:
@@ -107,4 +113,4 @@ Filter operator options include:
 - Single date
 - Date range
 - Relative date
-- All options
+- All options. Metabase will give you a menu where you can choose how they filter dates: by range, relative dates, etc.
