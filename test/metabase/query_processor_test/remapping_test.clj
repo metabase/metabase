@@ -452,7 +452,7 @@
                     :filter   [:between $id 2 75]
                     :limit    3}))
           results (qp/process-query query)]
-      (is (= [;; 3 columns from top-level `:fields`
+      (is (= [ ;; 3 columns from top-level `:fields`
               "CATEGORY_ID"
               "ID"
               "NAME"
@@ -482,7 +482,7 @@
       ;; even supposed to be returned anyway.
       ;;
       ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
-      (is (= [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" string?]
-              [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  string?]
-              [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    string?]]
-             (mt/rows results))))))
+      (is (=? [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" string?]
+               [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  string?]
+               [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    string?]]
+              (mt/rows results))))))

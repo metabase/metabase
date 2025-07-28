@@ -739,13 +739,12 @@
     (testing "Don't allow people to change the types of columns in the original Table"
       (testing "Should be ok if you change the type of the column to a *SUBTYPE* of the original Type"
         (do-with-sql-gtap!
-         (str "SELECT cast(ID AS bigint) AS ID, NAME "
+         (str "SELECT cast(ID AS bigint) AS ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
               "FROM VENUES "
               "WHERE ID IN ({{sandbox}})")
          (fn [{:keys [run-query]}]
-           (testing "Should throw an Exception when running the query"
-             (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
-                    (mt/rows (run-query)))))))))))
+           (is (= [[1 "Red Medicine" 1 "Red Medicine" 4 10.0646 -165.374 3]]
+                  (mt/rows (run-query))))))))))
 
 (deftest dont-cache-sandboxes-test
   (cache-test/with-mock-cache! [save-chan]
