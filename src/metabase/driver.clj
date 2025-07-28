@@ -1100,6 +1100,13 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti execute-transform!
+  "Execute a transform query and, if provided in `opts`, before-queries and/or after-queries.
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.56.0", :arglists '([driver query opts])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti table-rows-sample
   "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
   using the query result processing function `rff`.
