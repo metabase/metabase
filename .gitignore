@@ -152,3 +152,4 @@ CLAUDE.local.md
 .eslintcache
 
 /logs
+/.clojure-mcp

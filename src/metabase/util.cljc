@@ -8,10 +8,11 @@
              [me.flowthing.pp :as pp]
              [metabase.config.core :as config]
              [clojure.pprint :as pprint]
-             #_{:clj-kondo/ignore [:discouraged-namespace]}
+             ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
              [metabase.util.string :as u.str]
              [potemkin :as p]
+             [puget.printer]
              [ring.util.codec :as codec])
        :cljs-dev ([clojure.pprint :as pprint]))
    [camel-snake-kebab.internals.macros :as csk.macros]
@@ -689,6 +690,13 @@
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
 
+(def ^{:arglists '([x])} cprint-to-str
+  "Like [[pprint-to-str]], but prints to color if color printing is enabled."
+  #?(:clj (if u.format/colorize?
+            puget.printer/cprint-str
+            pprint-to-str)
+     :cljs pprint-to-str))
+
 (def ^:dynamic *profile-level*
   "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
   `profile` form or 1 for a form inside that."
@@ -1068,6 +1076,12 @@
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
        (subs s 0 (.-read result)))))
 
+;; The next two helpers exist to squelch the anti-pattern of using `System/currentTimeMillis` for computing durations.
+;; Unlike its better known sibling, `System/nanoTime` avoids a costly system call to fetch the wall clock time,
+;; instead using a relative counter which is unaffected by system clock corrections, and guaranteed to be increasing.
+;;
+;; Our linter won't force you to use these helpers, but they're convenient if you're thinking in milliseconds.
+
 #?(:clj
    (defn start-timer
      "Start and return a timer. Treat the \"timer\" as an opaque object, the implementation may change."
@@ -1079,6 +1093,14 @@
      "Return how many milliseconds have elapsed since the given timer was started."
      [timer]
      (/ (- (System/nanoTime) timer) 1e6)))
+
+#?(:clj
+   (defn since-ms-wall-clock
+     "Return how many milliseconds have elapsed since the given system millisecond time.
+     For cases where you can't use u/start-timer, e.g., external time sources or process boundaries."
+     [start-ms]
+     #_{:clj-kondo/ignore [:metabase/discourage-millis-duration]}
+     (- (System/currentTimeMillis) start-ms)))
 
 (defn group-by
   "(group-by first                  [[1 3]   [1 4]   [2 5]])   => {1 [[1 3] [1 4]], 2 [[2 5]]}
