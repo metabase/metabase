@@ -480,7 +480,7 @@ export const TableListView = ({ location, params }: Props) => {
                   fw="bold"
                   lh="var(--mantine-line-height-md)"
                 >
-                  {t`View`}
+                  {t`Layout`}
                 </Text>
 
                 <SegmentedControl
