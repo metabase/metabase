@@ -17,12 +17,14 @@
       (testing "index table is not present before create!"
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
-        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref)))))
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref))))
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))
       (testing "index table is present after create!"
         (semantic.index/create-index-table-if-not-exists! semantic.tu/db semantic.tu/mock-index {:force-reset? false})
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
         (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref)))
-        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref)))))))
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref)))
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}

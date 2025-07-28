@@ -160,7 +160,7 @@
   "Returns the default index spec for a model."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
-        table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)]
+        table-name (str "index_table_" provider "_" model-name "_" vector-dimensions)]
     {:embedding-model embedding-model
      :table-name table-name
      :version 0}))
@@ -208,15 +208,31 @@
   [connectable index]
   (jdbc/execute! connectable (drop-index-table-sql index)))
 
+;; We can't use full column names in the various index names, because otherwise we overflow postgres' max name length.
+;; NOTE If you add a new index, add it to index-embedding-name-length-test as well
+;; TODO Maybe we should also abbreviate the model / provider names in the :table-name to give some breathing room.
+(defn- index-name
+  "Returns the name for an index for the given index configuration, column, and index type."
+  [index suffix]
+  (str (:table-name index) suffix))
+
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."
   [index]
-  (str (:table-name index) "__hnsw_idx"))
+  ;; embedding => embed
+  (index-name index "_embed_hnsw_idx"))
 
 (defn fts-index-name
   "Returns the name for a full-text database index for the given semantic search index configuration."
   [index]
-  (str (:table-name index) "__gin_idx"))
+  ;; text_search_vector => tsv
+  (index-name index "_tsv_gin_idx"))
+
+(defn fts-native-index-name
+  "Returns the name for a full-text database index with native queries for the given semantic search index configuration."
+  [index]
+  ;; text_search_with_native_query_vector => tswnqv
+  (index-name index "_tswnqv_gin_idx"))
 
 (defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
@@ -250,7 +266,7 @@
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
-            [(keyword (str (fts-index-name index) "_native")) :if-not-exists]
+            [(keyword (fts-native-index-name index)) :if-not-exists]
             [(keyword table-name) :using-gin [:raw "text_search_with_native_query_vector"]])
            sql-format-quoted)))
     (catch Exception e
@@ -263,7 +279,7 @@
   (def index (default-index embedding-model))
   (drop-index-table! db index)
   (create-index-table-if-not-exists! db index)
-  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table__%'"]))
+  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table_%'"]))
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
