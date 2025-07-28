@@ -54,6 +54,7 @@
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
      [:text_search_vector :tsvector :not-null]
+     [:text_search_with_native_query_vector :tsvector :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
@@ -90,6 +91,16 @@
                           (search/weighted-tsvector "A" (:name doc))
                           (search/weighted-tsvector "B" (:searchable_text doc ""))]
                          (search/weighted-tsvector "A" (:searchable_text doc "")))
+   :text_search_with_native_query_vector
+   (if (:name doc)
+     [:||
+      (search/weighted-tsvector "A" (:name doc))
+      (search/weighted-tsvector "B"
+                                (str/join " " (remove str/blank? [(:searchable_text doc "")
+                                                                  (:native_query doc "")])))]
+     (search/weighted-tsvector "A"
+                               (str/join " " (remove str/blank? [(:searchable_text doc "")
+                                                                 (:native_query doc "")]))))
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
@@ -235,6 +246,12 @@
        (-> (sql.helpers/create-index
             [(keyword (fts-index-name index)) :if-not-exists]
             [(keyword table-name) :using-gin [:raw "text_search_vector"]])
+           sql-format-quoted))
+      (jdbc/execute!
+       connectable
+       (-> (sql.helpers/create-index
+            [(keyword (str (fts-index-name index) "_native")) :if-not-exists]
+            [(keyword table-name) :using-gin [:raw "text_search_with_native_query_vector"]])
            sql-format-quoted)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {} e)))))
@@ -276,22 +293,27 @@
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
         ts-search-expr (search/to-tsquery-expr (:search-string search-context))
-        tsv-lang (search/tsv-language)]
+        tsv-lang (search/tsv-language)
+        vector-column (if (:search-native-query search-context)
+                        :text_search_with_native_query_vector
+                        :text_search_vector)]
     {:select [[:id :id]
               [:model_id :model_id]
               [:model :model]
               [:content :content]
               [:verified :verified]
               [:metadata :metadata]
-              [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, query) DESC)"] :keyword_rank]]
+              [[:raw (format "row_number() OVER (ORDER BY ts_rank_cd(%s, query) DESC)" (name vector-column))]
+               :keyword_rank]]
      :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
      ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
      :join [[[:raw "to_tsquery('" tsv-lang "', " [:lift ts-search-expr] ")"]
              :query] [:= 1 1]]
-     :where (if (seq filters)
-              (into [:and [:raw "text_search_vector @@ query"]] [filters])
-              [:raw "text_search_vector @@ query"])
+     :where (let [ts-query-filter [:raw (format "%s @@ query" (name vector-column))]]
+              (if (seq filters)
+                (into [:and ts-query-filter] [filters])
+                ts-query-filter))
      :order-by [[:keyword_rank :asc]]
      :limit 100}))
 
