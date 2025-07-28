@@ -242,7 +242,7 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2025.04.07"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2025.07.26"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
@@ -458,7 +458,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2025.04.07"}}
+   {clj-kondo/clj-kondo {:mvn/version "2025.07.26"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}
