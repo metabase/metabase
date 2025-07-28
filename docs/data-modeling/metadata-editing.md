@@ -42,7 +42,7 @@ Metabase uses these values to populate dropdown filters. You can also [scan valu
 
 #### Discard cached field values
 
-Clears cached values and stops them from showing up in your [filter widgets](#changing-the-filter-widget).
+Clears cached values and stops them from showing up in your [filter widgets](#filtering).
 
 ### Table sorting
 
@@ -180,7 +180,7 @@ The **Filtering** setting changes a column's [filter widget](../dashboards/filte
 The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu. If you're having trouble:
 
 1. Set the [Semantic type](#semantic-type) to "Category".
-2. Set [Filtering](#filter-widget-options) to "A list of all values".
+2. Set [Filtering](#filtering) to "A list of all values".
 
 When you change a default filter to a dropdown filter, you'll trigger a database query that gets the first 1,000 distinct values (ordered ascending) for that column. Metabase will cache the first 100kB of text to display in the dropdown menu.
 
