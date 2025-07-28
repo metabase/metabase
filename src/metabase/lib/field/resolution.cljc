@@ -77,18 +77,22 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    cols                  :- [:sequential ::lib.schema.metadata/column]
    id-or-name            :- [:or :string ::lib.schema.id/field]]
-  (u/prog1 (if (string? id-or-name)
-             (column-with-name cols id-or-name)
-             (or (m/find-first #(= (:id %) id-or-name) cols)
-                 (when (pos-int? id-or-name)
-                   (when-some [field (lib.metadata/field metadata-providerable id-or-name)]
-                     (resolve-in-metadata metadata-providerable cols (:name field))))))
-    (if <>
-      (log/debugf "Found match %s"
-                  (u/cprint-to-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
-      (log/debugf "Failed to find match. Found:\n%s"
-                  (u/cprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
-                                        cols))))))
+  (letfn [(resolve* [id-or-name]
+            (if (string? id-or-name)
+              (column-with-name cols id-or-name)
+              (or (m/find-first #(= (:id %) id-or-name) cols)
+                  (do
+                    (log/debug (u/format-color :red "Failed to find match in metadata with ID %s" (u/cprint-to-str id-or-name)))
+                    (when-some [field (lib.metadata/field metadata-providerable id-or-name)]
+                      (log/debugf "Looking for match in metadata with name %s" (u/cprint-to-str (:name field)))
+                      (recur (:name field)))))))]
+    (u/prog1 (resolve* id-or-name)
+      (if <>
+        (log/debugf "Found match\n%s"
+                    (u/cprint-to-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
+        (log/debug (u/format-color :red "Failed to find match. Found:\n%s"
+                                   (u/cprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
+                                                         cols))))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -169,7 +173,7 @@
     :options                 opts-fn-options}))
 
 (mu/defn- options-metadata :- :map
-  "Part of [[resolve-field-metadata]] -- calculate metadata based on options map of the field ref itself."
+  "Part of [[resolve-field-ref]] -- calculate metadata based on options map of the field ref itself."
   [opts :- ::lib.schema.ref/field.options]
   (into {}
         (keep (fn [[k f]]
@@ -225,9 +229,7 @@
   [query          :- ::lib.schema/query
    source-card-id :- ::lib.schema.id/card
    id-or-name     :- [:or :string ::lib.schema.id/field]]
-  (log/debugf "Resolving %s in source Card %s metadata"
-              (u/cprint-to-str id-or-name)
-              (u/cprint-to-str source-card-id))
+  (log/debugf "Resolving %s in source Card %s metadata" (u/cprint-to-str id-or-name) (u/cprint-to-str source-card-id))
   (when-some [card (lib.metadata/card query source-card-id)]
     ;; card returned columns should be the same regardless of which stage number we pass in, so always use zero so we
     ;; can hit the cache more often
@@ -256,7 +258,7 @@
             nil))))))
 
 (defn- fallback-metadata [id-or-name]
-  (log/debug "Returning fallback metadata")
+  (log/debug (u/colorize :red "Returning fallback metadata"))
   (merge
    {:lib/type   :metadata/column
     ;; guess that the column came from the previous stage
@@ -296,7 +298,7 @@
        (resolve-in-previous-stage query (lib.util/previous-stage-number query stage-number) id-or-name))
      ;; try finding a match in joins (field ref is missing `:join-alias`)
      (do
-       (log/infof "Failed to resolve %s in stage %s" (u/cprint-to-str id-or-name) (u/cprint-to-str stage-number))
+       (log/info (u/format-color :red "Failed to resolve %s in stage %s" (u/cprint-to-str id-or-name) (u/cprint-to-str stage-number)))
        (or (when (string? id-or-name)
              (let [parts (str/split id-or-name #"__")]
                (when (>= (count parts) 2)
