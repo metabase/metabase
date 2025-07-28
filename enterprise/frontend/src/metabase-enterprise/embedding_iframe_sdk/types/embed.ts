@@ -79,6 +79,8 @@ export interface ExplorationEmbedOptions {
   drills?: never;
   dashboardId?: never;
   initialSqlParameters?: never;
+  withTitle?: never;
+  withDownloads?: never;
 }
 
 export interface CurateContentEmbedOptions {
@@ -87,6 +89,8 @@ export interface CurateContentEmbedOptions {
 
   entityTypes?: CollectionBrowserEntityTypes[];
 
+  withTitle?: never;
+  withDownloads?: never;
   questionId?: never;
   dashboardId?: never;
 }
@@ -97,6 +101,8 @@ export interface ViewContentEmbedOptions {
 
   entityTypes?: CollectionBrowserEntityTypes[];
 
+  withTitle?: never;
+  withDownloads?: never;
   questionId?: never;
   dashboardId?: never;
 }
