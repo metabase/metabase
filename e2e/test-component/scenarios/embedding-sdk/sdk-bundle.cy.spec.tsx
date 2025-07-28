@@ -201,8 +201,10 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         );
       });
 
-      cy.findByText("loading").should("exist");
-      cy.findByText("success").should("exist");
+      getSdkRoot().within(() => {
+        cy.findByText("loading").should("exist");
+        cy.findByText("success").should("exist");
+      });
     });
 
     it("should call SDK hooks properly when called outside of MetabaseProvider", () => {
@@ -222,8 +224,10 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         );
       });
 
-      cy.findByText("loading").should("exist");
-      cy.findByText("success").should("exist");
+      cy.get("body").within(() => {
+        cy.findByText("loading").should("exist");
+        cy.findByText("success").should("exist");
+      });
     });
   });
 
