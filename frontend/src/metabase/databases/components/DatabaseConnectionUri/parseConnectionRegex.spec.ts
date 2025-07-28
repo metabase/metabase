@@ -274,3 +274,37 @@ describe("parseConnectionUriRegex - Snowflake", () => {
     );
   });
 });
+
+describe("parseConnectionUriRegex - Spark SQL", () => {
+  it("should parse a Spark SQL connection string", () => {
+    const connectionString = "jdbc:sparksql:Server=127.0.0.1;";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          Server: "127.0.0.1",
+        },
+        protocol: "sparksql",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+
+  it("should parse a Spark SQL connection string using hive2 protocol", () => {
+    const connectionString =
+      "jdbc:hive2://127.0.0.1:1234/dbname;transportMode=http;";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          transportMode: "http",
+        },
+        database: "dbname",
+        host: "127.0.0.1",
+        port: "1234",
+        protocol: "hive2",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+});
