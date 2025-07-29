@@ -32,7 +32,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui/components";
 import { ActionIcon, Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
-import { isDate, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,
@@ -253,11 +253,17 @@ export function TableDetailViewInner({
     }
   };
 
+  const nameIndex = columns.findIndex(isEntityName);
+  // const nameColumn = columns[nameIndex];
+  const rowName = nameIndex == null ? null : row[nameIndex];
+
   return (
     <Group align="flex-start" gap={0} wrap="nowrap" h="100%">
       <Box m="auto" mt={isListView ? 0 : "md"} w="70%">
         {!isListView && (
           <DetailViewHeader
+            rowId={rowId}
+            rowName={rowName}
             table={table}
             isEdit={isEdit}
             canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}

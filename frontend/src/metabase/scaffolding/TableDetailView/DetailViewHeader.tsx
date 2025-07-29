@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -6,8 +7,12 @@ import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import type { Table } from "metabase-types/api";
 
+import { Nav } from "../components/Nav";
+
 interface DetailViewHeaderProps {
   table: Table;
+  rowId?: string | number;
+  rowName?: ReactNode;
   isEdit: boolean;
   canOpenPreviousItem: boolean;
   canOpenNextItem: boolean;
@@ -20,6 +25,8 @@ interface DetailViewHeaderProps {
 
 export function DetailViewHeader({
   table,
+  rowId,
+  rowName,
   isEdit,
   canOpenPreviousItem,
   canOpenNextItem,
@@ -30,13 +37,14 @@ export function DetailViewHeader({
   onSaveClick,
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
   return (
-    <Flex align="center" justify="space-between">
+    <Nav rowId={rowId} rowName={rowName} table={table}>
       <Group gap="sm">
         <Icon name="table" size={24} c="brand" />
         <Text component={Link} to={`/table/${table.id}`} size="lg" fw={600}>
           {table.display_name}
         </Text>
       </Group>
+
       <Flex align="center" gap="sm">
         {(canOpenPreviousItem || canOpenNextItem) && (
           <>
@@ -77,6 +85,6 @@ export function DetailViewHeader({
           />
         )}
       </Flex>
-    </Flex>
+    </Nav>
   );
 }
