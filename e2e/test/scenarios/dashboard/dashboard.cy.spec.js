@@ -1303,6 +1303,7 @@ describe("scenarios > dashboard", () => {
         cy.findByLabelText("Name").type("Test");
         cy.findByRole("button", { name: "Create" }).click();
       });
+      cy.findByText("Loading...").should("not.exist");
     }
 
     function dragOnXAxis(el, distance) {
