@@ -17,15 +17,15 @@ import type { DashboardCard, Dataset } from "metabase-types/api";
 
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 
-type DashCardQuestionDownloadButtonProps = {
+type PublicOrEmbeddedDashCardMenuProps = {
   result: Dataset;
   dashcard: DashboardCard;
 };
 
-export const DashCardQuestionDownloadButton = ({
+export const PublicOrEmbeddedDashCardMenu = ({
   result,
   dashcard,
-}: DashCardQuestionDownloadButtonProps) => {
+}: PublicOrEmbeddedDashCardMenuProps) => {
   const store = useStore();
   const token = getDashcardTokenId(dashcard);
   const uuid = getDashcardUuid(dashcard);
@@ -64,7 +64,7 @@ export const DashCardQuestionDownloadButton = ({
             [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
           })}
           onClick={toggle}
-          data-testid="dashcard-menu"
+          data-testid="public-or-embeddeddashcard-menu"
         >
           <Icon name="ellipsis" />
         </ActionIcon>
