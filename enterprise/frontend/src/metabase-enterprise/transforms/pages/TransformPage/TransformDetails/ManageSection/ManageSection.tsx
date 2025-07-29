@@ -85,14 +85,14 @@ function getConfirmationMessage(target: TransformTarget) {
       "view",
       () =>
         jt`This will delete the transform and its generated view, ${(
-          <strong key="name">${target.name}</strong>
+          <strong key="name">{target.name}</strong>
         )}. Any queries that used this view won’t work any more. This can’t be undone, so please be careful.`,
     )
     .with(
       "table",
       () =>
         jt`This will delete the transform and its generated table, ${(
-          <strong key="name">${target.name}</strong>
+          <strong key="name">{target.name}</strong>
         )}. Any queries that used this view won’t work any more. This can’t be undone, so please be careful.`,
     )
     .exhaustive();

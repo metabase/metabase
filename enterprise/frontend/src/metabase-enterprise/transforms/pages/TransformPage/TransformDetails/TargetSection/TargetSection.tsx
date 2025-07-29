@@ -58,6 +58,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleUpdateTarget = (newTarget: TransformTarget) => {
+    close();
     askConfirmation({
       title: getConfirmationTitle(target),
       message: getConfirmationMessage(target),
@@ -105,14 +106,14 @@ function getConfirmationMessage(target: TransformTarget) {
       "view",
       () =>
         jt`This will delete the view, ${(
-          <strong key="name">${target.name}</strong>
+          <strong key="name">{target.name}</strong>
         )}. Any queries that used this view won’t work any more. This can’t be undone, so please be careful.`,
     )
     .with(
       "table",
       () =>
         jt`This will delete the table, ${(
-          <strong key="name">${target.name}</strong>
+          <strong key="name">{target.name}</strong>
         )}. Any queries that used this view won’t work any more. This can’t be undone, so please be careful.`,
     )
     .exhaustive();

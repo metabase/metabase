@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Card, Group, Stack, Text, Title } from "metabase/ui";
+import { Card, Flex, Text, Title } from "metabase/ui";
 
 type CardSectionProps = {
   label: string;
@@ -14,14 +14,14 @@ export function CardSection({
   children,
 }: CardSectionProps) {
   return (
-    <Group align="start" gap="5rem">
-      <Stack py="sm" maw="15rem">
+    <Flex align="start" gap="5rem">
+      <Flex direction="column" flex="0 1 100%" py="sm" gap="md" maw="15rem">
         <Title order={4} c="text-primary">
           {label}
         </Title>
         <Text c="text-secondary">{description}</Text>
-      </Stack>
-      <Card flex={1}>{children}</Card>
-    </Group>
+      </Flex>
+      <Card flex="1 1 100%">{children}</Card>
+    </Flex>
   );
 }
