@@ -275,7 +275,7 @@
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
 
 (defn- run-retry-have-select-privilege!
-  [probe-errors query-canceled]
+  [probe-errors query-canceled probe-error-fn]
   (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
     (sql-jdbc.execute/do-with-connection-with-options
      driver/*driver* (mt/db) nil
@@ -285,8 +285,7 @@
                        (fn [_driver conn' [sql]]
                          (let [n (swap! select-probes inc)]
                            (when (< n probe-errors)
-                             (.close conn')
-                             (.prepareStatement conn' sql))))
+                             (probe-error-fn conn sql))))
                        driver/query-canceled? (constantly query-canceled)]
            [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
             @select-probes]))))))
@@ -297,15 +296,23 @@
                      :+fns [#(identical? (get-method sql-jdbc.sync/have-select-privilege? :sql-jdbc)
                                          (get-method sql-jdbc.sync/have-select-privilege? %))]
                      :-features [:table-privileges]})
-    (testing "we will retry syncing a table once if there is an exception on the first attempt"
-      (let [[result probes] (run-retry-have-select-privilege! 2 false)]
-        (is (true? result))
-        (is (= 2 probes))))
-    (testing "we won't retry syncing a table more than once if there is more than one exception"
-      (let [[result probes] (run-retry-have-select-privilege! 3 false)]
-        (is (false? result))
-        (is (= 2 probes))))
-    (testing "we won't retry syncing a table if the probe query was canceled"
-      (let [[result probes] (run-retry-have-select-privilege! 3 true)]
-        (is (true? result))
-        (is (= 1 probes))))))
+    (letfn [(probe-error-fn [conn sql]
+              (.close conn)
+              (.prepareStatement conn sql))]
+      (testing "we will retry syncing a table once if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 2 false probe-error-fn)]
+          (is (true? result))
+          (is (= 2 probes))))
+      (testing "we will only retry syncing a table if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 2 false (fn [conn sql]
+                                                                          (throw (ex-info "not connection closed error" {}))))]
+          (is (false? result))
+          (is (= 1 probes))))
+      (testing "we won't retry syncing a table more than once if the connection is closed"
+        (let [[result probes] (run-retry-have-select-privilege! 3 false probe-error-fn)]
+          (is (false? result))
+          (is (= 2 probes))))
+      (testing "we won't retry syncing a table if the probe query was canceled"
+        (let [[result probes] (run-retry-have-select-privilege! 3 true probe-error-fn)]
+          (is (true? result))
+          (is (= 1 probes)))))))

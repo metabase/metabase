@@ -109,7 +109,7 @@
               ;; Snowflake closes the connection but doesn't set it as  closed in the object,
               ;; so we must explicitely check if it's valid so that subsequent calls to [[sql-jdbc.execute/try-ensure-open-conn!]]
               ;; will obtain a new connection
-              _is-open (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
+              is-open (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
 
               allow? (driver/query-canceled? driver e)]
 
@@ -122,7 +122,7 @@
           (try (when-not (.getAutoCommit conn)
                  (.rollback conn))
                (catch Throwable _))
-          (if (and (not allow?) (not retry?))
+          (if (and (not allow?) (not retry?) (not is-open))
             (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name :retry? true)
             allow?))))))
 

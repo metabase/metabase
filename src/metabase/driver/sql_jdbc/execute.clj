@@ -362,20 +362,20 @@
    db-or-id-or-spec
    ^Connection conn                                       :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
-  (when-let [db (cond
-                  ;; id?
-                  (integer? db-or-id-or-spec)
-                  (driver-api/with-metadata-provider db-or-id-or-spec
-                    (driver-api/database (driver-api/metadata-provider)))
-                  ;; db?
-                  (u/id db-or-id-or-spec)     db-or-id-or-spec
-                  ;; otherwise it's a spec and we can't get the db
-                  :else nil)]
-    (set-role-if-supported! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
+    (when-let [db (cond
+                    ;; id?
+                    (integer? db-or-id-or-spec)
+                    (driver-api/with-metadata-provider db-or-id-or-spec
+                      (driver-api/database (driver-api/metadata-provider)))
+                    ;; db?
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec
+                    ;; otherwise it's a spec and we can't get the db
+                    :else nil)]
+      (set-role-if-supported! driver conn db))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
