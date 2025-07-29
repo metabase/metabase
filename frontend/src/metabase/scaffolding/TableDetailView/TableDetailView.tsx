@@ -32,7 +32,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui/components";
 import { ActionIcon, Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,
@@ -463,8 +463,14 @@ function ObjectViewSection({
               >
                 {column.display_name}
               </Text>
-              <Text {...getStyleProps(style)} lineClamp={5}>
-                {formatValue(value)}
+              <Text
+                {...getStyleProps(style)}
+                lineClamp={5}
+                style={{
+                  ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
+                }}
+              >
+                {formatValue(value, { column })}
               </Text>
             </Box>
           );
