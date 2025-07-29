@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
@@ -9,19 +10,23 @@ import type { Table } from "metabase-types/api";
 interface Props {
   className?: string;
   table: Table;
+  onUpdate: () => void;
 }
 
-export function TableVisibilityToggle({ className, table }: Props) {
+export function TableVisibilityToggle({ className, table, onUpdate }: Props) {
   const [updateTable, { isLoading }] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const isHidden = table.visibility_type != null;
+  const onUpdateRef = useLatest(onUpdate);
 
   const hide = async () => {
     const { error } = await updateTable({
       id: table.id,
       visibility_type: "hidden",
     });
+
+    onUpdateRef.current();
 
     if (error) {
       sendErrorToast(t`Failed to hide ${table.display_name}`);
@@ -31,6 +36,8 @@ export function TableVisibilityToggle({ className, table }: Props) {
           id: table.id,
           visibility_type: null,
         });
+
+        onUpdateRef.current();
         sendUndoToast(error);
       });
     }
@@ -42,6 +49,8 @@ export function TableVisibilityToggle({ className, table }: Props) {
       visibility_type: null,
     });
 
+    onUpdateRef.current();
+
     if (error) {
       sendErrorToast(t`Failed to unhide ${table.display_name}`);
     } else {
@@ -50,6 +59,8 @@ export function TableVisibilityToggle({ className, table }: Props) {
           id: table.id,
           visibility_type: "hidden",
         });
+
+        onUpdateRef.current();
         sendUndoToast(error);
       });
     }
@@ -57,6 +68,7 @@ export function TableVisibilityToggle({ className, table }: Props) {
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    event.preventDefault();
 
     if (isHidden) {
       unhide();
@@ -68,7 +80,7 @@ export function TableVisibilityToggle({ className, table }: Props) {
   if (isLoading) {
     return (
       <ActionIcon disabled variant="transparent">
-        <Loader size="xs" data-testid="loading-indicator" />
+        <Loader data-testid="loading-indicator" size="xs" />
       </ActionIcon>
     );
   }
@@ -77,6 +89,7 @@ export function TableVisibilityToggle({ className, table }: Props) {
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
         aria-label={isHidden ? t`Unhide table` : t`Hide table`}
+        c={table.visibility_type != null ? "text-secondary" : undefined}
         className={className}
         disabled={isLoading}
         variant="transparent"

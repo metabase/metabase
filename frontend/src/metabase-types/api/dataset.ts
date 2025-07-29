@@ -69,8 +69,6 @@ export interface DatasetColumn {
   binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
-  ident?: string;
-  "model/inner_ident"?: string;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
@@ -201,11 +199,8 @@ export interface TemplateTag {
   name: TemplateTagName;
   "display-name": string;
   type: TemplateTagType;
-  dimension?: LocalFieldReference;
-  "widget-type"?: string;
   required?: boolean;
   default?: string | null;
-  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;
@@ -213,6 +208,14 @@ export interface TemplateTag {
   // Snippet specific
   "snippet-id"?: number;
   "snippet-name"?: string;
+
+  // Field filter and time grouping specific
+  dimension?: LocalFieldReference;
+  alias?: string;
+
+  // Field filter specific
+  "widget-type"?: string;
+  options?: ParameterOptions;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

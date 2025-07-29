@@ -29,7 +29,8 @@
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
    [:sso_source       [:enum :saml :jwt]]
-   [:login_attributes [:maybe :map]]])
+   [:login_attributes [:maybe :map]]
+   [:jwt_attributes   {:optional true} [:maybe :map]]])
 
 (defn- maybe-throw-user-provisioning
   [user-provisioning-type]
@@ -125,7 +126,12 @@
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
-(defn is-embedding-sdk-header?
+(defn is-react-sdk-header?
   "Check if the client has indicated it is from the react embedding sdk"
   [request]
   (= (get-in request [:headers "x-metabase-client"]) "embedding-sdk-react"))
+
+(defn is-simple-embed-header?
+  "Check if the client has indicated it is from simple embedding"
+  [request]
+  (= (get-in request [:headers "x-metabase-client"]) "embedding-simple"))

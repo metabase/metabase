@@ -6,9 +6,9 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Group, Stack, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type { DatabaseId, Field, Table } from "metabase-types/api";
 
 import { ResponsiveButton } from "../ResponsiveButton";
 
@@ -19,12 +19,10 @@ import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 import { useResponsiveButtons } from "./hooks";
 
-const OUTLINE_SAFETY_MARGIN = 2;
-
 interface Props {
   databaseId: DatabaseId;
   field: Field;
-  isPreviewOpen: boolean;
+  table: Table;
   parent?: Field;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
@@ -33,8 +31,8 @@ interface Props {
 const FieldSectionBase = ({
   databaseId,
   field,
-  isPreviewOpen,
   parent,
+  table,
   onFieldValuesClick,
   onPreviewClick,
 }: Props) => {
@@ -47,7 +45,7 @@ const FieldSectionBase = ({
     showButtonLabel,
     setFieldValuesButtonWidth,
     setPreviewButtonWidth,
-  } = useResponsiveButtons({ isPreviewOpen });
+  } = useResponsiveButtons();
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateField({ id, display_name: name });
@@ -90,10 +88,11 @@ const FieldSectionBase = ({
 
   return (
     <Stack data-testid="field-section" gap={0} pb="xl">
-      <Box
+      <Stack
         bg="accent-gray-light"
         className={S.header}
-        pb="lg"
+        gap="lg"
+        pb={12}
         pos="sticky"
         pt="xl"
         px="xl"
@@ -110,9 +109,7 @@ const FieldSectionBase = ({
           onDescriptionChange={handleDescriptionChange}
           onNameChange={handleNameChange}
         />
-      </Box>
 
-      <Stack gap={12} mb={12} pt={OUTLINE_SAFETY_MARGIN} px="xl">
         <Group
           align="center"
           gap="md"
@@ -130,16 +127,14 @@ const FieldSectionBase = ({
             ref={buttonsContainerRef}
             wrap="nowrap"
           >
-            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+            {/* keep this in sync with getRequiredWidth in useResponsiveButtons */}
 
-            {!isPreviewOpen && (
-              <ResponsiveButton
-                icon="eye"
-                showLabel={showButtonLabel}
-                onClick={onPreviewClick}
-                onRequestWidth={setPreviewButtonWidth}
-              >{t`Preview`}</ResponsiveButton>
-            )}
+            <ResponsiveButton
+              icon="eye"
+              showLabel={showButtonLabel}
+              onClick={onPreviewClick}
+              onRequestWidth={setPreviewButtonWidth}
+            >{t`Preview`}</ResponsiveButton>
 
             <ResponsiveButton
               icon="gear_settings_filled"
@@ -153,7 +148,7 @@ const FieldSectionBase = ({
 
       <Stack gap="xl" px="xl">
         <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} />
+        <MetadataSection databaseId={databaseId} field={field} table={table} />
         <BehaviorSection databaseId={databaseId} field={field} />
         <FormattingSection field={field} />
       </Stack>

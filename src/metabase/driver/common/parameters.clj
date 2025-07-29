@@ -16,7 +16,7 @@
 ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
 ;;
 ;; *  A vector of maps like the one above (for multiple values)
-(p.types/defrecord+ FieldFilter [field value]
+(p.types/defrecord+ FieldFilter [field value alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->FieldFilter) (into {} this))))
@@ -26,7 +26,7 @@
   [x]
   (instance? FieldFilter x))
 
-(p.types/defrecord+ TemporalUnit [field value]
+(p.types/defrecord+ TemporalUnit [field value alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->TemporalUnit) (into {} this))))
