@@ -349,6 +349,7 @@ export function TableDetailViewInner({
               onCreateSection={createSection}
               onUpdateSection={updateSection}
               onRemoveSection={removeSection}
+              onDragEnd={handleDragEnd}
             />
           </Box>
         )}

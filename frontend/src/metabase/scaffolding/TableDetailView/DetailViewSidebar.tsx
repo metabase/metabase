@@ -4,6 +4,7 @@ import {
   type DragOverEvent,
   DragOverlay,
   type DragStartEvent,
+  KeyboardSensor,
   PointerSensor,
   type UniqueIdentifier,
   closestCenter,
@@ -14,6 +15,7 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -22,7 +24,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CollapseSection from "metabase/common/components/CollapseSection";
 import EditableText from "metabase/common/components/EditableText";
 import {
   ActionIcon,
@@ -49,30 +50,36 @@ import S from "./TableDetailView.module.css";
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
-  onCreateSection?: () => void;
+  onCreateSection: () => void;
   onUpdateSection: (
     id: number,
-    section: Partial<ObjectViewSectionSettings>,
+    update: Partial<ObjectViewSectionSettings>,
   ) => void;
-  onRemoveSection?: (id: number) => void;
+  onRemoveSection: (id: number) => void;
+  onDragEnd: (event: any) => void;
 }
 
 const HIDDEN_COLUMNS_ID = "hidden-columns";
 
-export function DetailViewSidebar({
-  sections,
+function DetailViewSidebar({
   columns,
+  sections,
   onCreateSection,
   onUpdateSection,
   onRemoveSection,
+  onDragEnd,
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [isDraggingSection, setIsDraggingSection] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
       },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
 
@@ -97,6 +104,11 @@ export function DetailViewSidebar({
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id);
+    // Check if we're dragging a section (sections have larger IDs that are timestamps)
+    const isSection = sections.some(
+      (section) => section.id === event.active.id,
+    );
+    setIsDraggingSection(isSection);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -193,6 +205,15 @@ export function DetailViewSidebar({
       return;
     }
 
+    // Check if we're dragging a section (sections have larger IDs that are timestamps)
+    const isSection = sections.some((section) => section.id === active.id);
+    if (isSection) {
+      onDragEnd(event);
+      setActiveId(null);
+      setIsDraggingSection(false);
+      return;
+    }
+
     const activeFieldId = active.id as number;
     const overFieldId = over.id as number;
 
@@ -225,6 +246,7 @@ export function DetailViewSidebar({
     }
 
     setActiveId(null);
+    setIsDraggingSection(false);
   };
 
   const handleUnhideField = (fieldId: number) => {
@@ -250,17 +272,21 @@ export function DetailViewSidebar({
       onDragEnd={handleDragEnd}
     >
       <Box>
-        {sections.map((section) => (
-          <SectionSettings
-            key={section.id}
-            columns={visibleColumns}
-            section={section}
-            onUpdateSection={(update) => onUpdateSection(section.id, update)}
-            onRemoveSection={
-              onRemoveSection ? () => onRemoveSection(section.id) : undefined
-            }
-          />
-        ))}
+        <SortableContext
+          items={sections.map((section) => section.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {sections.map((section) => (
+            <SortableSectionSettings
+              key={section.id}
+              columns={visibleColumns}
+              section={section}
+              onUpdateSection={(update) => onUpdateSection(section.id, update)}
+              onRemoveSection={() => onRemoveSection(section.id)}
+              isDraggingSection={isDraggingSection}
+            />
+          ))}
+        </SortableContext>
 
         {onCreateSection && (
           <Button
@@ -280,43 +306,40 @@ export function DetailViewSidebar({
             items={hiddenColumns.map((column) => column.id as number)}
             strategy={verticalListSortingStrategy}
           >
-            <CollapseSection
-              header={<Text fw={600}>{t`Hidden columns`}</Text>}
-              initialState="expanded"
+            <Text fw={600}>{t`Hidden columns`}</Text>
+            <Box
+              mt="sm"
+              style={{
+                minHeight: hiddenColumns.length === 0 ? 40 : undefined,
+                border:
+                  hiddenColumns.length === 0
+                    ? "1px dashed var(--mb-color-border)"
+                    : undefined,
+                borderRadius: 4,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Box
-                style={{
-                  minHeight: hiddenColumns.length === 0 ? 40 : undefined,
-                  border:
-                    hiddenColumns.length === 0
-                      ? "1px dashed var(--mb-color-border)"
-                      : undefined,
-                  borderRadius: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {hiddenColumns.length === 0 ? (
-                  <EmptyDropZone
-                    sectionId={HIDDEN_COLUMNS_ID}
-                    message={t`Drop columns here to hide them`}
-                  />
-                ) : (
-                  <ul style={{ width: "100%" }}>
-                    {hiddenColumns.map((column) => (
-                      <ColumnListItem
-                        key={column.id}
-                        column={column}
-                        onUnhideField={() =>
-                          handleUnhideField(column.id as number)
-                        }
-                      />
-                    ))}
-                  </ul>
-                )}
-              </Box>
-            </CollapseSection>
+              {hiddenColumns.length === 0 ? (
+                <EmptyDropZone
+                  sectionId={HIDDEN_COLUMNS_ID}
+                  message={t`Drop columns here to hide them`}
+                />
+              ) : (
+                <ul style={{ width: "100%" }}>
+                  {hiddenColumns.map((column) => (
+                    <ColumnListItem
+                      key={column.id}
+                      column={column}
+                      onUnhideField={() =>
+                        handleUnhideField(column.id as number)
+                      }
+                    />
+                  ))}
+                </ul>
+              )}
+            </Box>
           </SortableContext>
         </Box>
       </Box>
@@ -346,18 +369,53 @@ export function DetailViewSidebar({
   );
 }
 
+export { DetailViewSidebar };
+
 type SectionSettingsProps = {
-  columns: DatasetColumn[];
   section: ObjectViewSectionSettings;
+  columns: DatasetColumn[];
   onUpdateSection: (update: Partial<ObjectViewSectionSettings>) => void;
-  onRemoveSection?: () => void;
+  onRemoveSection: () => void;
+  dragHandleProps?: any;
+  isDraggingSection?: boolean;
 };
 
+function SortableSectionSettings(
+  props: Omit<SectionSettingsProps, "dragHandleProps">,
+) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.section.id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <SectionSettings
+        {...props}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        isDraggingSection={props.isDraggingSection}
+      />
+    </div>
+  );
+}
+
 function SectionSettings({
-  columns,
   section,
+  columns,
   onUpdateSection,
   onRemoveSection,
+  dragHandleProps,
+  isDraggingSection = false,
 }: SectionSettingsProps) {
   const columnIds = useMemo(
     () => section.fields.map((field) => field.field_id),
@@ -386,96 +444,89 @@ function SectionSettings({
 
   return (
     <Box mt="sm" className={S.ObjectViewSidebarSection}>
-      <CollapseSection
-        header={
-          <Flex align="center" justify="space-between" w="100%">
-            <div onClick={(e) => e.stopPropagation()}>
-              <EditableText
-                initialValue={section.title}
-                onChange={(title) => onUpdateSection({ title })}
-                style={{
-                  display: "block",
-                  fontWeight: "bold",
-                }}
-              />
-            </div>
-            <Group gap="xs" className={S.ObjectViewSidebarSectionActions}>
-              <Button
-                variant="inverse"
-                size="compact-sm"
-                onClick={(event) => {
-                  // do not collapse section on click
-                  event.stopPropagation();
-
-                  onUpdateSection({
-                    direction:
-                      section.direction === "vertical"
-                        ? "horizontal"
-                        : "vertical",
-                  });
-                }}
-                style={{
-                  aspectRatio: 1,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {section.direction === "vertical" ? "↓" : "→"}
-              </Button>
-              {onRemoveSection && (
-                <Button
-                  variant="inverse"
-                  leftSection={
-                    <Icon
-                      name="close"
-                      style={{ color: "var(--mb-color-text-medium)" }}
-                    />
-                  }
-                  size="compact-sm"
-                  onClick={onRemoveSection}
-                />
-              )}
-            </Group>
-          </Flex>
-        }
-        initialState="expanded"
-      >
-        {columnIds.length === 0 ? (
-          <EmptyDropZone sectionId={String(section.id)} />
-        ) : (
-          <SortableContext
-            id={String(section.id)}
-            items={columnIds}
-            strategy={verticalListSortingStrategy}
+      <Flex align="center" justify="space-between" w="100%">
+        <Group gap="xs">
+          <Icon
+            name="grabber"
+            style={{ cursor: "grab" }}
+            {...dragHandleProps}
+          />
+          <EditableText
+            initialValue={section.title}
+            onChange={(title) => onUpdateSection({ title })}
+            style={{
+              display: "block",
+              fontWeight: "bold",
+            }}
+          />
+        </Group>
+        <Group gap="xs" className={S.ObjectViewSidebarSectionActions}>
+          <Button
+            variant="inverse"
+            size="compact-sm"
+            onClick={() => {
+              onUpdateSection({
+                direction:
+                  section.direction === "vertical" ? "horizontal" : "vertical",
+              });
+            }}
+            style={{
+              aspectRatio: 1,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <Box mt="sm">
-              <ul style={{ width: "100%" }}>
-                {section.fields.map((fieldSettings) => {
-                  const column = columns.find(
-                    (column) => column.id === fieldSettings.field_id,
-                  );
-                  if (!column) {
-                    return null;
-                  }
-                  return (
-                    <ColumnListItem
-                      key={fieldSettings.field_id}
-                      column={column}
-                      style={fieldSettings.style}
-                      onChangeFieldSettings={(update) =>
-                        handleUpdateField(fieldSettings.field_id, update)
-                      }
-                      onHideField={() =>
-                        handleHideField(fieldSettings.field_id)
-                      }
-                    />
-                  );
-                })}
-              </ul>
-            </Box>
-          </SortableContext>
-        )}
-      </CollapseSection>
+            {section.direction === "vertical" ? "↓" : "→"}
+          </Button>
+          {onRemoveSection && (
+            <Button
+              variant="inverse"
+              leftSection={
+                <Icon
+                  name="close"
+                  style={{ color: "var(--mb-color-text-medium)" }}
+                />
+              }
+              size="compact-sm"
+              onClick={onRemoveSection}
+            />
+          )}
+        </Group>
+      </Flex>
+      {columnIds.length === 0 ? (
+        <EmptyDropZone sectionId={String(section.id)} />
+      ) : (
+        <SortableContext
+          id={String(section.id)}
+          items={columnIds}
+          strategy={verticalListSortingStrategy}
+          disabled={isDraggingSection}
+        >
+          <Box mt="sm">
+            <ul style={{ width: "100%" }}>
+              {section.fields.map((fieldSettings) => {
+                const column = columns.find(
+                  (column) => column.id === fieldSettings.field_id,
+                );
+                if (!column) {
+                  return null;
+                }
+                return (
+                  <ColumnListItem
+                    key={fieldSettings.field_id}
+                    column={column}
+                    style={fieldSettings.style}
+                    onChangeFieldSettings={(update) =>
+                      handleUpdateField(fieldSettings.field_id, update)
+                    }
+                    onHideField={() => handleHideField(fieldSettings.field_id)}
+                  />
+                );
+              })}
+            </ul>
+          </Box>
+        </SortableContext>
+      )}
     </Box>
   );
 }
