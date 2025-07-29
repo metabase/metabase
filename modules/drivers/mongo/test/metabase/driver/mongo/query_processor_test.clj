@@ -629,24 +629,25 @@
                                 [:asc &c.checkins.id]]
                      :limit    3})]
         (testing "qp.compile"
-          (is (= [{"$lookup"
-                   {:as "join_alias_c"
-                    :from "checkins"
-                    :let {"let__id___1" "$_id",
-                          "let_name___2" "$name"}
-                    :pipeline
-                    [{"$match"
-                      {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
-                               {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
-                  {"$unwind" {:path "$join_alias_c"
-                              :preserveNullAndEmptyArrays true}}
-                  {"$sort" {"_id" 1
-                            "join_alias_c._id" 1}}
-                  {"$project" {"_id" "$_id"
-                               "c__date" "$join_alias_c.date"
-                               "name" "$name"}}
-                  {"$limit" 3}]
-                 (:query (qp.compile/compile query)))))
+          (is (=? [{"$lookup"
+                    {:as "join_alias_c"
+                     :from "checkins"
+                     :let {"let__id___1" "$_id",
+                           "let_name___2" "$name"}
+                     :pipeline
+                     [{"$project" {}}
+                      {"$match"
+                       {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
+                                {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
+                   {"$unwind" {:path "$join_alias_c"
+                               :preserveNullAndEmptyArrays true}}
+                   {"$sort" {"_id" 1
+                             "join_alias_c._id" 1}}
+                   {"$project" {"_id" "$_id"
+                                "c__date" "$join_alias_c.date"
+                                "name" "$name"}}
+                   {"$limit" 3}]
+                  (:query (qp.compile/compile query)))))
         (testing "qp.process-query"
           (is (= [[1 "Plato Yeshua" nil]
                   [2 "Felipinho Asklepios" "2013-11-19T00:00:00Z"]
