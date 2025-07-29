@@ -89,20 +89,6 @@
      (mr/with-key (complement str/blank?))]]
    (deferred-tru "value must be a non-blank string.")))
 
-(def sk (mu/with-api-error-message
-         ;; this is directly copied from [[:metabase.lib.schema.common/non-blank-string]] -- unfortunately using it here would
-         ;; mean we need a dependency of `util` on `lib` -- not worth it to save ~6 duplicate LoC. At some point in the future
-         ;; maybe we can get everyone to use one or the other or better yet make more specific schemas that describe their
-         ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
-         [:and
-          {:error/message "non-blank string"
-           :json-schema   {:type "string" :minLength 1}}
-          [:string {:min 1}]
-          [:fn
-           {:error/message "non-blank string"}
-           (mr/with-key (complement str/blank?))]]
-         (deferred-tru "value must be a non-blank string.")))
-
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
   (let [message (deferred-tru "value must be an integer greater or equal to than zero.")]
