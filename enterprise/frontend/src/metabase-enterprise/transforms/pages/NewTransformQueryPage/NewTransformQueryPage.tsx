@@ -7,7 +7,7 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { NewTransformModal } from "metabase-enterprise/transforms/components/NewTransformModal";
 import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
-import { transformListUrl } from "metabase-enterprise/transforms/utils/urls";
+import { getTransformListUrl } from "metabase-enterprise/transforms/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery } from "metabase-types/api";
 
@@ -55,7 +55,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   };
 
   const handleCancelClick = () => {
-    dispatch(push(transformListUrl()));
+    dispatch(push(getTransformListUrl()));
   };
 
   const handleCloseClick = () => {

@@ -5,7 +5,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
-import { transformUrl } from "metabase-enterprise/transforms/utils/urls";
+import { getTransformUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { DatasetQuery, Transform } from "metabase-types/api";
 
 type TransformQuerySettingsProps = {
@@ -32,12 +32,12 @@ export function TransformQuerySettings({
       sendErrorToast(t`Failed to update transform query`);
     } else {
       sendSuccessToast(t`Transform query updated`);
-      dispatch(push(transformUrl(transform.id)));
+      dispatch(push(getTransformUrl(transform.id)));
     }
   };
 
   const handleCancel = () => {
-    dispatch(push(transformUrl(transform.id)));
+    dispatch(push(getTransformUrl(transform.id)));
   };
 
   return (

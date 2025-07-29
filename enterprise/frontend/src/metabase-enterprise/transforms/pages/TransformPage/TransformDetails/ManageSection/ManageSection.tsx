@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Button, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
-import { transformQueryUrl } from "metabase-enterprise/transforms/utils/urls";
+import { getTransformQueryUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform } from "metabase-types/api";
 
 export type ManageSectionProps = {
@@ -20,7 +20,7 @@ export function ManageSection({ transform }: ManageSectionProps) {
         <Button leftSection={<Icon name="play" />}>{t`Run now`}</Button>
         <Button
           component={Link}
-          to={transformQueryUrl(transform.id)}
+          to={getTransformQueryUrl(transform.id)}
           leftSection={<Icon name="pencil_lines" />}
         >
           {t`Edit query`}

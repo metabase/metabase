@@ -26,9 +26,9 @@ import {
 import type { Transform } from "metabase-types/api";
 
 import {
-  tableMetadataUrl,
-  transformListUrl,
-  transformQueryUrl,
+  getTableMetadataUrl,
+  getTransformListUrl,
+  getTransformQueryUrl,
 } from "../../utils/urls";
 
 import { ScheduleSettings } from "./ScheduleSettings";
@@ -180,7 +180,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
           sendErrorToast("Failed to delete transform");
         } else {
           sendSuccessToast("Transform deleted");
-          dispatch(push(transformListUrl()));
+          dispatch(push(getTransformListUrl()));
         }
       },
     });
@@ -209,7 +209,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
           </Button>
           <Button
             component={Link}
-            to={transformQueryUrl(transform.id)}
+            to={getTransformQueryUrl(transform.id)}
             leftSection={<Icon name="pencil_lines" />}
           >
             {t`Edit query`}
@@ -217,7 +217,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
           {transform.table && (
             <Button
               component={Link}
-              to={tableMetadataUrl(transform.table)}
+              to={getTableMetadataUrl(transform.table)}
               leftSection={<Icon name="label" />}
             >
               {t`Edit metadata`}

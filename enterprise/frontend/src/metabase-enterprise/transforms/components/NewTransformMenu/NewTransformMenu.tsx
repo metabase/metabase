@@ -10,8 +10,8 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Icon, Menu } from "metabase/ui";
 import {
-  newTransformFromCardUrl,
-  newTransformFromTypeUrl,
+  getNewTransformFromCardUrl,
+  getNewTransformFromTypeUrl,
 } from "metabase-enterprise/transforms/utils/urls";
 
 export function NewTransformMenu() {
@@ -27,7 +27,7 @@ export function NewTransformMenu() {
   };
 
   const handleSelectQuestion = (item: QuestionPickerValueItem) => {
-    dispatch(push(newTransformFromCardUrl(item.id)));
+    dispatch(push(getNewTransformFromCardUrl(item.id)));
   };
 
   return (
@@ -40,14 +40,14 @@ export function NewTransformMenu() {
           <Menu.Label>{t`Create your transform with…`}</Menu.Label>
           <Menu.Item
             component={ForwardRefLink}
-            to={newTransformFromTypeUrl("query")}
+            to={getNewTransformFromTypeUrl("query")}
             leftSection={<Icon name="notebook" />}
           >
             {t`Query builder`}
           </Menu.Item>
           <Menu.Item
             component={ForwardRefLink}
-            to={newTransformFromTypeUrl("native")}
+            to={getNewTransformFromTypeUrl("native")}
             leftSection={<Icon name="sql" />}
           >
             {t`SQL query`}
