@@ -6,7 +6,7 @@ import {
   type AllowedEmbedSettingKey,
 } from "metabase-enterprise/embedding_iframe_sdk/constants";
 import type {
-  ExplorationEmbedOptions,
+  QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
@@ -67,7 +67,7 @@ export function getEmbedCustomElementSnippet({
         ({
           ...settings,
           questionId: "new" as const,
-        }) as ExplorationEmbedOptions,
+        }) as QuestionEmbedOptions,
     )
     .otherwise(() => settings);
 
