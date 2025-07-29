@@ -889,3 +889,89 @@
     (is (=? [{:display-name      "User → Source is Organic"
               :long-display-name "User → Source is Organic"}]
             (map #(lib/display-info query %) (lib/filters query -1))))))
+
+(deftest ^:parallel resolve-aggregation-by-name-test
+  (testing "make sure we can resolve a field ref for an aggregation in a previous stage"
+    (let [mp    meta/metadata-provider
+          query (lib/query
+                 mp
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :orders)
+                              :breakout     [[:field
+                                              {:base-type :type/Integer}
+                                              (meta/id :orders :product-id)]]
+                              :aggregation  [[:sum
+                                              {}
+                                              [:field
+                                               {:base-type :type/Integer}
+                                               (meta/id :orders :quantity)]]]}
+                             {:lib/type :mbql.stage/mbql}]})]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= ["Product ID"
+                "Sum of Quantity"]
+               (map :display-name (lib/returned-columns query))))
+        (is (=? {:display-name "Sum of Quantity"}
+                (lib.field.resolution/resolve-field-ref
+                 query
+                 -1
+                 [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "sum"])))))))
+
+(deftest ^:parallel resolve-aggregation-by-name-test-2
+  (testing "resolving an aggregation by name should work when aggregation uses a field name ref from previous stage"
+    (let [mp    meta/metadata-provider
+          query (lib/query
+                 mp
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table (meta/id :orders)
+                              :aggregation  [[:count {}]]
+                              :breakout     [[:field
+                                              {:binning {:strategy :num-bins, :num-bins 10}}
+                                              (meta/id :orders :quantity)]
+                                             [:field
+                                              {:binning {:strategy :num-bins, :num-bins 50}}
+                                              (meta/id :orders :quantity)]]}
+                             {:lib/type    :mbql.stage/mbql
+                              :aggregation [[:min
+                                             {}
+                                             [:field
+                                              {:base-type :type/Integer}
+                                              "QUANTITY"]]
+                                            [:max
+                                             {}
+                                             [:field
+                                              {:base-type :type/Integer}
+                                              "QUANTITY_2"]]]}
+                             {:lib/type :mbql.stage/mbql}]})]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (testing "first stage"
+          (is (=? [{:display-name             "Quantity: 10 bins"
+                    :lib/deduplicated-name    "QUANTITY"
+                    :lib/desired-column-alias "QUANTITY"}
+                   {:display-name             "Quantity: 50 bins"
+                    :lib/deduplicated-name    "QUANTITY_2"
+                    :lib/desired-column-alias "QUANTITY_2"}
+                   {:lib/deduplicated-name    "count"
+                    :lib/desired-column-alias "count"}]
+                  (lib/returned-columns query 0))))
+        (testing "second stage"
+          (is (=? {:display-name "Quantity: 50 bins"}
+                  (lib.field.resolution/resolve-field-ref
+                   query
+                   1
+                   [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "QUANTITY_2"])))
+          (testing `lib/returned-columns
+            (is (=? [{:display-name             "Min of Quantity: 10 bins"
+                      :lib/desired-column-alias "min"}
+                     {:display-name             "Max of Quantity: 50 bins"
+                      :lib/desired-column-alias "max"}]
+                    (lib/returned-columns query 1)))))
+        (testing "third stage"
+          (is (=? {:display-name "Max of Quantity: 50 bins"}
+                  (lib.field.resolution/resolve-field-ref
+                   query
+                   2
+                   [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "max"]))))))))

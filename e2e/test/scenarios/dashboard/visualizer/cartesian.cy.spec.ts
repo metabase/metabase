@@ -504,10 +504,12 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.chartLegend().should("not.exist");
 
         // Remove all "category" columns from the well
-        H.horizontalWell()
-          .findByTestId("well-item")
-          .findByLabelText("Remove")
-          .click();
+        H.horizontalWell().within(() => {
+          cy.findAllByTestId("well-item")
+            .first()
+            .findByLabelText("Remove")
+            .click();
+        });
         H.assertDataSourceColumnSelected(Q1_NAME, "Product → Category", false);
         H.assertDataSourceColumnSelected(Q2_NAME, "Category", false);
         H.chartLegend().should("not.exist");
@@ -520,7 +522,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
         H.horizontalWell()
           .findAllByTestId("well-item")
-          .should("have.length", 1);
+          .should("have.length", 2);
         H.chartLegendItems().should("have.length", 2);
 
         // Remove 2nd data source
