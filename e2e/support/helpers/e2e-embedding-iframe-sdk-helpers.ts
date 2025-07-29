@@ -164,7 +164,7 @@ export function prepareSdkIframeEmbedTest({
     activateToken("starter");
   }
 
-  cy.request("PUT", "/api/setting/enable-embedding-interactive", {
+  cy.request("PUT", "/api/setting/enable-embedding-simple", {
     value: true,
   });
 

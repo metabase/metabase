@@ -6,6 +6,7 @@ import {
   ORDERS_MODEL_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
 const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -208,7 +209,7 @@ describe("scenarios > notebook > data source", () => {
   });
 
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails: H.StructuredQuestionDetails = {
+    const modelDetails: StructuredQuestionDetails = {
       name: "GUI Model",
       query: { "source-table": REVIEWS_ID, limit: 1 },
       display: "table",
