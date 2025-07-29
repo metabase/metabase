@@ -359,14 +359,17 @@ function SectionSettings({
             <Button
               variant="inverse"
               size="compact-sm"
-              onClick={() =>
+              onClick={(event) => {
+                // do not collapse section on click
+                event.stopPropagation();
+
                 onUpdateSection({
                   direction:
                     section.direction === "vertical"
                       ? "horizontal"
                       : "vertical",
-                })
-              }
+                });
+              }}
               style={{
                 aspectRatio: 1,
                 alignItems: "center",
@@ -470,7 +473,7 @@ function ColumnListItem({
               color="text-medium"
               onClick={onHideField}
             >
-              <Icon name="eye_crossed_out" />
+              <Icon name="eye" />
             </ActionIcon>
           )}
           {!!onChangeFieldSettings && (
