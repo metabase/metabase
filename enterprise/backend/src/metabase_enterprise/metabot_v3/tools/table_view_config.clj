@@ -3,6 +3,7 @@
   (:require
    [clj-http.client :as http]
    [metabase.channel.template.core :as template]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
@@ -11,10 +12,17 @@
 
 (set! *warn-on-reflection* true)
 
+(defsetting openai-api-key
+  "Open AI API KEY"
+  :visibility :internal
+  :encryption :when-encryption-key-set
+  :audit      :never)
+
 (defn- get-openai-api-key
-  "Get OpenAI API key from environment variable"
+  "Get OpenAI API key from environment variabllle"
   []
-  (or (System/getenv "OPENAI_API_KEY")
+  (or (System/getenv "MB_OPENAI_API_KEY")
+      (openai-api-key)
       (throw (ex-info (i18n/tru "OpenAI API key not configured")
                       {:error-type :configuration-error}))))
 
