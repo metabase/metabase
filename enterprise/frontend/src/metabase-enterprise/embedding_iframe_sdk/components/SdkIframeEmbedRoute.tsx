@@ -160,7 +160,7 @@ const SdkIframeEmbedView = ({
           withDownloads: settings.withDownloads,
           height: "100%",
           initialSqlParameters: settings.initialSqlParameters,
-          title: settings.withTitle,
+          title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
         };
 
         if (!settings.drills) {
