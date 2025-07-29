@@ -24,8 +24,7 @@
   namespaced keywords remain in kebab case)
 
   * Remove `:lib/type`"
-  [col :- [:map
-           [:lib/type [:= :metadata/column]]]]
+  [col :- :map]
   (-> col
       (update-keys lib-metadata-column-key->legacy-metadata-column-key)
       (m/update-existing :binning_info update-keys lib-metadata-column-key->legacy-metadata-column-key)
