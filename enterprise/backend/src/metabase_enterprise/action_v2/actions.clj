@@ -14,12 +14,18 @@
 (derive :data-grid.row/delete :data-grid.row/common)
 
 (defn- unsupported-dbs-msg [target-dbs unsupported-dbs]
-  (str "Data editing isn't supported on "
-       (cond
-         (= (count target-dbs) (count unsupported-dbs)) "the"
-         (= 1 (count unsupported-dbs)) "one of the"
-         :else "some of the")
-       " target database" (when (not= 1 (count target-dbs)) "s") "."))
+  (cond
+    (= 1 (count target-dbs))
+    "Data editing isn't supported on the target database."
+
+    (= (count target-dbs) (count unsupported-dbs))
+    "Data editing isn't supported on the target databases."
+
+    (= 1 (count unsupported-dbs))
+    "Data editing isn't supported on one of the target databases."
+
+    :else
+    "Data editing isn't supported on some of the target databases."))
 
 (defmethod actions/validate-inputs! :data-grid.row/common
   [_action inputs]
