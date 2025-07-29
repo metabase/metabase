@@ -639,16 +639,16 @@
   (testing "Run SQL queries to infer the columns when used as GTAPS (#13716)\n"
     (testing "Should work with SQL queries that return less columns than there were in the original Table\n"
       (met/with-gtaps! (mt/$ids
-                         {:gtaps {:venues {:query (mt/native-query
-                                                    {:query (str "SELECT DISTINCT VENUES.ID, VENUES.NAME "
-                                                                 "FROM VENUES "
-                                                                 "WHERE VENUES.ID IN ({{sandbox}})")
-                                                     :template-tags {"sandbox"
-                                                                     {:name "sandbox"
-                                                                      :display-name "Sandbox"
-                                                                      :type :text}}})
-                                           :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
-                                  :checkins {}}
+                         {:gtaps      {:venues   {:query      (mt/native-query
+                                                                {:query         (str "SELECT * "
+                                                                                     "FROM VENUES "
+                                                                                     "WHERE VENUES.ID IN ({{sandbox}})")
+                                                                 :template-tags {"sandbox"
+                                                                                 {:name         "sandbox"
+                                                                                  :display-name "Sandbox"
+                                                                                  :type         :text}}})
+                                                  :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
+                                       :checkins {}}
                           :attributes {"venue_id" 1}})
         (let [venues-gtap-card-id (t2/select-one-fn :card_id :model/GroupTableAccessPolicy
                                                     :group_id (:id &group)
@@ -658,7 +658,7 @@
             (is (= nil
                    (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id))))
           (testing "Should be able to run the query"
-            (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
+            (is (= [[1 "Red Medicine" 1 "Red Medicine" 4 10.0646 -165.374 3]]
                    (mt/rows
                     (mt/run-mbql-query venues
                       {:fields [$id $name] ; joined fields get appended automatically because we specify :all :below
@@ -672,9 +672,13 @@
             (is (=? [{:name "ID"
                       :base_type :type/BigInteger
                       :display_name "ID"}
-                     {:name "NAME"
-                      :base_type :type/Text
-                      :display_name "Name"}]
+                     {:name         "NAME"
+                      :base_type    :type/Text
+                      :display_name "Name"}
+                     {:name "CATEGORY_ID"}
+                     {:name "LATITUDE"}
+                     {:name "LONGITUDE"}
+                     {:name "PRICE"}]
                     (t2/select-one-fn :result_metadata :model/Card :id venues-gtap-card-id)))))))))
 
 (defn- do-with-sql-gtap! [sql f]
@@ -709,12 +713,12 @@
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Removing columns should be ok."
       (do-with-sql-gtap!
-       (str "SELECT ID, NAME "
+       (str "SELECT * "
             "FROM VENUES "
             "WHERE ID IN ({{sandbox}})")
        (fn [{:keys [run-query]}]
          (testing "Query without weird stuff going on should work"
-           (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
+           (is (= [[1 "Red Medicine" 1 "Red Medicine" 4 10.0646 -165.374 3]]
                   (mt/rows (run-query))))))))))
 
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test-2
@@ -736,13 +740,12 @@
     (testing "Don't allow people to change the types of columns in the original Table"
       (testing "Should be ok if you change the type of the column to a *SUBTYPE* of the original Type"
         (do-with-sql-gtap!
-         (str "SELECT cast(ID AS bigint) AS ID, NAME "
+         (str "SELECT cast(ID AS bigint) AS ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
               "FROM VENUES "
               "WHERE ID IN ({{sandbox}})")
          (fn [{:keys [run-query]}]
-           (testing "Should throw an Exception when running the query"
-             (is (= [[1 "Red Medicine" 1 "Red Medicine"]]
-                    (mt/rows (run-query)))))))))))
+           (is (= [[1 "Red Medicine" 1 "Red Medicine" 4 10.0646 -165.374 3]]
+                  (mt/rows (run-query))))))))))
 
 (deftest dont-cache-sandboxes-test
   (cache-test/with-mock-cache! [save-chan]
