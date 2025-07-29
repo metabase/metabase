@@ -1,0 +1,9 @@
+.chevron {
+  transition: transform 100ms ease-in-out;
+  opacity: 0.35;
+  flex-shrink: 0;
+
+  &.expanded {
+    transform: rotate(90deg);
+  }
+}
