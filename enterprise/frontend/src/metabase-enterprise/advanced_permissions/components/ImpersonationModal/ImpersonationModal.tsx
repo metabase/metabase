@@ -24,7 +24,7 @@ import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import type { Impersonation, UserAttribute } from "metabase-types/api";
+import type { Impersonation, UserAttributeKey } from "metabase-types/api";
 
 import { ImpersonationModalView } from "./ImpersonationModalView";
 
@@ -90,7 +90,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
   }, [dispatch, route]);
 
   const handleSave = useCallback(
-    (attribute: UserAttribute) => {
+    (attribute: UserAttributeKey) => {
       dispatch(
         updateDataPermission({
           groupId,

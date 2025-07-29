@@ -56,7 +56,7 @@
     :map
     [:fn
      {:error/message "options map without namespaced keys and base-type/effective-type"}
-     (complement (some-fn :base-type :effective-type :ident :lib/uuid))]]
+     (complement (some-fn :base-type :effective-type :lib/uuid))]]
    [:or
     ::lib.schema.id/field
     :string]])
@@ -66,7 +66,7 @@
   (lib/update-options a-ref (fn [opts]
                               (-> opts
                                   (->> (m/filter-keys simple-keyword?))
-                                  (dissoc :base-type :effective-type :ident)))))
+                                  (dissoc :base-type :effective-type)))))
 
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
@@ -81,19 +81,21 @@
 
 ;;;; Pre-processing
 
+;;; TODO (Cam 7/25/25) -- this seems over-complicated, can't we just
+;;; use [[metabase.lib.metadata.calculation/returned-columns]] with `{:include-remaps? true}` to calculate this stuff?
+
 (mu/defn- field-id->remapping-dimension :- [:maybe ::external-remapping]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    field-id              :- ::lib.schema.id/field]
   (let [col (lib.metadata/field metadata-providerable field-id)]
-    (when (:lib/external-remap col)
-      (let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
-        (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
-          {:id                        remap-id
-           :name                      remap-name
-           :field-id                  (:id col)
-           :field-name                (:name col)
-           :human-readable-field-id   remap-field-id
-           :human-readable-field-name (:name remap-field)})))))
+    (when-let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
+      (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
+        {:id                        remap-id
+         :name                      remap-name
+         :field-id                  (:id col)
+         :field-name                (:name col)
+         :human-readable-field-id   remap-field-id
+         :human-readable-field-name (:name remap-field)}))))
 
 (mr/def ::remap-info
   [:and
@@ -108,7 +110,7 @@
                               :any]]]
     [:dimension             ::external-remapping]]
    [:fn
-    {:error/message "if the original field clause had a join alias, the new clause should as well"}
+    {:error/message "the new field clause should have the same join alias as the original field clause"}
     (fn [{:keys [original-field-clause new-field-clause]}]
       (= (lib/current-join-alias original-field-clause)
          (lib/current-join-alias new-field-clause)))]])
@@ -137,19 +139,20 @@
             (keep (fn [{:keys [id], :as col}]
                     (when-let [dimension (when (pos-int? id)
                                            (field-id->remapping-dimension query id))]
-                      {:original-field-clause (or (:lib/original-ref col)
-                                                  (lib/ref col))
-                       :new-field-clause      [:field
-                                               (merge
-                                                {:lib/uuid                (str (random-uuid))
-                                                 :source-field            id
-                                                 ::new-field-dimension-id (u/the-id dimension)}
-                                                (when-let [join-alias (:metabase.lib.join/join-alias col)]
-                                                  {:join-alias join-alias}))
-                                               (u/the-id (:human-readable-field-id dimension))]
-                       :dimension             (assoc dimension
-                                                     :field-name                (-> dimension :field-id unique-name)
-                                                     :human-readable-field-name (-> dimension :human-readable-field-id unique-name))}))))
+                      (let [original-ref (or (:lib/original-ref col)
+                                             (lib/ref col))]
+                        {:original-field-clause original-ref
+                         :new-field-clause      [:field
+                                                 (merge
+                                                  {:lib/uuid                (str (random-uuid))
+                                                   :source-field            id
+                                                   ::new-field-dimension-id (u/the-id dimension)}
+                                                  (when-let [join-alias (:metabase.lib.join/join-alias col)]
+                                                    {:join-alias join-alias}))
+                                                 (u/the-id (:human-readable-field-id dimension))]
+                         :dimension             (assoc dimension
+                                                       :field-name                (-> dimension :field-id unique-name)
+                                                       :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))
            (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)))))
 
 (mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- ::lib.schema/fields
@@ -232,17 +235,12 @@
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- [:maybe ::lib.schema/fields]]
   (when (seq fields)
-    (let [existing-fields                (add-fk-remaps-rewrite-existing-fields infos fields)
-          ;; don't add any new entries for fields that already exist. Use [[simplify-ref-options]] here so
-          ;; we don't add new entries even if the existing Field has some extra info e.g. extra unknown namespaced
-          ;; keys.
-          existing-normalized-fields-set (into #{} (map simplify-ref-options) existing-fields)]
-      (into
-       existing-fields
-       (comp (map :new-field-clause)
-             (remove (comp existing-normalized-fields-set simplify-ref-options))
-             (map lib/fresh-uuids))
-       infos))))
+    (let [existing-fields (add-fk-remaps-rewrite-existing-fields infos fields)]
+      (into []
+            (comp cat
+                  (m/distinct-by simplify-ref-options))
+            [existing-fields
+             (map :new-field-clause infos)]))))
 
 (mu/defn- add-fk-remaps-to-stage :- ::lib.schema/stage
   [query :- ::lib.schema/query
@@ -287,7 +285,19 @@
                            (-> info
                                (update :original-field-clause lib/with-join-alias (:alias join))
                                (update :new-field-clause      lib/with-join-alias (:alias join))))
-              new-fields (add-fk-remaps-to-fields infos fields)]
+              new-fields (into
+                          []
+                          ;; TODO (Cam 7/25/25) the join fields may already include a remap, but `:source-field` or
+                          ;; other distinguishing information doesn't get propagated in refs beyond the stage where the
+                          ;; implicit join happens; thus we should ignore any duplicates with the same `:source-field`.
+                          ;; Joins with multiple remaps to the same table still work because we switch to using name
+                          ;; refs e.g. `NAME` and `NAME_2` instead of duplicate ID refs in this situation --
+                          ;; see [[multiple-fk-remaps-test-in-joins-e2e-test]].
+                          (m/distinct-by (fn [field-ref]
+                                           (-> field-ref
+                                               simplify-ref-options
+                                               (lib/update-options dissoc :source-field))))
+                          (add-fk-remaps-to-fields infos fields))]
           (assoc join :fields new-fields))))))
 
 (mu/defn- add-fk-remaps :- ::query-and-remaps

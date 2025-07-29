@@ -440,8 +440,6 @@
                 results (qp/process-query query)]
             ;; should return 20 columns and 37320 rows
             (mt/with-native-query-testing-context query
-              (is (= 20
-                     (count (mt/cols results))))
               (is (= ["ID"
                       "USER_ID"
                       "PRODUCT_ID"
@@ -460,8 +458,11 @@
                       "j__DISCOUNT"
                       "j__CREATED_AT"
                       "j__QUANTITY"
-                      "PEOPLE__via__USER_ID__EMAIL"
-                      "j__EMAIL"]
+                      ;; The order of these columns seems to be 'flexible' (I would consider either to be correct), and
+                      ;; I've seen both in two different branches of mine attempting to fix this bug. The order doesn't
+                      ;; matter at all to the FE, so if this changes in the future it's ok. -- Cam
+                      "j__EMAIL"
+                      "PEOPLE__via__USER_ID__EMAIL"]
                      (map :lib/desired-column-alias (mt/cols results))))
               (is (= [[1                ; <= orders.id
                        1                ; <= orders.user-id
@@ -481,8 +482,8 @@
                        nil
                        "2016-12-25T22:19:38.656Z"
                        2
-                       "borer-hudson@yahoo.com" ; orders.user-id --[remap]--> people.email (email of People row with ID = 1)
-                       "labadie.lina@gmail.com"] ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
+                       "labadie.lina@gmail.com"  ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
+                       "borer-hudson@yahoo.com"] ; orders.user-id --[remap]--> people.email (email of People row with ID = 1)
                       [1
                        1
                        14
@@ -501,8 +502,8 @@
                        nil
                        "2017-02-04T10:16:00.936Z"
                        1
-                       "borer-hudson@yahoo.com"
-                       "arne-o-hara@gmail.com"]]
+                       "arne-o-hara@gmail.com"
+                       "borer-hudson@yahoo.com"]]
                      (mt/rows results))))))))))
 
 (deftest multi-stage-with-external-remapping-test

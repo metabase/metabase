@@ -98,7 +98,7 @@
                                :strategy     :left-join
                                :condition    [:= $category-id 1]}
                               {:source-table $$categories
-                               :alias        "__join_2" ; should get deduplicated
+                               :alias        "__join_2"
                                :strategy     :left-join
                                :condition    [:= $category-id 2]}]
                :source-table (meta/id :venues)})
