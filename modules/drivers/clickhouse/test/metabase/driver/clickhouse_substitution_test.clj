@@ -171,10 +171,10 @@
           [(t/format "yyyy-MM-dd" ld)])
         (get-test-table
           [rows native-type]
-          ["test_table"
-           [{:field-name "d"
-             :base-type {:native native-type}}]
-           (map ->clickhouse-input rows)])
+          [["test_table"
+            [{:field-name "d"
+              :base-type {:native native-type}}]
+            (map ->clickhouse-input rows)]])
         (->iso-str
           [^LocalDate ld]
           (str (t/format "yyyy-MM-dd" ld) "T00:00:00Z"))]
