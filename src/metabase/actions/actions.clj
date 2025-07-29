@@ -129,8 +129,7 @@
 (defn check-data-editing-enabled-for-database!
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
-  ;; for now we reuse the :actions driver feature, but specialise the message
-  (when-not (driver.u/supports? driver :actions db)
+  (when-not (driver.u/supports? driver :actions/data-editing db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
                               (u/qualified-name driver)
                               (format "%d %s" db-id (pr-str db-name)))
@@ -267,6 +266,7 @@
           spec      (actions.args/action-arg-map-schema action-kw)
           arg-maps  (log-before-after :trace "normalize map" arg-maps
                                       (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps))
+          _        (actions.args/validate-inputs! action-kw arg-maps)
           errors   (for [arg-map arg-maps
                          :when (not (mr/validate spec arg-map))]
                      {:message (format "Invalid Action arg map for %s: %s" action-kw (me/humanize (mr/explain spec arg-map)))
@@ -286,7 +286,6 @@
           driver    (:engine db)]
 
       ;; -- * Authorization* --
-      ;; NOTE: policy should get subsumed by :scope
       ;; The action might not be database-centric (e.g., call a webhook)
       (when db
         (case policy

@@ -19,6 +19,12 @@
   (fn [action _arg-map]
     (keyword action)))
 
+(defmulti validate-inputs!
+  "Check whether the given action is supported for the given inputs, and if not throw an error."
+  {:arglists '([action inputs]), :added "0.56.0"}
+  (fn [action _inputs]
+    (keyword action)))
+
 (defmethod normalize-action-arg-map :default
   [_action arg-map]
   arg-map)
@@ -26,6 +32,9 @@
 (defmethod action-arg-map-schema :default
   [_action]
   :any)
+
+(defmethod validate-inputs! :default
+  [_action _inputs])
 
 ;;;; Action definitions.
 

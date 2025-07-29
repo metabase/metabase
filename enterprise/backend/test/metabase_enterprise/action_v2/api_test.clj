@@ -37,9 +37,6 @@
 (def ^:private execute-bulk-url "/ee/action-v2/execute-bulk")
 (def ^:private execute-form-url "/ee/action-v2/execute-form")
 
-;; TODO rather introduce a new driver feature e.g. data-editing and use that
-(def ^:private data-editing-drivers #{:postgres :h2 :mysql})
-
 ;; TODO make non-bulk versions, and DRY up  bit
 
 (defn create-rows!
@@ -87,7 +84,7 @@
 
 (deftest table-operations-via-action-execute-test
   (mt/with-premium-features #{actions-feature-flag}
-    (mt/test-drivers data-editing-drivers
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
         (testing "Initially the table is empty"
           (is (= [] (table-rows table-id))))
@@ -144,7 +141,7 @@
 (deftest table-operations-via-action-execute-with-uuid-pk-test
   (mt/with-premium-features #{actions-feature-flag}
     ;; MySQL does not support a UUID type (or at least if it does, our create-table syntax is wrong)
-    (mt/test-drivers (disj data-editing-drivers :mysql)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions/data-editing) :mysql)
       (data-editing.tu/with-test-tables! [table-id [{:id [:uuid]
                                                      :name [:text]
                                                      :song [:text]}
@@ -161,12 +158,9 @@
                      {:op "created", :table-id table-id, :row {:id (str id-3), :name "Farfetch'd", :song "The land of lisp"}}}
                    (set
                     (:outputs
-                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                           {:action "data-grid.row/create"
-                                            :scope  {:table-id table-id}
-                                            :inputs [{:id id-1, :name "Pidgey"     :song "Car alarms"}
-                                                     {:id id-2, :name "Spearow"    :song "Hold music"}
-                                                     {:id id-3, :name "Farfetch'd" :song "The land of lisp"}]})))))
+                     (create-rows! table-id [{:id id-1, :name "Pidgey"     :song "Car alarms"}
+                                             {:id id-2, :name "Spearow"    :song "Hold music"}
+                                             {:id id-3, :name "Farfetch'd" :song "The land of lisp"}])))))
 
             (is (= [[id-1 "Pidgey" "Car alarms"]
                     [id-2 "Spearow" "Hold music"]
@@ -174,15 +168,12 @@
                    (table-rows table-id))))
 
           (testing "PUT should update the relevant rows and columns"
-            (is (= #{{:op "updated", :table-id table-id :row {:id (str id-1), :name "Pidgey", :song "Join us now and share the software"}}
+            (is (= #{{:op "updated", :table-id table-id :row {:id (str id-1), :name "Pidgey",     :song "Join us now and share the software"}}
                      {:op "updated", :table-id table-id :row {:id (str id-2), :name "Speacolumn", :song "Hold music"}}}
                    (set
                     (:outputs
-                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                           {:action "data-grid.row/update"
-                                            :scope  {:table-id table-id}
-                                            :inputs [{:id id-1, :song "Join us now and share the software"}
-                                                     {:id id-2, :name "Speacolumn"}]})))))
+                     (update-rows! table-id [{:id id-1, :song "Join us now and share the software"}
+                                             {:id id-2, :name "Speacolumn"}])))))
 
             (is (= #{[id-1 "Pidgey" "Join us now and share the software"]
                      [id-2 "Speacolumn" "Hold music"]
@@ -190,16 +181,14 @@
                    (set (table-rows table-id)))))
 
           (testing "PUT can also do bulk updates"
-            (is (= #{{:op "updated", :table-id table-id, :row {:id (str id-1), :name "Pidgey", :song "The Star-Spangled Banner"}}
+            (is (= #{{:op "updated", :table-id table-id, :row {:id (str id-1), :name "Pidgey",     :song "The Star-Spangled Banner"}}
                      {:op "updated", :table-id table-id, :row {:id (str id-2), :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                    (set
                     (:outputs
-                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                           {:action "data-grid.row/update"
-                                            :scope  {:table-id table-id}
-                                            :inputs [{:id id-1}
-                                                     {:id id-2}]
-                                            :params {:song "The Star-Spangled Banner"}})))))
+                     (update-rows! table-id :crowberto 200
+                                   [{:id id-1}
+                                    {:id id-2}]
+                                   {:song "The Star-Spangled Banner"})))))
 
             (is (= #{[id-1 "Pidgey" "The Star-Spangled Banner"]
                      [id-2 "Speacolumn" "The Star-Spangled Banner"]
@@ -211,18 +200,14 @@
                      {:op "deleted", :table-id table-id, :row {:id (str id-2)}}}
                    (set
                     (:outputs
-                   ;; TODO use the helpers for all of these
-                     (mt/user-http-request :crowberto :post 200 execute-bulk-url
-                                           {:action "data-grid.row/delete"
-                                            :scope  {:table-id table-id}
-                                            :inputs [{:id id-1}
-                                                     {:id id-2}]})))))
+                     (delete-rows! table-id [{:id id-1}
+                                             {:id id-2}])))))
             (is (= [[id-3 "Farfetch'd" "The land of lisp"]]
                    (table-rows table-id)))))))))
 
 (deftest table-operations-via-action-execute-with-compound-pk-test
   (mt/with-premium-features #{actions-feature-flag}
-    (mt/test-drivers data-editing-drivers
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (data-editing.tu/with-test-tables! [table-id [{:id_1   'auto-inc-type
                                                      ;; MySQL does not support multiple auto increment fields.
                                                      :id_2   [:integer]
@@ -403,7 +388,7 @@
 
 ;; TODO let's keep this test setup, but track our current behavior with no smarts
 (deftest mutual-recursion-delete-test
-  (mt/test-drivers data-editing-drivers
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
     (mt/with-premium-features #{actions-feature-flag}
       (data-editing.tu/with-actions-temp-db mutual-recursion-users-teams
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -446,7 +431,7 @@
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{actions-feature-flag}
-    (mt/test-drivers data-editing-drivers
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (testing "40x returned if user/database not configured for editing"
         (let [test-endpoints (fn [flags status-code]
                                (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
@@ -502,7 +487,7 @@
 
 (deftest coercion-test
   (mt/with-premium-features #{actions-feature-flag}
-    (mt/test-drivers data-editing-drivers
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (let [always-lossy #{:Coercion/UNIXNanoSeconds->DateTime
                            :Coercion/UNIXMicroSeconds->DateTime
                            :Coercion/ISO8601->Date
@@ -573,7 +558,7 @@
 
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{actions-feature-flag}
-    (mt/test-drivers data-editing-drivers
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
       (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type, :n [:text]} {:primary-key [:id]}]]
         (let [field-id         (t2/select-one-fn :id :model/Field :table_id table-id :name "n")
               _                (t2/update! :model/Field {:id field-id} {:semantic_type "type/Category"})
@@ -613,16 +598,29 @@
 
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{actions-feature-flag}
-    (mt/test-drivers data-editing-drivers
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "Data editing not enabled on database"
+        (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
+                                                       :text      [:text]}
+                                                      {:primary-key [:id]}]]
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing false}}
+            (testing "execute-form should return 400 error when data editing is not enabled"
+              (is (= {:message "Data editing is not enabled."}
+                     (select-keys
+                      (mt/user-http-request :crowberto :post 400 execute-form-url
+                                            {:scope  {:table-id table-id}
+                                             :action "data-grid.row/create"})
+                      [:message])))))))
+
       (testing "Non auto-incrementing pk"
         (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
                                                        :text      [:text]
                                                        :int       [:int]
                                                        :timestamp [:timestamp]
-                                                       :date [:date]
-                                                       :inactive [:text]}
+                                                       :date      [:date]
+                                                       :inactive  [:text]}
                                                       {:primary-key [:id]}]]
-        ;; This inactive field should not show up
+          ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
           (testing "table actions"
             (let [create-id           "data-grid.row/create"
@@ -664,7 +662,7 @@
                                                        :date [:date]
                                                        :inactive [:text]}
                                                       {:primary-key [:id]}]]
-        ;; This inactive field should not show up
+          ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
           (testing "table actions"
             (let [create-id           "data-grid.row/create"
