@@ -24,15 +24,7 @@ export function TargetSection({ transform }: TargetSectionProps) {
     >
       <Group px="xl" py="lg">
         <EditTargetButton transform={transform} />
-        {transform.table && (
-          <Button
-            component={Link}
-            to={getTableMetadataUrl(transform.table)}
-            leftSection={<Icon name="label" />}
-          >
-            {t`Edit this view’s metadata`}
-          </Button>
-        )}
+        <EditMetadataButton transform={transform} />
       </Group>
     </CardSection>
   );
@@ -124,4 +116,24 @@ function getConfirmationButtonLabel(target: TransformTarget) {
     .with("view", () => t`Change target and delete the previous view`)
     .with("table", () => t`Change target and delete the previous table`)
     .exhaustive();
+}
+
+type EditMetadataButtonProps = {
+  transform: Transform;
+};
+
+function EditMetadataButton({ transform }: EditMetadataButtonProps) {
+  if (!transform.table) {
+    return null;
+  }
+
+  return (
+    <Button
+      component={Link}
+      to={getTableMetadataUrl(transform.table)}
+      leftSection={<Icon name="label" />}
+    >
+      {t`Edit this view’s metadata`}
+    </Button>
+  );
 }

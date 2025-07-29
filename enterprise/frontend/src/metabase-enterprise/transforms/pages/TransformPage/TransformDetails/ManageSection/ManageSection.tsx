@@ -25,13 +25,7 @@ export function ManageSection({ transform }: ManageSectionProps) {
     >
       <Group px="xl" py="lg">
         <ExecuteButton transform={transform} />
-        <Button
-          component={Link}
-          to={getTransformQueryUrl(transform.id)}
-          leftSection={<Icon name="pencil_lines" />}
-        >
-          {t`Edit query`}
-        </Button>
+        <EditQueryButton transform={transform} />
         <DeleteButton transform={transform} />
       </Group>
     </CardSection>
@@ -63,6 +57,22 @@ function ExecuteButton({ transform }: ExecuteButtonProps) {
       onClick={handleExecute}
     >
       {t`Run now`}
+    </Button>
+  );
+}
+
+type EditQueryButtonProps = {
+  transform: Transform;
+};
+
+function EditQueryButton({ transform }: EditQueryButtonProps) {
+  return (
+    <Button
+      component={Link}
+      to={getTransformQueryUrl(transform.id)}
+      leftSection={<Icon name="pencil_lines" />}
+    >
+      {t`Edit query`}
     </Button>
   );
 }
