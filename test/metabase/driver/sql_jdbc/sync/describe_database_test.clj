@@ -204,12 +204,11 @@
 
 (deftest have-select-privilege?-test
   (testing "checking select privilege works with and without auto commit (#36040)"
-    (let [default-have-slect-privilege?
+    (let [default-have-select-privilege?
           #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
-      (mt/test-drivers (into #{}
-                             (filter default-have-slect-privilege?)
-                             (descendants driver/hierarchy :sql-jdbc))
+      (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                                 :+fns [default-have-select-privilege?]})
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)
@@ -256,10 +255,9 @@
   (testing "checking sync is resilient to connections being closed during [have-select-privilege?]"
     (let [jdbc-describe-database #(identical? (get-method driver/describe-database :sql-jdbc)
                                               (get-method driver/describe-database %))]
-      (mt/test-drivers (into #{}
-                             (comp (filter jdbc-describe-database)
-                                   (filter #(not (driver/database-supports? % :table-privileges nil))))
-                             (descendants driver/hierarchy :sql-jdbc))
+      (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                                 :+fns [jdbc-describe-database]
+                                                 :-features [:table-privileges]})
         (let [closed-first (volatile! false)
               execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
               all-tables (driver/describe-database driver/*driver* (mt/id))]
