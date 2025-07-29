@@ -301,12 +301,6 @@ const DashboardContextProviderInner = forwardRef(
         dashboard
       ) {
         onLoadWithoutCards?.(dashboard);
-        // For whatever reason, isLoading waits for all cards to be loaded but doesn't account for the
-        // fact that there might be no dashcards. So onLoad never triggers when there are no cards,
-        // so this solves that issue for now.
-        if (dashboard?.dashcards.length === 0) {
-          onLoad?.(dashboard);
-        }
       }
     }, [
       previousIsLoadingWithoutCards,

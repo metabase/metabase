@@ -27,7 +27,12 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-export const ossRoutes = {
+type RouteMap = Record<
+  string,
+  { path: string; testPattern: RegExp; role?: string }
+>;
+
+export const ossRoutes: RouteMap = {
   root: { path: "", testPattern: /site name/i },
   general: { path: "/general", testPattern: /site name/i },
   email: { path: "/email", testPattern: /SMTP/i },
@@ -65,7 +70,7 @@ export const ossRoutes = {
   },
   embeddingSdk: {
     path: "/embedding-in-other-applications/sdk",
-    testPattern: /Enable Embedded analytics SDK/i,
+    testPattern: /Embedded analytics SDK for React/i,
   },
   license: { path: "/license", testPattern: /Looking for more/i },
   appearance: {
@@ -75,10 +80,8 @@ export const ossRoutes = {
   cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
 };
 
-type RouteMap = Record<string, { path: string; testPattern: RegExp }>;
-
 export const enterpriseRoutes: RouteMap = {
-  license: { path: "/license", testPattern: /License/i },
+  license: { path: "/license", testPattern: /License/i, role: "heading" },
 };
 
 export const premiumRoutes: RouteMap = {
@@ -100,10 +103,11 @@ export const upsellRoutes: RouteMap = {
 };
 
 export const routeObjtoArray = (map: RouteMap) => {
-  return Object.entries(map).map(([name, { path, testPattern }]) => ({
+  return Object.entries(map).map(([name, { path, testPattern, role }]) => ({
     name,
     path,
     testPattern,
+    role,
   }));
 };
 

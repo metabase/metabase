@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -9,9 +9,11 @@ import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DatabaseId, Field } from "metabase-types/api";
+import type { DatabaseId, Field, Table } from "metabase-types/api";
 
 import { TitledSection } from "../TitledSection";
+
+import { getSemanticTypeError } from "./utils";
 
 type Patch = Partial<
   Pick<Field, "settings" | "semantic_type" | "fk_target_field_id">
@@ -20,15 +22,19 @@ type Patch = Partial<
 interface Props {
   databaseId: DatabaseId;
   field: Field;
+  table: Table;
 }
 
-const MetadataSectionBase = ({ databaseId, field }: Props) => {
+const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
   const id = getRawTableFieldId(field);
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   });
   const [updateField] = useUpdateFieldMutation();
+  const semanticTypeError = useMemo(() => {
+    return getSemanticTypeError(table, field);
+  }, [table, field]);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
@@ -62,6 +68,7 @@ const MetadataSectionBase = ({ databaseId, field }: Props) => {
         field={field}
         idFields={idFields}
         label={t`Semantic type`}
+        semanticTypeError={semanticTypeError}
         onChange={handleChange}
       />
     </TitledSection>

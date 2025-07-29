@@ -256,7 +256,7 @@
      (some (fn [f]
              (= (f col-2)
                 (f col-1)))
-           [:lib/desired-column-alias :lib/source-column-alias :lib/deduplicated-name]))))
+           [:lib/desired-column-alias :lib/source-column-alias :lib/deduplicated-name :name]))))
 
 (defn- add-cols-from-join
   "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need

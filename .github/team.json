@@ -8,7 +8,6 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "uladzimirdev",
         "wzimrin",
         "ericnormand",
         "galdre"
@@ -18,7 +17,6 @@
       "name": "Semantic Layer",
       "label": ".Team/SemanticLayer",
       "members": [
-        "kamilmielnik",
         "lbrdnk",
         "bronsa"
       ]
@@ -36,10 +34,10 @@
       "label": ".Team/Embedding",
       "members": [
         "WiNloSt",
-        "oisincoveney",
         "npretto",
         "heypoom",
-        "sanex3339"
+        "sanex3339",
+        "lorem--ipsum"
       ]
     },
     {
@@ -49,9 +47,11 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber",
         "spalt08",
-        "stasgavrylov"
+        "stasgavrylov",
+        "uladzimirdev",
+        "kulyk",
+        "kamilmielnik"
       ]
     },
     {
@@ -64,7 +64,8 @@
         "iethree",
         "nvoxland",
         "fraserdrops",
-        "edpaget"
+        "edpaget",
+        "deniskaber"
       ]
     },
     {
@@ -72,9 +73,6 @@
       "label": ".Team/DashViz",
       "members": [
         "alxnddr",
-        "kulyk",
-        "tsplude",
-        "lorem--ipsum",
         "bpander"
       ]
     },
@@ -95,7 +93,8 @@
         "retro",
         "sloansparger",
         "somtom",
-        "wotbrew"
+        "wotbrew",
+        "tsplude"
       ]
     },
     {

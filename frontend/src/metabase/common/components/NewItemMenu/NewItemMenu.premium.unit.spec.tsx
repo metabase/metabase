@@ -1,11 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabasesEndpoints,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Database, TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -29,6 +35,7 @@ async function setup({
 
   setupDatabasesEndpoints(databases);
   setupEnterprisePlugins();
+  setupPropertiesEndpoints(createMockSettings());
 
   renderWithProviders(<NewItemMenu trigger={<button>New</button>} />, {
     storeInitialState: createMockState({ settings }),
@@ -48,7 +55,7 @@ describe("NewItemMenu (EE with token)", () => {
   });
 
   it("shows the Embed item when embedding_iframe_sdk feature is enabled", async () => {
-    setup({ tokenFeatures: { embedding_iframe_sdk: true } });
+    await setup({ tokenFeatures: { embedding_iframe_sdk: true } });
 
     expect(await screen.findByText("Embed")).toBeInTheDocument();
   });
