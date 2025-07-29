@@ -45,11 +45,12 @@
 
 (defn- build-prompts
   "Build system and user prompts for OpenAI based on view type and fields using handlebars templates"
-  [view-type fields table-name]
+  [view-type fields table-name table-description]
   (let [view-type-str (name view-type)
         fields-json (json/encode fields)
         template-data {:viewType view-type-str
                        :tableName table-name
+                       :tableDescription (or table-description table-description)
                        :fieldsJson fields-json}
         system-prompt (template/render "metabase_enterprise/metabot_v3/tools/table_view_config_system_prompt.hbs" template-data)
         user-prompt (template/render "metabase_enterprise/metabot_v3/tools/table_view_config_user_prompt.hbs" template-data)]
@@ -155,7 +156,7 @@
               (throw (ex-info (i18n/tru "No active fields found for table")
                               {:table-id table-id})))
 
-          prompts (build-prompts view-type fields (:display_name table))
+          prompts (build-prompts view-type fields (:display_name table) (:description table))
           config (call-openai-api prompts view-type)]
       {:success true
        :config config
