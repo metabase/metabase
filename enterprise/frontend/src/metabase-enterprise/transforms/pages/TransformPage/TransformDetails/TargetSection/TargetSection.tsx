@@ -45,11 +45,11 @@ function getSectionLabel(target: TransformTarget) {
     .exhaustive();
 }
 
-export type EditTargetButtonProps = {
+type EditTargetButtonProps = {
   transform: Transform;
 };
 
-export function EditTargetButton({ transform }: EditTargetButtonProps) {
+function EditTargetButton({ transform }: EditTargetButtonProps) {
   const { id, source, target } = transform;
   const [updateTransform] = useUpdateTransformMutation();
   const { show: askConfirmation, modalContent: confirmationModal } =
