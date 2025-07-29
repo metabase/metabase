@@ -54,10 +54,9 @@ export function TransformQueryBuilder({
   }
 
   return (
-    <Flex className={S.root} direction="column" flex="1 1 0" bg="bg-white">
+    <Flex className={S.root} w="100%" h="100%" direction="column" bg="bg-white">
       <TransformHeader
         name={name}
-        isNative={isNative}
         canSave={canSave}
         isSaving={isSaving}
         onSave={handleSave}

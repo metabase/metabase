@@ -12,7 +12,6 @@ type TransformHeaderProps = {
   onCancel: () => void;
 };
 
-// run CI
 export function TransformHeader({
   name,
   canSave,
