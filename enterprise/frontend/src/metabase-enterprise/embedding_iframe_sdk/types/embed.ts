@@ -58,6 +58,8 @@ export interface QuestionEmbedOptions {
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  targetCollection?: CollectionId;
+  entityTypes?: EntityTypeFilterKeys[];
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
@@ -69,18 +71,14 @@ export interface QuestionEmbedOptions {
 
 export interface ExplorationEmbedOptions {
   template: "exploration";
-  questionId: "new";
 
   isSaveEnabled?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
 
   // incompatible options
-  drills?: never;
   dashboardId?: never;
-  initialSqlParameters?: never;
-  withTitle?: never;
-  withDownloads?: never;
+  questionId?: never;
 }
 
 export interface CurateContentEmbedOptions {
@@ -89,8 +87,6 @@ export interface CurateContentEmbedOptions {
 
   entityTypes?: CollectionBrowserEntityTypes[];
 
-  withTitle?: never;
-  withDownloads?: never;
   questionId?: never;
   dashboardId?: never;
 }
@@ -101,8 +97,6 @@ export interface ViewContentEmbedOptions {
 
   entityTypes?: CollectionBrowserEntityTypes[];
 
-  withTitle?: never;
-  withDownloads?: never;
   questionId?: never;
   dashboardId?: never;
 }

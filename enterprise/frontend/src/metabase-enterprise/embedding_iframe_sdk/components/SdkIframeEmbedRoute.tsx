@@ -6,12 +6,16 @@ import {
   InteractiveQuestion,
   MetabaseProvider,
   StaticDashboard,
-  StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
+import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
@@ -82,19 +86,16 @@ const SdkIframeEmbedView = ({
   const rerenderKey = useParamRerenderKey(settings);
 
   return match(settings)
-    .with(
-      P.union({ template: "exploration" }, { questionId: "new" }),
-      (settings) => (
-        <InteractiveQuestion
-          questionId="new"
-          height="100%"
-          isSaveEnabled={settings.isSaveEnabled ?? false}
-          targetCollection={settings.targetCollection}
-          entityTypes={settings.entityTypes}
-          key={rerenderKey}
-        />
-      ),
-    )
+    .with({ template: "exploration" }, (settings) => (
+      <InteractiveQuestion
+        questionId="new"
+        height="100%"
+        isSaveEnabled={settings.isSaveEnabled ?? false}
+        targetCollection={settings.targetCollection}
+        entityTypes={settings.entityTypes}
+        key={rerenderKey}
+      />
+    ))
     .with({ template: "curate-content" }, (_settings) => null)
     .with({ template: "view-content" }, (_settings) => null)
     .with(
@@ -109,21 +110,6 @@ const SdkIframeEmbedView = ({
           withDownloads={settings.withDownloads}
           initialParameters={settings.initialParameters}
           hiddenParameters={settings.hiddenParameters}
-          key={rerenderKey}
-        />
-      ),
-    )
-    .with(
-      {
-        questionId: P.nonNullable,
-        drills: false,
-      },
-      (settings) => (
-        <StaticQuestion
-          questionId={settings.questionId}
-          height="100%"
-          initialSqlParameters={settings.initialSqlParameters}
-          title={settings.withTitle}
           key={rerenderKey}
         />
       ),
@@ -149,19 +135,39 @@ const SdkIframeEmbedView = ({
     .with(
       {
         questionId: P.nonNullable,
-        drills: P.optional(true),
       },
-      (settings) => (
-        <InteractiveQuestion
-          questionId={settings.questionId}
-          withDownloads={settings.withDownloads}
-          height="100%"
-          initialSqlParameters={settings.initialSqlParameters}
-          title={settings.withTitle}
-          isSaveEnabled={false}
-          key={rerenderKey}
-        />
-      ),
+      (settings) => {
+        const getStaticClickActionMode: ClickActionModeGetter = ({
+          question,
+        }: {
+          question: Question;
+        }) => {
+          return (
+            question &&
+            getEmbeddingMode({
+              question,
+              queryMode: StaticQuestionSdkMode,
+            })
+          );
+        };
+
+        return (
+          <SdkQuestion
+            questionId={settings.questionId}
+            withDownloads={settings.withDownloads}
+            height="100%"
+            initialSqlParameters={settings.initialSqlParameters}
+            title={settings.withTitle}
+            isSaveEnabled={false}
+            key={rerenderKey}
+            targetCollection={settings.targetCollection}
+            entityTypes={settings.entityTypes}
+            getClickActionMode={
+              settings.drills ? undefined : getStaticClickActionMode
+            }
+          />
+        );
+      },
     )
     .otherwise(() => null);
 };

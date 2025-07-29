@@ -571,6 +571,7 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "hidden-parameters",
   "is-save-enabled",
 ]);
+
 const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "question-id",
   "with-title",
@@ -578,6 +579,8 @@ const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "drills",
   "initial-sql-parameters",
   "is-save-enabled",
+  "target-collection",
+  "entity-types",
 ]);
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it

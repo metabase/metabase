@@ -65,7 +65,6 @@ export const SdkIframeEmbedSetupProvider = ({
       match<SdkIframeEmbedSetupSettings, SdkIframeEmbedSetupExperience>(
         settings,
       )
-        .with({ questionId: "new" }, () => "exploration")
         .with({ questionId: P.nonNullable }, () => "chart")
         .otherwise(() => "dashboard"),
     [settings],
