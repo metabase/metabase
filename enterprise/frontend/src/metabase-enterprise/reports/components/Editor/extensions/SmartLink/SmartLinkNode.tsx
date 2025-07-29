@@ -57,7 +57,7 @@ export const SmartLinkNode = Node.create<{
         },
         this.options.HTMLAttributes,
       ),
-      `{% link url="${node.attrs.url}" text="${node.attrs.text}" icon="${node.attrs.icon}" %}`,
+      0,
     ];
   },
 

@@ -3,6 +3,7 @@ import Link from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import {
   EditorContent,
+  mergeAttributes,
   type Editor as TiptapEditor,
   useEditor,
 } from "@tiptap/react";
@@ -11,6 +12,7 @@ import cx from "classnames";
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";

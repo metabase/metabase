@@ -1,5 +1,7 @@
 import { Extension } from "@tiptap/core";
-import type { Editor } from "@tiptap/react";
+import type { Editor, Node } from "@tiptap/react";
+
+import { convertQuestionToPng } from "metabase-enterprise/reports/components/exports";
 
 export const PDFGenerator = Extension.create({
   name: "RyanIsScared",
@@ -11,38 +13,92 @@ export const PDFGenerator = Extension.create({
         async ({ editor }: { editor: Editor }) => {
           const { default: jspdf } = await import("jspdf");
           const pdf = new PDF("test", { jsPDF: jspdf });
-          editor.state.doc.forEach((node) => {
-            console.log({ node, type: node.type.name });
+          // editor.state.doc.forEach(async (node) => {
+          // for (const node of editor.state.doc.children) {
+          //   switch (node.type.name) {
+          //     case "paragraph": {
+          //       pdf.addText(node.textContent);
+          //       break;
+          //     }
+          //     case "heading": {
+          //       pdf.addHeading(node.textContent, { level: node.attrs.level });
+          //       break;
+          //     }
+          //     case "bulletList": {
+          //       const content = node.content.content.map((n) => n.textContent);
+          //       pdf.addBulletList(content);
+          //       break;
+          //     }
+          //     case "orderedList": {
+          //       const content = node.content.content.map((n) => n.textContent);
+          //       pdf.addOrderedList(content);
+          //       break;
+          //     }
+          //     case "cardEmbed": {
+          //       const { cardId } = node.attrs;
+          //       const dataUri = await convertQuestionToPng(cardId);
+          //       pdf.addImageFromDataUri(dataUri);
+          //       break;
+          //     }
+          //     default: {
+          //       console.log("Panic! I don't know what this is");
+          //       console.log({ node, nodeType: node.type.name });
+          //       // pdf.addText(node.textContent);
+          //     }
+          //   }
+          // }
 
-            switch (node.type.name) {
-              case "paragraph": {
-                pdf.addText(node.textContent);
-                break;
-              }
-              case "heading": {
-                pdf.addHeading(node.textContent, { level: node.attrs.level });
-                break;
-              }
-              case "bulletList": {
-                const content = node.content.content.map((n) => n.textContent);
-                pdf.addBulletList(content);
-                break;
-              }
-              case "orderedList": {
-                const content = node.content.content.map((n) => n.textContent);
-                pdf.addOrderedList(content);
-                break;
-              }
-              default: {
-                pdf.addText(node.textContent);
-              }
-            }
-          });
+          await walkNodes(editor.state.doc, pdf);
+
           pdf.output();
         },
     };
   },
 });
+
+const walkNodes = async (root: Node, pdf: PDF) => {
+  for (const node of root.children) {
+    switch (node.type.name) {
+      case "text": {
+        pdf.addText(node.text);
+        break;
+      }
+      case "smartLink": {
+        pdf.addText(node.attrs.text);
+        break;
+      }
+      case "paragraph": {
+        walkNodes(node, pdf);
+        break;
+      }
+      case "heading": {
+        pdf.addHeading(node.textContent, { level: node.attrs.level });
+        break;
+      }
+      case "bulletList": {
+        const content = node.content.content.map((n) => n.textContent);
+        pdf.addBulletList(content);
+        break;
+      }
+      case "orderedList": {
+        const content = node.content.content.map((n) => n.textContent);
+        pdf.addOrderedList(content);
+        break;
+      }
+      case "cardEmbed": {
+        const { cardId } = node.attrs;
+        const dataUri = await convertQuestionToPng(cardId);
+        pdf.addImageFromDataUri(dataUri);
+        break;
+      }
+      default: {
+        console.log("Panic! I don't know what this is");
+        console.log({ node, nodeType: node.type.name });
+        // pdf.addText(node.textContent);
+      }
+    }
+  }
+};
 
 class PDF {
   constructor(
@@ -97,6 +153,10 @@ class PDF {
 
   get y() {
     return this._y;
+  }
+
+  get maxWidth() {
+    return this._maxWidth;
   }
 
   // Setter
@@ -220,6 +280,43 @@ class PDF {
 
       this.addText(t, { indent: 6 });
     });
+  }
+
+  addImageFromDataUri(datauri, { marginBottom = 6 } = {}) {
+    const props = this._doc.getImageProperties(datauri);
+
+    const { x, y, maxWidth } = this;
+
+    const { height, width, fileType } = props;
+
+    const documentFactor = maxWidth / width;
+
+    const scaledHeight = height * documentFactor;
+    const scaledWidth = width * documentFactor;
+
+    this._doc.addImage(datauri, fileType, x, y, scaledWidth, scaledHeight);
+    this._y += scaledHeight + marginBottom;
+  }
+
+  addImageFromDataElement(element, { marginBottom = 6 } = {}) {
+    const props = this._doc.getImageProperties(element);
+
+    const { x, y, maxWidth } = this;
+
+    const { height, width, fileType } = props;
+
+    const documentFactor = maxWidth / width;
+
+    const scaledHeight = height * documentFactor;
+    const scaledWidth = width * documentFactor;
+
+    console.log({ height, width, scaledHeight, scaledWidth });
+
+    this._doc.addImage(element, fileType, x, y, scaledWidth, scaledHeight);
+
+    this._y += scaledHeight + marginBottom;
+
+    console.log({ props });
   }
 
   drawLineIfDebug = (color, size = 100) => {

@@ -72,6 +72,7 @@ export const getDomToCanvas = async (
 ) => {
   const { default: html2canvas } = await import("html2canvas-pro");
   return html2canvas(element, {
+    allowTaint: true,
     useCORS: options.useCORS ?? true,
     width: options.width,
     height: options.height,
@@ -237,6 +238,7 @@ export const getChartImagePngDataUri = async (
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
     },
+    useCORS: true,
   });
 
   return canvas.toDataURL("image/png");
