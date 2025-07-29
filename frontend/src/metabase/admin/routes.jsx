@@ -97,8 +97,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               component={RevisionHistoryApp}
             />
           </Route>
+          {PLUGIN_TRANSFORMS.getRoutesWithoutSidebar()}
           <Route component={DataModel}>
-            {PLUGIN_TRANSFORMS.getTransformRoutes()}
+            {PLUGIN_TRANSFORMS.getRoutesWithSidebar()}
           </Route>
           <Redirect
             from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
