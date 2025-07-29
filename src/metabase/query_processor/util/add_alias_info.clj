@@ -51,6 +51,8 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -58,6 +60,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -179,6 +182,17 @@
 (defn- field-table-id [field-clause]
   (:table-id (field-instance field-clause)))
 
+(defn- resolve-field-source-table-alias-with-lib-field-resolution [inner-query field-ref]
+  (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
+    (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
+      (cond
+        (= (:lib/source resolved) :source/previous-stage)
+        ::source
+
+        (= (:lib/source resolved) :source/joins)
+        (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
+          (get-in inner-query [::join-alias->escaped join-alias] join-alias))))))
+
 (mu/defn- field-source-table-alias :- [:or
                                        ::lib.schema.common/non-blank-string
                                        ::lib.schema.id/table
@@ -192,10 +206,11 @@
       (and table-id (= table-id source-table)) table-id
       source-query                             ::source
       :else
-      (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
-                      {:type   qp.error-type/invalid-query
-                       :clause field-clause
-                       :query  inner-query})))))
+      (or (resolve-field-source-table-alias-with-lib-field-resolution inner-query field-clause)
+          (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
+                          {:type   qp.error-type/invalid-query
+                           :clause field-clause
+                           :query  inner-query}))))))
 
 (mr/def ::exported-clause
   [:or ::mbql.s/field ::mbql.s/expression ::mbql.s/aggregation-options])
@@ -299,11 +314,11 @@
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)
-          (log/warnf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
-                     (pr-str field-clause)
-                     (u/pprint-to-str (into #{}
-                                            (map (some-fn ::desired-alias :name identity))
-                                            all-exports)))))))
+          (log/debugf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
+                      (pr-str field-clause)
+                      (u/pprint-to-str (into #{}
+                                             (map (some-fn ::desired-alias :name identity))
+                                             all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause

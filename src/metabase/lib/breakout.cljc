@@ -105,8 +105,8 @@
     {:keys [same-binning-strategy?
             same-temporal-bucket?], :as _options} :- [:maybe
                                                       [:map
-                                                       [:same-binning-strategy? {:optional true} [:maybe :boolean]]
-                                                       [:same-temporal-bucket? {:optional true} [:maybe :boolean]]]]]
+                                                       [:same-binning-strategy? {:optional true, :default false} [:maybe :boolean]]
+                                                       [:same-temporal-bucket? {:optional true, :default false} [:maybe :boolean]]]]]
    (not-empty
     (into []
           (filter (fn [a-breakout]

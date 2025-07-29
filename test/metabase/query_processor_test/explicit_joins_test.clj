@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
@@ -1139,6 +1140,7 @@
                   ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]]
                  (mt/rows (qp/process-query query)))))))))
 
+;;; see also [[metabase.query-processor.preprocess-test/test-31769]]
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
@@ -1148,9 +1150,15 @@
         (let [legacy-query (lib.convert/->legacy-MBQL
                             (lib.tu.mocks-31769/query metadata-provider))]
           (mt/with-native-query-testing-context legacy-query
-            (is (= [["Doohickey" 3976 "Doohickey"]
-                    ["Gadget"    4939 "Gadget"]]
-                   (mt/rows (qp/process-query legacy-query))))))))))
+            (let [results (qp/process-query legacy-query)]
+              (is (= [["Products → Category"                     "Products__CATEGORY"]
+                      ["Count"                                   "count"]
+                      ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
+                     (map (juxt :display_name :lib/desired-column-alias)
+                          (mt/cols results))))
+              (is (= [["Doohickey" 3976 "Doohickey"]
+                      ["Gadget"    4939 "Gadget"]]
+                     (mt/rows results))))))))))
 
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"
