@@ -23,6 +23,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CollapseSection from "metabase/common/components/CollapseSection";
+import EditableText from "metabase/common/components/EditableText";
 import {
   ActionIcon,
   Box,
@@ -360,9 +361,16 @@ function SectionSettings({
       <CollapseSection
         header={
           <Flex align="center" justify="space-between" w="100%">
-            <Text display="inline-block" fw="bold">
-              {section.title}
-            </Text>
+            <div onClick={(e) => e.stopPropagation()}>
+              <EditableText
+                initialValue={section.title}
+                onChange={(title) => onUpdateSection({ title })}
+                style={{
+                  display: "block",
+                  fontWeight: "bold",
+                }}
+              />
+            </div>
             <Button
               variant="inverse"
               size="compact-sm"
