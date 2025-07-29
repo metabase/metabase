@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [honey.sql :as hsql]
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -97,7 +96,7 @@
                              native-ddl)]
       (sql.qp/format-honeysql driver compiled-honeysql))))
 
-(hsql/register-clause! :add-constraint :modify-column :modify-column)
+(sql/register-clause! :add-constraint :modify-column :modify-column)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Interface (Comments)                                              |
