@@ -643,7 +643,7 @@
               :query {:limit 2
                       :fields [[:field 350 {:base-type :type/Text :join-alias "Card 2 - Category"}]
                                [:field "count" {:base-type :type/Integer}]
-                               [:field 350 {:join-alias "Card 2 - Category"}]]
+                               [:field 351 {:join-alias "Card 2 - Category"}]]
                       :joins [{:fields [[:field 350 {:join-alias "Card 2 - Category"}]]
                                :source-metadata [{:semantic_type :type/Category
                                                   :table_id 45

@@ -39,6 +39,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.large-int :as large-int]
@@ -228,7 +229,8 @@
 
 (mr/def ::query-and-remaps
   [:map
-   [:remaps [:maybe (helpers/distinct [:sequential ::external-remapping])]]
+   [:remaps [:maybe
+             (helpers/distinct [:sequential ::external-remapping])]]
    [:query  ::lib.schema/query]])
 
 (mu/defn- add-fk-remaps-to-fields :- [:maybe ::lib.schema/fields]

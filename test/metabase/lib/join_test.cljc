@@ -1781,7 +1781,7 @@
                                    :fields       :all}]
                     :filter      [:= &Products.products.category "Doohickey"]
                     :aggregation [[:distinct &Products.products.id]]
-                    :breakout    [&Products.!month.created-at]})
+                    :breakout    [&Products.!month.products.created-at]})
           mp     (lib.tu/mock-metadata-provider
                   meta/metadata-provider
                   {:cards [{:id 1, :name "18512#1", :dataset-query q1}

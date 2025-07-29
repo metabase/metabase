@@ -1005,3 +1005,24 @@
               (lib.field.resolution/resolve-field-ref
                query -1
                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)]))))))
+
+(deftest ^:parallel resolve-id-ref-to-correct-column-test-2
+  (testing "Should NOT resolve an ID ref to the wrong column if the ref is impossible"
+    ;; join does not return any fields. Do not resolve to ORDERS.ID
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :joins        [{:source-table $$products
+                                                   :condition    [:= $product-id &Products.products.id]
+                                                   :alias        "Products"}]}}))]
+      (is (=? {:id                                       (meta/id :products :id)
+               :name                                     "ID"
+               :table-id                                 (meta/id :products)
+               ;; TODO (Cam 7/29/25) -- maybe we need to add a `:source/indetermiate` option or something. Because
+               ;; this is wrong... but nothing else is right either.
+               :lib/source                               :source/table-defaults
+               ::lib.field.resolution/fallback-metadata? true}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)]))))))

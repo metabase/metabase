@@ -267,13 +267,13 @@
     (testing "breakouts/fields schemas"
       (are [schema error] (= error
                              (me/humanize (mr/explain schema duplicate-refs)))
-        ::lib.schema/breakouts ["Breakouts must be distinct"]
-        ::lib.schema/fields    [":fields must be distinct"]))
+        ::lib.schema/breakouts ["refs must be distinct: ([:field {} 1] [:field {} 1])"]
+        ::lib.schema/fields    ["refs must be distinct: ([:field {} 1] [:field {} 1])"]))
     (testing "stage schema"
       (are [k error] (= error
                         (me/humanize (mr/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, k duplicate-refs})))
-        :breakout {:breakout ["Breakouts must be distinct"]}
-        :fields   {:fields [":fields must be distinct"]}))))
+        :breakout {:breakout ["refs must be distinct: ([:field {} 1] [:field {} 1])"]}
+        :fields   {:fields ["refs must be distinct: ([:field {} 1] [:field {} 1])"]}))))
 
 (deftest ^:parallel normalize-query-test
   (let [normalized (lib.normalize/normalize

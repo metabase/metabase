@@ -94,7 +94,7 @@
         (testing (str "\n" (u/pprint-to-str nested-query))
           (is (=? {:query {:source-query {:filter (lib.tu.macros/$ids
                                                     [:= [:field %products.category {:join-alias "products"}] "Widget"])}}}
-                 (wrap-joined-fields nested-query))))))))
+                  (wrap-joined-fields nested-query))))))))
 
 (deftest ^:parallel resolve-joined-fields-in-source-queries-e2e-test
   (testing "Should be able to resolve joined fields at any level of the query (#13642)"

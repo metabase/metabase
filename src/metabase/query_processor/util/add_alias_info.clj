@@ -189,15 +189,19 @@
   We should actually rewrite this entire namespace to just use Lib in the first place for everything, but that's a
   project for another day. (See #59589)"
   [inner-query field-ref]
-  (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
-    (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
-      (cond
-        (= (:lib/source resolved) :source/previous-stage)
-        ::source
+  (try
+    (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
+      (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
+        (cond
+          (= (:lib/source resolved) :source/previous-stage)
+          ::source
 
-        (= (:lib/source resolved) :source/joins)
-        (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
-          (get-in inner-query [::join-alias->escaped join-alias] join-alias))))))
+          (= (:lib/source resolved) :source/joins)
+          (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
+            (get-in inner-query [::join-alias->escaped join-alias] join-alias)))))
+    (catch Throwable e
+      (log/error e "Failed to convert inner query to Lib query, unable to do fallback matching" (pr-str inner-query))
+      nil)))
 
 (mu/defn- field-source-table-alias :- [:or
                                        ::lib.schema.common/non-blank-string
@@ -559,7 +563,8 @@
                                            (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
                             aggregations)))))
 
-(defn- add-alias-info* [inner-query]
+(mu/defn- add-alias-info* :- ::mbql.s/SourceQuery
+  [inner-query :- ::mbql.s/SourceQuery]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
     (-> (lib.util.match/replace inner-query
