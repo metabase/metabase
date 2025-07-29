@@ -254,7 +254,11 @@ export const MinimalConfiguration = {
 
 export const WithDownloadsEnabled = {
   render(args: SdkDashboardProps) {
-    return <SdkDashboard {...args} />;
+    return (
+      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+        <SdkDashboard {...args} />
+      </MetabaseProvider>
+    );
   },
 
   args: {

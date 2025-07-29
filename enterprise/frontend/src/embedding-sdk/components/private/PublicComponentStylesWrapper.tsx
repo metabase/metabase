@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import type React from "react";
 import { forwardRef } from "react";
 
+import { isTest } from "metabase/env";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 /**
@@ -62,23 +63,32 @@ export const PublicComponentStylesWrapper = forwardRef<
  * - -> our other code with specificity (0,1,0) will override this as they're loaded after
  */
 // note: if we move this to  css.module, remember to add :global to .mb-wrapper
-export const SCOPED_CSS_RESET = css`
-  @layer embedding-sdk {
-    @layer reset {
-      :where(.mb-wrapper) *:where(button) {
-        border: 0;
-        background-color: transparent;
-      }
+const BASE_SCOPED_CSS_RESET = css`
+  :where(.mb-wrapper) *:where(button) {
+    border: 0;
+    background-color: transparent;
+  }
 
-      // fonts.styled.ts has a reset for list padding and margin in the main app, so we need to do it here
-      :where(.mb-wrapper) *:where(ul) {
-        padding: 0;
-        margin: 0;
-      }
+  // fonts.styled.ts has a reset for list padding and margin in the main app, so we need to do it here
+  :where(.mb-wrapper) *:where(ul) {
+    padding: 0;
+    margin: 0;
+  }
 
-      :where(.mb-wrapper) *:where(svg) {
-        display: inline;
-      }
-    }
+  :where(.mb-wrapper) *:where(svg) {
+    display: inline;
   }
 `;
+
+// For test env we don't use layers, because the current versopn of jsdom does not support it,
+// and upgrading it introduces other issues in tests.
+
+export const SCOPED_CSS_RESET = isTest
+  ? BASE_SCOPED_CSS_RESET
+  : css`
+      @layer embedding-sdk {
+        @layer reset {
+          ${BASE_SCOPED_CSS_RESET}
+        }
+      }
+    `;
