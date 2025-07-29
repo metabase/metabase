@@ -3,6 +3,10 @@ name: Build + Docker Uberjar
 # This workflow builds an uberjar and pushes it to dockerhub for any branch, either on-demand,
 # or automatically for the listed branches
 
+concurrency:
+  group: uberjar-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     branches:
