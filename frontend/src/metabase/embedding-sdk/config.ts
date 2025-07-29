@@ -7,6 +7,11 @@ export const EMBEDDING_SDK_CONFIG = {
    * such as sdk-based iframe embedding.
    **/
   isEmbeddingSdk: false,
+
+  /**
+   * Which X-Metabase-Client header to use for requests to the Metabase instance?
+   */
+  metabaseClientRequestHeader: "embedding-sdk-react",
 };
 
 export const EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG = {

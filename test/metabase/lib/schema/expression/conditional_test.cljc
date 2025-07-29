@@ -118,8 +118,7 @@
                         :source-table (meta/id :venues)
                         :expressions  [[:coalesce
                                         {:lib/uuid "455a9f5e-4996-4df9-82aa-01bc083b2efe"
-                                         :lib/expression-name "expr"
-                                         :ident               (u/generate-nano-id)}
+                                         :lib/expression-name "expr"}
                                         [:field
                                          {:base-type :type/Text, :lib/uuid "68443c43-f9de-45e3-9f30-8dfd5fef5af6"}
                                          (meta/id :venues :name)]

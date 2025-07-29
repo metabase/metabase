@@ -120,7 +120,6 @@
   driver-select
   format-name
   id
-  ident
   mbql-query
   metadata-provider
   native-query

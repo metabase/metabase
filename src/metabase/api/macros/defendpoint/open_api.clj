@@ -11,6 +11,7 @@
    [metabase.api.open-api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -130,6 +131,26 @@
                   schema))
               (mc/children schema))))))
 
+(def ^:private default-response-schema
+  "Default response schema for OpenAPI endpoints. This is used when the endpoint does not specify a response schema."
+  {"2XX" {:description "Successful response"}
+   "4XX" {:description "Client error response"}
+   "5XX" {:description "Server error response"}})
+
+(mu/defn- schema->response-obj :- [:maybe :metabase.api.open-api/path-item.responses]
+  "Convert a Malli schema to an OpenAPI response schema.
+
+  This is used to convert the `:response-schema` in [[metabase.api.macros/defendpoint]] to an OpenAPI response schema."
+  [schema]
+  (let [jss-schema (mjs-collect-definitions schema)]
+    {"2XX" (-> {:description (or (:description jss-schema) (umd/describe schema))}
+               (assoc :content {"application/json" {:schema (fix-json-schema jss-schema)}}))}))
+
+(comment
+
+  (mjs-collect-definitions :metabase.timeline.api.timeline/Timeline)
+  (schema->response-obj :metabase.timeline.api.timeline/Timeline))
+
 (mu/defn- path-item :- :metabase.api.open-api/path-item
   "Generate OpenAPI desc for `defendpoint` 2.0 ([[metabase.api.macros/defendpoint]]) handler.
 
@@ -137,28 +158,31 @@
   [full-path :- string?
    form      :- :metabase.api.macros/parsed-args]
   (try
-    (let [method                    (:method form)
-          route-params              (when-let [schema (get-in form [:params :route :schema])]
-                                      (schema->params* schema (constantly :path) nil))
-          query-params              (when-let [schema (get-in form [:params :query :schema])]
-                                      (schema->params* schema (constantly :query) nil))
-          params                    (concat
-                                     (for [param route-params]
-                                       (assoc param :in :path))
-                                     query-params)
-          ctype                     (if (get-in form [:metadata :multipart])
-                                      "multipart/form-data"
-                                      "application/json")
-          body-schema               (some-> (if (= ctype "multipart/form-data")
-                                              (multipart-schema form)
-                                              (get-in form [:params :body :schema]))
-                                            mjs-collect-definitions
-                                            fix-json-schema)]
+    (let [method          (:method form)
+          route-params    (when-let [schema (get-in form [:params :route :schema])]
+                            (schema->params* schema (constantly :path) nil))
+          query-params    (when-let [schema (get-in form [:params :query :schema])]
+                            (schema->params* schema (constantly :query) nil))
+          params          (concat
+                           (for [param route-params]
+                             (assoc param :in :path))
+                           query-params)
+          ctype           (if (get-in form [:metadata :multipart])
+                            "multipart/form-data"
+                            "application/json")
+          body-schema     (some-> (if (= ctype "multipart/form-data")
+                                    (multipart-schema form)
+                                    (get-in form [:params :body :schema]))
+                                  mjs-collect-definitions
+                                  fix-json-schema)
+          response-schema (:response-schema form)]
       ;; summary is the string in the sidebar of Scalar
       (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
                :description (some-> (:docstr form) str)
-               :parameters params}
-        body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}})))
+               :parameters params
+               :responses  default-response-schema}
+        body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
+        response-schema (update :responses merge (schema->response-obj response-schema))))
     (catch Throwable e
       (throw (ex-info (str (format "Error creating OpenAPI spec for endpoint %s %s: %s"
                                    (:method form)
@@ -201,7 +225,7 @@
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"
-   (:form (metabase.api.macros/find-route 'metabase.queries.api.card :get "/:id/series"))
+   (:form (metabase.api.macros/find-route 'metabase.queries.api.card :get "/:id/series")))
 
-   (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
-       fix-json-schema)))
+  (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
+      fix-json-schema))
