@@ -3,12 +3,18 @@ import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import type { TransformNavBarProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Box, Flex, Icon, UnstyledButton } from "metabase/ui";
+import { useListTransformsQuery } from "metabase-enterprise/api";
 import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
-import { getTransformSettingsUrl } from "metabase-enterprise/transforms/utils/urls";
+import {
+  getTransformSettingsUrl,
+  getTransformUrl,
+} from "metabase-enterprise/transforms/utils/urls";
+import type { Transform } from "metabase-types/api";
 
 import S from "./TransformNavBar.module.css";
 
@@ -27,13 +33,25 @@ type TransformListProps = {
 
 function TransformList({ isActive }: TransformListProps) {
   const [isExpanded, { toggle }] = useDisclosure();
+  const { data: transforms = [] } = useListTransformsQuery(
+    isExpanded ? undefined : skipToken,
+  );
 
   return (
-    <TransformToggle
-      isActive={isActive}
-      isExpanded={isExpanded}
-      onToggle={toggle}
-    />
+    <div>
+      <TransformToggle
+        isActive={isActive}
+        isExpanded={isExpanded}
+        onToggle={toggle}
+      />
+      {isExpanded && (
+        <div>
+          {transforms.map((transform) => (
+            <TransformItem key={transform.id} transform={transform} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -69,6 +87,21 @@ function TransformToggle({ isExpanded, onToggle }: TransformToggleProps) {
           <Icon name="add" c="text-primary" />
         </ActionIcon>
       </NewTransformMenu>
+    </Flex>
+  );
+}
+
+type TransformItemProps = {
+  transform: Transform;
+};
+
+function TransformItem({ transform }: TransformItemProps) {
+  return (
+    <Flex component={Link} align="center" to={getTransformUrl(transform.id)}>
+      <Icon name="refresh_downstream" c="text-secondary" mr="sm" />
+      <Box c="text-primary" flex={1}>
+        {transform.name}
+      </Box>
     </Flex>
   );
 }
