@@ -6,6 +6,7 @@ import {
   InteractiveQuestion,
   MetabaseProvider,
   StaticDashboard,
+  StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
@@ -86,16 +87,19 @@ const SdkIframeEmbedView = ({
   const rerenderKey = useParamRerenderKey(settings);
 
   return match(settings)
-    .with({ template: "exploration" }, (settings) => (
-      <InteractiveQuestion
-        questionId="new"
-        height="100%"
-        isSaveEnabled={settings.isSaveEnabled ?? false}
-        targetCollection={settings.targetCollection}
-        entityTypes={settings.entityTypes}
-        key={rerenderKey}
-      />
-    ))
+    .with(
+      P.union({ template: "exploration" }, { questionId: "new" }),
+      (settings) => (
+        <InteractiveQuestion
+          questionId="new"
+          height="100%"
+          isSaveEnabled={settings.isSaveEnabled ?? false}
+          targetCollection={settings.targetCollection}
+          entityTypes={settings.entityTypes}
+          key={rerenderKey}
+        />
+      ),
+    )
     .with({ template: "curate-content" }, (_settings) => null)
     .with({ template: "view-content" }, (_settings) => null)
     .with(
@@ -151,14 +155,23 @@ const SdkIframeEmbedView = ({
           );
         };
 
+        const commonProps = {
+          questionId: settings.questionId,
+          withDownloads: settings.withDownloads,
+          height: "100%",
+          initialSqlParameters: settings.initialSqlParameters,
+          title: settings.withTitle,
+        };
+
+        if (!settings.drills) {
+          // note: this disable drills but also removes the top toolbar
+          return <StaticQuestion {...commonProps} key={rerenderKey} />;
+        }
+
         return (
           <SdkQuestion
-            questionId={settings.questionId}
-            withDownloads={settings.withDownloads}
-            height="100%"
-            initialSqlParameters={settings.initialSqlParameters}
-            title={settings.withTitle}
-            isSaveEnabled={false}
+            {...commonProps}
+            isSaveEnabled={settings.isSaveEnabled}
             key={rerenderKey}
             targetCollection={settings.targetCollection}
             entityTypes={settings.entityTypes}

@@ -60,6 +60,7 @@ export interface QuestionEmbedOptions {
   withDownloads?: boolean;
   targetCollection?: CollectionId;
   entityTypes?: EntityTypeFilterKeys[];
+  isSaveEnabled?: boolean;
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
