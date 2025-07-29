@@ -30,6 +30,7 @@ import {
   Menu,
   Popover,
   SegmentedControl,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -341,11 +342,71 @@ export const TableListView = ({ location, params }: Props) => {
               }}
             />
 
+            {settings.list_view.view !== "table" && (
+              <Group align="flex-end" gap="xs" justify="flex-end" wrap="nowrap">
+                <Tooltip disabled={!sortState} label={t`Sort by`}>
+                  <Select
+                    data={columns.map((column) => ({
+                      value: String(column.id!),
+                      label: column.display_name,
+                    }))}
+                    placeholder={t`Sort by...`}
+                    value={
+                      sortState?.columnId ? String(sortState.columnId) : ""
+                    }
+                    w={150}
+                    onChange={(value) => {
+                      if (value) {
+                        const column = columns.find(
+                          (column) => column.id === parseInt(value, 10),
+                        );
+
+                        if (column) {
+                          handleColumnSort(column);
+                        }
+                      }
+                    }}
+                  />
+                </Tooltip>
+
+                <Tooltip
+                  disabled={!sortState}
+                  label={t`Change sorting direction`}
+                >
+                  <Button
+                    disabled={!sortState}
+                    leftSection={
+                      <Icon
+                        name={
+                          sortState?.direction === "desc"
+                            ? "chevrondown"
+                            : "chevronup"
+                        }
+                      />
+                    }
+                    onClick={() => {
+                      if (sortState) {
+                        const column = columns.find(
+                          (column) => column.id === sortState.columnId,
+                        );
+
+                        if (column) {
+                          // Toggle direction by calling handleColumnSort again
+                          handleColumnSort(column);
+                        }
+                      }
+                    }}
+                    variant="default"
+                  />
+                </Tooltip>
+              </Group>
+            )}
+
             <TextInput
               leftSection={<Icon name="search" />}
               placeholder={t`Search...`}
               value={searchQuery}
-              w={250}
+              w={200}
               onChange={(event) => {
                 setSearchQuery(event.currentTarget.value);
                 dispatch(replace(`/table/${tableId}`));

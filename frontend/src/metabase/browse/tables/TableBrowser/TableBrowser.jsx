@@ -8,7 +8,9 @@ import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
+import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { closeNavbar } from "metabase/redux/app";
 import { Box, Group, Icon, Loader } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
@@ -85,6 +87,7 @@ const TableBrowserItem = ({
 }) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
+  const dispatch = useDispatch();
 
   return (
     <BrowseCard
@@ -92,7 +95,10 @@ const TableBrowserItem = ({
       to={!isSyncInProgress(table) ? `/table/${table.id}` : ""}
       icon="table"
       title={table.display_name || table.name}
-      onClick={() => trackTableClick(table.id)}
+      onClick={() => {
+        dispatch(closeNavbar());
+        trackTableClick(table.id);
+      }}
     >
       <>
         {isLoading && <Loader size="xs" data-testid="loading-indicator" />}
