@@ -197,7 +197,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 
-  it("persists default and hidden parameters", () => {
+  it("persists default and hidden parameters", { tags: "@flaky" }, () => {
     H.createQuestionAndDashboard({
       questionDetails: {
         name: "Orders table",

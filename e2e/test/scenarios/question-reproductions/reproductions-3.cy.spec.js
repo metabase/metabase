@@ -1955,7 +1955,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       });
     });
 
-    it("should work with native models", () => {
+    it("should work with native models", { tags: "@flaky" }, () => {
       createNativeModel({
         tableName: "ORDERS",
         fieldId: ORDERS.PRODUCT_ID,
