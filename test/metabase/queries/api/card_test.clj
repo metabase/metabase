@@ -31,6 +31,7 @@
    [metabase.queries.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -4361,3 +4362,24 @@
         (finally
           (when existing-config
             (t2/insert! :model/CacheConfig existing-config)))))))
+
+(deftest immutable-result-metadata-keys-test
+  (let [mp (mt/metadata-provider)
+        query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                (let [id-col (m/find-first (comp #{"id"} u/lower-case-en :name)
+                                           (lib/fieldable-columns $))]
+                  (lib/with-fields $ [(lib/ref id-col)])))
+        metadata (-> query qp/process-query :data :results_metadata :columns first)
+        _ (assert (some? metadata))]
+    (mt/with-temp
+      [:model/Card c {:dataset_query (lib.convert/->legacy-MBQL query)
+                      :result_metadata [metadata]}]
+      (testing "Appropriate exception is throw on immutable result_metadata field modification attempt")
+      (is (=? {:data {:message "Immutable fields can not be modified.",
+                      :card {:result_metadata {:id (mt/id :orders :id) :table_id (mt/id :orders)}},
+                      :update {:result_metadata {:id (mt/id :products :id) :table_id (mt/id :products)}},
+                      :status-code 400}}
+              (mt/user-http-request :crowberto :put 400 (str "card/" (:id c))
+                                    {:result_metadata [(assoc metadata
+                                                              :id (mt/id :products :id)
+                                                              :table_id (mt/id :products))]}))))))

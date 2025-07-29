@@ -558,6 +558,24 @@
     (check-allowed-to-remove-from-existing-dashboards card-before-update))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
+(def ^:private immutable-metadata-keys
+  "`result_metadata` keys non-modfiable through API."
+  [:id :table_id])
+
+(defn- check-immutable-metadata-keys
+  [card-before-update card-updates]
+  (when (api/column-will-change? :result_metadata card-before-update card-updates)
+    (some (fn [[card-elm update-elm]]
+            (let [card-elm-sub (select-keys card-elm immutable-metadata-keys)
+                  update-elm-sub (select-keys update-elm immutable-metadata-keys)]
+              (api/check (= card-elm-sub update-elm-sub)
+                         [400 {:message "Immutable fields can not be modified."
+                               :card {:result_metadata card-elm-sub}
+                               :update {:result_metadata update-elm-sub}}])))
+          (map vector
+               (:result_metadata card-before-update)
+               (:result_metadata card-updates)))))
+
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
@@ -613,7 +631,8 @@
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
     ;; Do various permissions checks
-    (doseq [f [check-allowed-to-move
+    (doseq [f [check-immutable-metadata-keys
+               check-allowed-to-move
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
