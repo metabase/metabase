@@ -88,7 +88,7 @@
                                        :task_details {:trigger_type :transform/cron
                                                       :transform_id transform-id
                                                       :schedule     (:schedule transform)}}
-        (transforms.execute/exec-transform transform)))))
+        (transforms.execute/exec-transform-mbql transform)))))
 
 (defmethod task/init! ::ExecuteTransform [_]
   (let [execute-transform-job (jobs/build

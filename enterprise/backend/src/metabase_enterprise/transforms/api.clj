@@ -61,7 +61,7 @@
     (api/throw-403))
   (let [transform (t2/insert-returning-instance!
                    :model/Transform (select-keys body [:name :description :source :target :schedule]))]
-    (transforms.execute/exec-transform transform)
+    (transforms.execute/exec-transform-mbql transform)
     transform))
 
 (api.macros/defendpoint :get "/:id"
@@ -96,7 +96,7 @@
       (transforms.util/delete-target-table! old)))
   (t2/update! :model/Transform id body)
   (let [transform (t2/select-one :model/Transform id)]
-    (transforms.execute/exec-transform transform)
+    (transforms.execute/exec-transform-mbql transform)
     transform))
 
 (api.macros/defendpoint :delete "/:id"
@@ -121,7 +121,7 @@
                     [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
   (api/check-superuser)
-  (transforms.execute/exec-transform (t2/select-one :model/Transform id))
+  (transforms.execute/exec-transform-mbql (t2/select-one :model/Transform id))
   nil)
 
 (def ^{:arglists '([request respond raise])} routes

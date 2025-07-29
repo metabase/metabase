@@ -6,5 +6,6 @@
 
 (p/import-vars
  [metabase-enterprise.transforms.execute
+  execute-low-level!
   execute-query!
   execute!])
