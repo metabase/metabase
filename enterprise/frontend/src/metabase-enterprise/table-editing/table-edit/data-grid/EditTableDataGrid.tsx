@@ -93,9 +93,21 @@ export const EditTableDataGrid = ({
         return;
       }
 
+      const parameter = updateFormDescription?.parameters.find(
+        ({ id }) => id === columnId,
+      );
+      if (parameter?.readonly) {
+        return;
+      }
+
       handleSelectEditingCell(rowIndex, columnId);
     },
-    [onRowExpandClick, handleSelectEditingCell, editingCell],
+    [
+      onRowExpandClick,
+      handleSelectEditingCell,
+      editingCell,
+      updateFormDescription,
+    ],
   );
 
   const columnSizingMap = useMemo(() => {

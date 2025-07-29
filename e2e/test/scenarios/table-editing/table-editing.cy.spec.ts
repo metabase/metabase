@@ -189,7 +189,7 @@ describe("scenarios > table-editing", () => {
           table: "Orders",
           dataType: "number",
           column: "TAX",
-          value: Math.floor(Math.random() * 100),
+          value: Math.floor(Math.random() * 1000),
         },
       ];
 
@@ -236,26 +236,16 @@ describe("scenarios > table-editing", () => {
           .findAllByRole("row")
           .eq(1) // Select the second row (index 1)
           .within(() => {
-            cy.get("[data-column-id='CREATED_AT']");
-
             cy.get("[data-column-id='CREATED_AT']").as("targetCell").click({
               scrollBehavior: false,
             }); // Activate inline editing
           });
 
-        let day = 0;
-        let hour = 0;
-        let minute = 0;
+        const day = Math.floor(Math.random() * 10) + 10; // 10-20
+        const hour = Math.floor(Math.random() * 12);
+        const minute = Math.floor(Math.random() * 60);
 
         H.popover().within(() => {
-          const randomDay = Math.floor(Math.random() * 10) + 10; // 10-20
-          const randomHour = Math.floor(Math.random() * 12);
-          const randomMinute = Math.floor(Math.random() * 60);
-
-          day = randomDay;
-          hour = randomHour;
-          minute = randomMinute;
-
           cy.findByRole("button", { name: `${day} May 2024` }).click();
           cy.findAllByRole("spinbutton").eq(0).type(hour.toString());
           cy.findAllByRole("spinbutton").eq(1).type(minute.toString());
@@ -278,25 +268,52 @@ describe("scenarios > table-editing", () => {
         H.undoToast().findByText("Successfully updated").should("be.visible");
       });
 
-      // TOOD: fix after BE
-      // it.only("should not allow to edit PK cells", () => {
-      //   cy.visit(
-      //     `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
-      //   );
+      it("should allow to edit a cell with select type", () => {
+        cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
 
-      //   cy.findByTestId("table-root")
-      //     .findAllByRole("row")
-      //     .eq(1)
-      //     .within(() => {
-      //       cy.get("[data-column-id='ID']")
-      //         .as("targetCell")
-      //         .click({
-      //           scrollBehavior: false,
-      //         })
-      //         .find("input")
-      //         .should("not.exist");
-      //     });
-      // });
+        cy.findByTestId("table-root")
+          .findAllByRole("row")
+          .eq(1)
+          .within(() => {
+            cy.get("[data-column-id='USER_ID']").as("targetCell").click({
+              scrollBehavior: false,
+            });
+          });
+
+        H.popover().within(() => {
+          const randomIndex = Math.floor(2 + Math.random() * 18);
+
+          cy.findAllByRole("option")
+            .should("have.length", 20)
+            .eq(randomIndex)
+            .click();
+
+          cy.wait("@updateTableData").then(({ response }) => {
+            expect(response?.body.outputs[0].op).to.equal("updated");
+          });
+        });
+
+        H.undoToast().findByText("Successfully updated").should("be.visible");
+      });
+
+      it("should not allow to edit PK cells", () => {
+        cy.visit(
+          `/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`,
+        );
+
+        cy.findByTestId("table-root")
+          .findAllByRole("row")
+          .eq(1)
+          .within(() => {
+            cy.get("[data-column-id='ID']")
+              .as("targetCell")
+              .click({
+                scrollBehavior: false,
+              })
+              .find("input")
+              .should("not.exist");
+          });
+      });
 
       it("should handle errors", () => {
         cy.findByTestId("table-root")
@@ -319,6 +336,110 @@ describe("scenarios > table-editing", () => {
           .findByText("Couldn't save table changes")
           .should("be.visible");
       });
+    });
+  });
+
+  describe("create / delete row", () => {
+    beforeEach(() => {
+      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
+        "getOrdersTable",
+      );
+
+      cy.intercept("POST", "api/dataset").as("getTableDataQuery");
+      cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
+
+      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
+
+      cy.wait("@getOrdersTable");
+    });
+
+    it("should allow to create and delete a row", () => {
+      cy.findByTestId("new-record-button").click();
+
+      H.modal().within(() => {
+        cy.findByText("Create a new record").should("be.visible");
+        cy.findByTestId("Tax-field-input").type("50");
+        cy.findByTestId("Total-field-input").type("100");
+        cy.findByTestId("Discount-field-input").type("10");
+        cy.findByTestId("create-row-form-submit-button").click();
+      });
+
+      cy.wait("@executeBulk").then(({ response, request }) => {
+        expect(request.body.action).to.equal("data-grid.row/create");
+        expect(response?.body.outputs[0].op).to.equal("created");
+        expect(response?.body.outputs[0].row.TAX).to.equal(50);
+        expect(response?.body.outputs[0].row.TOTAL).to.equal(100);
+        expect(response?.body.outputs[0].row.DISCOUNT).to.equal(10);
+      });
+
+      H.undoToast().within(() => {
+        cy.findByText("Record successfully created").should("be.visible");
+        cy.findByLabelText("close icon").click();
+      });
+
+      // We want to check if the new row is added as the last row to the table
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.findByTestId("table-scroll-container")
+        .scrollTo("bottom")
+        .findAllByRole("row")
+        .last()
+        .should("have.attr", "data-dataset-index", "2000")
+        .within(() => {
+          cy.get('[data-column-id="TAX"]').should("have.text", "50");
+          cy.get('[data-column-id="TOTAL"]').should("have.text", "100");
+          cy.get('[data-column-id="DISCOUNT"]').should("have.text", "10");
+
+          cy.findByTestId("detail-shortcut").click({
+            scrollBehavior: false,
+            force: true,
+          });
+        });
+
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Edit record").should("be.visible");
+          cy.findByTestId("delete-row-icon").click();
+        });
+
+      H.modal()
+        .first()
+        .within(() => {
+          cy.findByText("Delete this record?").should("be.visible");
+          cy.findByText("Delete record").click();
+        });
+
+      cy.wait("@executeBulk").then(({ response, request }) => {
+        expect(request.body.action).to.equal("data-grid.row/delete");
+        expect(response?.body.outputs[0].op).to.equal("deleted");
+      });
+
+      H.undoToast().findByText("Successfully deleted").should("be.visible");
+    });
+
+    it("should allow to delete multiple rows (bulk)", () => {
+      cy.findByTestId("delete-records-bulk-button").should("be.disabled");
+
+      cy.findAllByTestId("row-select-checkbox").eq(15).click();
+      cy.findAllByTestId("row-select-checkbox").eq(16).click();
+
+      cy.findByTestId("delete-records-bulk-button")
+        .should("not.be.disabled")
+        .click();
+
+      H.modal().within(() => {
+        cy.findByText("Delete 2 records?").should("be.visible");
+        cy.findByRole("button", { name: "Delete 2 records" }).click();
+      });
+
+      cy.wait("@executeBulk").then(({ response, request }) => {
+        expect(request.body.action).to.equal("data-grid.row/delete");
+        expect(response?.body.outputs[0].op).to.equal("deleted");
+      });
+
+      H.undoToast().findByText("Successfully deleted").should("be.visible");
+
+      cy.findByTestId("delete-records-bulk-button").should("be.disabled");
     });
   });
 });

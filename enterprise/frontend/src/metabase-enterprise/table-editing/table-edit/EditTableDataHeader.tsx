@@ -58,6 +58,7 @@ export const EditTableDataHeader = ({
           leftSection={<Icon name="add" />}
           variant="filled"
           onClick={onCreate}
+          data-testid="new-record-button"
         >{t`New record`}</Button>
 
         <Button
@@ -66,6 +67,7 @@ export const EditTableDataHeader = ({
           color="error"
           onClick={onRequestDeleteBulk}
           disabled={!canDeleteBulk}
+          data-testid="delete-records-bulk-button"
         >{t`Delete`}</Button>
       </TableHeader>
       {question && (

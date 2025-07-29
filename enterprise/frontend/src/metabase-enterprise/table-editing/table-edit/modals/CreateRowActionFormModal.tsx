@@ -136,6 +136,7 @@ export function CreateRowActionFormModal({
               disabled={isLoading || !isValid}
               variant="filled"
               type="submit"
+              data-testid="create-row-form-submit-button"
             >
               {t`Create`}
             </Button>

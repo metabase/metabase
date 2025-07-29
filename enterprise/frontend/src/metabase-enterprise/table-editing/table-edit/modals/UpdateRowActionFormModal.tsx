@@ -153,7 +153,11 @@ export function UpdateRowActionFormModal({
               gap="xs"
               mr={rem(-5) /* aligns cross with modal right padding */}
             >
-              <ActionIcon variant="subtle" onClick={requestDeletion}>
+              <ActionIcon
+                variant="subtle"
+                onClick={requestDeletion}
+                data-testid="delete-row-icon"
+              >
                 <Icon name="trash" />
               </ActionIcon>
               <ActionIcon variant="subtle" onClick={onClose}>

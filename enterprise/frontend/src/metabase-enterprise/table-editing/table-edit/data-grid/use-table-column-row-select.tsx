@@ -26,6 +26,7 @@ export function getRowSelectColumn() {
           indeterminate={table.getIsSomeRowsSelected()}
           onChange={table.getToggleAllRowsSelectedHandler()}
           variant="stacked"
+          data-testid="row-select-all-checkbox"
         />
       </Flex>
     ),
@@ -36,6 +37,7 @@ export function getRowSelectColumn() {
           disabled={!row.getCanSelect()}
           indeterminate={row.getIsSomeSelected()}
           onChange={row.getToggleSelectedHandler()}
+          data-testid="row-select-checkbox"
         />
       </Flex>
     ),
