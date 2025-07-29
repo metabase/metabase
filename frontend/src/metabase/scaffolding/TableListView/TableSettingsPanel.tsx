@@ -63,7 +63,7 @@ export const TableSettingsPanel = ({
 
   const handleStyleChange = (
     field: Field,
-    style: "normal" | "bold" | "dim",
+    style: "normal" | "bold" | "dim" | "title",
   ) => {
     onChange((settings) => ({
       ...settings,
@@ -139,6 +139,7 @@ export const TableSettingsPanel = ({
           </Group>
 
           <SortableFieldList
+            view={value.list_view.view}
             fields={visibleFields}
             stylesMap={stylesMap}
             onChange={handleOrderChange}
@@ -204,6 +205,7 @@ export const TableSettingsPanel = ({
             disabled
             fields={hiddenFields}
             isHidden
+            view={value.list_view.view}
             onChange={handleOrderChange}
             onToggleVisibility={(field) => {
               onChange((settings) => ({

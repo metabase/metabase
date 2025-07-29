@@ -33,7 +33,6 @@ import {
   Group,
   Icon,
   type IconName,
-  Menu,
   Portal,
   Text,
 } from "metabase/ui/components";
@@ -42,6 +41,8 @@ import type {
   DatasetColumn,
   ObjectViewSectionSettings,
 } from "metabase-types/api";
+
+import { ColumnFormatControl } from "../components/ColumnFormatControl";
 
 import S from "./TableDetailView.module.css";
 
@@ -436,6 +437,7 @@ function SectionSettings({
                     <ColumnListItem
                       key={fieldSettings.field_id}
                       column={column}
+                      style={fieldSettings.style}
                       onChangeFieldSettings={(update) =>
                         handleUpdateField(fieldSettings.field_id, update)
                       }
@@ -456,11 +458,13 @@ function SectionSettings({
 
 function ColumnListItem({
   column,
+  style,
   onChangeFieldSettings,
   onHideField,
   onUnhideField,
 }: {
   column: DatasetColumn;
+  style?: "normal" | "bold" | "dim" | "title";
   onChangeFieldSettings?: (update: {
     style: "normal" | "bold" | "dim" | "title";
   }) => void;
@@ -522,32 +526,13 @@ function ColumnListItem({
             </ActionIcon>
           )}
           {!!onChangeFieldSettings && (
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <ActionIcon
-                  className={S.ObjectViewSidebarColumnActionIcon}
-                  aria-label={t`Change style`}
-                  variant="transparent"
-                  color="text-medium"
-                >
-                  <Icon name="string" />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  onClick={() => onChangeFieldSettings({ style: "normal" })}
-                >{t`Normal`}</Menu.Item>
-                <Menu.Item
-                  onClick={() => onChangeFieldSettings({ style: "bold" })}
-                >{t`Bold`}</Menu.Item>
-                <Menu.Item
-                  onClick={() => onChangeFieldSettings({ style: "dim" })}
-                >{t`Dim`}</Menu.Item>
-                <Menu.Item
-                  onClick={() => onChangeFieldSettings({ style: "title" })}
-                >{t`Title`}</Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <ColumnFormatControl
+              style={style}
+              onStyleChange={(style) => onChangeFieldSettings({ style })}
+              actionIconProps={{
+                className: S.ObjectViewSidebarColumnActionIcon,
+              }}
+            />
           )}
         </Group>
       </Flex>

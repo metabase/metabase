@@ -16,9 +16,13 @@ interface Props {
   disabled?: boolean;
   fields: Field[];
   isHidden?: boolean;
-  stylesMap?: Record<FieldId, "normal" | "bold" | "dim">;
+  view: "table" | "list" | "gallery";
+  stylesMap?: Record<FieldId, "normal" | "bold" | "dim" | "title">;
   onChange: (fieldOrder: FieldId[]) => void;
-  onStyleChange?: (field: Field, style: "normal" | "bold" | "dim") => void;
+  onStyleChange?: (
+    field: Field,
+    style: "normal" | "bold" | "dim" | "title",
+  ) => void;
   onToggleVisibility: (field: Field) => void;
 }
 
@@ -26,6 +30,7 @@ export const SortableFieldList = ({
   disabled,
   fields,
   isHidden,
+  view,
   stylesMap,
   onChange,
   onToggleVisibility,
@@ -61,6 +66,7 @@ export const SortableFieldList = ({
           return (
             <SortableFieldItem
               disabled={isDragDisabled}
+              view={view}
               field={field}
               isHidden={isHidden}
               parent={parent}

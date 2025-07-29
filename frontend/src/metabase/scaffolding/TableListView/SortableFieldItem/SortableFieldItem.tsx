@@ -5,13 +5,13 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { ColumnFormatControl } from "metabase/scaffolding/components/ColumnFormatControl";
 import {
   ActionIcon,
   Box,
   Card,
   Flex,
   Icon,
-  Menu,
   Text,
   Tooltip,
   rem,
@@ -26,8 +26,12 @@ interface Props {
   field: Field;
   isHidden?: boolean;
   parent?: Field | undefined;
-  style?: "normal" | "bold" | "dim";
-  onStyleChange?: (field: Field, style: "normal" | "bold" | "dim") => void;
+  view: "table" | "list" | "gallery";
+  style?: "normal" | "bold" | "dim" | "title";
+  onStyleChange?: (
+    field: Field,
+    style: "normal" | "bold" | "dim" | "title",
+  ) => void;
   onToggleVisibility: (field: Field) => void;
 }
 
@@ -36,6 +40,7 @@ export const SortableFieldItem = ({
   field,
   isHidden,
   parent,
+  view,
   onToggleVisibility,
   onStyleChange,
   style = "normal",
@@ -141,47 +146,16 @@ export const SortableFieldItem = ({
           </Tooltip>
 
           {onStyleChange && (
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <Tooltip label={t`Change style`}>
-                  <ActionIcon
-                    aria-label={t`Change style`}
-                    fw={style === "bold" ? "bold" : undefined}
-                    mb={-8}
-                    mt={-5}
-                    ml={8}
-                    variant="transparent"
-                  >
-                    <Box c={style === "dim" ? "text-light" : "text-primary"}>
-                      <Icon name={style === "bold" ? "bold" : "string"} />
-                    </Box>
-                  </ActionIcon>
-                </Tooltip>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<Icon name="string" />}
-                  onClick={() => onStyleChange(field, "normal")}
-                >
-                  {t`Normal`}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<Icon name="bold" />}
-                  fw="bold"
-                  onClick={() => onStyleChange(field, "bold")}
-                >
-                  {t`Bold`}
-                </Menu.Item>
-                <Menu.Item
-                  c="text-light"
-                  leftSection={<Icon name="string" />}
-                  onClick={() => onStyleChange(field, "dim")}
-                >
-                  {t`Dim`}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <ColumnFormatControl
+              style={style}
+              onStyleChange={(style) => onStyleChange(field, style)}
+              hasTitleOption={view !== "table"}
+              actionIconProps={{
+                mb: -8,
+                mt: -5,
+                ml: 8,
+              }}
+            />
           )}
         </Flex>
       </Card>
