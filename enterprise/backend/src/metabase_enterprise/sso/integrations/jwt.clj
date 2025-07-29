@@ -37,6 +37,7 @@
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
 
+
 (def ^:private ^{:arglists '([])} jwt-attribute-email
   (comp keyword sso-settings/jwt-attribute-email))
 
@@ -110,6 +111,11 @@
           session      (session/create-session! :sso user (request/device-info request))]
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
+
+(defn create-session-from-jwt!
+  "Public wrapper for creating a session from JWT token data. Used by the to_session endpoint."
+  [jwt request]
+  (session-data jwt request))
 
 (defn- throw-react-sdk-embedding-disabled
   []
