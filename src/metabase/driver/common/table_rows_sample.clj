@@ -32,7 +32,7 @@
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential ::mbql.s/OrderBy]))]
+    [:order-by        {:optional true} [:ref ::mbql.s/OrderBys]]
     [:rff             {:optional true} fn?]]])
 
 (defn- table-rows-sample-query
