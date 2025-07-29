@@ -574,7 +574,12 @@ export const TableListView = ({ location, params }: Props) => {
 
         {settings.list_view.view === "gallery" && (
           <Box
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              alignItems: "stretch",
+              gap: 24,
+            }}
           >
             {paginatedRows.map((row, index) => {
               return (
