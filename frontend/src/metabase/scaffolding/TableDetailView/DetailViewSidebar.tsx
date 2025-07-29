@@ -28,6 +28,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Divider,
   Flex,
   Group,
   Icon,
@@ -47,6 +48,7 @@ import S from "./TableDetailView.module.css";
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
+  onCreateSection: () => void;
   onUpdateSection: (
     id: number,
     section: Partial<ObjectViewSectionSettings>,
@@ -58,6 +60,7 @@ const HIDDEN_COLUMNS_ID = "hidden-columns";
 export function DetailViewSidebar({
   sections,
   columns,
+  onCreateSection,
   onUpdateSection,
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -253,7 +256,17 @@ export function DetailViewSidebar({
           />
         ))}
 
-        <Box mt="md">
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          leftSection={<Icon name="add" />}
+          mt="md"
+          onClick={onCreateSection}
+        >{t`Add section`}</Button>
+
+        <Divider mt="lg" mb="sm" />
+
+        <Box>
           <SortableContext
             id={HIDDEN_COLUMNS_ID}
             items={hiddenColumns.map((column) => column.id as number)}

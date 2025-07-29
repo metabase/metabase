@@ -336,6 +336,7 @@ export function TableDetailViewInner({
           <DetailViewSidebar
             columns={columns}
             sections={sectionsOrOverride}
+            onCreateSection={createSection}
             onUpdateSection={updateSection}
           />
         </Box>
