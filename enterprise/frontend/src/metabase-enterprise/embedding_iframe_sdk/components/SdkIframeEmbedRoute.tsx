@@ -82,16 +82,19 @@ const SdkIframeEmbedView = ({
   const rerenderKey = useParamRerenderKey(settings);
 
   return match(settings)
-    .with({ questionId: "new" }, (settings) => (
-      <InteractiveQuestion
-        questionId="new"
-        height="100%"
-        isSaveEnabled={settings.isSaveEnabled ?? false}
-        targetCollection={settings.targetCollection}
-        entityTypes={settings.entityTypes}
-        key={rerenderKey}
-      />
-    ))
+    .with(
+      P.union({ template: "exploration" }, { questionId: "new" }),
+      (settings) => (
+        <InteractiveQuestion
+          questionId="new"
+          height="100%"
+          isSaveEnabled={settings.isSaveEnabled ?? false}
+          targetCollection={settings.targetCollection}
+          entityTypes={settings.entityTypes}
+          key={rerenderKey}
+        />
+      ),
+    )
     .with({ template: "curate-content" }, (_settings) => null)
     .with({ template: "view-content" }, (_settings) => null)
     .with(
