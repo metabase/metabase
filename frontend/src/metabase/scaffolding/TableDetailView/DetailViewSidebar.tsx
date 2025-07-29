@@ -221,6 +221,20 @@ export function DetailViewSidebar({
     setActiveId(null);
   };
 
+  const handleUnhideField = (fieldId: number) => {
+    // TODO: support any section, not just the first one
+    if (sections.length > 0) {
+      const firstSection = sections[0];
+      const newField = {
+        field_id: fieldId,
+        style: "normal" as const,
+      };
+
+      const newFields = [...firstSection.fields, newField];
+      onUpdateSection(firstSection.id, { fields: newFields });
+    }
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -270,7 +284,13 @@ export function DetailViewSidebar({
                 ) : (
                   <ul style={{ width: "100%" }}>
                     {hiddenColumns.map((column) => (
-                      <ColumnListItem key={column.id} column={column} />
+                      <ColumnListItem
+                        key={column.id}
+                        column={column}
+                        onUnhideField={() =>
+                          handleUnhideField(column.id as number)
+                        }
+                      />
                     ))}
                   </ul>
                 )}
@@ -425,12 +445,14 @@ function ColumnListItem({
   column,
   onChangeFieldSettings,
   onHideField,
+  onUnhideField,
 }: {
   column: DatasetColumn;
   onChangeFieldSettings?: (update: {
     style: "normal" | "bold" | "dim" | "title";
   }) => void;
   onHideField?: () => void;
+  onUnhideField?: () => void;
 }) {
   const {
     attributes,
@@ -474,6 +496,16 @@ function ColumnListItem({
               onClick={onHideField}
             >
               <Icon name="eye" />
+            </ActionIcon>
+          )}
+          {!!onUnhideField && (
+            <ActionIcon
+              className={S.ObjectViewSidebarColumnActionIcon}
+              variant="transparent"
+              color="text-medium"
+              onClick={onUnhideField}
+            >
+              <Icon name="eye_crossed_out" />
             </ActionIcon>
           )}
           {!!onChangeFieldSettings && (
