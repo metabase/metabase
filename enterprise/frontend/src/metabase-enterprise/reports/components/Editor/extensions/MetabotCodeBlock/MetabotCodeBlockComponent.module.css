@@ -27,4 +27,25 @@
   bottom: 0.5rem;
   right: 0.5rem;
   z-index: 10;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Debug: Make sure buttons are visible */
+.runButtonContainer button {
+  background-color: var(--mb-color-brand);
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 60px;
+}
+
+.runButtonContainer button[data-variant="subtle"] {
+  background-color: var(--mb-color-error);
+  color: white;
 }
