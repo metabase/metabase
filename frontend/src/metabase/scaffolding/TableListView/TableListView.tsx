@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -12,7 +13,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import api from "metabase/lib/api";
+import { POST } from "metabase/lib/api";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { Label } from "metabase/metadata/components/FieldOrderPicker/Label";
@@ -20,6 +21,7 @@ import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
+import { closeNavbar } from "metabase/redux/app";
 import {
   ActionIcon,
   Box,
@@ -194,12 +196,19 @@ export const TableListView = ({ location, params }: Props) => {
   };
 
   const handleGenerateAIConfig = async () => {
-    if (!table) return;
+    if (!table) {
+      return;
+    }
 
     setIsGeneratingAI(true);
     try {
-      const viewType = settings.list_view.view === "table" ? "table" : settings.list_view.view === "list" ? "list" : "gallery";
-      const response = await api.POST("/api/ee/metabot-tools/table-view-config")({
+      const viewType =
+        settings.list_view.view === "table"
+          ? "table"
+          : settings.list_view.view === "list"
+            ? "list"
+            : "gallery";
+      const response = await POST("/api/ee/metabot-tools/table-view-config")({
         table_id: table.id,
         view_type: viewType,
       });
@@ -216,7 +225,10 @@ export const TableListView = ({ location, params }: Props) => {
               },
             },
           }));
-        } else if ((viewType === "list" || viewType === "gallery") && response.config.object_view?.sections) {
+        } else if (
+          (viewType === "list" || viewType === "gallery") &&
+          response.config.object_view?.sections
+        ) {
           const key = viewType as "list" | "gallery";
           setSettings((settings) => ({
             ...settings,
@@ -237,6 +249,10 @@ export const TableListView = ({ location, params }: Props) => {
       setIsGeneratingAI(false);
     }
   };
+
+  useMount(() => {
+    dispatch(closeNavbar());
+  });
 
   useEffect(() => {
     if (table) {
@@ -632,7 +648,8 @@ export const TableListView = ({ location, params }: Props) => {
                     onClick={handleGenerateAIConfig}
                     aria-label={t`Generate with AI`}
                     style={{
-                      background: 'linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)',
+                      background:
+                        "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
                     }}
                   >
                     <Icon name="ai" size={18} />
