@@ -5,13 +5,20 @@ import { getNextId } from "__support__/utils";
 import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
+  isAddress,
   isAvatarURL,
+  isCoordinate,
+  isCountry,
   isDate,
   isDateWithoutTime,
   isEmail,
   isEntityName,
   isImageURL,
   isPK,
+  isState,
+  isString,
+  isStringLike,
+  isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
@@ -197,6 +204,9 @@ function getBestFields(fields: Field[]): Field[] {
   let bestFields: Field[] = [];
 
   bestFields.push(...fields.filter(isPK));
+  bestFields.push(
+    ...fields.filter((field) => field.name.toLowerCase().includes("name")),
+  );
   bestFields.push(...fields.filter(isEntityName));
   bestFields.push(
     ...fields.filter((field) => field.semantic_type === "type/Title"),
@@ -207,9 +217,23 @@ function getBestFields(fields: Field[]): Field[] {
   );
   bestFields.push(...fields.filter(isAvatarURL));
   bestFields.push(...fields.filter(isImageURL));
+  bestFields.push(...fields.filter(isCountry));
+  bestFields.push(...fields.filter(isState));
+  bestFields.push(...fields.filter(isAddress));
+  bestFields.push(
+    ...fields.filter((field) => field.semantic_type === "type/Category"),
+  );
+  bestFields.push(
+    ...fields.filter((field) => isString(field) || isStringLike(field)),
+  );
   bestFields.push(...fields.filter(isDateWithoutTime));
   bestFields.push(...fields.filter(isDate));
-  bestFields.push(...fields.filter((field) => field.semantic_type != null));
+  bestFields.push(...fields.filter(isURL));
+  bestFields.push(
+    ...fields.filter(
+      (field) => field.semantic_type != null && !isCoordinate(field),
+    ),
+  );
 
   bestFields = _.uniq(bestFields);
 
