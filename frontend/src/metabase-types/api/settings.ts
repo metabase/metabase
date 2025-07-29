@@ -294,8 +294,6 @@ export type SettingDefinitionMap<
   [K in T]: SettingDefinition<K>;
 };
 
-export type UpdateChannel = "latest" | "beta" | "nightly";
-
 export interface OpenAiModel {
   id: string;
   owned_by: string;
@@ -486,7 +484,6 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
-  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
