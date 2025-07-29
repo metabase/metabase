@@ -2396,6 +2396,70 @@
           (finally
             (t2/delete! :model/Collection :name collection-name)))))))
 
+(deftest create-child-collection-namespace-inheritance-test
+  (testing "POST /api/collection"
+    (testing "Child collection should inherit namespace from parent when namespace not provided"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [;; Create a parent collection with snippets namespace
+              parent-collection (mt/user-http-request :crowberto :post 200 "collection"
+                                                      {:name "Parent Snippets Collection"
+                                                       :namespace "snippets"})
+              parent-id (:id parent-collection)
+              ;; Create child collection without specifying namespace
+              child-collection (mt/user-http-request :crowberto :post 200 "collection"
+                                                     {:name "Child Collection"
+                                                      :parent_id parent-id})]
+          (is (= "snippets" (:namespace child-collection))
+              "Child collection should inherit namespace from parent"))))))
+
+(deftest create-child-collection-explicit-namespace-works-test
+  (testing "POST /api/collection"
+    (testing "Child collection should use explicit namespace when provided (even if nil)"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [parent-collection (mt/user-http-request :crowberto :post 200 "collection"
+                                                      {:name "Parent Snippets Collection"
+                                                       :namespace "snippets"})
+              parent-id (:id parent-collection)]
+          (is (partial= {:namespace "snippets"}
+                        (mt/user-http-request :crowberto :post 200 "collection"
+                                              {:name "Child Collection"
+                                               :parent_id parent-id
+                                               :namespace "snippets"}))
+              "Child collection uses the same namespace as parent"))))))
+
+(deftest create-child-collection-explicit-namespace-fails-test
+  (testing "POST /api/collection"
+    (testing "Child collection should use explicit namespace when provided (even if nil)"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [;; Create a parent collection with snippets namespace
+              parent-collection (mt/user-http-request :crowberto :post 200 "collection"
+                                                      {:name "Parent Snippets Collection"
+                                                       :namespace "snippets"})
+              parent-id (:id parent-collection)]
+          ;; Create child collection with explicit nil namespace should use nil (not inherit)
+          (is (= {:errors {:location "Collection must be in the same namespace as its parent"}}
+                 (mt/user-http-request :crowberto :post 400 "collection"
+                                       {:name "Child Collection"
+                                        :parent_id parent-id
+                                        :namespace nil}))
+              "Child namespace validation is still enforced"))))))
+
+(deftest create-root-collection-namespace-test
+  (testing "POST /api/collection"
+    (testing "Root collection should use provided namespace or default to nil"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [;; Create root collection without specifying namespace
+              root-collection-no-ns (mt/user-http-request :crowberto :post 200 "collection"
+                                                          {:name "Root Collection No NS"})
+              ;; Create root collection with explicit namespace
+              root-collection-with-ns (mt/user-http-request :crowberto :post 200 "collection"
+                                                            {:name "Root Collection With NS"
+                                                             :namespace "snippets"})]
+          (is (nil? (:namespace root-collection-no-ns))
+              "Root collection without parent should have nil namespace when not specified")
+          (is (= "snippets" (:namespace root-collection-with-ns))
+              "Root collection should use explicitly provided namespace"))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
