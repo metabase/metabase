@@ -8,6 +8,16 @@
   }
 }
 
+.ObjectViewSidebarSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarSection {
+  &:hover .ObjectViewSidebarSectionActions {
+    visibility: visible;
+  }
+}
+
 .ObjectViewSidebarColumnActionIcon {
   visibility: hidden;
 }

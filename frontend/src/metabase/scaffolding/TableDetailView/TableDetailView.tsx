@@ -346,6 +346,7 @@ export function TableDetailViewInner({
               sections={sectionsOrOverride}
               onCreateSection={createSection}
               onUpdateSection={updateSection}
+              onRemoveSection={removeSection}
             />
           </Box>
         )}

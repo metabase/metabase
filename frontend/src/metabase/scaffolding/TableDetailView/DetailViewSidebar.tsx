@@ -54,6 +54,7 @@ interface DetailViewSidebarProps {
     id: number,
     section: Partial<ObjectViewSectionSettings>,
   ) => void;
+  onRemoveSection?: (id: number) => void;
 }
 
 const HIDDEN_COLUMNS_ID = "hidden-columns";
@@ -63,6 +64,7 @@ export function DetailViewSidebar({
   columns,
   onCreateSection,
   onUpdateSection,
+  onRemoveSection,
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
@@ -254,6 +256,9 @@ export function DetailViewSidebar({
             columns={visibleColumns}
             section={section}
             onUpdateSection={(update) => onUpdateSection(section.id, update)}
+            onRemoveSection={
+              onRemoveSection ? () => onRemoveSection(section.id) : undefined
+            }
           />
         ))}
 
@@ -345,12 +350,14 @@ type SectionSettingsProps = {
   columns: DatasetColumn[];
   section: ObjectViewSectionSettings;
   onUpdateSection: (update: Partial<ObjectViewSectionSettings>) => void;
+  onRemoveSection?: () => void;
 };
 
 function SectionSettings({
   columns,
   section,
   onUpdateSection,
+  onRemoveSection,
 }: SectionSettingsProps) {
   const columnIds = useMemo(
     () => section.fields.map((field) => field.field_id),
@@ -378,7 +385,7 @@ function SectionSettings({
   };
 
   return (
-    <Box mt="sm">
+    <Box mt="sm" className={S.ObjectViewSidebarSection}>
       <CollapseSection
         header={
           <Flex align="center" justify="space-between" w="100%">
@@ -392,28 +399,43 @@ function SectionSettings({
                 }}
               />
             </div>
-            <Button
-              variant="inverse"
-              size="compact-sm"
-              onClick={(event) => {
-                // do not collapse section on click
-                event.stopPropagation();
+            <Group gap="xs" className={S.ObjectViewSidebarSectionActions}>
+              <Button
+                variant="inverse"
+                size="compact-sm"
+                onClick={(event) => {
+                  // do not collapse section on click
+                  event.stopPropagation();
 
-                onUpdateSection({
-                  direction:
-                    section.direction === "vertical"
-                      ? "horizontal"
-                      : "vertical",
-                });
-              }}
-              style={{
-                aspectRatio: 1,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {section.direction === "vertical" ? "↓" : "→"}
-            </Button>
+                  onUpdateSection({
+                    direction:
+                      section.direction === "vertical"
+                        ? "horizontal"
+                        : "vertical",
+                  });
+                }}
+                style={{
+                  aspectRatio: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {section.direction === "vertical" ? "↓" : "→"}
+              </Button>
+              {onRemoveSection && (
+                <Button
+                  variant="inverse"
+                  leftSection={
+                    <Icon
+                      name="close"
+                      style={{ color: "var(--mb-color-text-medium)" }}
+                    />
+                  }
+                  size="compact-sm"
+                  onClick={onRemoveSection}
+                />
+              )}
+            </Group>
           </Flex>
         }
         initialState="expanded"
