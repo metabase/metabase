@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2025-07-29-worker-runs
+      author: eric
+      comment: Create worker_runs table to track worker execution
+      changes:
+        - createTable:
+            tableName: worker_runs
+            remarks: Table to track worker job executions and their status
+            columns:
+              - column:
+                  name: run_id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: work_id
+                  type: bigint
+                  remarks: 'Identifier for the unit of work (transform, sync, etc.)'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(255)
+                  remarks: 'Type/category of the worker job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source
+                  type: varchar(255)
+                  remarks: 'Metabase instance identifier that ran this job'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: 'Current status of the worker job (running, completed, failed, etc.)'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: timestamp with time zone
+                  remarks: 'When the worker job started'
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: timestamp with time zone
+                  remarks: 'When the worker job completed (null if still running)'
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: worker_runs
+            indexName: idx_worker_runs_type_id
+            columns:
+              - column:
+                  name: work_id
+        - createIndex:
+            tableName: worker_runs
+            indexName: idx_worker_runs_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: worker_runs
+            indexName: idx_worker_runs_start_time
+            columns:
+              - column:
+                  name: start_time
