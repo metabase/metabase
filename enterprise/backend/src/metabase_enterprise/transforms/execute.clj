@@ -11,23 +11,23 @@
 
 (defn execute-query!
   "Execute the `sql` query with `params` on the database specified by `db-ref` using `driver`."
-  [driver db-ref [sql & params]]
+  [driver db-ref [sql & params] opts]
   (let [query {:native (cond-> {:query sql}
                          params (assoc :params params))
                :type :native
                :database db-ref}]
     (qp.setup/with-qp-setup [query query]
       (let [query (qp.preprocess/preprocess query)]
-        (driver/execute-write-query! driver query)))))
+        (driver/execute-transform! driver query opts)))))
 
 (defn execute!
   "Execute a transform lego piece."
   [{:keys [db-ref driver sql output-table overwrite?]}]
   (let [output-table (keyword (or output-table (str "transform_" (str/replace (random-uuid) \- \_))))
         query (driver/compile-transform driver {:sql sql :output-table output-table :overwrite? overwrite?})]
-    (when overwrite?
-      (execute-query! driver db-ref (driver/compile-drop-table driver output-table)))
-    (execute-query! driver db-ref query)
+    (execute-query! driver db-ref query
+                    {:before-queries [(when overwrite?
+                                        (driver/compile-drop-table driver output-table))]})
     output-table))
 
 (defn- sync-table!

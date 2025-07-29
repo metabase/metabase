@@ -265,11 +265,15 @@
   (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/execute-write-query! :h2
-  [driver query]
+(defmethod driver/execute-transform! :h2
+  [driver query {:keys [before-queries after-queries] :as opts}]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
-  ((get-method driver/execute-write-query! :sql-jdbc) driver query))
+  (doseq [pre-or-post-query (concat before-queries after-queries)
+          :let [sql (first pre-or-post-query)]
+          :when sql]
+    (check-action-commands-allowed (assoc-in query [:native :query] sql)))
+  ((get-method driver/execute-transform! :sql-jdbc) driver query opts))
 
 (defn- dateadd [unit amount expr]
   (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
