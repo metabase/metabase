@@ -5,7 +5,10 @@ import { jt, t } from "ttag";
 import { useConfirmation } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon } from "metabase/ui";
-import { useDeleteTransformMutation } from "metabase-enterprise/api";
+import {
+  useDeleteTransformMutation,
+  useExecuteTransformMutation,
+} from "metabase-enterprise/api";
 import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/TransformDetails/CardSection";
 import { getTransformQueryUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform, TransformTarget } from "metabase-types/api";
@@ -21,7 +24,7 @@ export function ManageSection({ transform }: ManageSectionProps) {
       description={t`Change what this transform generates and where.`}
     >
       <Group px="xl" py="lg">
-        <Button leftSection={<Icon name="play" />}>{t`Run now`}</Button>
+        <ExecuteButton transform={transform} />
         <Button
           component={Link}
           to={getTransformQueryUrl(transform.id)}
@@ -32,6 +35,35 @@ export function ManageSection({ transform }: ManageSectionProps) {
         <DeleteButton transform={transform} />
       </Group>
     </CardSection>
+  );
+}
+
+export type ExecuteButtonProps = {
+  transform: Transform;
+};
+
+function ExecuteButton({ transform }: ExecuteButtonProps) {
+  const [executeTransform, { isLoading }] = useExecuteTransformMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+
+  const handleExecute = async () => {
+    const { error } = await executeTransform(transform.id);
+
+    if (error) {
+      sendErrorToast("Failed to run transform");
+    } else {
+      sendSuccessToast("Transform run successfully");
+    }
+  };
+
+  return (
+    <Button
+      leftSection={<Icon name="play" />}
+      loading={isLoading}
+      onClick={handleExecute}
+    >
+      {t`Run now`}
+    </Button>
   );
 }
 
