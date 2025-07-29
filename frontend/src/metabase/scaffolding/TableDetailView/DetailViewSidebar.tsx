@@ -22,6 +22,8 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import api from "metabase/lib/api";
+
 import CollapseSection from "metabase/common/components/CollapseSection";
 import EditableText from "metabase/common/components/EditableText";
 import {
@@ -51,6 +53,9 @@ interface DetailViewSidebarProps {
     id: number,
     section: Partial<ObjectViewSectionSettings>,
   ) => void;
+  tableId: number;
+  onUpdateAllSections: (sections: ObjectViewSectionSettings[]) => void;
+  hideAIButton?: boolean;
 }
 
 const HIDDEN_COLUMNS_ID = "hidden-columns";
@@ -59,8 +64,12 @@ export function DetailViewSidebar({
   sections,
   columns,
   onUpdateSection,
+  tableId,
+  onUpdateAllSections,
+  hideAIButton = false,
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -221,6 +230,26 @@ export function DetailViewSidebar({
     setActiveId(null);
   };
 
+  const handleGenerateConfiguration = async () => {
+    setIsGenerating(true);
+    try {
+      const response = await api.POST("/api/ee/metabot-tools/table-view-config")({
+        table_id: tableId,
+        view_type: "detail",
+      });
+
+      if (response.success && response.config?.object_view?.sections) {
+        onUpdateAllSections(response.config.object_view.sections);
+      } else {
+        console.error("Failed to generate configuration:", response.error);
+      }
+    } catch (error) {
+      console.error("Error generating configuration:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -238,12 +267,24 @@ export function DetailViewSidebar({
           overflowY: "auto",
         }}
       >
-        <Text
-          fw={600}
-          size="lg"
-          mb="xs"
-          pb="sm"
-        >{t`Detail view settings`}</Text>
+        <Flex justify="space-between" align="center" mb="xs" pb="sm">
+          <Text fw={600} size="lg">{t`Detail view settings`}</Text>
+          {!hideAIButton && (
+            <ActionIcon
+              variant="filled"
+              color="brand"
+              size="md"
+              loading={isGenerating}
+              onClick={handleGenerateConfiguration}
+              aria-label={t`Generate with AI`}
+              style={{
+                background: 'linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)',
+              }}
+            >
+              <Icon name="ai" size={18} />
+            </ActionIcon>
+          )}
+        </Flex>
 
         {sections.map((section) => (
           <SectionSettings

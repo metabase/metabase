@@ -1,0 +1,113 @@
+Generate a JSON layout configuration for displaying database records in a {{viewType}} view.
+
+Given a list of fields, their metadata, and the purpose of each view, determine the most readable and intuitive display configuration. Use the provided schema to specify how fields appear (with style), how they are grouped into sections, and how rows should be rendered. **Reason step-by-step before assigning styles, views, or groupings.**
+
+# Steps
+
+## 1. **Analyze Field Metadata**
+   Use the following properties to understand the role of each field:
+
+   * `name`, `description` - Field identifier and human-readable explanation
+   * `semantic_type` - Business meaning (e.g., `title`, `currency`, `creation_time`, `email`, `url`)
+   * `database_type` - Technical data type (e.g., `string`, `float`, `datetime`, `text`)
+
+## 2. **Choose Sections Strategy** (for detail/gallery views)
+   Group related fields into logical sections based on these criteria:
+
+   **Primary Sections:**
+   - **Identity/Header**: Title fields, names, IDs that identify the record
+   - **Core Details**: Main descriptive information users care about most
+   - **Metadata**: Created/updated timestamps, system fields, status
+   - **Contact/Location**: Addresses, phone numbers, emails, geographic data
+   - **Financial**: Prices, costs, currency amounts, financial metrics
+   - **Technical**: Internal IDs, foreign keys, technical specifications
+
+   **Section Guidelines:**
+   - Use 2-4 sections maximum for optimal readability
+   - Put most important fields in early sections
+   - Group semantically related fields together
+   - Keep sections focused (3-8 fields per section typically)
+
+## 3. **Select Fields for Each Section**
+
+   **Field Priority Rules:**
+   - **Must Include**: Fields with `semantic_type` of `title`, `name`, `description`
+   - **High Priority**: User-facing fields that provide key information
+   - **Medium Priority**: Descriptive fields, categories, status indicators
+   - **Low Priority**: Technical fields, timestamps, internal IDs
+   - **Skip**: Fields that are purely internal or duplicative
+
+   **For {{viewType}} view specifically:**
+   {{#if (equals viewType "listing")}}
+   - Include 3-6 most important fields only
+   - Prioritize identifying and descriptive fields
+   - Avoid long text fields and technical details
+   {{/if}}
+   {{#if (equals viewType "detail")}}
+   - Include all user-relevant fields
+   - Group comprehensively but logically
+   - Show full information hierarchy
+   {{/if}}
+   {{#if (equals viewType "gallery")}}
+   - Focus on visual and identifying information
+   - Include key descriptive fields
+   - Minimize technical/metadata fields
+   {{/if}}
+
+## 4. **Apply Field Styling**
+
+   **Style Guidelines:**
+   - **"title"**: Use for primary identifying fields (names, titles, main descriptors)
+   - **"bold"**: Use for important categorical data, status fields, key metrics (NOT for ID fields)
+   - **"normal"**: Use for standard descriptive content, most fields, ID columns
+   - **"dim"**: Use for secondary information, timestamps, technical details
+
+   **Semantic Type to Style Mapping:**
+   - `title`, `name` → "title"
+   - `currency`, `number` (if important) → "bold"
+   - `creation_time`, `updated_time` → "dim"
+   - `email`, `url` → "normal"
+   - `description`, `text` → "normal"
+   - `status`, `category` → "bold"
+   - `id`, `pk`, `fk` → "normal" (never bold)
+
+## 5. **Configure Section Layout** (for detail/gallery views)
+
+   **Direction Guidelines:**
+   - **"vertical"**: Use when fields have varying lengths or when you want stacked layout
+     - Good for: descriptions, addresses, lists of items
+     - Recommended for sections with 3+ fields
+   - **"horizontal"**: Use for compact, related fields of similar length
+     - Good for: name/status pairs, date ranges, coordinates
+     - Recommended for sections with 2-3 short fields
+
+## 6. **Set Row Display Options** (for listing view)
+
+   **Row Height Guidelines:**
+   - **"thin"**: Use when showing compact, tabular data with short field values
+   - **"normal"**: Use when fields may contain longer text or when readability is priority
+
+# Available Fields
+
+Table: {{tableName}}
+
+Fields (JSON):
+{{fieldsJson}}
+
+# Reasoning Process
+
+Before generating the final JSON, work through this reasoning:
+
+1. **Field Analysis**: For each field, identify its semantic purpose and importance level
+2. **Section Planning**: Decide which sections to create and their purpose
+3. **Field Assignment**: Assign each selected field to appropriate sections
+4. **Style Selection**: Choose appropriate styling based on field importance and type
+5. **Layout Decisions**: Select section directions and row heights based on content type
+
+# Notes
+
+* Always perform **reasoning first**, field-by-field, before concluding grouping and styles.
+* The output must be a valid JSON object with no missing required fields.
+* Reuse sections across `detail` and `gallery` only if they serve the same purpose.
+* Sections should have descriptive titles that explain the grouping (e.g., "Contact Information", "Financial Details")
+* Consider the user experience - prioritize fields that help users understand and identify records.

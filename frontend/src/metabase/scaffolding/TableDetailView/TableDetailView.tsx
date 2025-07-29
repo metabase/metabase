@@ -141,6 +141,7 @@ export function TableDetailViewInner({
     updateSection,
     removeSection,
     handleDragEnd,
+    replaceAllSections,
   } = useDetailViewSections(initialSections);
 
   const sectionsOrOverride = isListView
@@ -286,6 +287,8 @@ export function TableDetailViewInner({
           columns={columns}
           sections={sectionsOrOverride}
           onUpdateSection={updateSection}
+          tableId={tableId}
+          onUpdateAllSections={replaceAllSections}
         />
       )}
     </Flex>
