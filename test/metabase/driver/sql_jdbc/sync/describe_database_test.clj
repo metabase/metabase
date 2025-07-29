@@ -285,7 +285,7 @@
                        (fn [_driver conn' [sql]]
                          (let [n (swap! select-probes inc)]
                            (when (< n probe-errors)
-                             (probe-error-fn conn sql))))
+                             (probe-error-fn conn' sql))))
                        driver/query-canceled? (constantly query-canceled)]
            [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
             @select-probes]))))))
@@ -304,7 +304,7 @@
           (is (true? result))
           (is (= 2 probes))))
       (testing "we will only retry syncing a table if the connection is closed"
-        (let [[result probes] (run-retry-have-select-privilege! 2 false (fn [conn sql]
+        (let [[result probes] (run-retry-have-select-privilege! 2 false (fn [_conn _sql]
                                                                           (throw (ex-info "not connection closed error" {}))))]
           (is (false? result))
           (is (= 1 probes))))
