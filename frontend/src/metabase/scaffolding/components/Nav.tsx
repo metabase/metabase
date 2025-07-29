@@ -13,7 +13,7 @@ interface Props {
 
 export const Nav = ({ children, rowId, rowName, table }: Props) => {
   return (
-    <Group align="flex-start" justify="space-between">
+    <Group align="flex-start" justify="space-between" pt="xl" px="xl">
       <Group align="flex-end" gap="sm">
         <Link to={`/table/${table.id}`}>
           <Title>{table.display_name}</Title>

@@ -317,205 +317,202 @@ export const TableListView = ({ location, params }: Props) => {
   }
 
   return (
-    <Group align="flex-start" gap={0} wrap="nowrap" h="100%">
-      <Stack
-        gap="md"
-        p="xl"
-        flex="1"
-        miw={0}
-        h="100%"
-        style={{ overflow: "auto" }}
-      >
-        <Nav table={table}>
-          <PaginationControls
-            itemsLength={paginatedRows.length}
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={filteredRows.length}
-            onNextPage={() => {
-              dispatch(push(`/table/${tableId}?page=${page + 1}`));
-            }}
-            onPreviousPage={() => {
-              if (page === 1) {
-                dispatch(push(`/table/${tableId}`));
-              } else {
-                dispatch(push(`/table/${tableId}?page=${page - 1}`));
-              }
-            }}
-          />
+    <Stack
+      gap="md"
+      flex="1"
+      miw={0}
+      mah="100%"
+      h="100%"
+      style={{ overflow: "hidden" }}
+    >
+      <Nav table={table}>
+        <PaginationControls
+          itemsLength={paginatedRows.length}
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={filteredRows.length}
+          onNextPage={() => {
+            dispatch(push(`/table/${tableId}?page=${page + 1}`));
+          }}
+          onPreviousPage={() => {
+            if (page === 1) {
+              dispatch(push(`/table/${tableId}`));
+            } else {
+              dispatch(push(`/table/${tableId}?page=${page - 1}`));
+            }
+          }}
+        />
 
-          {settings.list_view.view !== "table" && (
-            <Group align="flex-end" gap="xs" justify="flex-end" wrap="nowrap">
-              <Tooltip disabled={!sortState} label={t`Sort by`}>
-                <Select
-                  data={columns.map((column) => ({
-                    value: String(column.id!),
-                    label: column.display_name,
-                  }))}
-                  placeholder={t`Sort by...`}
-                  value={sortState?.columnId ? String(sortState.columnId) : ""}
-                  w={150}
-                  onChange={(value) => {
-                    if (value) {
-                      const column = columns.find(
-                        (column) => column.id === parseInt(value, 10),
-                      );
+        {settings.list_view.view !== "table" && (
+          <Group align="flex-end" gap="xs" justify="flex-end" wrap="nowrap">
+            <Tooltip disabled={!sortState} label={t`Sort by`}>
+              <Select
+                data={columns.map((column) => ({
+                  value: String(column.id!),
+                  label: column.display_name,
+                }))}
+                placeholder={t`Sort by...`}
+                value={sortState?.columnId ? String(sortState.columnId) : ""}
+                w={150}
+                onChange={(value) => {
+                  if (value) {
+                    const column = columns.find(
+                      (column) => column.id === parseInt(value, 10),
+                    );
 
-                      if (column) {
-                        handleColumnSort(column);
-                      }
+                    if (column) {
+                      handleColumnSort(column);
                     }
-                  }}
-                />
-              </Tooltip>
-
-              <Tooltip
-                disabled={!sortState}
-                label={t`Change sorting direction`}
-              >
-                <Button
-                  disabled={!sortState}
-                  leftSection={
-                    <Icon
-                      name={
-                        sortState?.direction === "desc"
-                          ? "chevrondown"
-                          : "chevronup"
-                      }
-                    />
                   }
-                  onClick={() => {
-                    if (sortState) {
-                      const column = columns.find(
-                        (column) => column.id === sortState.columnId,
-                      );
-
-                      if (column) {
-                        // Toggle direction by calling handleColumnSort again
-                        handleColumnSort(column);
-                      }
-                    }
-                  }}
-                  variant="default"
-                />
-              </Tooltip>
-            </Group>
-          )}
-
-          <TextInput
-            leftSection={<Icon name="search" />}
-            placeholder={t`Search...`}
-            value={searchQuery}
-            w={200}
-            onChange={(event) => {
-              setSearchQuery(event.currentTarget.value);
-              dispatch(replace(`/table/${tableId}`));
-            }}
-          />
-
-          <Popover
-            opened={isFilterPickerOpen}
-            onClose={() => setIsFilterPickerOpen(false)}
-          >
-            <Popover.Target>
-              <Button
-                leftSection={<Icon name="filter" />}
-                variant="default"
-                onClick={() => setIsFilterPickerOpen((value) => !value)}
-              >
-                {t`Filter`}
-              </Button>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <MultiStageFilterPicker
-                canAppendStage
-                query={dataQuery}
-                onChange={handleFilterChange}
-                onClose={() => setIsFilterPickerOpen(false)}
-              />
-            </Popover.Dropdown>
-          </Popover>
-
-          {!isEditing && (
-            <SegmentedControl
-              data={[
-                {
-                  value: "table",
-                  label: <Label icon="table2" tooltip={t`Table`} />,
-                },
-                {
-                  value: "list",
-                  label: <Label icon="list" tooltip={t`List`} />,
-                },
-                {
-                  value: "gallery",
-                  label: <Label icon="grid" tooltip={t`Gallery`} />,
-                },
-              ]}
-              value={settings.list_view.view}
-              onChange={handleViewChange}
-            />
-          )}
-
-          {!isEditing && (
-            <Tooltip label={t`Display settings`}>
-              <Button
-                leftSection={<Icon name="gear" />}
-                onClick={() => setIsEditing(true)}
+                }}
               />
             </Tooltip>
-          )}
 
-          {!isSyncInProgress(table) && (
-            <Menu position="bottom-end">
-              <Menu.Target>
-                <Tooltip label={t`More`}>
-                  <Button leftSection={<Icon name="ellipsis" />} />
-                </Tooltip>
-              </Menu.Target>
+            <Tooltip disabled={!sortState} label={t`Change sorting direction`}>
+              <Button
+                disabled={!sortState}
+                leftSection={
+                  <Icon
+                    name={
+                      sortState?.direction === "desc"
+                        ? "chevrondown"
+                        : "chevronup"
+                    }
+                  />
+                }
+                onClick={() => {
+                  if (sortState) {
+                    const column = columns.find(
+                      (column) => column.id === sortState.columnId,
+                    );
 
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<Icon name="insight" />}
-                  component={Link}
-                  to={getExploreTableUrl(table)}
-                >
-                  {t`Explore results`}
-                </Menu.Item>
+                    if (column) {
+                      // Toggle direction by calling handleColumnSort again
+                      handleColumnSort(column);
+                    }
+                  }
+                }}
+                variant="default"
+              />
+            </Tooltip>
+          </Group>
+        )}
 
-                <Menu.Item
-                  leftSection={<Icon name="bolt_filled" />}
-                  component={Link}
-                  to={`/auto/dashboard/table/${tableId}`}
-                >
-                  {t`X-ray this table`}
-                </Menu.Item>
+        <TextInput
+          leftSection={<Icon name="search" />}
+          placeholder={t`Search...`}
+          value={searchQuery}
+          w={200}
+          onChange={(event) => {
+            setSearchQuery(event.currentTarget.value);
+            dispatch(replace(`/table/${tableId}`));
+          }}
+        />
 
-                <Menu.Item
-                  leftSection={<Icon name="reference" />}
-                  component={Link}
-                  to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-                >
-                  {t`Learn about this table`}
-                </Menu.Item>
+        <Popover
+          opened={isFilterPickerOpen}
+          onClose={() => setIsFilterPickerOpen(false)}
+        >
+          <Popover.Target>
+            <Button
+              leftSection={<Icon name="filter" />}
+              variant="default"
+              onClick={() => setIsFilterPickerOpen((value) => !value)}
+            >
+              {t`Filter`}
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <MultiStageFilterPicker
+              canAppendStage
+              query={dataQuery}
+              onChange={handleFilterChange}
+              onClose={() => setIsFilterPickerOpen(false)}
+            />
+          </Popover.Dropdown>
+        </Popover>
 
-                <Menu.Item
-                  leftSection={<Icon name="table2" />}
-                  component={Link}
-                  to={getUrl({
-                    databaseId: table.db_id,
-                    schemaName: table.schema,
-                    tableId: table.id,
-                    fieldId: undefined,
-                  })}
-                >
-                  {t`Edit table metadata`}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          )}
-        </Nav>
+        {!isEditing && (
+          <SegmentedControl
+            data={[
+              {
+                value: "table",
+                label: <Label icon="table2" tooltip={t`Table`} />,
+              },
+              {
+                value: "list",
+                label: <Label icon="list" tooltip={t`List`} />,
+              },
+              {
+                value: "gallery",
+                label: <Label icon="grid" tooltip={t`Gallery`} />,
+              },
+            ]}
+            value={settings.list_view.view}
+            onChange={handleViewChange}
+          />
+        )}
 
+        {!isEditing && (
+          <Tooltip label={t`Display settings`}>
+            <Button
+              leftSection={<Icon name="gear" />}
+              onClick={() => setIsEditing(true)}
+            />
+          </Tooltip>
+        )}
+
+        {!isSyncInProgress(table) && (
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Tooltip label={t`More`}>
+                <Button leftSection={<Icon name="ellipsis" />} />
+              </Tooltip>
+            </Menu.Target>
+
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="insight" />}
+                component={Link}
+                to={getExploreTableUrl(table)}
+              >
+                {t`Explore results`}
+              </Menu.Item>
+
+              <Menu.Item
+                leftSection={<Icon name="bolt_filled" />}
+                component={Link}
+                to={`/auto/dashboard/table/${tableId}`}
+              >
+                {t`X-ray this table`}
+              </Menu.Item>
+
+              <Menu.Item
+                leftSection={<Icon name="reference" />}
+                component={Link}
+                to={`/reference/databases/${table.db_id}/tables/${table.id}`}
+              >
+                {t`Learn about this table`}
+              </Menu.Item>
+
+              <Menu.Item
+                leftSection={<Icon name="table2" />}
+                component={Link}
+                to={getUrl({
+                  databaseId: table.db_id,
+                  schemaName: table.schema,
+                  tableId: table.id,
+                  fieldId: undefined,
+                })}
+              >
+                {t`Edit table metadata`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </Nav>
+
+      <Box px="xl">
         <FilterPanel
           className={S.filterPanel}
           query={dataQuery}
@@ -524,87 +521,108 @@ export const TableListView = ({ location, params }: Props) => {
             dispatch(replace(`/table/${tableId}`));
           }}
         />
+      </Box>
 
-        {settings.list_view.view === "table" && (
-          <TableDataView
-            columns={columns}
-            rows={paginatedRows}
-            settings={settings}
-            sortState={sortState}
-            table={table}
-            onSort={handleColumnSort}
-          />
-        )}
-
-        {settings.list_view.view === "list" && (
-          <Stack gap="md">
-            {paginatedRows.map((row, index) => {
-              return (
-                <TableDetailViewInner
-                  key={index}
-                  tableId={table.id as number}
-                  rowId={row[pkIndex] as number}
-                  dataset={dataset}
-                  table={table}
-                  isEdit={isEditing}
-                  isListView
-                  sectionsOverride={settings.list_view.list.sections}
-                />
-              );
-            })}
-          </Stack>
-        )}
-
-        {settings.list_view.view === "gallery" && (
-          <Box
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              alignItems: "stretch",
-              gap: 24,
-            }}
-          >
-            {paginatedRows.map((row, index) => {
-              return (
-                <TableDetailViewInner
-                  key={index}
-                  tableId={table.id as number}
-                  rowId={row[pkIndex] as number}
-                  dataset={dataset}
-                  table={table}
-                  isEdit={isEditing}
-                  isListView
-                  sectionsOverride={settings.list_view.gallery.sections}
-                />
-              );
-            })}
-          </Box>
-        )}
-      </Stack>
-
-      {isEditing && (
+      <Group
+        align="flex-start"
+        gap={0}
+        mih={0}
+        wrap="nowrap"
+        h="100%"
+        style={{
+          borderTop: "1px solid var(--border-color)",
+        }}
+      >
         <Stack
-          bg="white"
-          flex="0 0 auto"
-          gap={0}
-          miw={400}
+          bg="bg-white"
           h="100%"
-          style={{
-            // boxShadow: "0px 1px 4px 0px var(--mb-color-shadow)",
-            borderLeft: "1px solid var(--border-color)",
-          }}
+          flex="1"
+          style={{ overflow: "auto" }}
+          // pl={"xl"}
         >
-          <Box
+          {settings.list_view.view === "table" && (
+            <TableDataView
+              columns={columns}
+              rows={paginatedRows}
+              settings={settings}
+              sortState={sortState}
+              table={table}
+              onSort={handleColumnSort}
+            />
+          )}
+
+          {settings.list_view.view === "list" && (
+            <Stack gap="xl" p="xl">
+              {paginatedRows.map((row, index) => {
+                return (
+                  <TableDetailViewInner
+                    key={index}
+                    tableId={table.id as number}
+                    rowId={row[pkIndex] as number}
+                    dataset={dataset}
+                    table={table}
+                    isEdit={isEditing}
+                    isListView
+                    sectionsOverride={settings.list_view.list.sections}
+                  />
+                );
+              })}
+            </Stack>
+          )}
+
+          {settings.list_view.view === "gallery" && (
+            <Box
+              p="xl"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                alignItems: "stretch",
+                gap: 32,
+              }}
+            >
+              {paginatedRows.map((row, index) => {
+                return (
+                  <TableDetailViewInner
+                    key={index}
+                    tableId={table.id as number}
+                    rowId={row[pkIndex] as number}
+                    dataset={dataset}
+                    table={table}
+                    isEdit={isEditing}
+                    isListView
+                    sectionsOverride={settings.list_view.gallery.sections}
+                  />
+                );
+              })}
+            </Box>
+          )}
+        </Stack>
+
+        {isEditing && (
+          <Stack
             bg="white"
-            p="xl"
+            flex="0 0 auto"
+            gap={0}
+            mih={0}
+            miw={400}
+            h="100%"
             style={{
-              borderBottom: "1px solid var(--border-color)",
+              // boxShadow: "0px 1px 4px 0px var(--mb-color-shadow)",
+              overflow: "auto",
+              borderLeft: "1px solid var(--border-color)",
             }}
           >
-            <Group justify="space-between" align="center">
-              <Title order={2}>{t`Display settings`}</Title>
+            <Box
+              bg="white"
+              p="xl"
+              style={{
+                borderBottom: "1px solid var(--border-color)",
+              }}
+            >
+              <Group justify="space-between" align="center">
+                <Title order={2}>{t`Display settings`}</Title>
 
-              {/* <Button
+                {/* <Button
                 aria-label={t`Close`}
                 c="text-medium"
                 size="compact-sm"
@@ -613,174 +631,176 @@ export const TableListView = ({ location, params }: Props) => {
               >
                 <Icon name="close" />
               </Button> */}
-            </Group>
-          </Box>
+              </Group>
+            </Box>
 
-          <Box flex="1" p="xl" style={{ overflow: "auto" }}>
-            <Stack gap="lg">
-              <Stack gap="xs">
-                <Flex justify="space-between" align="center">
-                  <Text
-                    c="text-primary"
-                    fw="bold"
-                    lh="var(--mantine-line-height-md)"
-                  >
-                    {t`Layout`}
-                  </Text>
+            <Box flex="1" p="xl" style={{ overflow: "auto" }}>
+              <Stack gap="lg">
+                <Stack gap="xs">
+                  <Flex justify="space-between" align="center">
+                    <Text
+                      c="text-primary"
+                      fw="bold"
+                      lh="var(--mantine-line-height-md)"
+                    >
+                      {t`Layout`}
+                    </Text>
 
-                  <ActionIcon
-                    variant="filled"
-                    color="brand"
-                    size="md"
-                    loading={isGeneratingAI}
-                    onClick={handleGenerateAIConfig}
-                    aria-label={t`Generate with AI`}
-                    style={{
-                      background:
-                        "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
+                    <ActionIcon
+                      variant="filled"
+                      color="brand"
+                      size="md"
+                      loading={isGeneratingAI}
+                      onClick={handleGenerateAIConfig}
+                      aria-label={t`Generate with AI`}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
+                      }}
+                    >
+                      <Icon name="ai" size={18} />
+                    </ActionIcon>
+                  </Flex>
+
+                  <SegmentedControl
+                    data={[
+                      { value: "table", label: t`Table` },
+                      { value: "list", label: t`List` },
+                      { value: "gallery", label: t`Gallery` },
+                    ]}
+                    value={settings.list_view.view}
+                    onChange={handleViewChange}
+                    w="100%"
+                  />
+                </Stack>
+
+                {settings.list_view.view === "table" && (
+                  <TableSettingsPanel
+                    table={table}
+                    value={settings}
+                    onChange={setSettings}
+                  />
+                )}
+
+                {settings.list_view.view === "list" && (
+                  <DetailViewSidebar
+                    columns={columns}
+                    sections={settings.list_view.list.sections}
+                    tableId={table.id}
+                    hideAIButton={true}
+                    onUpdateSection={(id, update) => {
+                      setSettings((settings) => ({
+                        ...settings,
+                        list_view: {
+                          ...settings.list_view,
+                          list: {
+                            ...settings.list_view.list,
+                            sections: settings.list_view.list.sections.map(
+                              (s) => (s.id === id ? { ...s, ...update } : s),
+                            ),
+                          },
+                        },
+                      }));
+                    }}
+                    onUpdateAllSections={(sections) => {
+                      setSettings((settings) => ({
+                        ...settings,
+                        list_view: {
+                          ...settings.list_view,
+                          list: {
+                            sections,
+                          },
+                        },
+                      }));
+                    }}
+                  />
+                )}
+
+                {settings.list_view.view === "gallery" && (
+                  <DetailViewSidebar
+                    columns={columns}
+                    sections={settings.list_view.gallery.sections}
+                    tableId={table.id}
+                    hideAIButton={true}
+                    onUpdateSection={(id, update) => {
+                      setSettings((settings) => ({
+                        ...settings,
+                        list_view: {
+                          ...settings.list_view,
+                          gallery: {
+                            ...settings.list_view.gallery,
+                            sections: settings.list_view.gallery.sections.map(
+                              (s) => (s.id === id ? { ...s, ...update } : s),
+                            ),
+                          },
+                        },
+                      }));
+                    }}
+                    onUpdateAllSections={(sections) => {
+                      setSettings((settings) => ({
+                        ...settings,
+                        list_view: {
+                          ...settings.list_view,
+                          gallery: {
+                            sections,
+                          },
+                        },
+                      }));
+                    }}
+                  />
+                )}
+              </Stack>
+            </Box>
+
+            <Box
+              bg="white"
+              px="xl"
+              py="md"
+              style={{
+                borderTop: "1px solid var(--border-color)",
+              }}
+            >
+              <Group gap="md" justify="space-between">
+                <Group gap="md">
+                  <Button size="sm" variant="subtle" onClick={handleCancel}>
+                    {t`Cancel`}
+                  </Button>
+
+                  <Button
+                    leftSection={<Icon name="revert" />}
+                    size="sm"
+                    variant="subtle"
+                    onClick={() => {
+                      const defaultSettings =
+                        getDefaultComponentSettings(table);
+
+                      setSettings({
+                        ...settings,
+                        list_view: {
+                          ...settings.list_view,
+                          [settings.list_view.view]:
+                            defaultSettings.list_view[settings.list_view.view],
+                        },
+                      });
                     }}
                   >
-                    <Icon name="ai" size={18} />
-                  </ActionIcon>
-                </Flex>
-
-                <SegmentedControl
-                  data={[
-                    { value: "table", label: t`Table` },
-                    { value: "list", label: t`List` },
-                    { value: "gallery", label: t`Gallery` },
-                  ]}
-                  value={settings.list_view.view}
-                  onChange={handleViewChange}
-                  w="100%"
-                />
-              </Stack>
-
-              {settings.list_view.view === "table" && (
-                <TableSettingsPanel
-                  table={table}
-                  value={settings}
-                  onChange={setSettings}
-                />
-              )}
-
-              {settings.list_view.view === "list" && (
-                <DetailViewSidebar
-                  columns={columns}
-                  sections={settings.list_view.list.sections}
-                  tableId={table.id}
-                  hideAIButton={true}
-                  onUpdateSection={(id, update) => {
-                    setSettings((settings) => ({
-                      ...settings,
-                      list_view: {
-                        ...settings.list_view,
-                        list: {
-                          ...settings.list_view.list,
-                          sections: settings.list_view.list.sections.map((s) =>
-                            s.id === id ? { ...s, ...update } : s,
-                          ),
-                        },
-                      },
-                    }));
-                  }}
-                  onUpdateAllSections={(sections) => {
-                    setSettings((settings) => ({
-                      ...settings,
-                      list_view: {
-                        ...settings.list_view,
-                        list: {
-                          sections,
-                        },
-                      },
-                    }));
-                  }}
-                />
-              )}
-
-              {settings.list_view.view === "gallery" && (
-                <DetailViewSidebar
-                  columns={columns}
-                  sections={settings.list_view.gallery.sections}
-                  tableId={table.id}
-                  hideAIButton={true}
-                  onUpdateSection={(id, update) => {
-                    setSettings((settings) => ({
-                      ...settings,
-                      list_view: {
-                        ...settings.list_view,
-                        gallery: {
-                          ...settings.list_view.gallery,
-                          sections: settings.list_view.gallery.sections.map(
-                            (s) => (s.id === id ? { ...s, ...update } : s),
-                          ),
-                        },
-                      },
-                    }));
-                  }}
-                  onUpdateAllSections={(sections) => {
-                    setSettings((settings) => ({
-                      ...settings,
-                      list_view: {
-                        ...settings.list_view,
-                        gallery: {
-                          sections,
-                        },
-                      },
-                    }));
-                  }}
-                />
-              )}
-            </Stack>
-          </Box>
-
-          <Box
-            bg="white"
-            px="xl"
-            py="md"
-            style={{
-              borderTop: "1px solid var(--border-color)",
-            }}
-          >
-            <Group gap="md" justify="space-between">
-              <Group gap="md">
-                <Button size="sm" variant="subtle" onClick={handleCancel}>
-                  {t`Cancel`}
-                </Button>
+                    {t`Reset`}
+                  </Button>
+                </Group>
 
                 <Button
-                  leftSection={<Icon name="revert" />}
                   size="sm"
-                  variant="subtle"
-                  onClick={() => {
-                    const defaultSettings = getDefaultComponentSettings(table);
-
-                    setSettings({
-                      ...settings,
-                      list_view: {
-                        ...settings.list_view,
-                        [settings.list_view.view]:
-                          defaultSettings.list_view[settings.list_view.view],
-                      },
-                    });
-                  }}
+                  type="submit"
+                  variant="filled"
+                  onClick={handleSubmit}
                 >
-                  {t`Reset`}
+                  {t`Save`}
                 </Button>
               </Group>
-
-              <Button
-                size="sm"
-                type="submit"
-                variant="filled"
-                onClick={handleSubmit}
-              >
-                {t`Save`}
-              </Button>
-            </Group>
-          </Box>
-        </Stack>
-      )}
-    </Group>
+            </Box>
+          </Stack>
+        )}
+      </Group>
+    </Stack>
   );
 };

@@ -13,7 +13,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -257,97 +263,140 @@ export function TableDetailViewInner({
   // const nameColumn = columns[nameIndex];
   const rowName = nameIndex == null ? null : row[nameIndex];
 
-  return (
-    <Group align="flex-start" gap={0} wrap="nowrap" h="100%">
-      <Box m="auto" mt={isListView ? 0 : "md"} w="70%">
-        {!isListView && (
-          <DetailViewHeader
-            rowId={rowId}
-            rowName={rowName}
-            table={table}
-            isEdit={isEdit}
-            canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
-            canOpenNextItem={
-              rows.length > 1 && currentRowIndex < rows.length - 1
-            }
-            onEditClick={handleEditClick}
-            onPreviousItemClick={handleViewPreviousObjectDetail}
-            onNextItemClick={handleViewNextObjectDetail}
-            onCloseClick={handleCloseClick}
-            onSaveClick={handleSaveClick}
-          />
-        )}
-        <Stack gap="md" mt={isListView ? 0 : "lg"}>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={notEmptySections.map((section) => section.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {notEmptySections.map((section) => (
-                <SortableSection
-                  key={section.id}
-                  section={section}
-                  columns={columns}
-                  row={row}
-                  tableId={tableId}
-                  isEdit={isEdit}
-                  isListView={isListView}
-                  onUpdateSection={(update) =>
-                    updateSection(section.id, update)
-                  }
-                  onRemoveSection={() => removeSection(section.id)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </Stack>
-        {isEdit && !isListView && (
-          <Flex align="center" justify="center" w="100%" mt="md">
-            <Button leftSection={<Icon name="add" />} onClick={createSection} />
-          </Flex>
-        )}
-      </Box>
-      {isEdit && !isListView && (
-        <Box
-          bg="white"
+  const Other = ({ children }: { children: ReactNode }) => (
+    <Stack
+      gap="xl"
+      flex="1"
+      miw={0}
+      h="100%"
+      style={{
+        overflow: "auto",
+      }}
+    >
+      <DetailViewHeader
+        rowId={rowId}
+        rowName={rowName}
+        table={table}
+        isEdit={isEdit}
+        canOpenPreviousItem={rows.length > 1 && currentRowIndex > 0}
+        canOpenNextItem={rows.length > 1 && currentRowIndex < rows.length - 1}
+        onEditClick={handleEditClick}
+        onPreviousItemClick={handleViewPreviousObjectDetail}
+        onNextItemClick={handleViewNextObjectDetail}
+        onCloseClick={handleCloseClick}
+        onSaveClick={handleSaveClick}
+      />
+
+      <Group
+        align="flex-start"
+        gap={0}
+        mih={0}
+        wrap="nowrap"
+        h="100%"
+        style={{
+          borderTop: "1px solid var(--border-color)",
+        }}
+      >
+        <Stack
+          align="center"
+          bg="bg-white"
           h="100%"
-          w="20%"
-          p="lg"
-          style={{
-            borderLeft: `1px solid var(--mb-border-color)`,
-            overflowY: "auto",
-          }}
+          flex="1"
+          p="xl"
+          style={{ overflow: "auto" }}
         >
-          <Flex justify="space-between" align="center" mb="xs" pb="sm">
-            <Text fw={600} size="lg">{t`Detail view settings`}</Text>
-            <ActionIcon
-              variant="filled"
-              color="brand"
-              size="md"
-              loading={isGenerating}
-              onClick={handleGenerateConfiguration}
-              aria-label={t`Generate with AI`}
-              style={{
-                background:
-                  "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
-              }}
-            >
-              <Icon name="ai" size={18} />
-            </ActionIcon>
-          </Flex>
-          <DetailViewSidebar
-            columns={columns}
-            sections={sectionsOrOverride}
-            onCreateSection={createSection}
-            onUpdateSection={updateSection}
-          />
-        </Box>
+          <Box maw={800} w="100%">
+            {children}
+          </Box>
+        </Stack>
+
+        {isEdit && (
+          <Box
+            bg="white"
+            flex="0 0 auto"
+            mih={0}
+            miw={400}
+            h="100%"
+            p="lg"
+            style={{
+              borderLeft: `1px solid var(--mb-border-color)`,
+              overflowY: "auto",
+            }}
+          >
+            <Flex justify="space-between" align="center" mb="xs" pb="sm">
+              <Text fw={600} size="lg">{t`Detail view settings`}</Text>
+              <ActionIcon
+                variant="filled"
+                color="brand"
+                size="md"
+                loading={isGenerating}
+                onClick={handleGenerateConfiguration}
+                aria-label={t`Generate with AI`}
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
+                }}
+              >
+                <Icon name="ai" size={18} />
+              </ActionIcon>
+            </Flex>
+
+            <DetailViewSidebar
+              columns={columns}
+              sections={sectionsOrOverride}
+              onCreateSection={createSection}
+              onUpdateSection={updateSection}
+            />
+          </Box>
+        )}
+      </Group>
+    </Stack>
+  );
+
+  const Container = isListView ? Box : Other;
+
+  return (
+    <Container
+      style={{
+        borderRadius: 8,
+        boxShadow: isEdit
+          ? undefined
+          : "0px 1px 2px 0px var(--mb-color-shadow)",
+      }}
+    >
+      <Stack gap="md" mt="md" mb={isListView ? 0 : "sm"}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={notEmptySections.map((section) => section.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {notEmptySections.map((section) => (
+              <SortableSection
+                key={section.id}
+                section={section}
+                columns={columns}
+                row={row}
+                tableId={tableId}
+                isEdit={isEdit}
+                isListView={isListView}
+                onUpdateSection={(update) => updateSection(section.id, update)}
+                onRemoveSection={() => removeSection(section.id)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      </Stack>
+
+      {isEdit && !isListView && (
+        <Flex align="center" justify="center" w="100%" mt="md">
+          <Button leftSection={<Icon name="add" />} onClick={createSection} />
+        </Flex>
       )}
-    </Group>
+    </Container>
   );
 }
 
