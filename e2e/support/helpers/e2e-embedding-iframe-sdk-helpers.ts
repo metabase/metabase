@@ -51,7 +51,19 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
   // note that if iframeIndex > 0 you should first await for the iframes to be loaded
   // using waitForSimpleEmbedIframesToLoad and the number of iframes we expect to be loaded
 
-  waitForSimpleEmbedIframesToLoad(iframeIndex + 1);
+  // await at least ${iframeIndex} iframes to be loaded
+  cy.get("iframe[data-metabase-embed]").should(
+    "have.length.greaterThan",
+    iframeIndex,
+  );
+  cy.get("iframe[data-iframe-loaded]").should(
+    "have.length.greaterThan",
+    iframeIndex,
+    {
+      timeout: 10_000, // the iframe can slow to load, we need to wait to decrease flakiness
+    },
+  );
+
   return cy
     .get("iframe[data-metabase-embed]")
     .should("be.visible")
