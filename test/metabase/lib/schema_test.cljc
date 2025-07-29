@@ -23,6 +23,7 @@
     (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
            (me/humanize (mr/explain ::lib.schema/query lib.schema.util-test/query-with-duplicate-uuids))))))
 
+;;; TODO (Cam 7/29/25) -- move these tests to [[metabase.lib.schema.order-by-test]] ??
 (deftest ^:parallel disallow-duplicate-order-bys-test
   (testing "query should validate if order-bys are not duplicated"
     (let [query-with-no-duplicate-order-bys
@@ -66,7 +67,7 @@
                            :base-type :type/Integer}
                           3]]]}]}]
       (is (mr/explain ::lib.schema/query query-with-duplicate-order-bys))
-      (is (=? {:stages [{:order-by [#"^Duplicate values ignoring uuids in.*"]}]}
+      (is (=? {:stages [{:order-by [#"^values must be distinct MBQL clauses ignoring namespaced keys and type info:.*"]}]}
               (me/humanize (mr/explain ::lib.schema/query query-with-duplicate-order-bys)))))))
 
 (deftest ^:parallel allow-blank-database-test
