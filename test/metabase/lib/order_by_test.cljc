@@ -129,22 +129,17 @@
               (lib/order-by $q (lib/expression-ref $q "expr2"))
               (lib/order-bys $q))))))
 
-;; malli schemas for funcs are not enforced on cljs
-#?(:clj
-   (deftest ^:parallel duplicate-order-bys-test
-     (are [query] (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"Invalid output:.*Duplicate values ignoring uuids"
-                   query)
-       (-> (lib.tu/venues-query)
-           (lib/order-by (meta/field-metadata :venues :id))
-           (lib/order-by (meta/field-metadata :venues :id))
-           lib/order-bys)
-
-       (as-> (lib.tu/query-with-expression) $q
-         (lib/order-by $q (lib/expression-ref $q "expr"))
-         (lib/order-by $q (lib/expression-ref $q "expr"))
-         (lib/order-bys $q)))))
+(deftest ^:parallel duplicate-order-bys-test
+  (is (=? [[:asc {} [:field {} (meta/id :venues :id)]]]
+          (-> (lib.tu/venues-query)
+              (lib/order-by (meta/field-metadata :venues :id))
+              (lib/order-by (meta/field-metadata :venues :id))
+              lib/order-bys)))
+  (is (=? [[:asc {} [:expression {} "expr"]]]
+          (as-> (lib.tu/query-with-expression) $q
+            (lib/order-by $q (lib/expression-ref $q "expr"))
+            (lib/order-by $q (lib/expression-ref $q "expr"))
+            (lib/order-bys $q)))))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query the expected description was generated correctly.
@@ -803,6 +798,27 @@
         (testing "description"
           (is (= "Venues, Sorted by expr ascending"
                  (lib/describe-query updated-query))))))))
+
+(deftest ^:parallel order-by-ignore-duplicates-test
+  (testing "lib/order-by should ignore the new order by if a duplicate already exists (QUE-1604)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/order-by (meta/field-metadata :venues :id))
+                    (lib/order-by (meta/field-metadata :venues :name)))]
+      (is (=? {:stages [{:order-by [[:asc {} [:field {} (meta/id :venues :id)]]
+                                    [:asc {} [:field {} (meta/id :venues :name)]]]}]}
+              query))
+      (testing "ignore duplicate order by with same direction"
+        (let [query' (-> query
+                         ;; should be a no-op
+                         (lib/order-by (meta/field-metadata :venues :id)))]
+          (is (= query
+                 query'))))
+      (testing "ignore duplicate order by with different direction"
+        (let [query' (-> query
+                         ;; should be a no-op
+                         (lib/order-by (meta/field-metadata :venues :id) :desc))]
+          (is (= query
+                 query')))))))
 
 (deftest ^:parallel orderable-columns-display-info-test
   (let [query (lib.tu/venues-query)]

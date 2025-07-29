@@ -1,4 +1,4 @@
-import { InteractiveQuestion } from "embedding-sdk";
+import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";
@@ -44,7 +44,7 @@ export const DownloadWidgetDropdown = ({
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <InteractiveQuestion.DownloadWidget w="18rem" />
+        <SdkQuestion.DownloadWidget w="18rem" />
       </Popover.Dropdown>
     </Popover>
   );

@@ -21,7 +21,10 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.types.isa :as lib.types]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -41,7 +44,9 @@
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -517,6 +522,9 @@
     (dashboard-internal-card? card) check-dashboard-internal-card-insert))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
+;;
+;; TODO (Cam 7/18/25) -- weird/offputting to have half of the before-insert logic live here and then the other half live
+;; in `define-before-insert`... we should consolidate it so it all lives in one or the other.
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []
@@ -600,6 +608,9 @@
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
+;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
+;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
+;;; function. We should move it all here or move it all there. Weird to split it up between two places.
 (defn- pre-update [{id :id :as card} changes]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
@@ -681,12 +692,19 @@
 ;; - Early on, some old "field__Database__Schema__TableName__FieldName" idents got saved for models.
 ;; - A bug in #56244 computed bad idents given a fresh column (like an aggregation) while the source was a model.
 ;; To avoid both of these issues, the upgrade to 22 simply discards any old idents.
+;;
+;; NOTE: the idents project was ultimately abandoned and `:ident` and `:model/inner_ident` are no longer populated or
+;; used.
 (defmethod upgrade-card-schema-to 22
   [card _schema-version]
   (update card :result_metadata (fn [cols]
                                   (mapv #(dissoc % :ident :model/inner_ident) cols))))
 
-(defn- upgrade-card-schema-to-latest [card]
+(mu/defn- upgrade-card-schema-to-latest :- [:map
+                                            [:result_metadata {:optional true} [:maybe
+                                                                                [:sequential
+                                                                                 ::lib.schema.metadata/lib-or-legacy-column]]]]
+  [card]
   (if (and (:id card)
            (or (:dataset_query card)
                (:result_metadata card)
@@ -749,20 +767,23 @@
     (assoc card :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     card))
 
-(defn- populate-result-metadata
+(mu/defn- populate-result-metadata :- [:map
+                                       [:result_metadata {:optional true} [:maybe
+                                                                           [:sequential
+                                                                            ::lib.schema.metadata/lib-or-legacy-column]]]]
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
   verified-result-metadata? flag (see #37009)."
   [card changes verified-result-metadata?]
-  (cond-> card
-    (or (empty? (:result_metadata card))
-        (not verified-result-metadata?)
-        (contains? (t2/changes card) :type))
-    (card.metadata/populate-result-metadata changes)))
+  (-> (cond-> card
+        (or (empty? (:result_metadata card))
+            (not verified-result-metadata?)
+            (contains? (t2/changes card) :type))
+        (card.metadata/populate-result-metadata changes))
+      (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-
   (let [changes (t2/changes card)]
     (-> card
         (dissoc :verified-result-metadata?)
@@ -1238,33 +1259,60 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
+(defn- dataset-query->dimensions
+  "Extract dimensions (non-aggregation columns) from a dataset query."
+  [dataset-query-str]
+  (when dataset-query-str
+    (lib.metadata.jvm/with-metadata-provider-cache
+      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
+            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+            lib-query         (lib/query metadata-provider dataset-query)
+            columns           (lib/returned-columns lib-query)]
+        ;; Dimensions are columns that are not aggregations
+        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+
+(defn extract-non-temporal-dimension-ids
+  "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
+  [{:keys [dataset_query]}]
+  (let [dimensions (dataset-query->dimensions dataset_query)
+        dim-ids    (->> dimensions
+                        (remove lib.types/temporal?)
+                        (keep :id)
+                        sort)]
+    (json/encode (or dim-ids []))))
+
+(defn has-temporal-dimension?
+  "Return true if the query has any temporal dimensions. See PR 60912"
+  [{:keys [dataset_query]}]
+  (let [dimensions (dataset-query->dimensions dataset_query)]
+    (boolean (some lib.types/temporal? dimensions))))
+
 (defn ^:private base-search-spec
   []
   {:model        :model/Card
-   :attrs        {:archived            true
-                  :collection-id       true
-                  :creator-id          true
-                  :dashboard-id        true
-                  :dashboardcard-count {:select [:%count.*]
-                                        :from   [:report_dashboardcard]
-                                        :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id         true
-                  :last-viewed-at      :last_used_at
-                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
-                  :official-collection [:= "official" :collection.authority_level]
-                  :last-edited-at      :r.timestamp
-                  :last-editor-id      :r.user_id
-                  :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified            [:= "verified" :mr.status]
-                  :view-count          true
-                  :created-at          true
-                  :updated-at          true
-                  :display-type        :this.display
-                  ;; Visualizer compatibility filtering
-                  :has-temporal-dimensions [:case
-                                            [:and [:is-not :this.result_metadata nil]
-                                             [:like :this.result_metadata "%\"temporal_unit\":%"]] true
-                                            :else false]}
+   :attrs        {:archived             true
+                  :collection-id        true
+                  :creator-id           true
+                  :dashboard-id         true
+                  :dashboardcard-count  {:select [:%count.*]
+                                         :from   [:report_dashboardcard]
+                                         :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :database-id          true
+                  :last-viewed-at       :last_used_at
+                  :native-query         (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
+                  :official-collection  [:= "official" :collection.authority_level]
+                  :last-edited-at       :r.timestamp
+                  :last-editor-id       :r.user_id
+                  :pinned               [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified             [:= "verified" :mr.status]
+                  :view-count           true
+                  :created-at           true
+                  :updated-at           true
+                  :display-type         :this.display
+                  :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
+                                         :req-fields [:dataset_query]}
+                  :has-temporal-dim     {:fn has-temporal-dimension?
+                                         :req-fields [:dataset_query]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1291,11 +1339,11 @@
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}
-                  ;; Workaround for dataflow :((((((
-                  ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
-                  ;;       and could cause a large increase in the query count for dashboard updates.
-                  ;;       (see the test failures when this hook is added back)
-                  ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
+   ;; Workaround for dataflow :((((((
+   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
+   ;;       and could cause a large increase in the query count for dashboard updates.
+   ;;       (see the test failures when this hook is added back)
+   ;:dashcard  [:model/DashboardCard [:= :dashcard.card_id :this.id]]
    #_:end})
 
 (search/define-spec "card"

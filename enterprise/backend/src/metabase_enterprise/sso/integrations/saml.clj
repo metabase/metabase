@@ -135,7 +135,8 @@
   [req]
   (let [redirect (get-in req [:params :redirect])
         origin (get-in req [:headers "origin"])
-        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)]
+        embedding-sdk-header? (or (sso-utils/is-react-sdk-header? req) (sso-utils/is-simple-embed-header? req))]
+
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
       embedding-sdk-header?
@@ -162,7 +163,7 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
-        embedding-sdk-header? (sso-utils/is-embedding-sdk-header? req)
+        embedding-sdk-header? (or (sso-utils/is-react-sdk-header? req) (sso-utils/is-simple-embed-header? req))
         redirect-url (construct-redirect-url req)]
     (sso-utils/check-sso-redirect redirect)
     (try
@@ -247,6 +248,15 @@
      :clean-continue-url clean-continue-url
      :origin origin}))
 
+(defn- filter-non-string-attributes
+  [attrs]
+  (->> attrs
+       (filter (fn [[key value]]
+                 (if (string? value)
+                   value
+                   (log/warnf "Dropping SAML attribute '%s' with non-string value: %s" (name key) value))))
+       (into {})))
+
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
@@ -288,7 +298,7 @@
                             :last-name       last-name
                             :email           email
                             :group-names     groups
-                            :user-attributes attrs
+                            :user-attributes (filter-non-string-attributes attrs)
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (system/site-url)))]
         (if token-value

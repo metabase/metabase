@@ -340,3 +340,37 @@
         ;; by means of `with-metdata-provider`, contains the coercion.
         (is (=? {:status :completed}
                 (qp/process-query (lib/query mp (lib.metadata/card mp (:id card))))))))))
+
+(deftest ^:parallel add-implicit-clauses-inside-joins-e2e-test
+  (testing "Add :fields to a join with a source query with :expressions correctly"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query nil
+                   {:source-query {:source-query {:source-table $$products
+                                                  :aggregation  [[:count]]
+                                                  :breakout     [$products.category]}
+                                   :expressions  {:CC [:+ 1 1]}}
+                    :joins        [{:source-query {:source-query {:source-table $$products
+                                                                  :aggregation  [[:count]]
+                                                                  :breakout     [$products.category]}
+                                                   :expressions  {:CC [:+ 1 1]}}
+                                    :alias        "Q1"
+                                    :condition    [:=
+                                                   [:field "CC" {:base-type :type/Integer}]
+                                                   [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]
+                                    :fields       :all}]
+                    :order-by     [[:asc $products.category]
+                                   [:desc [:field "count" {:base-type :type/Integer}]]
+                                   [:asc &Q1.products.category]]
+                    :limit        1}))]
+      (is (=? {:source-query {:source-table (meta/id :products)}
+               :expressions  {"CC" [:+ 1 1]}
+               :fields       [[:field (meta/id :products :category) nil]
+                              [:field "count" {:base-type :type/Integer}]
+                              [:expression "CC"]]}
+              (-> query
+                  qp.preprocess/preprocess
+                  :query
+                  :joins
+                  first
+                  :source-query))))))

@@ -467,7 +467,6 @@
     {:dataset_query   query
      :entity_id       entity-id
      :result_metadata (-> query
-                          (assoc-in [:info :card-entity-id] entity-id)
                           actual-query-results)}))
 
 (defn card-with-metadata
@@ -477,7 +476,6 @@
     (assoc card
            :entity_id       entity-id
            :result_metadata (-> dataset_query
-                                (assoc-in [:info :card-entity-id] entity-id)
                                 actual-query-results))))
 
 (defn card-with-updated-metadata
@@ -523,14 +521,13 @@
                     :entity-id     (u/generate-nano-id)
                     :dataset-query query}))
     (completing
-     (fn [metadata-provider {query :dataset-query, eid :entity-id, :as card}]
-       (let [query (assoc-in query [:info :card-entity-id] eid)]
-         (qp.store/with-metadata-provider metadata-provider
-           (let [result-metadata (if (= (:type query) :query)
-                                   (qp.preprocess/query->expected-cols query)
-                                   (actual-query-results query))
-                 card            (assoc card :result-metadata result-metadata)]
-             (lib.tu/mock-metadata-provider metadata-provider {:cards [card]}))))))
+     (fn [metadata-provider {query :dataset-query, :as card}]
+       (qp.store/with-metadata-provider metadata-provider
+         (let [result-metadata (if (= (:type query) :query)
+                                 (qp.preprocess/query->expected-cols query)
+                                 (actual-query-results query))
+               card            (assoc card :result-metadata result-metadata)]
+           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
     parent-metadata-provider
     queries)))
 
@@ -631,4 +628,4 @@
   If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
   be used instead, as is done for ad-hoc native queries."
   [metadata]
-  (mapv #(dissoc % :id :ident :source) metadata))
+  (mapv #(dissoc % :id :source) metadata))

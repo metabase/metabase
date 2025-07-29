@@ -1,33 +1,43 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
+import { getUrl } from "../../utils";
+
+import { BulkTableVisibilityToggle } from "./BulkTableVisibilityToggle";
 import S from "./Results.module.css";
 import { TableVisibilityToggle } from "./TableVisibilityToggle";
 import type { FlatItem, TreePath } from "./types";
 import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
-const ITEM_MIN_HEIGHT = 32;
+const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
 const INDENT_OFFSET = 18;
+
+interface Props {
+  items: FlatItem[];
+  path: TreePath;
+  reload?: (path: TreePath) => void;
+  selectedIndex?: number;
+  toggle?: (key: string, value?: boolean) => void;
+  withMassToggle?: boolean;
+  onItemClick?: (path: TreePath) => void;
+  onSelectedIndexChange?: (index: number) => void;
+}
 
 export function Results({
   items,
-  toggle,
   path,
-  onItemClick,
+  reload,
   selectedIndex,
+  toggle,
+  withMassToggle,
+  onItemClick,
   onSelectedIndexChange,
-}: {
-  items: FlatItem[];
-  toggle?: (key: string, value?: boolean) => void;
-  path: TreePath;
-  onItemClick?: (path: TreePath) => void;
-  selectedIndex?: number;
-  onSelectedIndexChange?: (index: number) => void;
-}) {
+}: Props) {
   const [activeTableId, setActiveTableId] = useState(path.tableId);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -74,7 +84,7 @@ export function Results({
     // but only when the user is not currently typing in the search input
     if (document.activeElement?.tagName !== "INPUT") {
       document
-        .querySelector<HTMLDivElement>(`[data-index='${selectedIndex}']`)
+        .querySelector<HTMLAnchorElement>(`[data-index='${selectedIndex}']`)
         ?.focus();
     }
   }, [selectedIndex]);
@@ -97,6 +107,10 @@ export function Results({
           } = item;
           const isActive = type === "table" && value?.tableId === activeTableId;
           const parentIndex = items.findIndex((item) => item.key === parent);
+          const children = items.filter((item) => item.parent === key);
+          const hasTableChildren = children.some(
+            (child) => child.type === "table",
+          );
 
           const handleItemSelect = (open?: boolean) => {
             if (disabled) {
@@ -115,12 +129,12 @@ export function Results({
           };
 
           function itemByIndex(index: number) {
-            return ref.current?.querySelector<HTMLDivElement>(
+            return ref.current?.querySelector<HTMLAnchorElement>(
               `[data-index='${index}']`,
             );
           }
 
-          const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+          const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
             if (typeof selectedIndex === "number") {
               // If there is a selected index externally
               // don't handle the key events
@@ -173,37 +187,43 @@ export function Results({
 
           return (
             <Flex
+              component={Link}
               key={key}
               aria-selected={isActive}
               align="center"
               justify="space-between"
               gap="sm"
-              ref={virtual.measureElement}
               className={cx(S.item, S[type], {
                 [S.active]: isActive,
                 [S.selected]: selectedIndex === index,
               })}
               data-index={index}
               data-open={isExpanded}
-              tabIndex={
-                disabled
-                  ? -1
-                  : selectedIndex === undefined || type === "table"
-                    ? 0
-                    : undefined
-              }
+              tabIndex={disabled ? -1 : 0}
               style={{
                 top: start,
                 marginLeft: level * INDENT_OFFSET,
                 pointerEvents: disabled ? "none" : undefined,
               }}
+              to={getUrl({
+                databaseId: value?.databaseId,
+                schemaName:
+                  type === "schema" || type === "table"
+                    ? value?.schemaName
+                    : undefined,
+                tableId: type === "table" ? value?.tableId : undefined,
+                fieldId: undefined,
+              })}
               data-testid="tree-item"
               data-type={type}
               onKeyDown={handleKeyDown}
-              onClick={() => handleItemSelect()}
+              onClick={(event) => {
+                event.preventDefault();
+                handleItemSelect();
+              }}
               onFocus={() => onSelectedIndexChange?.(index)}
             >
-              <Flex align="center" py="xs" mih={ITEM_MIN_HEIGHT} w="100%">
+              <Flex align="center" mih={ITEM_MIN_HEIGHT} py="xs" w="100%">
                 <Flex align="flex-start" gap="xs" w="100%">
                   <Flex align="center" gap="xs">
                     {hasChildren(type) && (
@@ -224,9 +244,17 @@ export function Results({
                     <Loading />
                   ) : (
                     <Box
-                      pl="sm"
                       className={S.label}
+                      c={
+                        type === "table" &&
+                        item.table &&
+                        item.table.visibility_type != null &&
+                        !isActive
+                          ? "text-secondary"
+                          : undefined
+                      }
                       data-testid="tree-item-label"
+                      pl="sm"
                     >
                       {label}
                     </Box>
@@ -234,13 +262,48 @@ export function Results({
                 </Flex>
               </Flex>
 
+              {withMassToggle &&
+                type === "database" &&
+                value?.databaseId !== undefined &&
+                hasTableChildren &&
+                !disabled && (
+                  <BulkTableVisibilityToggle
+                    className={S.massVisibilityToggle}
+                    tables={children.flatMap((child) =>
+                      child.type === "table" && child.table != null
+                        ? [child.table]
+                        : [],
+                    )}
+                    onUpdate={() => reload?.(value)}
+                  />
+                )}
+
+              {withMassToggle &&
+                type === "schema" &&
+                value?.schemaName !== undefined &&
+                hasTableChildren &&
+                !disabled && (
+                  <BulkTableVisibilityToggle
+                    className={S.massVisibilityToggle}
+                    tables={children.flatMap((child) =>
+                      child.type === "table" && child.table != null
+                        ? [child.table]
+                        : [],
+                    )}
+                    onUpdate={() => reload?.(value)}
+                  />
+                )}
+
               {type === "table" &&
                 value?.tableId !== undefined &&
                 item.table &&
                 !disabled && (
                   <TableVisibilityToggle
-                    className={S.visibilityToggle}
+                    className={cx(S.visibilityToggle, {
+                      [S.hidden]: item.table.visibility_type == null,
+                    })}
                     table={item.table}
+                    onUpdate={() => reload?.(value)}
                   />
                 )}
             </Flex>
