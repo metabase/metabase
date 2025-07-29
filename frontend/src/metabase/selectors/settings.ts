@@ -47,18 +47,18 @@ export type StorePaths =
   /** EE, self-hosted upsell that communicates back with the instance */
   | "checkout/upgrade/self-hosted";
 
-// @deprecated Please use getStoreUrlFromState or useStoreUrl that read the store-url from the state
-export const getStoreUrl = (path: StorePaths = "") => {
-  return `https://store.metabase.com/${path}`;
-};
-
 export function getStoreUrlFromState(state: State, path: StorePaths = "") {
   const storeUrl = getSetting(state, "store-url");
   if (!storeUrl) {
     return undefined;
   }
-  const url = new URL(path, storeUrl);
-  return url.toString();
+
+  try {
+    const url = new URL(path, storeUrl);
+    return url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 export const migrateToCloudGuideUrl = () =>
