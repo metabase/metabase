@@ -2074,10 +2074,10 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [sql output-table]}]
+  [driver {:keys [query output-table]}]
   (format-honeysql driver
                    {:create-table-as [output-table]
-                    :raw sql}))
+                    :raw query}))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]
