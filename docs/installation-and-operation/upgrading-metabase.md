@@ -140,6 +140,8 @@ Durning a **minor version upgrade** (e.g., 54.1 to 54.2), the new Metabase conta
 
 ## Rolling back an upgrade or to an older version
 
+**NOTE: The downgrade command must be run on the JAR with the higher version number.**
+
 In general, regular backups (especially backups before upgrading), are the best policy, so we recommend reverting to a backup of your application database to roll back an upgrade.
 
 But if you've made any change (adding new questions/dashboards, etc) since upgrading that you want to keep, you may be able to use the `migrate down` command to roll back your Metabase application database to support the previous Metabase version you were running. When Metabase upgrades to a new version, it runs migrations that may change the application database schema. The `migrate down` command undoes those schema changes. In general, we recommend restoring from a backup (the backup that you definitely remembered to generate before upgrading), and only using the `migrate down` command if you really need to keep changes made after your upgrade.
