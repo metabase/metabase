@@ -323,8 +323,8 @@
       (let [selected (query-and-row-for-test-case test-case)
             query    (get selected query-kind)
             context  (test-case-context selected query-kind test-case)]
-        (testing (str "\nQuery = \n"   (u/pprint-to-str query)
-                      "\nContext =\n" (u/pprint-to-str context))
+        (testing (str "\nQuery = \n"   (u/cprint-to-str query)
+                      "\nContext =\n" (u/cprint-to-str context))
           (is (=? (cond->> expected
                     (and (sequential? expected)
                          (= query-kind :native)) (filterv (comp native-drills :type)))
@@ -377,10 +377,10 @@
                                       (name click-type)
                                       (name query-type)
                                       (name query-kind))
-                     "\nQuery =\n"   (u/pprint-to-str query)
-                     "\nContext =\n" (u/pprint-to-str context))
+                     "\nQuery =\n"   (u/cprint-to-str query)
+                     "\nContext =\n" (u/cprint-to-str context))
          (let [drills (lib/available-drill-thrus query -1 context)]
-           (testing (str "\nAvailable Drills =\n" (u/pprint-to-str (into #{} (map :type) drills)))
+           (testing (str "\nAvailable Drills =\n" (u/cprint-to-str (into #{} (map :type) drills)))
              (let [drill (m/find-first (fn [drill]
                                          (= (:type drill) drill-type))
                                        drills)]
@@ -409,13 +409,13 @@
                                      (name click-type)
                                      (name query-type)
                                      (name query-kind))
-                    "\nQuery = \n"  (u/pprint-to-str query)
-                    "\nRow = \n"    (u/pprint-to-str (:row selected))
-                    "\nContext =\n" (u/pprint-to-str context))
+                    "\nQuery = \n"  (u/cprint-to-str query)
+                    "\nRow = \n"    (u/cprint-to-str (:row selected))
+                    "\nContext =\n" (u/cprint-to-str context))
         (let [drills (into #{}
                            (map :type)
                            (lib/available-drill-thrus query context))]
-          (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
+          (testing (str "\nAvailable drills =\n" (u/cprint-to-str drills))
             (is (not (contains? drills drill-type)))))))))
 
 (def ^:private DrillApplicationTestCase
@@ -436,8 +436,8 @@
             :let [query (get selected query-kind)]]
       (when-let [drill (test-returns-drill (assoc test-case :query-kinds [query-kind]))]
         (testing (str "Should return expected " (name query-kind) " query when applying the drill"
-                      "\nQuery = \n" (u/pprint-to-str query)
-                      "\nDrill = \n" (u/pprint-to-str drill))
+                      "\nQuery = \n" (u/cprint-to-str query)
+                      "\nDrill = \n" (u/cprint-to-str drill))
           (let [query' (apply lib/drill-thru query -1
                               (when (= query-kind :native)
                                 native-card-id)
