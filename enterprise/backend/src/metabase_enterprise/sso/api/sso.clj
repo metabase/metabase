@@ -116,7 +116,6 @@
           session (:session jwt-data)
           session-token (:key session)]
       {:status :ok
-       :session_id (str session-token)
        :session_token (str session-token)
        :exp (:exp (:jwt-data jwt-data))
        :iat (:iat (:jwt-data jwt-data))})
