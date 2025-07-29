@@ -21,7 +21,9 @@ export function CardSection({
         </Title>
         <Text c="text-secondary">{description}</Text>
       </Flex>
-      <Card flex="1 1 100%">{children}</Card>
+      <Card p={0} flex="1 1 100%">
+        {children}
+      </Card>
     </Flex>
   );
 }

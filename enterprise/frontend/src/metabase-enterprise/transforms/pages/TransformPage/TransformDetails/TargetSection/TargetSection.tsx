@@ -5,28 +5,82 @@ import { jt, t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Icon } from "metabase/ui";
+import { Box, Button, Divider, Group, Icon, type IconName } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import { TransformTargetModal } from "metabase-enterprise/transforms/components/TransformTargetModal";
 import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/TransformDetails/CardSection";
 import { getTableMetadataUrl } from "metabase-enterprise/transforms/utils/urls";
-import type { Transform, TransformTarget } from "metabase-types/api";
+import type { Table, Transform, TransformTarget } from "metabase-types/api";
 
 export type TargetSectionProps = {
   transform: Transform;
 };
 
 export function TargetSection({ transform }: TargetSectionProps) {
+  const { table } = transform;
+
   return (
     <CardSection
       label={getSectionLabel(transform.target)}
       description={t`Change what this transform generates and where.`}
     >
+      {table && (
+        <>
+          <Box p="lg">
+            <TargetInfo table={table} />
+          </Box>
+          <Divider />
+        </>
+      )}
       <Group p="lg">
         <EditTargetButton transform={transform} />
-        <EditMetadataButton transform={transform} />
+        {table && <EditMetadataButton table={table} />}
       </Group>
     </CardSection>
+  );
+}
+
+type TargetItemProps = {
+  label: string;
+  icon: IconName;
+};
+
+function TargetItem({ label, icon }: TargetItemProps) {
+  return (
+    <Group gap="xs">
+      <Icon name={icon} />
+      {label}
+    </Group>
+  );
+}
+
+function TargetItemDivider() {
+  return <Box c="text-secondary">/</Box>;
+}
+
+type TargetInfoProps = {
+  table: Table;
+};
+
+function TargetInfo({ table }: TargetInfoProps) {
+  return (
+    <Group gap="sm">
+      {table.db != null && (
+        <>
+          <TargetItem label={table.db.name} icon="database" />
+          <TargetItemDivider />
+        </>
+      )}
+      {table.schema !== null && (
+        <>
+          <TargetItem label={table.schema} icon="folder" />
+          <TargetItemDivider />
+        </>
+      )}
+      <Group gap="xs">
+        <TargetItem label={table.name} icon="table2" />
+      </Group>
+    </Group>
   );
 }
 
@@ -119,18 +173,14 @@ function getConfirmationButtonLabel(target: TransformTarget) {
 }
 
 type EditMetadataButtonProps = {
-  transform: Transform;
+  table: Table;
 };
 
-function EditMetadataButton({ transform }: EditMetadataButtonProps) {
-  if (!transform.table) {
-    return null;
-  }
-
+function EditMetadataButton({ table }: EditMetadataButtonProps) {
   return (
     <Button
       component={Link}
-      to={getTableMetadataUrl(transform.table)}
+      to={getTableMetadataUrl(table)}
       leftSection={<Icon name="label" />}
     >
       {t`Edit this view’s metadata`}

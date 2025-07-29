@@ -23,7 +23,7 @@ export type TransformTargetType = "view" | "table";
 export type TransformTarget = {
   type: TransformTargetType;
   name: string;
-  schema: string;
+  schema: string | null;
 };
 
 export type CreateTransformRequest = {

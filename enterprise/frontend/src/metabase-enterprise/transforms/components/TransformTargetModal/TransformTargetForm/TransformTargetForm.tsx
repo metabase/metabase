@@ -42,7 +42,7 @@ const TYPE_OPTIONS = [
 const TARGET_SCHEMA = Yup.object().shape({
   type: Yup.string().oneOf(["view", "table"]),
   name: Yup.string().required(Errors.required),
-  schema: Yup.string().required(Errors.required),
+  schema: Yup.string().nullable(),
 });
 
 export function TransformTargetForm({
@@ -59,7 +59,7 @@ export function TransformTargetForm({
 
   const initialValues: TransformTarget = useMemo(
     () =>
-      target ?? { type: "view", name: "", schema: schemas ? schemas[0] : "" },
+      target ?? { type: "view", name: "", schema: schemas ? schemas[0] : null },
     [target, schemas],
   );
 
@@ -85,11 +85,13 @@ export function TransformTargetForm({
               name="name"
               label={t`What should it be called in the database?`}
             />
-            <FormSelect
-              name="schema"
-              label={t`In which schema should it go?`}
-              data={schemas}
-            />
+            {schemas.length > 0 && (
+              <FormSelect
+                name="schema"
+                label={t`In which schema should it go?`}
+                data={schemas}
+              />
+            )}
             <FormErrorMessage />
             <Group justify="end">
               <Button onClick={onCancel}>{t`Cancel`}</Button>
