@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Flex, Group, Text } from "metabase/ui/components";
+import { isSyncInProgress } from "metabase/lib/syncing";
+import { getUrl } from "metabase/metadata/pages/DataModel/utils";
+import { Flex, Menu, Tooltip } from "metabase/ui/components";
 import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import type { Table } from "metabase-types/api";
@@ -38,51 +40,72 @@ export function DetailViewHeader({
 }: DetailViewHeaderProps & { table: any }): JSX.Element {
   return (
     <Nav rowId={rowId} rowName={rowName} table={table}>
-      <Group gap="sm">
-        <Icon name="table" size={24} c="brand" />
-        <Text component={Link} to={`/table/${table.id}`} size="lg" fw={600}>
-          {table.display_name}
-        </Text>
-      </Group>
-
       <Flex align="center" gap="sm">
         {(canOpenPreviousItem || canOpenNextItem) && (
           <>
-            <Button
-              variant="subtle"
-              disabled={!canOpenPreviousItem}
-              onClick={onPreviousItemClick}
-              leftSection={<Icon name="chevronup" />}
-              size="compact-xs"
-            />
-            <Button
-              variant="subtle"
-              disabled={!canOpenNextItem}
-              onClick={onNextItemClick}
-              leftSection={<Icon name="chevrondown" />}
-              size="compact-xs"
-            />
+            <Tooltip disabled={!canOpenPreviousItem} label={t`Previous row`}>
+              <Button
+                disabled={!canOpenPreviousItem}
+                onClick={onPreviousItemClick}
+                leftSection={<Icon name="chevronup" />}
+              />
+            </Tooltip>
+
+            <Tooltip disabled={!canOpenNextItem} label={t`Next row`}>
+              <Button
+                disabled={!canOpenNextItem}
+                onClick={onNextItemClick}
+                leftSection={<Icon name="chevrondown" />}
+              />
+            </Tooltip>
           </>
         )}
-        <Button
-          variant="subtle"
-          component={Link}
-          to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-          leftSection={<Icon name="link" />}
-          size="compact-xs"
-        />
-        {isEdit ? (
+
+        {!isEdit && (
+          <Button leftSection={<Icon name="gear" />} onClick={onEditClick}>
+            {t`Display settings`}
+          </Button>
+        )}
+
+        {/* TODO: move this block to sidebar */}
+        {isEdit && (
           <>
             <Button variant="filled" onClick={onSaveClick}>{t`Save`}</Button>
-            <Button variant="subtle" onClick={onCloseClick}>{t`Cancel`}</Button>
+            <Button onClick={onCloseClick}>{t`Cancel`}</Button>
           </>
-        ) : (
-          <Button
-            variant="subtle"
-            leftSection={<Icon name="pencil" />}
-            onClick={onEditClick}
-            size="compact-xs"
-          />
+        )}
+
+        {!isSyncInProgress(table) && (
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <Tooltip label={t`More`}>
+                <Button leftSection={<Icon name="ellipsis" />} />
+              </Tooltip>
+            </Menu.Target>
+
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="reference" />}
+                component={Link}
+                to={`/reference/databases/${table.db_id}/tables/${table.id}`}
+              >
+                {t`Learn about this table`}
+              </Menu.Item>
+
+              <Menu.Item
+                leftSection={<Icon name="table2" />}
+                component={Link}
+                to={getUrl({
+                  databaseId: table.db_id,
+                  schemaName: table.schema,
+                  tableId: table.id,
+                  fieldId: undefined,
+                })}
+              >
+                {t`Edit table metadata`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         )}
       </Flex>
     </Nav>
