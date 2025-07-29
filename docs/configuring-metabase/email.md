@@ -1,5 +1,6 @@
 ---
 title: Set up email
+summary: Learn how to set up email in Metabase to enable  dashboard subscriptions and alerts.
 redirect_from:
   - /docs/latest/administration-guide/02-setting-up-email
 ---
@@ -8,14 +9,9 @@ redirect_from:
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens (see [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
 
-To edit email settings:
-
-1. Click on the **gear** icon in the upper right.
-2. Select **Admin Settings**.
-3. From the default **Settings** tab.
-4. Select **Email** in the left sidebar.
-
 ## Email on Metabase Cloud
+
+_Admin settings > Settings > Email_
 
 On Metabase Cloud, you can use the default SMTP server, or set up a custom server.
 
@@ -28,11 +24,22 @@ If you like, you can still set up:
 - A name for your Cloud email account (from name). The email will still be sent from a Metabase address, however.
 - An email address to receive email replies (reply-to address).
 
+When Metabase manages the SMTP server, you can't change the "from" address. If you want Metabase to send emails from a different domain, you'll need to bring your own SMTP server. See below.
+
 ### Custom SMTP Server on Metabase Cloud
 
 {% include plans-blockquote.html feature="Custom SMTP server on Metabase Cloud" %}
 
-If you'd prefer that Metabase send emails from a non-Metabase address, you can bring your own SMTP server. You may want to use your own SMTP server if you're [white-labeling Metabase](./appearance.md).
+_Admin settings > Settings > Email > Set up a custom SMTP server_
+
+By default, Metabase Cloud manages an SMTP server for you. But if you want to use your own SMTP server, you can bring your own.
+
+You may want to use your own SMTP server if you want to:
+
+- Customize the "from" domain (for example, if you're [white-labeling Metabase](./appearance.md)).
+- Avoid having emails pass through 3rd-party services.
+- Own IP reputation, logs, monitoring.
+- Own auditing.
 
 When setting up a custom SMTP server on Metabase Cloud, you'll configure these fields:
 
@@ -56,6 +63,8 @@ You'll also need to specify:
 You can edit these settings at any time. You can also toggle between this custom SMTP server and the server managed by Metabase Cloud.
 
 ## Configuring your email account
+
+_Admin settings > Settings > Email_
 
 For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
 
