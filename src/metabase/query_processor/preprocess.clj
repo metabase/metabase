@@ -135,7 +135,7 @@
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
    (ensure-legacy #'qp.resolve-fields/resolve-fields)
-   (ensure-legacy #'binning/update-binning-strategy)
+   (ensure-pmbql #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
