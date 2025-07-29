@@ -254,16 +254,22 @@
              include-analytics?
              exclude-uneditable-details?
              include-only-uploadable?]}]
-  (let [dbs (t2/select :model/Database (merge {:order-by [:%lower.name :%lower.engine]}
-                                              (when-not include-analytics?
-                                                {:where [:= :is_audit false]})))
-        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
+  (let [user-info {:user-id api/*current-user-id* :is-superuser? (mi/superuser?)}
+        permission-mapping {:perms/create-queries :query-builder}
+        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
+        base-where [:and [:= 1 1]
+                    (when-not include-analytics?
+                      [:= :is_audit false])]
+        where-clause (if filter-by-data-access?
+                       [:and base-where (mi/visible-filter-clause :model/Database :id user-info permission-mapping)]
+                       base-where)
+        dbs (t2/select :model/Database (merge {:order-by [:%lower.name :%lower.engine]}
+                                              {:where where-clause}))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
-      filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
