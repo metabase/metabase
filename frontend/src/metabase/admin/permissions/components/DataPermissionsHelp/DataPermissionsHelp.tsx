@@ -63,7 +63,7 @@ export const DataPermissionsHelp = () => {
                 icon="permissions_limited"
                 iconColor="warning"
                 name={t`Granular`}
-                description={t`The group can view select schemas and tables. Can be combined with SSO user attributes to create row and column security that define what data each person can view.`}
+                description={t`The group can view select schemas and tables. Can be combined with user attributes to enable row and column security to control what data each person can view.`}
               />
 
               <PermissionHelpDescription

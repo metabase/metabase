@@ -400,8 +400,9 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
     ) {
       return (
         <span>
-          {c("{0} is a name of a variable")
-            .jt`${(<strong>{target[1][1]}</strong>)} variable`}
+          {c(
+            "{0} is a name of a variable being used by row and column security",
+          ).jt`${(<strong>{target[1][1]}</strong>)} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -439,8 +440,9 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
             const columnInfo = Lib.displayInfo(query, stageIndex, column);
             return (
               <span>
-                {c("{0} is a name of a field")
-                  .jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
+                {c(
+                  "{0} is a name of a field being used by row and column security",
+                ).jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
               </span>
             );
           }}
