@@ -364,8 +364,8 @@ function SectionSettings({
               {section.title}
             </Text>
             <Button
-              variant="outline"
-              size="compact-xs"
+              variant="inverse"
+              size="compact-sm"
               onClick={() =>
                 onUpdateSection({
                   direction:
@@ -374,8 +374,13 @@ function SectionSettings({
                       : "vertical",
                 })
               }
+              style={{
+                aspectRatio: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              {section.direction === "vertical" ? "→" : "↓"}
+              {section.direction === "vertical" ? "↓" : "→"}
             </Button>
           </Flex>
         }
