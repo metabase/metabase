@@ -81,7 +81,7 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: actions/download-artifact@v4
         with:
-          name: metabase-${{ inputs.edition }}-${{ github.sha }}-uberjar
+          name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend

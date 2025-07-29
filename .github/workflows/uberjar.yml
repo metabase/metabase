@@ -52,14 +52,14 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.inputs.commit || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Try to download existing OSS artifact
         id: check-oss
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
-          name: metabase-oss-${{ github.event.inputs.commit || github.sha }}-uberjar
+          name: metabase-oss-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Decide if build is needed
         id: decide
@@ -194,7 +194,7 @@ jobs:
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.sha  }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
 
   check-jar-health:
     runs-on: ubuntu-22.04
@@ -217,7 +217,7 @@ jobs:
       - uses: actions/download-artifact@v4
         name: Retrieve uberjar artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.sha  }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
       - name: Launch uberjar
         run: >-
           java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
@@ -233,7 +233,7 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.sha }}-uberjar
+      artifact-name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
       commit: ${{ github.event.inputs.commit || github.sha }}
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}

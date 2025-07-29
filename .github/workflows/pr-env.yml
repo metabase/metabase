@@ -29,7 +29,7 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
       - name: Move uberjar to bin/docker
         run: |
           jar xf target/uberjar/metabase.jar
