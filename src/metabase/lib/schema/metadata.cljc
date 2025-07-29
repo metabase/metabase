@@ -12,9 +12,7 @@
 
 (defn- kebab-cased-key? [k]
   (and (keyword? k)
-       (or (contains? lib.schema.common/HORRIBLE-keys k)
-           ;; apparently `str/includes?` doesn't work on keywords in ClojureScript ??
-           (not (str/includes? (str k) "_")))))
+       (not (str/includes? (str k) "_"))))
 
 (defn- kebab-cased-map? [m]
   (and (map? m)
@@ -191,8 +189,8 @@
         (as-> m (cond-> m
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id)))
-        ;; remove deprecated `:ident`
-        (dissoc :ident))))
+        ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
+        (dissoc :ident :model/inner-ident))))
 
 (mr/def ::column.validate-expression-source
   "Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it probably
