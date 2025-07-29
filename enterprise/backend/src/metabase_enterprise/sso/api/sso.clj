@@ -106,7 +106,6 @@
     (when-not jwt
       (throw (ex-info "JWT token is required"
                       {:status "error-jwt-missing" :status-code 400})))
-    
     (let [jwt-data (try
                      (jwt/create-session-from-jwt! jwt request)
                      (catch Throwable e

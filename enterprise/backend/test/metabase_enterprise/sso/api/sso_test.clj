@@ -94,30 +94,25 @@
               (is (contains? (:body response) :exp))
               (is (contains? (:body response) :iat))
               (is (string? (get-in response [:body :session_token])))))
-          
           (testing "missing JWT token"
             (let [response (client/client :post "/auth/sso/to_session" {})]
               (is (= 400 (:status response)))
               (is (= "error-jwt-missing" (get-in response [:body :status])))))
-          
           (testing "JWT disabled"
             (mt/with-temporary-setting-values [jwt-enabled false]
               (let [jwt-token (create-valid-jwt-token)
                     response (client/client :post "/auth/sso/to_session" {:jwt jwt-token})]
                 (is (= 400 (:status response)))
                 (is (= "error-jwt-disabled" (get-in response [:body :status]))))))
-          
           (testing "invalid JWT token"
             (let [response (client/client :post "/auth/sso/to_session" {:jwt "invalid-token"})]
               (is (= 401 (:status response)))
               (is (= "error-jwt-invalid" (get-in response [:body :status])))))
-          
           (testing "expired JWT token"
             (let [expired-token (create-valid-jwt-token {:exp (- (int (/ (System/currentTimeMillis) 1000)) 3600)})
                   response (client/client :post "/auth/sso/to_session" {:jwt expired-token})]
               (is (= 401 (:status response)))
               (is (= "error-jwt-invalid" (get-in response [:body :status])))))
-          
           (testing "JWT with different secret"
             (let [wrong-secret-token (jwt/sign {:email "test@example.com"
                                                :first_name "Test"
