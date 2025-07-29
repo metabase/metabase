@@ -1,17 +1,23 @@
+import _ from "underscore";
+
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
   isAvatarURL,
+  isDate,
+  isDateWithoutTime,
   isEmail,
   isEntityName,
   isImageURL,
+  isPK,
 } from "metabase-lib/v1/types/utils/isa";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   ComponentSettings,
   DatasetColumn,
+  Field,
   ListViewTableSettings,
   ObjectViewSettings,
   StructuredDatasetQuery,
@@ -103,8 +109,8 @@ export function getDefaultComponentSettings(
       table:
         table?.component_settings?.list_view?.table ??
         getDefaultListViewTableSettings(table),
-      list: getDefaultObjectViewSettings(table),
-      gallery: getDefaultObjectViewSettings(table),
+      list: getDefaultListViewListSettings(table),
+      gallery: getDefaultListViewGallerySettings(table),
     },
     object_view: getDefaultObjectViewSettings(table),
   };
@@ -143,4 +149,76 @@ export function getDefaultObjectViewSettings(
       },
     ],
   };
+}
+
+export function getDefaultListViewGallerySettings(
+  table: Table | undefined,
+): ObjectViewSettings {
+  const fields = table?.fields ?? [];
+  const bestFields = getBestFields(fields);
+
+  return {
+    sections: [
+      {
+        id: getNextId(),
+        title: "Info",
+        direction: "vertical",
+        fields: bestFields.map((field) => ({
+          field_id: getRawTableFieldId(field),
+          style: "normal",
+        })),
+      },
+    ],
+  };
+}
+
+export function getDefaultListViewListSettings(
+  table: Table | undefined,
+): ObjectViewSettings {
+  const fields = table?.fields ?? [];
+  const bestFields = getBestFields(fields);
+
+  return {
+    sections: [
+      {
+        id: getNextId(),
+        title: "Info",
+        direction: "horizontal",
+        fields: bestFields.map((field) => ({
+          field_id: getRawTableFieldId(field),
+          style: "normal",
+        })),
+      },
+    ],
+  };
+}
+
+function getBestFields(fields: Field[]): Field[] {
+  let bestFields: Field[] = [];
+
+  bestFields.push(...fields.filter(isPK));
+  bestFields.push(...fields.filter(isEntityName));
+  bestFields.push(
+    ...fields.filter((field) => field.semantic_type === "type/Title"),
+  );
+  bestFields.push(...fields.filter(isEmail));
+  bestFields.push(
+    ...fields.filter((field) => field.semantic_type === "type/Description"),
+  );
+  bestFields.push(...fields.filter(isAvatarURL));
+  bestFields.push(...fields.filter(isImageURL));
+  bestFields.push(...fields.filter(isDateWithoutTime));
+  bestFields.push(...fields.filter(isDate));
+  bestFields.push(...fields.filter((field) => field.semantic_type != null));
+
+  bestFields = _.uniq(bestFields);
+
+  const missingFieldsCount = 7 - bestFields.length;
+
+  if (missingFieldsCount > 0) {
+    const otherFields = fields.filter((field) => !bestFields.includes(field));
+    bestFields.push(...otherFields.slice(0, missingFieldsCount));
+  }
+
+  return bestFields.slice(0, 7);
 }
