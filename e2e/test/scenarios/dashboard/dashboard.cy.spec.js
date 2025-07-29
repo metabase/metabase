@@ -1252,7 +1252,10 @@ describe("scenarios > dashboard", () => {
 
     it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
       cy.visit("/");
-      cy.getByText("Loading...").should("not.exist");
+      cy.findByTestId("home-page").should(
+        "contain",
+        "Try out these sample x-rays to see what Metabase can do.",
+      );
       // add tab
       createNewDashboard();
       H.createNewTab();
