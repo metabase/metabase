@@ -1,7 +1,9 @@
 (ns metabase-enterprise.semantic-search.index-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
@@ -35,10 +37,25 @@
         (semantic.index/drop-index-table! semantic.tu/db semantic.tu/mock-index)
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))))))
 
+(defn- decode-column
+  [row column]
+  (update row column #'semantic.index/decode-pgobject))
+
+(defn- unwrap-column
+  [row column]
+  (update row column #'semantic.index/unwrap-pgobject))
+
 (defn- decode-embedding
-  "Decode `row`s `:embedding`."
+  "Decode `row`'s `:embedding` column."
   [row]
-  (update row :embedding #'semantic.index/decode-pgobject))
+  (decode-column row :embedding))
+
+(defn- unwrap-tsvectors
+  "Decode `row`'s `:text_search_vector` and `:text_search_with_native_query_vector` columns."
+  [row]
+  (-> row
+      (unwrap-column :text_search_vector)
+      (unwrap-column :text_search_with_native_query_vector)))
 
 #_:clj-kondo/ignore
 (defn- full-index
@@ -49,8 +66,8 @@
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
                           (sql.helpers/from (keyword (:table-name semantic.tu/mock-index)))
                           semantic.index/sql-format-quoted))
-       (map #'semantic.index/unqualify-keys)
-       (map decode-embedding)))
+       (mapv (comp decode-embedding
+                   #'semantic.index/unqualify-keys))))
 
 (defn- query-embeddings
   [{:keys [model model_id]}]
@@ -61,8 +78,21 @@
                                              [:= :model model]
                                              [:= :model_id model_id])
                           semantic.index/sql-format-quoted))
-       (map #'semantic.index/unqualify-keys)
-       (mapv decode-embedding)))
+       (mapv (comp decode-embedding
+                   #'semantic.index/unqualify-keys))))
+
+(defn- query-tsvectors
+  [{:keys [model model_id]}]
+  (->> (jdbc/execute! semantic.tu/db
+                      (-> (sql.helpers/select :model :model_id :content :creator_id
+                                              :text_search_vector :text_search_with_native_query_vector)
+                          (sql.helpers/from (keyword (:table-name semantic.tu/mock-index)))
+                          (sql.helpers/where :and
+                                             [:= :model model]
+                                             [:= :model_id model_id])
+                          semantic.index/sql-format-quoted))
+       (mapv (comp unwrap-tsvectors
+                   #'semantic.index/unqualify-keys))))
 
 (defn- check-index-has-no-mock-card []
   (testing "no mock card present"
@@ -121,6 +151,40 @@
         (is (= {"card" 1, "dashboard" 1}
                (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
         (check-index-has-mock-docs)))))
+
+(deftest upsert-index!-tsvectors-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (check-index-has-no-mock-docs)
+      (testing "upsert-index! works on a fresh index"
+        (is (= {"card" 1, "dashboard" 1}
+               (semantic.tu/upsert-index! (semantic.tu/mock-documents)))))
+      (testing "indexed cards have text search vectors populated"
+        (is (=? [{:model "card"
+                  :model_id "123"
+                  :creator_id 1
+                  :content "Dog Training Guide"
+                  :text_search_vector #(and (str/includes? % "dog")
+                                            (str/includes? % "train"))
+                  :text_search_with_native_query_vector #(and (str/includes? % "dog")
+                                                              (str/includes? % "train")
+                                                              (str/includes? % "select")
+                                                              (str/includes? % "breed")
+                                                              (str/includes? % "trick"))}]
+                (query-tsvectors {:model "card", :model_id "123"}))))
+      (let [result (query-tsvectors {:model "dashboard", :model_id "456"})
+            valid-tsvector? (every-pred string? seq)]
+        (testing "indexed dashboards have text search vectors populated"
+          (is (=? [{:model "dashboard"
+                    :model_id "456"
+                    :creator_id 2
+                    :content "Elephant Migration"
+                    :text_search_vector valid-tsvector?
+                    :text_search_with_native_query_vector valid-tsvector?}]
+                  result)))
+        (testing "both tsvectors are equal for models with no native query"
+          (is (= (:text_search_vector result)
+                 (:text_search_with_native_query_vector result))))))))
 
 (deftest delete-from-index!-test
   (mt/with-premium-features #{:semantic-search}

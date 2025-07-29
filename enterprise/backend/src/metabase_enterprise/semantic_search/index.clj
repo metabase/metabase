@@ -398,10 +398,14 @@
   [row]
   (into {} (map (fn [[k v]] [(keyword (name k)) v]) row)))
 
+(defn- unwrap-pgobject
+  [^PGobject obj]
+  (.getValue ^PGobject obj))
+
 (defn- decode-pgobject
   "Decode a PGObject (returned from a jsonb field) into a Clojure map."
   [^PGobject obj]
-  (json/decode (.getValue ^PGobject obj) true))
+  (json/decode (unwrap-pgobject obj) true))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
