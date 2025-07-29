@@ -7,7 +7,7 @@ import { skipToken } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import type { TransformNavBarProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ActionIcon, Box, Flex, Icon, UnstyledButton } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
 import {
@@ -45,11 +45,11 @@ function TransformList({ isActive }: TransformListProps) {
         onToggle={toggle}
       />
       {isExpanded && (
-        <div>
+        <Box pl="lg">
           {transforms.map((transform) => (
             <TransformItem key={transform.id} transform={transform} />
           ))}
-        </div>
+        </Box>
       )}
     </div>
   );
@@ -64,7 +64,7 @@ type TransformToggleProps = {
 function TransformToggle({ isExpanded, onToggle }: TransformToggleProps) {
   return (
     <Flex align="center">
-      <UnstyledButton mr="md" flex={1} onClick={onToggle}>
+      <UnstyledButton flex={1} mr="md" h={rem(32)} onClick={onToggle}>
         <Flex align="center">
           <Icon
             className={cx(S.chevron, {
@@ -97,7 +97,13 @@ type TransformItemProps = {
 
 function TransformItem({ transform }: TransformItemProps) {
   return (
-    <Flex component={Link} align="center" to={getTransformUrl(transform.id)}>
+    <Flex
+      className={S.item}
+      component={Link}
+      h={rem(32)}
+      align="center"
+      to={getTransformUrl(transform.id)}
+    >
       <Icon name="refresh_downstream" c="text-secondary" mr="sm" />
       <Box c="text-primary" flex={1}>
         {transform.name}

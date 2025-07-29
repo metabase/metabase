@@ -7,3 +7,9 @@
     transform: rotate(90deg);
   }
 }
+
+.item {
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
+}
