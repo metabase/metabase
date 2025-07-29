@@ -15,6 +15,7 @@ import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
 
 import {
   DATABASE_TABLE_EDITING_SETTING,
+  ENGINE_SUPPORTED_FOR_TABLE_EDITING,
   isDatabaseTableEditingEnabled,
 } from "../settings";
 
@@ -27,9 +28,14 @@ export function AdminDatabaseTableEditingSection({
     database: { id: DatabaseId } & Partial<DatabaseData>,
   ) => Promise<void>;
 }) {
-  const isEditingDatabase = !!database.id;
+  const isEngineSupported = ENGINE_SUPPORTED_FOR_TABLE_EDITING.has(
+    database.engine ?? "",
+  );
+
   const showTableEditingSection =
-    isEditingDatabase && hasFeature(database, "actions");
+    !!database.id &&
+    isEngineSupported &&
+    hasFeature(database, "actions/data-editing");
 
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +52,7 @@ export function AdminDatabaseTableEditingSection({
     }
   };
 
-  if (!showTableEditingSection) {
+  if (!showTableEditingSection || !isEngineSupported) {
     return null;
   }
 
