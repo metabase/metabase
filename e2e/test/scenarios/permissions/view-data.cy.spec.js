@@ -571,7 +571,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     H.modal().within(() => {
       cy.findByText(
-        "Change access to this database to “Row and column security“?",
+        "Change access to this database to “Row and column security”?",
       );
       cy.button("Change").click();
     });
@@ -663,7 +663,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
 
     H.modal().within(() => {
       cy.findByText(
-        "Change access to this database to “Row and column security“?",
+        "Change access to this database to “Row and column security”?",
       );
       cy.button("Change").click();
     });
