@@ -102,3 +102,13 @@
     (catch Throwable e
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
+
+;; POST /auth/sso/to_session
+(api.macros/defendpoint :post "/to_session"
+  "Convert JWT token to session token"
+  [_route-params _query-params _body request]
+  (try
+    (sso.i/sso-jwt-to-session request)
+    (catch Throwable e
+      (log/error e "Error converting JWT to session")
+      (throw e))))
