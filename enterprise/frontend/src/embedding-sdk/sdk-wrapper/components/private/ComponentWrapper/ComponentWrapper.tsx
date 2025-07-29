@@ -1,6 +1,7 @@
 import type { FunctionComponent } from "react";
 
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
+import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { ErrorMessage } from "embedding-sdk/sdk-wrapper/components/private/ErrorMessage/ErrorMessage";
 import { Loader } from "embedding-sdk/sdk-wrapper/components/private/Loader/Loader";
@@ -15,7 +16,7 @@ const ComponentWrapperInner = <TComponentProps,>({
   getComponent,
   componentProps,
 }: Props<TComponentProps>) => {
-  const metabaseProviderStoreProps = useMetabaseProviderPropsStore();
+  const { props: metabaseProviderStoreProps } = useMetabaseProviderPropsStore();
   const { isLoading, isError } = useWaitForSdkBundle();
 
   if (isLoading || !metabaseProviderStoreProps.initialized) {
@@ -26,16 +27,21 @@ const ComponentWrapperInner = <TComponentProps,>({
     return <ErrorMessage />;
   }
 
+  const MetabaseProvider = isLoading
+    ? null
+    : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
   const Component = getComponent();
 
-  if (!Component) {
+  if (!MetabaseProvider || !Component) {
     return null;
   }
 
   return (
-    <Component
-      {...(componentProps as JSX.IntrinsicAttributes & TComponentProps)}
-    />
+    <MetabaseProvider>
+      <Component
+        {...(componentProps as JSX.IntrinsicAttributes & TComponentProps)}
+      />
+    </MetabaseProvider>
   );
 };
 

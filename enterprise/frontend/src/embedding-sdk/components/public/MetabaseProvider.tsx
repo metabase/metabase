@@ -28,7 +28,6 @@ import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
-import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -38,7 +37,7 @@ import { Box } from "metabase/ui";
 import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
-import { SdkContextProvider } from "../private/SdkContext";
+import { RenderSingleCopy } from "../private/RenderSingleCopy/RenderSingleCopy";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
@@ -145,27 +144,23 @@ export const MetabaseProviderInternal = ({
   const instanceLocale = useInstanceLocale();
 
   return (
-    <SdkContextProvider>
-      <EmotionCacheProvider>
-        <Global styles={SCOPED_CSS_RESET} />
-        <SdkThemeProvider theme={theme}>
+    <EmotionCacheProvider>
+      <SdkThemeProvider theme={theme}>
+        <LocaleProvider locale={locale || instanceLocale}>
+          <Box className={className}>{children}</Box>
+        </LocaleProvider>
+
+        <RenderSingleCopy>
+          <Global styles={SCOPED_CSS_RESET} />
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
-          <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-            <LocaleProvider locale={locale || instanceLocale}>
-              {children}
-
-              <SdkIncompatibilityWithInstanceBanner />
-            </LocaleProvider>
-
-            <SdkUsageProblemDisplay
-              authConfig={authConfig}
-              allowConsoleLog={allowConsoleLog}
-            />
-            <PortalContainer />
-          </Box>
-        </SdkThemeProvider>
-      </EmotionCacheProvider>
-    </SdkContextProvider>
+          <SdkUsageProblemDisplay
+            authConfig={authConfig}
+            allowConsoleLog={allowConsoleLog}
+          />
+          <PortalContainer />
+        </RenderSingleCopy>
+      </SdkThemeProvider>
+    </EmotionCacheProvider>
   );
 };
 
@@ -173,7 +168,7 @@ export const MetabaseProvider = memo(function MetabaseProvider({
   children,
   ...externalProps
 }: MetabaseProviderProps | PropsWithChildren) {
-  const metabaseProviderProps = useMetabaseProviderPropsStore();
+  const { props: metabaseProviderProps } = useMetabaseProviderPropsStore();
 
   const props = (
     metabaseProviderProps.initialized

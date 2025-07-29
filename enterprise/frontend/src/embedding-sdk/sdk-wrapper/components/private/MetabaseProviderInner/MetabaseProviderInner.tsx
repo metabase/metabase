@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 
 import {
   type MetabaseProviderPropsStoreExternalProps,
@@ -11,18 +11,18 @@ type Props = {
   className?: string;
   reduxStore?: MetabaseProviderPropsStoreInternalProps["reduxStore"] | null;
   props: MetabaseProviderPropsStoreExternalProps;
-  children: (state: { initialized: boolean }) => ReactNode;
 };
 
-export function MetabaseProviderInner({ reduxStore, props, children }: Props) {
-  const { initialized } = useInitializeMetabaseProviderPropsStore(
-    props,
-    reduxStore,
-  );
+export function MetabaseProviderInner({
+  reduxStore,
+  props,
+  children,
+}: PropsWithChildren<Props>) {
+  useInitializeMetabaseProviderPropsStore(props, reduxStore);
 
   useEffect(() => {
     ensureMetabaseProviderPropsStore().setProps(props);
   }, [props]);
 
-  return <>{children({ initialized })}</>;
+  return <>{children}</>;
 }
