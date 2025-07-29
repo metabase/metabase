@@ -3,28 +3,50 @@
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
              [net.cgrand.macrovich :as macros]))
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.util.log :as log])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
 
 (defn- schema-cache-key
   "Make schemas that aren't `=` to identical ones e.g.
-
     [:re #\"\\d{4}\"]
+    [:or [:re #\"\\d{4}\"] :int]
+    [:fn (constantly true)]
+    [:fn even?]
+  work correctly as cache keys instead of creating new entries every time the code is evaluated.
 
-  work correctly as cache keys instead of creating new entries every time the code is evaluated."
+  Also handles functions to prevent cache key instability from composed/anonymous functions."
   [x]
-  (if (and (vector? x)
-           (= (first x) :re))
-    (into (empty x)
-          (map (fn [child]
-                 (cond-> child
-                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
-          x)
-    x))
+  (or (some-> x meta ::key)
+      (walk/postwalk
+       (fn [x]
+         (cond
+           (instance? #?(:clj java.util.regex.Pattern
+                         :cljs js/RegExp) x) (str x)
+           ;; Attach a cache key to any naughty object in a schema, and it'll be used
+           ;; to calculate the cache-key for that part.
+           (some-> x meta ::key) (-> x meta ::key)
+           ;; TODO: This does not work for h.o.f. like (every-pred even? odd?),
+           ;; (pr-str (every-pred even? odd?)) == (pr-str (every-pred string?))
+           ;; (fn? x) (pr-str x)
+           :else x))
+       x)))
+
+(defmacro with-key
+  "Adds `::mr/key` metadata, which is a pr-str'd string of body, to body. Be careful not to call this
+  on functions taking parameters, since it uses the shape of the literal body passed to it as a key.
+  e.g.:
+    (defn my-schema [] :int)
+    (mr/with-key (my-schema))
+    If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly."
+  [body]
+  `(try (with-meta ~body (merge (meta ~body) {::key ~(pr-str body)}))
+        (catch Exception _# ~body)))
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
@@ -133,7 +155,7 @@
    (defmacro def
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
      ([type schema]
-      `(register! ~type ~schema))
+      `(register! ~type (with-key ~schema)))
      ([type docstring schema]
       (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type

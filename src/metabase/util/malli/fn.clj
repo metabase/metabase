@@ -257,7 +257,7 @@
                                       'more [:maybe [:* :any]]
                                       'kvs  [:* :any]
                                       :any))
-                  `(validate-input ~error-context ~schema ~arg-name)))
+                  `(validate-input ~error-context (mr/with-key ~schema) ~arg-name)))
               arg-names
               schemas)
          (filter some?))))
@@ -295,7 +295,7 @@
         result-form            (if (and output-schema
                                         (not= output-schema :any))
                                  `(->> ~result-form
-                                       (validate-output ~error-context ~output-schema))
+                                       (validate-output ~error-context (mr/with-key ~output-schema)))
                                  result-form)]
     `(~arglist
       (try
