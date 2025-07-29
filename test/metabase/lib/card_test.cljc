@@ -200,7 +200,7 @@
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
                            (explicitly-joined (cols-of :products)))
                    sort-cols
-                   (map #(dissoc % :ident :name)))
+                   (map #(dissoc % :name)))
               (->> query lib.metadata.calculation/returned-columns sort-cols)))
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
                            (explicitly-joined (cols-of :products))

@@ -12,9 +12,7 @@
 
 (defn- kebab-cased-key? [k]
   (and (keyword? k)
-       (or (contains? lib.schema.common/HORRIBLE-keys k)
-           ;; apparently `str/includes?` doesn't work on keywords in ClojureScript ??
-           (not (str/includes? (str k) "_")))))
+       (not (str/includes? (str k) "_"))))
 
 (defn- kebab-cased-map? [m]
   (and (map? m)
@@ -89,7 +87,7 @@
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
 ;;; in [[metabase.warehouse-schema.models.field-values]], [[metabase.parameters.chain-filter]],
-;;; and [[metabase.query-processor.middleware.add-dimension-projections]] explain this stuff in more detail, read
+;;; and [[metabase.query-processor.middleware.add-remaps]] explain this stuff in more detail, read
 ;;; those and then maybe you will understand what the hell is going on.
 
 (def column-has-field-values-options
@@ -137,7 +135,7 @@
 (mr/def ::column.remapping.external
   "External remapping (Dimension) for a column. From the [[metabase.warehouse-schema.models.dimension]] with `type =
   external` associated with a `Field` in the application database.
-  See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
+  See [[metabase.query-processor.middleware.add-remaps]] for what this means."
   [:map
    [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
@@ -150,7 +148,7 @@
 (mr/def ::column.remapping.internal
   "Internal remapping (FieldValues) for a column. From [[metabase.warehouse-schema.models.dimension]] with `type =
   internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
-  database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
+  database. See [[metabase.query-processor.middleware.add-remaps]] for what this means."
   [:map
    [:lib/type              [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
@@ -190,7 +188,9 @@
         ;; these busted "IDs"
         (as-> m (cond-> m
                   (and (:id m) (not (pos-int? (:id m))))
-                  (dissoc :id))))))
+                  (dissoc :id)))
+        ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
+        (dissoc :ident :model/inner-ident))))
 
 (mr/def ::column.validate-expression-source
   "Only allow `:lib/expression-name` when `:lib/source` is `:source/expressions`. If it's anything else, it probably
