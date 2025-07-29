@@ -140,7 +140,7 @@ Durning a **minor version upgrade** (e.g., 54.1 to 54.2), the new Metabase conta
 
 ## Rolling back an upgrade or to an older version
 
-**NOTE: The downgrade command must be run on the JAR with the higher version number.**
+> **The downgrade command must be run on the JAR with the higher version number.**
 
 In general, regular backups (especially backups before upgrading), are the best policy, so we recommend reverting to a backup of your application database to roll back an upgrade.
 
