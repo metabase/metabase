@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import type { TransformNavBarProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, UnstyledButton } from "metabase/ui";
 import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
 import { getTransformSettingsUrl } from "metabase-enterprise/transforms/utils/urls";
 
@@ -32,9 +32,13 @@ type TransformToggleProps = {
 function TransformToggle(_props: TransformToggleProps) {
   return (
     <Flex align="center">
-      <Icon name="chevrondown" c="text-secondary" mr="xs" />
-      <Icon name="refresh_downstream" c="text-secondary" mr="sm" />
-      <Box c="text-primary" flex={1} mr="md">{t`Transforms`}</Box>
+      <UnstyledButton mr="md">
+        <Flex align="center">
+          <Icon name="chevrondown" c="text-secondary" mr="xs" />
+          <Icon name="refresh_downstream" c="text-secondary" mr="sm" />
+          <Box c="text-primary" flex={1} mr="md">{t`Transforms`}</Box>
+        </Flex>
+      </UnstyledButton>
       <ActionIcon component={Link} to={getTransformSettingsUrl()}>
         <Icon name="gear" c="text-primary" />
       </ActionIcon>
