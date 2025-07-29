@@ -21,3 +21,11 @@
 .SectionContent {
   overflow-x: auto;
 }
+
+.link {
+  visibility: hidden;
+
+  .ObjectViewSection:hover & {
+    visibility: visible;
+  }
+}
