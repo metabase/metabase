@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.premium-features.core :refer [quotas]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -28,6 +29,29 @@
 (defn- database-id->connection-id [conns database-id]
   (->> database-id kw-id (get conns) :connection-id))
 
+(defn- can-set-replication?
+  "Predicate that signals if replication looks right from the quota perspective.
+
+   This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
+  replicated."
+  [database]
+  (let [free-quota      (or
+                         (some->> (filter (comp #{"clickhouse-dwh"} :hosting_feature) (quotas))
+                                  first
+                                  ((juxt :total_units :usage))
+                                  (apply -))
+                         -1)
+        total-row-count (or
+                         (some->>
+                          (t2/hydrate database [:tables :fields])
+                          :tables
+                          (filter (comp (fn [x] (re-matches #"^[A-Za-z0-9_]+$" x)) :name))       ; sanitized name
+                          (filter (fn [t] (some (comp #{:type/PK} :semantic_type) (:fields t)))) ; has-pkey
+                          (map :estimated_row_count)
+                          (reduce +))
+                         0)]
+    (< total-row-count free-quota)))
+
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
   [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
@@ -44,12 +68,15 @@
             schemas      (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
                            (when schema-filters-patterns
                              {:schemas {k schema-filters-patterns}}))
+
             secret       (merge {:credentials (merge {:dbtype "postgresql"} credentials)}
-                                schemas)
-            {:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
-            conn         {:connection-id id}]
-        (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
-        conn))))
+                                schemas)]
+        (if (can-set-replication? database)
+          (let [{:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
+                conn         {:connection-id id}]
+            (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
+            conn)
+          (api/check-400 false "not enough quota"))))))
 
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."
