@@ -48,10 +48,11 @@
    ::col
    [:fn
     {:error/message "map with QP results casing rules for keys"}
-    (fn [m]
-      (every? (fn [k]
-                (= k (key->qp-results-key k)))
-              (keys m)))]])
+    (mr/with-key
+      (fn [m]
+        (every? (fn [k]
+                  (= k (key->qp-results-key k)))
+                (keys m))))]])
 
 (mr/def ::cols
   [:maybe [:sequential ::col]])

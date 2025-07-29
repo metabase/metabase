@@ -89,7 +89,8 @@
    qualified-keyword?
    [:fn
     {:error/message "do-not-bucket-reason keyword"}
-    #(= (namespace %) "do-not-bucket-reason")]])
+    (mr/with-key
+      #(= (namespace %) "do-not-bucket-reason"))]])
 
 ;;; This returns a keyword corresponding to why we're not autobucketing for debugging/testing purposes
 (mu/defn- should-not-be-autobucketed? :- [:maybe ::do-not-bucket-reason]

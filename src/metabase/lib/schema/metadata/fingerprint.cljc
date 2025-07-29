@@ -9,7 +9,7 @@
    number?
    [:fn
     {:error/message "Valid percentage between (inclusive) 0 and 1."}
-    #(<= 0 % 1)]])
+    (mr/with-key #(<= 0 % 1))]])
 
 (mr/def ::fingerprint.global
   "Fingerprint values that Fields of all types should have."
@@ -59,8 +59,9 @@
     [:type/DateTime {:optional true} [:ref ::fingerprint.temporal]]]
    [:fn
     {:error/message "Type-specific fingerprint with exactly one key"}
-    (fn [m]
-      (= 1 (count (keys m))))]])
+    (mr/with-key
+      (fn [m]
+        (= 1 (count (keys m)))))]])
 
 (mr/def ::fingerprint
   "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'

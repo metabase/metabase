@@ -9,6 +9,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -70,6 +71,8 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
+;; TODO: these should be moved over to `mr/def`.
+
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (mu/with-api-error-message
@@ -83,8 +86,22 @@
     [:string {:min 1}]
     [:fn
      {:error/message "non-blank string"}
-     (complement str/blank?)]]
+     (mr/with-key (complement str/blank?))]]
    (deferred-tru "value must be a non-blank string.")))
+
+(def sk (mu/with-api-error-message
+         ;; this is directly copied from [[:metabase.lib.schema.common/non-blank-string]] -- unfortunately using it here would
+         ;; mean we need a dependency of `util` on `lib` -- not worth it to save ~6 duplicate LoC. At some point in the future
+         ;; maybe we can get everyone to use one or the other or better yet make more specific schemas that describe their
+         ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
+         [:and
+          {:error/message "non-blank string"
+           :json-schema   {:type "string" :minLength 1}}
+          [:string {:min 1}]
+          [:fn
+           {:error/message "non-blank string"}
+           (mr/with-key (complement str/blank?))]]
+         (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
@@ -92,8 +109,7 @@
     [:int
      {:min         0
       :description (str message)
-      :error/fn    (fn [_ _]
-                     (str message))
+      :error/fn    (mr/with-key (fn [_ _] (str message)))
       :api/regex   #"\d+"}]))
 
 (def Int
@@ -101,8 +117,7 @@
   (let [message (deferred-tru "value must be an integer.")]
     [:int
      {:description (str message)
-      :error/fn    (fn [_ _]
-                     (str message))
+      :error/fn    (mr/with-key (fn [_ _] (str message)))
       :api/regex   #"-?\d+"}]))
 
 (def PositiveInt
@@ -223,20 +238,20 @@
   (one of `\"true\"` or `true` or `\"false\"` or `false`.).
   Used by [[metabase.api.common/defendpoint]] to coerce the value for this schema to a boolean.
    Garanteed to evaluate to `true` or `false` when passed through a json decoder."
-  (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))
-              :json-schema {:type "boolean"}}
-       "true" "false" true false]
-      (mu/with-api-error-message
-       (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
+  (mu/with-api-error-message
+   [:enum {:decode/json (fn [b] (contains? #{"true" true} b))
+           :json-schema {:type "boolean"}}
+    "true" "false" true false]
+   (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def MaybeBooleanValue
   "Same as above, but allows distinguishing between `nil` (the user did not specify a value)
   and `false` (the user specified `false`)."
-  (-> [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))
-              :json-schema {:type "boolean" :optional true}}
-       "true" "false" true false nil]
-      (mu/with-api-error-message
-       (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
+  (mu/with-api-error-message
+   [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))
+           :json-schema {:type "boolean" :optional true}}
+    "true" "false" true false nil]
+   (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def RemappedFieldValue
   "Has two components:
@@ -297,19 +312,20 @@
 (defn MapWithNoKebabKeys
   "Helper for creating a schema to check if a map doesn't contain kebab case keys."
   []
-  [:fn
-   {:error/message "Map should not contain any kebab-case keys"}
-   (fn [m]
-     ;; reduce-kv is more efficient that iterating over (keys m). But we have to extract the underlying map from
-     ;; Toucan2 Instance because it doesn't implement IKVReduce (yet).
-     (let [m (if (instance? toucan2.instance.Instance m)
-               (.m ^toucan2.instance.Instance m)
-               m)]
-       (reduce-kv (fn [_ k _]
-                    (if (str/includes? k "-")
-                      (reduced false)
-                      true))
-                  true m)))])
+  (mr/with-key
+    [:fn
+     {:error/message "Map should not contain any kebab-case keys"}
+     (fn [m]
+       ;; reduce-kv is more efficient that iterating over (keys m). But we have to extract the underlying map from
+       ;; Toucan2 Instance because it doesn't implement IKVReduce (yet).
+       (let [m (if (instance? toucan2.instance.Instance m)
+                 (.m ^toucan2.instance.Instance m)
+                 m)]
+         (reduce-kv (fn [_ k _]
+                      (if (str/includes? k "-")
+                        (reduced false)
+                        true))
+                    true m)))]))
 
 (def File
   "Schema for a file coming in HTTP request from multipart/form-data"

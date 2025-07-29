@@ -63,7 +63,7 @@
    [:ref ::expression/number]
    [:fn
     {:error/message "percentile must be between zero and one"}
-    #(<= 0 % 1)]])
+    (mr/with-key #(<= 0 % 1))]])
 
 (mbql-clause/define-tuple-mbql-clause :percentile
   #_expr       [:ref ::expression/number]

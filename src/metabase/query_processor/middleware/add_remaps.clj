@@ -58,7 +58,7 @@
     :map
     [:fn
      {:error/message "options map without namespaced keys and base-type/effective-type"}
-     (complement (some-fn :base-type :effective-type :ident :lib/uuid))]]
+     (mr/with-key (complement (some-fn :base-type :effective-type :ident :lib/uuid)))]]
    [:or
     ::lib.schema.id/field
     :string]])

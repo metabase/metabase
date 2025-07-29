@@ -31,7 +31,7 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mr/def ::base-type
-  [:multi {:dispatch (partial = ::type.unknown)}
+  [:multi {:dispatch (mr/with-key (partial = ::type.unknown))}
    [true  [:= ::type.unknown]]
    [false [:ref ::common/base-type]]])
 
@@ -93,7 +93,7 @@
   (boolean (and (vector? expr)
                 (#{:asc :desc} (first expr)))))
 
-(defn- expression-schema
+(defmacro ^:private expression-schema
   "Schema that matches the following rules:
 
   1a. expression is *not* an MBQL clause, OR
@@ -103,17 +103,18 @@
 
   2. expression's [[type-of]] isa? `base-type`"
   [base-type description]
-  [:and
-   ;; vector = MBQL clause, anything else = not an MBQL clause
-   [:multi
-    {:dispatch vector?}
-    [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
-    [false [:ref :metabase.lib.schema.literal/literal]]]
-   [:fn
-    {:error/message description}
-    #(and (not (non-expression-clause? %))
-          (or *suppress-expression-type-check?*
-              (type-of? % base-type)))]])
+  `[:and
+    ;; vector = MBQL clause, anything else = not an MBQL clause
+    [:multi
+     {:dispatch vector?}
+     [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
+     [false [:ref :metabase.lib.schema.literal/literal]]]
+    [:fn
+     {:error/message ~description}
+     (mr/with-key
+       #(and (not (non-expression-clause? %))
+             (or *suppress-expression-type-check?*
+                 (type-of? % ~base-type))))]])
 
 (mr/def ::boolean
   (expression-schema :type/Boolean "expression returning a boolean"))
@@ -201,38 +202,41 @@
     #_args [:* :any]]
    [:fn
     {:error/message "non-aggregation expression"}
-    #(letfn [(agg-tag? [tag]
-               (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
-             (agg-expr? [expr]
-               (and (vector? expr)
-                    (or (agg-tag? (first expr))
-                        (some agg-expr? (nnext expr)))))]
-       (not (agg-expr? %)))]])
+    (mr/with-key
+      #(letfn [(agg-tag? [tag]
+                 (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
+               (agg-expr? [expr]
+                 (and (vector? expr)
+                      (or (agg-tag? (first expr))
+                          (some agg-expr? (nnext expr)))))]
+         (not (agg-expr? %))))]])
 
 (mr/def ::expressions
   "The `:expressions` definition map as found as a top-level key in an MBQL stage."
   [:and
    [:sequential {:min 1} [:ref ::expression.definition]]
-   [:fn
-    {:error/message "expressions must have unique names"}
-    (fn [expressions]
-      (or (empty? expressions)
-          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
+   (mr/with-key
+     [:fn
+      {:error/message "expressions must have unique names"}
+      (fn [expressions]
+        (or (empty? expressions)
+            (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))])])
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and
    [:ref ::integer]
    [:fn
     {:error/message "positive integer literal or numeric expression"}
-    #(cond
-       (vector? %) ;; non-literal (checked above)
-       true
+    (mr/with-key
+      #(cond
+         (vector? %) ;; non-literal (checked above)
+         true
 
-       (not (int? %))
-       false
+         (not (int? %))
+         false
 
-       (not (pos? %))
-       false
+         (not (pos? %))
+         false
 
-       :else
-       true)]])
+         :else
+         true))]])

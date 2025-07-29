@@ -3,28 +3,66 @@
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
              [net.cgrand.macrovich :as macros]))
+   ;; TODO: consider using a ttl cache incase any bad schemas start slipping through? [clojure.core.cache :as cache]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
    [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
-(defonce ^:private cache (atom {}))
+(defonce
+  ^{:private true
+    :doc "Has the form:
+          {[k cache-key] function}
+          Example:
+          {[:validator ::my/int] \"#function[clojure.core/int]\"}"}
+  cache (atom {}))
 
 (defn- schema-cache-key
   "Make schemas that aren't `=` to identical ones e.g.
 
     [:re #\"\\d{4}\"]
+    [:or [:re #\"\\d{4}\"] :int]
+    [:fn (constantly true)]
+    [:fn even?]
 
-  work correctly as cache keys instead of creating new entries every time the code is evaluated."
+  work correctly as cache keys instead of creating new entries every time the code is evaluated.
+  
+  Also handles functions to prevent cache key instability from composed/anonymous functions."
   [x]
-  (if (and (vector? x)
-           (= (first x) :re))
-    (into (empty x)
-          (map (fn [child]
-                 (cond-> child
-                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
-          x)
-    x))
+  (walk/postwalk
+   (fn [x]
+     (cond
+       (instance? java.util.regex.Pattern x) (str x)
+       ;; You can attach a cache key directly to any naughty object in a schema, and it'll be used
+       ;; to calculate the cache-key
+       (some-> x meta ::key) (-> x meta ::key)
+       ;; This handles functions like (constantly true):
+       ;; (= (constantly true) (constantly true)) ;; => false
+       ;; but pr-str'd they are =.
+       (fn? x) (pr-str x)
+       :else x))
+   x))
+
+(defmacro with-key
+  "Adds `::mr/key` metadata, which is a pr-str'd string of body, to body. Be careful not to call this
+  on functions taking parameters, since it uses the shape of the literal body passed to it as a key.
+
+  e.g.:
+    (defn my-schema [] :int)
+    (mr/with-key (my-schema))
+    If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly."
+  [body]
+  `(with-meta ~body (merge (meta ~body) {::key ~(pr-str body)})))
+
+(defmacro stable-key?
+  "Evaluates the schema form twice, and if the results are not equal, it is not usable as a cache key."
+  [schema]
+  `(let [computed-schema# (#'schema-cache-key ~schema)]
+     (if (= computed-schema#
+            (#'schema-cache-key ~schema))
+       computed-schema#
+       false)))
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
@@ -35,10 +73,18 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
-    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
+    (or (get @cache [k schema-key])
         (let [v (value-thunk)]
-          (swap! cache assoc-in [k schema-key] v)
+          (swap! cache assoc [k schema-key] v)
           v))))
+
+(defn cache-size-info
+  "Return information about the current cache size and structure for debugging memory issues."
+  [cache-val]
+  (let [total-entries (reduce + (map count (vals cache-val)))
+        by-type (group-by (fn [[k _]] (first k)) cache-val)]
+    {:total-cache-entries total-entries
+     :entries-by-type by-type}))
 
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
@@ -97,7 +143,8 @@
   "Register a spec with our Malli spec registry."
   [schema definition]
   (swap! registry* assoc schema definition)
-  (reset! cache {})
+  ;; TODO: Fixme cache fix prereq
+  ;; (reset! cache {})
   nil)
 
 (defn registered-schema
@@ -110,8 +157,6 @@
   [type]
   (malli.registry/schema registry type))
 
-;;; TODO -- we should change `:doc/message` to `:description` so it's inline
-;;; with [[metabase.util.malli.describe/describe]] and [[malli.experimental.describe/describe]]
 (defn -with-doc
   "Add a `:description` option to a `schema`. Tries to merge it in existing vector schemas to avoid unnecessary
   indirection."
@@ -133,7 +178,10 @@
    (defmacro def
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
      ([type schema]
-      `(register! ~type ~schema))
+      `(do (when-not (stable-key? ~schema)
+             (throw (ex-info "Unstable key, see the schema guidelines for more info."
+                             {:schema schema})))
+           (register! ~type ~schema)))
      ([type docstring schema]
       (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
@@ -149,7 +197,7 @@
             (-> schema
                 (mc/-set-properties (merge (mc/properties schema) properties))))
           (deref* [schema]
-            (let [dereffed   (-> schema mc/deref deref-all-preserving-properties)
+            (let [dereffed (-> schema mc/deref deref-all-preserving-properties)
                   properties (mc/properties schema)]
               (cond-> dereffed
                 (seq properties) (with-properties properties))))]
@@ -179,3 +227,11 @@
              ;; not sure this option is really needed, but [[mc/deref-recursive]] sets it... turning it off doesn't
              ;; seem to make any of our tests fail so maybe I'm not capturing something
              {::mc/walk-schema-refs true})))
+
+(comment
+
+  (count @cache)
+
+  ;; inspect cache keys:
+  ;; (map (comp schema-cache-key second) (keys @cache))
+  )

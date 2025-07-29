@@ -44,11 +44,12 @@
    ::col
    [:fn
     {:error/message "column with all kebab-cased keys"}
-    (fn [m]
-      (every? (fn [k]
-                (and (keyword? k)
-                     (not (str/includes? k "_"))))
-              (keys m)))]])
+    (mr/with-key
+      (fn [m]
+        (every? (fn [k]
+                  (and (keyword? k)
+                       (not (str/includes? k "_"))))
+                (keys m))))]])
 
 (mr/def ::cols
   [:maybe [:sequential ::col]])
@@ -394,15 +395,17 @@
                               [:sequential ::kebab-cased-map]
                               [:fn
                                {:error/message "columns should have unique :name(s)"}
-                               (fn [cols]
-                                 (or (empty? cols)
-                                     (apply distinct? (map :name cols))))]
+                               (mr/with-key
+                                 (fn [cols]
+                                   (or (empty? cols)
+                                       (apply distinct? (map :name cols)))))]
                               ;; QUE-1623
                               [:fn
                                {:error/message "columns should have unique :field-ref(s)"}
-                               (fn [cols]
-                                 (or (empty? cols)
-                                     (apply distinct? (map :field-ref cols))))]]
+                               (mr/with-key
+                                 (fn [cols]
+                                   (or (empty? cols)
+                                       (apply distinct? (map :field-ref cols)))))]]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column

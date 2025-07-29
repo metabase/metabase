@@ -11,12 +11,15 @@
 
 (mr/def ::metadata.parameter.name
   [:and
-   {:decode/metadata-file (fn [x]
-                            (keyword (u/->kebab-case-en x)))
-    :encode/api-request   (fn [x]
-                            (u/->snake_case_en (name x)))
-    :decode/api-response  (fn [x]
-                            (keyword (u/->kebab-case-en x)))}
+   {:decode/metadata-file (mr/with-key
+                            (fn [x]
+                              (keyword (u/->kebab-case-en x))))
+    :encode/api-request   (mr/with-key
+                            (fn [x]
+                              (u/->snake_case_en (name x))))
+    :decode/api-response  (mr/with-key
+                            (fn [x]
+                              (keyword (u/->kebab-case-en x))))}
    :keyword])
 
 (mr/def ::metadata.parameter
@@ -29,12 +32,14 @@
     [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
    [:fn
     {:error/message "metadata.parameter must specify either `:type`` or `:anyOf`, but not both."}
-    (fn [query]
-      (= (count (select-keys query [:type :anyOf])) 1))]])
+    (mr/with-key
+      (fn [query]
+        (= (count (select-keys query [:type :anyOf])) 1)))]])
 
 (mr/def ::metadata.name
   [:and
-   {:encode/api-request   (fn [x] (u/->snake_case_en (name x)))
+   {:encode/api-request   (mr/with-key
+                            (fn [x] (u/->snake_case_en (name x))))
     :decode/metadata-file keyword
     :decode/api-request   keyword
     :decode/api-response  keyword}

@@ -33,13 +33,12 @@
       (me/humanize {:wrap humanize-include-value})))
 
 (def ^:private Schema
-  [:and any?
-   [:fn {:description "a malli schema"} mc/schema]])
+  [:fn {:description "a malli schema"} (mr/with-key mc/schema)])
 
 (def localized-string-schema
   "Schema for localized string."
   #?(:clj  [:fn {:error/message "must be a localized string"}
-            i18n/localized-string?]
+            (mr/with-key i18n/localized-string?)]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))
@@ -50,8 +49,7 @@
   [mschema props]
   (mut/update-properties (mc/schema mschema) merge props))
 
-;; Kondo gets confused by :refer [defn] on this, so it's referenced fully qualified.
-(metabase.util.malli/defn with-api-error-message
+(defmacro with-api-error-message
   "Update a malli schema to have a :description (used by umd/describe, which is used by api docs),
   and a :error/fn (used by me/humanize, which is used by defendpoint).
   They don't have to be the same, but usually are.
@@ -60,16 +58,15 @@
     [:string {:min 1}]
     (deferred-tru \"Must be a string with at least 1 character representing a User ID.\"))"
   {:style/indent [:form]}
-  ([mschema :- Schema error-message :- localized-string-schema]
-   (with-api-error-message mschema error-message error-message))
-  ([mschema                :- :any
-    description-message    :- localized-string-schema
-    specific-error-message :- localized-string-schema]
-   (mut/update-properties (mc/schema mschema) assoc
-                          ;; override generic description in api docs and :errors key in API's response
-                          :description description-message
-                          ;; override generic description in :specific-errors key in API's response
-                          :error/fn    (constantly specific-error-message))))
+  ([mschema error-message]
+   `(with-api-error-message ~mschema ~error-message ~error-message))
+  ([mschema description-message specific-error-message]
+   `(mr/with-key
+      (mut/update-properties (mc/schema ~mschema) assoc
+                             ;; override generic description in api docs and :errors key in API's response
+                             :description ~description-message
+                             ;; override generic description in :specific-errors key in API's response
+                             :error/fn    (mr/with-key (constantly ~specific-error-message))))))
 
 #?(:clj
    (defmacro disable-enforcement

@@ -1,6 +1,7 @@
 (ns metabase.util.retry
   "Support for in-memory, thread-blocking retrying."
   (:require
+   [malli.core :as mc]
    [malli.util :as mut]
    [metabase.config.core :as config]
    [metabase.settings.core :refer [defsetting]]
@@ -25,7 +26,8 @@
    [:retry-on-result-pred     {:optional true} [:=> [:cat :any] :boolean]]])
 
 (mr/def ::retry-overrides
-  (mut/optional-keys [:ref ::retry-config]))
+  (mc/form
+   (mut/optional-keys [:ref ::retry-config])))
 
 ;;; these kondo warnings are ignored for now because I'm planning on moving this namespace out of `util` to eliminate
 ;;; the dependency of `util` of `settings` -- will fix them after this namespace gets moved. -- Cam

@@ -19,11 +19,12 @@
 
 (mr/def ::field.options
   [:merge
-   {:encode/serialize (fn [opts]
-                        (m/filter-keys (fn [k]
-                                         (or (simple-keyword? k)
-                                             (= (namespace k) "lib")))
-                                       opts))}
+   {:encode/serialize (mr/with-key
+                        (fn [opts]
+                          (m/filter-keys (fn [k]
+                                           (or (simple-keyword? k)
+                                               (= (namespace k) "lib")))
+                                         opts)))}
    ::common/options
    [:map
     [:join-alias                                 {:optional true} [:ref ::lib.schema.join/alias]]
@@ -137,8 +138,10 @@
   [:and
    ::mbql-clause/clause
    [:fn
-    {:error/fn (fn [_ _]
-                 (str "Valid reference, must be one of these clauses: "
-                      (str/join ", " (sort (descendants @lib.hierarchy/hierarchy ::ref)))))}
-    (fn [[tag :as _clause]]
-      (lib.hierarchy/isa? tag ::ref))]])
+    {:error/fn (mr/with-key
+                 (fn [_ _]
+                   (str "Valid reference, must be one of these clauses: "
+                        (str/join ", " (sort (descendants @lib.hierarchy/hierarchy ::ref))))))}
+    (mr/with-key
+      (fn [[tag :as _clause]]
+        (lib.hierarchy/isa? tag ::ref)))]])

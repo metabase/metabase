@@ -62,10 +62,11 @@
 (mr/def ::cache-strategy
   (if config/ee-available?
     [:multi
-     {:dispatch (fn [_value]
-                  (if (premium-features/has-feature? :cache-granular-controls)
-                    :ee
-                    :oss))}
+     {:dispatch (mr/with-key
+                  (fn [_value]
+                    (if (premium-features/has-feature? :cache-granular-controls)
+                      :ee
+                      :oss)))}
      [:ee  ::cache-strategy.ee]
      [:oss ::cache-strategy.oss]]
     ::cache-strategy.oss))

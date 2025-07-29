@@ -192,10 +192,11 @@
 (mr/def ::parameter.schema.or
   "Not sure what the difference is between `:oneOf` and `:anyOf` but they seem to both mean 'or'."
   [:multi
-   {:dispatch (fn [x]
-                (if (contains? x :anyOf)
-                  :anyOf
-                  :oneOf))}
+   {:dispatch (mr/with-key
+                (fn [x]
+                  (if (contains? x :anyOf)
+                    :anyOf
+                    :oneOf)))}
    [:anyOf
     [:merge
      ::parameter.schema.common
@@ -238,17 +239,18 @@
   [:and
    :map
    [:multi
-    {:dispatch (fn [x]
-                 (cond
-                   (not (map? x))       :invalid
-                   (:type x)            :typed
-                   (contains? x :$ref)  :ref
-                   (contains? x :oneOf) :or
-                   (contains? x :anyOf) :or
-                   (contains? x :allOf) :and
-                   (contains? x :const) :const
-                   (:enum x)            :untyped-enum
-                   :else                :empty))}
+    {:dispatch (mr/with-key
+                 (fn [x]
+                   (cond
+                     (not (map? x))       :invalid
+                     (:type x)            :typed
+                     (contains? x :$ref)  :ref
+                     (contains? x :oneOf) :or
+                     (contains? x :anyOf) :or
+                     (contains? x :allOf) :and
+                     (contains? x :const) :const
+                     (:enum x)            :untyped-enum
+                     :else                :empty)))}
     [:invalid      :map]
     [:typed        ::parameter.schema.typed]
     [:ref          ::parameter.schema.ref]

@@ -5,11 +5,9 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::offset.n
-  [:and
+  [:and {:error/message "offset cannot be zero"}
    :int
-   [:fn
-    {:error/message "offset cannot be zero"}
-    (some-fn pos-int? neg-int?)]])
+   [:not [:= 0]]])
 
 ;;; added 0.50.0
 (mbql-clause/define-tuple-mbql-clause :offset

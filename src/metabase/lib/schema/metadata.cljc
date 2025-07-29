@@ -23,10 +23,11 @@
 (mr/def ::kebab-cased-map
   [:fn
    {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (if-not (map? value)
-                       "map with all kebab-cased keys"
-                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+    :error/fn      (mr/with-key
+                     (fn [{:keys [value]} _]
+                       (if-not (map? value)
+                         "map with all kebab-cased keys"
+                         (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value)))))))}
    kebab-cased-map?])
 
 ;;; Column vs Field?
@@ -60,13 +61,14 @@
   source card, or a join, and should get field name refs instead of field ID refs --
   see [[metabase.lib.field.util/inherited-column?]])."
   [:enum
-   {:decode/normalize (fn [k]
-                        (when-let [k (lib.schema.common/normalize-keyword k)]
-                          ;; TODO (Cam 7/1/25) -- if we wanted, we could use `:source/breakouts` to populate
-                          ;; `:lib/breakout?` -- but I think that isn't really necessary since we can
-                          ;; recalculate that information anyway.
-                          (when-not (#{:source/fields :source/breakouts} k)
-                            k)))}
+   {:decode/normalize (mr/with-key
+                        (fn [k]
+                          (when-let [k (lib.schema.common/normalize-keyword k)]
+                            ;; TODO (Cam 7/1/25) -- if we wanted, we could use `:source/breakouts` to populate
+                            ;; `:lib/breakout?` -- but I think that isn't really necessary since we can
+                            ;; recalculate that information anyway.
+                            (when-not (#{:source/fields :source/breakouts} k)
+                              k))))}
    ;; these are for things from some sort of source other than the current stage;
    ;; they must be referenced with string names rather than Field IDs
    :source/card
@@ -199,10 +201,11 @@
   means it's getting incorrectly propagated from a previous stage (QUE-1342)."
   [:fn
    {:error/message ":lib/expression-name should only be set for expressions in the current stage (:lib/source = :source/expressions)"}
-   (fn [m]
-     (if (:lib/expression-name m)
-       (= (:lib/source m) :source/expressions)
-       true))])
+   (mr/with-key
+     (fn [m]
+       (if (:lib/expression-name m)
+         (= (:lib/source m) :source/expressions)
+         true)))])
 
 (mr/def ::column.validate-native-column
   "Certain keys cannot possibly be set when a column comes from directly from native query results, for example
@@ -211,26 +214,29 @@
                          :lib/expression-name]]        ; if it comes from a native query then it can't come from an expression.
     [:fn
      {:error/message "Invalid column metadata for a column with :lib/source :source/native"
-      :error/fn      (fn [{m :value} _]
-                       (some (fn [k]
-                               (when (k m)
-                                 (str "Column has :lib/source :source/native but also " k "; this is impossible")))
-                             disallowed-keys))}
-     (fn [m]
-       (if (= (:lib/source m) :source/native)
-         (every? (fn [k]
-                   (not (k m)))
-                 disallowed-keys)
-         true))]))
+      :error/fn      (mr/with-key
+                       (fn [{m :value} _]
+                         (some (fn [k]
+                                 (when (k m)
+                                   (str "Column has :lib/source :source/native but also " k "; this is impossible")))
+                               disallowed-keys)))}
+     (mr/with-key
+       (fn [m]
+         (if (= (:lib/source m) :source/native)
+           (every? (fn [k]
+                     (not (k m)))
+                   disallowed-keys)
+           true)))]))
 
 (mr/def ::column.validate-table-defaults-column
   "A column with :lib/source :source/table-defaults cannot possibly have a join alias."
   [:fn
    {:error/message "A column with :lib/source :source/table-defaults cannot possibly have a join alias"}
-   (fn [m]
-     (if (= (:lib/source m) :source/table-defaults)
-       (not (:metabase.lib.join/join-alias m))
-       true))])
+   (mr/with-key
+     (fn [m]
+       (if (= (:lib/source m) :source/table-defaults)
+         (not (:metabase.lib.join/join-alias m))
+         true)))])
 
 ;;; TODO (Cam 7/1/25) -- disabled for now because of bugs like QUE-1496; once that's fixed we should re-enable this.
 #_(mr/def ::column.validate-join-alias
@@ -482,14 +488,15 @@
   `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP
   metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
   [:multi
-   {:dispatch (fn [col]
-                ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
-                ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
-                ;; styles so look at that.
-                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
-                  (if ((some-fn :lib/type :base-type) col)
-                    :lib
-                    :legacy)))}
+   {:dispatch (mr/with-key
+                (fn [col]
+                  ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
+                  ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
+                  ;; styles so look at that.
+                  (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
+                    (if ((some-fn :lib/type :base-type) col)
+                      :lib
+                      :legacy))))}
    [:lib
     [:merge
      [:ref ::column]

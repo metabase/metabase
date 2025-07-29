@@ -334,7 +334,7 @@
     [:type [:enum :number, :string, :date, :datetime, :time, :boolean, :null]]
     [:description {:optional true} [:maybe :string]]
     [:table-reference {:optional true} :string]]
-   [:map {:encode/ai-service-request #(set/rename-keys % {:table-reference :table_reference})}]])
+   [:map {:encode/ai-service-request (mr/with-key #(set/rename-keys % {:table-reference :table_reference}))}]])
 
 (mr/def ::example-generation-payload
   [:map
@@ -352,8 +352,8 @@
        [:description {:optional true} [:maybe :string]]
        [:queryable-dimensions [:sequential ::example-generation-column]]
        [:default-time-dimension {:optional true} ::example-generation-column]]
-      [:map {:encode/ai-service-request #(set/rename-keys % {:default-time-dimension :default_time_dimension
-                                                             :queryable-dimensions :queryable_dimensions})}]]]]])
+      [:map {:encode/ai-service-request (mr/with-key #(set/rename-keys % {:default-time-dimension :default_time_dimension
+                                                                          :queryable-dimensions :queryable_dimensions}))}]]]]])
 
 (mu/defn generate-example-questions
   "Generate example questions for the given models and metrics."

@@ -6,7 +6,7 @@
 ;;; them, e.g. when we start working on the generative stuff
 
 (mr/def ::database
-  [:schema {:doc/title "Valid Database ID"} pos-int?])
+  [:schema {:doc/title "Valid Database ID"} [:int {:min 1}]])
 
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
@@ -32,34 +32,34 @@
    saved-questions-virtual-database-id])
 
 (mr/def ::table
-  [:schema {:doc/title "Valid Table ID"} pos-int?])
+  [:schema {:doc/title "Valid Table ID"} [:int {:min 1}]])
 
 (mr/def ::field
-  [:schema {:doc/title "Valid Field ID"} pos-int?])
+  [:schema {:doc/title "Valid Field ID"} [:int {:min 1}]])
 
 (mr/def ::card
-  [:schema {:doc/title "Valid Card ID"} pos-int?])
+  [:schema {:doc/title "Valid Card ID"} [:int {:min 1}]])
 
 (mr/def ::segment
-  [:schema {:doc/title "Valid legacy Segment ID"} pos-int?])
+  [:schema {:doc/title "Valid legacy Segment ID"} [:int {:min 1}]])
 
 (mr/def ::snippet
-  [:schema {:doc/title "Valid Snippet ID"} pos-int?])
+  [:schema {:doc/title "Valid Snippet ID"} [:int {:min 1}]])
 
 (mr/def ::dimension
-  [:schema {:doc/title "Valid Dimension ID"} pos-int?])
+  [:schema {:doc/title "Valid Dimension ID"} [:int {:min 1}]])
 
 (mr/def ::action
-  [:schema {:doc/title "Valid Action ID"} pos-int?])
+  [:schema {:doc/title "Valid Action ID"} [:int {:min 1}]])
 
 (mr/def ::dashboard
-  [:schema {:doc/title "Valid Dashboard ID"} pos-int?])
+  [:schema {:doc/title "Valid Dashboard ID"} [:int {:min 1}]])
 
 (mr/def ::dashcard
-  [:schema {:doc/title "Valid DashboardCard ID"} pos-int?])
+  [:schema {:doc/title "Valid DashboardCard ID"} [:int {:min 1}]])
 
 (mr/def ::user
-  [:schema {:doc/title "Valid User ID"} pos-int?])
+  [:schema {:doc/title "Valid User ID"} [:int {:min 1}]])
 
 (mr/def ::pulse
-  [:schema {:doc/title "Valid Pulse ID"} pos-int?])
+  [:schema {:doc/title "Valid Pulse ID"} [:int {:min 1}]])

@@ -14,9 +14,10 @@
 (mr/def ::legacy-field-or-expression-reference
   "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
   [:fn
-   (fn [k]
-     ((comp (mr/validator mbql.s/Field)
-            mbql.normalize/normalize-tokens) k))])
+   (mr/with-key
+     (fn [k]
+       ((comp (mr/validator mbql.s/Field)
+              mbql.normalize/normalize-tokens) k)))])
 
 (mr/def ::values-source-config
   "Schema for valid source_options within a Parameter"

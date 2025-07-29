@@ -84,8 +84,8 @@
    [:sequential ::breakout-combination]
    [:fn
     {:error/message "Distinct combinations"}
-    #(or (empty? %)
-         (apply distinct? %))]])
+    (mr/with-key #(or (empty? %)
+                      (apply distinct? %)))]])
 
 (mu/defn- breakout-combinations :- ::breakout-combinations
   "Return a sequence of all breakout combinations (by index) we should generate queries for.

@@ -24,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^:deprcated SetupToken
+(def ^:private ^:deprecated SetupToken
   "Schema for a string that matches the instance setup token."
   (mu/with-api-error-message
    [:and

@@ -11,7 +11,7 @@
    :map
    [:fn
     {:error/message "Query with a :type or :lib/type key"}
-    (some-fn :type :lib/type)]])
+    (mr/with-key (some-fn :type :lib/type))]])
 
 ;; TODO -- fill this out a bit.
 (mr/def ::metadata :any)

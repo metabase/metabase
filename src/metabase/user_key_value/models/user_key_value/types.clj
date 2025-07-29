@@ -31,12 +31,12 @@
   "A namespace for the key-value pair"
   [:and
    {;; api request comes in, turn `foo` into `:namespace/foo`
-    :decode/api-request (partial keyword "namespace")
+    :decode/api-request (mr/with-key (partial keyword "namespace"))
     :encode/api-request name
     ;; writing to the DB, turn `:namespace/foo` into `foo`
     :encode/database name
     ;; reading from the DB, turn `foo` into `:namespace/foo`
-    :decode/database (partial keyword "namespace")}
+    :decode/database (mr/with-key (partial keyword "namespace"))}
    :keyword])
 
 (mr/def ::expires-at
@@ -66,7 +66,7 @@
     [:expires-at [:maybe ::expires-at]]
     [:namespace ::namespace]
     [:value {:encode/database json/encode
-             :decode/database #(json/decode % keyword)}
+             :decode/database (mr/with-key #(json/decode % keyword))}
      :any]]
    (into [:multi
           {:dispatch :namespace}]

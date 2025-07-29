@@ -54,9 +54,10 @@
     [:schema [:ref ::expression/temporal]]
     [:repeat [:schema [:ref :mbql.clause/interval]]]]
    [:fn
-    {:error/fn (fn [{:keys [value]} _]
-                 (str "Invalid :+ or :- clause: " (validate-plus-minus-temporal-arithmetic-expression value)))}
-    (complement validate-plus-minus-temporal-arithmetic-expression)]])
+    {:error/fn (mr/with-key (fn [{:keys [value]} _]
+                              (str "Invalid :+ or :- clause: " (validate-plus-minus-temporal-arithmetic-expression value))))}
+    (mr/with-key
+      (complement validate-plus-minus-temporal-arithmetic-expression))]])
 
 (mr/def ::plus-minus-numeric-schema
   [:cat

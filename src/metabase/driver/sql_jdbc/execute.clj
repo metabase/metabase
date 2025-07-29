@@ -24,6 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
    [potemkin :as p])
   (:import
@@ -270,7 +271,7 @@
     ;; responsible for its lifecycle and that means you can't use
     ;; `with-open` on the Connection you'd get from the DataSource
     {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
-    (complement :connection)]])
+    (mr/with-key (complement :connection))]])
 
 (mu/defn do-with-resolved-connection-data-source :- (driver-api/instance-of-class DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`

@@ -6,8 +6,8 @@
 
 (mr/def ::card
   [:map {:closed true}
-   [:user-id  [:maybe pos-int?]]
-   [:object   [:fn #(t2/instance-of? :model/Card %)]]])
+   [:user-id  [:maybe [:int {:min 1}]]]
+   [:object   [:fn (mr/with-key #(t2/instance-of? :model/Card %))]]])
 
 (mr/def :event/card-create ::card)
 (mr/def :event/card-update ::card)
@@ -17,11 +17,11 @@
   [:map {:closed true}
    ;; context is deliberately coupled to view-log's context
    [:context view-log/context]
-   [:user-id [:maybe pos-int?]]
-   [:object-id [:maybe pos-int?]]])
+   [:user-id [:maybe [:int {:min 1}]]]
+   [:object-id [:maybe [:int {:min 1}]]]])
 
 (mr/def :event/card-query
   [:map {:closed true}
-   [:card-id pos-int?]
-   [:user-id [:maybe pos-int?]]
+   [:card-id [:int {:min 1}]]
+   [:user-id [:maybe [:int {:min 1}]]]
    [:context {:optional true} :any]])
