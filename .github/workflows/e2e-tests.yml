@@ -158,7 +158,7 @@ jobs:
   # NEW: Merge split timings from all E2E test runs
   merge-split-timings:
     needs: [e2e-tests]
-     if: ${{ always() }} 
+    if: ${{ always() }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
