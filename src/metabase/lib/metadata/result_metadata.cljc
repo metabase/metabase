@@ -253,24 +253,23 @@
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
       (->> #_(if-let [original-ref (:lib/original-ref col)]
                (cond-> original-ref
-                 remove-join-alias? (lib.join/with-join-alias nil))
-               )
-           (let [col (cond-> col
-                       remove-join-alias? (lib.join/with-join-alias nil)
-                       remove-join-alias? (assoc ::remove-join-alias? true))
-                 col (merge
-                      col
-                      (when-not remove-join-alias?
-                        (when-let [previous-join-alias (:lib/original-join-alias col)]
-                          {:metabase.lib.join/join-alias previous-join-alias}))
+                 remove-join-alias? (lib.join/with-join-alias nil)))
+       (let [col (cond-> col
+                   remove-join-alias? (lib.join/with-join-alias nil)
+                   remove-join-alias? (assoc ::remove-join-alias? true))
+             col (merge
+                  col
+                  (when-not remove-join-alias?
+                    (when-let [previous-join-alias (:lib/original-join-alias col)]
+                      {:metabase.lib.join/join-alias previous-join-alias}))
                       ;; force usage of ID refs
-                      {::force-id-refs-for-non-native-columns true}
+                  {::force-id-refs-for-non-native-columns true}
                       ;; Don't add `:base-type` to the generated ref unless required (i.e., it is
                       ;; a field name ref)
-                      (when (and (:id col)
-                                 (not= (:lib/source col) :source/native))
-                        {:metabase.lib.query/transformation-added-base-type true}))]
-             (lib.ref/ref col))
+                  (when (and (:id col)
+                             (not= (:lib/source col) :source/native))
+                    {:metabase.lib.query/transformation-added-base-type true}))]
+         (lib.ref/ref col))
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
 

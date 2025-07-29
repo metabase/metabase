@@ -4,13 +4,13 @@
   (:refer-clojure :exclude [alias])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]
    [metabase.lib.schema.util :as lib.schema.util]
-   [medley.core :as m]))
+   [metabase.lib.walk :as lib.walk]
+   [metabase.util.malli :as mu]))
 
 (mu/defn- resolve-join :- ::lib.schema.join/join
   [query :- ::lib.schema/query

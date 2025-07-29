@@ -25,7 +25,7 @@
     (some (fn [k]
             (when k
               (k column)))
-          [ ;; broken field refs never use `:lib/desired-column-alias`.
+          [;; broken field refs never use `:lib/desired-column-alias`.
            (when-not (:metabase.lib.metadata.result-metadata/force-id-refs-for-non-native-columns column)
              :lib/desired-column-alias)
            :lib/deduplicated-name
