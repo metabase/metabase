@@ -1252,7 +1252,7 @@ describe("scenarios > dashboard", () => {
 
     it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
       cy.visit("/");
-
+      cy.getByText("Loading...").should("not.exist");
       // add tab
       createNewDashboard();
       H.createNewTab();
