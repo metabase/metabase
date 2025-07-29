@@ -202,18 +202,18 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v56.2025-07-21T20:40:00
-      author: ericnormand
-      comment: Create transforms table
+      id: v56.2025-07-29T15:55:38
+      author: metamben
+      comment: Create transform table
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: transforms
+                tableName: transform
       changes:
         - createTable:
-            tableName: transforms
-            remarks: TODO
+            tableName: transform
+            remarks: The main table for Transform entities
             columns:
               - column:
                   name: id
@@ -229,6 +229,12 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: the description of the transform
+                  constraints:
+                    nullable: true
               - column:
                   name: source
                   remarks: JSON of source
@@ -262,87 +268,31 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v56.2025-07-22T22:59:55
-      author: metamben
-      comment: Add schedule to transforms table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: transforms
-                columnName: schedule
-      changes:
-        - addColumn:
-            tableName: transforms
-            columns:
               - column:
-                  name: schedule
-                  type: varchar(128)
-                  remarks: the cron schedule for the automatic execution of the transform
+                  name: execution_status
+                  type: varchar(32)
+                  remarks: The status of the transform's current or last execution
+                  defaultValue: never-executed
+                  constraints:
+                    nullable:  false
+              - column:
+                  remarks: The timestamp of when the transform last started
+                  name: last_started_at
+                  type: ${timestamp_type}
                   constraints:
                     nullable: true
-
-  - changeSet:
-      id: v56.2025-07-23T12:49:07
-      author: metamben
-      comment: Add description to transforms table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: transforms
-                columnName: description
-      changes:
-        - addColumn:
-            tableName: transforms
-            columns:
               - column:
-                  name: description
+                  remarks: The timestamp of when the transform last ended
+                  name: last_ended_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: live_target
+                  remarks: JSON of target this transform last successfully executed with
                   type: ${text.type}
-                  remarks: the description of the transforms
                   constraints:
                     nullable: true
-
-  - changeSet:
-      id: v56.2025-07-23T12:49:37
-      author: metamben
-      comment: Add database_id to transforms table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: transforms
-                columnName: database_id
-      changes:
-        - addColumn:
-            tableName: transforms
-            columns:
-              - column:
-                  name: database_id
-                  type: int
-                  remarks: the ID of database of the transform runs on
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v56.2025-07-23T12:49:47
-      author: metamben
-      comment: Add FK constraint to transforms.database_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - foreignKeyConstraintExists:
-            - foreignKeyName: fk_transforms_metabase_database_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transforms
-            baseColumnNames: database_id
-            referencedTableName: metabase_database
-            referencedColumnNames: id
-            constraintName: fk_transforms_metabase_database_id
-            onDelete: CASCADE
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

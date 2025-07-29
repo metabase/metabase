@@ -25,17 +25,18 @@
       (catch Exception e
         (not (driver/table-known-to-not-exist? driver e))))))
 
-(defn delete-target-table!
+(defn delete-live-target-table!
   "Delete the target table of a transform."
-  [{:keys [source target] :as _transform}]
-  (let [database (-> source :query :database)
-        driver (t2/select-one-fn :engine :model/Database database)]
-    (driver/drop-table! driver database (qualified-table-name driver target))))
+  [{live-target :live_target, :as _transform}]
+  (when live-target
+    (let [database (:database live-target)
+          driver (t2/select-one-fn :engine :model/Database database)]
+      (driver/drop-table! driver database (qualified-table-name driver live-target)))))
 
-(defn delete-target-table-by-id!
+(defn delete-live-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."
   [transform-id]
-  (delete-target-table! (t2/select-one :model/Transform transform-id)))
+  (delete-live-target-table! (t2/select-one :model/Transform transform-id)))
 
 (defn compile-source
   "Compile the source query of a transform."
