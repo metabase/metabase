@@ -115,7 +115,7 @@ jobs:
     timeout-minutes: 5
     name: Get container info
     # Skip if this is a PR without the build-docker-uberjar label
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar')
+    if: github.ref == 'refs/heads/master' || contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar')
     outputs:
       editions: ${{ toJson(fromJson(steps.info.outputs.result).editions) }}
       ee: ${{ toJson(fromJson(steps.info.outputs.result).ee) }}
@@ -221,8 +221,8 @@ jobs:
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize:
-    needs: [check-jar-health, get-container-info]
-    if: needs.get-container-info.result == 'success'
+    needs: [check-jar-health, get-container-info, build]
+    if: needs.get-container-info.result == 'success' && needs.build.result == 'success'
     strategy:
       matrix:
         edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
