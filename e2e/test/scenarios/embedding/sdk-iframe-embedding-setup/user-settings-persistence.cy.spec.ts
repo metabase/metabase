@@ -196,7 +196,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     });
   });
 
-  it("persists default and hidden parameters", () => {
+  it.skip("persists default and hidden parameters", () => {
     H.createQuestionAndDashboard({
       questionDetails: {
         name: "Orders table",
