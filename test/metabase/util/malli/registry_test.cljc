@@ -7,6 +7,7 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (defn- clear-cache []
@@ -14,6 +15,20 @@
 
 (defn cache-size-info []
   (mr/cache-size-info @@#'mr/cache))
+
+(defmacro test-operation-does-not-grow-cache [body]
+  `(let [before# (count (:validator @@#'mr/cache))]
+     ~body
+     (let [after# (count (:validator @@#'mr/cache))]
+       (is (= before# after#)
+           "Operation should not grow the cache"))))
+
+(deftest mu-defn-with-cachable-schemas-does-not-grow-cache
+  (test-operation-does-not-grow-cache
+   (mu/defn my-good-fn :- [:fn (mr/with-key (fn [] true))]
+     "A good function that should be stable in the cache."
+     [a :- [:fn (mr/with-key (fn []))]]
+     true)))
 
 (deftest ^:parallel cache-handle-regexes-test
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
@@ -34,6 +49,12 @@
     (is (not (mr/stable-key? [:fn {:error/fn (fn [_ _] "no!")} number?])))
     (is (not (mr/stable-key? [:map [:x [:fn (fn [_] false)]]])))))
 
+(deftest ^:parallel cache-handles-inline-anonymous-fn-with-key-test
+  (testing "Inline anonymous functions are not cachable!"
+    (is (mr/stable-key? [:fn (mr/with-key (fn [s] (if (str/blank? s) false true)))]))
+    (is (mr/stable-key? [:fn {:error/fn (mr/with-key (fn [_ _] "no!"))} number?]))
+    (is (mr/stable-key? [:map [:x [:fn (mr/with-key (fn [_] false))]]]))))
+
 (mr/def ::int :int)
 
 (deftest ^:parallel explainer-test
@@ -43,6 +64,10 @@
   (testing "cache explainers"
     (is (identical? (mr/explainer ::int)
                     (mr/explainer ::int)))))
+
+[(count @@#'mr/cache)
+
+ (count @@#'mr/cache)]
 
 (deftest ^:parallel resolve-test
   (is (mc/schema? (mr/resolve-schema :int)))
@@ -303,14 +328,14 @@
     (let [schema-gen (fn [] [:int {:evil (rand)}])
           iterations 100
           start-time (System/nanoTime)
-          cache-size-before (count (:validator @@#'mr/cache))]
+          cache-size-before (:total-cache-entries (cache-size-info))]
 
       ;; Generate cache keys many times
       (dotimes [_ iterations]
         (let [schema (schema-gen)]
           (mr/validate schema 42)))
 
-      (let [cache-size-after (count (:validator @@#'mr/cache))]
+      (let [cache-size-after (:total-cache-entries (cache-size-info))]
         (is (> cache-size-after cache-size-before)
             "Cache size should increase with evil schemas")
         (is (= (- cache-size-after cache-size-before) iterations)))
@@ -325,21 +350,21 @@
   ;; good tests
   ;;
   '(= (#'mr/schema-cache-key (mu/with-api-error-message
-                               [:and
-                                {:error/message "non-blank string"
-                                 :json-schema   {:type "string" :minLength 1}}
-                                [:string {:min 1}]
-                                [:fn
-                                 {:error/message "non-blank string"}
-                                 (mr/with-key (complement str/blank?))]]
-                               (deferred-tru "value must be a non-blank string.")))
+                              [:and
+                               {:error/message "non-blank string"
+                                :json-schema   {:type "string" :minLength 1}}
+                               [:string {:min 1}]
+                               [:fn
+                                {:error/message "non-blank string"}
+                                (mr/with-key (complement str/blank?))]]
+                              (deferred-tru "value must be a non-blank string.")))
 
       (#'mr/schema-cache-key (mu/with-api-error-message
-                               [:and
-                                {:error/message "non-blank string"
-                                 :json-schema   {:type "string" :minLength 1}}
-                                [:string {:min 1}]
-                                [:fn
-                                 {:error/message "non-blank string"}
-                                 (mr/with-key (complement str/blank?))]]
-                               (deferred-tru "value must be a non-blank string.")))))
+                              [:and
+                               {:error/message "non-blank string"
+                                :json-schema   {:type "string" :minLength 1}}
+                               [:string {:min 1}]
+                               [:fn
+                                {:error/message "non-blank string"}
+                                (mr/with-key (complement str/blank?))]]
+                              (deferred-tru "value must be a non-blank string.")))))

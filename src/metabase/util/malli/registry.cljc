@@ -81,8 +81,11 @@
 (defn cache-size-info
   "Return information about the current cache size and structure for debugging memory issues."
   [cache-val]
-  (let [total-entries (reduce + (map count (vals cache-val)))
-        by-type (group-by (fn [[k _]] (first k)) cache-val)]
+  (let [total-entries (count cache-val)
+        by-type (->> (group-by (fn [[k _]] (first k)) cache-val)
+                     (mapv (fn [[k v]]
+                             [k (count v)]))
+                     (into {}))]
     {:total-cache-entries total-entries
      :entries-by-type by-type}))
 
