@@ -73,10 +73,10 @@
   ([claims]
    (let [now (int (/ (System/currentTimeMillis) 1000))
          default-claims {:email "test@example.com"
-                        :first_name "Test"
-                        :last_name "User"
-                        :iat now
-                        :exp (+ now 3600)}]
+                         :first_name "Test"
+                         :last_name "User"
+                         :iat now
+                         :exp (+ now 3600)}]
      (jwt/sign (merge default-claims claims) default-jwt-secret))))
 
 (deftest jwt-to-session-test
@@ -115,11 +115,11 @@
               (is (= "error-jwt-invalid" (get-in response [:body :status])))))
           (testing "JWT with different secret"
             (let [wrong-secret-token (jwt/sign {:email "test@example.com"
-                                               :first_name "Test"
-                                               :last_name "User"
-                                               :iat (int (/ (System/currentTimeMillis) 1000))
-                                               :exp (+ (int (/ (System/currentTimeMillis) 1000)) 3600)}
-                                              "wrong-secret")
+                                                :first_name "Test"
+                                                :last_name "User"
+                                                :iat (int (/ (System/currentTimeMillis) 1000))
+                                                :exp (+ (int (/ (System/currentTimeMillis) 1000)) 3600)}
+                                               "wrong-secret")
                   response (client/client :post "/auth/sso/to_session" {:jwt wrong-secret-token})]
               (is (= 401 (:status response)))
               (is (= "error-jwt-invalid" (get-in response [:body :status]))))))))))
