@@ -431,10 +431,7 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defmethod aggregation->legacy-MBQL :default
-  [[tag options & args] :- [:cat
-                            :keyword
-                            :map
-                            [:* :any]]]
+  [[tag options & args] #_#_:- [:cat :keyword :map [:* :any]]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
         ;; the default value of the :case or :if expression is in the options
         ;; in legacy MBQL
