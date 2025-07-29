@@ -37,7 +37,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       visitNewEmbedPage();
       assertRecentItemName("dashboard", dashboardName);
 
-      H.getIframeBody().within(() => {
+      H.waitForSimpleEmbedIframesToLoad();
+
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("dashboard title is visible");
         cy.findByText(dashboardName).should("be.visible");
 
@@ -65,7 +67,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       cy.wait("@cardQuery");
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title is visible");
         cy.findByText(questionName).should("be.visible");
       });
@@ -80,7 +82,9 @@ H.describeWithSnowplow(suiteTitle, () => {
         event_detail: "exploration",
       });
 
-      H.getIframeBody().within(() => {
+      H.waitForSimpleEmbedIframesToLoad();
+
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("data picker is visible");
         cy.findByText("Pick your starting data").should("be.visible");
       });
@@ -101,7 +105,10 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.wait("@emptyRecentItems");
 
       cy.log("dashboard title and card of id=1 should be visible");
-      H.getIframeBody().within(() => {
+
+      H.waitForSimpleEmbedIframesToLoad();
+
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.findByText("Person overview").should("be.visible");
         cy.findByText("Person detail").should("be.visible");
       });
@@ -118,7 +125,9 @@ H.describeWithSnowplow(suiteTitle, () => {
         event_detail: "chart",
       });
 
-      H.getIframeBody().within(() => {
+      H.waitForSimpleEmbedIframesToLoad();
+
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title of id=1 is visible");
         cy.findByText("Query log").should("be.visible");
       });
@@ -132,7 +141,9 @@ H.describeWithSnowplow(suiteTitle, () => {
     // TODO: update this test once "Exploration" is localized in french.
     getEmbedSidebar().findByText("Exploration").click();
 
-    H.getIframeBody().within(() => {
+    H.waitForSimpleEmbedIframesToLoad();
+
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.log("data picker is localized");
       cy.findByText("Choisissez vos données de départ").should("be.visible");
     });
