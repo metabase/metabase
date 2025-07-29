@@ -56,18 +56,29 @@
                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
    #'unique-uuids?])
 
+(defn- mbql-clause?
+  "Just check that `x` is in the general shape of an MBQL clause. This is to prevent things like [[distinct-refs?]] from
+  barfing when given invalid values."
+  [x]
+  (and (vector? x)
+       (> (count x) 2)
+       (keyword? (first x))
+       (map? (second x))))
+
+(defn- opts-distinct-key [opts]
+  ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
+  (reduce-kv (fn [acc k _v]
+               (if (or (qualified-keyword? k)
+                       (#{:base-type :effective-type} k))
+                 (dissoc acc k)
+                 acc))
+             opts
+             opts))
+
 (mu/defn ref-distinct-key
   "For deduplicating refs: keep just the keys that are essential to distinguishing one ref from another."
-  [ref :- [:tuple :keyword :map :any]]
-  (let [options (lib.options/options ref)]
-    (lib.options/with-options ref
-      ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
-      (reduce-kv (fn [acc k _]
-                   (if (or (qualified-keyword? k)
-                           (#{:base-type :effective-type} k))
-                     (dissoc acc k)
-                     acc))
-                 options options))))
+  [ref :- [:fn {:error/message "MBQL clause "} mbql-clause?]]
+  (lib.options/update-options ref opts-distinct-key))
 
 (defn distinct-refs?
   "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
@@ -79,21 +90,44 @@
     distinct?
     (map ref-distinct-key refs))))
 
-(mr/def ::distinct-refs
+(defn distinct-clauses-by
+  [f message]
   [:fn
-   {:error/message    "values must be distinct refs"
+   {:error/message    message
     :error/fn         (fn [{:keys [value]} _]
-                        (str "Duplicate refs in: " (pr-str (ref-distinct-key value))))
+                        (if (and (sequential? value)
+                                 (every? mbql-clause? value))
+                          (str message ": " (pr-str (map f value)))
+                          "values must be valid MBQL clauses"))
     :decode/normalize (fn [xs]
                         (when (and (sequential? xs)
-                                   (every? #(keyword? (first %)) xs))
+                                   (every? mbql-clause? xs))
                           (into []
-                                (m/distinct-by ref-distinct-key)
+                                (m/distinct-by f)
                                 xs)))}
-   distinct-refs?])
+   (fn [xs]
+     (and (sequential? xs)
+          (every? mbql-clause? xs)
+          (or (< (count xs) 2)
+              (apply distinct? (map f xs)))))])
+
+(mr/def ::distinct-refs
+  (distinct-clauses-by ref-distinct-key "refs must be distinct"))
+
+(defn mbql-clause-distinct-key
+  "Walk `clause` and remove UUIDs and other non-distinct keys (namespaced keys, type info) from options maps."
+  [clause]
+  (walk/postwalk
+   (fn [form]
+     (cond-> form
+       (map? form) opts-distinct-key))
+   clause))
+
+(mr/def ::distinct-mbql-clauses
+  (distinct-clauses-by mbql-clause-distinct-key "values must be distinct ignoring uuids"))
 
 (defn remove-lib-uuids
-  "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
+  "Recursively remove all uuids from `x`."
   [x]
   (walk/postwalk
    (fn [x]
@@ -126,17 +160,7 @@
     query))
 
 (mr/def ::distinct-ignoring-uuids
-  [:fn
-   {:error/message    "values must be distinct ignoring uuids"
-    :error/fn         (fn [{:keys [value]} _]
-                        (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))
-    :decode/normalize (fn [xs]
-                        (when (and (sequential? xs)
-                                   (every? #(keyword? (first %)) xs))
-                          (into []
-                                (m/distinct-by remove-lib-uuids)
-                                xs)))}
-   (comp u/empty-or-distinct? remove-lib-uuids)])
+  (distinct-clauses-by remove-lib-uuids "values must be distinct ignoring uuids"))
 
 (defn distinct-ignoring-uuids
   "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."
