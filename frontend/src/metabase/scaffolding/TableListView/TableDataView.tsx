@@ -67,8 +67,6 @@ export const TableDataView = ({
       <Box bg="white" className={S.table} component="table" w="100%">
         <thead>
           <tr>
-            <Box component="th" px="sm" py="md" />
-
             {columns.map((column, index) => (
               <Box
                 component="th"
@@ -97,32 +95,15 @@ export const TableDataView = ({
                 </Group>
               </Box>
             ))}
+
+            <Box component="th" px="sm" py="md" />
           </tr>
         </thead>
 
         <tbody>
           {transformedRows.map((row, index) => {
             return (
-              <Box className={S.row} component="tr" key={index}>
-                <Box
-                  component="td"
-                  pl={CELL_PADDING_HORIZONTAL}
-                  py={cellPaddingVertical}
-                >
-                  <ActionIcon
-                    className={S.link}
-                    component={Link}
-                    to={
-                      pkIndex !== undefined && pkIndex >= 0
-                        ? `/table/${table.id}/detail/${rows[index][pkIndex]}`
-                        : ""
-                    }
-                    variant="outline"
-                  >
-                    <Icon name="share" />
-                  </ActionIcon>
-                </Box>
-
+              <Box className={S.row} component="tr" key={index} pos="relative">
                 {row.map((value, cellIndex) => {
                   return (
                     <Box
@@ -147,6 +128,27 @@ export const TableDataView = ({
                     </Box>
                   );
                 })}
+
+                <Box
+                  component="td"
+                  pl={CELL_PADDING_HORIZONTAL}
+                  py={cellPaddingVertical}
+                ></Box>
+                <ActionIcon
+                  className={S.link}
+                  component={Link}
+                  pos="absolute"
+                  top={0}
+                  right={0}
+                  to={
+                    pkIndex !== undefined && pkIndex >= 0
+                      ? `/table/${table.id}/detail/${rows[index][pkIndex]}`
+                      : ""
+                  }
+                  variant="outline"
+                >
+                  <Icon name="share" />
+                </ActionIcon>
               </Box>
             );
           })}

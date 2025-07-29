@@ -534,6 +534,7 @@ export const TableListView = ({ location, params }: Props) => {
         }}
       >
         <Stack
+          align={settings.list_view.view === "table" ? undefined : "center"}
           bg="bg-white"
           h="100%"
           flex="1"
@@ -552,7 +553,7 @@ export const TableListView = ({ location, params }: Props) => {
           )}
 
           {settings.list_view.view === "list" && (
-            <Stack gap="md" p="xl">
+            <Stack gap="md" p="xl" maw={800} w="100%">
               {paginatedRows.map((row, index) => {
                 return (
                   <TableDetailViewInner
@@ -572,6 +573,8 @@ export const TableListView = ({ location, params }: Props) => {
 
           {settings.list_view.view === "gallery" && (
             <Box
+              maw={1200}
+              w="100%"
               p="xl"
               style={{
                 display: "grid",
