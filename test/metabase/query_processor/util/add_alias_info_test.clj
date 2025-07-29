@@ -14,7 +14,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -37,55 +36,53 @@
       (-> query qp.preprocess/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
 (deftest ^:parallel join-in-source-query-test
-  (let [result (add-alias-info
-                (lib.tu.macros/mbql-query venues
-                  {:source-query {:source-table $$venues
-                                  :joins        [{:strategy     :left-join
-                                                  :source-table $$categories
-                                                  :alias        "Cat"
-                                                  :condition    [:= $category-id &Cat.categories.id]
-                                                  :fields       [&Cat.categories.name]}]
-                                  :fields       [$id
-                                                 &Cat.categories.name]}
-                   ;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source query rather
-                   ;; than in the current stage. However, we should be smart enough to try to figure out what they
-                   ;; meant.
-                   :breakout     [&Cat.categories.name]}))]
-    (testing ":query -> :source-query"
-      (is (=? (lib.tu.macros/$ids venues
-                {:source-table $$venues
-                 :joins        [{:strategy     :left-join
-                                 :source-table $$categories
-                                 :alias        "Cat"
-                                 :condition    [:=
-                                                [:field %category-id {::add/source-table $$venues
-                                                                      ::add/source-alias "CATEGORY_ID"}]
-                                                [:field %categories.id {:join-alias        "Cat"
-                                                                        ::add/source-table "Cat"
-                                                                        ::add/source-alias "ID"}]]}]
-                 :fields       [[:field %id {::add/source-table  $$venues
-                                             ::add/source-alias  "ID"
-                                             ::add/desired-alias "ID"}]
-                                [:field %categories.name {:join-alias         "Cat"
-                                                          ::add/source-table  "Cat"
-                                                          ::add/source-alias  "NAME"
-                                                          ::add/desired-alias "Cat__NAME"}]]})
-              (-> result :query :source-query))))
-    (testing ":query"
-      (is (=? { ;; it doesn't really matter whether these stay as Field ID refs or get switched to Field name refs, the
-               ;; `::add` keys are the only thing really relevant here.
-               :breakout [[:field any? {::add/source-table  ::add/source
-                                        ::add/source-alias  "Cat__NAME"
-                                        ::add/desired-alias "Cat__NAME"}]]
-               :order-by [[:asc [:field any? {::add/source-table  ::add/source
-                                              ::add/source-alias  "Cat__NAME"
-                                              ::add/desired-alias "Cat__NAME"}]]]}
-              (-> result :query (dissoc :source-query)))))))
+  (is (=? (lib.tu.macros/mbql-query venues
+            {:source-query {:source-table $$venues
+                            :joins        [{:strategy     :left-join
+                                            :source-query {:source-table $$categories}
+                                            :alias        "Cat"
+                                            :condition    [:=
+                                                           [:field %category-id {::add/source-table $$venues
+                                                                                 ::add/source-alias "CATEGORY_ID"}]
+                                                           [:field %categories.id {:join-alias        "Cat"
+                                                                                   ::add/source-table "Cat"
+                                                                                   ::add/source-alias "ID"}]]}]
+                            :fields       [[:field %id {::add/source-table  $$venues
+                                                        ::add/source-alias  "ID"
+                                                        ::add/desired-alias "ID"
+                                                        ::add/position      0}]
+                                           [:field %categories.name {:join-alias         "Cat"
+                                                                     ::add/source-table  "Cat"
+                                                                     ::add/source-alias  "NAME"
+                                                                     ::add/desired-alias "Cat__NAME"
+                                                                     ::add/position      1}]]}
+             :breakout     [[:field %categories.name {:join-alias         "Cat"
+                                                      ::add/source-table  ::add/source
+                                                      ::add/source-alias  "Cat__NAME"
+                                                      ::add/desired-alias "Cat__NAME"
+                                                      ::add/position      0}]]
+             :order-by     [[:asc [:field %categories.name {:join-alias         "Cat"
+                                                            ::add/source-table  ::add/source
+                                                            ::add/source-alias  "Cat__NAME"
+                                                            ::add/desired-alias "Cat__NAME"
+                                                            ::add/position      0}]]]
+             :limit        1})
+          (add-alias-info
+           (lib.tu.macros/mbql-query venues
+             {:source-query {:source-table $$venues
+                             :joins        [{:strategy     :left-join
+                                             :source-table $$categories
+                                             :alias        "Cat"
+                                             :condition    [:= $category-id &Cat.categories.id]}]
+                             :fields       [$id
+                                            &Cat.categories.name]}
+              :breakout     [&Cat.categories.name]
+              :limit        1})))))
 
 (deftest ^:parallel multiple-joins-test
   (is (=? (lib.tu.macros/mbql-query orders
             {:source-query {:source-table $$orders
-                            :joins        [{:source-table $$products
+                            :joins        [{:source-query {:source-table $$products}
                                             :alias        "P1"
                                             :condition    [:=
                                                            [:field %product-id {::add/source-alias "PRODUCT_ID"
@@ -99,7 +96,7 @@
                                                                        ::add/source-alias  "CATEGORY"
                                                                        ::add/source-table  "P1"}]]}
              :joins        [{:source-query {:source-table $$reviews
-                                            :joins        [{:source-table $$products
+                                            :joins        [{:source-query {:source-table $$products}
                                                             :alias        "P2"
                                                             :condition    [:=
                                                                            [:field
@@ -263,87 +260,74 @@
                                  [:expression "price_divided_by_big_price"]]
                    :limit       1}))))))
 
-(deftest join-source-query-join-test
-  (with-redefs [fix-bad-refs/fix-bad-references identity]
-    (let [result (add-alias-info
-                  (lib.tu.macros/mbql-query orders
-                    {:joins  [{:strategy     :left-join
-                               :condition    [:= &Q2.products.category 1]
-                               :alias        "Q2"
-                               :source-query {:source-table $$reviews
-                                              :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
-                                              :breakout     [&P2.products.category]
-                                              :joins        [{:strategy     :left-join
-                                                              :source-table $$products
-                                                              :condition    [:= $reviews.product-id &P2.products.id]
-                                                              :alias        "P2"
-                                                              :fields       [&P2.products.category]}]}
-                               :fields [&Q2.products.category
-                                        [:field "avg" {:base-type :type/Number, :join-alias "Q2"}]]}]
-                     :fields [[:field %products.category {:join-alias "Q2"}]
-                              [:field "avg" {:base-type :type/Integer, :join-alias "Q2"}]]}))]
-      (testing ":query -> :joins -> first -> :source-query -> :joins"
-        (is (=? (lib.tu.macros/$ids nil
-                  [{:alias        "P2"
-                    :source-table $$products
-                    :condition    [:=
-                                   [:field %reviews.product-id {::add/source-table $$reviews
-                                                                ::add/source-alias "PRODUCT_ID"}]
-                                   [:field %products.id {::add/source-table "P2"
-                                                         ::add/source-alias "ID"}]]
-                    :fields [[:field %products.category {::add/source-table "P2"
-                                                         ::add/source-alias  "CATEGORY"
-                                                         ::add/desired-alias "P2__CATEGORY"}]]}])
-                (-> result :query :joins first :source-query :joins))))
-      (testing ":query -> :joins -> first -> :source-query"
-        (is (=? (lib.tu.macros/$ids orders
-                  {:source-table $$reviews
-                   :aggregation  [[:aggregation-options
-                                   [:avg [:field %reviews.rating {::add/source-table $$reviews
-                                                                  ::add/source-alias "RATING"}]]
-                                   {:name               "avg"
-                                    ::add/source-alias  "avg"
-                                    ::add/desired-alias "avg"}]]
-                   :breakout     [[:field %products.category {:join-alias         "P2"
-                                                              ::add/source-table  "P2"
-                                                              ::add/source-alias  "CATEGORY"
-                                                              ::add/desired-alias "P2__CATEGORY"}]]
-                   :order-by     [[:asc [:field %products.category {:join-alias         "P2"
-                                                                    ::add/source-table  "P2"
-                                                                    ::add/source-alias  "CATEGORY"
-                                                                    ::add/desired-alias "P2__CATEGORY"}]]]})
-                (-> result :query :joins first :source-query (dissoc :joins)))))
-      (testing ":query -> :joins"
-        (is (=? (lib.tu.macros/$ids orders
-                  [{:alias     "Q2"
-                    :strategy  :left-join
-                    :condition [:=
-                                [:field %products.category {::add/source-table "Q2"
-                                                            ::add/source-alias  "P2__CATEGORY"
-                                                            ::add/desired-alias "Q2__P2__CATEGORY"}]
-                                [:value 1 {:base_type         :type/Text
-                                           :database_type     "CHARACTER VARYING"
-                                           :name              "CATEGORY"
-                                           :semantic_type     :type/Category}]]
-                    :fields [[:field %products.category {:join-alias "Q2"
-                                                         ::add/source-table  "Q2"
-                                                         ::add/source-alias  "P2__CATEGORY"
-                                                         ::add/desired-alias "Q2__P2__CATEGORY"}]
-                             [:field "avg" {:base-type :type/Number
-                                            ::add/source-table  "Q2"
-                                            ::add/source-alias  "avg"
-                                            ::add/desired-alias "Q2__avg"}]]}])
-                (-> result :query :joins (m/dissoc-in [0 :source-query])))))
-      (testing ":query"
-        (is (=? (lib.tu.macros/$ids orders
-                  {:fields [[:field %products.category {::add/source-table  "Q2"
-                                                        ::add/source-alias  "P2__CATEGORY"
-                                                        ::add/desired-alias "Q2__P2__CATEGORY"}]
-                            [:field "avg" {:base-type          :type/Integer
-                                           ::add/source-table  "Q2"
-                                           ::add/source-alias  "avg"
-                                           ::add/desired-alias "Q2__avg"}]]})
-                (->  result :query (dissoc :joins))))))))
+(deftest ^:parallel join-source-query-join-test
+  (is (=? (lib.tu.macros/mbql-query orders
+            {:joins  [{:source-query {:source-table $$reviews
+                                      :aggregation  [[:aggregation-options
+                                                      [:avg [:field %reviews.rating {::add/source-table $$reviews
+                                                                                     ::add/source-alias "RATING"}]]
+                                                      {:name               "avg"
+                                                       ::add/source-alias  "avg"
+                                                       ::add/desired-alias "avg"
+                                                       ::add/position      1}]]
+                                      :breakout     [[:field %products.category {:join-alias         "P2"
+                                                                                 ::add/source-table  "P2"
+                                                                                 ::add/source-alias  "CATEGORY"
+                                                                                 ::add/desired-alias "P2__CATEGORY"
+                                                                                 ::add/position      0}]]
+                                      :order-by     [[:asc [:field %products.category {:join-alias         "P2"
+                                                                                       ::add/source-table  "P2"
+                                                                                       ::add/source-alias  "CATEGORY"
+                                                                                       ::add/desired-alias "P2__CATEGORY"
+                                                                                       ::add/position      0}]]]
+                                      :joins        [{:strategy     :left-join
+                                                      :source-query {:source-table $$products}
+                                                      :condition    [:=
+                                                                     [:field %reviews.product-id {::add/source-table $$reviews
+                                                                                                  ::add/source-alias "PRODUCT_ID"}]
+                                                                     [:field %products.id {:join-alias        "P2"
+                                                                                           ::add/source-table "P2"
+                                                                                           ::add/source-alias "ID"}]]
+                                                      :alias        "P2"}]}
+                       :alias        "Q2"
+                       :strategy     :left-join
+                       :condition    [:=
+                                      [:field %products.category {:join-alias         "Q2"
+                                                                  ::add/source-table  "Q2"
+                                                                  ::add/source-alias  "P2__CATEGORY"
+                                                                  ::add/desired-alias "Q2__P2__CATEGORY"
+                                                                  ::add/position      0}]
+                                      [:value 1 {:base_type         :type/Text
+                                                 :database_type     "CHARACTER VARYING"
+                                                 :name              "CATEGORY"
+                                                 :semantic_type     :type/Category}]]}]
+             :fields [[:field %products.category {:join-alias         "Q2"
+                                                  ::add/source-table  "Q2"
+                                                  ::add/source-alias  "P2__CATEGORY"
+                                                  ::add/desired-alias "Q2__P2__CATEGORY"
+                                                  ::add/position      0}]
+                      [:field "avg" {:base-type          :type/Integer
+                                     :join-alias         "Q2"
+                                     ::add/source-table  "Q2"
+                                     ::add/source-alias  "avg"
+                                     ::add/desired-alias "Q2__avg"
+                                     ::add/position      1}]]
+             :limit  2})
+          (add-alias-info
+           (lib.tu.macros/mbql-query orders
+             {:fields [&Q2.products.category
+                       [:field "avg" {:base-type :type/Integer, :join-alias "Q2"}]]
+              :joins  [{:strategy     :left-join
+                        :condition    [:= &Q2.products.category 1]
+                        :alias        "Q2"
+                        :source-query {:source-table $$reviews
+                                       :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
+                                       :breakout     [&P2.products.category]
+                                       :joins        [{:strategy     :left-join
+                                                       :source-table $$products
+                                                       :condition    [:= $reviews.product-id &P2.products.id]
+                                                       :alias        "P2"}]}}]
+              :limit  2})))))
 
 (driver/register! ::custom-escape :parent :h2)
 
@@ -439,55 +423,54 @@
     (driver/with-driver ::custom-escape-spaces-to-underscores
       (is (=? (lib.tu.macros/$ids nil
                 {:source-query {:source-table $$orders
-                                :joins        [{:source-table $$products
-                                                :alias "Products_Renamed"
-                                                :condition [:=
-                                                            [:field
-                                                             %orders.product-id
-                                                             {::add/source-alias "PRODUCT_ID"
-                                                              ::add/source-table $$orders}]
-                                                            [:field
-                                                             %products.id
-                                                             {::add/desired-alias "Products_Renamed__ID"
-                                                              ::add/source-alias  "ID"
-                                                              ::add/source-table  "Products_Renamed"
-                                                              :join-alias         "Products Renamed"}]]
-                                                :fields [[:field
-                                                          %products.id
-                                                          {::add/desired-alias "Products_Renamed__ID"
-                                                           ::add/source-alias  "ID"
-                                                           ::add/source-table  "Products_Renamed"
-                                                           :join-alias         "Products Renamed"}]
-                                                         [:field
-                                                          %products.category
-                                                          {::add/desired-alias "Products_Renamed__CATEGORY"
-                                                           ::add/source-alias  "CATEGORY"
-                                                           ::add/source-table  "Products_Renamed"
-                                                           :join-alias         "Products Renamed"}]]
-                                                :strategy :left-join}]
-                                :expressions {"CC" [:+ 1 1]}
-                                :fields [[:field
-                                          %products.id
-                                          {::add/desired-alias "Products_Renamed__ID"
-                                           ::add/source-alias  "ID"
-                                           ::add/source-table  "Products_Renamed"}]
-                                         [:field
-                                          %products.category
-                                          {::add/desired-alias "Products_Renamed__CATEGORY"
-                                           ::add/source-alias  "CATEGORY"
-                                           ::add/source-table  "Products_Renamed"}]
-                                         [:expression "CC" {::add/desired-alias "CC"}]]
-                                :filter [:=
-                                         [:field
-                                          %products.category
-                                          {::add/source-alias "CATEGORY"
-                                           ::add/source-table "Products_Renamed"}]
-                                         [:value
-                                          "Doohickey"
-                                          {:base_type         :type/Text
-                                           :database_type     "CHARACTER VARYING"
-                                           :name              "CATEGORY"
-                                           :semantic_type     :type/Category}]]}
+                                :joins        [{:source-query {:source-table $$products}
+                                                ::add/alias   "Products_Renamed"
+                                                :alias        "Products Renamed"
+                                                :condition
+                                                [:=
+                                                 [:field
+                                                  %orders.product-id
+                                                  {::add/source-alias "PRODUCT_ID"
+                                                   ::add/source-table $$orders}]
+                                                 [:field
+                                                  %products.id
+                                                  {::add/desired-alias "Products_Renamed__ID"
+                                                   ::add/position      0
+                                                   ::add/source-alias  "ID"
+                                                   ::add/source-table  "Products_Renamed"
+                                                   :join-alias         "Products Renamed"}]]
+                                                :fields
+                                                [[:field
+                                                  %products.id
+                                                  {::add/desired-alias "Products_Renamed__ID"
+                                                   ::add/position      0
+                                                   ::add/source-alias  "ID"
+                                                   ::add/source-table  "Products_Renamed"
+                                                   :join-alias         "Products Renamed"}]]
+                                                :strategy     :left-join}]
+                                :expressions  {"CC" [:+ 1 1]}
+                                :fields
+                                [[:field
+                                  %products.id
+                                  {::add/desired-alias "Products_Renamed__ID"
+                                   ::add/position      0
+                                   ::add/source-alias  "ID"
+                                   ::add/source-table  "Products_Renamed"
+                                   :join-alias         "Products Renamed"}]
+                                 [:expression "CC" {::add/desired-alias "CC", ::add/position 1}]]
+                                :filter
+                                [:=
+                                 [:field
+                                  %products.category
+                                  {::add/source-alias "CATEGORY"
+                                   ::add/source-table  "Products_Renamed"
+                                   :join-alias        "Products Renamed"}]
+                                 [:value
+                                  "Doohickey"
+                                  {:base_type         :type/Text
+                                   :database_type     "CHARACTER VARYING"
+                                   :name              "CATEGORY"
+                                   :semantic_type     :type/Category}]]}
                  :fields       [[:field
                                  "Products Renamed__ID"
                                  {::add/desired-alias "Products_Renamed__ID"
@@ -904,7 +887,6 @@
                                        ;; yes, `!month.products.created-at` is a so-called 'bad reference' (should
                                        ;; include the `:join-alias`) but this test is also testing that we detect this
                                        ;; situation and handle it appropriately.
-                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
                                        :condition    [:= !month.products.created-at !month.&Q2.products.created-at]}]})]
           (is (=? {:source-query {:joins [{::add/alias "Products_2"}]}
                    :joins        [{:source-query {:joins [{::add/alias "Products"}]}}]}

@@ -37,7 +37,9 @@
                              VENUES.LONGITUDE   AS LONGITUDE
                              VENUES.PRICE       AS PRICE]
                  :from      [VENUES]
-                 :left-join [CATEGORIES AS __join
+                 :left-join [{:select [CATEGORIES.ID   AS ID
+                                       CATEGORIES.NAME AS NAME]
+                              :from [CATEGORIES]} AS __join
                              ON VENUES.CATEGORY_ID = 1]
                  :limit     [1048575]}
                (sql.qp-test-util/query->sql-map query)))))))
@@ -805,7 +807,6 @@
                                        ;; yes, `!month.products.created_at` is a so-called 'bad reference' (should
                                        ;; include the `:join-alias`) but this test is also testing that we detect this
                                        ;; situation and handle it appropriately.
-                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]

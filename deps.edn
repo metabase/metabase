@@ -63,7 +63,7 @@
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
   {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
-  commons-codec/commons-codec               {:mvn/version "1.18.0"}             ; Apache Commons -- useful codec util fns
+  commons-codec/commons-codec               {:mvn/version "1.19.0"}             ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.20.0"}             ; Apache Commons -- useful IO util fns
   commons-net/commons-net                   {:mvn/version "3.11.1"}             ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
   commons-validator/commons-validator       {:mvn/version "1.10.0"               ; Apache Commons -- useful validation util fns
@@ -170,13 +170,11 @@
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.1" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "24.2.1"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.21.1"}             ; required by hickory
-  org.liquibase/liquibase-core              ^:antq/exclude                      ; FIXME: no idea why it fails
-  {:mvn/version "4.26.0"              ; migration management (Java lib)
-   :exclusions  [ch.qos.logback/logback-classic]}
+  org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
+                                             :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  ; NOTE: Postgres fix in 42.7.5 breaks liquibase on case-sensitive databases until https://github.com/liquibase/liquibase/pull/6755 is released
   org.postgresql/postgresql                 {:mvn/version "42.7.7"}             ; Postgres driver
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath

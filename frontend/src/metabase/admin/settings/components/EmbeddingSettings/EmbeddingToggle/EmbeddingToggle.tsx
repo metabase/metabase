@@ -18,6 +18,7 @@ export type EmbeddingToggleProps = {
 
 export function EmbeddingToggle({
   settingKey,
+  labelPosition = "left",
   ...switchProps
 }: EmbeddingToggleProps) {
   const { value, settingDetails, updateSetting } = useAdminSetting(settingKey);
@@ -62,7 +63,7 @@ export function EmbeddingToggle({
       <Switch
         label={isEnabled ? t`Enabled` : t`Disabled`}
         size="sm"
-        labelPosition="left"
+        labelPosition={labelPosition}
         checked={isEnabled}
         wrapperProps={{
           "data-testid": "switch-with-env-var",

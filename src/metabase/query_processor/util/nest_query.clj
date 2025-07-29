@@ -16,7 +16,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
@@ -153,6 +152,36 @@
               (filterv used?* fields))]
       (update source :fields remove-unused))))
 
+(defn- append-join-fields
+  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]. When we migrate this namespace
+  to Lib we can maybe use that."
+  [fields join-fields]
+  ;; we shouldn't consider different type info to mean two Fields are different even if everything else is the same. So
+  ;; give everything `:base-type` of `:type/*` (it will complain if we remove `:base-type` entirely from fields with a
+  ;; string name)
+  (letfn [(opts-signature [opts]
+            (not-empty
+             (merge
+              (u/select-non-nil-keys opts [:join-alias :binning])
+              ;; for purposes of deduplicating stuff, temporal unit = default is the same as not specifying temporal
+              ;; unit at all. Should that be part of normalization? Maybe, but there is some logic around adding default
+              ;; temporal bucketing that we don't do if `:default` is explicitly specified.
+              (when-let [temporal-unit (:temporal-unit opts)]
+                (when-not (= temporal-unit :default)
+                  {:temporal-unit temporal-unit})))))
+          (ref-signature [[tag id-or-name opts, :as _ref]]
+            [tag id-or-name (opts-signature opts)])]
+    (into []
+          (comp cat
+                (m/distinct-by ref-signature))
+          [fields join-fields])))
+
+(defn- append-join-fields-to-fields
+  "Add the fields from join `:fields`, if any, to the parent-level `:fields`."
+  [inner-query join-fields]
+  (cond-> inner-query
+    (seq join-fields) (update :fields append-join-fields join-fields)))
+
 (defn- nest-source [inner-query]
   (let [filter-clause (:filter inner-query)
         keep-filter? (and filter-clause
@@ -171,7 +200,7 @@
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
-                 (qp.middleware.resolve-joins/append-join-fields-to-fields source (joined-fields inner-query))
+                 (append-join-fields-to-fields source (joined-fields inner-query))
                  (remove-unused-fields inner-query source)
                  (cond-> source
                    keep-filter? (assoc :filter filter-clause)))]
