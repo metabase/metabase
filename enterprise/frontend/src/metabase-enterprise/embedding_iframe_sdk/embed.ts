@@ -224,7 +224,6 @@ class MetabaseEmbed {
     this.iframe.style.height = "100%";
     this.iframe.style.border = "none";
 
-    // this is used from tests to await the loading of the iframe
     this.iframe.setAttribute("data-metabase-embed", "true");
 
     if (iframeClassName) {
@@ -325,6 +324,7 @@ class MetabaseEmbed {
 
       this._isEmbedReady = true;
       if (this.iframe) {
+        // this is used from tests to await the loading of the iframe
         this.iframe.setAttribute("data-iframe-loaded", "true");
       }
       this._setEmbedSettings(this._settings);
