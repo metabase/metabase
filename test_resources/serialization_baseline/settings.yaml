@@ -50,6 +50,7 @@ show-homepage-pin-message: null
 show-homepage-xrays: null
 show-metabot: null
 show-sdk-embed-terms: null
+show-simple-embed-terms: null
 show-static-embed-terms: null
 site-locale: null
 site-name: null
@@ -58,4 +59,3 @@ start-of-week: null
 subscription-allowed-domains: null
 synchronous-batch-updates: null
 unaggregated-query-row-limit: null
-update-channel: null

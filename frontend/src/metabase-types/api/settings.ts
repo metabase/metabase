@@ -294,8 +294,6 @@ export type SettingDefinitionMap<
   [K in T]: SettingDefinition<K>;
 };
 
-export type UpdateChannel = "latest" | "beta" | "nightly";
-
 export interface OpenAiModel {
   id: string;
   owned_by: string;
@@ -340,6 +338,7 @@ interface InstanceSettings {
   "enable-embedding": boolean;
   "enable-embedding-static": boolean;
   "enable-embedding-sdk": boolean;
+  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
@@ -388,6 +387,7 @@ interface AdminSettings {
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
+  "show-simple-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
@@ -484,7 +484,6 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
-  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;

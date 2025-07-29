@@ -40,5 +40,5 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: 'cljs'
-    - name: Run Cljs tests for shared/ code
+    - name: Run Cljs tests
       run: yarn run test-cljs

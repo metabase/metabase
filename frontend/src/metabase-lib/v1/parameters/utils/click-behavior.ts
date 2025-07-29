@@ -33,7 +33,7 @@ import type {
   Parameter,
   ParameterValueOrArray,
   QuestionDashboardCard,
-  UserAttribute,
+  UserAttributeMap,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
 
@@ -66,7 +66,7 @@ export function getDataFromClicked({
   extraData?: {
     dashboard?: Dashboard;
     parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
-    userAttributes?: Record<UserAttribute, UserAttribute> | null;
+    userAttributes?: UserAttributeMap | null;
   };
   dimensions?: DimensionType[];
   data?: (ClickObjectDataRow & {

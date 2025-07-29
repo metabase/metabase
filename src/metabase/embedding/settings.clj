@@ -42,6 +42,14 @@
   :doc false
   :export? true)
 
+(defsetting show-simple-embed-terms
+  (deferred-tru "Check if admin should see the simple embedding terms popup")
+  :type    :boolean
+  :default true
+  :can-read-from-env? false
+  :doc false
+  :export? true)
+
 (mu/defn- make-embedding-toggle-setter
   "Creates a boolean setter for various boolean embedding-enabled flavors, all tracked by snowplow."
   [setting-key :- :keyword event-name :- :string]
@@ -93,6 +101,15 @@
   :export?    false
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
+
+(defsetting enable-embedding-simple
+  (deferred-tru "Allow admins to embed Metabase via simple embedding?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :setter     (make-embedding-toggle-setter :enable-embedding-simple "simple-embedding"))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
@@ -241,7 +258,8 @@
    #_{:clj-kondo/ignore [:deprecated-var]} (enable-embedding)
    (enable-embedding-static)
    (enable-embedding-interactive)
-   (enable-embedding-sdk)))
+   (enable-embedding-sdk)
+   (enable-embedding-simple)))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
