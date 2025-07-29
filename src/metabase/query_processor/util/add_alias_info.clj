@@ -182,7 +182,13 @@
 (defn- field-table-id [field-clause]
   (:table-id (field-instance field-clause)))
 
-(defn- resolve-field-source-table-alias-with-lib-field-resolution [inner-query field-ref]
+(defn- resolve-field-source-table-alias-with-lib-field-resolution
+  "This is only an absolute last resort -- use Lib `resolve-field-ref` to resolve a field ref if the code we have here
+  can't do it.
+
+  We should actually rewrite this entire namespace to just use Lib in the first place for everything, but that's a
+  project for another day. (See #59589)"
+  [inner-query field-ref]
   (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
     (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
       (cond

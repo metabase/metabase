@@ -42,10 +42,6 @@
   [:map
    [:cols {:optional true} ::cols]])
 
-(defn lib-col->legacy-col
-  [col]
-  (lib/lib-metadata-column->legacy-metadata-column col))
-
 (mu/defn expected-cols :- [:sequential ::qp-results-cased-col]
   "Return metadata for columns returned by a pMBQL `query`.
 
@@ -58,7 +54,7 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (mapv lib-col->legacy-col (lib.metadata.result-metadata/returned-columns query initial-cols))))
+   (mapv lib/lib-metadata-column->legacy-metadata-column (lib.metadata.result-metadata/returned-columns query initial-cols))))
 
 (mu/defn- add-column-info-no-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query

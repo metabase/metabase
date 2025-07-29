@@ -23,7 +23,9 @@
                            [:field (_opts :guard (complement :join-alias)) (id :guard pos-int?)]
                            (or (when-let [col (lib.metadata/field query id)]
                                  (when-not (= (:table-id col) source-table)
-                                   (when-let [resolved (lib.walk/apply-f-for-stage-at-path lib.field.resolution/resolve-field-ref query path &match)]
+                                   (when-let [resolved (lib.walk/apply-f-for-stage-at-path
+                                                        lib.field.resolution/resolve-field-ref
+                                                        query path &match)]
                                      (lib/ref resolved))))
                                &match))]
     (when-not (= stage' stage)

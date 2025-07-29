@@ -2,8 +2,10 @@
   (:refer-clojure :exclude [ref])
   (:require
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (declare collect-uuids*)
@@ -54,9 +56,9 @@
                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
    #'unique-uuids?])
 
-(defn ref-distinct-key
+(mu/defn ref-distinct-key
   "For deduplicating refs: keep just the keys that are essential to distinguishing one ref from another."
-  [ref]
+  [ref :- [:tuple :keyword :map :any]]
   (let [options (lib.options/options ref)]
     (lib.options/with-options ref
       ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
@@ -76,6 +78,19 @@
    (apply
     distinct?
     (map ref-distinct-key refs))))
+
+(mr/def ::distinct-refs
+  [:fn
+   {:error/message    "values must be distinct refs"
+    :error/fn         (fn [{:keys [value]} _]
+                        (str "Duplicate refs in: " (pr-str (ref-distinct-key value))))
+    :decode/normalize (fn [xs]
+                        (when (and (sequential? xs)
+                                   (every? #(keyword? (first %)) xs))
+                          (into []
+                                (m/distinct-by ref-distinct-key)
+                                xs)))}
+   distinct-refs?])
 
 (defn remove-lib-uuids
   "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
@@ -112,9 +127,15 @@
 
 (mr/def ::distinct-ignoring-uuids
   [:fn
-   {:error/message "values must be distinct ignoring uuids"
-    :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))}
+   {:error/message    "values must be distinct ignoring uuids"
+    :error/fn         (fn [{:keys [value]} _]
+                        (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))
+    :decode/normalize (fn [xs]
+                        (when (and (sequential? xs)
+                                   (every? #(keyword? (first %)) xs))
+                          (into []
+                                (m/distinct-by remove-lib-uuids)
+                                xs)))}
    (comp u/empty-or-distinct? remove-lib-uuids)])
 
 (defn distinct-ignoring-uuids

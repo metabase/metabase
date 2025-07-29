@@ -16,6 +16,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -87,14 +88,19 @@
                     (log/debugf "Failed to find column in metadata with ID %s" (pr-str id-or-name))
                     (when-some [field (lib.metadata/field metadata-providerable id-or-name)]
                       (log/debugf "Looking for match in metadata with name %s" (pr-str (:name field)))
-                      (recur (:name field)))))))]
+                      (when-some [col (resolve* (:name field))]
+                        ;; don't return a match that is definitely for a different column (has an ID, but it's for a
+                        ;; different column)
+                        (when (or (not (:id col))
+                                  (= (:id col) id-or-name))
+                          col)))))))]
     (u/prog1 (resolve* id-or-name)
       (if <>
         (log/debugf "Found match\n%s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
         (log/debugf "Failed to find match. Found:\n%s"
                     (pr-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
-                                          cols)))))))
+                                 cols)))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -368,7 +374,8 @@
        ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a Field ID ref.
        ;; It's likely a ref that makes little or no sense (e.g. wrong table) but we can let QP code worry about that.
        (when (pos-int? id-or-name)
-         (field-metadata query id-or-name))
+         (when-some [col (field-metadata query id-or-name)]
+           (assoc col ::fallback-metadata? true)))
        ;; if we STILL can't find a match, return made-up fallback metadata.
        (fallback-metadata id-or-name))
    (when-let [model-cols (not-empty (model-metadata query stage-number))]

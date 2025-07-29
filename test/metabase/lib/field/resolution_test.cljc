@@ -985,3 +985,23 @@
         (is (=? {:lib/original-join-alias      "d"
                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
                 (lib.field.resolution/resolve-field-ref (lib/append-stage query) -1 bad-ref)))))))
+
+(deftest ^:parallel resolve-id-ref-to-correct-column-test
+  (testing "Should resolve an ID ref to the correct column if there are multiple columns with that name"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :joins        [{:source-table $$products
+                                                   :condition    [:= $product-id &Products.products.id]
+                                                   :alias        "Products"
+                                                   :fields       :all}]}}))]
+      (is (=? {:id                      (meta/id :products :id)
+               :name                    "ID"
+               :table-id                (meta/id :products)
+               :lib/source              :source/previous-stage
+               :lib/original-join-alias "Products"
+               :lib/source-column-alias "Products__ID"}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)]))))))
