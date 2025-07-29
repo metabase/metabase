@@ -280,6 +280,7 @@ export const TableListView = ({ location, params }: Props) => {
               itemsLength={paginatedRows.length}
               page={page}
               pageSize={PAGE_SIZE}
+              total={filteredRows.length}
               onNextPage={() => {
                 dispatch(push(`/table/${tableId}?page=${page + 1}`));
               }}
