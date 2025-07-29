@@ -228,8 +228,7 @@
 
 (mr/def ::query-and-remaps
   [:map
-   [:remaps [:maybe
-             (helpers/distinct [:sequential ::external-remapping])]]
+   [:remaps [:maybe (helpers/distinct [:sequential ::external-remapping])]]
    [:query  ::lib.schema/query]])
 
 (mu/defn- add-fk-remaps-to-fields :- [:maybe ::lib.schema/fields]

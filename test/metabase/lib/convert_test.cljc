@@ -1449,3 +1449,19 @@
                                                            :source-query {:source-table 45050
                                                                           :fields       [[:field 45500 {:base-type :type/BigInteger}]
                                                                                          [:field 45507 {:base-type :type/Text}]]}}]}}))))
+
+(deftest ^:parallel mongo-native-query->legacy-test
+  (testing "Don't try fail if we run into MongoDB :projections that sorta look like aggregation clauses"
+    (let [query {:lib/type     :mbql/query
+                 :stages       [{:lib/type    :mbql.stage/native
+                                 :projections [:count]
+                                 :collection  "venues"
+                                 :native      [{"$project" {"price" "$price"}}
+                                               {"$match" {"price" {"$eq" 1}}}
+                                               {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                               {"$sort" {"_id" 1}}
+                                               {"$project" {"_id" false, "count" true}}]}]
+                 :database     (meta/id)
+                 :lib/metadata meta/metadata-provider}]
+      (is (=? {:native {:projections [:count]}}
+              (lib.convert/->legacy-MBQL query))))))
