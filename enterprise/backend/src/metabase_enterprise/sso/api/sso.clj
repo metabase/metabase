@@ -97,7 +97,7 @@
   [_route-params
    _query-params
    {:keys [jwt]} :- [:map
-                     [:jwt ms/NonBlankString]]
+                     [:jwt {:optional true} [:maybe ms/NonBlankString]]]
    request]
   (try
     (when-not (sso-settings/jwt-enabled)
@@ -114,8 +114,7 @@
                                        e))))
           session (:session jwt-data)
           session-token (:key session)]
-      {:status :ok
-       :session_token (str session-token)
+      {:session_token (str session-token)
        :exp (:exp (:jwt-data jwt-data))
        :iat (:iat (:jwt-data jwt-data))})
     (catch Throwable e
