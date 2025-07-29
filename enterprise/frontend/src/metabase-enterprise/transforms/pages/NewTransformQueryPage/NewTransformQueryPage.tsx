@@ -9,7 +9,10 @@ import * as Urls from "metabase/lib/urls";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
 import { TransformTargetModal } from "metabase-enterprise/transforms/components/TransformTargetModal";
-import { getTransformListUrl } from "metabase-enterprise/transforms/utils/urls";
+import {
+  getTransformListUrl,
+  getTransformUrl,
+} from "metabase-enterprise/transforms/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -59,7 +62,10 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   const dispatch = useDispatch();
 
   const handleSave = async (newTarget: TransformTarget) => {
-    await createTransform(getCreateRequest(query, newTarget)).unwrap();
+    const transform = await createTransform(
+      getCreateRequest(query, newTarget),
+    ).unwrap();
+    dispatch(push(getTransformUrl(transform.id)));
   };
 
   const handleSaveClick = (newQuery: DatasetQuery) => {
