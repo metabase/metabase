@@ -1446,6 +1446,7 @@
            metabase-enterprise.action-v2.init}
    :uses #{actions
            api
+           driver
            lib
            query-processor
            util

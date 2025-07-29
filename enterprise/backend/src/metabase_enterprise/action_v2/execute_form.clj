@@ -1,5 +1,6 @@
 (ns metabase-enterprise.action-v2.execute-form
   (:require
+   [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -53,6 +54,8 @@
   (when-not table-id
     (throw (ex-info "Must provide table-id" {:status-code 400})))
   (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
+        database                    (t2/select-one :model/Database :id (:db_id table))
+        _                           (actions/check-data-editing-enabled-for-database! database)
         fields                      (-> (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
                                                     :has_field_values
@@ -87,6 +90,7 @@
                             ;; dashcard column context can hide parameters (if defined)
                             :when (:enabled column-settings true)
                             :let [required (or pk? (:database_required field false))]]
+
                         (u/remove-nils
                          ;; TODO yet another comment about how field id would be a better key, due to case issues
                          {:id                      (:name field)

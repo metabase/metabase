@@ -35,7 +35,8 @@
   perform-nested-action!]
  [metabase.actions.args
   action-arg-map-schema
-  normalize-action-arg-map]
+  normalize-action-arg-map
+  validate-inputs!]
  [metabase.actions.error
   incorrect-value-type
   violate-foreign-key-constraint

@@ -3,6 +3,7 @@
    [metabase-enterprise.action-v2.data-editing :as data-editing]
    [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -11,6 +12,30 @@
 (derive :data-grid.row/create :data-grid.row/common)
 (derive :data-grid.row/update :data-grid.row/common)
 (derive :data-grid.row/delete :data-grid.row/common)
+
+(defn- unsupported-dbs-msg [target-dbs unsupported-dbs]
+  (cond
+    (= 1 (count target-dbs))
+    "Data editing isn't supported on the target database."
+
+    (= (count target-dbs) (count unsupported-dbs))
+    "Data editing isn't supported on the target databases."
+
+    (= 1 (count unsupported-dbs))
+    "Data editing isn't supported on one of the target databases."
+
+    :else
+    "Data editing isn't supported on some of the target databases."))
+
+(defmethod actions/validate-inputs! :data-grid.row/common
+  [_action inputs]
+  (let [target-dbs      (distinct (map :database inputs))
+        unsupported-dbs (->> target-dbs
+                             (map actions/cached-database)
+                             (remove #(driver.u/supports? (:engine %) :actions/data-editing %)))]
+    (when (seq unsupported-dbs)
+      (throw (ex-info (unsupported-dbs-msg target-dbs unsupported-dbs)
+                      {:status-code 400 :unsupported-db-ids (map :id unsupported-dbs)})))))
 
 (defmethod actions/action-arg-map-schema :data-grid.row/common
   [_action]
