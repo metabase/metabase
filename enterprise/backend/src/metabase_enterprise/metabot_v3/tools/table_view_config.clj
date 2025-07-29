@@ -134,9 +134,9 @@
                              :throw-exceptions false})]
 
     (if (= (:status response) 200)
-      (let [body (json/parse-string (:body response) true)
+      (let [body (json/decode (:body response) true)
             content (get-in body [:choices 0 :message :content])]
-        (json/parse-string content true))
+        (json/decode content true))
       (throw (ex-info "OpenAI API request failed"
                       {:status (:status response)
                        :body (:body response)})))))
@@ -167,5 +167,3 @@
        :error (.getMessage e)
        :table_id table-id
        :view_type view-type})))
-
-#_(generate-table-view-config {:table-id 3 :view-type :detail})
