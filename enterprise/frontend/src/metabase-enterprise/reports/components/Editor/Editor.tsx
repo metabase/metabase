@@ -26,6 +26,7 @@ import {
   MarkdownSerializer,
   serializeToMarkdown,
 } from "./extensions/MarkdownExtensions";
+import { MetabotCodeBlock } from "./extensions/MetabotCodeBlock";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
@@ -76,6 +77,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       MarkdownSerializer,
+      MetabotCodeBlock,
       ColumnExtension,
     ],
     content,
@@ -95,6 +97,8 @@ export const Editor: React.FC<EditorProps> = ({
 
   useCardEmbedsTracking(editor, dispatch, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
+
+
 
   // Notify parent when editor is ready
   useEffect(() => {

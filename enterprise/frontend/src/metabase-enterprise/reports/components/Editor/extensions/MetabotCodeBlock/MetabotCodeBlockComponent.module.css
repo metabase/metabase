@@ -1,0 +1,30 @@
+.metabotCodeBlock {
+  position: relative;
+  margin: 1rem 0;
+}
+
+.codeContainer {
+  background-color: #f8f9fa;
+  color: #2c3e50;
+  border: 1px solid #e9ecef;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 14px;
+  font-family: monospace;
+}
+
+.codeContent {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.runButtonContainer {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  z-index: 10;
+}

@@ -94,6 +94,26 @@
   color: inherit;
 }
 
+/* Light theme for metabot code blocks */
+.editorContent :global(.ProseMirror pre:has(code.language-metabot)) {
+  background-color: #f8f9fa;
+  color: #2c3e50;
+  border: 1px solid #e9ecef;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 14px;
+}
+
+.editorContent :global(.ProseMirror pre:has(code.language-metabot) code) {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+
+
 .editorContent :global(.ProseMirror blockquote) {
   border-left: 3px solid #4a5568;
   padding-left: 1rem;

@@ -319,13 +319,22 @@ export const QuestionMentionPlugin = ({
   const handleAskMetabot = useCallback(() => {
     if (!mentionRange) return;
 
-    // Insert a code block with metabot prompt
+    // Insert a metabot code block with prompt
+    const promptText = "Ask me to do something, or ask me a question";
     editor
       .chain()
       .focus()
       .deleteRange(mentionRange)
-      .setCodeBlock({ language: "metabot" })
-      .insertContent("Ask me to do something, or ask me a question")
+      .insertContent({
+        type: "metabotCodeBlock",
+        content: [
+          {
+            type: "text",
+            text: promptText + "\n\n",
+          },
+        ],
+      })
+      .setTextSelection({ from: mentionRange.from, to: mentionRange.from + promptText.length })
       .run();
 
     setShowPopover(false);
