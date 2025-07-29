@@ -5,13 +5,13 @@ import { msgid, ngettext, t } from "ttag";
 
 import { useGetDatabaseQuery } from "metabase/api";
 import { GenericError } from "metabase/common/components/ErrorPages";
+import { useCloseNavbarOnMount } from "metabase/common/hooks/use-close-navbar-on-mount";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 
 import type { TableEditingActionScope } from "../api/types";
 import { TableHeader } from "../common/TableHeader";
 import { getRowCountMessage } from "../common/getRowCountMessage";
-import { useCloseNavbarOnMount } from "../common/use-close-navbar-on-mount";
 import { isDatabaseTableEditingEnabled } from "../settings";
 
 import S from "./EditTableDataContainer.module.css";
