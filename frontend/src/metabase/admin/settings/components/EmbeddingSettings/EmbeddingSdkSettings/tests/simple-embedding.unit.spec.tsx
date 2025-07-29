@@ -10,7 +10,7 @@ const setup = (opts: SetupOpts = {}) =>
     hasEnterprisePlugins: true,
     tokenFeatures: {
       embedding_sdk: true,
-      embedding_iframe_sdk: true,
+      embedding_simple: true,
     },
     ...opts,
   });

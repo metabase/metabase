@@ -118,7 +118,7 @@
 (defn- add-source-metadata-at-all-levels [inner-query]
   (walk/postwalk maybe-add-source-metadata inner-query))
 
-(defn add-source-metadata-for-source-queries
+(mu/defn add-source-metadata-for-source-queries :- ::mbql.s/Query
   "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a
   `:source-query`.
 
@@ -126,7 +126,7 @@
   query; this is added automatically for source queries added via the `card__id` source table form, but for *explicit*
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
-  [{query-type :type, :as query}]
+  [{query-type :type, :as query} :- ::mbql.s/Query]
   (if-not (= query-type :query)
     query
     (update query :query add-source-metadata-at-all-levels)))
