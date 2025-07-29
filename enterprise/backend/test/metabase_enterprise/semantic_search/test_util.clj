@@ -116,6 +116,9 @@
 (defn delete-from-index! [model ids]
   (semantic.index/delete-from-index! db mock-index model ids))
 
+(defn dog-training-native-query []
+  (mt/native-query {:query "SELECT AVG(tricks) FROM dogs WHERE age > 7 GROUP BY breed"}))
+
 (def mock-documents
   [{:model "card"
     :id "123"
@@ -166,7 +169,8 @@
 
                     :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
 
-                    :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                    :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false
+                                                          :query_type "native" :dataset_query (dog-training-native-query)}
 
                     :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
 
