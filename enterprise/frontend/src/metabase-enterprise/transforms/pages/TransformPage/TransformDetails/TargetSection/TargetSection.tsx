@@ -22,7 +22,7 @@ export function TargetSection({ transform }: TargetSectionProps) {
       label={getSectionLabel(transform.target)}
       description={t`Change what this transform generates and where.`}
     >
-      <Group px="xl" py="lg">
+      <Group p="lg">
         <EditTargetButton transform={transform} />
         <EditMetadataButton transform={transform} />
       </Group>

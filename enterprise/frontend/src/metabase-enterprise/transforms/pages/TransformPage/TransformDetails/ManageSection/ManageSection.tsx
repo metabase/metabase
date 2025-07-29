@@ -23,7 +23,7 @@ export function ManageSection({ transform }: ManageSectionProps) {
       label={t`Manage this transform`}
       description={t`Change what this transform generates and where.`}
     >
-      <Group px="xl" py="lg">
+      <Group p="lg">
         <ExecuteButton transform={transform} />
         <EditQueryButton transform={transform} />
         <DeleteButton transform={transform} />

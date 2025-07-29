@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
+import { Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { TransformId } from "metabase-types/api";
 
@@ -29,11 +30,19 @@ export function TransformPage({ params }: TransformPageProps) {
   } = useGetTransformQuery(transformId ?? skipToken);
 
   if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <Center w="100%" h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   if (transform == null) {
-    return <LoadingAndErrorWrapper error={t`No transform found.`} />;
+    return (
+      <Center w="100%" h="100%">
+        <LoadingAndErrorWrapper error={t`No transform found.`} />
+      </Center>
+    );
   }
 
   return <TransformDetails transform={transform} />;
