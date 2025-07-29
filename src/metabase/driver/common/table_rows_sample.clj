@@ -4,7 +4,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.malli :as mu]

@@ -573,7 +573,7 @@
                                           :stages [{:fields #(= (count %) 13)}]}]}
                           {:fields [[:field {:join-alias "Products"} (meta/id :products :category)]
                                     [:field {} "count"]]}
-                          {:fields [[:field {} (meta/id :products :category)]
+                          {:fields [[:field {} "Products__CATEGORY"]
                                     [:field {} "count"]
                                     [:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
                            :joins  [{:alias  "Card 2 - Products → Category"

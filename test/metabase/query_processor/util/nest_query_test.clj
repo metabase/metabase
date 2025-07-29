@@ -589,7 +589,7 @@
                                                         ::add/position      1}]]
                          :limit        1})
                       (-> (lib.tu.macros/mbql-query venues
-                            {:expressions {"test" ["*" 1 1]}
+                            {:expressions {"test" [:* 1 1]}
                              :breakout    [$price
                                            [:expression "test"]]
                              :limit       1})

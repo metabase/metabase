@@ -4,7 +4,6 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -90,7 +89,7 @@
     distinct?
     (map ref-distinct-key refs))))
 
-(defn distinct-clauses-by
+(defn- distinct-clauses-by-schema
   [f message]
   [:fn
    {:error/message    message
@@ -112,7 +111,7 @@
               (apply distinct? (map f xs)))))])
 
 (mr/def ::distinct-refs
-  (distinct-clauses-by ref-distinct-key "refs must be distinct"))
+  (distinct-clauses-by-schema ref-distinct-key "refs must be distinct"))
 
 (defn mbql-clause-distinct-key
   "Walk `clause` and remove UUIDs and other non-distinct keys (namespaced keys, type info) from options maps."
@@ -124,7 +123,7 @@
    clause))
 
 (mr/def ::distinct-mbql-clauses
-  (distinct-clauses-by mbql-clause-distinct-key "values must be distinct ignoring uuids"))
+  (distinct-clauses-by-schema mbql-clause-distinct-key "values must be distinct MBQL clauses ignoring namespaced keys and type info"))
 
 (defn remove-lib-uuids
   "Recursively remove all uuids from `x`."
@@ -158,13 +157,3 @@
   (if (:stages query)
     (update query :stages #(mapv indexed-order-bys-for-stage %))
     query))
-
-(mr/def ::distinct-ignoring-uuids
-  (distinct-clauses-by remove-lib-uuids "values must be distinct ignoring uuids"))
-
-(defn distinct-ignoring-uuids
-  "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."
-  [schema]
-  [:and
-   schema
-   [:ref ::distinct-ignoring-uuids]])
