@@ -90,7 +90,7 @@
 (defn run!
   "Run migrations for the worker."
   []
-  (let [worker-db-connection-string (config/config-str "WORKER_DB")]
+  (let [worker-db-connection-string (config/config-str :worker-db)]
     (run-migrations-from-resource-with-connection-string! worker-db-connection-string
                                                           "migrations/workers/worker_runs.yaml")))
 
