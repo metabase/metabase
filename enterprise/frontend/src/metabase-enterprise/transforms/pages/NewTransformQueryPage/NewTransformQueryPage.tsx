@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { useState } from "react";
 import { push } from "react-router-redux";
 
@@ -11,21 +10,24 @@ import type { Card, CardId, DatasetQuery } from "metabase-types/api";
 
 import { NewTransformModal } from "../../components/NewTransformModal";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
-import { newTransformUrl } from "../../utils/urls";
+import { transformListUrl } from "../../utils/urls";
 
 type NewTransformQueryPageParams = {
+  type?: string;
+  cardId?: string;
+};
+
+type NewTransformQueryPageParsedParams = {
   type?: DatasetQuery["type"];
   cardId?: CardId;
 };
 
 type NewTransformQueryPageProps = {
-  location: Location;
+  params: NewTransformQueryPageParams;
 };
 
-export function NewTransformQueryPage({
-  location,
-}: NewTransformQueryPageProps) {
-  const { type, cardId } = getParsedParams(location);
+export function NewTransformQueryPage({ params }: NewTransformQueryPageProps) {
+  const { type, cardId } = getParsedParams(params);
   const {
     data: card,
     isLoading,
@@ -54,7 +56,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   };
 
   const handleCancelClick = () => {
-    dispatch(push(newTransformUrl()));
+    dispatch(push(transformListUrl()));
   };
 
   const handleCloseClick = () => {
@@ -77,9 +79,10 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   );
 }
 
-function getParsedParams(location: Location): NewTransformQueryPageParams {
-  const { type, cardId } = location.query;
-
+function getParsedParams({
+  type,
+  cardId,
+}: NewTransformQueryPageParams): NewTransformQueryPageParsedParams {
   return {
     type: type === "native" ? "native" : "query",
     cardId: Urls.extractEntityId(String(cardId)),

@@ -26,8 +26,8 @@ import {
 import type { Transform } from "metabase-types/api";
 
 import {
-  newTransformUrl,
   tableMetadataUrl,
+  transformListUrl,
   transformQueryUrl,
 } from "../../../utils/urls";
 
@@ -180,7 +180,7 @@ export function TransformSettings({ transform }: TransformSettingsProps) {
           sendErrorToast("Failed to delete transform");
         } else {
           sendSuccessToast("Transform deleted");
-          dispatch(push(newTransformUrl()));
+          dispatch(push(transformListUrl()));
         }
       },
     });

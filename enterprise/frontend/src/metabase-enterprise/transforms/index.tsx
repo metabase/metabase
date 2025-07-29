@@ -18,7 +18,11 @@ PLUGIN_TRANSFORMS.getRoutesWithSidebar = () => (
 
 PLUGIN_TRANSFORMS.getRoutesWithoutSidebar = () => (
   <>
-    <Route path="transforms/new" component={NewTransformQueryPage} />
+    <Route path="transforms/new/:type" component={NewTransformQueryPage} />
+    <Route
+      path="transforms/new/card/:cardId"
+      component={NewTransformQueryPage}
+    />
     <Route
       path="transforms/:transformId/query"
       component={TransformQueryPage}

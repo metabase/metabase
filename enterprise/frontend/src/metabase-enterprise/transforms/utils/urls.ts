@@ -7,27 +7,16 @@ import type {
 
 const ROOT_URL = "/admin/datamodel/transforms";
 
-export function newTransformUrl() {
-  return "/admin/datamodel/transforms";
+export function transformListUrl() {
+  return ROOT_URL;
 }
 
-type NewTransformQueryUrlProps = {
-  type?: DatasetQuery["type"];
-  cardId?: CardId;
-};
+export function newTransformFromTypeUrl(type: DatasetQuery["type"]) {
+  return `${ROOT_URL}/new/${type}`;
+}
 
-export function newTransformQueryUrl({
-  type,
-  cardId,
-}: NewTransformQueryUrlProps) {
-  const params = new URLSearchParams();
-  if (type != null) {
-    params.set("type", type);
-  }
-  if (cardId != null) {
-    params.set("cardId", String(cardId));
-  }
-  return `${ROOT_URL}/new${params}`;
+export function newTransformFromCardUrl(cardId: CardId) {
+  return `${ROOT_URL}/new/card/${cardId}`;
 }
 
 export function transformUrl(id: TransformId) {
