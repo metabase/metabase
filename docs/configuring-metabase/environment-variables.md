@@ -71,12 +71,12 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
-### `MB_AI_PROXY_BASE_URL`
+### `MB_AI_SERVICE_BASE_URL`
 
 - Type: string
 - Default: `http://localhost:8000`
 
-URL for the a AI Proxy service.
+URL for the a AI Service.
 
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
@@ -257,7 +257,7 @@ Row limit in file attachments excluding the header.
 Maximum number of rows to render in an alert or subscription image.
 
 Range: 1-100. To limit the total number of rows included in the file attachment
-        for an email dashboard subscription, use MB_UNAGGREGATED_QUERY_ROW_LIMIT.
+        for an email dashboard subscription, use MB_ATTACHMENT_ROW_LIMIT.
 
 ### `MB_BCC_ENABLED`
 
@@ -1714,15 +1714,6 @@ Process batches updates synchronously. If true, all `submit!` calls will be proc
 Maximum number of rows to return specifically on :rows type queries via the API.
 
 Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. See also MB_AGGREGATED_QUERY_ROW_LIMIT.
-
-### `MB_UPDATE_CHANNEL`
-
-- Type: string
-- Default: `latest`
-- [Exported as](../installation-and-operation/serialization.md): `update-channel`.
-- [Configuration file name](./config-file.md): `update-channel`
-
-We'll notify you here when there's a new version of this type of release.
 
 ### `MB_UPLOADS_DATABASE_ID [DEPRECATED]`
 

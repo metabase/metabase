@@ -29,5 +29,5 @@ export const SkeletonBottomImage = styled.svg`
 `;
 export const SkeletonCenterCaption = styled(SkeletonCaption)`
   margin-top: 0.25rem;
-  margin-bottom: 2.25rem;
+  margin-bottom: 1.25rem;
 `;

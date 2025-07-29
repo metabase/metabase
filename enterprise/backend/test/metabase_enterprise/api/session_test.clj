@@ -23,7 +23,7 @@
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
-                              :embedding-iframe-sdk
+                              :embedding-simple
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -45,7 +45,8 @@
                               :upload-management
                               :whitelabel
                               :collection-cleanup
-                              :database-routing}
+                              :database-routing
+                              :cloud-custom-smtp}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -57,12 +58,12 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
-            :development-mode               true
+            :development_mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
             :embedding_sdk                  true
-            :embedding_iframe_sdk           true
+            :embedding_simple               true
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
@@ -83,5 +84,8 @@
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
-            :database_routing               true}
+            :database_routing               true
+            :cloud_custom_smtp              true
+            :etl_connections                false
+            :etl_connections_pg             false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

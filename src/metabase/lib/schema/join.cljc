@@ -39,8 +39,23 @@
    {:gen/fmap #(str % "-" (random-uuid))}
    ::common/non-blank-string])
 
+(mr/def ::condition
+  [:ref ::expression/boolean])
+
 (mr/def ::conditions
-  [:sequential {:min 1} [:ref ::expression/boolean]])
+  [:sequential {:min 1} ::condition])
+
+(def ordered-condition-operators
+  "Operators that should be listed as options in join conditions. The front end shows the options in this order."
+  [:= :> :< :>= :<= :!=])
+
+(def condition-operators
+  "Operators that should be listed as options in join conditions."
+  (set ordered-condition-operators))
+
+(mr/def ::condition.operator
+  "Operators that should be listed as options in join conditions."
+  (into [:enum] condition-operators))
 
 ;;; valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database
 ;;; supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports
@@ -72,11 +87,12 @@
    [:map
     {:default {}, :decode/normalize normalize-join}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
+    ;; TODO (Cam 7/23/25) -- why would a join need an options map? If we need to add extra keys we can just add them
+    ;; to the join itself.
     [:lib/options ::common/options]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]
     [:alias       ::alias]
-    [:ident    {:optional true} ::common/non-blank-string]
     [:fields   {:optional true} ::fields]
     [:strategy {:optional true} ::strategy]]
    [:fn

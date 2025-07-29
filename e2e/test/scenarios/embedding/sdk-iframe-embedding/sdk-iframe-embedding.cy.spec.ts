@@ -20,6 +20,18 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     });
   });
 
+  it("uses the embedding-simple client request header", () => {
+    H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+    });
+
+    cy.wait("@getDashCardQuery").then(({ request }) => {
+      expect(request?.headers?.["x-metabase-client"]).to.equal(
+        "embedding-simple",
+      );
+    });
+  });
+
   it("displays a dashboard", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -90,7 +102,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     });
 
     frame.within(() => {
-      cy.findByText("2000 Zeilen").should("exist");
+      cy.findByText("2,000 Zeilen").should("exist");
     });
   });
 

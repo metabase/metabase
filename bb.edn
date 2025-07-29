@@ -2,9 +2,10 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test" "bin/lint-migrations-file/src"]
- :deps           {metosin/malli {:mvn/version "0.17.0"}
-                  table/table   {:mvn/version "0.5.0"}
-                  mvxcvi/puget  {:mvn/version "1.3.4"}}
+ :deps           {org.babashka/json {:mvn/version "0.1.6"}
+                  metosin/malli     {:mvn/version "0.17.0"}
+                  table/table       {:mvn/version "0.5.0"}
+                  mvxcvi/puget      {:mvn/version "1.3.4"}}
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -105,7 +106,7 @@
                   (start-db/start-db (:db-info (current-task)) db version)))}
 
   nrepl
-  {:doc      "Starts the babashka nrepl: helpful for for mage development"
+  {:doc      "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
    :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
@@ -155,8 +156,19 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
-  ;; - hidden from `./bin/mage` listing and `bb tasks`
-  ;; - start with a `-`
+  ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
+  ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -token-scan
+  {:doc        "Security token scanner for detecting leaked API keys and secrets"
+   :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
+                ["./bin/mage -token-scan -v deps.edn" "Scan with verbose output"]
+                ["./bin/mage -token-scan -a" "Scan all files in the project"]]
+   :requires   [[mage.token-scan :as token-scan]]
+   :options    [["-a" "--all-files" "Scan all files in the project"]
+                ["-v" "--verbose" "Verbose output"]]
+   :arg-schema [:sequential [:string {:description "Files to scan"}]]
+   :task       (task! (token-scan/run-scan parsed))}
 
   -repl
   {:doc      "Eval a string of clojure code in the backend dev server"
@@ -175,8 +187,7 @@
                    code (first (:arguments parsed))
                    port (or (:port (:options parsed))
                             (slurp ".nrepl-port")
-                            (do (println (c/red "No port specified, and no .nrepl-port file found."))
-                                (System/exit 1)))
+                            (throw (ex-info (c/red "No port specified, and no .nrepl-port file found.") {:babashka/exit 1})))
                    nns (or (:namespace (:options parsed)) "user")]
                (nrepl-eval nns code port))}
 
@@ -235,4 +246,16 @@
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"
    :requires [[mage.examples-test :as examples-test]]
-   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}}}
+   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Personal Tasks:
+  ;; These tasks are for personal use, a place for half baked tasks.
+  ;; Feel free to add your own tasks here, but don't expect them to be run by anyone else, or be listed in the
+  ;; `./bin/mage` listing.
+
+  -escherize-pr-summary
+  {:doc      "Print a day's PR summary for the metabase/metabase repo"
+   :requires [[mage.escherize.pr-summary :as eps]]
+   :examples [["./bin/mage -escherize-pr-summary | pbcopy" "Copy your daily"]]
+   :task     (task! (eps/summarize-prs parsed))}}}

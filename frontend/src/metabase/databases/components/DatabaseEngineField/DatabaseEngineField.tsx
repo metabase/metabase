@@ -4,26 +4,26 @@ import { useMemo } from "react";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
 import { getEngineOptions } from "../../utils/engine";
+import { DatabaseEngineList } from "../DatabaseEngineList";
 
 import DatabaseEngineSelect from "./DatabaseEngineSelect";
-import DatabaseEngineWidget from "./DatabaseEngineWidget";
 
-export interface DatabaseEngineFieldProps {
+interface DatabaseEngineFieldProps {
   engineKey: string | undefined;
   engines: Record<string, Engine>;
-  isHosted: boolean;
   isAdvanced: boolean;
   disabled?: boolean;
   onChange: (engine: string | undefined) => void;
+  showSampleDatabase?: boolean;
 }
 
-const DatabaseEngineField = ({
+export const DatabaseEngineField = ({
   engineKey,
   engines,
-  isHosted,
   isAdvanced,
   disabled,
   onChange,
+  showSampleDatabase,
 }: DatabaseEngineFieldProps): JSX.Element => {
   const { values } = useFormikContext<DatabaseData>();
 
@@ -31,21 +31,22 @@ const DatabaseEngineField = ({
     return getEngineOptions(engines, engineKey, isAdvanced);
   }, [engines, engineKey, isAdvanced]);
 
-  return isAdvanced ? (
-    <DatabaseEngineSelect
-      options={options}
-      disabled={disabled || values.is_sample}
-      onChange={onChange}
-    />
-  ) : (
-    <DatabaseEngineWidget
+  if (isAdvanced) {
+    return (
+      <DatabaseEngineSelect
+        options={options}
+        disabled={disabled || values.is_sample}
+        onChange={onChange}
+      />
+    );
+  }
+
+  return (
+    <DatabaseEngineList
+      onSelect={onChange}
+      isSetupStep={true}
       engineKey={engineKey}
-      options={options}
-      isHosted={isHosted}
-      onChange={onChange}
+      showSampleDatabase={showSampleDatabase}
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseEngineField;

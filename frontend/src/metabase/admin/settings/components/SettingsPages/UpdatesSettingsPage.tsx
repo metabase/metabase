@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import {
   SettingsPageWrapper,
@@ -30,30 +30,6 @@ export function UpdatesSettingsPage() {
           inputType="boolean"
         />
         {checkForUpdates && (
-          <AdminSettingInput
-            name="update-channel"
-            title={t`Types of releases to check for`}
-            options={[
-              {
-                label: c("describes a set of software version releases")
-                  .t`Stable releases`,
-                value: "latest",
-              },
-              {
-                label: c("describes a set of software version releases")
-                  .t`Beta releases`,
-                value: "beta",
-              },
-              {
-                label: c("describes a set of software version releases")
-                  .t`Nightly builds`,
-                value: "nightly",
-              },
-            ]}
-            inputType="select"
-          />
-        )}
-        {checkForUpdates && (
           <div
             className={cx(CS.pt3, CS.px2, {
               [CS.borderTop]: !isHosted,
@@ -63,7 +39,7 @@ export function UpdatesSettingsPage() {
           </div>
         )}
       </SettingsSection>
-      <UpsellHostingBanner source="settings-updates-migrate_to_cloud" />
+      <UpsellHostingBanner location="settings-updates-migrate_to_cloud" />
     </SettingsPageWrapper>
   );
 }

@@ -4,8 +4,10 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
@@ -21,8 +23,8 @@
 
 (mr/def ::col
   [:map
-   [:source    {:optional true} ::lib.metadata.result-metadata/legacy-source]
-   [:field_ref {:optional true} ::lib.metadata.result-metadata/super-broken-legacy-field-ref]])
+   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
+   [:field_ref {:optional true} ::mbql.s/Reference]])
 
 (def ^:private ^{:arglists '([k])} key->qp-results-key
   "Convert unnamespaced keys to snake case for traditional reasons; `:lib/` keys and the like can stay in kebab case
@@ -58,6 +60,18 @@
   [:map
    [:cols {:optional true} ::cols]])
 
+(defn lib-col->legacy-col
+  "Convert a Lib results metadata column to a legacy results metadata column:
+
+  * Convert from all-kebab-case keys to legacy casing (simple keywords use snake case while
+  namespaced keywords remain in kebab case)
+
+  * Remove `:lib/type`"
+  [col]
+  (-> col
+      (dissoc :lib/type)
+      update-result-col-key-casing))
+
 (mu/defn expected-cols :- [:sequential ::qp-results-cased-col]
   "Return metadata for columns returned by a pMBQL `query`.
 
@@ -70,10 +84,7 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (for [col (lib.metadata.result-metadata/returned-columns query initial-cols)]
-     (-> col
-         (dissoc :lib/type)
-         update-result-col-key-casing))))
+   (mapv lib-col->legacy-col (lib.metadata.result-metadata/returned-columns query initial-cols))))
 
 (mu/defn- add-column-info-no-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query

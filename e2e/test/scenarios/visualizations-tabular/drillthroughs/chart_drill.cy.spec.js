@@ -401,6 +401,61 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
+  it('should clear the graph.dimensions setting when drilling through on a chart with "graph.dimensions" set (metabase#55484)', () => {
+    H.createQuestion({
+      name: "55484",
+      display: "line",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: "all",
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+        filter: [],
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "hour" }],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour" }],
+        ],
+      },
+    }).then(({ body: { id: QUESTION_ID } }) => {
+      cy.visit(`/question/${QUESTION_ID}/notebook`);
+      cy.button("Visualize").click();
+      cy.url().should("include", `/question/${QUESTION_ID}-55484`);
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByDisplayValue("Created At: Hour").click();
+      H.popover().within(() => {
+        cy.findByText("Products → Created At: Hour").click();
+      });
+      cy.button("Done").click();
+
+      H.cartesianChartCircle().eq(82).click();
+      H.popover().within(() => {
+        cy.findByText("See these Orders").click();
+      });
+
+      cy.findByTestId("visualization-root").should(
+        "have.attr",
+        "data-viz-ui-name",
+        "Table",
+      );
+
+      cy.button("Visualization").click();
+      cy.findByTestId("Line-button").click();
+      cy.findByText(
+        "Cannot read properties of undefined (reading 'name')",
+      ).should("not.exist");
+    });
+  });
+
   it("should display correct value in a tooltip for unaggregated data with breakouts (metabase#15785)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {

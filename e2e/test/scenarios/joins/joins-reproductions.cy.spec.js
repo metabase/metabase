@@ -1033,6 +1033,7 @@ describe("issue 30743", () => {
 
   it("should be possible to sort on the breakout column (metabase#30743)", () => {
     cy.findByLabelText("Sort").click();
+    H.popover().findByText("Products").click();
     H.popover().contains("Category").click();
 
     H.visualize();

@@ -32,6 +32,11 @@
   [& cmd]
   (-> (apply sh cmd) str/split-lines vec))
 
+(defn node
+  "Run a Node.js command string and print the output as a trimmed string."
+  [& cmd]
+  (apply sh "node" "-p" cmd))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Git Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

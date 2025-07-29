@@ -2,14 +2,13 @@ import dayjs from "dayjs";
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
-import { TextButton } from "metabase/common/components/Button.styled";
 import DateTime from "metabase/common/components/DateTime";
 import { connect } from "metabase/lib/redux";
 import type { NamedUser } from "metabase/lib/user";
 import { getFullName } from "metabase/lib/user";
 import { getUser } from "metabase/selectors/user";
 import type { TooltipProps } from "metabase/ui";
-import { Text, Tooltip } from "metabase/ui";
+import { Text, Tooltip, UnstyledButton } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 export type ItemWithLastEditInfo = {
@@ -94,14 +93,15 @@ function LastEditInfoLabel({
   return (
     <Tooltip disabled={!timeLabel} {...tooltipProps}>
       {onClick ? (
-        <TextButton
+        <UnstyledButton
           className={className}
-          size="small"
+          fz="sm"
+          fw="bold"
           onClick={onClick}
           data-testid="revision-history-button"
         >
           {children}
-        </TextButton>
+        </UnstyledButton>
       ) : (
         <Text
           className={className}

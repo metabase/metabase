@@ -11,7 +11,6 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -158,8 +157,6 @@
   ([m]
    (-> m
        ->mock-metadata
-       (update :fields #(for [field %]
-                          (u/assoc-default field :ident (u/generate-nano-id))))
        ->MockMetadataProvider))
 
   ([parent-metadata-provider mock-metadata]

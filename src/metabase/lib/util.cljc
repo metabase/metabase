@@ -14,7 +14,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -105,8 +104,7 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name
-                                               :ident (lib.ident/random-ident))
+                                        (assoc :lib/expression-name a-name)
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -136,8 +134,7 @@
   (let [new-clause (if (= :expressions (first location))
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
-                                                          (expression-name target-clause)))
-                         (lib.common/preserve-ident-of target-clause))
+                                                          (expression-name target-clause))))
                      new-clause)]
     (m/update-existing-in
      stage
@@ -225,14 +222,13 @@
         (assoc :lib/type :metadata/results))))
 
 (defn- join->pipeline [join]
-  (let [source (select-keys join [:source-table :source-query])
-        stages (inner-query->stages source)
-        stages (if-let [source-metadata (and (>= (count stages) 2)
-                                             (:source-metadata join))]
-                 (assoc-in stages [(- (count stages) 2) :lib/stage-metadata] (->stage-metadata source-metadata))
+  (let [stages (inner-query->stages (or (:source-query join)
+                                        (select-keys join [:source-table])))
+        stages (if-let [source-metadata (:source-metadata join)]
+                 (assoc-in stages [(dec (count stages)) :lib/stage-metadata] (->stage-metadata source-metadata))
                  stages)]
     (-> join
-        (dissoc :source-table :source-query)
+        (dissoc :source-table :source-query :source-metadata)
         (update-legacy-boolean-expression->list :condition :conditions)
         (assoc :lib/type :mbql/join
                :stages stages)
@@ -492,6 +488,13 @@
       (truncate-alias)))
 
 (mr/def ::unique-name-generator
+  "Stateful function with the signature
+
+    (f)        => 'fresh' unique name generator
+    (f str)    => unique-str
+    (f id str) => unique-str
+
+  i.e. repeated calls with the same string should return different unique strings."
   [:function
    ;; (f) => generates a new instance of the unique name generator for recursive generation without 'poisoning the
    ;; well'.
@@ -620,7 +623,6 @@
                    (fn [summary-clauses]
                      (->> a-summary-clause
                           lib.common/->op-arg
-                          lib.common/ensure-ident
                           (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query
@@ -639,8 +641,8 @@
    (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
   ([query stage-number lib-uuid]
    (first (keep-indexed (fn [idx stage]
-                          (lib.util.match/match-one stage
-                            (clause :guard #(= lib-uuid (lib.options/uuid %)))
+                          (lib.util.match/match-lite-recursive stage
+                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
                             [idx clause]))
                         (:stages (drop-later-stages query stage-number))))))
 

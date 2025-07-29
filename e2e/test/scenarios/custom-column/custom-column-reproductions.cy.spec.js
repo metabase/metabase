@@ -1140,17 +1140,18 @@ describe("issue 49882", () => {
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
     const selectProductVendor =
       "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
+
     H.enterCustomColumnDetails({
-      formula: `[Product Rati${selectProductVendor}`,
+      formula: `[Produ${selectProductVendor}`,
       blur: false,
     });
 
-    H.CustomExpressionEditor.completion("Product → Rating").should(
+    H.CustomExpressionEditor.completion("Product → Vendor").should(
       "be.visible",
     );
     H.CustomExpressionEditor.acceptCompletion("tab");
 
-    H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    H.CustomExpressionEditor.value().should("equal", "[Product → Vendor]");
   });
 });
 
@@ -1822,18 +1823,21 @@ describe("issue 55300", () => {
     it("should be possible to disambiguate between segments and no-argument functions (metabase#55300)", () => {
       H.addCustomColumn();
 
-      H.CustomExpressionEditor.type("case(now, now(), 0)");
+      H.CustomExpressionEditor.type("case(now, now(), [Created At])");
 
       cy.log("Move cursor over now()");
-      H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(17));
       H.CustomExpressionEditor.helpTextHeader().should("contain", "now()");
 
       cy.log("Move cursor over now");
-      H.CustomExpressionEditor.type("{leftarrow}".repeat(13));
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(7), { focus: false });
       H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
 
       H.CustomExpressionEditor.format();
-      H.CustomExpressionEditor.value().should("equal", "case([now], now(), 0)");
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "case([now], now(), [Created At])",
+      );
     });
 
     it("should be possible to disambiguate between segments and no-argument aggregations (metabase#55300)", () => {
@@ -2054,5 +2058,299 @@ describe("Issue 58230", () => {
     H.CustomExpressionEditor.type("Average([Total])");
     H.CustomExpressionEditor.nameInput().type("Foo");
     H.popover().button("Done").should("be.enabled");
+  });
+});
+
+describe("issue 57674", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  // TODO: re-enable this test once we have a fix for metabase#61264
+  it.skip("should show an error when using a case or if expression with mismatched types (metabase#57674)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+
+    H.CustomExpressionEditor.clear();
+    H.popover().findByText("Types are incompatible.").should("not.exist");
+
+    H.CustomExpressionEditor.type('case([Total] > 100, [Created At], "foo")', {
+      allowFastSet: true,
+    }).blur();
+
+    H.popover().findByText("Types are incompatible.").should("be.visible");
+  });
+
+  it("should not show an error when using a case or if expression with compatible types (metabase#57674)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+
+    H.CustomExpressionEditor.clear();
+    H.popover().findByText("Types are incompatible.").should("not.exist");
+
+    H.CustomExpressionEditor.type('case([Total] > 100, "foo", "bar")', {
+      allowFastSet: true,
+    }).blur();
+
+    H.popover().findByText("Types are incompatible.").should("not.exist");
+  });
+});
+
+describe("Issue 12938", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openProductsTable({ mode: "notebook" });
+  });
+
+  it("should be possible to concat number with string (metabase#12938)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: "concat(floor([Rating]), [Title])",
+      name: "MyCustom",
+      clickDone: true,
+    });
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+
+  it("should be possible to concat number with string (metabase#12938)", () => {
+    H.addCustomColumn();
+    H.enterCustomColumnDetails({
+      formula: 'concat(hour([Created At]), ":", minute([Created At]))',
+      name: "MyCustom",
+      clickDone: true,
+    });
+
+    H.visualize();
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+describe("Issue 25189", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to use a custom column that just references a single column in filters in follow up question (metabase#25189)", () => {
+    H.createQuestion({
+      name: "Question with CCreated At",
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          "CCreated At": [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+        },
+      },
+    }).then((res) => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": `card__${res.body.id}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+    cy.findAllByTestId("header-cell")
+      .contains("CCreated At")
+      .should("be.visible");
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findAllByText("CCreated At").should("have.length", 1).first().click();
+      cy.findByText("Today").click();
+    });
+
+    cy.findAllByTestId("header-cell")
+      .contains("CCreated At")
+      .should("be.visible");
+
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+
+  it("should be possible to use a custom column that just references a single column in filters in follow up question, when the custom column has the same name as the column (metabase#25189)", () => {
+    H.createQuestion({
+      name: "Question with Created At",
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          "Created At": [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+        },
+      },
+    }).then((res) => {
+      H.createQuestion(
+        {
+          query: {
+            "source-table": `card__${res.body.id}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+    cy.findAllByTestId("header-cell")
+      .contains("Created At")
+      .should("be.visible");
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findAllByText("Created At").should("have.length", 2).first().click();
+      cy.findByText("Today").click();
+    });
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findAllByText("Created At").should("have.length", 2).last().click();
+      cy.findByText("Today").click();
+    });
+
+    cy.findAllByTestId("header-cell")
+      .contains("Created At")
+      .should("be.visible");
+
+    cy.get("main")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+describe("Issue 26512", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  const TEST_CASES = [
+    'year("a string")',
+    'month("a string")',
+    'day("a string")',
+    'hour("a string")',
+    'minute("a string")',
+    'datetimeAdd("a string", 1, "day")',
+    'datetimeDiff("a string", 1, "day")',
+    "year(1)",
+    "month(42)",
+    "day(102)",
+    "hour(140)",
+    "minute(55)",
+    'datetimeAdd(42, 1, "day")',
+    'datetimeDiff(42, 1, "day")',
+    "year(true)",
+    "month(true)",
+    "day(true)",
+    "hour(true)",
+    "minute(true)",
+    'datetimeAdd(true, 1, "day")',
+    'datetimeDiff(true, 1, "day")',
+  ];
+
+  it("should validate types for date/time functions (metabase#26512)", () => {
+    H.addCustomColumn();
+
+    TEST_CASES.forEach((formula) => {
+      H.CustomExpressionEditor.clear()
+        .type(formula, { allowFastSet: true })
+        .blur();
+      H.popover().findByText("Types are incompatible.").should("be.visible");
+    });
+  });
+});
+
+describe("Issue 38498", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Orders").click();
+    });
+  });
+
+  it("should not be possible to use convertTimezone with an invalid timezone (metabse#38498)", () => {
+    H.addCustomColumn();
+    H.CustomExpressionEditor.type(
+      'convertTimezone([Created At], "Asia/Ho_Chi_Mihn", "UTC")',
+    );
+    H.popover().findByText("Types are incompatible.").should("be.visible");
+  });
+});
+
+describe("Issue 61010", () => {
+  const CUSTOM_COLUMN_NAME = "Foo";
+  const AGGREGATION_NAME = "New count";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [CUSTOM_COLUMN_NAME]: ["+", 1, 2],
+          },
+          aggregation: [
+            [
+              "aggregation-options",
+              ["+", ["count"], 1],
+              {
+                name: AGGREGATION_NAME,
+                "display-name": AGGREGATION_NAME,
+              },
+            ],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openNotebook();
+  });
+
+  it("should not be possible to reference a custom expression in itself (metabase#61010)", () => {
+    H.getNotebookStep("expression").findByText(CUSTOM_COLUMN_NAME).click();
+    H.CustomExpressionEditor.clear().type("[Fo");
+    H.CustomExpressionEditor.completions()
+      .findByText("Foo")
+      .should("not.exist");
+
+    H.CustomExpressionEditor.clear().type("[Foo]");
+    H.popover().findByText("Unknown column: Foo").should("be.visible");
+  });
+
+  it("should not be possible to reference an aggregation in itself(metabase#61010)", () => {
+    H.getNotebookStep("summarize").findByText(AGGREGATION_NAME).click();
+    H.CustomExpressionEditor.clear().type("[New cou");
+    H.CustomExpressionEditor.completions()
+      .findByText("New count")
+      .should("not.exist");
+
+    H.CustomExpressionEditor.clear().type("[New count]");
+    H.popover()
+      .findByText("Unknown Aggregation or Metric: New count")
+      .should("be.visible");
   });
 });

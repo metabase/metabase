@@ -80,7 +80,10 @@
     #(not (contains? % :source-table))]
    [:fn
     {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]])
+    #(not (contains? % :source-card))]
+   [:fn
+    {:error/message ":query is not allowed in a native query stage, you probably meant to use :native instead."}
+    (complement :query)]])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -175,10 +178,16 @@
    [:page  pos-int?]
    [:items pos-int?]])
 
+(defn- normalize-mbql-stage [m]
+  (when (map? m)
+    (let [m (common/normalize-map m)]
+      ;; remove deprecated ident keys if they are present for some reason.
+      (dissoc m :aggregation-idents :breakout-idents :expression-idents))))
+
 (mr/def ::stage.mbql
   [:and
    [:map
-    {:decode/normalize common/normalize-map}
+    {:decode/normalize normalize-mbql-stage}
     [:lib/type           [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
     [:joins              {:optional true} [:ref ::join/joins]]
@@ -200,7 +209,13 @@
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
-   [:ref ::stage.valid-refs]])
+   [:ref ::stage.valid-refs]
+   (into [:and]
+         (map (fn [k]
+                [:fn
+                 {:error/message (str k " is deprecated and should not be used")}
+                 (complement k)]))
+         [:aggregation-idents :breakout-idents :expression-idents])])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -283,8 +298,9 @@
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
          (when (map? stage)
-           (lib.util.match/match-one (dissoc stage :joins :stage/metadata) ; TODO isn't this supposed to be `:lib/stage-metadata`?
-             [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
+           (lib.util.match/match-lite-recursive (dissoc stage :joins :lib/stage-metadata)
+             [:field {:join-alias (join-alias :guard (and (some? join-alias)
+                                                          (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
          (when (seq more)
            (recur visible-join-alias? (inc i) more)))))))

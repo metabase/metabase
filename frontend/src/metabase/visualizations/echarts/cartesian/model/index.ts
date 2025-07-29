@@ -97,6 +97,10 @@ export const getCartesianChartModel = (
     hiddenSeries,
     settings,
   );
+  // Limiting the number of series models to 100 to avoid performance issues
+  // with rendering large number of series in ECharts.
+  // We display an error message if there are more than 100 series models anyway.
+  unsortedSeriesModels.splice(101);
 
   const unsortedDataset = getJoinedCardsDataset(
     rawSeries,

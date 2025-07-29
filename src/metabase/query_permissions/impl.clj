@@ -111,25 +111,24 @@
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
   ([query :- :map]
-   (query->source-ids query nil))
+   (query->source-ids query nil false))
   ([query :- :map
-    parent-source-card-id :- [:maybe :any]]
+    parent-source-card-id :- [:maybe :any]
+    in-sandbox? :- :boolean]
    (apply merge-with merge-source-ids
           (lib.util.match/match query
             (m :guard (every-pred map? :qp/stage-is-from-source-card))
-            (when-not parent-source-card-id
-              (merge-with merge-source-ids
-                          {:card-ids #{(:qp/stage-is-from-source-card m)}}
-                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m))))
+            (merge-with merge-source-ids
+                        (when-not parent-source-card-id
+                          {:card-ids #{(:qp/stage-is-from-source-card m)}})
+                        (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
             (m :guard (every-pred map? :query-permissions/gtapped-table))
             (merge-with merge-source-ids
                         {:table-ids #{(:query-permissions/gtapped-table m)}}
-                        (when-not parent-source-card-id
+                        (when-not (or parent-source-card-id in-sandbox?)
                           {:table-query-ids #{(:query-permissions/gtapped-table m)}})
-                        ;; Remove any :native sibling queries since they will be ones supplied by the gtap and we don't
-                        ;; want to mark the whole query as native? if they exist
-                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id))
+                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id true))
 
             (m :guard (every-pred map? :native))
             (when-not parent-source-card-id
@@ -138,9 +137,9 @@
             (m :guard (every-pred map? #(pos-int? (:source-table %))))
             (merge-with merge-source-ids
                         {:table-ids #{(:source-table m)}}
-                        (when-not parent-source-card-id
+                        (when-not (or parent-source-card-id in-sandbox?)
                           {:table-query-ids #{(:source-table m)}})
-                        (query->source-ids (dissoc m :source-table) parent-source-card-id))))))
+                        (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
@@ -320,6 +319,10 @@
     (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
                            (update-keys u/->snake_case_en)
                            (vary-meta assoc :type :model/Card))
+                   ;; In the case of SQL actions, the query being executed might not act on the same database as that
+                   ;; used by the model upon which the action is defined. In this case, the underlying model whose
+                   ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
+                   (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
                    (throw (ex-info (tru "Card {0} does not exist." card-id)
                                    {:type    qp.error-type/invalid-query
                                     :card-id card-id})))]

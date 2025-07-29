@@ -15,7 +15,10 @@ import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import {
+  PLUGIN_DATABASE_REPLICATION,
+  PLUGIN_DB_ROUTING,
+} from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
 import type {
@@ -114,6 +117,10 @@ function DatabaseEditAppInner({
                     database={database}
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
                     updateDatabase={updateDatabase}
+                  />
+
+                  <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
+                    database={database}
                   />
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection

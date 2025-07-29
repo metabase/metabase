@@ -8,6 +8,7 @@
    [metabase.lib.card-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -15,6 +16,7 @@
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.humanization :as u.humanization]))
@@ -363,3 +365,182 @@
               "Products → Price"]
              (map :display_name
                   (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel return-correct-deduplicated-names-test
+  (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
+    (let [q1    (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :aggregation  [[:count]]
+                                   :breakout     [[:field %created-at {:base-type :type/DateTime, :temporal-unit :year}]
+                                                  [:field %created-at {:base-type :type/DateTime, :temporal-unit :month}]]}
+                    :filter       [:>
+                                   [:field "count" {:base-type :type/Integer}]
+                                   0]}))
+          mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query q1}]})
+          q2    (lib/query mp (lib.metadata/card mp 1))
+          mp    (lib.tu/mock-metadata-provider
+                 mp
+                 {:cards [{:id            2
+                           :dataset-query q2}]})
+          query (-> (lib/query mp (lib.metadata/card mp 2))
+                    (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
+      (testing `lib/returned-columns
+        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month"}
+                 {:name "count", :display-name "Count"}]
+                (lib/returned-columns query))))
+      (testing `lib.metadata.result-metadata/returned-columns
+        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
+                 {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+                (lib.metadata.result-metadata/returned-columns query))))
+      (testing `qp.preprocess/query->expected-cols
+        (is (=? [{:name "CREATED_AT_2", :display_name "Created At: Month", :field_ref [:field "CREATED_AT_2" {}]}
+                 {:name "count", :display_name "Count", :field_ref [:field "count" {}]}]
+                (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel filter-on-implicitly-joined-column-test
+  (testing "Should be able to remove a column that was implicitly joined from a column in an explicit join (#59695)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query (lib.tu.macros/mbql-query orders)}]})
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query nil
+                   {:source-table "card__1"
+                    :joins        [{:source-table (meta/id :checkins)
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "CH"
+                                    :condition    [:=
+                                                   [:field "ID" {:base-type :type/BigInteger}]
+                                                   [:field (meta/id :checkins :id)
+                                                    {:base-type :type/BigInteger, :join-alias "CH"}]]}]
+                    :filter       [:=
+                                   [:field (meta/id :venues :price) {:base-type               :type/Text
+                                                                     :source-field            (meta/id :checkins :venue-id)
+                                                                     :source-field-join-alias "CH"}]
+                                   "Basic"]}))]
+      (is (=? {:query {:source-query {:source-table (meta/id :orders)
+                                      :fields       [[:field (meta/id :orders :id)         nil]
+                                                     [:field (meta/id :orders :user-id)    nil]
+                                                     [:field (meta/id :orders :product-id) nil]
+                                                     [:field (meta/id :orders :subtotal)   nil]
+                                                     [:field (meta/id :orders :tax)        nil]
+                                                     [:field (meta/id :orders :total)      nil]
+                                                     [:field (meta/id :orders :discount)   nil]
+                                                     [:field (meta/id :orders :created-at) nil]
+                                                     [:field (meta/id :orders :quantity)   nil]]}
+                       :joins        [{:source-query {:source-table (meta/id :checkins)}
+                                       :alias        "CH"
+                                       :strategy     :left-join
+                                       :fields       [[:field (meta/id :checkins :id)       {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
+                                       :condition    [:=
+                                                      [:field "ID" {:base-type :type/BigInteger}]
+                                                      [:field (meta/id :checkins :id)
+                                                       {:base-type :type/BigInteger, :join-alias "CH"}]]}
+                                      {:source-table        (meta/id :venues)
+                                       :qp/is-implicit-join true
+                                       :fk-join-alias       "CH"
+                                       :alias               "VENUES__via__VENUE_ID__via__CH"
+                                       :strategy            :left-join
+                                       :fk-field-id         (meta/id :checkins :venue-id)
+                                       :condition           [:=
+                                                             [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]
+                                                             [:field (meta/id :venues :id) {:join-alias "VENUES__via__VENUE_ID__via__CH"}]]}]
+                       ;; TODO (Cam 7/15/25) -- these should ACTUALLY be using field name refs rather than ID refs
+                       :fields       [[:field (meta/id :orders :id)         nil]
+                                      [:field (meta/id :orders :user-id)    nil]
+                                      [:field (meta/id :orders :product-id) nil]
+                                      [:field (meta/id :orders :subtotal)   nil]
+                                      [:field (meta/id :orders :tax)        nil]
+                                      [:field (meta/id :orders :total)      nil]
+                                      [:field (meta/id :orders :discount)   nil]
+                                      [:field (meta/id :orders :created-at) nil]
+                                      [:field (meta/id :orders :quantity)   nil]
+                                      [:field (meta/id :checkins :id)       {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
+                       :filter       [:=
+                                      [:field
+                                       (meta/id :venues :price)
+                                       {:source-field-join-alias "CH"
+                                        :join-alias              "VENUES__via__VENUE_ID__via__CH"}]
+                                      [:value "Basic" {}]]}}
+              (qp.preprocess/preprocess query)))
+      (testing "Query should be convertable back to MBQL 5"
+        (is (lib/query mp (qp.preprocess/preprocess query)))))))
+
+(deftest ^:parallel returned-columns-no-duplicates-test
+  (testing "Don't return columns from a join twice (QUE-1607)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query people
+                   {:source-query {:source-table $$people
+                                   :breakout     [!month.created-at]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-query {:source-table $$people
+                                                   :breakout     [!month.birth-date]
+                                                   :aggregation  [[:count]]}
+                                    :alias        "Q2"
+                                    :condition    [:= !month.created-at !month.&Q2.birth-date]
+                                    :fields       :all}]
+                    :order-by     [[:asc !month.created-at]]
+                    :limit        3}))]
+      (is (=? {:query {:joins [{:fields [[:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                         [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]
+                       :fields [[:field (meta/id :people :created-at) {:inherited-temporal-unit :month}]
+                                [:field "count" {:base-type :type/Integer}]
+                                [:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}}
+              (qp.preprocess/preprocess query)))
+      (is (= ["CREATED_AT"
+              "count"
+              "Q2__BIRTH_DATE"
+              "Q2__count"]
+             (mapv :lib/desired-column-alias (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel unambiguous-field-refs-test
+  (testing "QP metadata MUST return unambiguous field refs (if refs are ambiguous then force name refs) (QUE-1623)"
+    (let [mp            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                         meta/metadata-provider
+                         [(lib.tu.macros/mbql-query orders
+                            {:breakout    [$user-id]
+                             :aggregation [[:count]]})
+                          (lib.tu.macros/mbql-query orders
+                            {:breakout    [$user-id]
+                             :aggregation [[:count]]})
+                          (lib.tu.macros/mbql-query people
+                            {:fields [$id]
+                             :joins  [{:fields       :all
+                                       :alias        "ord1"
+                                       :source-table "card__1"
+                                       :condition    [:= $id &ord1.orders.user-id]}
+                                      {:fields       :all
+                                       :alias        "ord2"
+                                       :source-table "card__2"
+                                       :condition    [:= $id &ord2.orders.user-id]}]})])
+          query         (lib/query mp {:database (meta/id)
+                                       :type     :query
+                                       :query    {:source-table "card__3"}})
+          expected-cols (qp.preprocess/query->expected-cols query)]
+      ;; use deduplicated column name for maximum backwards compatibility with legacy FE viz settings maps that use them
+      ;; as keys.
+      (is (apply distinct? (map :field_ref expected-cols)))
+      (is (=? [{:lib/desired-column-alias "ID",            :field_ref [:field (meta/id :people :id) nil]}
+               {:lib/desired-column-alias "ord1__USER_ID", :field_ref [:field "USER_ID" {}]}
+               {:lib/desired-column-alias "ord1__count",   :field_ref [:field "count" {}]}
+               {:lib/desired-column-alias "ord2__USER_ID", :field_ref [:field "USER_ID_2" {}]}
+               {:lib/desired-column-alias "ord2__count",   :field_ref [:field "count_2" {}]}]
+              (map #(select-keys % [:lib/desired-column-alias :field_ref])
+                   expected-cols))))))
