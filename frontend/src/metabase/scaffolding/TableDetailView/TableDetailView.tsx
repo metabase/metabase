@@ -263,7 +263,9 @@ export function TableDetailViewInner({
   // const nameColumn = columns[nameIndex];
   const rowName = nameIndex == null ? null : row[nameIndex];
 
-  const Other = ({ children }: { children: ReactNode }) => (
+  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+
+  const DetailContainer = ({ children }: { children: ReactNode }) => (
     <Stack
       gap="xl"
       flex="1"
@@ -354,7 +356,20 @@ export function TableDetailViewInner({
     </Stack>
   );
 
-  const Container = isListView ? Box : Other;
+  const ListContainer = ({ children }: { children: ReactNode }) => (
+    <Box
+      component={Link}
+      to={
+        pkIndex !== undefined && pkIndex >= 0
+          ? `/table/${tableId}/detail/${row[pkIndex]}`
+          : ""
+      }
+    >
+      {children}
+    </Box>
+  );
+
+  const Container = isListView ? ListContainer : DetailContainer;
 
   return (
     <Container
@@ -451,14 +466,14 @@ function ObjectViewSection({
   section,
   columns,
   row,
-  tableId,
+  // tableId,
   isEdit,
   isListView,
   onUpdateSection,
   onRemoveSection,
   dragHandleProps,
 }: ObjectViewSectionProps) {
-  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+  // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
 
   return (
     <Box
@@ -548,24 +563,6 @@ function ObjectViewSection({
             onClick={onRemoveSection}
           />
         </Group>
-      )}
-
-      {isListView && (
-        <ActionIcon
-          className={S.link}
-          component={Link}
-          pos="absolute"
-          top={8}
-          right={8}
-          to={
-            pkIndex !== undefined && pkIndex >= 0
-              ? `/table/${tableId}/detail/${row[pkIndex]}`
-              : ""
-          }
-          variant="outline"
-        >
-          <Icon name="share" />
-        </ActionIcon>
       )}
     </Box>
   );
