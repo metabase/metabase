@@ -36,7 +36,6 @@ import {
 import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetQuery } from "metabase-types/api";
 
 import { DetailViewSidebar } from "../TableDetailView/DetailViewSidebar";
 import { TableDetailViewInner } from "../TableDetailView/TableDetailView";
@@ -53,7 +52,6 @@ import {
 import {
   getDefaultComponentSettings,
   getExploreTableUrl,
-  getRowCountQuery,
   parseRouteParams,
 } from "./utils";
 
@@ -90,17 +88,17 @@ export const TableListView = ({ location, params }: Props) => {
   const [dataQuery, setDataQuery] = useState(tableQuery);
   const [sortState, setSortState] = useState<SortState | null>(null);
 
-  const countQuery = useMemo<DatasetQuery | undefined>(() => {
-    return table ? getRowCountQuery(table) : undefined;
-  }, [table]);
+  // const countQuery = useMemo<DatasetQuery | undefined>(() => {
+  //   return table ? getRowCountQuery(table) : undefined;
+  // }, [table]);
 
   const { data: dataset } = useGetAdhocQueryQuery(
     dataQuery ? Lib.toLegacyQuery(dataQuery) : skipToken,
   );
-  const { data: countDataset } = useGetAdhocQueryQuery(
-    countQuery ? countQuery : skipToken,
-  );
-  const count = countDataset?.data.rows?.[0]?.[0];
+  // const { data: countDataset } = useGetAdhocQueryQuery(
+  //   countQuery ? countQuery : skipToken,
+  // );
+  // const count = countDataset?.data.rows?.[0]?.[0];
   const columns = useMemo(
     () => dataset?.data?.results_metadata?.columns ?? [],
     [dataset],
@@ -264,7 +262,7 @@ export const TableListView = ({ location, params }: Props) => {
         <Group align="flex-start" justify="space-between">
           <Stack gap="xs">
             <Title>{table.display_name}</Title>
-
+            {/*
             {typeof count === "number" && (
               <Text c="text-secondary" size="sm">
                 {searchQuery.trim()
@@ -273,7 +271,7 @@ export const TableListView = ({ location, params }: Props) => {
                     ? t`1 row`
                     : t`${count} rows`}
               </Text>
-            )}
+            )} */}
           </Stack>
 
           <Group align="center" gap="md">
