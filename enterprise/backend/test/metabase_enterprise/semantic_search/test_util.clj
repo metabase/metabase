@@ -179,13 +179,9 @@
                     :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
 
                     :model/ModerationReview {}           {:moderated_item_type "card"
-
                                                           :moderated_item_id card1#
-
                                                           :moderator_id (mt/user->id :crowberto)
-
                                                           :status "verified"
-
                                                           :most_recent true}
 
                     :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
