@@ -658,7 +658,7 @@
                                                                                                       ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
                                                                                                       ::add/position      3}]]
                                                     {:source-table $$orders
-                                                     :joins        [{:source-table $$products
+                                                     :joins        [{:source-query {:source-table $$products}
                                                                      :alias        "PRODUCTS__via__PRODUCT_ID"
                                                                      :condition    [:= product-id products-id]
                                                                      :strategy     :left-join

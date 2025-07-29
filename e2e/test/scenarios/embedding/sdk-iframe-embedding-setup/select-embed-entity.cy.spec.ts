@@ -27,6 +27,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -79,7 +80,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
 
@@ -138,7 +139,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("selected question should be shown in the preview");
     cy.wait("@cardQuery");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
   });
@@ -180,7 +181,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.wait("@dashboard");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
   });
@@ -216,7 +217,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.wait("@cardQuery");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
     });
   });
