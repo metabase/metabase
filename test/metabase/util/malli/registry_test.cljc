@@ -2,9 +2,10 @@
   #?(:cljs (:require-macros
             [metabase.util.malli.registry-test :refer [stable-key?]]))
   (:require
-   #?@(:clj ([metabase.util.i18n :as i18n]))
+   #?@(:clj ([metabase.util.i18n :as i18n :refer [deferred-tru]]))
    [clojure.string :as str]
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.util.malli :as mu]
@@ -13,22 +14,84 @@
 (defn- clear-cache []
   (reset! @#'mr/cache {}))
 
-(defn cache-size-info []
-  (mr/cache-size-info @@#'mr/cache))
+(use-fixtures :each (fn [t] (clear-cache) (t)))
 
-(defmacro test-operation-does-not-grow-cache [body]
-  `(let [before# (count (:validator @@#'mr/cache))]
-     ~body
-     (let [after# (count (:validator @@#'mr/cache))]
-       (is (= before# after#)
-           "Operation should not grow the cache"))))
+(let [cache-misses (atom [])]
+  (binding [mr/*cache-miss-hook* (fn [k schema _value-thunk]
+                                   (swap! cache-misses conj [k schema]))]
+    (mr/validate [:fn (fn [x] (or (int? x) (string? x)))] "x")
+    (mr/validate [:fn (fn [x] (or (int? x) (string? x)))] "x"))
+  @cache-misses)
+
+(def to-wrap? #{'partial
+                'comp
+                'complement
+                'constantly
+                'juxt
+                'every-pred
+                'some-fn
+                'fnil
+                'completing
+                'comparator
+                'fn
+                'fn*})
+
+;; (defmacro auto-wrap-schema [schema-form]
+;;   `'~(walk/postwalk
+;;       (fn [x]
+;;         (if (and (list? x)
+;;                  (to-wrap? (first x)))
+;;           (list 'mr/with-key x)
+;;           x))
+;;       schema-form))
+
+;; (auto-wrap-schema [:map [:x [:fn (constantly true)]]])
+
+(defmacro with-returning-cache-misses [& body]
+  `(let [cache-misses# (atom [])]
+     (binding [mr/*cache-miss-hook* (fn [k# schema# _#]
+                                      (swap! cache-misses# conj [k# schema#]))]
+       ~@body)
+     @cache-misses#))
 
 (deftest mu-defn-with-cachable-schemas-does-not-grow-cache
-  (test-operation-does-not-grow-cache
-   (mu/defn my-good-fn :- [:fn (mr/with-key (fn [] true))]
-     "A good function that should be stable in the cache."
-     [a :- [:fn (mr/with-key (fn []))]]
-     true)))
+  (is (= []
+         (with-returning-cache-misses
+           (mu/defn my-good-fn :- [:fn (mr/with-key (fn [_] true))]
+             "A good function that should be stable in the cache."
+             [_a :- [:fn (mr/with-key (fn [_]))]]
+             true)))))
+
+(defn- excise-fns [x]
+  (walk/postwalk (fn [x] (if (fn? x) :function x)) x))
+
+(deftest mu-defn-with-cachable-schemas-and-calling-it-does-not-grow-cache
+  (is (= [[:explainer [:fn {:marker 1} :function]]]
+         (excise-fns
+          (with-returning-cache-misses
+            (mu/defn my-good-fn :- (mr/with-key [:fn {:marker 1} (fn [_] true)])
+              "A good function that should be stable in the cache."
+              [_a :- (mr/with-key [:fn {:marker 1} (fn [_] true)])]
+              true)
+            ;; calling it once should not grow the cache:
+            (my-good-fn 42)
+            ;; redefining the function should not grow the cache:
+            (mu/defn my-good-fn :- (mr/with-key [:fn {:marker 1} (fn [_] true)])
+              "A good function that should be stable in the cache."
+              [_a :- (mr/with-key [:fn {:marker 1} (fn [_] true)])]
+              true)
+            ;; calling it again should not grow the cache:
+            (my-good-fn 42))))))
+
+(deftest mu-defn-with-uncachable-schema-and-calling-it-creates-explainer
+  (is (= [:explainer]
+         (mapv first
+               (with-returning-cache-misses
+                 (mu/defn my-good-fn :- [:fn (fn [_] true)]
+                   "A good function that should be stable in the cache."
+                   [_a :- [:fn (fn [_] true)]]
+                   true)
+                 (my-good-fn 42))))))
 
 (deftest ^:parallel cache-handle-regexes-test
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
@@ -64,10 +127,6 @@
   (testing "cache explainers"
     (is (identical? (mr/explainer ::int)
                     (mr/explainer ::int)))))
-
-[(count @@#'mr/cache)
-
- (count @@#'mr/cache)]
 
 (deftest ^:parallel resolve-test
   (is (mc/schema? (mr/resolve-schema :int)))
@@ -146,51 +205,59 @@
   (testing "Enhanced schema-cache-key function handles function objects to prevent memory leaks"
     (testing "Basic function references should be stable"
       (let [schema [:fn {:description "number check"} number?]]
-        (mr/validate schema 42)
-        (let [before-count (count (:validator @@#'mr/cache))]
-          ;; Multiple evaluations of the same schema should reuse cache
-          (mr/validate schema 42)
-          (mr/validate schema 42)
-          (mr/validate schema 42)
-          (is (= (count (:validator @@#'mr/cache))
-                 before-count)
-              "Basic function references should not create multiple cache entries"))))
+        (is (= [:validator] (map first (with-returning-cache-misses (mr/validate schema 42)))))
+        (is (= []
+               (with-returning-cache-misses
+                 (mr/validate [:fn {:description "number check"} number?] 42)
+                 (mr/validate [:fn {:description "number check"} number?] 42)
+                 (mr/validate [:fn {:description "number check"} number?] 42)))
+            "Function schema reuse should not create multiple cache entries")
+        (is (= [:validator]
+               (map first (with-returning-cache-misses
+                            (mr/validate [:fn number?] 42))))
+            "New schemas create new a new cache entry")))
 
     (testing "Function composition should be stable (every-pred)"
       (let [schema [:fn {:error/message "positive number"} (every-pred number? pos?)]]
-        (mr/validate schema 42)
-        (let [before-count (count (:validator @@#'mr/cache))]
-          ;; These used to create new cache entries each time due to function object instability
-          (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] 42)
-          (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] 42)
-          (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] 42)
-          (is (= (count (:validator @@#'mr/cache))
-                 before-count)
-              "Function composition should not create multiple cache entries"))))
+        (is (= [:validator] (map first (with-returning-cache-misses (mr/validate schema 42)))))
+        (is (= []
+               (with-returning-cache-misses
+                 (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] 42)
+                 (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] 42)
+                 (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] 42)))
+            "Function schema reuse should not create multiple cache entries")
+        (is (= [:validator]
+               (map first (with-returning-cache-misses
+                            (mr/validate [:fn (every-pred number? pos?)] 42))))
+            "New schemas create new a new cache entry")))
 
     (testing "Complement functions should be stable"
       (let [schema [:fn {:error/message "non-blank string"} (complement str/blank?)]]
-        (mr/validate schema "hello")
-        (let [before-count (count (:validator @@#'mr/cache))]
-          ;; These used to create new cache entries each time
-          (mr/validate [:fn {:error/message "non-blank string"} (complement str/blank?)] "hello")
-          (is (= before-count
-                 (count (:validator @@#'mr/cache))))
-          (mr/validate [:fn {:error/message "non-blank string"} (complement str/blank?)] "hello")
-          (is (= before-count
-                 (count (:validator @@#'mr/cache)))
-              "Complement functions should not create multiple cache entries"))))
+        (is (= [:validator] (map first (with-returning-cache-misses (mr/validate schema "hello")))))
+        (is (= []
+               (with-returning-cache-misses
+                 (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] "hello")
+                 (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] "hello")
+                 (mr/validate [:fn {:error/message "positive number"} (every-pred number? pos?)] "hello")))
+            "Function schema reuse should not create multiple cache entries")
+        (is (= [:validator]
+               (map first (with-returning-cache-misses
+                            (mr/validate [:fn {:i-am "a different schema"} (every-pred number? pos?)] "hello"))))
+            "New schemas create new a new cache entry")))
 
     (testing "Constant functions should be stable"
-      (let [schema [:fn {:error/message "always false"} (constantly false)]]
-        (mr/explain schema "anything") ; This will fail validation, but that's expected
-        (let [before-count (count (:explainer @@#'mr/cache))]
-          ;; These used to create new cache entries each time
-          (mr/explain [:fn {:error/message "always false"} (constantly false)] "anything")
-          (mr/explain [:fn {:error/message "always false"} (constantly false)] "anything")
-          (is (= (count (:explainer @@#'mr/cache))
-                 before-count)
-              "Constant functions should not create multiple cache entries"))))
+      (let [schema [:fn (constantly false)]]
+        (is (= [:validator] (map first (with-returning-cache-misses (mr/validate schema :anything)))))
+        (is (= []
+               (with-returning-cache-misses
+                 (mr/validate [:fn (constantly false)] :anything)
+                 (mr/validate [:fn (constantly false)] :anything)
+                 (mr/validate [:fn (constantly false)] :anything)))
+            "Function schema reuse should not create multiple cache entries")
+        (is (= [:validator]
+               (map first (with-returning-cache-misses
+                            (mr/validate [:fn {:i-am "a different schema"} (constantly false)] :anything))))
+            "New schemas create new a new cache entry")))
 
     (testing "Anonymous functions with same reference should be stable"
       (let [pred-fn (fn [x] (and (number? x) (pos? x)))
@@ -204,15 +271,43 @@
                  before-count)
               "Same anonymous function reference should not create multiple cache entries"))))))
 
+;; What if the stable key is made with constantly? how is that getting caught?
+;; I am catching it in the schema key mechanism. It's illegal to use
+;; `(constantly true)`, `(every-pred even?)`, `(complement str/blank?)` or similar things without
+;; wrapping them in `mr/with-key`!! That's the only way we can ensure that the cache key is stable, AND
+;; that the functions getting cached are the ones we expect.
+;;
+;; If we don't do it that way, then this will happen:
+;; (mr/validate [:fn (constantly true)] 42) ;=> true
+;; ^ caches the function `(constantly true)` with a cache key of [:fn #function[clojure.core/constantly_1234]]
+;; now, when we calculate the cache key for a fn schema created with constantly again, the KEY WILL BE THE SAME:
+;; (mr/validate [:fn (constantly false)] 42) ;=> true
+;; ^ This schema should fail, but it willreturn true because the cache key is the same as the previous one, so
+;; it will reuse the cached function `(constantly true)`!!!!
+
+(defn rewrite-schema-with-key
+  "Rewrites a schema with a stable key, ensuring that the cache key is consistent."
+  [schema]
+  (walk/postwalk
+   (fn [x]
+     (if (and (fn? x) (not= x (constantly true)))
+       (mr/with-key x)
+       x))
+   schema))
+
+(deftest partial-schemas-are-cached-correctly
+  (is (#'mr/schema-cache-key [:fn (mr/with-key (every-pred even?))]))
+  (is (true? (mr/validate [:fn (every-pred even?)] 42)))
+  (is (false? (mr/validate [:fn (every-pred odd?)] 42))))
+
 (deftest ^:parallel cache-memory-leak-prevention-test
   (testing "Memory leak prevention through stable cache keys"
     (testing "Multiple identical schemas with function composition don't grow cache unboundedly"
-      ;; Clear cache first
-      (clear-cache)
-
-      ;; Add multiple "identical" schemas that would have created different cache keys before the fix
-      (dotimes [i 20]
-        (mr/validate [:fn {:error/message "positive"} (every-pred number? pos?)] (inc i)))
+      ;; Add multiple identical schemas that would have created different cache keys before the fix
+      (is (mr/stable-key? [:fn (every-pred number? pos?)]))
+      (is (= 1 (count (with-returning-cache-misses
+                        (dotimes [i 20]
+                          (mr/validate [:fn {:error/message "positive"} (every-pred number? pos?)] (inc i)))))))
 
       ;; Should only have 1 validator in cache (plus any others from previous tests)
       (let [validator-cache (:validator @@#'mr/cache)
@@ -224,29 +319,11 @@
         (is (<= (count our-validators) 2)
             "Should have at most 1-2 cache entries for identical schemas, not 20")))))
 
-(deftest ^:parallel cache-monitoring-functions-test
-  (testing "Cache monitoring and management functions work correctly"
-    (testing "cache-size-info returns meaningful information"
-      (let [cache-info (cache-size-info)]
-        (is (contains? cache-info :total-cache-entries))
-        (is (contains? cache-info :entries-by-type))
-        (is (number? (:total-cache-entries cache-info)))
-        (is (map? (:entries-by-type cache-info)))))
-
-    (testing "clear-cache! empties the cache"
-      ;; Add some entries first
-      (mr/validate :int 42)
-      (mr/validate :string "hello")
-      (let [before-size (:total-cache-entries (cache-size-info))]
-        (is (pos? before-size) "Cache should have some entries before clearing")
-        (clear-cache)
-        (let [after-size (:total-cache-entries (cache-size-info))]
-          (is (zero? after-size) "Cache should be empty after clearing"))))))
-
 (deftest ^:parallel schema-cache-key-backward-compatibility-test
   (testing "Enhanced schema-cache-key maintains backward compatibility"
     (testing "Regex patterns still work correctly (existing functionality)"
       (let [schema [:re #"\d{4}"]]
+        (is (mr/stable-key? schema))
         (mr/validate schema "1234")
         (let [before-count (count (:validator @@#'mr/cache))]
           ;; Multiple evaluations should reuse cache (this was already working)
@@ -305,7 +382,8 @@
                    [:fn {:desc "str"} string?]
                    [:fn {:desc "pos"} (every-pred number? pos?)]
                    [:fn {:desc "blank"} (complement str/blank?)]
-                   [:re #"\d+"]
+                   [:re {:desc "raw re"} #"\d+"]
+                   [:or {:desc "deep re"} [:re #"\d+"]]
                    [:and number? pos?]]
           iterations 100
           start-time (System/nanoTime)]
@@ -316,55 +394,31 @@
           (mr/validate schema (case (first schema)
                                 :fn 42
                                 :re "123"
+                                :or "123"
                                 :and 42))))
 
       (let [elapsed-ms (/ (- (System/nanoTime) start-time) 1000000.0)]
-        ;; Should complete reasonably quickly, I see 20ms here locally
-        (is (< elapsed-ms 100)
+        ;; Should complete reasonably quickly, I see 3ms locally
+        (is (< elapsed-ms 10)
             "Cache key generation should be fast")))))
 
 (deftest ^:parallel evil-schemas-test
   (testing "Evil schemas reproduce themselves in the cache"
-    (let [schema-gen (fn [] [:int {:evil (rand)}])
-          iterations 100
-          start-time (System/nanoTime)
-          cache-size-before (:total-cache-entries (cache-size-info))]
+    (let [evil-schema-gen (fn [] [:int {:evil (rand)}])
+          iterations 100]
+      (is (= 100 (count
+                  (with-returning-cache-misses
+                    (dotimes [_ iterations]
+                      (let [evil-schema (evil-schema-gen)]
+                        (mr/validate evil-schema 42))))))))))
 
-      ;; Generate cache keys many times
-      (dotimes [_ iterations]
-        (let [schema (schema-gen)]
-          (mr/validate schema 42)))
-
-      (let [cache-size-after (:total-cache-entries (cache-size-info))]
-        (is (> cache-size-after cache-size-before)
-            "Cache size should increase with evil schemas")
-        (is (= (- cache-size-after cache-size-before) iterations)))
-
-      (let [elapsed-ms (/ (- (System/nanoTime) start-time) 1000000.0)]
-        ;; Should complete reasonably quickly (less than 1 second for this test)
-        (is (< elapsed-ms 100)
-            "Cache key generation should be fast")))))
-
-(comment
-
-  ;; good tests
-  ;;
-  '(= (#'mr/schema-cache-key (mu/with-api-error-message
-                              [:and
-                               {:error/message "non-blank string"
-                                :json-schema   {:type "string" :minLength 1}}
-                               [:string {:min 1}]
-                               [:fn
-                                {:error/message "non-blank string"}
-                                (mr/with-key (complement str/blank?))]]
-                              (deferred-tru "value must be a non-blank string.")))
-
-      (#'mr/schema-cache-key (mu/with-api-error-message
-                              [:and
-                               {:error/message "non-blank string"
-                                :json-schema   {:type "string" :minLength 1}}
-                               [:string {:min 1}]
-                               [:fn
-                                {:error/message "non-blank string"}
-                                (mr/with-key (complement str/blank?))]]
-                              (deferred-tru "value must be a non-blank string.")))))
+(deftest ^:parallel with-api-error-message-key-stability-test
+  (is (mr/stable-key? (mu/with-api-error-message
+                       [:and
+                        {:error/message "non-blank string"
+                         :json-schema   {:type "string" :minLength 1}}
+                        [:string {:min 1}]
+                        [:fn
+                         {:error/message "non-blank string"}
+                         (mr/with-key (complement str/blank?))]]
+                       (deferred-tru "value must be a non-blank string.")))))

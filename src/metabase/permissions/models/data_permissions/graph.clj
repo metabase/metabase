@@ -399,3 +399,7 @@
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph! (assoc-in (api-graph) (cons :groups ks) new-value))))
+
+(mu/defn my-f :- [:fn {:pos :output} (constantly true)]
+  [a :- [:fn {:arg :a} (constantly true)]
+   b :- [:fn {:arg :b} (constantly true)]])

@@ -77,6 +77,8 @@
   ;; this doesn't use [[schema.core/defn]] because [[schema.core/defn]] doesn't like optional keyword args
   {:pre [(#{:h2 :mysql :postgres} db-type)
          (instance? javax.sql.DataSource data-source)]}
+  (def db-type db-type)
+  (def data-source data-source)
   (map->ApplicationDB
    {:db-type     db-type
     :data-source (if create-pool?

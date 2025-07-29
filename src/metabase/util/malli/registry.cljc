@@ -2,12 +2,14 @@
   (:refer-clojure :exclude [declare def])
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
-             [net.cgrand.macrovich :as macros]))
-   ;; TODO: consider using a ttl cache incase any bad schemas start slipping through? [clojure.core.cache :as cache]
+             [net.cgrand.macrovich :as macros])) ;; TODO: consider using a ttl cache incase any bad schemas start slipping through? [clojure.core.cache :as cache]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.config.core :as config]
+   [metabase.util.log :as log])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce
@@ -27,22 +29,39 @@
     [:fn even?]
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated.
-  
-  Also handles functions to prevent cache key instability from composed/anonymous functions."
-  [x]
-  (walk/postwalk
-   (fn [x]
-     (cond
-       (instance? java.util.regex.Pattern x) (str x)
-       ;; You can attach a cache key directly to any naughty object in a schema, and it'll be used
-       ;; to calculate the cache-key
-       (some-> x meta ::key) (-> x meta ::key)
-       ;; This handles functions like (constantly true):
-       ;; (= (constantly true) (constantly true)) ;; => false
-       ;; but pr-str'd they are =.
-       (fn? x) (pr-str x)
-       :else x))
-   x))
+
+  Also handles functions to prevent cache key instability from composed/anonymous functions.
+
+  ;; both are anti-patterns and will throw:
+  (let [my-fn (constantly 3)]
+    (schema-cache-key [:fn my-fn]))
+
+  (let [my-fn (constantly 3)]
+    (schema-cache-key (with-key my-fn)))"
+  [cache-keyable]
+  (or
+   (some-> cache-keyable meta ::key)
+   (walk/postwalk
+    (fn [x]
+      (if #?(:clj (instance? java.util.regex.Pattern x)
+             :cljs (instance? js/RegExp x)) (str x)
+          (let [meta-key (some-> x meta ::key)
+                _ (when (and (not config/is-prod?)
+                             meta-key
+                             (not (#{"(" "["} (str (first meta-key)))))
+                    (log/info
+                     (str/join ["Schema cache key forms (not their values per se) must be wrapped with [[mu/with-key]] to ensure stability."
+                                "If you are using a derived schema, either wrap the form in the generation function, "
+                                "or a macro with [[mu/with-key]] to wrap the schema form itself."
+                                (pr-str {::error "iono" :meta-key meta-key :schema x})])))]
+            (if meta-key meta-key
+                (if (fn? x)
+                  (do
+                    (log/info (str "function schemas must be wrapped with [[mu/with-key]], see the docstring for more info.\n"
+                                   (pr-str {::error "function without key" :schema x})))
+                    x)
+                  x)))))
+    cache-keyable)))
 
 (defmacro with-key
   "Adds `::mr/key` metadata, which is a pr-str'd string of body, to body. Be careful not to call this
@@ -51,9 +70,14 @@
   e.g.:
     (defn my-schema [] :int)
     (mr/with-key (my-schema))
-    If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly."
+    If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly.
+
+  All functions that are used with mr/validate, mu/defn, and defendpoint need their function schema _forms_ wrapped with
+  this macro."
   [body]
-  `(with-meta ~body (merge (meta ~body) {::key ~(pr-str body)})))
+  `(try
+     (with-meta ~body (merge (meta ~body) {::key ~(pr-str body)}))
+     (catch Exception _# ~body)))
 
 (defmacro stable-key?
   "Evaluates the schema form twice, and if the results are not equal, it is not usable as a cache key."
@@ -64,19 +88,28 @@
        computed-schema#
        false)))
 
-(defn cached
-  "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
+(def ^{:dynamic true
+       :doc "A hook that is called whenever the cache is updated, for side effects.
+             This is used in tests or to log cache updates."}
+  *cache-miss-hook* (fn [_k _schema _value-thunk] nil))
+
+(binding [*cache-miss-hook* (fn [k schema value-thunk]
+                              (log/info (str "Cache miss for " (pr-str k) " with schema " (pr-str schema)
+                                             ". Calculating value with " (pr-str value-thunk) ".")))]
+  (defn cached
+    "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
   with [[metabase.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
   it.
 
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
   you used namespaced keys if you are using it elsewhere."
-  [k schema value-thunk]
-  (let [schema-key (schema-cache-key schema)]
-    (or (get @cache [k schema-key])
-        (let [v (value-thunk)]
-          (swap! cache assoc [k schema-key] v)
-          v))))
+    [k schema value-thunk]
+    (let [schema-key (schema-cache-key schema)]
+      (or (get @cache [k schema-key])
+          (do (*cache-miss-hook* k schema value-thunk) false)
+          (let [v (value-thunk)]
+            (swap! cache assoc [k schema-key] v)
+            v)))))
 
 (defn cache-size-info
   "Return information about the current cache size and structure for debugging memory issues."
@@ -181,10 +214,7 @@
    (defmacro def
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
      ([type schema]
-      `(do (when-not (stable-key? ~schema)
-             (throw (ex-info "Unstable key, see the schema guidelines for more info."
-                             {:schema schema})))
-           (register! ~type ~schema)))
+      `(register! ~type (with-key ~schema)))
      ([type docstring schema]
       (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type

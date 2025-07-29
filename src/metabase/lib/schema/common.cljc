@@ -107,14 +107,12 @@
 
 (mr/def ::uuid
   [:string
-   (mr/with-key
-     {:decode/normalize (mr/with-key
-                          (fn [x]
-                            (cond-> x
-                              (uuid? x) str)))
-      ;; TODO -- should this be stricter?
-      :min 36
-      :max 36})])
+   {:decode/normalize (fn [x]
+                        (cond-> x
+                          (uuid? x) str))
+    ;; TODO -- should this be stricter?
+    :min 36
+    :max 36}])
 
 (mr/def ::semantic-type
   [:and

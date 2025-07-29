@@ -9,7 +9,7 @@
 
 (comment metabase.types.core/keep-me)
 
-(defonce ^:private ^{:doc "Set of all registered MBQL clause tags e.g. #{:starts-with}"} tag-registry
+(defonce ^{:doc "Set of all registered MBQL clause tags e.g. #{:starts-with}"} tag-registry
   (atom #{}))
 
 (defn tag->registered-schema-name

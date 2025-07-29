@@ -257,7 +257,7 @@
                                       'more [:maybe [:* :any]]
                                       'kvs  [:* :any]
                                       :any))
-                  `(validate-input ~error-context ~schema ~arg-name)))
+                  `(validate-input ~error-context (mr/with-key ~schema) ~arg-name)))
               arg-names
               schemas)
          (filter some?))))
@@ -292,11 +292,12 @@
         arglist                (input-schema->arglist input-schema)
         input-validation-forms (input-schema->validation-forms error-context input-schema)
         result-form            (input-schema->application-form input-schema)
-        result-form            (if (and output-schema
-                                        (not= output-schema :any))
-                                 `(->> ~result-form
-                                       (validate-output ~error-context ~output-schema))
+        result-form            (if (and output-schema (not= output-schema :any))
+                                 `(validate-output ~error-context
+                                                   (mr/with-key ~output-schema)
+                                                   ~result-form)
                                  result-form)]
+
     `(~arglist
       (try
         ~@input-validation-forms
@@ -314,6 +315,52 @@
       (for [schema schemas]
         (instrumented-arity error-context schema)))))
 
+#_parsed
+;; => #malli.core.Tags{:values
+;;                     {:name my-multi-f,
+;;                      :return #malli.core.Tags{:values {:- :-, :schema (fn my-odd [x] (odd? x))}},
+;;                      :doc nil,
+;;                      :meta nil,
+;;                      :arities
+;;                      #malli.core.Tag{:key :multiple,
+;;                                      :value
+;;                                      #malli.core.Tags{:values
+;;                                                       {:arities
+;;                                                        [#malli.core.Tags{:values
+;;                                                                          {:args [a :- [:fn (fn my-even [x] (even? x))]],
+;;                                                                           :prepost nil,
+;;                                                                           :body []}}
+;;                                                         #malli.core.Tags{:values
+;;                                                                          {:args
+;;                                                                           [a
+;;                                                                            :-
+;;                                                                            [:fn (fn my-even [x] (even? x))]
+;;                                                                            b
+;;                                                                            :-
+;;                                                                            :int],
+;;                                                                           :prepost nil,
+;;                                                                           :body []}}],
+;;                                                        :meta nil}}}}}
+
+;; => #malli.core.Tags{:values
+;;                     {:name my-f,
+;;                      :return #malli.core.Tags{:values {:- :-, :schema (fn my-odd [x] (odd? x))}},
+;;                      :doc nil,
+;;                      :meta nil,
+;;                      :arities
+;;                      #malli.core.Tag{:key :single,
+;;                                      :value
+;;                                      #malli.core.Tags{:values
+;;                                                       {:args [a :- [:fn (fn my-even [x] (even? x))]],
+;;                                                        :prepost nil,
+;;                                                        :body []}}}}}
+
+'(let [input-validator (mc/validator [:cat [:fn (fn my-even [x] (even? x))] :int])])
+
+#_(def input-schema '[:cat [:fn (fn my-even [x] (even? x))]])
+
+#_(instrumented-fn-form {} parsed 'my-f)
+
 (defn instrumented-fn-form
   "Nota Bene: not safe for expansion into Clojurescript!
   Given a `fn-tail` like
@@ -327,6 +374,8 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed & [fn-name]]
+  (def parsed parsed)
+  ;; (prn ["parsed" parsed])
   `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
