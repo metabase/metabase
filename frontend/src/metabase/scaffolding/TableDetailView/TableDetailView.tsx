@@ -27,7 +27,7 @@ import {
 import EditableText from "metabase/common/components/EditableText";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { POST } from "metabase/lib/api";
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting/value";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui/components";
 import { ActionIcon, Button } from "metabase/ui/components/buttons";
@@ -444,16 +444,28 @@ function ObjectViewSection({
             (column) => column.id === field_id,
           );
           const column = columns[columnIndex];
+
           if (!column) {
             return null;
           }
+
           const value = row[columnIndex];
+
           return (
             <Box key={field_id}>
-              <Text c="text-dark" fw={600} size="sm">
+              <Text
+                c="text-dark"
+                fw={600}
+                size="sm"
+                style={{
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {column.display_name}
               </Text>
-              <Text {...getStyleProps(style)}>{formatValue(value)}</Text>
+              <Text {...getStyleProps(style)} lineClamp={5}>
+                {formatValue(value)}
+              </Text>
             </Box>
           );
         })}
