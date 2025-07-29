@@ -62,7 +62,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       Placeholder.configure({
-        placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
+        placeholder: t`Start writing, press "/" for commands, or "@" to insert a reference...`,
       }),
       CardEmbed.configure({
         HTMLAttributes: {

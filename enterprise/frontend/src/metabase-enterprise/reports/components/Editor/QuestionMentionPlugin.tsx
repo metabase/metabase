@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -27,9 +27,11 @@ import type {
 
 import { fetchReportQuestionData } from "../../reports.slice";
 
+import { SlashCommandMenu } from "./SlashCommandMenu";
+
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
-type InsertionMode = "mention" | "embed";
+type InsertionMode = "mention" | "embed" | "slash-command";
 
 interface SearchResultsFooterProps {
   isSelected?: boolean;
@@ -86,6 +88,7 @@ export const QuestionMentionPlugin = ({
   const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const [slashCommandSelectedIndex, setSlashCommandSelectedIndex] = useState(0);
   const virtualRef = useRef<HTMLDivElement>(null);
 
   const { data: recents = [], isLoading: isRecentsLoading } =
@@ -111,11 +114,15 @@ export const QuestionMentionPlugin = ({
         );
 
         if (currentText.startsWith("/") || currentText.startsWith("@")) {
-          setQuery(currentText.slice(1));
+          const newQuery = currentText.slice(1);
+          setQuery(newQuery);
+          const newMode = newQuery === "" && currentText.startsWith("/") ? "slash-command" :
+                         (currentText.startsWith("/") && newQuery !== "") ? "embed" :
+                         mentionRange.mode;
           setMentionRange({
             from: mentionRange.from,
             to: $from.pos,
-            mode: mentionRange.mode,
+            mode: newMode,
           });
         } else {
           setShowPopover(false);
@@ -131,7 +138,7 @@ export const QuestionMentionPlugin = ({
         }
         // Check if we're typing after "/" and it's the start of the paragraph
         if (text.trimStart() === "/") {
-          return "embed";
+          return "slash-command";
         }
         return null;
       };
@@ -147,16 +154,42 @@ export const QuestionMentionPlugin = ({
 
         setShowPopover(true);
         setQuery("");
+        if (mode === "slash-command") {
+          setSlashCommandSelectedIndex(0);
+        }
       }
     };
 
     const keydownHandler = (event: KeyboardEvent) => {
-      if (!showPopover) {
+      if (!showPopover || !mentionRange) {
         return;
       }
 
-      // Prevent cursor movement in editor for arrow keys
-      if (["ArrowUp", "ArrowDown"].includes(event.key)) {
+      // Handle slash command navigation
+      if (mentionRange.mode === "slash-command") {
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          setSlashCommandSelectedIndex(prev => prev === 0 ? 1 : 0);
+          return;
+        }
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          setSlashCommandSelectedIndex(prev => prev === 1 ? 0 : 1);
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          if (slashCommandSelectedIndex === 0) {
+            handleInsertChart();
+          } else {
+            handleAskMetabot();
+          }
+          return;
+        }
+      }
+
+      // Prevent cursor movement in editor for arrow keys in other modes
+      if (["ArrowUp", "ArrowDown"].includes(event.key) && mentionRange.mode !== "slash-command") {
         event.preventDefault();
         return;
       }
@@ -272,6 +305,33 @@ export const QuestionMentionPlugin = ({
     });
   };
 
+  const handleInsertChart = useCallback(() => {
+    if (!mentionRange) return;
+
+    // Switch from slash-command mode to embed mode to show search
+    setMentionRange({
+      ...mentionRange,
+      mode: "embed",
+    });
+    setQuery("");
+  }, [mentionRange]);
+
+  const handleAskMetabot = useCallback(() => {
+    if (!mentionRange) return;
+
+    // Insert a code block with metabot prompt
+    editor
+      .chain()
+      .focus()
+      .deleteRange(mentionRange)
+      .setCodeBlock({ language: "metabot" })
+      .insertContent("Ask me to do something, or ask me a question")
+      .run();
+
+    setShowPopover(false);
+    setMentionRange(null);
+  }, [mentionRange, editor]);
+
   useEffect(() => {
     if (virtualRef.current && anchorPos) {
       virtualRef.current.style.position = "fixed";
@@ -310,7 +370,14 @@ export const QuestionMentionPlugin = ({
             overflow: "auto",
           }}
         >
-          {query.length > 0 ? (
+          {mentionRange?.mode === "slash-command" ? (
+            <SlashCommandMenu
+              onInsertChart={handleInsertChart}
+              onAskMetabot={handleAskMetabot}
+              selectedIndex={slashCommandSelectedIndex}
+              onKeyDown={() => {}}
+            />
+          ) : query.length > 0 ? (
             <SearchResults
               searchText={query}
               limit={4}
