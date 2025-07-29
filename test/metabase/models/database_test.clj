@@ -13,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
