@@ -179,7 +179,7 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+          node-version: "${{ needs.get-build-requirements.outputs.node_version || '20' }}"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
