@@ -107,7 +107,7 @@ export const createMockTokenFeatures = (
   content_verification: false,
   embedding: false,
   embedding_sdk: false,
-  embedding_iframe_sdk: false,
+  embedding_simple: false,
   etl_connections: false,
   etl_connections_pg: false,
   hosting: false,
