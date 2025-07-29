@@ -1,8 +1,15 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
-import { Box, Stack } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { FormattingWidget } from "../widgets/FormattingWidget";
@@ -10,9 +17,11 @@ import { FormattingWidget } from "../widgets/FormattingWidget";
 export function LocalizationSettingsPage() {
   const availableLocales = useSetting("available-locales");
   const availableTimezones = useSetting("available-timezones");
+  const applicationName = useSelector(getApplicationName);
+
   return (
-    <Box w="36rem" p="0 2rem 2rem 1rem">
-      <Stack gap="xl">
+    <SettingsPageWrapper title={t`Localization`}>
+      <SettingsSection title={t`Instance settings`}>
         <AdminSettingInput
           name="site-locale"
           title={t`Instance language`}
@@ -20,11 +29,17 @@ export function LocalizationSettingsPage() {
             ([code, label]) => ({ label, value: code }),
           )}
           inputType="select"
+          description={
+            <Stack gap="md">
+              {t`The default language for all users across the ${applicationName} UI, system emails, subscriptions, and alerts. Each user can override this from their own account settings.`}
+              <CommunityLocalizationNotice isAdminView />
+            </Stack>
+          }
         />
         <AdminSettingInput
           name="report-timezone"
           searchable
-          title={t`Report Timezone`}
+          title={t`Report timezone`}
           description={
             <>
               <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
@@ -32,7 +47,7 @@ export function LocalizationSettingsPage() {
             </>
           }
           options={[
-            { label: t`Database Default`, value: "" },
+            { label: t`Database default`, value: "" },
             ...(availableTimezones?.map((tz) => ({
               label: tz,
               value: tz,
@@ -54,8 +69,8 @@ export function LocalizationSettingsPage() {
           ]}
           inputType="select"
         />
-        <FormattingWidget />
-      </Stack>
-    </Box>
+      </SettingsSection>
+      <FormattingWidget />
+    </SettingsPageWrapper>
   );
 }

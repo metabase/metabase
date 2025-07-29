@@ -68,6 +68,7 @@
   :metabase/validate-logging                           {:level :warning}
   :metabase/validate-mb-driver-tests                   {:level :warning}
   :metabase/validate-mb-once                           {:level :warning}
+  :metabase/discourage-millis-duration                 {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning
@@ -76,8 +77,13 @@
    ;;
    ;; TODO -- these should all be made thread safe if possible or renamed so they end in `!`. Then we can remove them
    ;; from this list because by default anything ending in `!` is considered to be thread-unsafe
+   ;;
+   ;; TODO (Cam 6/19/25) -- move this into the `test-helpers/config.edn` file so they can live with their friends.
    :parallel/unsafe
-   #{clojure.core/alter-var-root
+   #{java.util.Locale/setDefault
+     java.lang.System/setProperty
+     java.lang.System/setProperties
+     clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
      metabase.actions.test-util/with-actions
@@ -96,7 +102,6 @@
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
-     metabase.test.util/with-locale
      metabase.test.util/with-model-cleanup
      metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test.util/with-non-admin-groups-no-root-collection-perms
@@ -119,7 +124,6 @@
      metabase.test/with-fake-inbox
      metabase.test/with-group
      metabase.test/with-group-for-user
-     metabase.test/with-locale
      metabase.test/with-log-level
      metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
@@ -232,8 +236,14 @@
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
     (metabase.lib.util.match/match)
     (metabase.lib.util.match/match-one)
+    (metabase.lib.util.match/match-lite)
+    (metabase.lib.util.match/match-lite-recursive)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
+    (metabase.driver-api.core/match)
+    (metabase.driver-api.core/match-one)
+    (metabase.driver-api.core/replace)
+    (metabase.driver-api.core/replace-in)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
     (metabase.util.regex/rx [opt])
     (metabase.util/prog1 [<>])
@@ -283,7 +293,9 @@
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}}
+   next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
+   toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
+   toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -353,6 +365,7 @@
     metabase.premium-features.core            premium-features
     metabase.public-sharing.core              public-sharing
     metabase.pulse.core                       pulse
+    metabase.query-permissions.core           query-perms
     metabase.request.core                     request
     metabase.revisions.core                   revisions
     metabase.server.core                      server
@@ -395,8 +408,10 @@
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
+  instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
+metabase-enterprise.content-translation.routes-test/with-new-secret-key!                clojure.core/fn
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -414,6 +429,7 @@
   metabase.driver.sql-jdbc.connection.ssh-tunnel/with-ssh-tunnel                        clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
+  metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let
@@ -486,6 +502,7 @@
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
+   clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
@@ -510,8 +527,10 @@
    metabase.dashboards.models.dashboard-tab-test/with-dashtab-in-personal-collection                                         hooks.common/with-one-top-level-binding
    metabase.dashboards.models.dashboard-test/with-dash-in-collection!                                                        hooks.common/with-three-bindings
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
+   metabase.driver.mongo-test/with-describe-table-for-sample                                                                 hooks.metabase.driver.mongo-test/with-describe-table-for-sample
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
+   metabase.driver-api/defenterprise                                                                                         hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.embedding.api.embed-test/do-response-formats                                                                     hooks.common/with-two-bindings
    metabase.embedding.api.embed-test/with-chain-filter-fixtures!                                                             hooks.common/let-one-with-optional-value
    metabase.embedding.api.embed-test/with-temp-card                                                                          hooks.common/let-one-with-optional-value
@@ -681,6 +700,8 @@
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
+  {:pattern "^metabase\\.lib\\..*"
+   :name    metabase-lib-excluding-legacy-mbql}
   ;;
   ;; QP source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`, and
   ;; `metabase.driver.*`, excluding `-test` namespaces.
@@ -720,6 +741,7 @@
   {:linters
    {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
     :metabase/validate-string-or-str-args-to-i18n {:level :warning}
+    :metabase/discourage-millis-duration {:level :warning}
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
      clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
@@ -761,6 +783,11 @@
      toucan.util.test           {:message "Don't use application database inside MLv2 code"}
      toucan2.core               {:message "Don't use application database inside MLv2 code"}}}}
 
+  metabase-lib-excluding-legacy-mbql
+  {:linters
+   {:discouraged-var
+    {metabase.legacy-mbql.util/unique-name-generator {:message "Use metabase.lib.util/unique-name-generator or non-truncating-unique-name-generator"}}}}
+
   driver-namespaces
   {:linters
    {:discouraged-var
@@ -783,4 +810,9 @@
 
   general-qp-and-driver-test-namespaces
   {:linters
-   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}
+   {:discouraged-var
+    {metabase.test/with-column-remappings      {:message "Use metabase.lib.test-util/remap-metadata-provider instead of with-column-remappings in QP tests"}
+     metabase.test.util/with-column-remappings {:message "Use metabase.lib.test-util/remap-metadata-provider instead of with-column-remappings in QP tests"}}
+
+    :metabase/disallow-hardcoded-driver-names-in-tests
+    {:level :warning}}}}}

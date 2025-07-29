@@ -3,10 +3,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormInput from "metabase/core/components/FormInput";
-import FormSelect from "metabase/core/components/FormSelect";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import FormInput from "metabase/common/components/FormInput";
+import FormSelect from "metabase/common/components/FormSelect";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { LocaleData, User } from "metabase-types/api";
@@ -87,6 +88,7 @@ const UserProfileForm = ({
               name="locale"
               title={t`Language`}
               options={localeOptions}
+              description={<CommunityLocalizationNotice isAdminView={false} />}
             />
           </div>
           <FormSubmitButton title={t`Update`} disabled={!dirty} primary />

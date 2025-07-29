@@ -6,6 +6,7 @@ import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/t
 import type InternalQuestion from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
+import type { SdkDashboardId } from "./dashboard";
 import type { SdkEntityId } from "./entity-id";
 
 export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
@@ -18,7 +19,7 @@ export interface SdkQuestionState {
   queryResults?: any[];
 }
 
-export interface LoadSdkQuestionParams {
+export type LoadSdkQuestionParams = {
   /**
    * For SQL questions only. A mapping of SQL parameter names to parameter values, such as `{ product_id: "42"}`
    */
@@ -38,7 +39,14 @@ export interface LoadSdkQuestionParams {
    * @internal
    */
   questionId?: SdkQuestionId | null;
-}
+
+  /**
+   * @internal
+   * The ID of the dashboard to save the question to. If provided, the question will be saved to this dashboard instead of the target collection or dashboards.
+   * And the collection and dashboard picker will not be shown.
+   */
+  targetDashboardId?: SdkDashboardId | null;
+};
 
 export interface NavigateToNewCardParams {
   nextCard: Card;

@@ -8,10 +8,7 @@ import type { JSX } from "react";
 import type { MetabaseAuthConfig } from "embedding-sdk/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type {
-  MetabaseEmbeddingSessionToken,
-  MetabaseFetchRequestTokenFn,
-} from "embedding-sdk/types/refresh-token";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
 import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import type { LoginStatus } from "embedding-sdk/types/user";
@@ -34,7 +31,7 @@ export type SdkState = {
   usageProblem: null | SdkUsageProblem;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
-  fetchRefreshTokenFn: null | MetabaseFetchRequestTokenFn;
+  fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
 };
 
 export interface SdkStoreState extends State {

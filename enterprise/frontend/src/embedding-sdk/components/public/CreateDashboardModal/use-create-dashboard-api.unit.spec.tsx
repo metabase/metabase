@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupDashboardCreateEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -114,7 +114,7 @@ function setup(overrides: SetupProps = {}) {
     {
       storeInitialState: state,
       sdkProviderProps: {
-        authConfig: createMockAuthProviderUriConfig(),
+        authConfig: createMockSdkConfig(),
       },
     },
   );

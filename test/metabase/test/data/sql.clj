@@ -335,6 +335,31 @@
            query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
        {:query query}))))
 
+(defmethod tx/arbitrary-select-query :sql/test-extensions
+  ([driver table to-insert]
+   (driver/with-driver driver
+     (let [mbql-query      (data/mbql-query nil
+                             {:source-table (data/id table)
+                              :expressions  {:custom [:value 1337 {:base_type :type/Integer}]}
+                              :fields       [[:expression :custom]]
+                              :order-by     [[:asc [:field (data/id table :id)]]]
+                              :limit        2})
+           {:keys [query]} (qp.compile/compile mbql-query)
+           query           (str/replace query (re-pattern #"(.*)(?:1337)(.*)") (format "$1%s$2" to-insert))]
+       {:query query}))))
+
+(defmethod tx/make-alias :sql/test-extensions
+  ([_driver alias]
+   alias))
+
+(defmethod tx/make-alias :oracle
+  ([_driver alias]
+   (str "\"" alias "\"")))
+
+(defmethod tx/make-alias :snowflake
+  ([_driver alias]
+   (str "\"" alias "\"")))
+
 (defmulti session-schema
   "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
   to use the schema to create tables outside the regular test data setup. Test code that uses this should assume that

@@ -8,16 +8,16 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { useFavicon } from "metabase/common/hooks/use-favicon";
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
-import { useFavicon } from "metabase/hooks/use-favicon";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -57,13 +57,11 @@ import {
   getIsLiveResizable,
   getIsLoadingComplete,
   getIsNativeEditorOpen,
-  getIsObjectDetail,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
   getLastRunCard,
   getModalSnippet,
-  getMode,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getOriginalCard,
@@ -88,6 +86,7 @@ import {
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "../selectors";
+import { getIsObjectDetail, getMode } from "../selectors/mode";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
@@ -437,7 +436,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     }
   };
 
-  useHotkeys([["mod+Enter", handleCmdEnter]]);
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   return (
     <>

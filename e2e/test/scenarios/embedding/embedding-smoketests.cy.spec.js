@@ -18,6 +18,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.updateSetting("show-sdk-embed-terms", false);
   });
 
   it("should not offer to share or embed models (metabase#20815)", () => {
@@ -44,9 +45,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should display the embedding page correctly", () => {
       cy.visit("/admin/settings/setup");
-      sidebar().within(() => {
-        cy.findByRole("link", { name: "Embedding" }).click();
-      });
+
+      sidebar().findByText("Embedding").click(); // open section
+      sidebar()
+        .findAllByText("Overview") // the second "overview" page is for embedding
+        .should("have.length", 2)
+        .last()
+        .click();
 
       cy.location("pathname").should("eq", embeddingPage);
       mainPage().findByText(embeddingDescription).should("be.visible");
@@ -74,7 +79,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         value: true,
       });
       mainPage().within(() => {
-        cy.findByLabelText("Enable Static embedding")
+        cy.findByLabelText("Enable static embedding")
           .click({ force: true })
           .should("be.checked");
         cy.findByTestId("embedding-secret-key-setting").within(() => {
@@ -82,7 +87,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.findByText(
             "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
           );
-          getTokenValue().should("have.length", 64);
+          cy.findByRole("textbox").invoke("val").should("have.length", 64);
           cy.button("Regenerate key");
         });
 
@@ -99,7 +104,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.location("pathname").should("eq", embeddingPage);
 
       cy.log("The second section: 'Interactive embedding'");
-      cy.findByRole("article", { name: "Interactive embedding" }).within(() => {
+      cy.findByRole("article", { name: /Interactive embedding/ }).within(() => {
         cy.findByText("Interactive embedding");
 
         cy.findByRole("link", { name: "Learn More" })
@@ -317,10 +322,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.signInAsAdmin();
         cy.visit(standalonePath);
 
-        cy.findByLabelText("Embedding secret key").should(
-          "have.value",
-          METABASE_SECRET_KEY,
-        );
+        cy.findByTestId("embedding-secret-key-setting")
+          .findByRole("textbox")
+          .should("have.value", METABASE_SECRET_KEY);
 
         cy.button("Regenerate key").click();
 
@@ -360,10 +364,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 function resetEmbedding() {
   H.updateSetting("enable-embedding-static", false);
   H.updateSetting("embedding-secret-key", null);
-}
-
-function getTokenValue() {
-  return cy.get("#setting-embedding-secret-key").invoke("val");
 }
 
 function assertLinkMatchesUrl(text, url) {

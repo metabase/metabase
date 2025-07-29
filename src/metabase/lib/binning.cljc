@@ -227,6 +227,8 @@
     s
     (lib.util/format "%s: %s" s (binning-display-name binning-options semantic-type))))
 
+;;; TODO (Cam 6/13/25) -- only used outside of Lib; Lib doesn't use `snake_cased` keys. We should reconsider if this
+;;; belongs in Lib in its current shape.
 (defn ensure-binning-in-display-name
   "Update results column so binning is contained in its display_name."
   [column]

@@ -19,7 +19,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should not show the sidebar preview when working with instance analyics (metabase#49904)", () => {
@@ -112,7 +112,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         H.modal()
           .button(/Duplicate/i)
           .should("not.exist");
-        H.modal().button("Not now").click();
 
         cy.log("saving copied dashboard");
 
@@ -257,7 +256,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should not allow editing analytics content (metabase#36228)", () => {
@@ -305,7 +304,7 @@ describe("question and dashboard links", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should show an analytics link for questions", () => {

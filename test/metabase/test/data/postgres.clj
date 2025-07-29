@@ -1,8 +1,12 @@
 (ns metabase.test.data.postgres
   "Postgres driver test extensions."
   (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions]
@@ -132,3 +136,55 @@
   (apply sql.tx/standard-standalone-table-comment-sql args))
 
 (defmethod sql.tx/session-schema :postgres [_driver] "public")
+
+(defmethod tx/drop-if-exists-and-create-db! :postgres
+  [driver db-name & [just-drop]]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver (mt/dbdef->connection-details driver :server nil))]
+    ;; kill any open connections
+    (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
+                       FROM pg_stat_activity
+                       WHERE pg_stat_activity.datname = ?;" db-name])
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
+                   {:transaction? false})
+    (when (not= just-drop :just-drop)
+      (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
+                     {:transaction? false}))))
+
+(defmethod tx/drop-roles! :postgres
+  [driver details roles _user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name _perms] table-perms]
+          (jdbc/execute! spec
+                         [(format "ALTER TABLE %s DISABLE ROW LEVEL SECURITY" table-name)]
+                         {:transaction? false}))
+        (doseq [statement [(format "DROP OWNED BY %s;" role-name)
+                           (format "DROP ROLE IF EXISTS %s;" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name table-perms] roles]
+      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+        (doseq [[table-name perms] table-perms]
+          (let [rls-perms (get perms :rls [true])
+                policy-cond (first (binding [driver/*compile-with-inline-parameters* true]
+                                     (sql.qp/format-honeysql driver rls-perms)))]
+            (doseq [statement [(format "ALTER TABLE %s ENABLE ROW LEVEL SECURITY" table-name)
+                               (format "CREATE POLICY role_policy_%s ON %s FOR SELECT TO %s USING %s"
+                                       (mt/random-name) table-name role-name policy-cond)]]
+              (jdbc/execute! spec [statement] {:transaction? false})))
+          (let [columns (:columns perms)
+                select-cols (str/join ", " (map #(sql.tx/qualify-and-quote driver %) columns))
+                grant-stmt (if (not= select-cols "")
+                             (format "GRANT SELECT (%s) ON %s TO %s" select-cols table-name role-name)
+                             (format "GRANT SELECT ON %s TO %s" table-name role-name))]
+            (jdbc/execute! spec [grant-stmt] {:transaction? false})))))))
+
+(defmethod tx/create-and-grant-roles! :postgres
+  [driver details roles user-name _default-role]
+  (sql-jdbc.tx/drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (sql-jdbc.tx/grant-roles-to-user! driver details roles user-name))

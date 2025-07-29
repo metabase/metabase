@@ -386,7 +386,7 @@ export const configureSandboxPolicy = (
       .click();
     cy.findByRole("option", { name: filterColumn }).click();
     H.modal()
-      .findByRole("button", { name: /Pick a user attribute/ })
+      .findByPlaceholderText(/Pick a user attribute/)
       .click();
     cy.findByRole("option", { name: "filter-attribute" }).click();
   }

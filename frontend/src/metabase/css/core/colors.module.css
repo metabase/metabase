@@ -89,6 +89,7 @@
   --mb-color-background-disabled: var(--mb-base-color-gray-10);
   --mb-color-background-inverse: var(--mb-color-bg-black);
   --mb-color-background-brand: var(--mb-base-color-brand-40);
+  --mb-color-background-light: var(--mb-base-color-orion-5);
   /* The primary color is still `bg-error` not `background-error` */
   --mb-color-background-error-secondary: var(--mb-base-color-lobster-5);
   --mb-color-icon-primary: var(--mb-base-color-brand-40);
@@ -355,6 +356,11 @@
 
 .textTertiary {
   color: var(--mb-color-text-tertiary);
+}
+
+.bgBrandLighter,
+.bgBrandLighterHover:hover {
+  background-color: var(--mb-color-brand-lighter);
 }
 
 .bgLight,

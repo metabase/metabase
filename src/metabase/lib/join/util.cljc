@@ -4,7 +4,6 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -61,20 +60,27 @@
 
     CATEGORIES__via__CATEGORY_ID
 
+  For an implicit join made via a join, the join alias is appended to the name:
+
+    CATEGORIES__via__CATEGORY_ID__via__CATEGORIES
+
   You should make sure this gets ran thru a unique-name fn e.g. one returned
   by [[metabase.lib.util/unique-name-generator]]."
-  [table-name           :- ::lib.schema.common/non-blank-string
-   source-field-id-name :- ::lib.schema.common/non-blank-string]
-  (lib.util/format "%s__via__%s" table-name source-field-id-name))
+  [table-name              :- ::lib.schema.common/non-blank-string
+   fk-field-name    :- ::lib.schema.common/non-blank-string
+   fk-join-alias :- [:maybe ::lib.schema.common/non-blank-string]]
+  (if fk-join-alias
+    (lib.util/format "%s__via__%s__via__%s" table-name fk-field-name fk-join-alias)
+    (lib.util/format "%s__via__%s" table-name fk-field-name)))
 
-(defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
+(defn- implicit-join-name [metadata-providerable {:keys [fk-field-id fk-field-name fk-join-alias table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
-    (when-let [table (lib.metadata/table-or-card query table-id)]
-      (let [table-name           (:name table)
-            source-field-id-name (:name (lib.metadata/field query fk-field-id))]
-        (format-implicit-join-name table-name source-field-id-name)))))
+    (when-let [table (lib.metadata/table-or-card metadata-providerable table-id)]
+      (let [table-name    (:name table)
+            fk-field-name (or fk-field-name (:name (lib.metadata/field metadata-providerable fk-field-id)))]
+        (format-implicit-join-name table-name fk-field-name fk-join-alias)))))
 
-(mu/defn desired-alias :- ::lib.schema.common/non-blank-string
+(mu/defn desired-alias :- :string
   "Desired alias for a Field e.g.
 
     my_field
@@ -84,9 +90,10 @@
     MyJoin__my_field
 
   You should pass the results thru a unique name function."
-  [query          :- ::lib.schema/query
-   field-metadata :- ::lib.schema.metadata/column]
-  (if-let [join-alias (or (current-join-alias field-metadata)
-                          (implicit-join-name query field-metadata))]
-    (joined-field-desired-alias join-alias (:name field-metadata))
-    (:name field-metadata)))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   col                   :- ::lib.schema.metadata/column]
+  (let [source-alias ((some-fn :lib/source-column-alias :name) col)]
+    (if-let [join-alias (or (current-join-alias col)
+                            (implicit-join-name metadata-providerable col))]
+      (joined-field-desired-alias join-alias source-alias)
+      source-alias)))

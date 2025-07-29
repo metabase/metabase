@@ -120,7 +120,7 @@
     (and (vector? schema)
          (map? (second schema)))
     (let [[tag opts & args] schema]
-      (into [tag (assoc opts :description docstring)] args))
+      (into [tag (merge {:description docstring} opts)] args))
 
     (vector? schema)
     (let [[tag & args] schema]

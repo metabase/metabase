@@ -1,12 +1,10 @@
-import fetchMock from "fetch-mock";
-
 import {
   setupDatabasesEndpoints,
+  setupEmbeddingDataPickerDecisionEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
 import type { Query } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -16,11 +14,8 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockEmbedOptions,
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
@@ -39,19 +34,7 @@ export function setup({
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
 
-  fetchMock.get(
-    {
-      name: "entity-count",
-      url: "path:/api/search",
-      query: {
-        models: ["dataset", "table"],
-        limit: 0,
-      },
-    },
-    {
-      total: 100,
-    },
-  );
+  setupEmbeddingDataPickerDecisionEndpoints("staged");
 
   if (hasModels) {
     setupSearchEndpoints(createSearchResults());
@@ -73,11 +56,9 @@ export function setup({
     entityTypes
       ? {
           storeInitialState: createMockState({
-            embed: createMockEmbedState({
-              options: createMockEmbedOptions({
-                entity_types: entityTypes,
-              }),
-            }),
+            embeddingDataPicker: {
+              entityTypes,
+            },
           }),
         }
       : undefined,

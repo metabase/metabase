@@ -2,7 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -17,7 +18,10 @@ import {
 } from "metabase/ui";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
-import { removeDataSource } from "metabase/visualizer/visualizer.slice";
+import {
+  initializeVisualizer,
+  removeDataSource,
+} from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/api";
 
 import { ColumnsList } from "./ColumnsList/ColumnsList";
@@ -37,9 +41,16 @@ export const DataImporter = ({ className }: { className?: string }) => {
         handlers.open();
       }
 
-      dispatch(removeDataSource(source));
+      dispatch(removeDataSource({ source }));
     },
     [dataSources.length, handlers, dispatch],
+  );
+
+  const onResetDataSource = useCallback(
+    (source: VisualizerDataSource) => {
+      dispatch(initializeVisualizer({ cardId: source.sourceId }));
+    },
+    [dispatch],
   );
 
   const {
@@ -69,7 +80,16 @@ export const DataImporter = ({ className }: { className?: string }) => {
           size="xs"
           variant="transparent"
           ml="auto"
-          onClick={handlers.toggle}
+          onClick={() => {
+            trackSimpleEvent({
+              event: showDatasets
+                ? "visualizer_show_columns_clicked"
+                : "visualizer_add_more_data_clicked",
+              triggered_from: "visualizer-modal",
+            });
+
+            handlers.toggle();
+          }}
           className={S.ToggleButton}
           aria-label={showDatasets ? t`Done` : t`Add more data`}
         >
@@ -77,63 +97,73 @@ export const DataImporter = ({ className }: { className?: string }) => {
         </Button>
       )}
 
-      {showDatasets ? (
-        <Flex
-          direction="column"
-          className={S.Content}
-          style={{
-            height: "100%",
-          }}
-        >
-          <Box>
-            <TextInput
-              m="xs"
-              variant="filled"
-              value={search}
-              onChange={handleSearchChange}
-              placeholder={t`Search for something`}
-              leftSection={<Icon name="search" />}
-              autoFocus
-            />
-          </Box>
+      <Flex
+        direction="column"
+        className={S.Content}
+        h="100%"
+        gap="sm"
+        display={showDatasets ? "flex" : "none"}
+      >
+        <TextInput
+          m="xs"
+          variant="filled"
+          value={search}
+          onChange={handleSearchChange}
+          placeholder={t`Search for something`}
+          leftSection={<Icon name="search" />}
+          autoFocus
+        />
+        <DatasetsList
+          style={{ flex: 1 }}
+          search={debouncedSearch}
+          setDataSourceCollapsed={setDataSourceCollapsed}
+          muted={!showDatasets}
+        />
+      </Flex>
+      <Flex
+        direction="column"
+        className={S.Content}
+        bg="var(--mb-color-bg-white)"
+        h="100%"
+        display={showDatasets ? "none" : "flex"}
+        bd="1px solid var(--mb-color-border)"
+        style={{
+          borderRadius: "var(--default-border-radius)",
+        }}
+      >
+        {dataSources.length > 0 ? (
+          <ColumnsList
+            collapsedDataSources={collapsedDataSources}
+            toggleDataSource={toggleDataSource}
+            onRemoveDataSource={onRemoveDataSource}
+            onResetDataSource={onResetDataSource}
+          />
+        ) : (
           <Flex
             direction="column"
-            pt="sm"
-            px="sm"
+            className={S.Content}
+            bg="var(--mb-color-bg-white)"
             style={{
-              overflowY: "auto",
+              borderRadius: "var(--default-border-radius)",
+              height: "100%",
+              border: `1px solid var(--mb-color-border)`,
             }}
           >
-            <DatasetsList
-              search={debouncedSearch}
-              setDataSourceCollapsed={setDataSourceCollapsed}
-            />
+            {dataSources.length > 0 ? (
+              <ColumnsList
+                collapsedDataSources={collapsedDataSources}
+                toggleDataSource={toggleDataSource}
+                onRemoveDataSource={onRemoveDataSource}
+                onResetDataSource={onResetDataSource}
+              />
+            ) : (
+              <Center h="100%" w="100%" mx="auto">
+                <Text>{t`Pick a dataset first`}</Text>
+              </Center>
+            )}
           </Flex>
-        </Flex>
-      ) : (
-        <Flex
-          direction="column"
-          className={S.Content}
-          bg="white"
-          style={{
-            borderRadius: "var(--default-border-radius)",
-            height: "100%",
-            border: `1px solid var(--mb-color-border)`,
-          }}
-        >
-          {dataSources.length > 0 ? (
-            <ColumnsList
-              collapsedDataSources={collapsedDataSources}
-              toggleDataSource={toggleDataSource}
-              onRemoveDataSource={onRemoveDataSource}
-            />
-          ) : (
-            <Center h="100%" w="100%" mx="auto">
-              <Text>{t`Pick a dataset first`}</Text>
-            </Center>
-          )}
-        </Flex>
-      )}
+        )}
+      </Flex>
     </Box>
   );
 };

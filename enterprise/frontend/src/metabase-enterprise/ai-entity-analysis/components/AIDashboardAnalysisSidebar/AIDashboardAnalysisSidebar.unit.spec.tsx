@@ -1,10 +1,8 @@
 import { screen, waitFor } from "@testing-library/react";
 
-import {
-  setupAnalyzeChartEndpoint,
-  setupAnalyzeDashboardEndpoint,
-} from "__support__/server-mocks";
+import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { AIEntityAnalysisResponse, Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -17,44 +15,13 @@ import { AIDashboardAnalysisSidebar } from "./AIDashboardAnalysisSidebar";
 
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
   getDashboardImage: () => Promise.resolve("test-base64"),
-  getBase64ChartImage: () => Promise.resolve("test-base64"),
+  getChartImagePngDataUri: () => "test-base64",
   getChartSelector: () => "#chart",
 }));
 
 describe("AIDashboardAnalysisSidebar", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it("should fetch and display dashboard analysis", async () => {
-    const dashboard = createMockDashboard();
-    const mockResponse: AIEntityAnalysisResponse = {
-      summary: "Test dashboard analysis",
-    };
-
-    setupAnalyzeDashboardEndpoint(mockResponse);
-
-    const dashboardState = createMockDashboardState({
-      loadingDashCards: {
-        loadingStatus: "complete",
-        loadingIds: [],
-        startTime: null,
-        endTime: null,
-      },
-    });
-
-    renderWithProviders(
-      <AIDashboardAnalysisSidebar dashboard={dashboard} onClose={jest.fn()} />,
-      {
-        storeInitialState: {
-          dashboard: dashboardState,
-        },
-      },
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Test dashboard analysis")).toBeInTheDocument();
-    });
   });
 
   it("should show chart title and analysis when dashcardId is provided", async () => {
@@ -99,11 +66,9 @@ describe("AIDashboardAnalysisSidebar", () => {
     });
 
     renderWithProviders(
-      <AIDashboardAnalysisSidebar
-        dashboard={dashboard}
-        dashcardId={dashcardId}
-        onClose={jest.fn()}
-      />,
+      <MockDashboardContext sidebar={{ props: { dashcardId } }}>
+        <AIDashboardAnalysisSidebar />
+      </MockDashboardContext>,
       {
         storeInitialState: {
           dashboard: dashboardState,
@@ -181,11 +146,11 @@ describe("AIDashboardAnalysisSidebar", () => {
     });
 
     const { rerender } = renderWithProviders(
-      <AIDashboardAnalysisSidebar
-        dashboard={dashboard}
-        dashcardId={firstDashcardId}
-        onClose={jest.fn()}
-      />,
+      <MockDashboardContext
+        sidebar={{ props: { dashcardId: firstDashcardId } }}
+      >
+        <AIDashboardAnalysisSidebar />
+      </MockDashboardContext>,
       {
         storeInitialState: {
           dashboard: dashboardState,
@@ -200,11 +165,11 @@ describe("AIDashboardAnalysisSidebar", () => {
     setupAnalyzeChartEndpoint(secondChartResponse);
 
     rerender(
-      <AIDashboardAnalysisSidebar
-        dashboard={dashboard}
-        dashcardId={secondDashcardId}
-        onClose={jest.fn()}
-      />,
+      <MockDashboardContext
+        sidebar={{ props: { dashcardId: secondDashcardId } }}
+      >
+        <AIDashboardAnalysisSidebar />
+      </MockDashboardContext>,
     );
 
     await waitFor(() => {

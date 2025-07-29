@@ -25,10 +25,6 @@ export const getAdminPaths = (state: State) => {
   return state.admin?.app?.paths ?? [];
 };
 
-export const getIsOnboardingSidebarLinkDismissed = (state: State) => {
-  return getSetting(state, "dismissed-onboarding-sidebar-link");
-};
-
 export const isDeprecationNoticeEnabled = (state: State): boolean => {
   // check if the deprecation notice has been dismissed on this version
   return (
@@ -36,3 +32,6 @@ export const isDeprecationNoticeEnabled = (state: State): boolean => {
     state.settings?.values?.["deprecation-notice-version"]
   );
 };
+
+export const getCurrentVersion = (state: State) =>
+  state.settings?.values.version?.tag ?? "";

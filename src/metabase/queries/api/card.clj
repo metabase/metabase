@@ -4,16 +4,17 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.card :as queries.card]
@@ -22,6 +23,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -121,6 +123,23 @@
   (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
       (t2/hydrate :creator :collection)))
 
+;;; -------------------------------------------- List of public or embeddable cards -----------------------------------
+
+(api.macros/defendpoint :get "/public"
+  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
+  []
+  (perms/check-has-application-permission :setting)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
+
+(api.macros/defendpoint :get "/embeddable"
+  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
+  and a signed JWT."
+  []
+  (perms/check-has-application-permission :setting)
+  (embedding.validation/check-embedding-enabled)
+  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
+
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
   "a valid card filter option."
@@ -204,11 +223,12 @@
 (api.macros/defendpoint :get "/:id"
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {ignore-view? :ignore_view, :keys [context]} :- [:map
                                                     [:ignore_view {:optional true} [:maybe :boolean]]
                                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
-  (let [card (get-card id)]
+  (let [resolved-id (eid-translation/->id-or-404 :card id)
+        card (get-card resolved-id)]
     (u/prog1 card
       (when-not ignore-view?
         (events/publish-event! :event/card-read
@@ -250,21 +270,26 @@
   [cols]
   (map #(update-keys % u/->kebab-case-en) cols))
 
-(defn- source-cols [card source database-id->metadata-provider]
+(mu/defn- source-cols
+  [card
+   source :- [:enum ::breakouts ::aggregations]
+   database-id->metadata-provider]
   (if-let [names (get-in card [:visualization_settings (case source
-                                                         :source/breakouts :graph.dimensions
-                                                         :source/aggregations :graph.metrics)])]
+                                                         ::breakouts    :graph.dimensions
+                                                         ::aggregations :graph.metrics)])]
     (cols->kebab-case (card-columns-from-names card names))
     (->> (dataset-query->query (get database-id->metadata-provider (:database_id card)) (:dataset_query card))
          lib/returned-columns
-         (filter (comp #{source} :lib/source)))))
+         (filter (case source
+                   ::breakouts    :lib/breakout?
+                   ::aggregations #(= (:lib/source %) :source/aggregations))))))
 
 (defn- area-bar-line-series-are-compatible?
   [first-card second-card database-id->metadata-provider]
   (and (#{:area :line :bar} (:display second-card))
-       (let [initial-dimensions (source-cols first-card :source/breakouts database-id->metadata-provider)
-             new-dimensions     (source-cols second-card :source/breakouts database-id->metadata-provider)
-             new-metrics        (source-cols second-card :source/aggregations database-id->metadata-provider)]
+       (let [initial-dimensions (source-cols first-card ::breakouts database-id->metadata-provider)
+             new-dimensions     (source-cols second-card ::breakouts database-id->metadata-provider)
+             new-metrics        (source-cols second-card ::aggregations database-id->metadata-provider)]
          (cond
            ;; must have at least one dimension and one metric
            (or (zero? (count new-dimensions))
@@ -475,8 +500,8 @@
                             [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
                             [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-                            [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
-                            [:parameter_mappings     {:optional true} [:maybe [:sequential ms/ParameterMapping]]]
+                            [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+                            [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
                             [:description            {:optional true} [:maybe ms/NonBlankString]]
                             [:display                ms/NonBlankString]
                             [:visualization_settings ms/Map]
@@ -488,7 +513,7 @@
                             [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
   ;; check that we have permissions to run the query that we're trying to save
-  (perms/check-run-permissions-for-query query)
+  (query-perms/check-run-permissions-for-query query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (collection/check-write-perms-for-collection
@@ -517,7 +542,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (perms/check-run-permissions-for-query (:dataset_query card-updates)))))
+      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -536,7 +561,7 @@
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
    [:dataset_query          {:optional true} [:maybe ms/Map]]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
@@ -650,8 +675,9 @@
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (queries.metadata/batch-fetch-card-metadata [(get-card id)]))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (queries.metadata/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -752,7 +778,7 @@
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]
+                         [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
    :- [:map
@@ -764,13 +790,14 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (qp.card/process-query-for-card
-   card-id :api
-   :parameters   parameters
-   :ignore-cache ignore_cache
-   :dashboard-id dashboard_id
-   :context      (if collection_preview :collection :question)
-   :middleware   {:process-viz-settings? false}))
+  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
+    (qp.card/process-query-for-card
+     resolved-card-id :api
+     :parameters   parameters
+     :ignore-cache ignore_cache
+     :dashboard-id dashboard_id
+     :context      (if collection_preview :collection :question)
+     :middleware   {:process-viz-settings? false})))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
@@ -795,7 +822,7 @@
                                                         (cond-> x
                                                           (string? x) json/decode+kw))}
                                          ;; TODO -- figure out what the actual schema for parameters is supposed to be
-                                         ;; here... [[ms/Parameter]] is used for other endpoints in this namespace but
+                                         ;; here... [[::parameters.schema/parameter]] is used for other endpoints in this namespace but
                                          ;; it breaks existing tests
                                          [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]
@@ -820,7 +847,7 @@
   be enabled."
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)]
@@ -834,28 +861,13 @@
   "Delete the publicly-accessible link to this Card."
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
   (t2/update! :model/Card card-id
               {:public_uuid       nil
                :made_public_by_id nil})
   {:status 204, :body nil})
-
-(api.macros/defendpoint :get "/public"
-  "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
-  []
-  (validation/check-has-application-permission :setting)
-  (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Card :name :id :public_uuid :card_schema], :public_uuid [:not= nil], :archived false))
-
-(api.macros/defendpoint :get "/embeddable"
-  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
-  and a signed JWT."
-  []
-  (validation/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Card :name :id :card_schema], :enable_embedding true, :archived false))
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."

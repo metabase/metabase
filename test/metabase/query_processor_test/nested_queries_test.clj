@@ -20,7 +20,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -62,37 +62,28 @@
 
 (deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (testing "make sure we can do a basic query with a SQL source-query"
-      (is (= {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
-                     [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
-                     [3 -118.428 11 2 "The Apple Pan"                34.0406]
-                     [4 -118.465 29 2 "Wurstküche"                   33.9997]
-                     [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-              ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
-              ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
-              :cols (mapv (fn [col-name]
-                            (let [col (-> (qp.test-util/native-query-col :venues col-name)
-                                          (dissoc :database_type))]
-                              (assoc col :ident (lib/native-ident (:name col) "AAAAAAAAAAAAAAAAAAAAA"))))
-                          [:id :longitude :category_id :price :name :latitude])}
-             (mt/format-rows-by
-              [int 4.0 int int str 4.0]
-              (let [native-query (compile-to-native
-                                  (mt/mbql-query venues
-                                    {:fields [$id $longitude $category_id $price $name $latitude]}))]
-                (-> (qp.test-util/rows-and-cols
-                     (mt/run-mbql-query venues
-                       {:source-query {:native native-query}
-                        :order-by     [[:asc *venues.id]]
-                        :limit        5}))
-                    (update :cols (fn [cols]
-                                    (mapv (fn [col]
-                                            (-> col
-                                                (dissoc :database_type)
-                                                ;; Overwrite the idents to make the card eid fixed.
-                                                (update :ident #(str "native[AAAAAAAAAAAAAAAAAAAAA]__"
-                                                                     (subs % 31)))))
-                                          cols)))))))))))
+    (testing "make sure we can do a basic query with a native source-query"
+      (is (=? {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
+                      [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
+                      [3 -118.428 11 2 "The Apple Pan"                34.0406]
+                      [4 -118.465 29 2 "Wurstküche"                   33.9997]
+                      [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
+               ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
+               ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
+               :cols (mapv (fn [col-name]
+                             (-> (qp.test-util/native-query-col :venues col-name)
+                                 (dissoc :database_type :lib/type :lib/source)))
+                           [:id :longitude :category_id :price :name :latitude])}
+              (mt/format-rows-by
+               [int 4.0 int int str 4.0]
+               (let [native-query (compile-to-native
+                                   (mt/mbql-query venues
+                                     {:fields [$id $longitude $category_id $price $name $latitude]}))]
+                 (qp.test-util/rows-and-cols
+                  (mt/run-mbql-query venues
+                    {:source-query {:native native-query}
+                     :order-by     [[:asc *venues.id]]
+                     :limit        5})))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
                            :or   {has-source-metadata? true
@@ -205,9 +196,9 @@
 (deftest ^:parallel nested-with-aggregations-at-both-levels-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (mt/dataset test-data
-      (doseq [dataset? [true false]]
+      (doseq [model? [true false]]
         (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
-                         (if dataset? "questions" "models"))
+                         (if model? "questions" "models"))
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                             [(mt/mbql-query products
                                                {:aggregation [[:aggregation-options
@@ -216,8 +207,6 @@
                                                               [:aggregation-options
                                                                [:max $rating]
                                                                {:name "max"}]]
-                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                     1 "O7xQpRu8mQfVAnjroblU2"}
                                                 :breakout    [$category]
                                                 :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
@@ -236,10 +225,8 @@
                                                                                 {:name "sum"}]
                                                                                [:aggregation-options
                                                                                 [:count]
-                                                                                {:name "count"}]]
-                                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                                     1 "q0awK8v8lIp1iW_ZhSS_E"}}}
-                                                    (when dataset?
+                                                                                {:name "count"}]]}}
+                                                    (when model?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
 
@@ -276,14 +263,12 @@
                                              {:fields [$id]
                                               :joins  [{:source-table $$products
                                                         :alias        "P"
-                                                        :ident        "Zh421ECf3-b2l2Ml7s_3P"
                                                         :fields       [&P.products.id &P.products.ean]
                                                         :condition    [:= $product_id &P.products.id]}]})
                                            (mt/mbql-query orders
                                              {:fields [$id]
                                               :joins  [{:source-table "card__1"
                                                         :alias        "RP"
-                                                        :ident        "FGuqyLkhyOtYbUCeFSpfl"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
@@ -400,7 +385,7 @@
                   long-col-re (re-pattern (str "(?i)" long-col-name))]
               (is (=? {:rows [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]],
                        :cols
-                       [{:source       :fields
+                       [{:source       :fields ; QUE-1340
                          :name         long-col-re
                          :display_name long-col-re
                          :field_ref    [:field long-col-re {}]}
@@ -647,7 +632,6 @@
                (qp/process-query
                 (query-with-source-card 1 (mt/mbql-query checkins
                                             {:aggregation [[:count]]
-                                             :aggregation-idents {0 "vX12AxUR50eQNFNZgdG0m"}
                                              :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
@@ -660,6 +644,7 @@
     [_driver _feature _database]
     true))
 
+;;; see also [[metabase.lib.metadata.result-metadata-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::breakout-year-test)
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
@@ -669,11 +654,11 @@
                             :breakout     [!year.date]})]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [source-query])
-          (let [[date-col count-col] (for [col (-> (qp/process-query source-query)
-                                                   :data :cols)]
-                                       (-> (into {} col)
-                                           (assoc :source :fields)
-                                           (dissoc :position :aggregation_index :ident)))]
+          (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
+                                       (as-> col col
+                                         (assoc col :source :fields)
+                                         (dissoc col :position)
+                                         (m/filter-keys simple-keyword? col)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
@@ -710,7 +695,6 @@
                (-> (query-with-source-card 1
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
-                                              :aggregation-idents {0 "D8bJ476ZFWsYM5G159Ndc"}
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
                                               :breakout    [!month.*date]}))
                    qp/process-query
@@ -747,8 +731,7 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
-                                         {:aggregation [:count]
-                                          :aggregation-idents {0 "ApWqC4pOyxysqqeiuiPeS"}})))))))))
+                                         {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
@@ -1101,9 +1084,6 @@
                                       (get-in result [:data :results_metadata :columns])))
             expected-cols         (qp.store/with-metadata-provider provider
                                     (qp.preprocess/query->expected-cols (mt/mbql-query orders)))]
-        (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
-                       expected-cols))
-            "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
         ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
         (doseq [[description result-metadata] {"NONE"                   nil
                                                "from running the query" card-results-metadata
@@ -1150,9 +1130,10 @@
                                           (mt/id :products :title))
           (do-test
            (fn [results]
-             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
-                     4.0 "2017-12-31T14:41:56.87Z"]
+                     4.0 "2017-12-31T14:41:56.87Z"
+                     "Awesome Concrete Shoes"] ; <- additional remap of ORDERS.PRODUCT_ID => PRODUCTS.TITLE
                     (first (mt/rows results)))))))))))
 
 (deftest ^:parallel inception-metadata-test
@@ -1233,7 +1214,6 @@
                          "ORDERS.DISCOUNT"
                          "ORDERS.CREATED_AT"
                          "ORDERS.QUANTITY"
-                         "PRODUCTS.TITLE"
                          "PRODUCTS.ID"
                          "PRODUCTS.EAN"
                          "PRODUCTS.TITLE"
@@ -1241,11 +1221,13 @@
                          "PRODUCTS.VENDOR"
                          "PRODUCTS.PRICE"
                          "PRODUCTS.RATING"
-                         "PRODUCTS.CREATED_AT"]
+                         "PRODUCTS.CREATED_AT"
+                         "PRODUCTS.TITLE"] ; <- extra remapped column
                         (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
-                        25.1 4.0 "2017-12-31T14:41:56.87Z"]
+                        25.1 4.0 "2017-12-31T14:41:56.87Z"
+                        "Awesome Concrete Shoes"] ; <- extra remapped col
                        (mt/first-row result)))))))))))
 
 (deftest ^:parallel handle-unwrapped-joined-fields-correctly-test
@@ -1697,42 +1679,42 @@
   (mt/test-drivers (set/intersection
                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
                     (mt/normal-drivers-with-feature :left-join))
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          card-query (-> (lib/query mp (lib.metadata/table mp (mt/id "orders")))
-                         (lib/order-by (lib.metadata/field mp (mt/id "orders" "created_at")))
-                         (lib/limit 1)
-                         lib/->legacy-MBQL)
-          results (qp/process-query card-query)]
-      (mt/with-temp [:model/Card {card-id :id} {:type :question
-                                                :dataset_query {:native (get-in results [:data :native_form])
-                                                                :database (mt/id)
-                                                                :type :native}
-                                                :name          "Spaces in Name"
-                                                :entity_id     "yZvzZlw8lRkATwq8w8fDi"
-                                                :result_metadata
-                                                (for [col (get-in results [:data :results_metadata :columns])]
-                                                  (assoc col :ident (lib/native-ident (:name col) "yZvzZlw8lRkATwq8w8fDi")))}]
-        (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
-              query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
-                      (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))
-
-                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
-                                                                  created-at-pred
-                                                                  (lib/breakoutable-columns $q))
-                                         :month))
-                      (lib/breakout $q (lib/with-temporal-bucket (m/find-first
-                                                                  created-at-pred
-                                                                  (lib/breakoutable-columns $q))
-                                         :day))
-                      (lib/filter $q (lib/!= (m/find-first created-at-pred (lib/filterable-columns $q)) nil))
-                      (lib/append-stage $q)
-                      (lib/breakout $q (first (lib/breakoutable-columns $q)))
-                      (lib/breakout $q (last (lib/breakoutable-columns $q))))]
-          (is (= [[#t "2016-04-01" #t "2016-04-30"]]
-                 (mt/formatted-rows
-                  [(comp t/local-date u.date/parse)
-                   (comp t/local-date u.date/parse)]
-                  (qp/process-query query)))))))))
+    (let [mp              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          card-query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                              (lib/order-by (lib.metadata/field mp (mt/id :orders :created_at)))
+                              (lib/limit 1)
+                              lib/->legacy-MBQL)
+          results         (qp/process-query card-query)
+          mp              (lib.tu/mock-metadata-provider
+                           mp
+                           {:cards [{:id              1
+                                     :type            :question
+                                     :dataset-query   {:native   (get-in results [:data :native_form])
+                                                       :database (mt/id)
+                                                       :type     :native}
+                                     :name            "Spaces in Name"
+                                     :result-metadata (get-in results [:data :results_metadata :columns])}]})
+          created-at-pred (fn [col]
+                            (= (:display-name col) "Spaces in Name → Created At"))
+          query           (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $q
+                            (lib/join $q (lib/join-clause (lib.metadata/card mp 1)))
+                            (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                        created-at-pred
+                                                                        (lib/breakoutable-columns $q))
+                                               :month))
+                            (lib/breakout $q (lib/with-temporal-bucket (m/find-first
+                                                                        created-at-pred
+                                                                        (lib/breakoutable-columns $q))
+                                               :day))
+                            (lib/filter $q (lib/!= (m/find-first created-at-pred (lib/filterable-columns $q)) nil))
+                            (lib/append-stage $q)
+                            (lib/breakout $q (first (lib/breakoutable-columns $q)))
+                            (lib/breakout $q (last (lib/breakoutable-columns $q))))]
+      (is (= [[#t "2016-04-01" #t "2016-04-30"]]
+             (mt/formatted-rows
+              [(comp t/local-date u.date/parse)
+               (comp t/local-date u.date/parse)]
+              (qp/process-query query)))))))
 
 (deftest ^:parallel multiple-bucketings-of-a-column-test
   (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"

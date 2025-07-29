@@ -49,7 +49,7 @@
   (try
     (let [user-id  (or user-id api/*current-user-id*)]
       ;; we don't want to count pinned card views
-      (when-not (#{:collection :dashboard} context)
+      (when-not (#{:collection :dashboard :dashboard-subscription} context)
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))

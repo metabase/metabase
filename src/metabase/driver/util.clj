@@ -1,5 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -363,18 +364,20 @@
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
         disp-name (or (:display-name prop) "")
+        visible-if (:visible-if prop)
         placeholder (or (:placeholder prop) "E.x. public,auth*")
         type-prop-nm (str prop-name "-type")]
-    [{:name type-prop-nm
-      :display-name disp-name
-      :type "select"
-      :options [{:name (trs "All")
-                 :value "all"}
-                {:name (trs "Only these...")
-                 :value "inclusion"}
-                {:name (trs "All except...")
-                 :value "exclusion"}]
-      :default "all"}
+    [(merge {:name type-prop-nm
+             :display-name disp-name
+             :type "select"
+             :options [{:name (trs "All")
+                        :value "all"}
+                       {:name (trs "Only these...")
+                        :value "inclusion"}
+                       {:name (trs "All except...")
+                        :value "exclusion"}]
+             :default "all"}
+            {:visible-if visible-if})
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder placeholder
@@ -520,7 +523,8 @@
                                             :contact (driver/contact-info driver)}
                                    :details-fields props
                                    :driver-name    (driver/display-name driver)
-                                   :superseded-by  (driver/superseded-by driver)})
+                                   :superseded-by  (driver/superseded-by driver)
+                                   :extra-info     (driver/extra-info driver)})
                acc))
            (transient {}) (available-drivers))))
 

@@ -8,6 +8,7 @@ import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
 import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
+import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
 import type { ParametersState } from "./parameters";
 import type { QueryBuilderState } from "./qb";
@@ -27,6 +28,7 @@ export interface State {
   currentUser: User | null;
   dashboard: DashboardState;
   embed: EmbedState;
+  embeddingDataPicker: EmbeddingDataPickerState;
   entities: EntitiesState;
   parameters: ParametersState;
   qb: QueryBuilderState;

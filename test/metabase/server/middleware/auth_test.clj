@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
-   [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
@@ -48,7 +48,7 @@
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
-      (is (= request/response-unauthentic
+      (is (= api.response/response-unauthentic
              (auth-enforced-handler
               (ring.mock/request :get "/anyurl")))))
 
@@ -64,7 +64,7 @@
                                       :user_id (test.users/user->id :rasta)})
           (t2/update! (t2/table-name :model/Session) {:id session-id}
                       {:created_at (t/instant 1000)})
-          (is (= request/response-unauthentic
+          (is (= api.response/response-unauthentic
                  (auth-enforced-handler (request-with-session-key session-key))))
           (finally (t2/delete! :model/Session :id session-id)))))
 
@@ -79,7 +79,7 @@
           (t2/insert! :model/Session {:id         session-id
                                       :key_hashed session-key-hashed
                                       :user_id    (test.users/user->id :trashbird)})
-          (is (= request/response-unauthentic
+          (is (= api.response/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-key session-key))))
           (finally (t2/delete! :model/Session :id session-id)))))))

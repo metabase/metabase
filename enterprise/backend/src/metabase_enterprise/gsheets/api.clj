@@ -73,23 +73,27 @@
 
 (set! *warn-on-reflection* true)
 
-(defn error-response-in-body
+(defn- loggable-response [hm-response]
+  (-> hm-response
+      (#(if (sequential? %) (last %) %))
+      (#(or (:ex-data %) %))
+      (#(select-keys % [:status :body]))))
+
+(defn throw-error
   "We've decided to return errors as a map with an `:error` key. This function is a helper to make that map.
 
   This formats and throws an ex-info that will put the message into the body of the response."
-  ([message] (error-response-in-body message {}))
-  ([message data]
+  ([^long status-code ^String message hm-response] (throw-error status-code message hm-response {}))
+
+  ([^long status-code ^String message hm-response data]
    (throw (ex-info message (merge data {;; the `:errors true` bit informs the exception middleware to return the message
                                         ;; in the body, even if we want to pass a status code. Without `:errors true`,
                                         ;; sending a status code will elide the message from the response.
                                         :errors true
-                                        :message message})))))
-
-(defn- loggable-response [hm-response]
-  (-> hm-response
-      last
-      (#(or (:ex-data %) %))
-      (#(select-keys % [:status :body]))))
+                                        :status-code status-code
+                                        :hm/response (loggable-response hm-response)
+                                        :message message
+                                        :error_message ((comp :status-reason :body) hm-response)})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; MB <-> HM APIs
@@ -105,16 +109,10 @@
       email
 
       (= :error status)
-      (error-response-in-body
-       (tru "Harbormaster returned an error.")
-       {:status-code 502
-        :hm/response (loggable-response response)})
+      (throw-error 502 (tru "Harbormaster returned an error.") response)
 
       :else
-      (error-response-in-body
-       (tru "Google service-account is not setup in harbormaster.")
-       {:status-code 502
-        :hm/response (loggable-response response)}))))
+      (throw-error 502 response (tru "Google service-account is not setup in harbormaster.")))))
 
 (mr/def :gdrive/connection
   [:map {:description "A Harbormaster Gdrive Connection"}
@@ -210,7 +208,7 @@
   before."
   []
   (when-not (gsheets.settings/show-google-sheets-integration)
-    (error-response-in-body (tru "Google Sheets integration is not enabled.") {:status-code 402}))
+    (throw-error 402 (tru "Google Sheets integration is not enabled.") nil))
   {:email (hm-service-account-email)})
 
 (defn- seconds-from-epoch-now
@@ -232,7 +230,7 @@
   (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (snowplow/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
-      (error-response-in-body (tru "No attached dwh found.")))
+      (throw-error 400 (tru "No attached dwh found.") nil))
 
     (let [[status response] (hm-create-gdrive-conn! url)
           created-at (seconds-from-epoch-now)
@@ -250,9 +248,9 @@
                      :created-by-id  created-by-id
                      :db-id          attached-dwh})
           (analytics/inc! :metabase-gsheets/connection-creation-began))
-        (error-response-in-body
-         (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")
-         {:hm/response (loggable-response response)})))))
+        (throw-error 502
+                     (tru "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.")
+                     response)))))
 
 (defn- gsheets-safe
   "Return the gsheets setting, or fetch it from the db if it's not in the cache."
@@ -273,10 +271,8 @@
                            (catch Exception e
                              (do
                                (log/errorf e "Exception getting status of connection %s." conn-id)
-                               (error-response-in-body
-                                cannot-check-message
-                                {:gdrive/conn-id conn-id
-                                 :hm/exception e})))))
+                               (throw-error 502 cannot-check-message nil {:gdrive/conn-id conn-id
+                                                                          :hm/exception e})))))
         [hm-status {hm-status-code :status hm-body :body hm-err-body :ex-data}] hm-response]
     (if (= :ok hm-status)
       (let [{:keys [status status-reason error last-sync-at last-sync-started-at]
@@ -285,13 +281,13 @@
           (= "active" status)
           (assoc (setting->response saved-setting)
                  :status "active"
-                 :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
-                 :next_sync_at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15))))
+                 :last_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)))
+                 :next_sync_at (when last-sync-at (.getEpochSecond ^Instant (t/+ (t/instant last-sync-at) (t/minutes 15)))))
 
           (or (= "syncing" status) (= "initializing" status))
           (assoc (setting->response saved-setting)
                  :status "syncing"
-                 :last_sync_at (if (nil? last-sync-at) nil (.getEpochSecond ^Instant (t/instant last-sync-at)))
+                 :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
                  :sync_started_at (.getEpochSecond ^Instant (t/instant (or last-sync-started-at (t/instant)))))
 
           ;; other statuses are listed as "errors" to the frontend
@@ -301,7 +297,7 @@
                           :error_message (or status-reason
                                              (when (= error "not-found") "Unable to sync Google Drive: file does not exist or permissions are not set up correctly.")
                                              cannot-check-message)
-                          :last_sync_at (.getEpochSecond ^Instant (t/instant last-sync-at))
+                          :last_sync_at (if last-sync-at (.getEpochSecond ^Instant (t/instant last-sync-at)) nil)
                           :hm/response (loggable-response hm-response))
             (analytics/inc! :metabase-gsheets/connection-creation-error {:reason "status_error"})
             (log/errorf "Error getting status of connection %s: status-reason=`%s` error-detail=`%s`" conn-id (:status-reason hm-body) (:error-detail hm-body)))))
@@ -351,7 +347,7 @@
     (if (empty? sheet-config)
       (do
         (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync" :event_detail "fail - no config"})
-        (error-response-in-body (tru "No attached google sheet(s) found.") {:status-code 404}))
+        (throw-error 404 (tru "No attached google sheet(s) found.") nil))
       (do
         (snowplow/track-event! :snowplow/simple_event {:event "sheets_sync"})
         (analytics/inc! :metabase-gsheets/connection-manually-synced)
@@ -360,7 +356,7 @@
             (assoc (setting->response sheet-config)
                    :status "syncing"
                    :sync_started_at (seconds-from-epoch-now))
-            (error-response-in-body (tru "Error requesting sync") {:hm/response (loggable-response response)})))))))
+            (throw-error 502 (tru "Error requesting sync") response)))))))
 
 (api.macros/defendpoint :delete "/connection"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."

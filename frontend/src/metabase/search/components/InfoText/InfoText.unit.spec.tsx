@@ -1,4 +1,4 @@
-import moment from "moment"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import {
   setupCollectionByIdEndpoint,
@@ -37,7 +37,7 @@ const MOCK_OTHER_USER = createMockUser({
 
 const CREATED_AT_TIME = "2022-01-01T00:00:00.000Z";
 const LAST_EDITED_TIME = "2023-01-01T00:00:00.000Z";
-const formatDuration = (timestamp: string) => moment(timestamp).fromNow();
+const formatDuration = (timestamp: string) => dayjs(timestamp).fromNow();
 
 const CREATED_AT_DURATION = formatDuration(CREATED_AT_TIME);
 const LAST_EDITED_DURATION = formatDuration(LAST_EDITED_TIME);

@@ -273,7 +273,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           ],
           breakout: [
             ["field", PRODUCTS.RATING, { "source-field": ORDERS.PRODUCT_ID }],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.CATEGORY }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
           ],
         },
         type: "query",
@@ -372,7 +372,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalName, customName);
 
@@ -391,7 +393,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
   });
 
-  describe.skip("> single series question on dashboard with added series", () => {
+  describe("> single series question on dashboard with added series", () => {
     beforeEach(() => {
       setup({
         question: SUM_OF_TOTAL,
@@ -427,12 +429,17 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ],
       });
 
-      openDashCardVisualizationOptions();
-
-      updateColumnTitle("Q1", updatedOriginalSeriesName);
-      updateColumnTitle("Q2", updatedAddedSeriesName);
-
-      saveDashCardVisualizationOptions();
+      H.editDashboard();
+      H.showDashcardVisualizerModal(0, {
+        isVisualizerCard: false,
+      });
+      H.modal().within(() => {
+        cy.button("Settings").click();
+        updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
+        updateColumnTitle(addedSeriesName, updatedAddedSeriesName);
+        cy.button("Save").click();
+      });
+      H.saveDashboard();
 
       showTooltipForCircleInSeries("#88BF4D");
       H.assertEChartsTooltip({
@@ -498,7 +505,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalAvgSeriesName, customAvgSeriesName);
       updateColumnTitle(originalCumSumSeriesName, customCumSumSeriesName);
@@ -598,7 +607,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
     });
 
-    // TODO: this card should be converted properly, right now it isn't
+    // TODO: Fix series have different colors in visualizer because of different
+    // column names in original dashcard and visualizer ("avg" becomes "COLUMN_2" and the color has is different)
     it.skip("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       // Checking the second datum since the first circle of one series is covered with a circle from the other series
       const circleIndex = 1;
@@ -644,7 +654,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalAvgSeriesName, updatedOriginalAvgSeriesName);
       updateColumnTitle(
@@ -722,7 +734,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalName, updatedName);
 
@@ -757,8 +771,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
     });
 
-    // TODO: this card should be converted properly, right now it isn't
-    it.skip("should show updated column titles in tooltips after editing them via Visualization Options", () => {
+    it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalSeriesColor = "#88BF4D";
       const addedSeriesColor = "#A989C5";
       const originalSeriesName = "Q1";
@@ -791,7 +804,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       H.editDashboard();
-      H.showDashcardVisualizerModalSettings();
+      H.showDashcardVisualizerModalSettings(0, {
+        isVisualizerCard: false,
+      });
 
       updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
       updateColumnTitle(addedSeriesName, updatedAddedSeriesName);
@@ -1139,20 +1154,10 @@ function testTooltipExcludesText(text) {
   });
 }
 
-function openDashCardVisualizationOptions() {
-  cy.icon("pencil").click();
-  cy.findByTestId("dashcard").realHover();
-  cy.icon("palette").click();
-}
-
 function updateColumnTitle(originalText, updatedText) {
-  cy.findByDisplayValue(originalText).clear().type(updatedText).blur();
-}
-
-function saveDashCardVisualizationOptions() {
-  H.modal().within(() => {
-    cy.findByText("Done").click();
-  });
-
-  H.saveDashboard();
+  cy.findByTestId("chartsettings-list-container")
+    .findByDisplayValue(originalText)
+    .clear()
+    .type(updatedText)
+    .blur();
 }

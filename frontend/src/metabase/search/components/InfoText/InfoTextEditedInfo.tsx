@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { isNull } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
-import { getRelativeTime } from "metabase/lib/time";
+import { getRelativeTime } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
 import type { WrappedResult } from "metabase/search/types";
 import { Text, Tooltip } from "metabase/ui";

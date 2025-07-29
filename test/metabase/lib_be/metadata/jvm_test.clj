@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -45,115 +44,117 @@
             (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel join-with-aggregation-reference-in-fields-metadata-test
-  (mt/dataset test-data
-    (let [query (mt/mbql-query products
-                  {:joins [{:source-query {:source-table $$orders
-                                           :breakout     [$orders.product_id]
-                                           :aggregation  [[:sum $orders.quantity]]}
-                            :alias        "Orders"
-                            :condition    [:= $id &Orders.orders.product_id]
-                            :fields       [&Orders.orders.product_id
-                                           &Orders.*sum/Integer]}]
-                   :fields [$id]})
-          mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                (lib.convert/->pMBQL query))]
-      (is (=? [{:base-type :type/BigInteger
-                :semantic-type :type/PK
-                :table-id (mt/id :products)
-                :name "ID"
-                :lib/source :source/fields
-                :lib/source-column-alias "ID"
-                :effective-type :type/BigInteger
-                :id (mt/id :products :id)
-                :lib/desired-column-alias "ID"
-                :display-name "ID"}
-               {:metabase.lib.join/join-alias "Orders"
-                :base-type :type/Integer
-                :semantic-type :type/FK
-                :table-id (mt/id :orders)
-                :name "PRODUCT_ID"
-                :lib/source :source/joins
-                :lib/source-column-alias "PRODUCT_ID"
-                :effective-type :type/Integer
-                :id (mt/id :orders :product_id)
-                :lib/desired-column-alias "Orders__PRODUCT_ID"
-                :display-name "Product ID"
-                :source-alias "Orders"}
-               {:metabase.lib.join/join-alias "Orders"
-                :lib/type :metadata/column
-                :base-type :type/Integer
-                :name "sum"
-                :lib/source :source/joins
-                :lib/source-column-alias "sum"
-                :effective-type :type/Integer
-                :lib/desired-column-alias "Orders__sum"
-                :display-name "Sum of Quantity"
-                :source-alias "Orders"}]
+  (let [query      (mt/mbql-query products
+                     {:joins  [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product_id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product_id]
+                                :fields       [&Orders.orders.product_id
+                                               &Orders.*sum/Integer]}]
+                      :fields [$id]})
+        mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                              (lib.convert/->pMBQL query))]
+    (is (=? [{:base-type                :type/BigInteger
+              :semantic-type            :type/PK
+              :table-id                 (mt/id :products)
+              :name                     "ID"
+              :lib/source               :source/table-defaults
+              :lib/source-column-alias  "ID"
+              :effective-type           :type/BigInteger
+              :id                       (mt/id :products :id)
+              :lib/desired-column-alias "ID"
+              :display-name             "ID"}
+             {:metabase.lib.join/join-alias "Orders"
+              :base-type                    :type/Integer
+              :semantic-type                :type/FK
+              :table-id                     (mt/id :orders)
+              :name                         "PRODUCT_ID"
+              :lib/source                   :source/joins
+              :lib/source-column-alias      "PRODUCT_ID"
+              :effective-type               :type/Integer
+              :id                           (mt/id :orders :product_id)
+              :lib/desired-column-alias     "Orders__PRODUCT_ID"
+              :display-name                 "Orders → Product ID"
+              :source-alias                 "Orders"}
+             {:metabase.lib.join/join-alias "Orders"
+              :lib/type                     :metadata/column
+              :base-type                    :type/Integer
+              :name                         "sum"
+              :lib/source                   :source/joins
+              :lib/source-column-alias      "sum"
+              :effective-type               :type/Integer
+              :lib/desired-column-alias     "Orders__sum"
+              :display-name                 "Orders → Sum of Quantity"
+              :source-alias                 "Orders"}]
+            (binding [lib.metadata.calculation/*display-name-style* :long]
               (lib.metadata.calculation/returned-columns mlv2-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
-  (binding [lib.card/*force-broken-card-refs* false]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (mt/with-temp [:model/Card card {:dataset_query
-                                     (mt/mbql-query venues
-                                       {:joins
-                                        [{:source-table $$categories
-                                          :condition    [:= $category_id &c.categories.id]
-                                          :fields       :all
-                                          :alias        "c"}]})}]
-      (let [query      {:database (mt/id)
-                        :type     :query
-                        :query    {:source-card (u/the-id card)}}
-            mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                  (lib.convert/->pMBQL query))
-            breakouts  (lib/breakoutable-columns mlv2-query)
-            agg-query  (-> mlv2-query
-                           (lib/breakout (second breakouts))
-                           (lib/breakout (peek breakouts)))]
-        (is (=? [{:display-name      "ID"
-                  :long-display-name "ID"
-                  :effective-type    :type/BigInteger
-                  :semantic-type     :type/PK}
-                 {:display-name      "Name"
-                  :long-display-name "Name"
-                  :effective-type    :type/Text
-                  :semantic-type     :type/Name}
-                 {:display-name      "Category ID"
-                  :long-display-name "Category ID"
-                  :effective-type    :type/Integer
-                  :semantic-type     :type/FK}
-                 {:display-name      "Latitude"
-                  :long-display-name "Latitude"
-                  :effective-type    :type/Float
-                  :semantic-type     :type/Latitude}
-                 {:display-name      "Longitude"
-                  :long-display-name "Longitude"
-                  :effective-type    :type/Float
-                  :semantic-type     :type/Longitude}
-                 {:display-name      "Price"
-                  :long-display-name "Price"
-                  :effective-type    :type/Integer
-                  :semantic-type     :type/Category}
-                 {:display-name      "c → ID"
-                  :long-display-name "c → ID"
-                  :effective-type    :type/BigInteger
-                  :semantic-type     :type/PK}
-                 {:display-name      "c → Name"
-                  :long-display-name "c → Name"
-                  :effective-type    :type/Text
-                  :semantic-type     :type/Name}]
-                (map #(lib/display-info mlv2-query %)
-                     (lib.metadata.calculation/returned-columns mlv2-query))))
-        (is (=? [{:display-name      "Name"
-                  :long-display-name "Name"
-                  :effective-type    :type/Text
-                  :semantic-type     :type/Name}
-                 {:display-name      "c → Name"
-                  :long-display-name "c → Name"
-                  :effective-type    :type/Text
-                  :semantic-type     :type/Name}]
-                (map #(lib/display-info agg-query %)
-                     (lib.metadata.calculation/returned-columns agg-query))))))))
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (mt/with-temp [:model/Card card {:dataset_query
+                                   (mt/mbql-query venues
+                                     {:joins
+                                      [{:source-table $$categories
+                                        :condition    [:= $category_id &c.categories.id]
+                                        :fields       :all
+                                        :alias        "c"}]})}]
+    (let [query      {:database (mt/id)
+                      :type     :query
+                      :query    {:source-card (u/the-id card)}}
+          mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                (lib.convert/->pMBQL query))
+          breakouts  (lib/breakoutable-columns mlv2-query)
+          agg-query  (-> mlv2-query
+                         (lib/breakout (second breakouts))
+                         (lib/breakout (peek breakouts)))]
+      (is (=? [{:display-name      "ID"
+                :long-display-name "ID"
+                :effective-type    :type/BigInteger
+                :semantic-type     :type/PK}
+               {:display-name      "Name"
+                :long-display-name "Name"
+                :effective-type    :type/Text
+                :semantic-type     :type/Name}
+               {:display-name      "Category ID"
+                :long-display-name "Category ID"
+                :effective-type    :type/Integer
+                :semantic-type     :type/FK}
+               {:display-name      "Latitude"
+                :long-display-name "Latitude"
+                :effective-type    :type/Float
+                :semantic-type     :type/Latitude}
+               {:display-name      "Longitude"
+                :long-display-name "Longitude"
+                :effective-type    :type/Float
+                :semantic-type     :type/Longitude}
+               {:display-name      "Price"
+                :long-display-name "Price"
+                :effective-type    :type/Integer
+                :semantic-type     :type/Category}
+               {:display-name      "c → ID"
+                :long-display-name "c → ID"
+                :effective-type    :type/BigInteger
+                :semantic-type     :type/PK}
+               {:display-name      "c → Name"
+                :long-display-name "c → Name"
+                :effective-type    :type/Text
+                :semantic-type     :type/Name}]
+              (map #(lib/display-info mlv2-query %)
+                   (lib.metadata.calculation/returned-columns mlv2-query))))
+      (is (= ["Name"
+              "c → Name"]
+             (map :display-name (lib.metadata.calculation/returned-columns agg-query))))
+      (is (=? [{:display-name      "Name"
+                :long-display-name "Name"
+                :effective-type    :type/Text
+                :semantic-type     :type/Name}
+               {:display-name      "c → Name"
+                :long-display-name "c → Name"
+                :effective-type    :type/Text
+                :semantic-type     :type/Name}]
+              (map #(lib/display-info agg-query %)
+                   (lib.metadata.calculation/returned-columns agg-query)))))))
 
 (deftest ^:synchronized external-remap-metadata-test
   (mt/with-column-remappings [venues.id categories.name]

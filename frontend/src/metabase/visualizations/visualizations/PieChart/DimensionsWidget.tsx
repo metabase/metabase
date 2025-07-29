@@ -6,16 +6,17 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   SortableContext,
   arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState } from "react";
+import { type MutableRefObject, useState } from "react";
 import { t } from "ttag";
 
-import { Sortable } from "metabase/core/components/Sortable";
+import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
@@ -32,12 +33,16 @@ function DimensionPicker({
   value,
   options,
   showDragHandle,
+  dragHandleRef,
+  dragHandleListeners,
   onChange,
   onRemove,
 }: {
   value: string | undefined;
   options: { name: string; value: string }[];
   showDragHandle: boolean;
+  dragHandleRef?: MutableRefObject<HTMLElement | null>;
+  dragHandleListeners?: SyntheticListenerMap;
   onChange?: (value: string) => void;
   onRemove?: (() => void) | undefined;
 }) {
@@ -57,10 +62,14 @@ function DimensionPicker({
       onShowWidget={() => {}}
       onChangeSeriesColor={() => {}}
       showDragHandle={showDragHandle}
+      dragHandleListeners={dragHandleListeners}
+      dragHandleRef={dragHandleRef}
     />
   );
 }
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+const BREAKOUT_TITLE = t`Breakout`;
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const INNER_RING_TITLE = t`Inner Ring`;
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -68,6 +77,7 @@ const MIDDLE_RING_TITLE = t`Middle Ring`;
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const OUTER_RING_TITLE = t`Outer Ring`;
 
+const SINGLE_RING_SETTING_TITLES = [BREAKOUT_TITLE];
 const TWO_RING_SETTING_TITLES = [INNER_RING_TITLE, OUTER_RING_TITLE];
 const THREE_RING_SETTING_TITLES = [
   INNER_RING_TITLE,
@@ -91,8 +101,13 @@ export function DimensionsWidget({
     ...getPieDimensions(settings),
   ]);
 
+  const actualRingCount = dimensions.filter((d) => d != null).length;
   const dimensionTitles =
-    dimensions.length < 3 ? TWO_RING_SETTING_TITLES : THREE_RING_SETTING_TITLES;
+    actualRingCount === 1
+      ? SINGLE_RING_SETTING_TITLES
+      : actualRingCount === 2
+        ? TWO_RING_SETTING_TITLES
+        : THREE_RING_SETTING_TITLES;
 
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);
@@ -173,7 +188,7 @@ export function DimensionsWidget({
           strategy={verticalListSortingStrategy}
         >
           {dimensions.map((dimension, index) => (
-            <>
+            <div key={`dimension-${index}`}>
               <Text fw="bold" mb="sm">
                 {dimensionTitles[index]}
               </Text>
@@ -183,14 +198,20 @@ export function DimensionsWidget({
                 disabled={dimensions.length === 1 || dimension == null}
                 draggingStyle={{ opacity: 0.5 }}
               >
-                <DimensionPicker
-                  key={dimension}
-                  value={dimension}
-                  onChange={onChangeDimension(index)}
-                  onRemove={dimensions.length > 1 ? onRemove(index) : undefined}
-                  options={getFilteredOptions(index)}
-                  showDragHandle={dimensions.length > 1 && dimension != null}
-                />
+                {({ dragHandleRef, dragHandleListeners }) => (
+                  <DimensionPicker
+                    key={dimension}
+                    value={dimension}
+                    onChange={onChangeDimension(index)}
+                    onRemove={
+                      dimensions.length > 1 ? onRemove(index) : undefined
+                    }
+                    options={getFilteredOptions(index)}
+                    showDragHandle={dimensions.length > 1 && dimension != null}
+                    dragHandleRef={dragHandleRef}
+                    dragHandleListeners={dragHandleListeners}
+                  />
+                )}
               </Sortable>
               {index === 0 && (
                 <PieRowsPicker
@@ -201,7 +222,7 @@ export function DimensionsWidget({
                   numRings={dimensions.filter((d) => d != null).length}
                 />
               )}
-            </>
+            </div>
           ))}
           <DragOverlay>
             {draggedDimensionIndex != null ? (

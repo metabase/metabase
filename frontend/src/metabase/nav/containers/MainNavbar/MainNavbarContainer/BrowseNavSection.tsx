@@ -4,22 +4,30 @@ import { c, t } from "ttag";
 import { useUserSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
-import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
+  Button,
+  Collapse,
+  Flex,
+  Group,
+  Icon,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
+import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
 export const BrowseNavSection = ({
   nonEntityItem,
   onItemSelect,
+  onAddDataModalOpen,
   hasDataAccess,
 }: {
   nonEntityItem: SelectedItem;
   onItemSelect: () => void;
+  onAddDataModalOpen: () => void;
   hasDataAccess: boolean;
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
@@ -32,9 +40,7 @@ export const BrowseNavSection = ({
 
   const [opened, { toggle }] = useDisclosure(expandBrowse);
 
-  const entityTypes = useSelector(
-    (state) => getEmbedOptions(state).entity_types,
-  );
+  const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const handleToggle = () => {
@@ -44,33 +50,43 @@ export const BrowseNavSection = ({
 
   return (
     <div aria-selected={opened} role="tab">
-      <Group
-        align="center"
-        gap="sm"
-        onClick={handleToggle}
-        component={UnstyledButton}
-        c="text-medium"
-        mb="sm"
-        className={CS.cursorPointer}
-      >
-        <SidebarHeading>{c("A verb, shown in the sidebar")
-          .t`Browse`}</SidebarHeading>
-        <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
-      </Group>
-
-      <Collapse in={opened} transitionDuration={0} role="tabpanel">
-        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
-          <PaddedSidebarLink
-            icon="model"
-            url={BROWSE_MODELS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse models`}
+      <Flex align="center" justify="space-between" mb="sm">
+        <Group
+          align="center"
+          gap="sm"
+          onClick={handleToggle}
+          component={UnstyledButton}
+          c="text-medium"
+          className={CS.cursorPointer}
+        >
+          <SidebarHeading>
+            {c("A noun, shown in the sidebar as a navigation link").t`Data`}
+          </SidebarHeading>
+          <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
+        </Group>
+        {!isEmbeddingIframe && (
+          <Button
+            aria-label="Add data"
+            variant="subtle"
+            leftSection={<Icon name="add_data" />}
+            h="auto"
+            p={0}
+            onClick={() => {
+              trackAddDataModalOpened("left-nav");
+              onAddDataModalOpen();
+            }}
           >
-            {t`Models`}
-          </PaddedSidebarLink>
+            {t`Add`}
+          </Button>
         )}
+      </Flex>
 
+      <Collapse
+        in={opened}
+        transitionDuration={0}
+        role="tabpanel"
+        aria-expanded={opened}
+      >
         {hasDataAccess &&
           (!isEmbeddingIframe || entityTypes.includes("table")) && (
             <PaddedSidebarLink
@@ -83,6 +99,18 @@ export const BrowseNavSection = ({
               {t`Databases`}
             </PaddedSidebarLink>
           )}
+
+        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
+          <PaddedSidebarLink
+            icon="model"
+            url={BROWSE_MODELS_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse models`}
+          >
+            {t`Models`}
+          </PaddedSidebarLink>
+        )}
 
         {!isEmbeddingIframe && (
           <PaddedSidebarLink

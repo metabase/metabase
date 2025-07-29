@@ -1,3 +1,7 @@
+import {
+  getColumnKey,
+  getColumnNameFromKey,
+} from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";
 
 /**
@@ -31,7 +35,7 @@ export function updateVizSettingsKeysWithRefs(
 
     for (const key in settings) {
       // If the key exists in columnsToRefs, use the reference as the new key
-      const newKey = columnsToRefs[key] || key;
+      const newKey = getMappedVizSettingValue(key, columnsToRefs);
 
       // Process the value recursively
       const value = settings[key];
@@ -60,17 +64,37 @@ export function updateVizSettingsKeysWithRefs(
 function updateSettingsValuesWithRefs(
   settings: VisualizationSettings,
   columnsToRefs: Record<string, string>,
-  keysToUpdate: [keyof VisualizationSettings],
+  keysToUpdate: Array<keyof VisualizationSettings>,
 ): VisualizationSettings {
   const newSettings = { ...settings };
 
   keysToUpdate.forEach((key) => {
-    if (key in newSettings && newSettings[key] in columnsToRefs) {
-      newSettings[key] = columnsToRefs[newSettings[key]];
+    if (key in newSettings) {
+      newSettings[key] = Array.isArray(newSettings[key])
+        ? newSettings[key].map((value: string) =>
+            getMappedVizSettingValue(value, columnsToRefs),
+          )
+        : getMappedVizSettingValue(newSettings[key], columnsToRefs);
     }
   });
 
   return newSettings;
+}
+
+function getMappedVizSettingValue(
+  value: string,
+  columnsToRefs: Record<string, string>,
+) {
+  if (value in columnsToRefs) {
+    return columnsToRefs[value];
+  }
+
+  const columnName = getColumnNameFromKey(value);
+  if (columnName && columnName in columnsToRefs) {
+    return getColumnKey({ name: columnsToRefs[columnName] });
+  }
+
+  return value;
 }
 
 /**
@@ -93,7 +117,10 @@ export function updateVizSettingsWithRefs(
     settings,
     columnsToRefs,
   );
-  return updateSettingsValuesWithRefs(settingsWithUpdatedKeys, columnsToRefs, [
-    "graph.series_order_dimension",
-  ]);
+  const settingsWithUpdatedValues = updateSettingsValuesWithRefs(
+    settingsWithUpdatedKeys,
+    columnsToRefs,
+    ["graph.series_order_dimension", "graph.tooltip_columns"],
+  );
+  return settingsWithUpdatedValues;
 }

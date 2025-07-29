@@ -30,13 +30,15 @@
    :score  (:score result)})
 
 (defmulti update!
-  "Updates the existing search index by consuming the documents from the given reducible."
+  "Updates the existing search index by consuming the documents from the given reducible.
+  Returns a map of the number of documents indexed in each model"
   {:arglists '([search-engine document-reducible])}
   (fn [search-engine _document-reducible]
     search-engine))
 
 (defmulti delete!
-  "Removes the documents from the search index."
+  "Removes the documents from the search index.
+  Returns a map of the number of documents deleted in each model"
   {:arglists '([search-engine model ids])}
   (fn [search-engine _model _ids]
     search-engine))

@@ -106,11 +106,14 @@ export function downloadAndAssert(
   popover().within(() => {
     cy.findByText(`.${fileType}`).click();
 
-    const formattingButtonLabel = enableFormatting
-      ? "Formatted"
-      : "Unformatted";
-
-    cy.findByText(formattingButtonLabel).click();
+    cy.findByTestId("keep-data-formatted")
+      .as("keep-data-formatted")
+      .then(($checkbox) => {
+        const isChecked = $checkbox.prop("checked");
+        if (enableFormatting !== isChecked) {
+          cy.get("@keep-data-formatted").click();
+        }
+      });
 
     if (pivoting != null) {
       cy.findByTestId("keep-data-pivoted")

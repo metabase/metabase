@@ -36,6 +36,7 @@
 /coverage
 /crate-*
 /cypress
+cypress.env.json
 /deploy/artifacts/*
 /docs/**/node_modules
 /docs/**/package.json
@@ -58,7 +59,10 @@
 /reset-password-artifacts
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
+/resources/frontend_client/app/embed.js
+/resources/frontend_client/tmp-embed-js/
 /resources/frontend_client/embed.html
+/resources/frontend_client/embed-sdk.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/embedding-sdk
@@ -143,3 +147,9 @@ llm-payloads
 .aider*
 /config.yml
 CLAUDE.local.md
+.claude/settings.local.json
+
+.eslintcache
+
+/logs
+/.clojure-mcp

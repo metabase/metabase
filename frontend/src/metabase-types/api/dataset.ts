@@ -3,6 +3,7 @@ import type {
   LocalFieldReference,
   Parameter,
   ParameterValueOrArray,
+  VisualizerColumnValueSource,
 } from "metabase-types/api";
 
 import type { Card } from "./card";
@@ -14,7 +15,7 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
-export type RowValue = string | number | null | boolean;
+export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 
 export type BinningMetadata = {
@@ -41,7 +42,6 @@ export interface DatasetColumn {
   display_name: string;
   description?: string | null;
   source: string;
-  aggregation_index?: number;
   database_type?: string;
   active?: boolean;
   entity_id?: string;
@@ -49,7 +49,6 @@ export interface DatasetColumn {
   nfc_path?: string[] | null;
   parent_id?: number | null;
   position?: number;
-  source_alias?: string;
 
   aggregation_type?: AggregationType;
 
@@ -70,8 +69,6 @@ export interface DatasetColumn {
   binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
-  ident?: string;
-  "model/inner_ident"?: string;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
@@ -94,6 +91,10 @@ export interface DatasetData {
     query: string;
   };
   is_sandboxed?: boolean;
+  "pivot-export-options"?: {
+    "show-row-totals"?: boolean;
+    "show-column-totals"?: boolean;
+  };
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -170,6 +171,11 @@ export interface NativeDatasetResponse {
 
 export type SingleSeries = {
   card: Card;
+  /**
+   * A record that maps visualizer series keys (in the form of COLUMN_1,
+   * COLUMN_2, etc.) to their original values (count, avg, etc.).
+   */
+  columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
 } & Pick<Dataset, "data" | "error" | "started_at">;
 
 export type RawSeries = SingleSeries[];
@@ -183,6 +189,8 @@ export type TemplateTagType =
   | "text"
   | "number"
   | "date"
+  | "boolean"
+  | "temporal-unit"
   | "dimension"
   | "snippet";
 
@@ -191,11 +199,8 @@ export interface TemplateTag {
   name: TemplateTagName;
   "display-name": string;
   type: TemplateTagType;
-  dimension?: LocalFieldReference;
-  "widget-type"?: string;
   required?: boolean;
   default?: string | null;
-  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;
@@ -203,6 +208,14 @@ export interface TemplateTag {
   // Snippet specific
   "snippet-id"?: number;
   "snippet-name"?: string;
+
+  // Field filter and time grouping specific
+  dimension?: LocalFieldReference;
+  alias?: string;
+
+  // Field filter specific
+  "widget-type"?: string;
+  options?: ParameterOptions;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

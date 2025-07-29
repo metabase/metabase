@@ -3,8 +3,9 @@ import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
@@ -85,7 +86,8 @@ export const AuthCard = ({
       )}
       <ConfirmModal
         opened={isOpened}
-        title={t`Deactuvate ${name}?`}
+        title={c("{0} is the name of an authentication service")
+          .t`Deactivate ${name}?`}
         message={t`This will clear all your settings.`}
         confirmButtonText={t`Deactivate`}
         onConfirm={handleDeactivate}
@@ -123,25 +125,27 @@ export const AuthCardBody = ({
   const buttonLabel = buttonText ?? (isConfigured ? t`Edit` : t`Set up`);
 
   return (
-    <CardRoot data-testid={`${type}-setting`}>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {isConfigured && (
-          <CardBadge isEnabled={isEnabled} data-testid="card-badge">
-            {badgeContent}
-          </CardBadge>
+    <SettingsSection>
+      <CardRoot data-testid={`${type}-setting`}>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          {isConfigured && (
+            <CardBadge isEnabled={isEnabled} data-testid="card-badge">
+              {badgeContent}
+            </CardBadge>
+          )}
+          {children}
+        </CardHeader>
+        <CardDescription>{description}</CardDescription>
+        {footer ? (
+          footer
+        ) : (
+          <Link to={`/admin/settings/authentication/${type}`}>
+            <Button>{buttonLabel}</Button>
+          </Link>
         )}
-        {children}
-      </CardHeader>
-      <CardDescription>{description}</CardDescription>
-      {footer ? (
-        footer
-      ) : (
-        <Link to={`/admin/settings/authentication/${type}`}>
-          <Button>{buttonLabel}</Button>
-        </Link>
-      )}
-    </CardRoot>
+      </CardRoot>
+    </SettingsSection>
   );
 };
 

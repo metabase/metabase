@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
+   [metabase.permissions.core :as perms]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.util :as u]
@@ -10,7 +10,7 @@
 (defn create-dashboard-subscription
   "Create a dashboard subscription."
   [{:keys [dashboard-id email schedule]}]
-  (validation/check-has-application-permission :subscription false)
+  (perms/check-has-application-permission :subscription false)
   (if (int? dashboard-id)
     (let [dashboard (some-> (t2/select-one :model/Dashboard dashboard-id)
                             api/read-check

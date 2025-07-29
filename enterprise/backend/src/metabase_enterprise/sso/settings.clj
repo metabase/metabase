@@ -3,6 +3,7 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase-enterprise.scim.core :as scim]
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [define-multi-setting-impl defsetting]]
@@ -35,8 +36,7 @@ don''t have one.")
   :audit   :getter)
 
 (defsetting jwt-user-provisioning-enabled?
-  (deferred-tru "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who
-don''t have one.")
+  (deferred-tru "When a user logs in via JWT, create a Metabase account for them automatically if they don''t have one.")
   :type    :boolean
   :default true
   :feature :sso-jwt
@@ -110,7 +110,6 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   (deferred-tru "Alias for the key that {0} should use for signing SAML requests"
                 (setting/application-name-for-setting-descriptions appearance/application-name))
   :encryption :when-encryption-key-set
-  :default    "metabase"
   :feature    :sso-saml
   :audit      :getter)
 
@@ -144,7 +143,6 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting saml-attribute-group
   (deferred-tru "SAML attribute for group syncing")
-  :default    "member_of"
   :feature    :sso-saml
   :audit      :getter
   :encryption :when-encryption-key-set)
@@ -204,7 +202,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :audit      :getter)
 
 (defsetting jwt-identity-provider-uri
-  (deferred-tru "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.")
+  (deferred-tru "URL for JWT-based login page.")
   :encryption :when-encryption-key-set
   :feature    :sso-jwt
   :audit      :getter)
@@ -273,7 +271,8 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :default false
   :feature :sso-jwt
   :setter  :none
-  :getter  (fn [] (boolean (jwt-shared-secret))))
+  :getter  (fn [] (and (boolean (jwt-shared-secret))
+                       (boolean (jwt-identity-provider-uri)))))
 
 (defsetting jwt-enabled
   (deferred-tru "Is JWT authentication configured and enabled?")
@@ -287,6 +286,18 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                false))
   :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
+
+(defsetting sdk-encryption-validation-key
+  (deferred-tru "Used for encrypting and checking whether SDK requests are signed")
+  :type       :string
+  :init       (fn []
+                (let [ba (byte-array 32)
+                      _  (.nextBytes (java.security.SecureRandom.) ba)]
+                  (codecs/bytes->b64-str ba)))
+  :export?    false
+  :sensitive? true
+  :visibility :internal
+  :audit      :no-value)
 
 (define-multi-setting-impl send-new-sso-user-admin-email? :ee
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))

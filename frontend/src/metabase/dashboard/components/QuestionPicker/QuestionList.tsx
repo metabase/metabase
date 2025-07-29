@@ -7,16 +7,17 @@ import {
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
-import EmptyState from "metabase/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/components/PaginationControls";
-import SelectList from "metabase/components/SelectList";
-import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import EmptyState from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
+import SelectList from "metabase/common/components/SelectList";
+import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import Search from "metabase/entities/search";
-import { isEmbeddingSdk } from "metabase/env";
-import { usePagination } from "metabase/hooks/use-pagination";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -79,7 +80,7 @@ export function QuestionList({
           ...(showOnlyPublicCollections && {
             filter_items_in_personal_collection: "exclude" as const,
           }),
-          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+          models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
             : ["card", "dataset", "metric"],
           offset: queryOffset,
@@ -95,7 +96,7 @@ export function QuestionList({
     !isSearching
       ? {
           id: collectionId,
-          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+          models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
             : ["card", "dataset", "metric"],
           offset: queryOffset,
@@ -158,9 +159,15 @@ export function QuestionList({
                 className={S.VisualizerButton}
                 size="41px"
                 aria-label={t`Visualize another way`}
-                onClick={() => setVisualizerModalCardId(Number(item.id))}
+                onClick={() => {
+                  trackSimpleEvent({
+                    event: "visualize_another_way_clicked",
+                    triggered_from: "question-list",
+                  });
+                  setVisualizerModalCardId(Number(item.id));
+                }}
               >
-                <Icon name="add_data" />
+                <Icon name="lineandbar" />
               </ActionIcon>
             </Tooltip>
           </Flex>

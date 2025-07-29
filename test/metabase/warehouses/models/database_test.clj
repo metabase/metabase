@@ -6,11 +6,13 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
@@ -69,7 +71,7 @@
                               (if (and (= model :model/Database) (nil? args))
                                 [(mt/db)]
                                 (apply t2/select model args)))]
-      (binding [h2/*allow-testing-h2-connections* true]
+      (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "status gauge resets"
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
@@ -81,7 +83,7 @@
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
     (with-redefs [quick-task/submit-task! (fn [task] (task))]
-      (binding [h2/*allow-testing-h2-connections* true]
+      (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "successes"
           (mt/with-prometheus-system! [_ system]
             (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
@@ -627,3 +629,142 @@
              (t2/hydrate :tables)
              :tables
              (#(map :name %))))))
+
+(deftest visible-filter-clause-test
+  (testing "Database visible-filter-clause generates a HoneySQL clause that filters databases based on user permissions"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+
+        ;; Set up permissions: user has access to db1 and db2 via different groups, but not db3
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+
+        ;; Clear existing permissions for our test databases only
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+
+        ;; Grant permissions to specific databases
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+
+        ;; No permissions for db3
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+
+        (let [user-id (mt/user->id :rasta)
+              fetch-visible-ids (fn [user-info permission-mapping column-field]
+                                  (let [filter-clause (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
+                                    (t2/select-pks-set :model/Database
+                                                       {:where [:and
+                                                                filter-clause
+                                                                [:in :id [db1-id db2-id db3-id]]]})))] ; Only check our test databases
+
+          (testing "Superuser should see all databases"
+            (let [user-info {:user-id user-id :is-superuser? true}
+                  permission-mapping {:perms/view-data :unrestricted
+                                      :perms/create-queries :query-builder}]
+              (is (= #{db1-id db2-id db3-id}
+                     (fetch-visible-ids user-info permission-mapping :id))
+                  "Superuser should see all databases")))
+
+          (testing "Non-superuser should only see databases they have permissions for"
+            (let [user-info {:user-id user-id :is-superuser? false}
+                  permission-mapping {:perms/view-data :unrestricted
+                                      :perms/create-queries :query-builder}]
+              (is (= #{db1-id db2-id}
+                     (fetch-visible-ids user-info permission-mapping :id))
+                  "Non-superuser should only see databases with sufficient permissions")))
+
+          (testing "Using qualified column name"
+            (let [user-info {:user-id user-id :is-superuser? false}
+                  permission-mapping {:perms/view-data :unrestricted
+                                      :perms/create-queries :query-builder}]
+              (is (= #{db1-id db2-id}
+                     (fetch-visible-ids user-info permission-mapping :metabase_database.id))
+                  "Should work with qualified column names")))
+
+          (testing "Using column expression"
+            (let [user-info {:user-id user-id :is-superuser? false}
+                  permission-mapping {:perms/view-data :unrestricted
+                                      :perms/create-queries :query-builder}]
+              (is (= #{db1-id db2-id}
+                     (fetch-visible-ids user-info permission-mapping [:coalesce :id :metabase_database.id]))
+                  "Should work with column expressions")))
+
+          (testing "Different permission levels"
+            (testing "Requiring only view-data permissions"
+              (let [user-info {:user-id user-id :is-superuser? false}
+                    permission-mapping {:perms/view-data :unrestricted
+                                        :perms/create-queries :no}]
+                (is (= #{db1-id db2-id}
+                       (fetch-visible-ids user-info permission-mapping :id))
+                    "Should include databases where user has view permissions")))
+
+            (testing "Requiring blocked level permissions (most permissive)"
+              (let [user-info {:user-id user-id :is-superuser? false}
+                    permission-mapping {:perms/view-data :blocked
+                                        :perms/create-queries :no}]
+                (is (= #{db1-id db2-id db3-id}
+                       (fetch-visible-ids user-info permission-mapping :id))
+                    "Should include all databases when requiring only blocked level"))))
+
+          (testing "User with no permissions"
+            ;; Remove user from groups we added (avoid touching All Users group)
+            (t2/delete! :model/PermissionsGroupMembership
+                        :user_id user-id
+                        :group_id [:in [(:id pg1) (:id pg2)]])
+
+            (let [user-info {:user-id user-id :is-superuser? false}
+                  permission-mapping {:perms/view-data :unrestricted
+                                      :perms/create-queries :query-builder}]
+              (is (empty? (fetch-visible-ids user-info permission-mapping :id))
+                  "User with no group memberships should see no databases"))))))))
+
+(deftest visible-filter-clause-table-level-permissions-test
+  (testing "Database visible-filter-clause with table-level permissions"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
+                     :model/Table {table1-id :id} {:db_id db-id :name "Table1"}
+                     :model/Table {table2-id :id} {:db_id db-id :name "Table2"}
+                     :model/Table _ {:db_id db-id :name "Table3"}
+                     :model/PermissionsGroup pg {}]
+
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+
+        ;; Clear existing permissions for our test database only
+        (t2/delete! :model/DataPermissions :db_id db-id)
+
+        ;; Block database-level access
+        (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+
+        ;; Grant table-level permissions to only table1 and table2
+        (data-perms/set-table-permission! pg table1-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg table1-id :perms/create-queries :query-builder)
+
+        (data-perms/set-table-permission! pg table2-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg table2-id :perms/create-queries :query-builder)
+
+        ;; table3 remains blocked
+
+        (let [user-id (mt/user->id :rasta)
+              user-info {:user-id user-id :is-superuser? false}
+              permission-mapping {:perms/view-data :unrestricted
+                                  :perms/create-queries :query-builder}
+              filter-clause (mi/visible-filter-clause :model/Database :id user-info permission-mapping)
+              visible-db-ids (t2/select-pks-set :model/Database
+                                                {:where [:and
+                                                         filter-clause
+                                                         [:= :id db-id]]})] ; Only check our test database
+
+          (is (contains? visible-db-ids db-id)
+              "Database should be visible when user has access to at least one table"))))))

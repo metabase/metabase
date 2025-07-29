@@ -3,10 +3,10 @@ import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/lib/redux";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Checkbox, Chip, Group, Radio, Stack, Text } from "metabase/ui";
+import { Checkbox, SegmentedControl, Stack } from "metabase/ui";
 
 interface ExportSettingsWidgetProps {
   formats: ExportFormat[];
@@ -26,9 +26,8 @@ const useFormattingLabel = ({
   isFormattingEnabled: boolean;
 }) => {
   const applicationName = useSelector(getApplicationName);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
-  return match({ isFormattingEnabled, isEmbeddingSdk })
+  return match({ isFormattingEnabled, isEmbeddingSdk: isEmbeddingSdk() })
     .with(
       { isEmbeddingSdk: true, isFormattingEnabled: true },
       () =>
@@ -75,54 +74,54 @@ export const ExportSettingsWidget = ({
   const arePivotedExportsEnabled = useSetting("enable-pivoted-exports") ?? true;
 
   const formattingLabel = useFormattingLabel({ isFormattingEnabled });
+  const formatOptions = formats.map((format) => ({
+    label: `.${format}`,
+    value: format,
+  }));
 
   return (
-    <Stack>
-      <Chip.Group
+    <Stack gap="lg">
+      <SegmentedControl
+        w="100%"
+        data={formatOptions}
         value={selectedFormat}
-        onChange={(newValue: string | string[]) => {
-          Array.isArray(newValue)
-            ? onChangeFormat(newValue[0] as ExportFormat)
-            : onChangeFormat(newValue as ExportFormat);
+        onChange={onChangeFormat}
+        styles={{
+          root: {
+            backgroundColor: "var(--mb-color-background-light)",
+          },
         }}
-      >
-        <Group gap="xs" wrap="nowrap">
-          {formats.map((format) => (
-            <Chip
-              key={format}
-              value={format}
-              variant="brand"
-            >{`.${format}`}</Chip>
-          ))}
-        </Group>
-      </Chip.Group>
-      {canConfigureFormatting ? (
-        <Stack gap="xs">
-          <Radio.Group
-            value={isFormattingEnabled ? "true" : "false"}
-            onChange={() => onToggleFormatting()}
-          >
-            <Group>
-              <Radio value="true" label={t`Formatted`} />
-              <Radio value="false" label={t`Unformatted`} />
-            </Group>
-          </Radio.Group>
+      />
 
-          <Text
-            data-testid="formatting-description"
-            size="sm"
-            color="text-medium"
-          >
-            {formattingLabel}
-          </Text>
-        </Stack>
+      {canConfigureFormatting ? (
+        <Checkbox
+          data-testid="keep-data-formatted"
+          label={t`Keep the data formatted`}
+          checked={isFormattingEnabled}
+          onChange={() => onToggleFormatting()}
+          description={formattingLabel}
+          styles={{
+            inner: { alignSelf: "flex-start" },
+            label: {
+              color: "var(--mb-color-text-primary)",
+            },
+            description: {
+              color: "var(--mb-color-text-secondary)",
+            },
+          }}
+        />
       ) : null}
       {arePivotedExportsEnabled && canConfigurePivoting ? (
         <Checkbox
           data-testid="keep-data-pivoted"
-          label={t`Keep data pivoted`}
+          label={t`Keep the data pivoted`}
           checked={isPivotingEnabled}
           onChange={() => onTogglePivoting()}
+          styles={{
+            label: {
+              color: "var(--mb-color-text-primary)",
+            },
+          }}
         />
       ) : null}
     </Stack>

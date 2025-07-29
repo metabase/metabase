@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import metabot from "assets/img/metabot-96x96.svg";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
@@ -29,10 +30,10 @@ import type { RawSeries } from "metabase-types/api";
 import { TabularPreviewModal } from "../TabularPreviewModal";
 import { useVisualizerUi } from "../VisualizerUiContext";
 
-import { HorizontalWell } from "./HorizontalWell";
-import { ScatterFloatingWell } from "./ScatterFloatingWell";
-import { VerticalWell } from "./VerticalWell";
 import S from "./VisualizationCanvas.module.css";
+import { HorizontalWell } from "./wells/HorizontalWell";
+import { ScatterFloatingWell } from "./wells/ScatterFloatingWell";
+import { VerticalWell } from "./wells/VerticalWell";
 
 function disableAxisLabels(rawSeries: RawSeries) {
   return produce(rawSeries, (draft) => {
@@ -105,7 +106,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <Visualization
             rawSeries={rawSeries}
             // TableInteractive crashes when trying to use metabase-lib
-            isDashboard={display === "table"}
+            isDashboard
           />
         </Box>
 
@@ -115,8 +116,18 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           pl="7px"
           style={{ gridArea: "bottom-left" }}
         >
-          <Tooltip label={t`View as table`}>
-            <ActionIcon onClick={() => setTabularPreviewOpen(true)}>
+          <Tooltip withinPortal={false} label={t`View as table`}>
+            <ActionIcon
+              data-testid="visualizer-view-as-table-button"
+              onClick={() => {
+                trackSimpleEvent({
+                  event: "visualizer_view_as_table_clicked",
+                  triggered_from: "visualizer-modal",
+                });
+
+                setTabularPreviewOpen(true);
+              }}
+            >
               <Icon name="table" />
             </ActionIcon>
           </Tooltip>
@@ -126,7 +137,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <HorizontalWell display={display} />
         </Box>
         {display === "scatter" && (
-          <Box style={{ gridArea: "top-right" }}>
+          <Box style={{ gridArea: "top" }}>
             <ScatterFloatingWell />
           </Box>
         )}

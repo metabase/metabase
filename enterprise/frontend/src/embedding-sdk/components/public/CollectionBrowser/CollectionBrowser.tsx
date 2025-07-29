@@ -15,6 +15,7 @@ import type {
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
@@ -156,11 +157,12 @@ const CollectionBrowserWrapper = ({
   collectionId = "personal",
   ...restProps
 }: CollectionBrowserProps) => {
+  const { isLocaleLoading } = useLocale();
   const { id, isLoading } = useTranslatedCollectionId({
     id: collectionId,
   });
 
-  if (isLoading) {
+  if (isLocaleLoading || isLoading) {
     return <SdkLoader />;
   }
 

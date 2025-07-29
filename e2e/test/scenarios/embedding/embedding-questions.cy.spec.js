@@ -210,7 +210,7 @@ describe("scenarios [EE] > embedding > questions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     // Remap Product ID -> Product Title
     cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
@@ -348,7 +348,7 @@ describe("scenarios > embedding > questions > downloads", () => {
         cy.findByRole("button", { name: "Download results" }).click();
 
         H.popover().within(() => {
-          cy.findAllByText("Download").should("have.length", 2);
+          cy.findByText("Download");
           cy.findByText(".csv");
           cy.findByText(".xlsx");
           cy.findByText(".json");
@@ -369,7 +369,7 @@ describe("scenarios > embedding > questions > downloads", () => {
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should be possible to disable downloads", () => {
       cy.get("@questionId").then((questionId) => {

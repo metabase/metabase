@@ -9,15 +9,46 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
+
+(defn- all-fields-for-table [table-id]
+  (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
+       ;; The remove line is taken from the add-implicit-clauses middleware. It shouldn't be necessary, because any
+       ;; unused fields should be dropped from the inner query. It also shouldn't hurt anything, because the outer
+       ;; query shouldn't use these fields in the first place.
+       (remove #(#{:sensitive :retired} (:visibility-type %)))
+       (map (fn [field]
+              [:field (u/the-id field) nil]))))
+
+(defn- add-all-fields
+  "This adds all non-sensitive/retired fields (including fields with parent ids) to the passed-in query.
+
+  The issue is that nest-query mostly relies on the preprocessor (specifically, the add-implicit-clauses middleware)
+  to add all possible fields to the newly created inner query. However, add-implicit-fields ignores fields with a
+  parent id. The main user of parent-id is mongo, and mongo doesn't use nest-query, so this usually isn't an
+  issue. However, bigquery also uses parent-id, and bigquery is a sql driver that uses nest-query. As a result,
+  without this function, nest-query wasn't adding bigquery struct member fields to the inner query, which caused sql
+  errors. This function adds in any missing fields and fixes those errors."
+  [{{source-table-id :source-table, :keys [fields]} :query, :as outer-query}]
+  (if source-table-id
+    (let [all-fields (all-fields-for-table source-table-id)
+          existing-fields (into #{} (map second) fields)]
+      (assoc-in outer-query [:query :fields]
+                (into fields
+                      (remove (comp existing-fields second))
+                      all-fields)))
+    outer-query))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
@@ -82,10 +113,41 @@
               (filterv used?* fields))]
       (update source :fields remove-unused))))
 
+(defn- append-join-fields
+  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]. When we migrate this namespace
+  to Lib we can maybe use that."
+  [fields join-fields]
+  ;; we shouldn't consider different type info to mean two Fields are different even if everything else is the same. So
+  ;; give everything `:base-type` of `:type/*` (it will complain if we remove `:base-type` entirely from fields with a
+  ;; string name)
+  (letfn [(opts-signature [opts]
+            (not-empty
+             (merge
+              (u/select-non-nil-keys opts [:join-alias :binning])
+              ;; for purposes of deduplicating stuff, temporal unit = default is the same as not specifying temporal
+              ;; unit at all. Should that be part of normalization? Maybe, but there is some logic around adding default
+              ;; temporal bucketing that we don't do if `:default` is explicitly specified.
+              (when-let [temporal-unit (:temporal-unit opts)]
+                (when-not (= temporal-unit :default)
+                  {:temporal-unit temporal-unit})))))
+          (ref-signature [[tag id-or-name opts, :as _ref]]
+            [tag id-or-name (opts-signature opts)])]
+    (into []
+          (comp cat
+                (m/distinct-by ref-signature))
+          [fields join-fields])))
+
+(defn- append-join-fields-to-fields
+  "Add the fields from join `:fields`, if any, to the parent-level `:fields`."
+  [inner-query join-fields]
+  (cond-> inner-query
+    (seq join-fields) (update :fields append-join-fields join-fields)))
+
 (defn- nest-source [inner-query]
   (let [filter-clause (:filter inner-query)
-        keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
-        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions :expression-idents]) source
+        keep-filter? (and filter-clause
+                          (nil? (lib.util.match/match-one filter-clause :expression)))
+        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
                  ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
                  ;; first place we already had to do perms checks to make sure the query we're transforming is itself
                  ;; ok, so we don't need to run another check.
@@ -95,10 +157,11 @@
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query
                      :query    source}))
+                 (add-all-fields source)
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
-                 (qp.middleware.resolve-joins/append-join-fields-to-fields source (joined-fields inner-query))
+                 (append-join-fields-to-fields source (joined-fields inner-query))
                  (remove-unused-fields inner-query source)
                  (cond-> source
                    keep-filter? (assoc :filter filter-clause)))]
@@ -107,12 +170,19 @@
         (assoc :source-query source)
         (cond-> keep-filter? (dissoc :filter)))))
 
+(mu/defn- infer-expression-type :- [:maybe ::lib.schema.common/base-type]
+  [inner-query :- :map
+   expression  :- [:maybe ::mbql.s/FieldOrExpressionDef]]
+  (when expression
+    (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
+      (lib/type-of mlv2-query (lib/->pMBQL expression)))))
+
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
   (let [expression-definition        (mbql.u/expression-with-name query expression-name)
-        {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
+        base-type                    (infer-expression-type query expression-definition)
         {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
                                        source-opts)
@@ -200,21 +270,24 @@
    (lib.util.match/match-one (concat breakouts aggregations order-bys)
      :expression)))
 
-(defn nest-expressions
-  "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
-  `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
-  tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [inner-query]
-  (let [{:keys [expressions expression-idents]
-         :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions)]
+(mu/defn- nest-expressions* :- ::mbql.s/SourceQuery
+  [inner-query :- ::mbql.s/SourceQuery]
+  (let [{:keys [expressions]
+         :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions*)]
     (if-not (should-nest-expressions? inner-query)
       inner-query
       (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
             inner-query                             (rewrite-fields-and-expressions inner-query)
-            source-query                            (assoc source-query
-                                                           :expressions expressions
-                                                           :expression-idents expression-idents)]
+            source-query                            (assoc source-query :expressions expressions)]
         (-> inner-query
             (dissoc :source-query :expressions :expression-idents)
-            (assoc :source-query source-query)
-            add/add-alias-info)))))
+            (assoc :source-query source-query))))))
+
+(mu/defn nest-expressions :- ::mbql.s/SourceQuery
+  "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
+  `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
+  tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
+  [inner-query :- ::mbql.s/SourceQuery]
+  (-> inner-query
+      nest-expressions*
+      add/add-alias-info))

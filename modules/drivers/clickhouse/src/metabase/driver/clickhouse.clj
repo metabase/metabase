@@ -3,8 +3,8 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
@@ -16,8 +16,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]
@@ -51,15 +49,16 @@
                               :split-part                      true
                               :upload-with-auto-pk             false
                               :window-functions/offset         false
-                              :window-functions/cumulative     (not config/is-test?)
-                              :left-join                       (not config/is-test?)
+                              :window-functions/cumulative     (not driver-api/is-test?)
+                              :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :metadata/key-constraints        (not config/is-test?)}]
+                              :metadata/key-constraints        (not driver-api/is-test?)
+                              :database-routing                false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
-  {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})
+  {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
 
 (defn- connection-details->spec* [details]
   (let [;; ensure defaults merge on top of nils
@@ -74,23 +73,22 @@
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
-    (->
-     {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
-      :subprotocol                    "clickhouse"
-      :subname                        (str "//" host ":" port "/" dbname)
-      :password                       (or password "")
-      :user                           user
-      :ssl                            (boolean ssl)
-      :use_server_time_zone_for_dates true
-      :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
-      :remember_last_set_roles        true
-      :http_connection_provider       "HTTP_URL_CONNECTION"
-      :jdbc_ignore_unsupported_values "true"
-      :jdbc_schema_term               "schema"
-      :max_open_connections           (or max-open-connections 100)
-      ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-      :custom_http_params             (or clickhouse-settings "")}
-     (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+    (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
+         :subprotocol                    "clickhouse"
+         :subname                        (str "//" host ":" port "/" dbname)
+         :password                       (or password "")
+         :user                           user
+         :ssl                            (boolean ssl)
+         :use_server_time_zone_for_dates true
+         :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
+         :remember_last_set_roles        true
+         :http_connection_provider       "HTTP_URL_CONNECTION"
+         :jdbc_ignore_unsupported_values "true"
+         :jdbc_schema_term               "schema"
+         :max_open_connections           (or max-open-connections 100)
+         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
+         :custom_http_params             (or clickhouse-settings "")}
+        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
   [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
@@ -110,8 +108,8 @@
        (when-let [db (cond
                        ;; id?
                        (integer? db-or-id-or-spec)
-                       (qp.store/with-metadata-provider db-or-id-or-spec
-                         (lib.metadata/database (qp.store/metadata-provider)))
+                       (driver-api/with-metadata-provider db-or-id-or-spec
+                         (driver-api/database (driver-api/metadata-provider)))
                        ;; db?
                        (u/id db-or-id-or-spec)     db-or-id-or-spec
                        ;; otherwise it's a spec and we can't get the db
@@ -153,7 +151,7 @@
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
-  (if config/is-test?
+  (if driver-api/is-test?
     (try
       ;; Default SELECT 1 is not enough for Metabase test suite,
       ;; as it works slightly differently than expected there

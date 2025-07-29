@@ -5,7 +5,7 @@ import type React from "react";
 import type { IconName } from "metabase/ui";
 import type { ModerationReviewStatus } from "metabase-types/api";
 
-import type { GROUP_LABLES } from "./constants";
+import type { GROUP_LABELS } from "./constants";
 
 interface PaletteActionExtras {
   extra?: {
@@ -36,7 +36,7 @@ export type PaletteActionImpl = ActionImpl &
     icon?: IconName;
   };
 
-export type ShortcutGroup = keyof typeof GROUP_LABLES;
+export type ShortcutGroup = keyof typeof GROUP_LABELS;
 
 export type ShortcutAction = Action & {
   shortcut: string[];

@@ -7,7 +7,7 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Count of orders",
@@ -46,12 +46,97 @@ const ORDERS_TIMESERIES_METRIC = {
   display: "line",
 };
 
+const PRODUCTS_SCALAR_METRIC = {
+  name: "Count of products",
+  type: "metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const PRODUCTS_TIMESERIES_METRIC = {
+  name: "Count of products over time",
+  type: "metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        PRODUCTS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
+  },
+  display: "line",
+};
+
 describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/search?*").as("search");
+  });
+
+  it("should be able to combine scalar metrics on a dashcard", () => {
+    H.createDashboardWithQuestions({ questions: [ORDERS_SCALAR_METRIC] }).then(
+      ({ dashboard }) => {
+        H.createQuestion(PRODUCTS_SCALAR_METRIC);
+        H.visitDashboard(dashboard.id);
+      },
+    );
+    H.editDashboard();
+
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(PRODUCTS_SCALAR_METRIC.name);
+      cy.findByTestId("visualization-canvas").within(() => {
+        // On the funnel and on the horizontal well
+        cy.findAllByText(ORDERS_SCALAR_METRIC.name).should("have.length", 2);
+        cy.findAllByText(PRODUCTS_SCALAR_METRIC.name).should("exist");
+      });
+      cy.button("Save").click();
+    });
+    H.saveDashboard();
+    H.getDashboardCard().within(() => {
+      // On the funnel and on the horizontal well
+      cy.findAllByText(ORDERS_SCALAR_METRIC.name).should("have.length", 2);
+      cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("be.visible");
+    });
+  });
+
+  it("should be able to combine timeseries metrics on a dashcard (metabase#42575)", () => {
+    H.createDashboardWithQuestions({
+      questions: [ORDERS_TIMESERIES_METRIC],
+    }).then(({ dashboard }) => {
+      H.createQuestion(PRODUCTS_TIMESERIES_METRIC);
+      H.visitDashboard(dashboard.id);
+    });
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0, {
+      isVisualizerCard: false,
+    });
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(PRODUCTS_TIMESERIES_METRIC.name);
+      H.chartLegendItem(ORDERS_TIMESERIES_METRIC.name).should("exist");
+      H.chartLegendItem(PRODUCTS_TIMESERIES_METRIC.name).should("exist");
+      cy.button("Save").click();
+    });
+    H.saveDashboard();
+    H.getDashboardCard().within(() => {
+      H.chartLegendItem(ORDERS_TIMESERIES_METRIC.name).should("exist");
+      H.chartLegendItem(PRODUCTS_TIMESERIES_METRIC.name).should("exist");
+    });
   });
 
   it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
@@ -78,7 +163,6 @@ describe("scenarios > metrics > dashboard", () => {
           "eq",
           `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
         );
-        cy.location("hash").should("eq", `#add=${metricId}&edit`);
         cy.findByTestId("scalar-value").should("have.text", "18,760");
 
         cy.log("Assert we can save the dashboard with the metric");

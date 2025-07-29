@@ -99,14 +99,36 @@ function getActionOverrides(
         return {
           ...action,
           title: t`Contains…`,
-          popover: getFilterPopover({ question, query, stageIndex, column }),
+          popover: getFilterPopover({
+            question,
+            query,
+            stageIndex,
+            column,
+            initialFilter: Lib.stringFilterClause({
+              operator,
+              column,
+              values: [],
+              options: {},
+            }),
+          }),
         };
       }
       case "does-not-contain": {
         return {
           ...action,
           title: t`Does not contain…`,
-          popover: getFilterPopover({ question, query, stageIndex, column }),
+          popover: getFilterPopover({
+            question,
+            query,
+            stageIndex,
+            column,
+            initialFilter: Lib.stringFilterClause({
+              operator,
+              column,
+              values: [],
+              options: {},
+            }),
+          }),
         };
       }
       default: {

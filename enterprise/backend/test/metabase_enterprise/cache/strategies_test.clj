@@ -13,9 +13,8 @@
   strategies/keep-me)
 
 (deftest caching-strategies
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:cache-granular-controls}
-
       (let [query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 5})
             mkres (fn [input]
                     {:cache/details (if input
@@ -85,7 +84,7 @@
                             (-> (qp/process-query query) (dissoc :data))))))))))))))
 
 (deftest e2e-advanced-caching
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:cache-granular-controls}
       (mt/dataset (mt/dataset-definition "caching1"
                                          ["table"

@@ -14,7 +14,6 @@ type EmbedFlowAppearance = {
   font?: string;
   downloads?: boolean | null;
   enabled_download_types?: EmbedResourceDownloadOptions | null;
-  hide_download_button?: boolean | null;
 };
 
 type EmbedFlowEventSchema = {

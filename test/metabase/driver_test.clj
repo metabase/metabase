@@ -6,8 +6,8 @@
    [metabase.classloader.core :as classloader]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
+   [metabase.driver.settings :as driver.settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -100,7 +100,7 @@
           (let [db (mt/db)
                 details (tx/dbdef->connection-details driver/*driver* :db dbdef)]
             (testing "can-connect? should return true before deleting the database"
-              (is (true? (binding [h2/*allow-testing-h2-connections* true]
+              (is (true? (binding [driver.settings/*allow-testing-h2-connections* true]
                            (driver/can-connect? driver/*driver* details)))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
@@ -114,7 +114,7 @@
                                 (tx/destroy-db! driver/*driver* dbdef)
                                 details))]
                 (is (false? (try
-                              (binding [h2/*allow-testing-h2-connections* true]
+                              (binding [driver.settings/*allow-testing-h2-connections* true]
                                 (driver/can-connect? driver/*driver* details))
                               (catch Exception _
                                 false))))))
@@ -350,3 +350,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; End tests for `describe-*` methods used in sync
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest query-driver-success-metrics-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "the number of successful and failed queries should be tracked correctly"
+      (let [success-query (assoc-in (mt/mbql-query venues) [:middleware :userland-query?] true)
+            failure-query (assoc-in (mt/native-query {:query "bad query"})
+                                    [:middleware :userland-query?] true)]
+        (mt/with-prometheus-system! [_ system]
+          (qp/process-query success-query)
+          (try
+            (qp/process-query failure-query)
+            (catch Exception _))
+          (qp/process-query success-query)
+          (try
+            (qp/process-query failure-query)
+            (catch Exception _))
+          (qp/process-query success-query)
+          (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
+          (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))

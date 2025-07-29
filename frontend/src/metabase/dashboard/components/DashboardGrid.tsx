@@ -2,19 +2,17 @@ import cx from "classnames";
 import type { ComponentType, ForwardedRef } from "react";
 import { Component, forwardRef } from "react";
 import type { ConnectedProps } from "react-redux";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import {
   QuestionPickerModal,
+  type QuestionPickerValueItem,
   getQuestionPickerValue,
-} from "metabase/common/components/QuestionPicker";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+} from "metabase/common/components/Pickers/QuestionPicker";
+import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
   getVisibleCardIds,
   isQuestionDashCard,
@@ -29,9 +27,8 @@ import {
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
   isVisualizerDashboardCard,
@@ -41,7 +38,6 @@ import type {
   BaseDashboardCard,
   Card,
   CardId,
-  DashCardId,
   Dashboard,
   DashboardCard,
   DashboardTabId,
@@ -55,8 +51,6 @@ import type { SetDashCardAttributesOpts } from "../actions";
 import {
   fetchCardData,
   markNewCardSeen,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
   removeCardFromDashboard,
   replaceCard,
   replaceCardWithVisualization,
@@ -64,8 +58,8 @@ import {
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
   trashDashboardQuestion,
-  undoRemoveCardFromDashboard,
 } from "../actions";
+import { type DashboardContextReturned, useDashboardContext } from "../context";
 import {
   getInitialCardSizes,
   getLayoutForDashCard,
@@ -125,11 +119,7 @@ const mapDispatchToProps = {
   markNewCardSeen,
   setMultipleDashCardAttributes,
   setDashCardAttributes,
-  undoRemoveCardFromDashboard,
   replaceCard,
-  onChangeLocation: push,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardVisualizationSettings,
   fetchCardData,
   replaceCardWithVisualization,
 };
@@ -140,36 +130,40 @@ const connector = connect(mapStateToProps, mapDispatchToProps, null, {
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
 export type DashboardGridProps = {
-  dashboard: Dashboard;
-  selectedTabId: DashboardTabId | null;
-  slowCards: Record<DashCardId, boolean>;
-  isEditing?: boolean;
-  isEditingParameter?: boolean;
-  /** If public sharing or static/public embed */
-  isPublicOrEmbedded?: boolean;
-  isXray?: boolean;
-  isFullscreen?: boolean;
-  isNightMode?: boolean;
-  withCardTitle?: boolean;
-  clickBehaviorSidebarDashcard: DashboardCard | null;
-  getClickActionMode?: ClickActionModeGetter;
   // public dashboard passes it explicitly
   width?: number;
-  // public or embedded dashboard passes it as noop
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
-  downloadsEnabled: boolean;
-  autoScrollToDashcardId?: DashCardId;
-  reportAutoScrolledToDashcard?: () => void;
   handleSetEditing?: (dashboard: Dashboard | null) => void;
-};
+} & Pick<FlexProps, "className" | "style" | "p">;
 
-type DashboardGridInnerProps = Required<DashboardGridProps> &
+type DashboardGridContext = {
+  dashboard: NonNullable<DashboardContextReturned["dashboard"]>;
+} & Pick<
+  DashboardContextReturned,
+  | "selectedTabId"
+  | "slowCards"
+  | "isEditing"
+  | "isEditingParameter"
+  | "isFullscreen"
+  | "isNightMode"
+  | "clickBehaviorSidebarDashcard"
+  | "getClickActionMode"
+  | "navigateToNewCardFromDashboard"
+  | "downloadsEnabled"
+  | "autoScrollToDashcardId"
+  | "reportAutoScrolledToDashcard"
+  | "onReplaceAllDashCardVisualizationSettings"
+  | "onUpdateDashCardVisualizationSettings"
+  | "onChangeLocation"
+>;
+
+type DashboardGridForwardedRefProps = Required<DashboardGridProps> &
   DashboardGridReduxProps &
   ExplicitSizeProps & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
-  };
+  } & Pick<FlexProps, "className" | "style" | "p">;
+
+type DashboardGridInnerProps = DashboardGridForwardedRefProps &
+  DashboardGridContext;
 
 class DashboardGridInner extends Component<
   DashboardGridInnerProps,
@@ -466,15 +460,6 @@ class DashboardGridInner extends Component<
       dashcardId: dc.id,
       cardId: dc.card_id,
     });
-
-    this.props.addUndo({
-      message: this.getIsLastDashboardQuestionDashcard(dc)
-        ? t`Trashed and removed card`
-        : t`Removed card`,
-      undo: true,
-      action: () =>
-        this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
-    });
   };
 
   onReplaceCard = (dashcard: BaseDashboardCard) => {
@@ -501,34 +486,22 @@ class DashboardGridInner extends Component<
       isMobile,
       gridItemWidth,
       totalNumGridCols,
-      downloadsEnabled,
       shouldAutoScrollTo,
-      reportAutoScrolledToDashcard,
     }: {
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
-      downloadsEnabled: boolean;
       shouldAutoScrollTo: boolean;
-      reportAutoScrolledToDashcard?: () => void;
     },
   ) {
     return (
       <DashCard
         className={S.Card}
         dashcard={dashcard}
-        slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
         markNewCardSeen={this.props.markNewCardSeen}
-        isEditing={this.props.isEditing}
-        isEditingParameter={this.props.isEditingParameter}
-        isFullscreen={this.props.isFullscreen}
-        isNightMode={this.props.isNightMode}
         isMobile={isMobile}
-        isPublicOrEmbedded={this.props.isPublicOrEmbedded}
-        isXray={this.props.isXray}
-        withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={
@@ -537,19 +510,11 @@ class DashboardGridInner extends Component<
         onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
-        getClickActionMode={this.props.getClickActionMode}
-        navigateToNewCardFromDashboard={
-          this.props.navigateToNewCardFromDashboard
-        }
-        onChangeLocation={this.props.onChangeLocation}
-        dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
-        downloadsEnabled={downloadsEnabled}
-        autoScroll={shouldAutoScrollTo}
         isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dashcard)}
-        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onEditVisualization={this.onEditVisualization}
+        autoScroll={shouldAutoScrollTo}
       />
     );
   }
@@ -623,8 +588,7 @@ class DashboardGridInner extends Component<
     gridItemWidth: number;
     totalNumGridCols: number;
   }) => {
-    const { isEditing, autoScrollToDashcardId, reportAutoScrolledToDashcard } =
-      this.props;
+    const { isEditing, autoScrollToDashcardId } = this.props;
     const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
@@ -651,9 +615,7 @@ class DashboardGridInner extends Component<
           isMobile: breakpoint === "mobile",
           gridItemWidth,
           totalNumGridCols,
-          downloadsEnabled: this.props.downloadsEnabled,
           shouldAutoScrollTo,
-          reportAutoScrolledToDashcard,
         })}
       </Box>
     );
@@ -663,10 +625,12 @@ class DashboardGridInner extends Component<
     const { width } = this.props;
     const { layouts, visualizerModalStatus } = this.state;
     const rowHeight = this.getRowHeight();
+
     return (
       <GridLayout<DashboardCard>
         className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
+          [DashboardS.Mobile]: width < GRID_BREAKPOINTS.mobile,
           [DashboardS.DashDragging]: this.state.isDragging,
           // we use this class to hide a dashcard actions
           // panel during dragging
@@ -691,19 +655,25 @@ class DashboardGridInner extends Component<
   }
 
   render() {
-    const { dashboard, width, forwardedRef } = this.props;
+    const { dashboard, width, forwardedRef, className, style, p } = this.props;
     return (
       <Flex
         align="center"
         justify="center"
-        className={cx(S.DashboardGridContainer, {
-          [S.isFixedWidth]: dashboard?.width === "fixed",
-        })}
+        className={cx(
+          S.DashboardGridContainer,
+          {
+            [S.isFixedWidth]: dashboard?.width === "fixed",
+          },
+          className,
+        )}
         ref={forwardedRef}
         data-testid="dashboard-grid"
         style={{
           "--dashboard-fixed-width": FIXED_WIDTH,
+          ...style,
         }}
+        p={p}
       >
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderReplaceCardModal()}
@@ -735,31 +705,61 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
   throw new Error(`Unknown card.type: ${type}`);
 };
 
-const DashboardGrid = forwardRef<HTMLDivElement, DashboardGridInnerProps>(
-  function _DashboardGrid(
-    {
-      isEditing = false,
-      isEditingParameter = false,
-      withCardTitle = true,
-      isNightMode = false,
-      width = 0,
-      ...restProps
-    },
-    ref,
-  ) {
-    return (
-      <DashboardGridInner
-        width={width}
-        isEditing={isEditing}
-        isEditingParameter={isEditingParameter}
-        withCardTitle={withCardTitle}
-        isNightMode={isNightMode}
-        {...restProps}
-        forwardedRef={ref}
-      />
-    );
-  },
-);
+const DashboardGrid = forwardRef<
+  HTMLDivElement,
+  DashboardGridForwardedRefProps
+>(function _DashboardGrid({ width = 0, ...restProps }, ref) {
+  const {
+    dashboard,
+    selectedTabId,
+    slowCards,
+    isEditing = false,
+    isEditingParameter = false,
+    isNightMode = false,
+    isFullscreen,
+    clickBehaviorSidebarDashcard,
+    getClickActionMode,
+    navigateToNewCardFromDashboard,
+    downloadsEnabled,
+    autoScrollToDashcardId,
+    reportAutoScrolledToDashcard,
+    onChangeLocation,
+    onReplaceAllDashCardVisualizationSettings,
+    onUpdateDashCardVisualizationSettings,
+  } = useDashboardContext();
+
+  if (!dashboard) {
+    return null;
+  }
+
+  return (
+    <DashboardGridInner
+      width={width}
+      dashboard={dashboard}
+      selectedTabId={selectedTabId}
+      slowCards={slowCards}
+      isEditing={isEditing}
+      isEditingParameter={isEditingParameter}
+      isNightMode={isNightMode}
+      isFullscreen={isFullscreen}
+      clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
+      getClickActionMode={getClickActionMode}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+      downloadsEnabled={downloadsEnabled}
+      autoScrollToDashcardId={autoScrollToDashcardId}
+      reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+      onChangeLocation={onChangeLocation}
+      onReplaceAllDashCardVisualizationSettings={
+        onReplaceAllDashCardVisualizationSettings
+      }
+      onUpdateDashCardVisualizationSettings={
+        onUpdateDashCardVisualizationSettings
+      }
+      {...restProps}
+      forwardedRef={ref}
+    />
+  );
+});
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),

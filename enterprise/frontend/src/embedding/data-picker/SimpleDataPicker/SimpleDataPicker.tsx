@@ -2,13 +2,13 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 
 import { useSearchQuery } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SimpleDataPickerProps } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 

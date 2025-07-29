@@ -172,13 +172,15 @@ describe("scenarios > question > download", () => {
     );
   });
 
-  describe("download format preference", { tags: "@flaky" }, () => {
-    it("should remember the selected format across page reloads", () => {
-      cy.intercept(
-        "PUT",
-        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-      ).as("saveFormat");
+  describe("download format preference", () => {
+    beforeEach(() => {
+      const formatUrl =
+        "/api/user-key-value/namespace/last_download_format/key/download_format_preference";
+      cy.intercept("PUT", formatUrl).as("saveFormat");
+      cy.intercept("GET", formatUrl).as("fetchFormat");
+    });
 
+    it("should remember the selected format across page reloads", () => {
       H.createQuestion(
         {
           name: "Format Preference Test",
@@ -188,38 +190,34 @@ describe("scenarios > question > download", () => {
           },
           display: "table",
         },
-        { visitQuestion: true },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.findByRole("button", { name: "Download results" }).click();
-      H.popover().within(() => {
-        cy.findByText(".xlsx")
-          .should("be.visible")
-          .click()
-          .then(() => {
-            cy.wait("@saveFormat");
-          });
+      cy.findByTestId("view-footer")
+        .findByText("Showing 5 rows")
+        .should("be.visible");
+      cy.findByTestId("view-footer").button("Download results").click();
+
+      H.popover().findByText(".xlsx").click();
+      cy.wait("@saveFormat");
+
+      cy.get("@questionId").then((id) => {
+        H.visitQuestion(id);
       });
 
-      cy.intercept(
-        "GET",
-        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-      ).as("fetchFormat");
-
-      cy.reload();
       cy.wait("@fetchFormat");
-      cy.findByRole("button", { name: "Download results" }).click();
+      cy.findByTestId("view-footer")
+        .findByText("Showing 5 rows")
+        .should("be.visible");
+      cy.findByTestId("view-footer").button("Download results").click();
       H.popover().within(() => {
-        cy.get("[data-checked='true']").should("contain", ".xlsx");
+        cy.findByText(".xlsx")
+          .parent()
+          .should("have.attr", "data-active", "true");
       });
     });
 
     it("should remember the download format on dashboards", () => {
-      cy.intercept(
-        "PUT",
-        "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-      ).as("saveFormat");
-
       H.createQuestion({
         name: "Dashboard Format Test",
         query: {
@@ -238,33 +236,22 @@ describe("scenarios > question > download", () => {
 
           H.getDashboardCard(0).realHover();
           H.getDashboardCardMenu(0).click();
-          H.popover().within(() => {
-            cy.findByText("Download results").click();
-          });
-          H.popover().within(() => {
-            cy.findByText(".xlsx")
-              .should("be.visible")
-              .click()
-              .then(() => {
-                cy.wait("@saveFormat");
-              });
-          });
+          H.popover().findByText("Download results").click();
 
-          cy.intercept(
-            "GET",
-            "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
-          ).as("fetchFormat");
+          H.popover().findByText(".xlsx").click();
+
+          cy.wait("@saveFormat");
 
           cy.reload();
           cy.wait("@fetchFormat");
 
           H.getDashboardCard(0).realHover();
           H.getDashboardCardMenu(0).click();
+          H.popover().findByText("Download results").click();
           H.popover().within(() => {
-            cy.findByText("Download results").click();
-          });
-          H.popover().within(() => {
-            cy.get("[data-checked='true']").should("contain", ".xlsx");
+            cy.findByText(".xlsx")
+              .parent()
+              .should("have.attr", "data-active", "true");
           });
         });
       });

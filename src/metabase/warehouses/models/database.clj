@@ -11,6 +11,7 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -24,6 +25,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -119,6 +121,11 @@
   ([_model pk]
    (and (can-write? pk)
         (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
+
+(mu/defmethod mi/visible-filter-clause :model/Database
+  [_model column-or-exp user-info permission-mapping]
+  [:in column-or-exp
+   (perms/visible-database-filter-select user-info permission-mapping)])
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
@@ -284,14 +291,37 @@
            (not *normalizing-details*))
       normalize-details)))
 
+(mu/defn- delete-database-fields!
+  "We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with
+  cascade delete foreign key constraints in generated columns. #44866
+
+  Use a join to do this so we don't end up with a mega query with > 64k parameters (#58491)
+
+  TODO -- this is an absolutely horrible way to deal with deleting Fields belonging to a Database, there can be
+  literally hundreds of thousands of fields and we do an individual follow-on DELETE in :model/Field before-delete for
+  each one. I really think we should have kept the FK as an ON DELETE CASCADE. -- Cam"
+  [database-id :- ::lib.schema.id/database]
+  {:pre [(pos-int? database-id)]}
+  (t2/delete! :model/Field (case (mdb/db-type)
+                             (:postgres :h2)
+                             {:where  [:in :id {:select    [[:field.id :id]]
+                                                :from      [[(t2/table-name :model/Field) :field]]
+                                                :left-join [[(t2/table-name :model/Table) :table]
+                                                            [:= :field.table_id :table.id]]
+                                                :where     [:= :table.db_id [:inline database-id]]}]}
+
+                             :mysql
+                             {:delete    [:field]
+                              :from      [[(t2/table-name :model/Field) :field]]
+                              :left-join [[(t2/table-name :model/Table) :table]
+                                          [:= :field.table_id :table.id]]
+                              :where     [:= :table.db_id [:inline database-id]]})))
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
-  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
-  ;; foreign key constraints in generated columns. #44866
-  (when-some [table-ids (not-empty (t2/select-pks-vec :model/Table :db_id id))]
-    (t2/delete! :model/Field :table_id [:in table-ids]))
+  (delete-database-fields! id)
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e

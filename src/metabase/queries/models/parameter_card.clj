@@ -1,6 +1,8 @@
 (ns metabase.queries.models.parameter-card
   (:require
+   [medley.core :as m]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -34,8 +36,8 @@
 
 (t2/define-before-update :model/ParameterCard
   [pc]
-  (u/prog1 (t2/changes pc)
-    (when (:parameterized_object_type <>)
+  (u/prog1 pc
+    (when (:parameterized_object_type (t2/changes <>))
       (validate-parameterized-object-type <>))))
 
 (defn delete-all-for-parameterized-object!
@@ -58,15 +60,18 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (pos? (t2/update! :model/ParameterCard conditions {:card_id card-id}))
-          (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
+      ;; TODO: Maybe update! should return different values for no rows to update vs
+      ;; no changes to be made
+      (if (m/mapply t2/exists? :model/ParameterCard conditions)
+        (t2/update! :model/ParameterCard conditions {:card_id card-id})
+        (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
   [parameterized-object-type :- ms/NonBlankString
    parameterized-object-id   :- ms/PositiveInt
-   parameters                :- [:maybe [:sequential ms/Parameter]]]
+   parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
                                      (= values_source_type "card")))

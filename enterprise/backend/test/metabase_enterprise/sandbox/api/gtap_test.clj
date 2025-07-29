@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sandbox.api.gtap-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.response :as api.response]
    [metabase.driver.util :as driver.util]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
@@ -12,7 +12,7 @@
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
     (mt/with-premium-features #{:sandboxes}
-      (is (= (get request/response-unauthentic :body)
+      (is (= (get api.response/response-unauthentic :body)
              (client/client :get 401 "mt/gtap")))
 
       (is (= "You don't have permissions to do that."

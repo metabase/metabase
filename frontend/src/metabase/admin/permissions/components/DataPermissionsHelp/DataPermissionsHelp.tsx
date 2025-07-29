@@ -3,8 +3,8 @@ import { jt, t } from "ttag";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {

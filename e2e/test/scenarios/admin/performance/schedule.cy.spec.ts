@@ -1,4 +1,4 @@
-import type { ScheduleComponentType } from "metabase/components/Schedule/strings";
+import type { ScheduleComponentType } from "metabase/common/components/Schedule/strings";
 import { checkNotNull } from "metabase/lib/types";
 import type { CacheableModel } from "metabase-types/api";
 
@@ -23,7 +23,7 @@ describe("scenarios > admin > performance > schedule strategy", () => {
     H.restore();
     interceptPerformanceRoutes();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   /** An object describing the values to enter in the schedule strategy configuration form. */

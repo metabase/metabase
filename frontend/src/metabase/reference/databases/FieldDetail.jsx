@@ -5,8 +5,7 @@ import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -193,8 +192,8 @@ const FieldDetail = (props) => {
                 CS.bordered,
               )}
             >
-              <List>
-                <li className={CS.relative}>
+              <ul>
+                <li>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -205,7 +204,7 @@ const FieldDetail = (props) => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -214,7 +213,7 @@ const FieldDetail = (props) => {
                     />
                   </li>
                 )}
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this field is interesting`}
@@ -224,7 +223,7 @@ const FieldDetail = (props) => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this field`}
@@ -236,7 +235,7 @@ const FieldDetail = (props) => {
                 </li>
 
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <Detail
                       id="base_type"
                       name={t`Data type`}
@@ -244,7 +243,7 @@ const FieldDetail = (props) => {
                     />
                   </li>
                 )}
-                <li className={CS.relative}>
+                <li>
                   <FieldTypeDetail
                     databaseId={table.db_id}
                     field={entity}
@@ -255,7 +254,7 @@ const FieldDetail = (props) => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <UsefulQuestions
                       questions={interestingQuestions(
                         props.database,
@@ -266,7 +265,7 @@ const FieldDetail = (props) => {
                     />
                   </li>
                 )}
-              </List>
+              </ul>
             </div>
           </div>
         )}

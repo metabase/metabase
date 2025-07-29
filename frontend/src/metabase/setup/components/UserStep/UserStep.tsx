@@ -6,7 +6,6 @@ import type { UserInfo } from "metabase-types/store";
 import { submitUser } from "../../actions";
 import { getIsHosted, getUser } from "../../selectors";
 import { useStep } from "../../useStep";
-import { validatePassword } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import { UserForm } from "../UserForm";
@@ -44,12 +43,7 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
           {t`We like to keep billing and product accounts separate so that you don’t have to share logins.`}
         </StepDescription>
       )}
-      <UserForm
-        user={user}
-        isHosted={isHosted}
-        onValidatePassword={validatePassword}
-        onSubmit={handleSubmit}
-      />
+      <UserForm user={user} isHosted={isHosted} onSubmit={handleSubmit} />
     </ActiveStep>
   );
 };

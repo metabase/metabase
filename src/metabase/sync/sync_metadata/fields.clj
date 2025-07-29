@@ -69,6 +69,14 @@
      ;; `sync-instances`
      (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
 
+(defn- select-best-matching-name
+  "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
+   Items with matching `:schema` and `:name` are prioritized, with exact matches ranked higher than non-exact matches."
+  [target-schema target-name]
+  (fn [item]
+    [(not= (:schema item) target-schema)
+     (not= (:name item) target-name)]))
+
 (mu/defn sync-fields! :- [:map
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
@@ -83,12 +91,14 @@
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))
                   (map (fn [table-metadata]
-                         (let [fst     (first table-metadata)
-                               table   (t2/select-one :model/Table
-                                                      :db_id (:id database)
-                                                      :%lower.name (t2.util/lower-case-en (:table-name fst))
-                                                      :%lower.schema (some-> fst :table-schema t2.util/lower-case-en)
-                                                      {:where sync-util/sync-tables-clause})
+                         (let [{:keys [table-name table-schema]} (first table-metadata)
+                               table   (->> (t2/select :model/Table
+                                                       :db_id (:id database)
+                                                       :%lower.name (t2.util/lower-case-en table-name)
+                                                       :%lower.schema (some-> table-schema t2.util/lower-case-en)
+                                                       {:where sync-util/sync-tables-clause})
+                                            (sort-by (select-best-matching-name table-schema table-name))
+                                            first)
                                updated (if table
                                          (try
                                            ;; TODO: decouple nested field columns sync from field sync. This will allow

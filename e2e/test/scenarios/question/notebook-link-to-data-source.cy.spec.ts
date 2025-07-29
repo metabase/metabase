@@ -7,6 +7,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/lib/browser";
 
@@ -214,7 +215,7 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the source model from a nested question where the source is native model", () => {
-      const source: H.NativeQuestionDetails = {
+      const source: NativeQuestionDetails = {
         name: "Native source",
         native: {
           query: "select 1 as foo",
@@ -305,7 +306,7 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the underlying native model", () => {
-      const model: H.NativeQuestionDetails = {
+      const model: NativeQuestionDetails = {
         name: "Native model",
         native: {
           query: "select 1 as foo",
@@ -469,7 +470,7 @@ describe("scenarios > notebook > link to data source", () => {
 
     describe("sandboxing", () => {
       beforeEach(() => {
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP_ID]: {

@@ -3,7 +3,6 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -83,7 +82,7 @@
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
     (let [conditions [:field_id   (:id field)
                       :type       [:in field-values/advanced-field-values-types]
-                      :created_at [:< (sql.qp/add-interval-honeysql-form
+                      :created_at [:< ((requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
                                        (mdb/db-type)
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))

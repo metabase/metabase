@@ -1,35 +1,22 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
-import { getCurrentVersion } from "metabase/admin/settings/selectors";
-import { useGetSettingQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { getCurrentVersion } from "metabase/admin/app/selectors";
+import { useGetVersionInfoQuery } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
-import type {
-  UpdateChannel,
-  VersionInfo,
-  VersionInfoRecord,
-} from "metabase-types/api";
+import type { VersionInfo, VersionInfoRecord } from "metabase-types/api";
 
 import S from "./VersionUpdateNotice.module.css";
 
 export function VersionUpdateNotice() {
-  const { data: versionInfo } = useGetSettingQuery("version-info") as {
-    data: VersionInfo;
-  };
+  const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSelector(getCurrentVersion);
-  const updateChannel = useSetting("update-channel") ?? "latest";
-  const latestVersion = versionInfo?.[updateChannel]?.version;
-  const isHosted = useSetting("is-hosted?");
+  const latestVersion = versionInfo?.latest?.version;
   const displayVersion = formatVersion(currentVersion);
-
-  if (isHosted) {
-    return <CloudCustomers currentVersion={displayVersion} />;
-  }
 
   if (latestVersion && versionIsLatest({ currentVersion, latestVersion })) {
     return <OnLatestVersion currentVersion={displayVersion} />;
@@ -40,20 +27,11 @@ export function VersionUpdateNotice() {
       <NewVersionAvailable
         currentVersion={displayVersion}
         latestVersion={latestVersion}
-        updateChannel={updateChannel}
         versionInfo={versionInfo}
       />
     );
   }
   return <DefaultUpdateMessage currentVersion={displayVersion} />;
-}
-
-function CloudCustomers({ currentVersion }: { currentVersion: string }) {
-  return (
-    <div>
-      {t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
-    </div>
-  );
 }
 
 function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
@@ -81,15 +59,13 @@ function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
 function NewVersionAvailable({
   currentVersion,
   latestVersion,
-  updateChannel,
   versionInfo,
 }: {
   currentVersion: string;
   latestVersion: string;
-  updateChannel: UpdateChannel;
   versionInfo?: VersionInfo | null;
 }) {
-  const lastestVersionInfo = versionInfo?.[updateChannel];
+  const lastestVersionInfo = versionInfo?.latest;
 
   return (
     <div>

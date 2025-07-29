@@ -384,7 +384,7 @@
 
  {:method :post,
   :url    "/api/v2/mb/connections",
-  :body   {:type "gdrive", :secret {:resources ["https://docs.google.com/spreadsheets/error-gdrive-link"]}}}
+  :body   {:type "google_spreadsheet", :secret {:resources ["https://docs.google.com/spreadsheets/error-gdrive-link"]}}}
  [:error {:cached                nil,
           :request-time          1941,
           :repeatable?           false,

@@ -65,20 +65,6 @@ export type ColumnCompareViaShortcutEvent = ValidateEvent<{
   custom_expressions_used: string[];
 }>;
 
-export type ColumnCompareViaColumnHeaderEvent = ValidateEvent<{
-  event: "column_compare_via_column_header";
-  question_id: number;
-  database_id: number | null;
-  custom_expressions_used: string[];
-}>;
-
-export type ColumnCompareViaPlusModalEvent = ValidateEvent<{
-  event: "column_compare_via_plus_modal";
-  question_id: number;
-  database_id: number | null;
-  custom_expressions_used: string[];
-}>;
-
 export type ColumnExtractViaShortcutEvent = ValidateEvent<{
   event: "column_extract_via_shortcut";
   question_id: number;
@@ -109,8 +95,6 @@ export type QuestionEvent =
   | ColumnCombineViaColumnHeaderEvent
   | ColumnCombineViaPlusModalEvent
   | ColumnCompareViaShortcutEvent
-  | ColumnCompareViaColumnHeaderEvent
-  | ColumnCompareViaPlusModalEvent
   | ColumnExtractViaShortcutEvent
   | ColumnExtractViaColumnHeaderEvent
   | ColumnExtractViaPlusModalEvent;

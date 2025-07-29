@@ -3,9 +3,9 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
+import DateTime from "metabase/common/components/DateTime";
+import Link from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
-import DateTime from "metabase/components/DateTime";
-import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
 import { DashboardPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import { collection as collectionUrl } from "metabase/lib/urls";

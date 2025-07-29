@@ -3,9 +3,9 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -40,7 +40,7 @@
   ;; audit database in general.
   (when-not (mi/can-read? (audit/default-audit-collection))
     (throw (ex-info (tru "You do not have access to the audit database") outer-query)))
-  ;; query->source-table-ids returns a set of table IDs and/or the ::query-perms/native keyword
+  ;; query->source-table-ids returns a set of table IDs or a map with the key `:native?`
   (when (= query-type :native)
     (throw (ex-info (tru "Native queries are not allowed on the audit database")
                     outer-query)))
@@ -70,4 +70,4 @@
                                                           {:status-code 400})))
             view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
         (doseq [table view-tables]
-          (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))
+          (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))

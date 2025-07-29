@@ -70,11 +70,23 @@ export const isEnterpriseVersion = (versionString: string): boolean => {
 export const isPreReleaseVersion = (version: string) =>
   isValidVersionString(version) && /rc|alpha|beta/i.test(version);
 
-export const getMajorVersion = (versionString: string) =>
-  versionString
+const getVersionParts = (versionString: string) => {
+  const parts = versionString
     .replace(/^[^\.]+\./, "")
     .replace(/-rc\d+/i, "")
-    .split(".")[0];
+    .split(".");
+  return {
+    major: parts[0],
+    minor: parts[1] || "0",
+    patch: parts[2],
+  };
+};
+
+export const getMajorVersion = (versionString: string) =>
+  getVersionParts(versionString).major;
+
+export const getMinorVersion = (versionString: string) =>
+  getVersionParts(versionString).minor;
 
 export const isReleaseBranch = (branchName: string) => {
   return branchName.startsWith("release-x.");
@@ -94,8 +106,10 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 };
 
+const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
+
 export const getSdkVersionFromReleaseTagName = (tagName: string) => {
-  const match = /embedding-sdk-(0\.\d+\.\d+(-nightly)?)/.exec(tagName);
+  const match = SDK_TAG_REGEXP.exec(tagName);
 
   if (!match) {
     throw new Error(`Invalid sdk release tag: ${tagName}`);
@@ -207,10 +221,25 @@ export async function getLastEmbeddingSdkReleaseTag({
   });
 
   const lastRelease = getLastReleaseFromTags({
-    tags,
+    tags: tags.filter(filterOutNonSupportedPrereleaseIdentifier),
   });
 
   return lastRelease;
+}
+
+const ALLOWED_SDK_PRERELEASE_IDENTIFIERS = ["nightly"];
+/**
+ *
+ * @param tag a GitHub tag object
+ */
+export function filterOutNonSupportedPrereleaseIdentifier(tag: Tag) {
+  const prereleaseIdentifier = /\d+\.\d+\.\d+-(?<prerelease>\w+)$/.exec(tag.ref)
+    ?.groups?.prerelease;
+
+  return (
+    !prereleaseIdentifier ||
+    ALLOWED_SDK_PRERELEASE_IDENTIFIERS.includes(prereleaseIdentifier)
+  );
 }
 
 export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
@@ -225,7 +254,7 @@ export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
 
 export const versionRequirements: Record<
   number,
-  { java: number; node: number, platforms: string }
+  { java: number; node: number; platforms: string }
 > = {
   43: { java: 8, node: 14, platforms: "linux/amd64" },
   44: { java: 11, node: 14, platforms: "linux/amd64" },
@@ -239,6 +268,7 @@ export const versionRequirements: Record<
   52: { java: 11, node: 18, platforms: "linux/amd64" },
   53: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   54: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  55: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -349,10 +379,10 @@ export function getLastReleaseFromTags({
   ignorePreReleases?: boolean;
 }) {
   return tags
-    .map(tag => tag.ref.replace("refs/tags/", ""))
-    .filter(tag => !tag.includes(".x"))
-    .filter(ignorePreReleases ? tag => !isPreReleaseVersion(tag) : () => true)
-    .filter(ignorePatches ? v => !isPatchVersion(v) : () => true)
+    .map((tag) => tag.ref.replace("refs/tags/", ""))
+    .filter((tag) => !tag.includes(".x"))
+    .filter(ignorePreReleases ? (tag) => !isPreReleaseVersion(tag) : () => true)
+    .filter(ignorePatches ? (v) => !isPatchVersion(v) : () => true)
     .sort(versionSort)
     .reverse()[0];
 }

@@ -1,5 +1,6 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
@@ -41,6 +42,13 @@
    :display-name (deferred-tru "Password")
    :type         :password
    :placeholder  "••••••••"})
+
+(def default-role-details
+  "Map of the db default role details field, useful for `connection-properties` implementations"
+  {:name         "role"
+   :display-name (deferred-tru "Role (optional, required for connection impersonation)")
+   :helper-text (deferred-tru "Specify a role to override the database user''s default role.")
+   :placeholder (deferred-tru "user")})
 
 (def default-dbname-details
   "Map of the db name details field, useful for `connection-properties` implementations"

@@ -1,8 +1,8 @@
 (ns metabase.api.routes.common-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [ring.mock.request :as ring.mock]))
@@ -25,7 +25,7 @@
 (deftest enforce-static-api-key-request
   (mt/with-temporary-setting-values [api-key "test-api-key"]
     (testing "no apikey in the request, expect 403"
-      (is (= request/response-forbidden
+      (is (= api.response/response-forbidden
              (api-key-enforced-handler
               (ring.mock/request :get "/anyurl")))))
 
@@ -35,7 +35,7 @@
               (request-with-api-key "test-api-key")))))
 
     (testing "invalid apikey, expect 403"
-      (is (= request/response-forbidden
+      (is (= api.response/response-forbidden
              (api-key-enforced-handler
               (request-with-api-key "foobar"))))))
 

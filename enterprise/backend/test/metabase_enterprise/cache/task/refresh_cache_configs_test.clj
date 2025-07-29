@@ -95,7 +95,7 @@
                                           :card_id      card-id-2}
                  :model/DashboardCard {} {:dashboard_id dashboard-id
                                           :card_id      card-id-2}]
-    (testing "Returns the card ID directly for a question cahce config"
+    (testing "Returns the card ID directly for a question cache config"
       (is (= [card-id-1] (@#'task.cache/schedule-cache-config->card-ids {:model_id card-id-1 :model "question"}))))
 
     (testing "Fetches card IDs associated with a dashboard cache config"
@@ -499,7 +499,7 @@
   "Compares a normal query result with a query result generated after a preemptive caching job runs, and asserts
   that all relevant fields are the same."
   [original-result cached-result]
-  (let [clean-col    #(dissoc % :ident :lib/source-uuid :lib/source_uuid)
+  (let [clean-col    #(dissoc % :lib/source-uuid :lib/source_uuid)
         clean-result (fn [result]
                        (-> result
                            (dissoc :running_time :average_execution_time :started_at :cached)

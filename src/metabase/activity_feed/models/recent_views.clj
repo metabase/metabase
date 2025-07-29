@@ -325,6 +325,7 @@
      :database_id (:database_id dataset)
      :description (:description dataset)
      :model :dataset
+     :result_metadata (:result_metadata dataset)
      :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
      ;; another table that doesn't differentiate between card and dataset :cry:
@@ -341,6 +342,7 @@
      :description (:description metric)
      :display (some-> metric :display name)
      :model :metric
+     :result_metadata (:result_metadata metric)
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status metric)
@@ -498,15 +500,18 @@
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
 
-(defn- post-process [entity->id->data recent-view]
+(defn- post-process [entity->id->data options recent-view]
   (when recent-view
     (let [entity (some-> recent-view :model keyword)
           id (some-> recent-view :model_id)]
       (when-let [model-object (get-in entity->id->data [entity id])]
-        (some-> (assoc recent-view :model_object model-object)
-                fill-recent-view-info
-                (dissoc :card_type)
-                (update :model model->return-model))))))
+        (let [processed-item (some-> (assoc recent-view :model_object model-object)
+                                     fill-recent-view-info
+                                     (dissoc :card_type)
+                                     (update :model model->return-model))]
+          ;; Remove result_metadata if include-metadata? is false
+          (cond-> processed-item
+            (not (:include-metadata? options)) (dissoc :result_metadata)))))))
 
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card
@@ -545,11 +550,13 @@
   sequence, so there's no need to do it twice."
   ([user-id] (get-recents user-id [:views :selections]))
   ([user-id context :- [:sequential [:enum :views :selections]]]
+   (get-recents user-id context {}))
+  ([user-id context :- [:sequential [:enum :views :selections]] options]
    (let [recent-items (do-query user-id context)
          entity->id->data (get-entity->id->data recent-items)
          view-items (into []
                           (comp
-                           (keep (partial post-process entity->id->data))
+                           (keep (partial post-process entity->id->data options))
                            (keep error-avoider)
                            (m/distinct-by (juxt :id :model)))
                           recent-items)]

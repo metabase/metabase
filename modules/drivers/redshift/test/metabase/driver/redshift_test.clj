@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
@@ -137,36 +138,24 @@
 (deftest ^:parallel test-external-table
   (mt/test-driver :redshift
     (testing "expects spectrum schema to exist"
-      (is (=? [{:description     nil
-                :table_id        (mt/id :extsales)
-                :semantic_type    nil
+      (is (=? [{:table_id        (mt/id :extsales)
                 :name            "buyerid"
-                :settings        nil
                 :source          :fields
                 :field_ref       [:field (mt/id :extsales :buyerid) nil]
-                :nfc_path        nil
-                :parent_id       nil
                 :id              (mt/id :extsales :buyerid)
                 :visibility_type :normal
                 :display_name    "Buyerid"
                 :base_type       :type/Integer
-                :effective_type  :type/Integer
-                :coercion_strategy nil}
-               {:description     nil
-                :table_id        (mt/id :extsales)
-                :semantic_type    nil
+                :effective_type  :type/Integer}
+               {:table_id        (mt/id :extsales)
                 :name            "salesid"
-                :settings        nil
                 :source          :fields
                 :field_ref       [:field (mt/id :extsales :salesid) nil]
-                :nfc_path        nil
-                :parent_id       nil
                 :id              (mt/id :extsales :salesid)
                 :visibility_type :normal
                 :display_name    "Salesid"
                 :base_type       :type/Integer
-                :effective_type  :type/Integer
-                :coercion_strategy nil}]
+                :effective_type  :type/Integer}]
               ;; in different Redshift instances, the fingerprint on these columns is different.
               (map #(dissoc % :fingerprint)
                    (get-in (qp/process-query (mt/mbql-query extsales
@@ -505,3 +494,28 @@
                   qp/process-query
                   mt/rows
                   count))))))
+
+(deftest database-type->base-type-external-table-types-test
+  (doseq [[database-type exp-base-type] [["tinyint" :type/Integer]
+                                         ["smallint" :type/Integer]
+                                         ["mediumint" :type/Integer]
+                                         [:mediumint :type/Integer]
+                                         [:MEDIUMINT :type/Integer]
+                                         ["tinytext" :type/Text]
+                                         ["mediumtext" :type/Text]
+                                         ["longtext" :type/Text]
+                                         ["varchar(100)" :type/Text]
+                                         ["varchar(100)" :type/Text]
+                                         ["int(11) unsigned" :type/Integer]
+                                         ["int(10)" :type/Integer]
+                                         ["tinyint(1)" :type/Integer]
+                                         ["BIGINTEGER" :type/BigInteger]
+                                         ["double(10,20)" :type/Float]
+                                         ["float(10)" :type/Float]
+                                         ["datetime" :type/DateTime]
+                                         ["year" :type/Integer]
+                                         ;; nonsense
+                                         ["fadlsjfldskajfl" nil]]]
+    (testing (format "database-type %s" (pr-str database-type))
+      (is (= exp-base-type
+             (sql-jdbc.sync/database-type->base-type :redshift database-type))))))

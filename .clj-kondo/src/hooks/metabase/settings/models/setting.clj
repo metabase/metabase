@@ -28,7 +28,6 @@
      database-enable-actions
      deprecation-notice-version
      dismissed-custom-dashboard-toast
-     dismissed-onboarding-sidebar-link
      email-configured?
      email-from-address
      email-from-name
@@ -140,6 +139,7 @@
      saml-keystore-password
      saml-keystore-path
      saml-user-provisioning-enabled?
+     sdk-iframe-embed-setup-settings
      send-email-on-first-login-from-new-device
      send-new-sso-user-admin-email?
      session-cookie-samesite

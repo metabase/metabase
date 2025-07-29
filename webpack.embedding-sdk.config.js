@@ -163,7 +163,7 @@ module.exports = (env) => {
           .execSync("git rev-parse HEAD")
           .toString()
           .trim(),
-        IS_EMBEDDING_SDK: true,
+        IS_EMBEDDING_SDK: "true",
       }),
       new webpack.DefinePlugin({
         "process.env.BUILD_TIME": webpack.DefinePlugin.runtimeValue(
@@ -193,7 +193,12 @@ module.exports = (env) => {
   config.resolve.alias = {
     ...mainConfig.resolve.alias,
     "sdk-ee-plugins": ENTERPRISE_SRC_PATH + "/sdk-plugins",
+    "sdk-iframe-embedding-ee-plugins":
+      ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
     "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+
+    // Allows importing side effects that applies only to the SDK.
+    "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
   };
 
   if (config.cache) {

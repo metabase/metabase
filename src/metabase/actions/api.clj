@@ -7,9 +7,9 @@
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
@@ -80,7 +80,7 @@
 (api.macros/defendpoint :get "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
@@ -201,7 +201,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)

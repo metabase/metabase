@@ -4,15 +4,24 @@
    [clojure.set :as set]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
-   [metabase.types.core :as types]))
+   [metabase.types.core :as types]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 ;;; the logic for calculating the return type of a `:case` or similar statement is not optimal nor perfect. But it
 ;;; should be ok for now and errors on the side of being permissive. See this Slack thread for more info:
 ;;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1678325996901389
-(defn- best-return-type
+(mr/def ::return-type
+  [:maybe
+   [:or
+    [:set :keyword]
+    :keyword]])
+
+(mu/defn- best-return-type :- ::return-type
   "For expressions like `:case` and `:coalesce` that can return different possible expressions, determine the best
   return type given all of the various options."
-  [x y]
+  [x :- ::return-type
+   y :- ::return-type]
   (cond
     (nil? x)
     y
@@ -46,33 +55,53 @@
             intersection))
         (set/union x y))))
 
+(defn case-coalesce-return-type
+  "Special logic to return the best return type for `:case`, `:if`, and `:coalesce`. Instead of
+  using [[types/most-specific-common-ancestor]] directly we fudge a little bit and return something more concrete when
+  needed -- instead of `:type/Date` + `:type/DateTime` = `:type/HasDate`, we return `:type/DateTime` because (usually)
+  the database will do the same conversion and it avoids breaking a lot of old code that doesn't know about
+  `:type/HasDate`. See https://metaboat.slack.com/archives/C0645JP1W81/p1749678551101819 for more discussion."
+  [types]
+  (let [best-type (if (>= (count types) 2)
+                    (reduce best-return-type (first types) (rest types))
+                    (first types))]
+    ;; if we return `:type/HasDate` that means the types were some mix of `:type/Date` and `:type/DateTime`.
+    ;; `:type/HasTime` means we got a mix of `:type/Time` and `:type/DateTime`. 'Upgrade' the result to
+    ;; `:type/DateTime` in either case.
+    (if (#{:type/HasDate :type/HasTime} best-type)
+      :type/DateTime
+      best-type)))
+
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 ;;; `:if` is an alias to `:case`
 (doseq [tag [:case :if]]
-  (mbql-clause/define-catn-mbql-clause tag
-    ;; TODO -- we should further constrain this so all of the exprs are of the same type
-    [:pred-expr-pairs [:sequential {:min 1} [:tuple
-                                             {:error/message "Valid [pred expr] pair"}
-                                             #_pred [:ref ::expression/boolean]
-                                             #_expr [:ref ::expression/expression]]]]
-    [:default [:? [:schema [:ref ::expression/expression]]]])
-  (defmethod expression/type-of-method tag
-    [[_tag _opts pred-expr-pairs _default]]
-    ;; Following logic for picking a type is taken from
-    ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
-    (some
-     (fn [[_pred expr]]
-       (if-some [t (expression/type-of expr)]
-         t
-         ::expression/type.unknown))
-     pred-expr-pairs)))
+  (mbql-clause/define-mbql-clause
+    tag
+    [:schema
+     (mbql-clause/catn-clause-schema tag
+                                     [:pred-expr-pairs
+                                      [:sequential {:min 1}
+                                       [:tuple
+                                        {:error/message "Valid [pred expr] pair"}
+                                        #_pred [:ref ::expression/boolean]
+                                        #_expr [:ref ::expression/expression]]]]
+                                     [:default [:? [:schema [:ref ::expression/expression]]]])])
 
-;;; TODO -- add constraint that these types have to be compatible
-(mbql-clause/define-catn-mbql-clause :coalesce
-  [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
+  (defmethod expression/type-of-method tag
+    [[_tag _opts pred-expr-pairs default]]
+    (let [exprs (concat
+                 (map second pred-expr-pairs)
+                 (when (some? default)
+                   [default]))
+          types (keep expression/type-of exprs)]
+      (case-coalesce-return-type types))))
+
+(mbql-clause/define-mbql-clause
+  :coalesce
+  [:schema
+   (mbql-clause/catn-clause-schema :coalesce
+                                   [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])])
 
 (defmethod expression/type-of-method :coalesce
-  [[_tag _opts & exprs]]
-  #_{:clj-kondo/ignore [:reduce-without-init]}
-  (reduce best-return-type
-          (map expression/type-of exprs)))
+  [[_coalesce _opts & exprs]]
+  (case-coalesce-return-type (map expression/type-of exprs)))

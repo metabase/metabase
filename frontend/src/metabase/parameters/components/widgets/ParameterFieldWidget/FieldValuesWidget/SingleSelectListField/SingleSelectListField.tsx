@@ -3,14 +3,18 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/components/EmptyState";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import type { InputProps } from "metabase/core/components/Input";
-import Input from "metabase/core/components/Input";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import EmptyState from "metabase/common/components/EmptyState";
+import type { InputProps } from "metabase/common/components/Input";
+import Input from "metabase/common/components/Input";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { delay } from "metabase/lib/delay";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
+
+import { getOptionDisplayName, optionMatchesFilter } from "../ListField/utils";
 
 import {
   EmptyStateContainer,
@@ -20,17 +24,17 @@ import {
   OptionsList,
 } from "./SingleSelectListField.styled";
 import type { Option, SingleSelectListFieldProps } from "./types";
-import { isValidOptionItem } from "./utils";
+import { optionItemEqualsFilter } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
 function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
   options: Option[],
-): Option {
-  const optionsMap = _.indexBy(options, "0");
+): Option[] {
+  const optionsMap = new Map(options.map((option) => [option[0], option]));
   return values
-    .filter((value) => typeof value !== "string" || !optionsMap[value])
+    .filter((value) => !optionsMap.has(value))
     .map((value) => [value]);
 }
 
@@ -46,32 +50,48 @@ const SingleSelectListField = ({
   checkedColor,
 }: SingleSelectListFieldProps) => {
   const [selectedValue, setSelectedValue] = useState(value?.[0]);
-  const [addedOptions, setAddedOptions] = useState<Option>(() =>
+  const [addedOptions, setAddedOptions] = useState<Option[]>(() =>
     createOptionsFromValuesWithoutOptions(value, options),
   );
+  const tc = useTranslateContent();
+  const sortByTranslation =
+    PLUGIN_CONTENT_TRANSLATION.useSortByContentTranslation();
 
   const augmentedOptions = useMemo<Option[]>(() => {
     return [...options.filter((option) => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
-  const sortedOptions = useMemo(() => {
-    if (selectedValue) {
-      return augmentedOptions;
-    }
+  const optionsHaveSomeTranslations = useMemo(
+    () =>
+      augmentedOptions.some(
+        ([option]) => tc(option satisfies RowValue) !== option,
+      ),
+    [augmentedOptions, tc],
+  );
 
-    const [selected, unselected] = _.partition(
-      augmentedOptions,
-      (option) => selectedValue === option[0],
-    );
-
-    return [...selected, ...unselected];
+  const sortedOptions = useMemo(
+    () =>
+      // If no options have translations, rely on the sorting that was already
+      // done in the backend
+      optionsHaveSomeTranslations
+        ? augmentedOptions.toSorted((optionA, optionB) =>
+            sortByTranslation(
+              getOptionDisplayName(optionA),
+              getOptionDisplayName(optionB),
+            ),
+          )
+        : augmentedOptions,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [augmentedOptions.length]);
+    [augmentedOptions.length, sortByTranslation],
+  );
 
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
-  const isFilterInValues = value[0] === filter;
+  const isFilterInValues = optionItemEqualsFilter(
+    tc(getOptionDisplayName(value)),
+    filter,
+  );
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -79,29 +99,17 @@ const SingleSelectListField = ({
       return sortedOptions;
     }
 
-    // Allow picking of different values in the list
+    // When the user selects a value, this populates the search field, but this
+    // should not filter the list. This way, the user can select a value, and
+    // then select a different value
     if (isFilterInValues) {
-      return augmentedOptions;
+      return sortedOptions;
     }
 
-    return augmentedOptions.filter((option) => {
-      if (!option || option.length === 0) {
-        return false;
-      }
-
-      // option as: [id, name]
-      if (
-        option.length > 1 &&
-        option[1] &&
-        isValidOptionItem(option[1], formattedFilter)
-      ) {
-        return true;
-      }
-
-      // option as: [id]
-      return isValidOptionItem(option[0], formattedFilter);
-    });
-  }, [augmentedOptions, debouncedFilter, sortedOptions, isFilterInValues]);
+    return sortedOptions.filter((option) =>
+      optionMatchesFilter(option, formattedFilter, tc),
+    );
+  }, [debouncedFilter, sortedOptions, isFilterInValues, tc]);
 
   const shouldShowEmptyState =
     filter.length > 0 && !isLoading && filteredOptions.length === 0;
@@ -109,16 +117,23 @@ const SingleSelectListField = ({
   const onClickOption = (option: any) => {
     if (selectedValue !== option) {
       setSelectedValue(option);
-      setFilter(String(option));
+      const maybeTranslatedOption =
+        typeof option === "string" ? tc(option) : String(option);
+      setFilter(maybeTranslatedOption);
       onChange?.([option]);
     }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) => option[0] === filter)
+      !_.find(augmentedOptions, (option) =>
+        optionItemEqualsFilter(option, filter),
+      )
     ) {
       event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);
@@ -170,7 +185,7 @@ const SingleSelectListField = ({
       {!isLoading && (
         <OptionsList isDashboardFilter={isDashboardFilter}>
           {filteredOptions.map((option) => (
-            <OptionContainer key={option[0]}>
+            <OptionContainer key={String(option[0])}>
               <OptionItem
                 data-testid={`${option[0]}-filter-value`}
                 selectedColor={

@@ -2,7 +2,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EditableText from "metabase/core/components/EditableText";
+import EditableText from "metabase/common/components/EditableText";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
@@ -46,6 +47,11 @@ export function Header({
   const dispatch = useDispatch();
 
   const handleSave = () => {
+    trackSimpleEvent({
+      event: "visualizer_save_clicked",
+      triggered_from: "visualizer-modal",
+    });
+
     onSave(
       _.pick(visualizerState, ["display", "columnValuesMapping", "settings"]),
     );
@@ -84,10 +90,10 @@ export function Header({
       <div style={{ flexGrow: 1 }} />
 
       <Button.Group>
-        <Tooltip label={t`Back`}>
+        <Tooltip withinPortal={false} label={t`Undo`}>
           <Button
             size="sm"
-            aria-label={t`Back`}
+            aria-label={t`Undo`}
             disabled={!canUndo}
             onClick={undo}
             leftSection={
@@ -98,10 +104,10 @@ export function Header({
             }
           />
         </Tooltip>
-        <Tooltip label={t`Forward`}>
+        <Tooltip withinPortal={false} label={t`Redo`}>
           <Button
             size="sm"
-            aria-label={t`Forward`}
+            aria-label={t`Redo`}
             disabled={!canRedo}
             onClick={redo}
             leftSection={
@@ -121,7 +127,16 @@ export function Header({
       >
         {saveLabel ?? t`Add to dashboard`}
       </Button>
-      <ActionIcon onClick={onClose}>
+      <ActionIcon
+        data-testid="visualizer-close-button"
+        onClick={() => {
+          trackSimpleEvent({
+            event: "visualizer_close_clicked",
+            triggered_from: "visualizer-modal",
+          });
+          onClose();
+        }}
+      >
         <Icon name="close" />
       </ActionIcon>
     </Flex>

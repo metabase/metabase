@@ -8,19 +8,9 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "appleby",
-        "uladzimirdev",
         "wzimrin",
-        "ericnormand"
-      ]
-    },
-    {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "kamilmielnik",
-        "lbrdnk",
-        "bronsa"
+        "ericnormand",
+        "galdre"
       ]
     },
     {
@@ -36,10 +26,10 @@
       "label": ".Team/Embedding",
       "members": [
         "WiNloSt",
-        "oisincoveney",
         "npretto",
         "heypoom",
-        "sanex3339"
+        "sanex3339",
+        "lorem--ipsum"
       ]
     },
     {
@@ -49,10 +39,11 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber",
-        "wotbrew",
         "spalt08",
-        "stasgavrylov"
+        "stasgavrylov",
+        "uladzimirdev",
+        "kulyk",
+        "kamilmielnik"
       ]
     },
     {
@@ -62,11 +53,11 @@
         "npfitz",
         "johnswanson",
         "rafpaf",
-        "sloansparger",
         "iethree",
         "nvoxland",
         "fraserdrops",
-        "edpaget"
+        "edpaget",
+        "deniskaber"
       ]
     },
     {
@@ -74,10 +65,6 @@
       "label": ".Team/DashViz",
       "members": [
         "alxnddr",
-        "kulyk",
-        "tsplude",
-        "lorem--ipsum",
-        "noahmoss",
         "bpander"
       ]
     },
@@ -93,13 +80,28 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
-        "somtom"
+        "appleby",
+        "noahmoss",
+        "retro",
+        "sloansparger",
+        "somtom",
+        "wotbrew",
+        "tsplude",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac"]
+      "members": ["nemanjaglumac", "chodorowicz"]
+    },
+    {
+      "name": "Cloud",
+      "label": "cloud",
+      "members": [
+        "filipesilva"
+      ]
     }
   ]
 }

@@ -13,6 +13,8 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- venues-price-field-values []
   (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price), :type :full))
 
@@ -270,3 +272,17 @@
                   :has_more_values       true}
                  (into {} (t2/select-one [:model/FieldValues :values :human_readable_values :has_more_values]
                                          :field_id (mt/id :blueberries_consumed :str))))))))))
+
+(deftest sync-aborts-on-non-recoverable-error-test
+  (testing "Make sure sync aborts on non-recoverable errors"
+    (one-off-dbs/with-blueberries-db
+      ;; insert 50 rows & sync
+      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
+      ;; Manually activate Field values since they are not created during sync (#53387)
+      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
+      ;; we throw ConnectException, which is a non-recoverable exception
+      (with-redefs [field-values/create-or-update-full-field-values! (fn [& _] (throw (java.net.ConnectException.)))]
+        (is (=?
+             {:steps [["delete-expired-advanced-field-values" {}]
+                      ["update-field-values" {:throwable #(instance? Exception %)}]]}
+             (sync/update-field-values! (data/db))))))))

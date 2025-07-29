@@ -1,7 +1,5 @@
 ---
 title: "Interactive embedding quickstart"
-redirect_from:
-  - /learn/customer-facing-analytics/interactive-embedding-quick-start
 ---
 
 # Interactive embedding quickstart
@@ -45,7 +43,7 @@ While still in the Admin panel's **Settings** section, click on **Authentication
 
 On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
 
-![Admin settings: Authentication > JTW setup.](./images/jwt-setup.png)
+![Admin settings: Authentication > JWT setup.](./images/jwt-setup.png)
 
 #### Set JWT Identity provider URI
 

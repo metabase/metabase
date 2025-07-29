@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
 import { screen, within } from "__support__/ui";
@@ -18,6 +19,10 @@ import {
 } from "./setup";
 
 describe("nav > containers > MainNavbar", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe("homepage link", () => {
     it("should render", async () => {
       await setup();
@@ -33,15 +38,81 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("how to use Metabase", () => {
-    it.each(["admin", "non-admin"])("should render for %s", async (user) => {
-      await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
-      const link = screen.getByRole("link", { name: /How to use Metabase/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/getting-started");
+  describe("Getting Started section", () => {
+    it("should not render if the instance was created more than 30 days ago", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        instanceCreationDate: dayjs().subtract(31, "days").toISOString(),
+      });
+      const section = screen.queryByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      const onboardingLink = screen.queryByRole("link", {
+        name: /How to use Metabase/i,
+      });
+
+      expect(section).not.toBeInTheDocument();
+      expect(onboardingLink).not.toBeInTheDocument();
     });
 
-    it("should be highlighted if selected", async () => {
+    it("should render if the instance was created less than 30 days ago", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        instanceCreationDate: dayjs().subtract(14, "days").toISOString(),
+      });
+      const section = screen.getByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      const onboardingLink = within(section).getByRole("link", {
+        name: /How to use Metabase/i,
+      });
+
+      expect(section).toBeInTheDocument();
+      expect(onboardingLink).toBeInTheDocument();
+      expect(onboardingLink).toHaveAttribute("href", "/getting-started");
+    });
+
+    it("should not render if the instance is inside embedding iframe", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        isEmbeddingIframe: true,
+      });
+      const section = screen.queryByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      const onboardingLink = screen.queryByRole("link", {
+        name: /How to use Metabase/i,
+      });
+
+      expect(section).not.toBeInTheDocument();
+      expect(onboardingLink).not.toBeInTheDocument();
+    });
+
+    it.each(["admin", "non-admin"])("should render for %s", async (user) => {
+      await setup({ user: createMockUser({ is_superuser: user === "admin" }) });
+      const section = screen.getByRole("tab", {
+        name: /^Getting Started/i,
+      });
+      expect(section).toBeInTheDocument();
+    });
+
+    it("should be expanded initially but collapsible", async () => {
+      await setup({ user: createMockUser({ is_superuser: true }) });
+      const sectionTitle = screen.getByRole("heading", {
+        name: /Getting Started/i,
+      });
+
+      expect(sectionTitle).toBeInTheDocument();
+      expect(screen.getByText(/How to use Metabase/i)).toBeInTheDocument();
+
+      await userEvent.click(sectionTitle);
+      expect(sectionTitle).toBeInTheDocument();
+      expect(
+        screen.queryByText(/How to use Metabase/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("'How to use Metabase' link should be highlighted if selected", async () => {
       await setup({
         pathname: "/getting-started",
         user: createMockUser({ is_superuser: true }),
@@ -50,31 +121,6 @@ describe("nav > containers > MainNavbar", () => {
         name: /How to use Metabase/i,
       });
       expect(link).toHaveAttribute("aria-selected", "true");
-    });
-
-    it("should render if the instance was created less than 30 days ago", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        instanceCreationDate: dayjs().subtract(14, "days").toISOString(),
-      });
-      const link = screen.getByRole("link", { name: /How to use Metabase/i });
-      expect(link).toBeInTheDocument();
-    });
-
-    it("should not render if the instance was created more than 30 days ago", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        instanceCreationDate: dayjs().subtract(31, "days").toISOString(),
-      });
-      const link = screen.queryByRole("link", { name: /How to use Metabase/i });
-      expect(link).not.toBeInTheDocument();
-    });
-  });
-
-  describe("DWH Upload CSV", () => {
-    it("should not render 'upload CSV' button", () => {
-      setup({ user: createMockUser({ is_superuser: true }) });
-      expect(screen.queryByTestId("dwh-upload-csv")).not.toBeInTheDocument();
     });
   });
 
@@ -314,42 +360,31 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("add database button", () => {
-    it("should render for admins if they haven't added a database yet", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        withAdditionalDatabase: false,
-      });
+  describe("Personal Collections", () => {
+    it("non-admin should see not other users personal collections", async () => {
+      await setup({});
 
-      const sidebar = screen.getByTestId("main-navbar-root");
-      expect(within(sidebar).getByText("Add database")).toBeInTheDocument();
-      expect(within(sidebar).getByTestId("add-database-link")).toHaveAttribute(
-        "href",
-        "/admin/databases/create",
-      );
-    });
-
-    it("should not render for admins if they previously added a database", async () => {
-      await setup({
-        user: createMockUser({ is_superuser: true }),
-        withAdditionalDatabase: true,
-      });
-
-      const sidebar = screen.getByTestId("main-navbar-root");
       expect(
-        within(sidebar).queryByText("Add database"),
+        screen.queryByText(/Other users' personal collections/i),
       ).not.toBeInTheDocument();
     });
 
-    it("should not render for regular users", async () => {
+    it("admin should see other users personal collections if there other users", async () => {
       await setup({
-        user: createMockUser({ is_superuser: false }),
-        withAdditionalDatabase: false,
+        user: createMockUser({ is_superuser: true }),
       });
-
-      const sidebar = screen.getByTestId("main-navbar-root");
       expect(
-        within(sidebar).queryByText("Add database"),
+        await screen.findByText(/Other users' personal collections/i),
+      ).toBeInTheDocument();
+    });
+
+    it("admin not should see other users personal collections if there no other users", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        activeUsersCount: 1,
+      });
+      expect(
+        screen.queryByText(/Other users' personal collections/i),
       ).not.toBeInTheDocument();
     });
   });

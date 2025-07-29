@@ -92,6 +92,18 @@ describe("DatabaseForm", () => {
       screen.queryByText("Choose when syncs and scans happen"),
     ).not.toBeInTheDocument();
   });
+
+  it("should allow tab navigation through form fields", async () => {
+    setup();
+
+    // tabs ou tof the search
+    await userEvent.tab();
+    // select the first option (H2)
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+
+    expect(screen.getByPlaceholderText("Our H2")).toBeInTheDocument();
+  });
 });
 
 const EXPECTED_DEFAULT_SCHEMA = {

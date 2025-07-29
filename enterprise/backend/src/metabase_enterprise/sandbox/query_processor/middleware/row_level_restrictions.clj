@@ -18,9 +18,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
@@ -118,7 +118,7 @@
      :value  (attr-value->param-value field-base-type attr-value)}))
 
 (defn- gtap->parameters [{attribute-remappings :attribute_remappings}]
-  (mapv (partial attr-remapping->parameter (:login_attributes @*current-user*))
+  (mapv (partial attr-remapping->parameter (api/current-user-attributes))
         attribute-remappings))
 
 (mu/defn- preprocess-source-query :- mbql.s/SourceQuery
@@ -231,7 +231,7 @@
 
 (mu/defn- gtap->source :- [:map
                            [:source-query :any]
-                           [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
+                           [:source-metadata {:optional true} [:sequential ::mbql.s/legacy-column-metadata]]]
   "Get the source query associated with a `gtap`."
   [{card-id :card_id, table-id :table_id, :as gtap} :- :map]
   (-> ((if card-id
@@ -272,7 +272,7 @@
 
     (let [table-ids (sandbox->table-ids sandbox)
           table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
-          unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
+          unblocked-table-ids (filter (fn [table-id] (perms/user-has-permission-for-table?
                                                       api/*current-user-id*
                                                       :perms/view-data
                                                       :unrestricted
@@ -334,7 +334,7 @@
   (u/prog1 (-> (merge
                 (dissoc m :source-table :source-query)
                 (gtap->source gtap))
-               (assoc-in [:source-query ::query-perms/gtapped-table] source-table))
+               (assoc-in [:source-query :query-permissions/gtapped-table] source-table))
     (log/tracef "Applied GTAP: replaced\n%swith\n%s"
                 (u/pprint-to-str 'yellow m)
                 (u/pprint-to-str 'green <>))))
@@ -357,7 +357,8 @@
         (_ :guard (every-pred map? :source-table))
         (assoc &match ::gtap? true)))))
 
-(defn- expected-cols [query]
+(mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
+  [query :- ::mbql.s/Query]
   (request/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
@@ -369,7 +370,7 @@
       original-query
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
-          (update-in [::query-perms/perms :gtaps]
+          (update-in [:query-permissions/perms :gtaps]
                      (fn [required-perms] (merge required-perms
                                                  (sandboxes->required-perms (vals table-id->gtap)))))))))
 
@@ -400,10 +401,13 @@
 
 ;;;; Post-processing
 
-(defn- merge-metadata
+(mu/defn- merge-metadata :- [:map
+                             [:cols [:sequential ::mbql.s/legacy-column-metadata]]]
   "Merge column metadata from the non-sandboxed version of the query into the sandboxed results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running in a sandbox."
-  [original-metadata metadata]
+  [original-metadata :- [:sequential ::mbql.s/legacy-column-metadata]
+   metadata          :- [:map
+                         [:cols [:sequential ::mbql.s/legacy-column-metadata]]]]
   (letfn [(merge-cols [cols]
             (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
@@ -417,7 +421,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [::query-perms/perms :gtaps])))
+    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [:query-permissions/perms :gtaps])))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

@@ -4,6 +4,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -75,14 +76,35 @@
                                         cat
                                         [before new-items after])))))
 
-(defn walk
+(mr/def ::path-type
+  [:enum :lib.walk/join :lib.walk/stage])
+
+(mr/def ::stage-or-join
+  [:or ::lib.schema/stage ::lib.schema.join/join])
+
+(mr/def ::walk-stages-fn-result
+  "Schema for the return value for the function passed into [[walk-stages]]. One stage can be replaced with multiple
+  stages."
+  [:maybe
+   [:or
+    ::lib.schema/stage
+    [:sequential ::lib.schema/stage]]])
+
+(mr/def ::walk-fn-result
+  "Schema for the return value for the function passed into [[walk]]."
+  [:maybe
+   [:or
+    ::walk-stages-fn-result
+    ::lib.schema.join/join]])
+
+(mu/defn walk :- ::lib.schema/query
   "Depth-first recursive walk and replace for a `query`; call
 
     (f query path-type path stage-or-join)
 
   for each `stage-or-join` in the query, including recursive ones inside joins. `path-type` is either `:lib.walk/join`
   or `:lib.walk/stage`; `query` is the entire query and `path` is the absolute path to the current `stage-or-join`.
-  The results of `f`, the updated stage or join, are spliced into the query at `path` if `f` returns something; `nil`
+  The results of `f`, the updated stage(s) or join, are spliced into the query at `path` if `f` returns something; `nil`
   values are ignored and the query will not be unchanged (this is useful for walking the query for validation
   purposes).
 
@@ -105,11 +127,16 @@
               (fn [_query _path-type _path stage-or-join]
                 (when (:source-card stage-or-join)
                   (reduced true))))))"
-  [query f]
+  [query :- ::lib.schema/query
+   f     :- [:=>
+             [:cat :map ::path-type ::path ::stage-or-join]
+             ::walk-fn-result]]
   (unreduced
    (walk-query*
     query
-    (fn [query path-type path]
+    (mu/fn [query     :- :map ; query can be invalid during the walk process, only needs to be valid again at the end.
+            path-type :- ::path-type
+            path      :- ::path]
       (let [stage-or-join  (get-in query path)
             stage-or-join' (or (f query path-type path stage-or-join)
                                stage-or-join)]
@@ -119,14 +146,19 @@
           (sequential? stage-or-join')              (splice-at-point query path stage-or-join')
           :else                                     (assoc-in query path stage-or-join')))))))
 
-(defn walk-stages
+(mu/defn walk-stages :- ::lib.schema/query
   "Like [[walk]], but only walks the stages in a query. `f` is invoked like
 
-    (f query path stage)"
-  [query f]
+    (f query path stage) => updated-stage-or-nil"
+  [query :- ::lib.schema/query
+   f     :- [:=> [:cat :map ::path ::lib.schema/stage] ::walk-stages-fn-result]]
   (walk
    query
-   (fn [query path-type path stage-or-join]
+   (mu/fn :- ::walk-stages-fn-result
+     [query         :- :map ; don't re-validate query at every step in case we make edits that make it temporarily invalid
+      path-type     :- ::path-type
+      path          :- ::path
+      stage-or-join :- ::stage-or-join]
      (when (= path-type :lib.walk/stage)
        (f query path stage-or-join)))))
 
@@ -173,7 +205,7 @@
             query'                      (assoc query :stages (:stages join))]
         (recur query' (if (empty? more) [:stages 0] more))))))
 
-(defn apply-f-for-stage-at-path
+(mu/defn apply-f-for-stage-at-path
   "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,
   via [[query-for-stage-at-path]]. Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in
   combination with [[walk-stages]].
@@ -183,6 +215,23 @@
     =>
 
     (f <query> <stage-number> x y)"
-  [f query stage-path & args]
+  [f          :- fn?
+   query      :- ::lib.schema/query
+   stage-path :- ::path
+   & args]
   (let [{:keys [query stage-number]} (query-for-path query stage-path)]
     (apply f query stage-number args)))
+
+(mu/defn previous-path :- [:maybe ::path]
+  "Return to the previous stage or join, if there is one; if not, returns `nil`."
+  [path :- ::path]
+  (when (pos-int? (last path))
+    (conj (vec (butlast path)) (dec (last path)))))
+
+(mu/defn next-path :- [:maybe ::path]
+  "Return to the next stage or join, if there is one; if not, returns `nil`."
+  [query :- ::lib.schema/query
+   path  :- ::path]
+  (let [num-stages-or-joins (count (get-in query (butlast path)))]
+    (when (< (inc (last path)) num-stages-or-joins)
+      (conj (vec (butlast path)) (inc (last path))))))

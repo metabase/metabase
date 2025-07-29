@@ -3,13 +3,13 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x])
@@ -23,8 +23,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime]
-   java.util.Arrays))
-
+   [java.util Arrays UUID]))
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
@@ -34,7 +33,7 @@
 (defn- get-report-timezone-id-safely
   []
   (try
-    (qp.timezone/report-timezone-id-if-supported)
+    (driver-api/report-timezone-id-if-supported)
     (catch Throwable _e nil)))
 
 ;; datetime('europe/amsterdam') -> europe/amsterdam
@@ -265,7 +264,7 @@
   (map (fn [arg] [:'toFloat64 (sql.qp/->honeysql :clickhouse arg)]) args))
 
 (defn- interval? [expr]
-  (mbql.u/is-clause? :interval expr))
+  (driver-api/is-clause? :interval expr))
 
 (defmethod sql.qp/->honeysql [:clickhouse :+]
   [driver [_ & args]]
@@ -458,6 +457,10 @@
   [_driver _special_type expr]
   expr)
 
+(defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:'parseDateTime expr (h2x/literal "%Y%m%d%H%i%S")])
+
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
 ;;; ------------------------------------------------------------------------------------
@@ -598,3 +601,8 @@
 (defmethod sql.qp/inline-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
+  [_driver this]
+  {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
+

@@ -21,7 +21,7 @@
 (mr/def ::type
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date])
+   :snippet :card :dimension :number :text :date :boolean :temporal-unit])
 
 (mr/def ::name
   [:ref
@@ -51,6 +51,21 @@
 
 ;; Example:
 ;;
+;;   {:id "cd35d6dc-285b-4944-8a83-21e4c38d6584",
+;;    :type "temporal-unit",
+;;    :name "unit",
+;;    :display-name "Unit"}
+(mr/def ::temporal-unit
+  [:merge
+   [:ref ::common]
+   [:map
+    [:type [:= :temporal-unit]]
+    ;; an optional alias to use in place of the normal field ref
+    [:alias       {:optional true} :string]
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
+
+;; Example:
+;;
 ;;    {:id           "c20851c7-8a80-0ffa-8a99-ae636f0e9539"
 ;;     :name         "date"
 ;;     :display-name "Date"
@@ -63,7 +78,9 @@
    [:map
     [:type        [:= :dimension]]
     ;; field filters can have missing dimension before it is set
-    [:dimension {:optional true} [:ref :mbql.clause/field]]
+    [:dimension   {:optional true} [:ref :mbql.clause/field]]
+    ;; an optional alias to use in place of the normal field ref
+    [:alias       {:optional true} :string]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]
@@ -144,9 +161,10 @@
    [:map
     [:type [:ref ::type]]]
    [:multi {:dispatch #(keyword (:type %))}
-    [:dimension   [:ref ::field-filter]]
-    [:snippet     [:ref ::snippet]]
-    [:card        [:ref ::source-query]]
+    [:temporal-unit [:ref ::temporal-unit]]
+    [:dimension     [:ref ::field-filter]]
+    [:snippet       [:ref ::snippet]]
+    [:card          [:ref ::source-query]]
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 

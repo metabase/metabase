@@ -11,7 +11,7 @@
    [java-time.api :as t]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -28,7 +28,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +80,7 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [h2/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true]
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e
@@ -335,7 +339,11 @@
                 (try
                   (t2/update! :model/Database (u/the-id db)
                               (sync.schedules/schedule-map->cron-strings
-                               (sync.schedules/default-randomized-schedule)))
+                               ;; TODO (edpaget): this can go away after this patch is deployed to cloud
+                               (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string
+                                      (:metadata_sync_schedule db))
+                                 (sync.schedules/default-randomized-schedule {:excluded-minute 43})
+                                 (sync.schedules/default-randomized-schedule))))
                   (inc counter)
                   (catch Exception e
                     (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
@@ -344,6 +352,8 @@
               {:select [:*]
                :from   [:metabase_database]
                :where  [:or
+                        [:and [:= :is_sample true]
+                         [:= :metadata_sync_schedule sync.schedules/old-sample-metadata-sync-schedule-cron-string]]
                         [:in
                          :metadata_sync_schedule
                          sync.schedules/default-metadata-sync-schedule-cron-strings]

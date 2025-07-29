@@ -16,7 +16,7 @@ describe("scenarios > admin > permissions > view data > blocked", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   const g = "All Users";
@@ -57,7 +57,7 @@ describe("scenarios > admin > permissions > view data > blocked", () => {
 
     H.assertPermissionForItem(g, DATA_ACCESS_PERM_IDX, "Granular", false);
     H.assertPermissionForItem(g, CREATE_QUERIES_PERM_IDX, "No", false);
-    H.assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "1 million rows", false);
+    H.assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "Granular", false);
 
     H.modifyPermission(g, DATA_ACCESS_PERM_IDX, "Blocked");
 
@@ -139,7 +139,7 @@ describe("scenarios > admin > permissions > view data > granular", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
   });
 
@@ -258,7 +258,7 @@ describe(
       H.restore("postgres-12");
       H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should allow saving 'impersonated' permissions", () => {
@@ -450,7 +450,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("'no self service' should only be an option if it is the current value in the permissions graph", () => {
@@ -547,7 +547,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
@@ -589,8 +589,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a user attribute").click();
+    cy.findByPlaceholderText("Pick a user attribute").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("attr_uid").click();
     cy.button("Save").click();
@@ -680,7 +679,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     });
 
     H.popover().findByText("User ID").click();
-    H.modal().findByText("Pick a user attribute").click();
+    H.modal().findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("attr_uid").click();
     H.modal().button("Save").click();
 
@@ -758,7 +757,7 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
   it("should allow you to sandbox view permissions and also edit the create queries permissions and saving should persist both (metabase#46450)", () => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
@@ -778,7 +777,7 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
     });
 
     H.popover().findByText("User ID").click();
-    H.modal().findByText("Pick a user attribute").click();
+    H.modal().findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("attr_uid").click();
     H.modal().button("Save").click();
 
@@ -809,7 +808,7 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
       H.restore("postgres-12");
       H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
 
@@ -851,7 +850,7 @@ describe("scenarios > admin > permissions > view data > unrestricted", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should allow perms to be set to from 'can view' to 'block' and back from database view", () => {
@@ -893,7 +892,7 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should deny view access to a query builder question that makes use of a blocked table", () => {
@@ -1010,7 +1009,7 @@ function makeOrdersSandboxed() {
   cy.findByText("Pick a column").click();
   cy.findByText("User ID").click();
 
-  cy.findByText("Pick a user attribute").click();
+  cy.findByPlaceholderText("Pick a user attribute").click();
   cy.findByText("attr_uid").click();
   cy.button("Save").click();
 }

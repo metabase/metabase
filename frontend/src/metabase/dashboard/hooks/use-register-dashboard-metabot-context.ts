@@ -3,7 +3,7 @@ import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { getDashboard } from "../selectors";
 
 export const useRegisterDashboardMetabotContext = () => {
-  useRegisterMetabotContextProvider((state) => {
+  useRegisterMetabotContextProvider(async (state) => {
     const dashboard = getDashboard(state);
     if (!dashboard) {
       return {};

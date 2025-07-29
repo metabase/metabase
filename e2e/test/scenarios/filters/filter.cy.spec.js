@@ -343,7 +343,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "su", blur: false });
+    H.enterCustomColumnDetails({ formula: "[su", blur: false });
 
     H.CustomExpressionEditor.completion("Sum of Total").should("be.visible");
 
@@ -504,7 +504,7 @@ describe("scenarios > question > filter", () => {
     });
 
     H.getNotebookStep("filter")
-      .findByText("Created At is in the previous 30 days")
+      .findByText("Created At is in the previous 30 days or today")
       .click();
 
     H.clauseStepPopover().within(() => {
@@ -516,7 +516,7 @@ describe("scenarios > question > filter", () => {
 
     // Back to GUI and "Include today" should be still checked
     H.getNotebookStep("filter")
-      .findByText("Created At is in the previous 30 days")
+      .findByText("Created At is in the previous 30 days or today")
       .click();
 
     H.popover()
@@ -677,7 +677,7 @@ describe("scenarios > question > filter", () => {
     H.popover().findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    H.CustomExpressionEditor.focus().type("Ta");
+    H.CustomExpressionEditor.focus().type("[Ta");
 
     // Suggestion popover shows up and this select the first one ([Tax])
     H.CustomExpressionEditor.acceptCompletion("tab");
@@ -1050,6 +1050,122 @@ describe("scenarios > question > filter", () => {
       cy.findByLabelText("Filter value").type("{esc}");
       cy.findByRole("option", { name: optionName }).should("not.exist");
       cy.findByLabelText("Filter value").should("be.visible");
+    });
+  });
+
+  it("should render the selected item in view", () => {
+    cy.viewport(1280, 320);
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+
+    H.popover()
+      .findByRole("tree")
+      .then((el) => {
+        cy.wrap(el[0].scrollTop).should("be.greaterThan", 0);
+      });
+
+    H.popover().findByText("Created At").should("be.visible");
+  });
+
+  it("should allow selecting a field on the source table using the table prefix", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.log("Columns from the source table should be visible");
+      filter("Orders");
+      verifySectionOrder(["Orders", "User"]);
+      verifyItemOrder(["ID", "Subtotal", "Tax", "Total"]);
+
+      cy.log("Columns from the source table should be possible to filter");
+      filter("Orders Sub");
+      verifySectionOrder(["Orders"]);
+      verifyItemOrder(["Subtotal", "Quantity", "User ID"]);
+
+      cy.log("Source table should match fuzzily");
+      filter("Arders");
+      verifySectionOrder(["User", "Orders"]);
+      verifyItemOrder(["Address", "ID", "Subtotal", "Tax", "Total"]);
+
+      cy.log("Source table should match fuzzily with field name");
+      filter("Ardors Sub");
+      verifySectionOrder(["Orders", "User"]);
+      verifyItemOrder(["Subtotal", "Address"]);
+
+      cy.log("Source table should match fuzzily with a fuzzy column name");
+      filter("Arders Sab");
+      verifySectionOrder(["Orders", "User"]);
+      verifyItemOrder(["Subtotal", "Address"]);
+
+      cy.log("It should match fields with spaces");
+      filter("Orders User ID");
+      verifySectionOrder(["Orders"]);
+      verifyItemOrder(["User ID", "Product ID"]);
+
+      cy.log("It should match fields directly");
+      filter("Ean");
+      verifySectionOrder(["Product", "Orders", "User"]);
+      verifyItemOrder(["Ean", "Vendor", "Created At"]);
+    });
+
+    function filter(searchText) {
+      cy.findByPlaceholderText("Find...").clear().type(searchText);
+    }
+
+    function verifySectionOrder(names) {
+      names.forEach((name, index) => {
+        cy.findAllByTestId("list-section-header")
+          .should("have.length.gte", names.length)
+          .eq(index)
+          .should("have.text", name);
+      });
+    }
+
+    function verifyItemOrder(names) {
+      names.forEach((name, index) => {
+        cy.findAllByTestId("dimension-list-item")
+          .should("have.length.gte", names.length)
+          .eq(index)
+          .should("have.text", name);
+      });
+    }
+  });
+
+  it("should allow picking custom expressions in filter picker", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").clear().type("coalesce");
+      cy.findByText("Custom Expressions").should("be.visible");
+      cy.findByText("coalesce").should("be.visible").click();
+
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "coalesce(value1, value2)",
+      );
+    });
+  });
+
+  it("should allow selecting custom expressions in filter picker with (", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.log("typing a non-existing clause does nothing");
+      cy.findByPlaceholderText("Find...").clear().type("foo(");
+      H.CustomExpressionEditor.get().should("not.exist");
+
+      cy.findByPlaceholderText("Find...").clear().type("case(");
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "case(condition, output)",
+      );
     });
   });
 });

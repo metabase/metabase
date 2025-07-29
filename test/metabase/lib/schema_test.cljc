@@ -3,13 +3,16 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
-#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+(comment
+  metabase.lib.metadata.protocols/keep-me ; so `:metabase.lib.metadata.protocols/metadata-provider` gets loaded
+  #?(:cljs metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel disallow-duplicate-uuids-test
   (testing "sanity check: make sure query is valid with different UUIDs"
@@ -28,19 +31,20 @@
                        :source-table 2
                        :order-by
                        [[:asc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000020"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000020"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000030"
                            :base-type :type/BigInteger}
                           3]]
                         [:desc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000040"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000040"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000050"
                            :base-type :type/Integer}
                           4]]]}]}]
-      (is (not (mr/explain ::lib.schema/query query-with-no-duplicate-order-bys)))))
+      (is (not (mr/explain ::lib.schema/query query-with-no-duplicate-order-bys))))))
 
+(deftest ^:parallel disallow-duplicate-order-bys-test-2
   (testing "query should not validate if order-bys are duplicated"
     (let [query-with-duplicate-order-bys
           {:lib/type :mbql/query
@@ -49,13 +53,13 @@
                        :source-table 2
                        :order-by
                        [[:asc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000020"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000020"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000030"
                            :base-type :type/Integer}
                           3]]
                         [:asc
-                         #:lib{:uuid "00000000-0000-0000-0000-000000000040"}
+                         {:lib/uuid "00000000-0000-0000-0000-000000000040"}
                          [:field
                           {:lib/uuid "00000000-0000-0000-0000-000000000050"
                            :base-type :type/Integer}
@@ -113,7 +117,6 @@
        :joins        [{:lib/type    :mbql/join
                        :lib/options {:lib/uuid (str (random-uuid))}
                        :alias       "Q1"
-                       :ident       (u/generate-nano-id)
                        :fields      :all
                        :conditions  [[:=
                                       {:lib/uuid (str (random-uuid))}
@@ -131,8 +134,7 @@
 (def ^:private valid-expression
   [:+
    {:lib/uuid (str (random-uuid))
-    :lib/expression-name "price + 2"
-    :ident               (u/generate-nano-id)}
+    :lib/expression-name "price + 2"}
    [:field
     {:lib/uuid (str (random-uuid))}
     2]
@@ -164,7 +166,6 @@
      :joins        [{:lib/type    :mbql/join
                      :lib/options {:lib/uuid (str (random-uuid))}
                      :alias       "Q1"
-                     :ident       (u/generate-nano-id)
                      :fields      :all
                      :conditions  [[:=
                                     {:lib/uuid (str (random-uuid))}
@@ -192,7 +193,6 @@
    {:lib/type    :mbql/join
     :lib/options {:lib/uuid (str (random-uuid))}
     :alias       join-alias
-    :ident       (u/generate-nano-id)
     :conditions  [condition]
     :stages      [{:lib/type     :mbql.stage/mbql
                    :source-table 2}]}))
@@ -273,3 +273,15 @@
                         (me/humanize (mr/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, k duplicate-refs})))
         :breakout {:breakout ["Breakouts must be distinct"]}
         :fields   {:fields [":fields must be distinct"]}))))
+
+(deftest ^:parallel normalize-query-test
+  (let [normalized (lib.normalize/normalize
+                    ::lib.schema/query
+                    {:stages [{:lib/type     :mbql.stage/mbql
+                               :source-table 1
+                               :aggregation  [[:count {:name "count"}]]
+                               :breakout     [[:field {:temporal-unit :quarter} 2]
+                                              [:field {:temporal-unit :day-of-week} 2]]
+                               :order-by     [[:asc {} [:field {:temporal-unit :quarter} 2]]
+                                              [:asc {} [:field {:temporal-unit :day-of-week} 2]]]}]})]
+    (is (not (me/humanize (mr/explain ::lib.schema/query normalized))))))

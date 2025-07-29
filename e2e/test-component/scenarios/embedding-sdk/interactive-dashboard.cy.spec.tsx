@@ -10,12 +10,10 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { defer } from "metabase/lib/promise";
 import { Stack } from "metabase/ui";
 import type {
@@ -105,7 +103,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
   it("should show a watermark on dashcards in development mode", () => {
     cy.intercept("/api/session/properties", (req) => {
       req.continue((res) => {
-        res.body["token-features"]["development-mode"] = true;
+        res.body["token-features"].development_mode = true;
       });
     });
 
@@ -204,7 +202,10 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         .then(() => {
           resolveCardEndpoint();
         });
-      cy.findByText("New question").should("be.visible");
+
+      cy.findByTestId("interactive-question-result-toolbar").should(
+        "be.visible",
+      );
     });
   });
 

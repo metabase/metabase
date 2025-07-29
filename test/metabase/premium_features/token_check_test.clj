@@ -152,16 +152,18 @@
                   (#'token-check/fetch-token-status* (random-token))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
-  (testing "No DB calls are made for the user count when checking token status if the status is cached"
-    (let [token (random-token)]
-      (t2/with-call-count [call-count]
-        ;; First fetch, should trigger a DB call to fetch user count and db calls for other stats
-        (#'token-check/fetch-token-status token)
-        (is (= 6 (call-count)))
-
-        ;; Subsequent fetches with the same token should not trigger additional DB calls
-        (#'token-check/fetch-token-status token)
-        (is (= 6 (call-count)))))))
+  (testing "No DB calls are made when checking token status if the status is cached"
+    (let [token (random-token)
+          _ (#'token-check/fetch-token-status token)
+          ;; Sigh. This is really quite horrific. But we need some wiggle room here: any endpoint that gets some setting
+          ;; inside it is going to check to see whether it's time for an update check. If it is, it'll hit the DB to see
+          ;; when settings were last updated, and the count will be incremented. Therefore, let's do this a few times...
+          call-counts (repeatedly 3 (fn []
+                                      (t2/with-call-count [call-count]
+                                        (#'token-check/fetch-token-status token)
+                                        (call-count))))]
+      ;; ... and then make sure that *some* of the times, we didn't hit the DB again.
+      (is (some zero? call-counts)))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response

@@ -105,11 +105,11 @@ describe("CollectionMenu", () => {
   it("should be able to make the collection official if even it's a personal collection child", async () => {
     const collection = createMockCollection({
       can_write: true,
+      is_personal: true,
     });
     setupPremium({
       collection,
       isAdmin: true,
-      isPersonalCollectionChild: true,
     });
 
     await userEvent.click(getIcon("ellipsis"));

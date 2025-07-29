@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -45,7 +45,7 @@ const setup = ({ value }: { value: boolean }) => {
 describe("AnonymousTrackingInput", () => {
   it("should show an anonymous tracking toggle", async () => {
     setup({ value: true });
-    expect(await screen.findByText("Anonymous Tracking")).toBeInTheDocument();
+    expect(await screen.findByText("Anonymous tracking")).toBeInTheDocument();
     expect(
       await screen.findByText(/Enable the collection of anonymous usage data/),
     ).toBeInTheDocument();

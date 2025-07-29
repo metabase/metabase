@@ -22,7 +22,7 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import sandboxingReducer from "./actions";
-import { LoginAttributesWidget } from "./components/LoginAttributesWidget";
+import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";

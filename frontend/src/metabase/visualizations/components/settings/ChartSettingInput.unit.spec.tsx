@@ -69,4 +69,20 @@ describe("ChartSettingInput", () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("should not call onChange when value prop is undefined and blurring without changes (SEM-359)", () => {
+    const onChange = jest.fn();
+
+    setup({
+      value: undefined,
+      placeholder: "Placeholder",
+      onChange,
+    });
+
+    const input = screen.getByPlaceholderText("Placeholder");
+    input.focus();
+    input.blur();
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

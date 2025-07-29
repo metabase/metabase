@@ -46,7 +46,7 @@ describe(
       H.restore("postgres-12");
 
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
       createSandboxingDashboardAndQuestions().then((result) => {
         const { data } = result.body;
@@ -315,7 +315,7 @@ describe(
           .click();
         cy.findByRole("option", { name: "State" }).click();
         H.modal()
-          .findByRole("button", { name: /Pick a user attribute/ })
+          .findByPlaceholderText(/Pick a user attribute/)
           .click();
         cy.findByRole("option", { name: "state" }).click();
         cy.log("Save the sandboxing modal");

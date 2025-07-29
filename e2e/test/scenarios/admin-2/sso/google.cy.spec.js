@@ -73,6 +73,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
       .findByText("Sign in with email")
       .should("be.visible");
     cy.findByRole("button", { name: /Google/ }).should("be.visible");
+    cy.findByRole("checkbox", { name: /remember me/i }).should("be.visible");
 
     cy.signInAsAdmin();
     setupGoogleAuth({ enabled: false });

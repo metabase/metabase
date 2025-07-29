@@ -4,16 +4,16 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.request.core :as request]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -30,9 +30,9 @@
 ;; authentication test on every single individual endpoint
 
 (deftest ^:parallel unauthenticated-test
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "table")))
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []
@@ -702,63 +702,86 @@
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
-        (is (= (let [card-virtual-table-id (str "card__" (u/the-id card))]
-                 {:display_name      "Go Dubs!"
-                  :schema            "Everything else"
-                  :db_id             (:database_id card)
-                  :id                card-virtual-table-id
-                  :entity_id         (:entity_id card)
-                  :type              "question"
-                  :moderated_status  nil
-                  :metrics           nil
-                  :description       nil
-                  :dimension_options (default-dimension-options)
-                  :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
-                                                with-field-literal-id)
-                                          (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
-                                                name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
-                                            [{:name           "NAME"
-                                              :display_name   "NAME"
-                                              :base_type      "type/Text"
-                                              :effective_type "type/Text"
-                                              :database_type  "CHARACTER VARYING"
-                                              :semantic_type  "type/Name"
-                                              :fingerprint    (name->fingerprint :name)
-                                              :ident          (lib/native-ident "NAME" (:entity_id card))
-                                              :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
-                                             {:name           "ID"
-                                              :display_name   "ID"
-                                              :base_type      "type/BigInteger"
-                                              :effective_type "type/BigInteger"
-                                              :database_type  "BIGINT"
-                                              :semantic_type  nil
-                                              :fingerprint    (name->fingerprint :id)
-                                              :ident          (lib/native-ident "ID" (:entity_id card))
-                                              :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
-                                             (with-numeric-dimension-options
-                                               {:name           "PRICE"
-                                                :display_name   "PRICE"
-                                                :base_type      "type/Integer"
-                                                :effective_type "type/Integer"
-                                                :database_type  "INTEGER"
-                                                :semantic_type  nil
-                                                :fingerprint    (name->fingerprint :price)
-                                                :ident          (lib/native-ident "PRICE" (:entity_id card))
-                                                :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
-                                             (with-coordinate-dimension-options
-                                               {:name           "LATITUDE"
-                                                :display_name   "LATITUDE"
-                                                :base_type      "type/Float"
-                                                :effective_type "type/Float"
-                                                :database_type  "DOUBLE PRECISION"
-                                                :semantic_type  "type/Latitude"
-                                                :fingerprint    (name->fingerprint :latitude)
-                                                :ident          (lib/native-ident "LATITUDE" (:entity_id card))
-                                                :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
-               (->> card
-                    u/the-id
-                    (format "table/card__%d/query_metadata")
-                    (mt/user-http-request :crowberto :get 200))))))))
+        (is (=? (let [card-virtual-table-id (str "card__" (u/the-id card))]
+                  {:display_name      "Go Dubs!"
+                   :schema            "Everything else"
+                   :db_id             (:database_id card)
+                   :db                {:id (:database_id card)}
+                   :id                card-virtual-table-id
+                   :entity_id         (:entity_id card)
+                   :type              "question"
+                   :moderated_status  nil
+                   :metrics           nil
+                   :description       nil
+                   :dimension_options (default-dimension-options)
+                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
+                                                 with-field-literal-id)
+                                           (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
+                                                 name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
+                                             [{:name           "NAME"
+                                               :display_name   "NAME"
+                                               :base_type      "type/Text"
+                                               :effective_type "type/Text"
+                                               :database_type  "CHARACTER VARYING"
+                                               :semantic_type  "type/Name"
+                                               :fingerprint    (name->fingerprint :name)
+                                               :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
+                                              {:name           "ID"
+                                               :display_name   "ID"
+                                               :base_type      "type/BigInteger"
+                                               :effective_type "type/BigInteger"
+                                               :database_type  "BIGINT"
+                                               :semantic_type  nil
+                                               :fingerprint    (name->fingerprint :id)
+                                               :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
+                                              (with-numeric-dimension-options
+                                                {:name           "PRICE"
+                                                 :display_name   "PRICE"
+                                                 :base_type      "type/Integer"
+                                                 :effective_type "type/Integer"
+                                                 :database_type  "INTEGER"
+                                                 :semantic_type  nil
+                                                 :fingerprint    (name->fingerprint :price)
+                                                 :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
+                                              (with-coordinate-dimension-options
+                                                {:name           "LATITUDE"
+                                                 :display_name   "LATITUDE"
+                                                 :base_type      "type/Float"
+                                                 :effective_type "type/Float"
+                                                 :database_type  "DOUBLE PRECISION"
+                                                 :semantic_type  "type/Latitude"
+                                                 :fingerprint    (name->fingerprint :latitude)
+                                                 :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
+                (->> card
+                     u/the-id
+                     (format "table/card__%d/query_metadata")
+                     (mt/user-http-request :crowberto :get 200))))))))
+
+(deftest virtual-table-metadata-permission-test
+  (testing "GET /api/table/card__:id/query_metadata"
+    (testing "Make sure we do not leak the database info when the user does not have data perms"
+      (mt/with-temp [:model/Card card {:database_id   (mt/id)
+                                       :dataset_query {:query    {:source-table (mt/id :venues)}
+                                                       :type     :query
+                                                       :database (mt/id)}}]
+        (mt/with-full-data-perms-for-all-users!
+          (is (=? {:id     (str "card__" (u/the-id card))
+                   :schema "Everything else"
+                   :db_id  (:database_id card)
+                   :db     {:id (:database_id card)}}
+                  (->> card
+                       u/the-id
+                       (format "table/card__%d/query_metadata")
+                       (mt/user-http-request :rasta :get 200)))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (=? {:id     (str "card__" (u/the-id card))
+                   :db_id  (:database_id card)
+                   :schema "Everything else"
+                   :db     nil}
+                  (->> card
+                       u/the-id
+                       (format "table/card__%d/query_metadata")
+                       (mt/user-http-request :rasta :get 200)))))))))
 
 (deftest ^:parallel virtual-table-metadata-deleted-cards-test
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
@@ -794,44 +817,42 @@
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
           ;; Now fetch the metadata for this "table" via the API
           (let [[name-metadata last-login-metadata] (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card))]
-            (is (= {:display_name      "Users"
-                    :schema            "Everything else"
-                    :db_id             (:database_id card)
-                    :id                card-virtual-table-id
-                    :entity_id         (:entity_id card)
-                    :type              "question"
-                    :description       nil
-                    :moderated_status  nil
-                    :metrics           nil
-                    :dimension_options (default-dimension-options)
-                    :fields            [{:name                     "NAME"
-                                         :display_name             "NAME"
-                                         :base_type                "type/Text"
-                                         :effective_type           "type/Text"
-                                         :database_type            "CHARACTER VARYING"
-                                         :table_id                 card-virtual-table-id
-                                         :id                       ["field" "NAME" {:base-type "type/Text"}]
-                                         :ident                    (lib/native-ident "NAME" (:entity_id card))
-                                         :semantic_type            "type/Name"
-                                         :default_dimension_option nil
-                                         :dimension_options        []
-                                         :fingerprint              (:fingerprint name-metadata)
-                                         :field_ref                ["field" "NAME" {:base-type "type/Text"}]}
-                                        {:name                     "LAST_LOGIN"
-                                         :display_name             "LAST_LOGIN"
-                                         :base_type                "type/DateTime"
-                                         :effective_type           "type/DateTime"
-                                         :database_type            "TIMESTAMP"
-                                         :table_id                 card-virtual-table-id
-                                         :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
-                                         :ident                    (lib/native-ident "LAST_LOGIN" (:entity_id card))
-                                         :semantic_type            nil
-                                         :default_dimension_option @#'schema.table/datetime-default-index
-                                         :dimension_options        @#'schema.table/datetime-dimension-indexes
-                                         :fingerprint              (:fingerprint last-login-metadata)
-                                         :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
-                   (mt/user-http-request :crowberto :get 200
-                                         (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
+            (is (=? {:display_name      "Users"
+                     :schema            "Everything else"
+                     :db_id             (:database_id card)
+                     :id                card-virtual-table-id
+                     :entity_id         (:entity_id card)
+                     :type              "question"
+                     :description       nil
+                     :moderated_status  nil
+                     :metrics           nil
+                     :dimension_options (default-dimension-options)
+                     :fields            [{:name                     "NAME"
+                                          :display_name             "NAME"
+                                          :base_type                "type/Text"
+                                          :effective_type           "type/Text"
+                                          :database_type            "CHARACTER VARYING"
+                                          :table_id                 card-virtual-table-id
+                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
+                                          :semantic_type            "type/Name"
+                                          :default_dimension_option nil
+                                          :dimension_options        []
+                                          :fingerprint              (:fingerprint name-metadata)
+                                          :field_ref                ["field" "NAME" {:base-type "type/Text"}]}
+                                         {:name                     "LAST_LOGIN"
+                                          :display_name             "LAST_LOGIN"
+                                          :base_type                "type/DateTime"
+                                          :effective_type           "type/DateTime"
+                                          :database_type            "TIMESTAMP"
+                                          :table_id                 card-virtual-table-id
+                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
+                                          :semantic_type            nil
+                                          :default_dimension_option @#'schema.table/datetime-default-index
+                                          :dimension_options        @#'schema.table/datetime-dimension-indexes
+                                          :fingerprint              (:fingerprint last-login-metadata)
+                                          :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
+                    (mt/user-http-request :crowberto :get 200
+                                          (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
 
 (deftest include-metrics-for-card-test
   (testing "GET /api/table/:id/query_metadata"
@@ -1140,19 +1161,19 @@
 (deftest field-ordering-test
   (let [original-field-order (t2/select-one-fn :field_order :model/Table :id (mt/id :venues))]
     (try
-      (testing "Cane we set alphabetical field ordering?"
+      (testing "Can we set alphabetical field ordering?"
         (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
                (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                           {:field_order :alphabetical})
                     :fields
                     (map :name)))))
-      (testing "Cane we set smart field ordering?"
+      (testing "Can we set smart field ordering?"
         (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
                (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                           {:field_order :smart})
                     :fields
                     (map :name)))))
-      (testing "Cane we set database field ordering?"
+      (testing "Can we set database field ordering?"
         (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
                (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                           {:field_order :database})
@@ -1248,3 +1269,31 @@
                             :table-id (:id table)
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/sync_schema                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest ^:parallel non-admins-cant-trigger-sync-test
+  (testing "Non-admins should not be allowed to trigger sync"
+    (mt/with-temp [:model/Table table {}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 (format "table/%d/sync_schema" (u/the-id table))))))))
+
+(defn- deliver-when-tbl [promise-to-deliver expected-tbl]
+  (fn [tbl]
+    (when (= (u/the-id tbl) (u/the-id expected-tbl))
+      (deliver promise-to-deliver true))))
+
+(deftest trigger-metadata-sync-for-table-test
+  (testing "Can we trigger a metadata sync for a table?"
+    (let [sync-called? (promise)
+          timeout (* 10 60)]
+      (mt/with-premium-features #{:audit-app}
+        (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                       :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+          (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
+      (testing "sync called?"
+        (is (true?
+             (deref sync-called? timeout :sync-never-called)))))))

@@ -7,7 +7,11 @@
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that.
   Tech debt issue: #39363"
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
    [mb.hawk.hooks]
@@ -111,6 +115,14 @@
 (defmethod get-dataset-definition DatabaseDefinition
   [this]
   this)
+
+(defn- hash-dataset*
+  [^DatabaseDefinition db-def]
+  (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) (get-dataset-definition db-def))))))
+
+(def hash-dataset
+  "Provides a consistent hash for the DatabaseDefinition"
+  (memoize/ttl hash-dataset*))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Registering Test Extensions                                           |
@@ -357,6 +369,115 @@
   [driver]
   (log/infof "%s has no after-run hooks." driver))
 
+(defmulti drop-if-exists-and-create-db!
+  "Drop a database named `db-name` if it already exists, then create a new empty one with that name"
+  {:added "0.55.0" :arglists '([driver db-name & [just-drop]])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-if-exists-and-create-db! ::test-extensions
+  [_driver _db-name & [_just-drop]]
+  nil)
+
+(defn with-temp-database-fn!
+  "Creates a new database, dropping it first if necessary, runs `f`, then drops the db"
+  [driver db-name f]
+  (try
+    (drop-if-exists-and-create-db! driver db-name)
+    (f)
+    (finally
+      (drop-if-exists-and-create-db! driver db-name :just-drop))))
+
+(defmacro with-temp-database!
+  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
+  [driver db-name & body]
+  `(with-temp-database-fn!
+     ~driver
+     ~db-name
+     (fn [] ~@body)))
+
+(defmulti create-and-grant-roles!
+  "Creates the given roles and permissions for the database user
+   `roles` is a map of role names to table permissions of the form
+   {role-name {table-name {:columns [col1 col2 ...]
+                           :rls    honey-sql-form}}}
+   where colN is a column name as a string and honey-sql-form is a predicate"
+  {:added "0.55.0" :arglists '([driver details roles db-user default-role])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-and-grant-roles! ::test-extensions
+  [_driver _details _roles _db-user _default-role]
+  (ex-info (format "Creating roles hasn't been implemented or is not supported for %s" driver) {}))
+
+(defmulti drop-roles!
+  "Drops the given roles, and drops the database user if necessary"
+  {:added "0.55.0" :arglists '([driver details roles db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-roles! ::test-extensions
+  [_driver _details _roles _db-user]
+  (ex-info (format "Dropping roles hasn't been implemented or is not supported for %s" driver) {}))
+
+(defn with-temp-roles-fn!
+  "Creates the given roles and permissions for the database user, and drops them after execution"
+  [driver details roles db-user default-role f]
+  (try
+    (create-and-grant-roles! driver details roles db-user default-role)
+    (f)
+    (finally
+      (drop-roles! driver details roles db-user))))
+
+(defmacro with-temp-roles!
+  "Creates the given roles and permissions for the database user, and drops them after execution"
+  [driver details roles db-user default-role & body]
+  `(with-temp-roles-fn!
+     ~driver
+     ~details
+     ~roles
+     ~db-user
+     ~default-role
+     (fn [] ~@body)))
+
+(defmulti create-db-user!
+  "Creates a database user."
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-db-user! ::test-extensions
+  [_driver _details _db-user]
+  (ex-info (format "Creating a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defmulti drop-db-user-if-exists!
+  "Drops the database user if it exists"
+  {:added "0.55.0" :arglists '([driver details db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-db-user-if-exists! ::test-extensions
+  [driver _details _db-user]
+  (ex-info (format "Dropping a user hasn't been implemented or is not supported for %s" driver) {}))
+
+(defn with-temp-db-user-fn!
+  "Creates the given user with the default public key and drops it after execution."
+  [driver details db-user f]
+  (try
+    (create-db-user! driver details db-user)
+    (f)
+    (finally
+      (drop-db-user-if-exists! driver details db-user))))
+
+(defmacro with-temp-db-user!
+  "Creates the given user drops it after execution."
+  [driver details db-user & body]
+  `(with-temp-db-user-fn!
+     ~driver
+     ~details
+     ~db-user
+     (fn [] ~@body)))
+
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
@@ -383,6 +504,17 @@
 (defmethod dataset-already-loaded? ::test-extensions
   [_driver _dbdef]
   false)
+
+(defmulti track-dataset
+  "Track the creation or the usage of the database.
+   This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"
+  {:arglists '([driver dbdef]) :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod track-dataset ::test-extensions
+  [_driver _dbdef]
+  nil)
 
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
@@ -462,13 +594,12 @@
    (-> (qp.preprocess/query->expected-cols {:database (t2/select-one-fn :db_id :model/Table :id table-id)
                                             :type     :query
                                             :query    {:source-table table-id
-                                                       :aggregation  [[aggregation-type [:field-id field-id]]]
-                                                       :aggregation-idents {0 (u/generate-nano-id)}}})
+                                                       :aggregation  [[aggregation-type [:field-id field-id]]]}})
        first
        (merge (when (= aggregation-type :cum-count)
                 {:base_type     :type/Decimal
                  :semantic_type :type/Quantity}))
-       (dissoc :ident :lib/source-uuid :lib/source_uuid))))
+       (dissoc :lib/source-uuid :lib/source_uuid))))
 
 (defmulti count-with-template-tag-query
   "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
@@ -482,6 +613,18 @@
   `field-name`."
   {:arglists '([driver table-name field-name]
                [driver table-name field-name sample-value])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti arbitrary-select-query
+  "Generate a native query that selects some arbitrary sql from the top 2 rows from a Table with `table-name`"
+  {:arglists `([driver table-name to-insert])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti make-alias
+  "Makes an alias for a given column"
+  {:arglists '([driver alias])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -975,3 +1118,43 @@
    group by category_id
    order by 1 asc
    limit 2;")
+
+(doseq [driver [:postgres :clickhouse]]
+  (defmethod driver/database-supports? [driver :test/rls-impersonation]
+    [_driver _feature _database]
+    true))
+
+(doseq [driver [:redshift]]
+  (defmethod driver/database-supports? [driver :test/rls-impersonation]
+    [_driver _feature _database]
+    false))
+
+(doseq [driver [:postgres :sqlserver :mysql]]
+  (defmethod driver/database-supports? [driver :test/column-impersonation]
+    [_driver _feature _database]
+    true))
+
+(doseq [driver [:redshift]]
+  (defmethod driver/database-supports? [driver :test/column-impersonation]
+    [_driver _feature _database]
+    false))
+
+(defn tracking-access-note
+  "Generic tracking access note"
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s %s"
+            (str t/*testing-vars*)
+            (get env/env :github-actor)
+            (get env/env :github-head-ref))
+    (format "DEV: %s %s"
+            (str t/*testing-vars*)
+            (:user env/env))))
+
+(def ^:dynamic *use-routing-details*
+  "Used to decide if routing details should be used for a db."
+  false)
+
+(def ^:dynamic *use-routing-dataset*
+  "Used to override the dataset name for routing tests."
+  false)

@@ -93,7 +93,7 @@ export function setupCollectionItemsEndpoint({
   collectionItems = [],
   models: modelsParam,
 }: {
-  collection: Collection;
+  collection: Pick<Collection, "id">;
   collectionItems: CollectionItem[];
   models?: string[];
 }) {

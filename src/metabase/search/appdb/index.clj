@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -227,15 +228,19 @@
        :model_updated_at (:updated_at entity))
       (merge (specialization/extra-entry-fields entity))))
 
+(defn- table-not-found-exception? [e]
+  ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
+  ;; TODO we should handle the MySQL and MariaDB flavors here too
+  (or (instance? PSQLException (ex-cause e))
+      (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
+
 (defn- safe-batch-upsert! [table-name entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when table-name
     (try
       (specialization/batch-upsert! table-name entries)
       (catch Exception e
-        ;; TODO we should handle the MySQL and MariaDB flavors here too
-        (if (or (instance? PSQLException (ex-cause e))
-                (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
+        (if (table-not-found-exception? e)
           ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
           ;; suppress the issue - but throw it all the way to the caller if the issue persists
           (do (sync-tracking-atoms!)
@@ -256,13 +261,16 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [entries          (map document->entry documents)
+  (let [active-table (active-table)
+        entries (map document->entry documents)
         ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-        active-updated?  (when-not (= context :search/reindexing) (safe-batch-upsert! (active-table) entries))
+        active-updated? (when-not (and active-table (= context :search/reindexing)) (safe-batch-upsert! active-table entries))
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
       (u/prog1 (->> entries (map :model) frequencies)
-        (log/trace "indexed documents for " <>)))))
+        (log/trace "indexed documents for " <>)
+        (when active-updated?
+          (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))
 
 (defn index-docs!
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
@@ -277,8 +285,24 @@
   (index-docs! :search/updating document-reducible))
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
-  (doseq [table-name [(active-table) (pending-table)] :when table-name]
-    (t2/delete! table-name :model search-model :model_id [:in ids])))
+  (when (seq ids)
+    (u/prog1 (->> [(active-table) (pending-table)]
+                  (keep (fn [table-name]
+                          (when table-name
+                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
+                                               ;; Race conditions with table being deleted, especially in tests.
+                                               (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+                  (apply merge-with +)
+                  (into {}))
+      (when (active-table)
+        (try
+          (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
+                                                                                   :from   [(active-table)]
+                                                                                   :limit  1})))
+          (catch Exception e
+            ;; No point tracking the size of the newer index table, since we won't have modified it.
+            (when-not (table-not-found-exception? e)
+              (throw e))))))))
 
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."

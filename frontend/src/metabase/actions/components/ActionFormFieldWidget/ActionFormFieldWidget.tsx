@@ -2,13 +2,13 @@ import type { FunctionComponent, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
-import FormInputWidget from "metabase/core/components/FormInput";
-import FormNumericInputWidget from "metabase/core/components/FormNumericInput";
-import type { FormRadioProps } from "metabase/core/components/FormRadio";
-import FormRadioWidget from "metabase/core/components/FormRadio";
-import FormSelectWidget from "metabase/core/components/FormSelect";
-import FormTextAreaWidget from "metabase/core/components/FormTextArea";
-import FormBooleanWidget from "metabase/core/components/FormToggle";
+import FormInputWidget from "metabase/common/components/FormInput";
+import FormNumericInputWidget from "metabase/common/components/FormNumericInput";
+import type { FormRadioProps } from "metabase/common/components/FormRadio";
+import FormRadioWidget from "metabase/common/components/FormRadio";
+import FormSelectWidget from "metabase/common/components/FormSelect";
+import FormTextAreaWidget from "metabase/common/components/FormTextArea";
+import FormBooleanWidget from "metabase/common/components/FormToggle";
 import type { InputComponentType } from "metabase-types/api";
 
 const VerticalRadio = (props: FormRadioProps) => (

@@ -4,6 +4,7 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { AUTH_PROVIDER_URL } from "e2e/support/helpers";
 import { visitFullAppEmbeddingUrl } from "e2e/support/helpers/e2e-embedding-helpers";
 import {
   EMBEDDING_SDK_STORY_HOST,
@@ -20,7 +21,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signIn("admin", { skipCache: true });
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     enableJwtAuth();
 
     const textCard = H.getTextCardDetails({ col: 16, text: "Text text card" });
@@ -53,19 +54,13 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
     cy.task("signJwt", {
       payload: {
         email: USERS.normal.email,
-        exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
       },
       secret: JWT_SHARED_SECRET,
     }).then((jwtToken) => {
-      const ssoUrl = new URL("/auth/sso", Cypress.config().baseUrl);
-      ssoUrl.searchParams.set("jwt", jwtToken);
-      ssoUrl.searchParams.set("token", "true");
-      cy.request(ssoUrl.toString()).then(({ body }) => {
-        cy.wrap(body).as("metabaseSsoResponse");
+      cy.intercept("GET", `${AUTH_PROVIDER_URL}?response=json`, {
+        jwt: jwtToken,
       });
-    });
-    cy.get("@metabaseSsoResponse").then((ssoResponse) => {
-      cy.intercept("GET", "/sso/metabase", ssoResponse);
     });
   });
 
@@ -88,7 +83,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.findByText(
-        "Failed to fetch the user, the session might be invalid.",
+        "Unable to connect to instance at http://localhost:4000",
       ).should("be.visible");
     });
   });
@@ -148,7 +143,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.findByText(
-        "Failed to fetch the user, the session might be invalid.",
+        "Unable to connect to instance at http://localhost:4000",
       ).should("be.visible");
     });
   });

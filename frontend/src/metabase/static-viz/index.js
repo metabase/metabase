@@ -107,15 +107,28 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
 
   // If this is a visualizer card, we need to merge the data and split the series if needed
   if ("visualization" in dashcardSettings) {
+    const dataSourceNameMap = Object.fromEntries(
+      rawSeries.map((series) => {
+        const source = createDataSource(
+          "card",
+          series.card.entity_id,
+          series.card.name,
+        );
+        return [source.id, source.name];
+      }),
+    );
     rawSeries = getVisualizerRawSeries(rawSeries, dashcardSettings);
-    const { display, columnValuesMapping, settings } =
-      dashcardSettings.visualization;
+    const { display, columnValuesMapping } = dashcardSettings.visualization;
     if (
       display &&
       isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+      shouldSplitVisualizerSeries(columnValuesMapping)
     ) {
-      rawSeries = splitVisualizerSeries(rawSeries, columnValuesMapping);
+      rawSeries = splitVisualizerSeries(
+        rawSeries,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
     }
   }
 
@@ -128,7 +141,7 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
     rawSeriesWithDashcardSettings,
   );
 
-  const hasDevWatermark = Boolean(options.tokenFeatures?.["development-mode"]);
+  const hasDevWatermark = Boolean(options.tokenFeatures?.development_mode);
 
   return ReactDOMServer.renderToStaticMarkup(
     <StaticVisualization

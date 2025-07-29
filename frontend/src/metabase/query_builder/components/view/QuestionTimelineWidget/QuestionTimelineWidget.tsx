@@ -1,15 +1,44 @@
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/components/ViewFooterButton";
+import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
+import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   onCloseTimelines,
   onOpenTimelines,
 } from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
+import { Indicator } from "metabase/ui";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
+}
+
+function QuestionTimelineAcknowledgement({
+  children,
+}: {
+  children: (props: { ack: () => void }) => React.ReactNode;
+}) {
+  return (
+    <UserHasSeen id="events-menu">
+      {({ hasSeen, ack }) => (
+        <Indicator disabled={hasSeen} size={6} offset={4}>
+          {children({
+            ack: () => {
+              trackSimpleEvent({
+                event: "events_clicked",
+                triggered_from: "chart",
+              });
+              if (!hasSeen) {
+                ack();
+              }
+            },
+          })}
+        </Indicator>
+      )}
+    </UserHasSeen>
+  );
 }
 
 const QuestionTimelineWidget = ({
@@ -21,15 +50,22 @@ const QuestionTimelineWidget = ({
   const handleOpenTimelines = () => dispatch(onOpenTimelines());
   const handleCloseTimelines = () => dispatch(onCloseTimelines());
 
+  function handleClick(isShowingTimelineSidebar: boolean, ack: () => void) {
+    isShowingTimelineSidebar ? handleCloseTimelines() : handleOpenTimelines();
+    ack();
+  }
+
   return (
-    <ViewFooterButton
-      icon="calendar"
-      tooltipLabel={t`Events`}
-      onClick={
-        isShowingTimelineSidebar ? handleCloseTimelines : handleOpenTimelines
-      }
-      className={className}
-    />
+    <QuestionTimelineAcknowledgement>
+      {({ ack }) => (
+        <ViewFooterButton
+          icon="calendar"
+          tooltipLabel={t`Events`}
+          onClick={() => handleClick(isShowingTimelineSidebar, ack)}
+          className={className}
+        />
+      )}
+    </QuestionTimelineAcknowledgement>
   );
 };
 

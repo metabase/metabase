@@ -1,11 +1,9 @@
 import { CreateDashboardModal } from "@metabase/embedding-sdk-react";
 
 const { H } = cy;
-import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-} from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > create-dashboard modal", () => {
   describe("personal collection", () => {
