@@ -17,8 +17,9 @@ import * as Errors from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Stack } from "metabase/ui";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
-import { getTransformUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { CreateTransformRequest, DatasetQuery } from "metabase-types/api";
+
+import { getTransformUrl } from "../../../utils/urls";
 
 type NewTransformFormProps = {
   query: DatasetQuery;

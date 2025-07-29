@@ -1,9 +1,11 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Button, Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
-import { getTransformQueryUrl } from "metabase-enterprise/transforms/utils/urls";
+import { Button, Group, Icon } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
+
+import { getTransformQueryUrl } from "../../../../utils/urls";
+import { CardSection } from "../CardSection";
 
 export type ManageSectionProps = {
   transform: Transform;
@@ -11,12 +13,11 @@ export type ManageSectionProps = {
 
 export function ManageSection({ transform }: ManageSectionProps) {
   return (
-    <Group align="start" gap="5rem">
-      <Stack>
-        <Title order={4} c="text-primary">{t`Manage this transform`}</Title>
-        <Text c="text-secondary">{t`Change what this transform generates and where.`}</Text>
-      </Stack>
-      <Card px="xl" py="lg">
+    <CardSection
+      label={t`Manage this transform`}
+      description={t`Change what this transform generates and where.`}
+    >
+      <Group px="xl" py="lg">
         <Button leftSection={<Icon name="play" />}>{t`Run now`}</Button>
         <Button
           component={Link}
@@ -26,7 +27,7 @@ export function ManageSection({ transform }: ManageSectionProps) {
           {t`Edit query`}
         </Button>
         <Button leftSection={<Icon name="trash" />}>{t`Delete`}</Button>
-      </Card>
-    </Group>
+      </Group>
+    </CardSection>
   );
 }

@@ -18,8 +18,10 @@ export type TransformSource = {
   query: DatasetQuery;
 };
 
+export type TransformTargetType = "view" | "table";
+
 export type TransformTarget = {
-  type: "table";
+  type: TransformTargetType;
   name: string;
   schema: string;
 };
