@@ -155,10 +155,56 @@ jobs:
       name: Flaky
       tags: "@flaky"
 
+  # NEW: Merge split timings from all E2E test runs
+  merge-split-timings:
+    needs: [e2e-tests]
+    if: ${{ !cancelled() && needs.e2e-tests.result == 'success' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      # Download all timing artifacts from the parallel E2E test runs
+      - uses: actions/download-artifact@v4
+        with:
+          path: split-results
+          pattern: e2e-timings-*
+          merge-multiple: true
+
+      - name: Display structure of downloaded timing files
+        run: ls -R split-results
+
+     - name: Merge split timings
+  run: |
+    if [ -f "./e2e/support/timings.json" ]; then
+      echo "Base timings file exists"
+    else
+      echo "Creating base timings file"
+      echo "{}" > ./e2e/support/timings.json
+    fi
+    
+    # Install cypress-split if not already available
+    npm install -g cypress-split
+    
+    npx cypress-split-merge \
+      --parent-folder split-results \
+      --split-file "./e2e/support/timings.json" \
+      --output "./e2e/support/merged-timings.json" 
+
+- name: Upload merged timings artifact
+  uses: actions/upload-artifact@v4
+  with:
+    name: merged-e2e-timings
+    path: ./e2e/support/merged-timings.json 
+
   e2e-tests-result:
     needs:
       - e2e-tests
       - flaky-e2e-tests
+      - merge-split-timings
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
@@ -166,6 +212,7 @@ jobs:
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
       FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
+      MERGE_TIMINGS_RESULT: ${{ needs.merge-split-timings.result }}
     steps:
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}
@@ -176,6 +223,7 @@ jobs:
         run: | # sh
           echo "E2E Tests: ${{ needs.e2e-tests.result }}"
           echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
+          echo "Merge Timings: ${{ needs.merge-split-timings.result }}"
 
           if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
             echo "E2E Tests failed"

@@ -133,12 +133,6 @@ jobs:
             --spec "$SPEC_PATH" \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
-      - name: Debug timing data
-        if: always()
-        run: |
-          echo "Contents of newTimes.json:"
-          cat newTimes.json || echo "File not found"
-
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
         shell: bash
@@ -150,6 +144,17 @@ jobs:
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
           --spec "$SPEC_PATH" \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      # NEW: Upload timing data from this split for merging later
+      - name: Upload E2E timing data
+        uses: actions/upload-artifact@v4
+        if: always() && !inputs.specs # Only upload for auto-split tests, not tagged tests
+        with:
+          name: e2e-timings-${{ inputs.name }}-${{ inputs.edition }}-${{ inputs.split_index }}
+          path: |
+            ./e2e/support/timings.json
+            ./newTimes.json
+          if-no-files-found: ignore
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
