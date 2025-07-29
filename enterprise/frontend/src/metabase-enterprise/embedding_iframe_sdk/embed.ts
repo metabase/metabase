@@ -313,6 +313,11 @@ class MetabaseEmbed {
   private _handleMessage = async (
     event: MessageEvent<SdkIframeEmbedTagMessage>,
   ) => {
+    if (event.source !== this.iframe?.contentWindow) {
+      // ignore messages from other iframes
+      return;
+    }
+
     if (!event.data) {
       return;
     }
