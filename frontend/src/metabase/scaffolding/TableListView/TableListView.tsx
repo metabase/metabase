@@ -586,9 +586,31 @@ export const TableListView = ({ location, params }: Props) => {
             }}
           >
             <Group gap="md" justify="space-between">
-              <Button size="sm" variant="subtle" onClick={handleCancel}>
-                {t`Cancel`}
-              </Button>
+              <Group gap="md">
+                <Button size="sm" variant="subtle" onClick={handleCancel}>
+                  {t`Cancel`}
+                </Button>
+
+                <Button
+                  leftSection={<Icon name="revert" />}
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => {
+                    const defaultSettings = getDefaultComponentSettings(table);
+
+                    setSettings({
+                      ...settings,
+                      list_view: {
+                        ...settings.list_view,
+                        [settings.list_view.view]:
+                          defaultSettings.list_view[settings.list_view.view],
+                      },
+                    });
+                  }}
+                >
+                  {t`Reset`}
+                </Button>
+              </Group>
 
               <Button
                 size="sm"
