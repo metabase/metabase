@@ -1,6 +1,9 @@
+import { match } from "ts-pattern";
+
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
+import { getIframeBody } from "./e2e-embedding-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
 import { activateToken } from "./e2e-token-helpers";
@@ -37,6 +40,40 @@ export interface BaseEmbedTestPageOptions {
   onVisitPage?(): void;
 }
 
+export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
+  cy.get("iframe[data-metabase-embed]").should("have.length", n);
+  cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
+    timeout: 10_000, // the iframe can slow to load, we need to wait to decrease flakiness
+  });
+};
+
+export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
+  // note that if iframeIndex > 0 you should first await for the iframes to be loaded
+  // using waitForSimpleEmbedIframesToLoad and the number of iframes we expect to be loaded
+
+  // await at least ${iframeIndex} iframes to be loaded
+  cy.get("iframe[data-metabase-embed]").should(
+    "have.length.greaterThan",
+    iframeIndex,
+  );
+  cy.get("iframe[data-iframe-loaded]").should(
+    "have.length.greaterThan",
+    iframeIndex,
+    {
+      timeout: 10_000, // the iframe can slow to load, we need to wait to decrease flakiness
+    },
+  );
+
+  return cy
+    .get("iframe[data-metabase-embed]")
+    .should("be.visible")
+    .its(iframeIndex + ".contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.empty")
+    .then(cy.wrap);
+};
+
 /**
  * Creates and loads a test fixture for SDK iframe embedding tests
  */
@@ -62,13 +99,7 @@ export function loadSdkIframeEmbedTestPage<T extends BaseEmbedTestPageOptions>({
   cy.visit(testPageUrl, { onLoad: onVisitPage });
   cy.title().should("include", "Metabase Embed Test");
 
-  return cy
-    .get("iframe")
-    .should("be.visible")
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.empty");
+  return getIframeBody();
 }
 
 /**
@@ -184,3 +215,62 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
     );
   }
 }
+
+export const getNewEmbedScriptTag = ({
+  loadType = "defer",
+}: {
+  loadType?: "sync" | "async" | "defer";
+} = {}) => {
+  const loadTypeAttribute = match(loadType)
+    .with("sync", () => "")
+    .with("async", () => "async")
+    .with("defer", () => "defer")
+    .exhaustive();
+
+  return `
+    <script src="${EMBED_JS_PATH}" ${loadTypeAttribute}></script>
+    <script>
+      function defineMetabaseConfig(settings) {
+        window.metabaseConfig = settings;
+      }
+    </script>
+  `;
+};
+
+export const getNewEmbedConfigurationScript = ({
+  instanceUrl = "http://localhost:4000",
+  theme,
+}: {
+  instanceUrl?: string;
+  theme?: MetabaseTheme;
+} = {}) => {
+  return `
+    <script>
+      defineMetabaseConfig({
+        instanceUrl: "${instanceUrl}",
+        theme: ${JSON.stringify(theme)},
+      });
+    </script>
+  `;
+};
+
+export const visitCustomHtmlPage = (
+  html: string,
+  {
+    origin = "",
+    onVisitPage,
+  }: {
+    origin?: string;
+    onVisitPage?: () => void;
+  } = {},
+) => {
+  const testPageUrl = `${origin}/custom-html-page`;
+  cy.intercept("GET", testPageUrl, {
+    body: html,
+    headers: { "content-type": "text/html" },
+  }).as("dynamicPage");
+
+  cy.visit(testPageUrl, { onLoad: onVisitPage });
+
+  return cy;
+};

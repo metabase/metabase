@@ -72,9 +72,13 @@
     (testing  "simple queries"
       (doseq [query [base (lib/append-stage base)]
               :let  [cols (lib/visible-columns query)]]
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query %) cols)))
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query -1 % :long) cols)))
         (is (=? [{:display-name      "Grandparent: Parent: Child"
                   :long-display-name "Grandparent: Parent: Child"}
@@ -82,7 +86,10 @@
                   :long-display-name "Grandparent"}
                  {:display-name      "Grandparent: Parent"
                   :long-display-name "Grandparent: Parent"}]
-                (map #(lib/display-info query -1 %) cols)))))
+                (map #(lib/display-info query -1 %) cols)))))))
+
+(deftest ^:parallel nested-field-display-name-test-2
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "breakout"
       (is (=? [{:display-name      "Grandparent: Parent: Child"
                 :long-display-name "Grandparent: Parent: Child"}]
@@ -92,7 +99,10 @@
                    (lib/breakout base)
                    lib/append-stage
                    lib/visible-columns
-                   (map #(lib/display-info base -1 %))))))
+                   (map #(lib/display-info base -1 %))))))))
+
+(deftest ^:parallel nested-field-display-name-test-3
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "join"
       (let [join-column (second (lib/visible-columns base))
             base        (-> base
@@ -1901,6 +1911,32 @@
               ["CATEGORY" "Category"]                      ; products.category
               ["TITLE_2"  "Orders → Title"]                ; orders.title
               ["sum"      "Orders → Sum of Quantity"]]     ; sum(orders.quantity)
+             (map (juxt :lib/deduplicated-name :display-name)
+                  (lib.metadata.result-metadata/returned-columns query)))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test-2
+  (testing "if :fields already includes a column from the join make sure the display name is still calculated correctly"
+    (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title
+                               $category
+                               [:field "sum" {:base-type :type/Integer, :join-alias "Orders"}]]
+                    :order-by [[:asc $id]]
+                    :limit    3}))]
+      (is (= [["TITLE"    "Title"]                    ; products.title
+              ["CATEGORY" "Category"]                 ; products.category
+              ["sum"      "Orders → Sum of Quantity"] ; sum(orders.quantity)
+              ["TITLE_2"  "Orders → Title"]]          ; orders.title
              (map (juxt :lib/deduplicated-name :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
 

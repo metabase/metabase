@@ -18,7 +18,7 @@ import { SdkIframeEmbedSetup } from "./SdkIframeEmbedSetup";
 
 const setup = (options?: {
   showSimpleEmbedTerms?: boolean;
-  embeddingSdkEnabled?: boolean;
+  simpleEmbeddingEnabled?: boolean;
 }) => {
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupDashboardEndpoints(createMockDashboard());
@@ -29,7 +29,7 @@ const setup = (options?: {
     storeInitialState: createMockState({
       settings: createMockSettingsState({
         "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? true,
-        "enable-embedding-sdk": options?.embeddingSdkEnabled ?? false,
+        "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
       }),
     }),
   });
@@ -122,7 +122,7 @@ describe("Embed flow > forward and backward navigation", () => {
 
 describe("Embed flow > usage terms card", () => {
   it("shows the simple embed terms card when show-simple-embed-terms is true", () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: false });
+    setup({ showSimpleEmbedTerms: true, simpleEmbeddingEnabled: false });
 
     expect(screen.getByText("First, some legalese.")).toBeInTheDocument();
     expect(screen.getByText(/When using simple embedding/)).toBeInTheDocument();
@@ -130,7 +130,7 @@ describe("Embed flow > usage terms card", () => {
   });
 
   it("does not show the simple embed terms card when show-simple-embed-terms is false", () => {
-    setup({ showSimpleEmbedTerms: false, embeddingSdkEnabled: false });
+    setup({ showSimpleEmbedTerms: false, simpleEmbeddingEnabled: false });
 
     expect(screen.queryByText("First, some legalese.")).not.toBeInTheDocument();
     expect(
@@ -138,8 +138,8 @@ describe("Embed flow > usage terms card", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the simple embed terms card even when embedding SDK is already enabled", () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: true });
+  it("shows the simple embed terms card even when simple embedding is already enabled", () => {
+    setup({ showSimpleEmbedTerms: true, simpleEmbeddingEnabled: true });
 
     // The card should still be shown if show-simple-embed-terms is true
     expect(screen.getByText("First, some legalese.")).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe("Embed flow > usage terms card", () => {
   });
 
   it("handles accepting the terms by making PUT request to update settings", async () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: true });
+    setup({ showSimpleEmbedTerms: true, simpleEmbeddingEnabled: true });
 
     const gotItButton = screen.getByRole("button", { name: "Got it" });
     await userEvent.click(gotItButton);
@@ -161,13 +161,12 @@ describe("Embed flow > usage terms card", () => {
     expect(matchingRequest).toBeDefined();
   });
 
-  it("automatically enables embedding SDK when entering the flow", async () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: false });
+  it("automatically enables simple embedding when entering the flow", async () => {
+    setup({ showSimpleEmbedTerms: true, simpleEmbeddingEnabled: false });
 
-    // Verify that enable-embedding-sdk is set to true
-    // TODO: change this to "enable-embedding-simple" once we split the embed settings
+    // Verify that enable-embedding-simple is set to true
     const matchingRequest = await waitForUpdateSetting(
-      "enable-embedding-sdk",
+      "enable-embedding-simple",
       true,
     );
 
