@@ -552,7 +552,7 @@ export const TableListView = ({ location, params }: Props) => {
           )}
 
           {settings.list_view.view === "list" && (
-            <Stack gap="xl" p="xl">
+            <Stack gap="md" p="xl">
               {paginatedRows.map((row, index) => {
                 return (
                   <TableDetailViewInner

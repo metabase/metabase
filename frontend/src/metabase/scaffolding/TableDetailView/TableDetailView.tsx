@@ -359,12 +359,9 @@ export function TableDetailViewInner({
     <Container
       style={{
         borderRadius: 8,
-        boxShadow: isEdit
-          ? undefined
-          : "0px 1px 2px 0px var(--mb-color-shadow)",
       }}
     >
-      <Stack gap="md" mt="md" mb={isListView ? 0 : "sm"}>
+      <Stack gap="md" mt={isListView ? 0 : "md"} mb={isListView ? 0 : "sm"}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -494,7 +491,7 @@ function ObjectViewSection({
       <Flex
         direction={section.direction === "vertical" ? "column" : "row"}
         gap="md"
-        mt="sm"
+        mt={isListView ? 0 : "sm"}
         px="xs"
         className={S.SectionContent}
       >
