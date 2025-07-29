@@ -23,6 +23,7 @@ jobs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
+      doc_only: ${{ steps.changes.outputs.documentation == 'true' && steps.changes.outputs.backend_all == 'false' && steps.changes.outputs.frontend_all == 'false' && steps.changes.outputs.e2e_all == 'false' }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -68,13 +69,11 @@ jobs:
 
   uberjar:
     needs: [files-changed, static-viz-files-changed]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.files-changed.outputs.doc_only != 'true' }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
     with:
-      backend_changed: ${{ needs.files-changed.outputs.backend_all == 'true' }}
-      frontend_changed: ${{ needs.files-changed.outputs.frontend_all == 'true' }}
-      static_viz_changed: ${{ needs.static-viz-files-changed.outputs.static_viz == 'true' }}
+      source_changed: ${{ needs.files-changed.outputs.backend_all == 'true' || needs.files-changed.outputs.frontend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true' }}
 
   backend-tests:
     if: ${{ !cancelled() }}
@@ -108,6 +107,7 @@ jobs:
 
   e2e-tests:
     needs: [files-changed, uberjar]
+    if: always() && !cancelled()
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:

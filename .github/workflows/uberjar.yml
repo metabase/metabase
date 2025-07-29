@@ -25,16 +25,8 @@ on:
         description: "Optional full-length commit SHA-1 hash"
   workflow_call:
     inputs:
-      backend_changed:
-        description: "Backend source files changed"
-        type: boolean
-        default: true
-      frontend_changed:
-        description: "Frontend source files changed"
-        type: boolean
-        default: true
-      static_viz_changed:
-        description: "Static viz source files changed"
+      source_changed:
+        description: "Whether source code has changed"
         type: boolean
         default: true
 
@@ -64,7 +56,7 @@ jobs:
       - name: Decide if build is needed
         id: decide
         run: |
-          SOURCE_CHANGED="${{ inputs.backend_changed == true || inputs.frontend_changed == true || inputs.static_viz_changed == true }}"
+          SOURCE_CHANGED="${{ inputs.source_changed == true }}"
           EE_EXISTS="${{ steps.check-ee.outcome == 'success' }}"
           OSS_EXISTS="${{ steps.check-oss.outcome == 'success' }}"
 
@@ -174,7 +166,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: true # faster builds for dev
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
