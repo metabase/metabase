@@ -8,6 +8,7 @@ import {
   Form,
   FormErrorMessage,
   FormProvider,
+  FormSegmentedControl,
   FormSelect,
   FormSubmitButton,
   FormTextInput,
@@ -23,7 +24,22 @@ type TransformTargetFormProps = {
   onCancel: () => void;
 };
 
-const NEW_TRANSFORM_SCHEMA = Yup.object().shape({
+const TYPE_OPTIONS = [
+  {
+    value: "view",
+    get label() {
+      return t`View`;
+    },
+  },
+  {
+    value: "table",
+    get label() {
+      return t`Table`;
+    },
+  },
+];
+
+const TARGET_SCHEMA = Yup.object().shape({
   type: Yup.string().oneOf(["view", "table"]),
   name: Yup.string().required(Errors.required),
   schema: Yup.string().required(Errors.required),
@@ -54,18 +70,22 @@ export function TransformTargetForm({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={NEW_TRANSFORM_SCHEMA}
+      validationSchema={TARGET_SCHEMA}
       onSubmit={onSubmit}
     >
       <Form>
         <Stack>
-          <FormTextInput name="name" label={t`Name`} />
+          <FormSegmentedControl
+            name="type"
+            label={t`Should this transform create a view or a table in the database?`}
+            data={TYPE_OPTIONS}
+          />
           <FormTextInput
-            name="targetName"
+            name="name"
             label={t`What should it be called in the database?`}
           />
           <FormSelect
-            name="targetSchema"
+            name="schema"
             label={t`In which schema should it go?`}
             data={schemas}
           />

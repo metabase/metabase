@@ -1,21 +1,29 @@
 import { useField } from "formik";
-import type { FocusEvent } from "react";
+import type { FocusEvent, ReactNode } from "react";
 import { useCallback } from "react";
 
-import { SegmentedControl, type SegmentedControlProps } from "metabase/ui";
+import {
+  Input,
+  SegmentedControl,
+  type SegmentedControlProps,
+} from "metabase/ui";
 
 export interface FormSegmentedControlProps<T extends string>
   extends Omit<SegmentedControlProps<T>, "value"> {
   name: string;
+  label?: ReactNode;
+  description?: ReactNode;
 }
 
 export function FormSegmentedControl<T extends string>({
+  label,
+  description,
   name,
   onChange,
   onBlur,
   ...props
 }: FormSegmentedControlProps<T>) {
-  const [{ value }, _meta, { setValue, setTouched }] = useField(name);
+  const [{ value }, { error }, { setValue, setTouched }] = useField(name);
 
   const handleChange = useCallback(
     (newValue: T) => {
@@ -34,12 +42,14 @@ export function FormSegmentedControl<T extends string>({
   );
 
   return (
-    <SegmentedControl
-      {...props}
-      name={name}
-      value={value}
-      onChange={handleChange}
-      onBlur={handleBlur}
-    />
+    <Input.Wrapper label={label} description={description} error={error}>
+      <SegmentedControl
+        {...props}
+        name={name}
+        value={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+      />
+    </Input.Wrapper>
   );
 }

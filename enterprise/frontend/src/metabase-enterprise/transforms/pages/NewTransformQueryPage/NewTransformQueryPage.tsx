@@ -55,8 +55,8 @@ type NewTransformPageBodyProps = {
 function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   const [query, setQuery] = useState(initialQuery);
   const [isModalOpened, setIsModalOpened] = useState(false);
-  const dispatch = useDispatch();
   const [createTransform] = useCreateTransformMutation();
+  const dispatch = useDispatch();
 
   const handleSave = async (newTarget: TransformTarget) => {
     await createTransform(getCreateRequest(query, newTarget)).unwrap();
