@@ -16,7 +16,12 @@ export function NewTransformPage() {
       p="md"
     >
       <Flex direction="column" justify="center" align="center">
-        <img src={EmptyDashboardBot} width={96} height={96} />
+        <img
+          src={EmptyDashboardBot}
+          alt={t`Empty dashboard`}
+          width={96}
+          height={96}
+        />
         <Title order={3} c="text-secondary" mt="md" ta="center">
           {t`Create custom views and tables with transforms`}
         </Title>

@@ -85,7 +85,7 @@ function getParsedParams({
 }: NewTransformQueryPageParams): NewTransformQueryPageParsedParams {
   return {
     type: type === "native" ? "native" : "query",
-    cardId: Urls.extractEntityId(String(cardId)),
+    cardId: cardId != null ? Urls.extractEntityId(cardId) : undefined,
   };
 }
 

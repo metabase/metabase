@@ -29,7 +29,7 @@ import {
   tableMetadataUrl,
   transformListUrl,
   transformQueryUrl,
-} from "../../../utils/urls";
+} from "../../utils/urls";
 
 import { ScheduleSettings } from "./ScheduleSettings";
 
