@@ -3,7 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import { StaticDashboard } from "embedding-sdk/components/public";
 import { CommonSdkStoryCorsWrapper } from "embedding-sdk/test/CommonSdkCorsStoryWrapper";
 
-const DASHBOARD_ID = (window as any).DASHBOARD_ID || "1";
+const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
 export default {
   title: "EmbeddingSDK/CypressStaticDashboardWithCors",

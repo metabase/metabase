@@ -13,6 +13,7 @@ export type MetabaseProviderPropsStoreExternalProps = Omit<
 export type MetabaseProviderPropsStoreInternalProps = {
   initialized?: boolean;
   reduxStore?: InternalMetabaseProviderProps["reduxStore"] | null;
+  singleCopyWrapperIds?: string[];
 };
 
 export type MetabaseProviderPropsStore = {
@@ -28,12 +29,14 @@ export type MetabaseProviderPropsStore = {
 const INTERNAL_PROP_NAMES: (keyof MetabaseProviderPropsStoreInternalProps)[] = [
   "initialized",
   "reduxStore",
+  "singleCopyWrapperIds",
 ];
 
 const KEY = "METABASE_PROVIDER_PROPS_STORE";
 const EMPTY_PROPS = {
   initialized: false,
   reduxStore: null,
+  singleCopyWrapperIds: [],
 } as MetabaseProviderPropsStoreInternalProps;
 
 export function ensureMetabaseProviderPropsStore(
