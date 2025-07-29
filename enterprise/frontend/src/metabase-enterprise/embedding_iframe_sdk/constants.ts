@@ -39,6 +39,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "drills",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [
+    "template",
     "questionId",
     "isSaveEnabled",
     "targetCollection",

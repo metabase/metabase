@@ -67,6 +67,7 @@ export function getEmbedCustomElementSnippet({
         ({
           ...settings,
           questionId: "new" as const,
+          template: undefined,
         }) as QuestionEmbedOptions,
     )
     .otherwise(() => settings);
