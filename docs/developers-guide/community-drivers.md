@@ -7,6 +7,7 @@ redirect_from:
 
 # Community drivers
 
+> [!NOTE]
 > Community drivers are not supported on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 In addition to our [Officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), many people build and maintain drivers for database integrations.
@@ -22,6 +23,7 @@ You can change the location of the plugins directory by setting the environment 
 
 ## Community drivers
 
+> [!WARNING]
 > You install these drivers at your own risk. The plugins run as part of your Metabase and will have access to anything your Metabase does. And since we can’t vet for them, we don’t make them available on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 Anyone can build a community driver. These are the currently known third-party database drivers for Metabase.
