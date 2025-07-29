@@ -126,7 +126,7 @@ export function getDefaultListViewTableSettings(
     // TODO: do we need to filter out fields based on visibility_type?
     fields: fields.map((field) => ({
       field_id: getRawTableFieldId(field),
-      style: "normal",
+      style: isEntityName(field) ? "bold" : "normal",
     })),
   };
 }
@@ -165,7 +165,7 @@ export function getDefaultListViewGallerySettings(
         direction: "vertical",
         fields: bestFields.map((field) => ({
           field_id: getRawTableFieldId(field),
-          style: "normal",
+          style: isEntityName(field) ? "bold" : "normal",
         })),
       },
     ],
@@ -186,7 +186,7 @@ export function getDefaultListViewListSettings(
         direction: "horizontal",
         fields: bestFields.map((field) => ({
           field_id: getRawTableFieldId(field),
-          style: "normal",
+          style: isEntityName(field) ? "bold" : "normal",
         })),
       },
     ],
