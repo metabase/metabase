@@ -1,5 +1,6 @@
 ---
 title: Working with JSON
+summary: Learn how to unfold JSON columns into separate fields that you can filter on in the query builder.
 ---
 
 # Working with JSON
@@ -54,8 +55,8 @@ If performance degrades, or you'd rather keep the JSON contained in the original
 4. Select the database that contains the field you want to update.
 5. Select the table that contains the field.
 6. Select the field containing the original JSON
-7. Scroll to the **Unfold JSON** option and select **Yes** or **No**. If the column was unfolded, Metabase will have hidden this JSON columnn from view, so if you want the JSON column to be visible again, you'll need to change the column's visibility to **Everywhere**.
-8. Scroll down and click on the **Re-scan this field**.
+7. In the **Behavior** section, locate the **Unfold JSON** option and select **Yes** or **No**. If the column was unfolded, Metabase will have hidden this JSON columnn from view, so if you want the JSON column to be visible again, you'll need to change the column's visibility to **Everywhere**.
+8. Scroll to the top and click the **Filter values** button and select **Re-scan this field**.
 
 ![Unfolded JSON setting](./images/unfold-json-setting.png)
 
