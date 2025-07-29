@@ -16,6 +16,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
@@ -25,6 +26,7 @@ import {
 } from "metabase/api/table";
 import EditableText from "metabase/common/components/EditableText";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { POST } from "metabase/lib/api";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui/components";
@@ -230,9 +232,30 @@ export function TableDetailViewInner({
     });
   }, [dispatch, rows, tableId, isEdit]);
 
+  const [isGenerating, setIsGenerating] = useState(false);
+  const handleGenerateConfiguration = async () => {
+    setIsGenerating(true);
+    try {
+      const response = await POST("/api/ee/metabot-tools/table-view-config")({
+        table_id: tableId,
+        view_type: "detail",
+      });
+
+      if (response.success && response.config?.object_view?.sections) {
+        replaceAllSections(response.config.object_view.sections);
+      } else {
+        console.error("Failed to generate configuration:", response.error);
+      }
+    } catch (error) {
+      console.error("Error generating configuration:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
-    <Flex>
-      <Box m="auto" mt="md" w="70%">
+    <Group align="flex-start" gap={0} wrap="nowrap" h="100%">
+      <Box m="auto" mt={isListView ? 0 : "md"} w="70%">
         {!isListView && (
           <DetailViewHeader
             table={table}
@@ -248,7 +271,7 @@ export function TableDetailViewInner({
             onSaveClick={handleSaveClick}
           />
         )}
-        <Stack gap="md" mt="lg">
+        <Stack gap="md" mt={isListView ? 0 : "lg"}>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -283,15 +306,41 @@ export function TableDetailViewInner({
         )}
       </Box>
       {isEdit && !isListView && (
-        <DetailViewSidebar
-          columns={columns}
-          sections={sectionsOrOverride}
-          onUpdateSection={updateSection}
-          tableId={tableId}
-          onUpdateAllSections={replaceAllSections}
-        />
+        <Box
+          bg="white"
+          h="100%"
+          w="20%"
+          p="lg"
+          style={{
+            borderLeft: `1px solid var(--mb-border-color)`,
+            overflowY: "auto",
+          }}
+        >
+          <Flex justify="space-between" align="center" mb="xs" pb="sm">
+            <Text fw={600} size="lg">{t`Detail view settings`}</Text>
+            <ActionIcon
+              variant="filled"
+              color="brand"
+              size="md"
+              loading={isGenerating}
+              onClick={handleGenerateConfiguration}
+              aria-label={t`Generate with AI`}
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
+              }}
+            >
+              <Icon name="ai" size={18} />
+            </ActionIcon>
+          </Flex>
+          <DetailViewSidebar
+            columns={columns}
+            sections={sectionsOrOverride}
+            onUpdateSection={updateSection}
+          />
+        </Box>
       )}
-    </Flex>
+    </Group>
   );
 }
 
