@@ -284,7 +284,7 @@ export function DetailViewSidebar({
                   minHeight: hiddenColumns.length === 0 ? 40 : undefined,
                   border:
                     hiddenColumns.length === 0
-                      ? "1px dashed var(--mb-border-color)"
+                      ? "1px dashed var(--mb-color-border)"
                       : undefined,
                   borderRadius: 4,
                   display: "flex",
@@ -571,7 +571,7 @@ function EmptyDropZone({
       mt="sm"
       style={{
         minHeight: 40,
-        border: `1px dashed ${isOver ? "var(--mb-brand)" : "var(--mb-border-color)"}`,
+        border: `1px dashed ${isOver ? "var(--mb-brand)" : "var(--mb-color-border)"}`,
         borderRadius: 4,
         display: "flex",
         alignItems: "center",

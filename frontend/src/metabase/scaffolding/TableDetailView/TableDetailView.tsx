@@ -319,7 +319,7 @@ export function TableDetailViewInner({
             h="100%"
             p="lg"
             style={{
-              borderLeft: `1px solid var(--mb-border-color)`,
+              borderLeft: `1px solid var(--mb-color-border)`,
               overflowY: "auto",
             }}
           >
