@@ -10,6 +10,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.protocols :as jdbc.protocols]
@@ -119,23 +120,33 @@
 (defn dog-training-native-query []
   (mt/native-query {:query "SELECT AVG(tricks) FROM dogs WHERE age > 7 GROUP BY breed"}))
 
-(def mock-documents
-  [{:model "card"
-    :id "123"
-    :searchable_text "Dog Training Guide"
-    :created_at #t "2025-01-01T12:00:00Z"
-    :creator_id 1
-    :archived false
-    :legacy_input {:model "card" :id "123"}
-    :metadata {:title "Dog Training Guide" :description "How to teach an old dog new tricks"}}
-   {:model "dashboard"
-    :id "456"
-    :searchable_text "Elephant Migration"
-    :created_at #t "2025-02-01T12:00:00Z"
-    :creator_id 2
-    :archived true
-    :legacy_input {:model "dashboard" :id "456"}
-    :metadata {:title "Elephant Migration" :description "How do elephants deal with schema upgrades?"}}])
+(defn dog-training-native-query-json []
+  (-> (dog-training-native-query)
+      json/encode))
+
+(defn mock-documents []
+  (let [native-query-json (dog-training-native-query-json)]
+    [{:model "card"
+      :id "123"
+      :searchable_text "Dog Training Guide"
+      :created_at #t "2025-01-01T12:00:00Z"
+      :creator_id 1
+      :archived false
+      :legacy_input {:id "123"
+                     :model "card"
+                     :dataset_query native-query-json}
+      :native_query native-query-json
+      :metadata {:title "Dog Training Guide"
+                 :description "How to teach an old dog new tricks"
+                 :native-query native-query-json}}
+     {:model "dashboard"
+      :id "456"
+      :searchable_text "Elephant Migration"
+      :created_at #t "2025-02-01T12:00:00Z"
+      :creator_id 2
+      :archived true
+      :legacy_input {:model "dashboard" :id "456"}
+      :metadata {:title "Elephant Migration" :description "How do elephants deal with schema upgrades?"}}]))
 
 (defn filter-for-mock-embeddings
   "Filter results to only include items whose names are keys in mock-embeddings map."

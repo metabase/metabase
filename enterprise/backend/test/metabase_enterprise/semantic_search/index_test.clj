@@ -115,11 +115,11 @@
         (check-index-has-no-mock-docs))
       (testing "upsert-index! works on a fresh index"
         (is (= {"card" 1, "dashboard" 1}
-               (semantic.tu/upsert-index! semantic.tu/mock-documents)))
+               (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
         (check-index-has-mock-docs))
       (testing "upsert-index! works with duplicate documents"
         (is (= {"card" 1, "dashboard" 1}
-               (semantic.tu/upsert-index! semantic.tu/mock-documents)))
+               (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
         (check-index-has-mock-docs)))))
 
 (deftest delete-from-index!-test
@@ -128,7 +128,7 @@
       (check-index-has-no-mock-docs)
       (testing "upsert-index! before delete!"
         (is (= {"card" 1, "dashboard" 1}
-               (semantic.tu/upsert-index! semantic.tu/mock-documents)))
+               (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
         (check-index-has-mock-docs))
       (testing "delete-from-index! returns nil if you pass it an empty collection"
         (is (nil? (semantic.tu/delete-from-index! "card" [])))
@@ -155,8 +155,8 @@
               extra-docs (map (fn [id doc]
                                 (assoc doc :id id))
                               extra-ids
-                              (flatten (repeat semantic.tu/mock-documents)))
-              mock-docs (into semantic.tu/mock-documents extra-docs)]
+                              (flatten (repeat (semantic.tu/mock-documents))))
+              mock-docs (into (semantic.tu/mock-documents) extra-docs)]
           (testing "ensure upsert! and delete! work when batch size is exceeded"
             (check-index-has-no-mock-docs)
             (testing "upsert-index! with batch processing"
@@ -224,7 +224,7 @@
           (is (= 0.0 (mt/metric-value system :metabase-search/semantic-index-size))))
         (testing "semantic-index-size is updated after upsert-index! on empty db"
           (is (= {"card" 1, "dashboard" 1}
-                 (semantic.tu/upsert-index! semantic.tu/mock-documents)))
+                 (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
           (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))
         (testing "semantic-index-size is updated after delete-from-index!"
           (is (= {"card" 1}
@@ -232,5 +232,5 @@
           (is (= 1.0 (mt/metric-value system :metabase-search/semantic-index-size))))
         (testing "semantic-index-size is updated after upsert-index! on populated db"
           (is (= {"card" 1, "dashboard" 1}
-                 (semantic.tu/upsert-index! semantic.tu/mock-documents)))
+                 (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
           (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))))))
