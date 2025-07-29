@@ -9,11 +9,10 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Icon, Menu } from "metabase/ui";
-
 import {
   getNewTransformFromCardUrl,
   getNewTransformFromTypeUrl,
-} from "../../utils/urls";
+} from "metabase-enterprise/transforms/utils/urls";
 
 export function NewTransformMenu() {
   const [isPickerOpened, setIsPickerOpened] = useState(false);

@@ -7,10 +7,9 @@ import { useConfirmation } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Icon } from "metabase/ui";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { TransformTargetModal } from "metabase-enterprise/transforms/components/TransformTargetModal";
+import { getTableMetadataUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform, TransformTarget } from "metabase-types/api";
-
-import { TransformTargetModal } from "../../../../../components/TransformTargetModal";
-import { getTableMetadataUrl } from "../../../../../utils/urls";
 
 export type UpdateTargetButtonProps = {
   transform: Transform;

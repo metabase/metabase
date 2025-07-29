@@ -6,6 +6,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useCreateTransformMutation } from "metabase-enterprise/api";
+import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
+import { TransformTargetModal } from "metabase-enterprise/transforms/components/TransformTargetModal";
+import { getTransformListUrl } from "metabase-enterprise/transforms/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -14,10 +17,6 @@ import type {
   DatasetQuery,
   TransformTarget,
 } from "metabase-types/api";
-
-import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
-import { TransformTargetModal } from "../../components/TransformTargetModal";
-import { getTransformListUrl } from "../../utils/urls";
 
 type NewTransformQueryPageParams = {
   type?: string;

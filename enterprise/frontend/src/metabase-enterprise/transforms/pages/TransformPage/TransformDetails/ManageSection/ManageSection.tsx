@@ -2,10 +2,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Button, Group, Icon } from "metabase/ui";
+import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/TransformDetails/CardSection";
+import { getTransformQueryUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform } from "metabase-types/api";
-
-import { getTransformQueryUrl } from "../../../../utils/urls";
-import { CardSection } from "../CardSection";
 
 export type ManageSectionProps = {
   transform: Transform;

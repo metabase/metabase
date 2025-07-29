@@ -23,13 +23,12 @@ import {
   useExecuteTransformMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { Transform } from "metabase-types/api";
-
 import {
   getTableMetadataUrl,
   getTransformListUrl,
   getTransformQueryUrl,
-} from "../../utils/urls";
+} from "metabase-enterprise/transforms/utils/urls";
+import type { Transform } from "metabase-types/api";
 
 import { ScheduleSettings } from "./ScheduleSettings";
 

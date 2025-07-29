@@ -3,10 +3,9 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Button, Group, Icon } from "metabase/ui";
+import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/TransformDetails/CardSection";
+import { getTableMetadataUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform, TransformTarget } from "metabase-types/api";
-
-import { getTableMetadataUrl } from "../../../../utils/urls";
-import { CardSection } from "../CardSection";
 
 import { UpdateTargetButton } from "./UpdateTargetButton";
 
