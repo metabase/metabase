@@ -49,7 +49,7 @@ import S from "./TableDetailView.module.css";
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
   sections: ObjectViewSectionSettings[];
-  onCreateSection: () => void;
+  onCreateSection?: () => void;
   onUpdateSection: (
     id: number,
     section: Partial<ObjectViewSectionSettings>,
@@ -257,13 +257,15 @@ export function DetailViewSidebar({
           />
         ))}
 
-        <Button
-          variant="subtle"
-          size="compact-sm"
-          leftSection={<Icon name="add" />}
-          mt="md"
-          onClick={onCreateSection}
-        >{t`Add section`}</Button>
+        {onCreateSection && (
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            leftSection={<Icon name="add" />}
+            mt="md"
+            onClick={onCreateSection}
+          >{t`Add section`}</Button>
+        )}
 
         <Divider mt="lg" mb="sm" />
 
