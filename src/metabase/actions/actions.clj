@@ -129,7 +129,6 @@
 (defn check-data-editing-enabled-for-database!
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
-  ;; for now we reuse the :actions driver feature, but specialise the message
   (when-not (driver.u/supports? driver :actions/data-editing db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
                               (u/qualified-name driver)

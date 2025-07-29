@@ -599,15 +599,28 @@
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "Data editing not enabled on database"
+        (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
+                                                       :text      [:text]}
+                                                      {:primary-key [:id]}]]
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing false}}
+            (testing "execute-form should return 400 error when data editing is not enabled"
+              (is (= {:message "Data editing is not enabled."}
+                     (select-keys
+                      (mt/user-http-request :crowberto :post 400 execute-form-url
+                                            {:scope  {:table-id table-id}
+                                             :action "data-grid.row/create"})
+                      [:message])))))))
+
       (testing "Non auto-incrementing pk"
         (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
                                                        :text      [:text]
                                                        :int       [:int]
                                                        :timestamp [:timestamp]
-                                                       :date [:date]
-                                                       :inactive [:text]}
+                                                       :date      [:date]
+                                                       :inactive  [:text]}
                                                       {:primary-key [:id]}]]
-        ;; This inactive field should not show up
+          ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
           (testing "table actions"
             (let [create-id           "data-grid.row/create"
@@ -649,7 +662,7 @@
                                                        :date [:date]
                                                        :inactive [:text]}
                                                       {:primary-key [:id]}]]
-        ;; This inactive field should not show up
+          ;; This inactive field should not show up
           (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
           (testing "table actions"
             (let [create-id           "data-grid.row/create"
