@@ -9,6 +9,16 @@ on:
       skip-lint:
         type: boolean
         default: false
+  workflow_dispatch:
+    inputs:
+      skip:
+        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
+        type: boolean
+        default: false
+      skip-lint:
+        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
