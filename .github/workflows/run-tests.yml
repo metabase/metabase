@@ -23,7 +23,7 @@ jobs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
-      doc_only: ${{ steps.changes.outputs.documentation == 'true' && steps.changes.outputs.backend_all == 'false' && steps.changes.outputs.frontend_all == 'false' && steps.changes.outputs.e2e_all == 'false' }}
+      documentation: ${{ steps.changes.outputs.documentation }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -69,7 +69,7 @@ jobs:
 
   uberjar:
     needs: [files-changed, static-viz-files-changed]
-    if: ${{ !cancelled() && needs.files-changed.outputs.doc_only != 'true' }}
+    if: ${{ !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
     with:
