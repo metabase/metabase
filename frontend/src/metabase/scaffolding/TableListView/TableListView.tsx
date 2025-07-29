@@ -12,6 +12,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import api from "metabase/lib/api";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { Label } from "metabase/metadata/components/FieldOrderPicker/Label";
@@ -20,8 +21,10 @@ import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
+  ActionIcon,
   Box,
   Button,
+  Flex,
   Group,
   Icon,
   Menu,
@@ -115,6 +118,7 @@ export const TableListView = ({ location, params }: Props) => {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterPickerOpen, setIsFilterPickerOpen] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   const handleViewChange = (view: "table" | "list" | "gallery") => {
     setSettings((settings) => ({
@@ -188,6 +192,51 @@ export const TableListView = ({ location, params }: Props) => {
     newQuery = Lib.orderBy(newQuery, -1, orderByClause);
 
     setDataQuery(newQuery);
+  };
+
+  const handleGenerateAIConfig = async () => {
+    if (!table) return;
+
+    setIsGeneratingAI(true);
+    try {
+      const viewType = settings.list_view.view === "table" ? "table" : settings.list_view.view === "list" ? "list" : "gallery";
+      const response = await api.POST("/api/ee/metabot-tools/table-view-config")({
+        table_id: table.id,
+        view_type: viewType,
+      });
+
+      if (response.success && response.config) {
+        if (viewType === "table" && response.config.list_view) {
+          setSettings((settings) => ({
+            ...settings,
+            list_view: {
+              ...settings.list_view,
+              table: {
+                ...settings.list_view.table,
+                ...response.config.list_view,
+              },
+            },
+          }));
+        } else if ((viewType === "list" || viewType === "gallery") && response.config.object_view?.sections) {
+          const key = viewType as "list" | "gallery";
+          setSettings((settings) => ({
+            ...settings,
+            list_view: {
+              ...settings.list_view,
+              [key]: {
+                sections: response.config.object_view.sections,
+              },
+            },
+          }));
+        }
+      } else {
+        console.error("Failed to generate configuration:", response.error);
+      }
+    } catch (error) {
+      console.error("Error generating configuration:", error);
+    } finally {
+      setIsGeneratingAI(false);
+    }
   };
 
   useEffect(() => {
@@ -507,13 +556,29 @@ export const TableListView = ({ location, params }: Props) => {
           <Box flex="1" p="xl" style={{ overflow: "auto" }}>
             <Stack gap="lg">
               <Stack gap="xs">
-                <Text
-                  c="text-primary"
-                  fw="bold"
-                  lh="var(--mantine-line-height-md)"
-                >
-                  {t`Layout`}
-                </Text>
+                <Flex justify="space-between" align="center">
+                  <Text
+                    c="text-primary"
+                    fw="bold"
+                    lh="var(--mantine-line-height-md)"
+                  >
+                    {t`Layout`}
+                  </Text>
+
+                  <ActionIcon
+                    variant="filled"
+                    color="brand"
+                    size="md"
+                    loading={isGeneratingAI}
+                    onClick={handleGenerateAIConfig}
+                    aria-label={t`Generate with AI`}
+                    style={{
+                      background: 'linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)',
+                    }}
+                  >
+                    <Icon name="ai" size={18} />
+                  </ActionIcon>
+                </Flex>
 
                 <SegmentedControl
                   data={[
@@ -539,6 +604,8 @@ export const TableListView = ({ location, params }: Props) => {
                 <DetailViewSidebar
                   columns={columns}
                   sections={settings.list_view.list.sections}
+                  tableId={table.id}
+                  hideAIButton={true}
                   onUpdateSection={(id, update) => {
                     setSettings((settings) => ({
                       ...settings,
@@ -553,6 +620,17 @@ export const TableListView = ({ location, params }: Props) => {
                       },
                     }));
                   }}
+                  onUpdateAllSections={(sections) => {
+                    setSettings((settings) => ({
+                      ...settings,
+                      list_view: {
+                        ...settings.list_view,
+                        list: {
+                          sections,
+                        },
+                      },
+                    }));
+                  }}
                 />
               )}
 
@@ -560,6 +638,8 @@ export const TableListView = ({ location, params }: Props) => {
                 <DetailViewSidebar
                   columns={columns}
                   sections={settings.list_view.gallery.sections}
+                  tableId={table.id}
+                  hideAIButton={true}
                   onUpdateSection={(id, update) => {
                     setSettings((settings) => ({
                       ...settings,
@@ -570,6 +650,17 @@ export const TableListView = ({ location, params }: Props) => {
                           sections: settings.list_view.gallery.sections.map(
                             (s) => (s.id === id ? { ...s, ...update } : s),
                           ),
+                        },
+                      },
+                    }));
+                  }}
+                  onUpdateAllSections={(sections) => {
+                    setSettings((settings) => ({
+                      ...settings,
+                      list_view: {
+                        ...settings.list_view,
+                        gallery: {
+                          sections,
                         },
                       },
                     }));

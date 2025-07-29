@@ -55,6 +55,7 @@ interface DetailViewSidebarProps {
   ) => void;
   tableId: number;
   onUpdateAllSections: (sections: ObjectViewSectionSettings[]) => void;
+  hideAIButton?: boolean;
 }
 
 const HIDDEN_COLUMNS_ID = "hidden-columns";
@@ -65,6 +66,7 @@ export function DetailViewSidebar({
   onUpdateSection,
   tableId,
   onUpdateAllSections,
+  hideAIButton = false,
 }: DetailViewSidebarProps) {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -267,19 +269,21 @@ export function DetailViewSidebar({
       >
         <Flex justify="space-between" align="center" mb="xs" pb="sm">
           <Text fw={600} size="lg">{t`Detail view settings`}</Text>
-          <ActionIcon
-            variant="filled"
-            color="brand"
-            size="md"
-            loading={isGenerating}
-            onClick={handleGenerateConfiguration}
-            aria-label={t`Generate with AI`}
-            style={{
-              background: 'linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)',
-            }}
-          >
-            <Icon name="ai" size={18} />
-          </ActionIcon>
+          {!hideAIButton && (
+            <ActionIcon
+              variant="filled"
+              color="brand"
+              size="md"
+              loading={isGenerating}
+              onClick={handleGenerateConfiguration}
+              aria-label={t`Generate with AI`}
+              style={{
+                background: 'linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)',
+              }}
+            >
+              <Icon name="ai" size={18} />
+            </ActionIcon>
+          )}
         </Flex>
 
         {sections.map((section) => (
