@@ -58,9 +58,9 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
       onConfirm: async () => {
         const { error } = await updateTransform({ id, target: newTarget });
         if (error) {
-          sendErrorToast("Failed to update transform");
+          sendErrorToast("Failed to update transform target");
         } else {
-          sendSuccessToast("Transform updated");
+          sendSuccessToast("Transform target updated");
         }
       },
     });

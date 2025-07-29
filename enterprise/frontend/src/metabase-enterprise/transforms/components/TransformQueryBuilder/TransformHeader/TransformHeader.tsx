@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { Button, Group, Title } from "metabase/ui";
-
-import S from "./TransformHeader.module.css";
+import Button from "metabase/common/components/Button";
+import EditBar from "metabase/common/components/EditBar";
 
 type TransformHeaderProps = {
   name?: string;
@@ -19,27 +18,27 @@ export function TransformHeader({
   onSave,
   onCancel,
 }: TransformHeaderProps) {
-  return (
-    <Group
-      className={S.header}
-      px="md"
-      py="sm"
-      pos="sticky"
-      top={0}
-      bg="bg-white"
+  const saveButton = (
+    <Button
+      key="save"
+      onClick={onSave}
+      primary
+      small
+      disabled={!canSave || isSaving}
     >
-      <Title flex={1} order={4} c={name ? "text-dark" : "text-medium"}>
-        {name ?? t`New transform`}
-      </Title>
-      <Button
-        variant="filled"
-        loading={isSaving}
-        disabled={!canSave}
-        onClick={onSave}
-      >
-        {t`Save`}
-      </Button>
-      <Button onClick={onCancel}>{t`Cancel`}</Button>
-    </Group>
+      {isSaving ? t`Saving changes` : t`Save changes`}
+    </Button>
+  );
+
+  const cancelButton = (
+    <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>
+  );
+
+  return (
+    <EditBar
+      title={name ?? t`You’re creating a new transform`}
+      admin
+      buttons={[saveButton, cancelButton]}
+    />
   );
 }
