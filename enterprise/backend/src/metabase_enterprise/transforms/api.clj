@@ -129,12 +129,8 @@
                     [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        start-promise (promise)]
-    (future
-      (transforms.execute/exec-transform transform {:start-promise start-promise}))
-    (when (instance? Throwable @start-promise)
-      (throw @start-promise))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (transforms.execute/exec-transform transform)
     (-> (response/response {:message (deferred-tru "Transform execution started")})
         (assoc :status 202))))
 
