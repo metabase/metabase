@@ -11,7 +11,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]

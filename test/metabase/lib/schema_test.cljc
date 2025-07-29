@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
@@ -285,3 +286,17 @@
                                :order-by     [[:asc {} [:field {:temporal-unit :quarter} 2]]
                                               [:asc {} [:field {:temporal-unit :day-of-week} 2]]]}]})]
     (is (not (me/humanize (mr/explain ::lib.schema/query normalized))))))
+
+(deftest ^:parallel normalize-fields-breakouts-deduplicate-test
+  (doseq [schema [::lib.schema/fields
+                  ::lib.schema/breakouts]]
+    (testing (str "normalizing " (name schema) " should remove duplicates")
+      (let [fields [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer} 100]
+                    [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/Integer} 101]
+                    [:field {:lib/uuid "00000000-0000-0000-0000-000000000002", :base-type :type/Number} 101]
+                    [:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :base-type :type/Integer, :temporal-unit :month} 101]]]
+        (is (= [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer} 100]
+                [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/Integer} 101]
+                ;; ok because it has a different temporal unit
+                [:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :base-type :type/Integer, :temporal-unit :month} 101]]
+               (lib/normalize schema fields)))))))
