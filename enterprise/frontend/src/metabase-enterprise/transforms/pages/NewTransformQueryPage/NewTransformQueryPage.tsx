@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { push } from "react-router-redux";
 
@@ -53,7 +54,7 @@ type NewTransformPageBodyProps = {
 
 function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   const [query, setQuery] = useState(initialQuery);
-  const [isModalOpened, setIsModalOpened] = useState(false);
+  const [isOpened, { open, close }] = useDisclosure();
   const [createTransform] = useCreateTransformMutation();
   const dispatch = useDispatch();
 
@@ -63,17 +64,12 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
 
   const handleSaveClick = (newQuery: DatasetQuery) => {
     setQuery(newQuery);
-    setIsModalOpened(true);
+    open();
   };
 
   const handleCancelClick = () => {
     dispatch(push(getTransformListUrl()));
   };
-
-  const handleCloseClick = () => {
-    setIsModalOpened(false);
-  };
-
   return (
     <>
       <TransformQueryBuilder
@@ -84,9 +80,9 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
       {query.database != null && (
         <TransformTargetModal
           databaseId={query.database}
-          isOpened={isModalOpened}
+          isOpened={isOpened}
           onSubmit={handleSave}
-          onClose={handleCloseClick}
+          onClose={close}
         />
       )}
     </>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
@@ -20,7 +20,7 @@ export function UpdateTargetButton({ transform }: UpdateTargetButtonProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
-  const [isModalOpened, setIsModalOpened] = useState(false);
+  const [isOpened, { open, close }] = useDisclosure();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
   const handleUpdateTarget = (newTarget: TransformTarget) => {
@@ -39,20 +39,9 @@ export function UpdateTargetButton({ transform }: UpdateTargetButtonProps) {
     });
   };
 
-  const handleModalOpen = () => {
-    setIsModalOpened(false);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpened(false);
-  };
-
   return (
     <>
-      <Button
-        leftSection={<Icon name="pencil_lines" />}
-        onClick={handleModalOpen}
-      >
+      <Button leftSection={<Icon name="pencil_lines" />} onClick={open}>
         {t`Change target`}
       </Button>
       {transform.table && (
@@ -67,9 +56,10 @@ export function UpdateTargetButton({ transform }: UpdateTargetButtonProps) {
       {source.query.database != null && (
         <TransformTargetModal
           databaseId={source.query.database}
-          isOpened={isModalOpened}
+          target={target}
+          isOpened={isOpened}
           onSubmit={handleUpdateTarget}
-          onClose={handleModalClose}
+          onClose={close}
         />
       )}
       {confirmationModal}
