@@ -40,22 +40,11 @@ export function TargetSection({ transform }: TargetSectionProps) {
   );
 }
 
-type TargetItemProps = {
-  label: string;
-  icon: IconName;
-};
-
-function TargetItem({ label, icon }: TargetItemProps) {
-  return (
-    <Group gap="xs">
-      <Icon name={icon} />
-      {label}
-    </Group>
-  );
-}
-
-function TargetItemDivider() {
-  return <Box c="text-secondary">/</Box>;
+function getSectionLabel(target: TransformTarget) {
+  return match(target.type)
+    .with("view", () => t`Generated view`)
+    .with("table", () => t`Generated table`)
+    .exhaustive();
 }
 
 type TargetInfoProps = {
@@ -84,11 +73,22 @@ function TargetInfo({ table }: TargetInfoProps) {
   );
 }
 
-function getSectionLabel(target: TransformTarget) {
-  return match(target.type)
-    .with("view", () => t`Generated view`)
-    .with("table", () => t`Generated table`)
-    .exhaustive();
+type TargetItemProps = {
+  label: string;
+  icon: IconName;
+};
+
+function TargetItem({ label, icon }: TargetItemProps) {
+  return (
+    <Group gap="xs">
+      <Icon name={icon} />
+      {label}
+    </Group>
+  );
+}
+
+function TargetItemDivider() {
+  return <Icon name="chevronright" size={8} />;
 }
 
 type EditTargetButtonProps = {

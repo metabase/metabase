@@ -46,10 +46,11 @@
 (defn target-table
   "Load the `target` table of a transform from the database specified by `database-id`."
   [database-id target]
-  (t2/select-one :model/Table
-                 :db_id database-id
-                 :schema (:schema target)
-                 :name (:name target)))
+  (-> (t2/select-one :model/Table
+                     :db_id database-id
+                     :schema (:schema target)
+                     :name (:name target))
+      (t2/hydrate :db)))
 
 (defn required-database-feature
   "Returns the database feature necessary to execute `transform`."
