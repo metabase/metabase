@@ -19,6 +19,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");

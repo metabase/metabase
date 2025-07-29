@@ -21,6 +21,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
   });
 
   afterEach(() => {
