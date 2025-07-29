@@ -417,10 +417,13 @@ function ObjectViewSection({
     <Box
       className={S.ObjectViewSection}
       pos="relative"
-      bg={isEdit ? "bg-medium" : undefined}
+      bg={isEdit ? "bg-medium" : "bg-white"}
       px="md"
       py="sm"
-      style={{ borderRadius: "var(--default-border-radius)" }}
+      style={{
+        border: "1px solid var(--border-color)",
+        borderRadius: "var(--default-border-radius)",
+      }}
     >
       <Group gap="xs">
         {isEdit && !isListView && (
