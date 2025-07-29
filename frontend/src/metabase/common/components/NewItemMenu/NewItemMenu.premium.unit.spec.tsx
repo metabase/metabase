@@ -54,8 +54,8 @@ describe("NewItemMenu (EE with token)", () => {
     jest.restoreAllMocks();
   });
 
-  it("shows the Embed item when embedding_iframe_sdk feature is enabled", async () => {
-    await setup({ tokenFeatures: { embedding_iframe_sdk: true } });
+  it("shows the Embed item when embedding_simple feature is enabled", async () => {
+    await setup({ tokenFeatures: { embedding_simple: true } });
 
     expect(await screen.findByText("Embed")).toBeInTheDocument();
   });

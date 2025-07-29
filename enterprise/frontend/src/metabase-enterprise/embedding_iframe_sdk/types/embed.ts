@@ -39,7 +39,7 @@ export type SdkIframeEmbedMessage =
 export interface DashboardEmbedOptions {
   dashboardId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 
@@ -55,9 +55,12 @@ export interface DashboardEmbedOptions {
 export interface QuestionEmbedOptions {
   questionId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  targetCollection?: CollectionId;
+  entityTypes?: EntityTypeFilterKeys[];
+  isSaveEnabled?: boolean;
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
@@ -75,8 +78,8 @@ export interface ExplorationEmbedOptions {
   entityTypes?: EntityTypeFilterKeys[];
 
   // incompatible options
-  questionId?: never;
   dashboardId?: never;
+  questionId?: never;
 }
 
 export interface CurateContentEmbedOptions {

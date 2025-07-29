@@ -12,6 +12,7 @@ export const useAvailableData = ({ databaseId }: Props = {}) => {
       models: ["card"],
       table_db_id: databaseId,
       calculate_available_models: true,
+      include_dashboard_questions: true,
     },
     {
       refetchOnMountOrArgChange: true,
