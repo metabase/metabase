@@ -10,13 +10,9 @@ import {
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
 import { SdkQuestion } from "embedding-sdk/components/public/SdkQuestion";
-import { StaticQuestionSdkMode } from "embedding-sdk/components/public/StaticQuestion/mode";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
@@ -141,20 +137,6 @@ const SdkIframeEmbedView = ({
         questionId: P.nonNullable,
       },
       (settings) => {
-        const getStaticClickActionMode: ClickActionModeGetter = ({
-          question,
-        }: {
-          question: Question;
-        }) => {
-          return (
-            question &&
-            getEmbeddingMode({
-              question,
-              queryMode: StaticQuestionSdkMode,
-            })
-          );
-        };
-
         const commonProps = {
           questionId: settings.questionId,
           withDownloads: settings.withDownloads,
@@ -163,7 +145,7 @@ const SdkIframeEmbedView = ({
           title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
         };
 
-        if (!settings.drills) {
+        if (settings.drills === false) {
           // note: this disable drills but also removes the top toolbar
           return <StaticQuestion {...commonProps} key={rerenderKey} />;
         }
@@ -175,9 +157,6 @@ const SdkIframeEmbedView = ({
             key={rerenderKey}
             targetCollection={settings.targetCollection}
             entityTypes={settings.entityTypes}
-            getClickActionMode={
-              settings.drills ? undefined : getStaticClickActionMode
-            }
           />
         );
       },
