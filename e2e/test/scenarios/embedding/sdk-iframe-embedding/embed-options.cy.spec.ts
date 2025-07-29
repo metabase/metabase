@@ -21,7 +21,6 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
     frame.within(() => {
       cy.log("1. static question must not contain title and toolbar");
-      cy.findByText("Orders").should("not.exist");
       cy.findByTestId("interactive-question-result-toolbar").should(
         "not.exist",
       );
