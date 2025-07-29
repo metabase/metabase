@@ -263,18 +263,18 @@
 (deftest ^:parallel enforce-distinct-breakouts-and-fields-test
   (let [duplicate-refs [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
                         [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]]
-    (testing #'lib.schema.util/distinct-refs?
-      (is (not (#'lib.schema.util/distinct-refs? duplicate-refs))))
+    (testing #'lib.schema.util/distinct-mbql-clauses?
+      (is (not (#'lib.schema.util/distinct-mbql-clauses? duplicate-refs))))
     (testing "breakouts/fields schemas"
       (are [schema error] (= error
                              (me/humanize (mr/explain schema duplicate-refs)))
-        ::lib.schema/breakouts ["refs must be distinct: ([:field {} 1] [:field {} 1])"]
-        ::lib.schema/fields    ["refs must be distinct: ([:field {} 1] [:field {} 1])"]))
+        ::lib.schema/breakouts ["values must be distinct MBQL clauses ignoring namespaced keys and type info: ([:field {} 1] [:field {} 1])"]
+        ::lib.schema/fields    ["values must be distinct MBQL clauses ignoring namespaced keys and type info: ([:field {} 1] [:field {} 1])"]))
     (testing "stage schema"
       (are [k error] (= error
                         (me/humanize (mr/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, k duplicate-refs})))
-        :breakout {:breakout ["refs must be distinct: ([:field {} 1] [:field {} 1])"]}
-        :fields   {:fields ["refs must be distinct: ([:field {} 1] [:field {} 1])"]}))))
+        :breakout {:breakout ["values must be distinct MBQL clauses ignoring namespaced keys and type info: ([:field {} 1] [:field {} 1])"]}
+        :fields   {:fields ["values must be distinct MBQL clauses ignoring namespaced keys and type info: ([:field {} 1] [:field {} 1])"]}))))
 
 (deftest ^:parallel normalize-query-test
   (let [normalized (lib.normalize/normalize

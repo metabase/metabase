@@ -56,13 +56,19 @@
    #'unique-uuids?])
 
 (defn- mbql-clause?
-  "Just check that `x` is in the general shape of an MBQL clause. This is to prevent things like [[distinct-refs?]] from
-  barfing when given invalid values."
+  "Just check that `x` is in the general shape of an MBQL clause. This is to prevent things
+  like [[distinct-mbql-clauses?]] from barfing when given invalid values."
   [x]
   (and (vector? x)
        (> (count x) 2)
        (keyword? (first x))
        (map? (second x))))
+
+(defn- mbql-clauses?
+  [xs]
+  (or (empty? xs)
+      (and (sequential? xs)
+           (every? mbql-clause? xs))))
 
 (defn- opts-distinct-key [opts]
   ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
@@ -74,56 +80,39 @@
              opts
              opts))
 
-(mu/defn ref-distinct-key
-  "For deduplicating refs: keep just the keys that are essential to distinguishing one ref from another."
-  [ref :- [:fn {:error/message "MBQL clause "} mbql-clause?]]
-  (lib.options/update-options ref opts-distinct-key))
+(mu/defn mbql-clause-distinct-key
+  "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
+  another. Removes namespaced keywords and type information keys like `:base-type`."
+  [[tag opts & children]]
+  (into [tag
+         (opts-distinct-key opts)]
+        (map (fn [child]
+               (cond-> child
+                 (mbql-clause? child) mbql-clause-distinct-key)))
+        children))
 
-(defn distinct-refs?
-  "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
-  aren't important such as namespaced keys and type info)?"
-  [refs]
-  (or
-   (< (count refs) 2)
-   (apply
-    distinct?
-    (map ref-distinct-key refs))))
-
-(defn- distinct-clauses-by-schema
-  [f message]
-  [:fn
-   {:error/message    message
-    :error/fn         (fn [{:keys [value]} _]
-                        (if (and (sequential? value)
-                                 (every? mbql-clause? value))
-                          (str message ": " (pr-str (map f value)))
-                          "values must be valid MBQL clauses"))
-    :decode/normalize (fn [xs]
-                        (when (and (sequential? xs)
-                                   (every? mbql-clause? xs))
-                          (into []
-                                (m/distinct-by f)
-                                xs)))}
-   (fn [xs]
-     (and (sequential? xs)
-          (every? mbql-clause? xs)
-          (or (< (count xs) 2)
-              (apply distinct? (map f xs)))))])
-
-(mr/def ::distinct-refs
-  (distinct-clauses-by-schema ref-distinct-key "refs must be distinct"))
-
-(defn mbql-clause-distinct-key
-  "Walk `clause` and remove UUIDs and other non-distinct keys (namespaced keys, type info) from options maps."
-  [clause]
-  (walk/postwalk
-   (fn [form]
-     (cond-> form
-       (map? form) opts-distinct-key))
-   clause))
+(defn distinct-mbql-clauses?
+  "Is a sequence of `mbql-clauses` distinct for the purposes of appearing in things like `:fields`, `:breakouts`, or
+  `:order-by`? (Are they distinct ignoring keys that aren't important such as namespaced keys and type info?)"
+  [mbql-clauses]
+  (and (mbql-clauses? mbql-clauses)
+       (or (< (count mbql-clauses) 2)
+           (apply distinct? (map mbql-clause-distinct-key mbql-clauses)))))
 
 (mr/def ::distinct-mbql-clauses
-  (distinct-clauses-by-schema mbql-clause-distinct-key "values must be distinct MBQL clauses ignoring namespaced keys and type info"))
+  [:fn
+   {:error/message    "values must be distinct MBQL clauses ignoring namespaced keys and type info"
+    :error/fn         (fn [{:keys [value]} _]
+                        (if (mbql-clauses? value)
+                          (str "values must be distinct MBQL clauses ignoring namespaced keys and type info: "
+                               (pr-str (map mbql-clause-distinct-key value)))
+                          "values must be valid MBQL clauses"))
+    :decode/normalize (fn [xs]
+                        (when (mbql-clauses? xs)
+                          (into []
+                                (m/distinct-by mbql-clause-distinct-key)
+                                xs)))}
+   distinct-mbql-clauses?])
 
 (defn remove-lib-uuids
   "Recursively remove all uuids from `x`."

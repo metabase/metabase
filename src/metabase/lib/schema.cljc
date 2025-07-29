@@ -91,12 +91,12 @@
 (mr/def ::breakouts
   [:and
    [:sequential {:min 1} ::breakout]
-   ::lib.schema.util/distinct-refs])
+   [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
 (mr/def ::fields
   [:and
    [:sequential {:min 1} [:ref ::ref/ref]]
-   ::lib.schema.util/distinct-refs])
+   [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
 (mr/def ::filterable
   [:ref ::expression/boolean])

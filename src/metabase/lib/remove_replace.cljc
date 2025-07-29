@@ -263,7 +263,7 @@
                           (normalize-fields-clauses location))
                       new-query)
           new-stage (lib.util/query-stage new-query stage-number)]
-      (if (or (not changing-breakout?) (lib.schema.util/distinct-refs? (:breakout new-stage)))
+      (if (or (not changing-breakout?) (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
         new-query
         query))))
 

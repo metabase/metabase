@@ -363,8 +363,7 @@
   rename-join
   replace-clause
   replace-join]
- [metabase.lib.schema.util
-  ref-distinct-key]
+ [metabase.lib.schema.util]
  [lib.segment
   available-segments]
  [lib.stage

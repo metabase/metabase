@@ -51,7 +51,7 @@
     stage-number :- :int
     expr         :- some?]
    (let [expr (if (fn? expr) (expr query stage-number) expr)]
-     (if (lib.schema.util/distinct-refs? (map lib.ref/ref (cons expr (breakouts query stage-number))))
+     (if (lib.schema.util/distinct-mbql-clauses? (map lib.ref/ref (cons expr (breakouts query stage-number))))
        (lib.util/add-summary-clause query stage-number :breakout expr)
        query))))
 

@@ -65,8 +65,8 @@
   (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
          (me/humanize (mr/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids)))))
 
-(deftest ^:parallel distinct-refs-test
-  (are [refs] (not (lib.schema.util/distinct-refs? refs))
+(deftest ^:parallel distinct-mbql-clauses-test
+  (are [refs] (not (lib.schema.util/distinct-mbql-clauses? refs))
     [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]
 
