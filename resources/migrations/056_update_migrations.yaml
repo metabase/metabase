@@ -246,7 +246,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-
   - changeSet:
       id: v56.2025-07-21T12:00:59
       author: johnswanson
@@ -328,7 +327,6 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-
 
   - changeSet:
       id: v56.2025-07-21T12:01:56
@@ -438,6 +436,34 @@ databaseChangeLog:
                   type: bytea
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v56.2025-07-29T17:23:32
+      author: edpaget
+      comment: Add report_document_id column to report_card table
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: report_document_id
+                  remarks: Associates cards with a particular report version
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-29T17:23:33
+      author: edpaget
+      comment: Add foreign key constraint for report_document_id in report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: report_document_id
+            referencedTableName: report_document
+            referencedColumnNames: id
+            constraintName: fk_report_card_report_document_id
+            onDelete: CASCADE
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

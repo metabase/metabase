@@ -457,6 +457,20 @@
                         {:status-code 400})))))
   nil)
 
+(defn- assert-valid-report-card-constraints
+  "Check that the card meets constraints for report_document_id field. Throw an exception if not."
+  [{card-type :type, report-document-id :report_document_id, dashboard-id :dashboard_id, :as _card}]
+  ;; First constraint: Cards with report_document_id must have type :in_report
+  (when (and report-document-id
+             (not= (keyword card-type) :in_report))
+    (throw (ex-info (tru "Cards with report_document_id must have type :in_report")
+                    {:status-code 400})))
+  ;; Second constraint: Cards cannot have both dashboard_id and report_document_id (mutual exclusion)
+  (when (and dashboard-id report-document-id)
+    (throw (ex-info (tru "Cards cannot have both dashboard_id and report_document_id")
+                    {:status-code 400})))
+  nil)
+
 (defn- dashboard-internal-card? [card]
   (boolean (:dashboard_id card)))
 
@@ -529,6 +543,7 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
+      (assert-valid-report-card-constraints card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -648,7 +663,8 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (assert-valid-type (merge old-card-info changes)))))
+      (assert-valid-type (merge old-card-info changes))
+      (assert-valid-report-card-constraints #p card))))
 
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.
@@ -908,7 +924,7 @@
                             (not (:dashboard_id input-card-data)))))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type :dashboard_id]
+                                             :cache_ttl :type :dashboard_id :report_document_id]
          position-info                      {:collection_id (:collection_id input-card-data)
                                              :collection_position (:collection_position input-card-data)}
          card-data                          (-> (select-keys input-card-data data-keys)
@@ -1097,7 +1113,7 @@
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :report_document_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?}))
