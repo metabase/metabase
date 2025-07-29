@@ -22,11 +22,8 @@ import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
 import { CardStaticNode } from "./extensions/CardStatic/CardStatic";
 import { ColumnExtension } from "./extensions/Columns/Columns";
-import {
-  MarkdownSerializer,
-  serializeToMarkdown,
-} from "./extensions/MarkdownExtensions";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
+import { Markdown } from "./extensions/markdown/index";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 import type { CardEmbedRef } from "./types";
 
@@ -64,50 +61,51 @@ export const Editor: React.FC<EditorProps> = ({
       Placeholder.configure({
         placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
       }),
-      CardEmbed.configure({
-        HTMLAttributes: {
-          class: "card-embed",
-        },
-      }),
-      CardStaticNode,
-      SmartLinkEmbed.configure({
-        HTMLAttributes: {
-          class: "smart-link",
-        },
-      }),
-      MarkdownSerializer,
-      ColumnExtension,
+      Markdown,
+      // CardEmbed.configure({
+      //   HTMLAttributes: {
+      //     class: "card-embed",
+      //   },
+      // }),
+      // CardStaticNode,
+      // SmartLinkEmbed.configure({
+      //   HTMLAttributes: {
+      //     class: "smart-link",
+      //   },
+      // }),
+      // MarkdownSerializer,
+      // ColumnExtension,
     ],
-    content,
     autofocus: true,
   });
 
-  // Update editor content when content prop changes
   useEffect(() => {
-    if (editor && content != null) {
-      (
-        editor.commands as unknown as { setMarkdown: (content: string) => void }
-      ).setMarkdown(content);
+    if (editor && content) {
+      editor.commands.setMarkdown(content);
     }
+  }, [content, editor]);
 
-    editor.setEditable(editable);
-  }, [editor, content, editable]);
+  useEffect(() => {
+    if (editor && content) {
+      const currentContent = editor.commands.getMarkdown() as unknown as string;
+      if (currentContent !== content) {
+        editor.commands.setMarkdown(content);
+      }
+    }
+  }, [content, editor]);
+
+  // Update editor editable state
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(editable);
+    }
+  }, [editor, editable]);
 
   useCardEmbedsTracking(editor, dispatch, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
 
-  // Notify parent when editor is ready
   useEffect(() => {
     if (editor && onEditorReady) {
-      // Add getMarkdown method to storage for easy access
-      (
-        editor.storage as unknown as { markdown: { getMarkdown: () => string } }
-      ).markdown = {
-        getMarkdown: () => {
-          const markdown = serializeToMarkdown(editor.state.doc);
-          return markdown;
-        },
-      };
       onEditorReady(editor);
     }
   }, [editor, onEditorReady]);

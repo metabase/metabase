@@ -108,12 +108,12 @@ export const ReportPage = ({
     }
 
     const handleUpdate = () => {
-      const content = editorInstance.storage.markdown?.getMarkdown() ?? "";
+      const content = editorInstance.commands.getMarkdown() ?? "";
       setCurrentEditorContent(content);
     };
 
     // Initialize with current content
-    const initialContent = editorInstance.storage.markdown?.getMarkdown() ?? "";
+    const initialContent = editorInstance.commands.getMarkdown() ?? "";
     setCurrentEditorContent(initialContent);
 
     editorInstance.on("update", handleUpdate);
@@ -176,7 +176,7 @@ export const ReportPage = ({
         // Commit all pending visualization changes before saving
         await commitAllPendingChanges(editorInstance);
 
-        const markdown = editorInstance.storage.markdown?.getMarkdown() ?? "";
+        const markdown = editorInstance.commands.getMarkdown() ?? "";
         const newReportData = {
           name: reportTitle,
           document: markdown as string,
@@ -287,7 +287,7 @@ export const ReportPage = ({
     (async () => {
       try {
         setIsDownloading(true);
-        const rawMarkdown = editorInstance.storage.markdown?.getMarkdown();
+        const rawMarkdown = editorInstance.commands.getMarkdown();
         const processedMarkdown = await getDownloadableMarkdown(
           rawMarkdown,
           cardEmbeds,
