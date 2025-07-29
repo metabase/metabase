@@ -5,8 +5,15 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useCreateTransformMutation } from "metabase-enterprise/api";
 import Question from "metabase-lib/v1/Question";
-import type { Card, CardId, DatasetQuery } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  CreateTransformRequest,
+  DatasetQuery,
+  TransformTarget,
+} from "metabase-types/api";
 
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
 import { TransformTargetModal } from "../../components/TransformTargetModal";
@@ -49,6 +56,11 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   const [query, setQuery] = useState(initialQuery);
   const [isModalOpened, setIsModalOpened] = useState(false);
   const dispatch = useDispatch();
+  const [createTransform] = useCreateTransformMutation();
+
+  const handleSave = async (newTarget: TransformTarget) => {
+    await createTransform(getCreateRequest(query, newTarget)).unwrap();
+  };
 
   const handleSaveClick = (newQuery: DatasetQuery) => {
     setQuery(newQuery);
@@ -70,11 +82,14 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />
-      <TransformTargetModal
-        query={query}
-        isOpened={isModalOpened}
-        onClose={handleCloseClick}
-      />
+      {query.database != null && (
+        <TransformTargetModal
+          databaseId={query.database}
+          isOpened={isModalOpened}
+          onSubmit={handleSave}
+          onClose={handleCloseClick}
+        />
+      )}
     </>
   );
 }
@@ -96,4 +111,18 @@ function getInitialQuery(
   return card != null
     ? card.dataset_query
     : Question.create({ type }).datasetQuery();
+}
+
+function getCreateRequest(
+  query: DatasetQuery,
+  target: TransformTarget,
+): CreateTransformRequest {
+  return {
+    name: target.name,
+    source: {
+      type: "query",
+      query,
+    },
+    target,
+  };
 }
