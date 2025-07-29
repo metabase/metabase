@@ -1,9 +1,12 @@
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import type { TransformNavBarProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
+import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
+import { getTransformSettingsUrl } from "metabase-enterprise/transforms/utils/urls";
 
 export function TransformNavBar({ isActive }: TransformNavBarProps) {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -32,12 +35,14 @@ function TransformToggle(_props: TransformToggleProps) {
       <Icon name="chevrondown" c="text-secondary" mr="xs" />
       <Icon name="refresh_downstream" c="text-secondary" mr="sm" />
       <Box c="text-primary" flex={1} mr="md">{t`Transforms`}</Box>
-      <ActionIcon>
+      <ActionIcon component={Link} to={getTransformSettingsUrl()}>
         <Icon name="gear" c="text-primary" />
       </ActionIcon>
-      <ActionIcon>
-        <Icon name="add" c="text-primary" />
-      </ActionIcon>
+      <NewTransformMenu>
+        <ActionIcon>
+          <Icon name="add" c="text-primary" />
+        </ActionIcon>
+      </NewTransformMenu>
     </Flex>
   );
 }

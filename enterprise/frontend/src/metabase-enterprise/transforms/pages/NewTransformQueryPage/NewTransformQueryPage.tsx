@@ -10,7 +10,7 @@ import { useCreateTransformMutation } from "metabase-enterprise/api";
 import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
 import { TransformTargetModal } from "metabase-enterprise/transforms/components/TransformTargetModal";
 import {
-  getTransformListUrl,
+  getTransformRootUrl,
   getTransformUrl,
 } from "metabase-enterprise/transforms/utils/urls";
 import Question from "metabase-lib/v1/Question";
@@ -74,7 +74,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
   };
 
   const handleCancelClick = () => {
-    dispatch(push(getTransformListUrl()));
+    dispatch(push(getTransformRootUrl()));
   };
   return (
     <>

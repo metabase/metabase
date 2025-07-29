@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -8,13 +8,17 @@ import {
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import {
   getNewTransformFromCardUrl,
   getNewTransformFromTypeUrl,
 } from "metabase-enterprise/transforms/utils/urls";
 
-export function NewTransformMenu() {
+type TransformMenuProps = {
+  children: ReactNode;
+};
+
+export function NewTransformMenu({ children }: TransformMenuProps) {
   const [isPickerOpened, setIsPickerOpened] = useState(false);
   const dispatch = useDispatch();
 
@@ -33,9 +37,7 @@ export function NewTransformMenu() {
   return (
     <>
       <Menu>
-        <Menu.Target>
-          <Button variant="filled">{t`Create a transform`}</Button>
-        </Menu.Target>
+        <Menu.Target>{children}</Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Create your transform with…`}</Menu.Label>
           <Menu.Item

@@ -11,8 +11,12 @@ export function isTransformsRoute(path: string) {
   return path.startsWith(ROOT_URL);
 }
 
-export function getTransformListUrl() {
+export function getTransformRootUrl() {
   return ROOT_URL;
+}
+
+export function getTransformSettingsUrl() {
+  return `${ROOT_URL}/settings`;
 }
 
 export function getNewTransformFromTypeUrl(type: DatasetQuery["type"]) {

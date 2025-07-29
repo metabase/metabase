@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import { Flex, Text, Title } from "metabase/ui";
+import { Button, Flex, Text, Title } from "metabase/ui";
 import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
 
 export function NewTransformPage() {
@@ -27,7 +27,9 @@ export function NewTransformPage() {
         <Text c="text-secondary" mt="sm" mb="xl" ta="center">
           {t`You can write SQL, use the query builder, or an existing query.`}
         </Text>
-        <NewTransformMenu />
+        <NewTransformMenu>
+          <Button variant="filled">{t`Create a transform`}</Button>
+        </NewTransformMenu>
       </Flex>
     </Flex>
   );
