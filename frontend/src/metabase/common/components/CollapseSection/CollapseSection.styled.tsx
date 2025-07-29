@@ -21,9 +21,15 @@ export const HeaderContainer = styled((props: HeaderContainerProps) => (
   cursor: pointer;
 `;
 
-export const Header = styled.span`
+export const Header = styled.span<{ iconPosition?: string }>`
   display: flex;
   align-items: center;
+
+  ${({ iconPosition }) =>
+    iconPosition === "left" &&
+    css`
+      width: 100%;
+    `}
 `;
 
 const ICON_VARIANTS = {

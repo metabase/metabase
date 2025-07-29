@@ -51,11 +51,16 @@ export type Table = {
 };
 
 export type ComponentSettings = {
-  list_view: ListViewSettings;
+  list_view: {
+    view: "table" | "list" | "gallery";
+    table: ListViewTableSettings;
+    list: ObjectViewSettings;
+    gallery: ObjectViewSettings;
+  };
   object_view: ObjectViewSettings;
 };
 
-export type ListViewSettings = {
+export type ListViewTableSettings = {
   row_height: "thin" | "normal";
   fields: {
     field_id: FieldId;

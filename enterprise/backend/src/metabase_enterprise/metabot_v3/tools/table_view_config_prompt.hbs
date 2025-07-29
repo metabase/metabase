@@ -58,8 +58,8 @@ Given a list of fields, their metadata, and the purpose of each view, determine 
 
    **Style Guidelines:**
    - **"title"**: Use for primary identifying fields (names, titles, main descriptors)
-   - **"bold"**: Use for important categorical data, status fields, key metrics
-   - **"normal"**: Use for standard descriptive content, most fields
+   - **"bold"**: Use for important categorical data, status fields, key metrics (NOT for ID fields)
+   - **"normal"**: Use for standard descriptive content, most fields, ID columns
    - **"dim"**: Use for secondary information, timestamps, technical details
 
    **Semantic Type to Style Mapping:**
@@ -69,6 +69,7 @@ Given a list of fields, their metadata, and the purpose of each view, determine 
    - `email`, `url` → "normal"
    - `description`, `text` → "normal"
    - `status`, `category` → "bold"
+   - `id`, `pk`, `fk` → "normal" (never bold)
 
 ## 5. **Configure Section Layout** (for detail/gallery views)
 

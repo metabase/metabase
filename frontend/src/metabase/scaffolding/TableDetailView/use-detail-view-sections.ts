@@ -1,6 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ObjectViewSectionSettings } from "metabase-types/api";
 
@@ -12,6 +12,11 @@ export function useDetailViewSections(
   initialSections: ObjectViewSectionSettings[],
 ) {
   const [sections, setSections] = useState(initialSections);
+
+  // Reset sections when initialSections changes after mutation
+  useEffect(() => {
+    setSections(initialSections);
+  }, [initialSections]);
 
   const createSection = () => {
     setSections([
@@ -26,14 +31,16 @@ export function useDetailViewSections(
   };
 
   const removeSection = (id: number) => {
-    setSections(sections.filter((section) => section.id !== id));
+    setSections((sections) => sections.filter((section) => section.id !== id));
   };
 
   const updateSection = (
     id: number,
     update: Partial<ObjectViewSectionSettings>,
   ) => {
-    setSections(sections.map((s) => (s.id === id ? { ...s, ...update } : s)));
+    setSections((sections) =>
+      sections.map((s) => (s.id === id ? { ...s, ...update } : s)),
+    );
   };
 
   const handleDragEnd = (event: DragEndEvent) => {

@@ -25,6 +25,7 @@ import _ from "underscore";
 import api from "metabase/lib/api";
 
 import CollapseSection from "metabase/common/components/CollapseSection";
+import EditableText from "metabase/common/components/EditableText";
 import {
   ActionIcon,
   Box,
@@ -35,7 +36,6 @@ import {
   type IconName,
   Menu,
   Portal,
-  SegmentedControl,
   Text,
 } from "metabase/ui/components";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
@@ -43,6 +43,8 @@ import type {
   DatasetColumn,
   ObjectViewSectionSettings,
 } from "metabase-types/api";
+
+import S from "./TableDetailView.module.css";
 
 interface DetailViewSidebarProps {
   columns: DatasetColumn[];
@@ -106,16 +108,6 @@ export function DetailViewSidebar({
     }
 
     const activeFieldId = active.id as number;
-    const currentActiveFieldSection = sections.find((s) =>
-      s.fields.some((f) => f.field_id === activeFieldId),
-    );
-    const activeField = currentActiveFieldSection?.fields.find(
-      (f) => f.field_id === activeFieldId,
-    );
-    if (!activeField) {
-      return;
-    }
-
     const overId = over.id;
 
     // Find which container the active item is in
@@ -146,6 +138,19 @@ export function DetailViewSidebar({
         );
 
         if (targetSectionIndex !== -1) {
+          // Find the active field or create it if dragging from hidden
+          let activeField = sections
+            .find((s) => s.fields.some((f) => f.field_id === activeFieldId))
+            ?.fields.find((f) => f.field_id === activeFieldId);
+
+          if (!activeField) {
+            // Dragging from hidden columns - create a new field
+            activeField = {
+              field_id: activeFieldId,
+              style: "normal" as const,
+            };
+          }
+
           const newField = {
             ...activeField,
           };
@@ -310,7 +315,10 @@ export function DetailViewSidebar({
                 }}
               >
                 {hiddenColumns.length === 0 ? (
-                  <Text c="text-light">{t`Drop columns here to hide them`}</Text>
+                  <EmptyDropZone
+                    sectionId={HIDDEN_COLUMNS_ID}
+                    message={t`Drop columns here to hide them`}
+                  />
                 ) : (
                   <ul style={{ width: "100%" }}>
                     {hiddenColumns.map((column) => (
@@ -388,25 +396,43 @@ function SectionSettings({
   return (
     <Box mt="sm">
       <CollapseSection
-        header={<Text fw="bold">{section.title}</Text>}
+        header={
+          <Flex align="center" justify="space-between" w="100%">
+            <div onClick={(e) => e.stopPropagation()}>
+              <EditableText
+                initialValue={section.title}
+                onChange={(title) => onUpdateSection({ title })}
+                style={{
+                  display: "block",
+                  fontWeight: "bold",
+                }}
+              />
+            </div>
+            <Button
+              variant="inverse"
+              size="compact-sm"
+              onClick={() =>
+                onUpdateSection({
+                  direction:
+                    section.direction === "vertical"
+                      ? "horizontal"
+                      : "vertical",
+                })
+              }
+              style={{
+                aspectRatio: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {section.direction === "vertical" ? "↓" : "→"}
+            </Button>
+          </Flex>
+        }
         initialState="expanded"
       >
-        <Box mt="xs">
-          <Text>{t`Flow`}</Text>
-          <SegmentedControl
-            value={section.direction}
-            data={[
-              { label: "↓", value: "vertical" },
-              { label: "→", value: "horizontal" },
-            ]}
-            fullWidth
-            mt="xs"
-            onChange={(direction) => onUpdateSection({ direction })}
-          />
-        </Box>
-
         {columnIds.length === 0 ? (
-          <EmptyDropZone sectionId={section.id} />
+          <EmptyDropZone sectionId={String(section.id)} />
         ) : (
           <SortableContext
             id={String(section.id)}
@@ -467,6 +493,7 @@ function ColumnListItem({
   return (
     <Box
       component="li"
+      className={S.ObjectViewSidebarColumn}
       mt="sm"
       style={{
         transition,
@@ -479,6 +506,7 @@ function ColumnListItem({
         <Group gap="sm">
           <Icon
             name="grabber"
+            className={S.ObjectViewSidebarColumnActionIcon}
             style={{ cursor: "grab" }}
             {...attributes}
             {...listeners}
@@ -489,6 +517,7 @@ function ColumnListItem({
         <Group gap="sm">
           {!!onHideField && (
             <ActionIcon
+              className={S.ObjectViewSidebarColumnActionIcon}
               variant="transparent"
               color="text-medium"
               onClick={onHideField}
@@ -500,6 +529,7 @@ function ColumnListItem({
             <Menu position="bottom-end">
               <Menu.Target>
                 <ActionIcon
+                  className={S.ObjectViewSidebarColumnActionIcon}
                   aria-label={t`Change style`}
                   variant="transparent"
                   color="text-medium"
@@ -541,9 +571,15 @@ function findContainer(
   return HIDDEN_COLUMNS_ID;
 }
 
-function EmptyDropZone({ sectionId }: { sectionId: number }) {
+function EmptyDropZone({
+  sectionId,
+  message = t`Drop columns here`,
+}: {
+  sectionId: string;
+  message?: string;
+}) {
   const { setNodeRef, isOver } = useDroppable({
-    id: String(sectionId),
+    id: sectionId,
   });
 
   return (
@@ -561,7 +597,7 @@ function EmptyDropZone({ sectionId }: { sectionId: number }) {
         transition: "all 0.2s",
       }}
     >
-      <Text c="text-light">{t`Drop columns here`}</Text>
+      <Text c="text-light">{message}</Text>
     </Box>
   );
 }

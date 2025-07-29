@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -12,36 +12,44 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Label } from "metabase/metadata/components/FieldOrderPicker/Label";
+import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
-  ActionIcon,
   Box,
   Button,
   Group,
   Icon,
+  Menu,
   Popover,
-  Select,
+  SegmentedControl,
   Stack,
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetQuery, Field, FieldId } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
-import { renderValue } from "../utils";
+import { DetailViewSidebar } from "../TableDetailView/DetailViewSidebar";
+import { TableDetailViewInner } from "../TableDetailView/TableDetailView";
 
-import { SortableFieldList } from "./SortableFieldList";
+import { TableDataView } from "./TableDataView";
 import S from "./TableListView.module.css";
-import type { RouteParams } from "./types";
+import { TableSettingsPanel } from "./TableSettingsPanel";
+import {
+  type RouteParams,
+  type SortDirection,
+  type SortState,
+  isComponentSettings,
+} from "./types";
 import {
   getDefaultComponentSettings,
   getExploreTableUrl,
@@ -55,20 +63,9 @@ interface Props {
 }
 
 const PAGE_SIZE = 15;
-const CELL_PADDING_HORIZONTAL = "md" as const;
-const CELL_PADDING_VERTICAL_NORMAL = "sm" as const;
-const CELL_PADDING_VERTICAL_THIN = "xs" as const;
-
-type SortDirection = "asc" | "desc";
-
-interface SortState {
-  columnId: FieldId;
-  direction: SortDirection;
-}
 
 export const TableListView = ({ location, params }: Props) => {
   const dispatch = useDispatch();
-  const tc = useTranslateContent();
   const { page, tableId } = parseRouteParams(location, params);
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
 
@@ -104,7 +101,7 @@ export const TableListView = ({ location, params }: Props) => {
     countQuery ? countQuery : skipToken,
   );
   const count = countDataset?.data.rows?.[0]?.[0];
-  const allColumns = useMemo(
+  const columns = useMemo(
     () => dataset?.data?.results_metadata?.columns ?? [],
     [dataset],
   );
@@ -119,46 +116,12 @@ export const TableListView = ({ location, params }: Props) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterPickerOpen, setIsFilterPickerOpen] = useState(false);
 
-  const pkIndex = allColumns.findIndex(isPK); // TODO: handle multiple PKs
-
-  const handleOrderChange = (fieldOrder: FieldId[]) => {
+  const handleViewChange = (view: "table" | "list" | "gallery") => {
     setSettings((settings) => ({
       ...settings,
       list_view: {
         ...settings.list_view,
-        fields: fieldOrder.map((id) => {
-          return settings.list_view.fields.find(
-            (field) => field.field_id === id,
-          )!;
-        }),
-      },
-    }));
-  };
-
-  const handleStyleChange = (
-    field: Field,
-    style: "normal" | "bold" | "dim",
-  ) => {
-    setSettings((settings) => ({
-      ...settings,
-      list_view: {
-        ...settings.list_view,
-        fields: settings.list_view.fields.map((f) => {
-          if (f.field_id === getRawTableFieldId(field)) {
-            return { ...f, style };
-          }
-          return f;
-        }),
-      },
-    }));
-  };
-
-  const handleRowHeightChange = (rowHeight: "thin" | "normal") => {
-    setSettings((settings) => ({
-      ...settings,
-      list_view: {
-        ...settings.list_view,
-        row_height: rowHeight,
+        view,
       },
     }));
   };
@@ -169,8 +132,19 @@ export const TableListView = ({ location, params }: Props) => {
     updateTableComponentSettings({ id: tableId, component_settings: settings });
   };
 
+  const handleCancel = useCallback(() => {
+    setIsEditing(false);
+
+    if (table) {
+      setSettings(
+        table.component_settings ?? getDefaultComponentSettings(table),
+      );
+    }
+  }, [table]);
+
   const handleFilterChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
     setDataQuery(newQuery);
+    dispatch(replace(`/table/${tableId}`));
 
     if (opts.run) {
       setIsFilterPickerOpen(false);
@@ -218,9 +192,14 @@ export const TableListView = ({ location, params }: Props) => {
 
   useEffect(() => {
     if (table) {
-      setSettings(
-        table.component_settings ?? getDefaultComponentSettings(table),
-      );
+      if (
+        !table.component_settings ||
+        !isComponentSettings(table.component_settings) // if schema change, reset settings
+      ) {
+        setSettings(getDefaultComponentSettings(table));
+      } else {
+        setSettings(table.component_settings);
+      }
     }
   }, [table]);
 
@@ -228,25 +207,19 @@ export const TableListView = ({ location, params }: Props) => {
     setDataQuery(tableQuery);
   }, [tableQuery]);
 
-  const columns = settings.list_view.fields.map(({ field_id }) => {
-    return allColumns.find((field) => field.id === field_id)!;
-  });
-  const fields = settings.list_view.fields.map(({ field_id }) => {
-    return (table?.fields ?? []).find((field) => field.id === field_id)!;
-  });
-  const visibleFields = settings.list_view.fields.map(({ field_id }) => {
-    return fields.find((field) => field.id === field_id)!;
-  });
-  const hiddenFields = (table?.fields ?? []).filter((field) =>
-    settings.list_view.fields.every((f) => f.field_id !== field.id),
-  );
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isEditing) {
+        handleCancel();
+      }
+    };
 
-  const stylesMap = settings.list_view.fields.reduce<
-    Record<FieldId, "normal" | "bold" | "dim">
-  >((acc, field) => {
-    acc[field.field_id] = field.style;
-    return acc;
-  }, {});
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isEditing, handleCancel]);
+
   const allRows = useMemo(() => dataset?.data?.rows ?? [], [dataset]);
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -272,32 +245,26 @@ export const TableListView = ({ location, params }: Props) => {
     [filteredRows, page],
   );
 
-  const transformedPaginatedRows = useMemo(
-    () =>
-      paginatedRows.map((row) => {
-        return settings.list_view.fields.map(({ field_id }) => {
-          const fieldIndex = allColumns.findIndex((col) => col.id === field_id);
-          return row[fieldIndex];
-        });
-      }),
-    [settings, paginatedRows, allColumns],
-  );
+  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
 
-  const cellPaddingVertical =
-    settings.list_view.row_height === "normal"
-      ? CELL_PADDING_VERTICAL_NORMAL
-      : CELL_PADDING_VERTICAL_THIN;
-
-  if (!table || !dataset || !allColumns || !dataQuery) {
+  if (!table || !dataset || !columns || !dataQuery) {
     return <LoadingAndErrorWrapper loading />;
   }
 
   return (
     <Group align="flex-start" gap={0} wrap="nowrap" h="100%">
-      <Stack gap="md" p="xl" flex="1" miw={0}>
+      <Stack
+        gap="md"
+        p="xl"
+        flex="1"
+        miw={0}
+        h="100%"
+        style={{ overflow: "auto" }}
+      >
         <Group align="flex-start" justify="space-between">
           <Stack gap="xs">
             <Title>{table.display_name}</Title>
+
             {typeof count === "number" && (
               <Text c="text-secondary" size="sm">
                 {searchQuery.trim()
@@ -314,6 +281,7 @@ export const TableListView = ({ location, params }: Props) => {
               itemsLength={paginatedRows.length}
               page={page}
               pageSize={PAGE_SIZE}
+              total={filteredRows.length}
               onNextPage={() => {
                 dispatch(push(`/table/${tableId}?page=${page + 1}`));
               }}
@@ -331,7 +299,10 @@ export const TableListView = ({ location, params }: Props) => {
               placeholder={t`Search...`}
               value={searchQuery}
               w={250}
-              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              onChange={(event) => {
+                setSearchQuery(event.currentTarget.value);
+                dispatch(replace(`/table/${tableId}`));
+              }}
             />
 
             <Popover
@@ -357,23 +328,83 @@ export const TableListView = ({ location, params }: Props) => {
               </Popover.Dropdown>
             </Popover>
 
-            {!isSyncInProgress(table) && !isEditing && (
-              <Button
-                component={Link}
-                leftSection={<Icon name="insight" />}
-                to={getExploreTableUrl(table)}
-                variant="primary"
-              >{t`Explore results`}</Button>
+            {!isEditing && (
+              <SegmentedControl
+                data={[
+                  {
+                    value: "table",
+                    label: <Label icon="table2" tooltip={t`Table`} />,
+                  },
+                  {
+                    value: "list",
+                    label: <Label icon="list" tooltip={t`List`} />,
+                  },
+                  {
+                    value: "gallery",
+                    label: <Label icon="grid" tooltip={t`Gallery`} />,
+                  },
+                ]}
+                value={settings.list_view.view}
+                onChange={handleViewChange}
+              />
             )}
 
             {!isEditing && (
-              <Button
-                leftSection={<Icon name="pencil" />}
-                variant="outline"
-                onClick={() => setIsEditing(true)}
-              >
-                {t`Edit`}
-              </Button>
+              <Tooltip label={t`Display settings`}>
+                <Button
+                  leftSection={<Icon name="gear" />}
+                  onClick={() => setIsEditing(true)}
+                />
+              </Tooltip>
+            )}
+
+            {!isSyncInProgress(table) && (
+              <Menu position="bottom-end">
+                <Menu.Target>
+                  <Tooltip label={t`More`}>
+                    <Button leftSection={<Icon name="ellipsis" />} />
+                  </Tooltip>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<Icon name="insight" />}
+                    component={Link}
+                    to={getExploreTableUrl(table)}
+                  >
+                    {t`Explore results`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    leftSection={<Icon name="bolt_filled" />}
+                    component={Link}
+                    to={`/auto/dashboard/table/${tableId}`}
+                  >
+                    {t`X-ray this table`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    leftSection={<Icon name="reference" />}
+                    component={Link}
+                    to={`/reference/databases/${table.db_id}/tables/${table.id}`}
+                  >
+                    {t`Learn about this table`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    leftSection={<Icon name="table2" />}
+                    component={Link}
+                    to={getUrl({
+                      databaseId: table.db_id,
+                      schemaName: table.schema,
+                      tableId: table.id,
+                      fieldId: undefined,
+                    })}
+                  >
+                    {t`Edit table metadata`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             )}
           </Group>
         </Group>
@@ -381,200 +412,196 @@ export const TableListView = ({ location, params }: Props) => {
         <FilterPanel
           className={S.filterPanel}
           query={dataQuery}
-          onChange={setDataQuery}
+          onChange={(query) => {
+            setDataQuery(query);
+            dispatch(replace(`/table/${tableId}`));
+          }}
         />
 
-        <Group
-          className={S.tableContainer}
-          align="flex-start"
-          wrap="nowrap"
-          style={{ overflow: "auto" }}
-        >
-          <Box bg="white" className={S.table} component="table" w="100%">
-            <thead>
-              <tr>
-                {columns.map((column, index) => (
-                  <Box
-                    component="th"
-                    key={index}
-                    px={CELL_PADDING_HORIZONTAL}
-                    py="md"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => handleColumnSort(column)}
-                  >
-                    <Group gap="sm" align="center" wrap="nowrap">
-                      <Text c="text-secondary" size="sm">
-                        {column.display_name}
-                      </Text>
+        {settings.list_view.view === "table" && (
+          <TableDataView
+            columns={columns}
+            rows={paginatedRows}
+            settings={settings}
+            sortState={sortState}
+            table={table}
+            onSort={handleColumnSort}
+          />
+        )}
 
-                      {sortState && sortState.columnId === column.id && (
-                        <Icon
-                          c="text-secondary"
-                          name={
-                            sortState.direction === "asc"
-                              ? "chevronup"
-                              : "chevrondown"
-                          }
-                          size={12}
-                        />
-                      )}
-                    </Group>
-                  </Box>
-                ))}
+        {settings.list_view.view === "list" && (
+          <Stack gap="md">
+            {paginatedRows.map((row, index) => {
+              return (
+                <TableDetailViewInner
+                  key={index}
+                  tableId={table.id as number}
+                  rowId={row[pkIndex] as number}
+                  dataset={dataset}
+                  table={table}
+                  isEdit={isEditing}
+                  isListView
+                  sectionsOverride={settings.list_view.list.sections}
+                />
+              );
+            })}
+          </Stack>
+        )}
 
-                <Box component="th" px="sm" py="md" />
-              </tr>
-            </thead>
-
-            <tbody>
-              {transformedPaginatedRows.map((row, index) => {
-                return (
-                  <Box className={S.row} component="tr" key={index}>
-                    {row.map((value, cellIndex) => {
-                      return (
-                        <Box
-                          c={
-                            settings.list_view.fields[cellIndex].style === "dim"
-                              ? "text-light"
-                              : "text-primary"
-                          }
-                          component="td"
-                          fw={
-                            settings.list_view.fields[cellIndex].style ===
-                            "bold"
-                              ? "bold"
-                              : undefined
-                          }
-                          key={cellIndex}
-                          px={CELL_PADDING_HORIZONTAL}
-                          py={cellPaddingVertical}
-                        >
-                          {renderValue(tc, value, columns[cellIndex])}
-                        </Box>
-                      );
-                    })}
-
-                    <Box
-                      component="td"
-                      pr={CELL_PADDING_HORIZONTAL}
-                      py={cellPaddingVertical}
-                    >
-                      <ActionIcon
-                        className={S.link}
-                        component={Link}
-                        to={
-                          pkIndex !== undefined &&
-                          pkIndex >= 0 &&
-                          !searchQuery.trim()
-                            ? `/table/${table.id}/detail/${paginatedRows[index][pkIndex]}`
-                            : ""
-                        }
-                        variant="outline"
-                      >
-                        <Icon name="share" />
-                      </ActionIcon>
-                    </Box>
-                  </Box>
-                );
-              })}
-            </tbody>
+        {settings.list_view.view === "gallery" && (
+          <Box
+            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}
+          >
+            {paginatedRows.map((row, index) => {
+              return (
+                <TableDetailViewInner
+                  key={index}
+                  tableId={table.id as number}
+                  rowId={row[pkIndex] as number}
+                  dataset={dataset}
+                  table={table}
+                  isEdit={isEditing}
+                  isListView
+                  sectionsOverride={settings.list_view.gallery.sections}
+                />
+              );
+            })}
           </Box>
-        </Group>
+        )}
       </Stack>
 
       {isEditing && (
         <Stack
           bg="white"
           flex="0 0 auto"
+          gap={0}
           miw={400}
-          gap="lg"
           h="100%"
-          p="xl"
           style={{
             // boxShadow: "0px 1px 4px 0px var(--mb-color-shadow)",
             borderLeft: "1px solid var(--border-color)",
-            overflow: "auto",
           }}
         >
-          <Group align="center" gap="md" justify="space-between">
-            <Title order={2}>{t`Display settings`}</Title>
+          <Box
+            bg="white"
+            p="xl"
+            style={{
+              borderBottom: "1px solid var(--border-color)",
+            }}
+          >
+            <Group justify="space-between" align="center">
+              <Title order={2}>{t`Display settings`}</Title>
 
-            {isEditing && (
+              {/* <Button
+                aria-label={t`Close`}
+                c="text-medium"
+                size="compact-sm"
+                variant="subtle"
+                onClick={handleCancel}
+              >
+                <Icon name="close" />
+              </Button> */}
+            </Group>
+          </Box>
+
+          <Box flex="1" p="xl" style={{ overflow: "auto" }}>
+            <Stack gap="lg">
+              <Stack gap="xs">
+                <Text
+                  c="text-primary"
+                  fw="bold"
+                  lh="var(--mantine-line-height-md)"
+                >
+                  {t`Layout`}
+                </Text>
+
+                <SegmentedControl
+                  data={[
+                    { value: "table", label: t`Table` },
+                    { value: "list", label: t`List` },
+                    { value: "gallery", label: t`Gallery` },
+                  ]}
+                  value={settings.list_view.view}
+                  onChange={handleViewChange}
+                  w="100%"
+                />
+              </Stack>
+
+              {settings.list_view.view === "table" && (
+                <TableSettingsPanel
+                  table={table}
+                  value={settings}
+                  onChange={setSettings}
+                />
+              )}
+
+              {settings.list_view.view === "list" && (
+                <DetailViewSidebar
+                  columns={columns}
+                  sections={settings.list_view.list.sections}
+                  onUpdateSection={(id, update) => {
+                    setSettings((settings) => ({
+                      ...settings,
+                      list_view: {
+                        ...settings.list_view,
+                        list: {
+                          ...settings.list_view.list,
+                          sections: settings.list_view.list.sections.map((s) =>
+                            s.id === id ? { ...s, ...update } : s,
+                          ),
+                        },
+                      },
+                    }));
+                  }}
+                />
+              )}
+
+              {settings.list_view.view === "gallery" && (
+                <DetailViewSidebar
+                  columns={columns}
+                  sections={settings.list_view.gallery.sections}
+                  onUpdateSection={(id, update) => {
+                    setSettings((settings) => ({
+                      ...settings,
+                      list_view: {
+                        ...settings.list_view,
+                        gallery: {
+                          ...settings.list_view.gallery,
+                          sections: settings.list_view.gallery.sections.map(
+                            (s) => (s.id === id ? { ...s, ...update } : s),
+                          ),
+                        },
+                      },
+                    }));
+                  }}
+                />
+              )}
+            </Stack>
+          </Box>
+
+          <Box
+            bg="white"
+            px="xl"
+            py="md"
+            style={{
+              borderTop: "1px solid var(--border-color)",
+            }}
+          >
+            <Group gap="md" justify="space-between">
+              <Button size="sm" variant="subtle" onClick={handleCancel}>
+                {t`Cancel`}
+              </Button>
+
               <Button
-                leftSection={<Icon name="check" />}
+                size="sm"
                 type="submit"
                 variant="filled"
                 onClick={handleSubmit}
               >
                 {t`Save`}
               </Button>
-            )}
-          </Group>
-
-          <Select
-            data={[
-              { value: "normal", label: t`Normal` },
-              { value: "thin", label: t`Thin` },
-            ]}
-            label={t`Row height`}
-            value={settings.list_view.row_height}
-            onChange={handleRowHeightChange}
-            w="100%"
-          />
-
-          <Stack gap={4}>
-            <Text
-              c="text-primary"
-              fw="bold"
-              lh="var(--mantine-line-height-md)"
-            >{t`Shown columns`}</Text>
-            <SortableFieldList
-              fields={visibleFields}
-              stylesMap={stylesMap}
-              onChange={handleOrderChange}
-              onStyleChange={handleStyleChange}
-              onToggleVisibility={(field) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    fields: settings.list_view.fields.filter(
-                      (f) => f.field_id !== field.id,
-                    ),
-                  },
-                }));
-              }}
-            />
-          </Stack>
-
-          <Stack gap={4}>
-            <Text
-              c="text-primary"
-              fw="bold"
-              lh="var(--mantine-line-height-md)"
-            >{t`Hidden columns`}</Text>
-            <SortableFieldList
-              disabled
-              fields={hiddenFields}
-              isHidden
-              onChange={handleOrderChange}
-              onToggleVisibility={(field) => {
-                setSettings((settings) => ({
-                  ...settings,
-                  list_view: {
-                    ...settings.list_view,
-                    fields: [
-                      ...settings.list_view.fields,
-                      {
-                        field_id: getRawTableFieldId(field),
-                        style: "normal",
-                      },
-                    ],
-                  },
-                }));
-              }}
-            />
-          </Stack>
+            </Group>
+          </Box>
         </Stack>
       )}
     </Group>
