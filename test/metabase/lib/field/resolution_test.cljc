@@ -19,6 +19,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
+   [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -958,3 +959,29 @@
                    query
                    2
                    [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "max"]))))))))
+
+;;; adapted from [[metabase.query-processor-test.uuid-test/joined-uuid-query-test]]
+(deftest ^:parallel resolve-field-missing-join-alias-test
+  (testing "should resolve broken refs missing join-alias correctly and return appropriate metadata"
+    (let [mp      lib.tu.uuid-dogs-metadata-provider/metadata-provider
+          query   (lib/query
+                   mp
+                   {:database 1
+                    :type     :query
+                    :query    {:source-table 1                 ; people
+                               :joins        [{:source-table 2 ; dogs
+                                               :condition    [:=
+                                                              [:field #_dogs.person-id 5 {:join-alias "j"}]
+                                                              [:field #_people.id 1 nil]]
+                                               :alias        "d"
+                                               :fields       :all}]}})
+          ;; incorrect field ref! Should have the join alias `d`. But we should be able to figure it
+          ;; out anyway.
+          bad-ref [:field {:base-type :type/UUID, :lib/uuid "00000000-0000-0000-0000-000000000000"} #_dogs.id 4]]
+      (testing "Resolve in join in current stage"
+        (is (=? {:metabase.lib.join/join-alias "d"}
+                (lib.field.resolution/resolve-field-ref query -1 bad-ref))))
+      (testing "Resolve in join in previous stage"
+        (is (=? {:lib/original-join-alias      "d"
+                 :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+                (lib.field.resolution/resolve-field-ref (lib/append-stage query) -1 bad-ref)))))))
