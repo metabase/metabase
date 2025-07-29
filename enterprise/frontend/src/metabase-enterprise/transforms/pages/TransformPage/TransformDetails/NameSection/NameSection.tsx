@@ -3,15 +3,14 @@ import { t } from "ttag";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type { Transform } from "metabase-types/api";
 
-import { NAME_MAX_LENGTH } from "../../../../constants";
-
-type TransformNameSectionProps = {
+type NameSectionProps = {
   transform: Transform;
 };
 
-export function TransformNameSection({ transform }: TransformNameSectionProps) {
+export function NameSection({ transform }: NameSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();

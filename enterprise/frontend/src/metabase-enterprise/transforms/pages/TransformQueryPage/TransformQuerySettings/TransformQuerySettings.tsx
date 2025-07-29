@@ -4,10 +4,9 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
+import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
+import { transformUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { DatasetQuery, Transform } from "metabase-types/api";
-
-import { TransformQueryBuilder } from "../../../components/TransformQueryBuilder";
-import { transformUrl } from "../../../utils/urls";
 
 type TransformQuerySettingsProps = {
   transform: Transform;

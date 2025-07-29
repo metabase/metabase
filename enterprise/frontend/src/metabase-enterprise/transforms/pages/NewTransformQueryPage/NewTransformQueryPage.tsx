@@ -5,12 +5,11 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { NewTransformModal } from "metabase-enterprise/transforms/components/NewTransformModal";
+import { TransformQueryBuilder } from "metabase-enterprise/transforms/components/TransformQueryBuilder";
+import { transformListUrl } from "metabase-enterprise/transforms/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery } from "metabase-types/api";
-
-import { NewTransformModal } from "../../components/NewTransformModal";
-import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
-import { transformListUrl } from "../../utils/urls";
 
 type NewTransformQueryPageParams = {
   type?: string;
