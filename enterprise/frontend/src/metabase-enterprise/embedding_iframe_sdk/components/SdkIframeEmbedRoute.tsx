@@ -4,7 +4,6 @@ import { P, match } from "ts-pattern";
 import {
   InteractiveDashboard,
   InteractiveQuestion,
-  SdkQuestion,
   MetabaseProvider,
   StaticDashboard,
   StaticQuestion,
@@ -86,7 +85,7 @@ const SdkIframeEmbedView = ({
     .with(
       P.union({ template: "exploration" }, { questionId: "new" }),
       (settings) => (
-        <SdkQuestion
+        <InteractiveQuestion
           questionId="new"
           height="100%"
           isSaveEnabled={settings.isSaveEnabled ?? false}
@@ -151,7 +150,7 @@ const SdkIframeEmbedView = ({
         }
 
         return (
-          <SdkQuestion
+          <InteractiveQuestion
             {...commonProps}
             isSaveEnabled={settings.isSaveEnabled}
             key={rerenderKey}
