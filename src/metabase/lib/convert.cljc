@@ -7,6 +7,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.normalize :as lib.normalize]
@@ -490,17 +491,15 @@
              :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 
-;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so why should expression go through that as well?
+;; TODO: aggregation->legacy-MBQL can wrap things in :aggregation-options which only makes sense for aggregations, so
+;; why should expression go through that as well?
 (defmethod ->legacy-MBQL ::aggregation-or-expression
   [input]
   (aggregation->legacy-MBQL input))
 
+;;; TODO (Cam 7/29/25) -- consider moving into [[lib.convert.metadata-to-legacy]]
 (defn- stage-metadata->legacy-metadata [stage-metadata]
-  (into []
-        (comp (map #(update-keys % (fn [k]
-                                     (cond-> k
-                                       (simple-keyword? k) u/->snake_case_en))))
-              (map #(dissoc % :lib/type)))
+  (mapv lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages
