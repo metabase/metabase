@@ -356,6 +356,14 @@ export const TableListView = ({ location, params }: Props) => {
                   </Menu.Item>
 
                   <Menu.Item
+                    leftSection={<Icon name="bolt_filled" />}
+                    component={Link}
+                    to={`/auto/dashboard/table/${tableId}`}
+                  >
+                    {t`X-ray this table`}
+                  </Menu.Item>
+
+                  <Menu.Item
                     leftSection={<Icon name="reference" />}
                     component={Link}
                     to={`/reference/databases/${table.db_id}/tables/${table.id}`}
