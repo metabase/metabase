@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -144,6 +144,7 @@ export const TableListView = ({ location, params }: Props) => {
 
   const handleFilterChange = (newQuery: Lib.Query, opts: FilterChangeOpts) => {
     setDataQuery(newQuery);
+    dispatch(replace(`/table/${tableId}`));
 
     if (opts.run) {
       setIsFilterPickerOpen(false);
@@ -298,7 +299,10 @@ export const TableListView = ({ location, params }: Props) => {
               placeholder={t`Search...`}
               value={searchQuery}
               w={250}
-              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              onChange={(event) => {
+                setSearchQuery(event.currentTarget.value);
+                dispatch(replace(`/table/${tableId}`));
+              }}
             />
 
             <Popover
@@ -392,7 +396,10 @@ export const TableListView = ({ location, params }: Props) => {
         <FilterPanel
           className={S.filterPanel}
           query={dataQuery}
-          onChange={setDataQuery}
+          onChange={(query) => {
+            setDataQuery(query);
+            dispatch(replace(`/table/${tableId}`));
+          }}
         />
 
         {settings.list_view.view === "table" && (
