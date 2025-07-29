@@ -6,23 +6,54 @@ redirect_from:
 
 # Set up email
 
-Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
+Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens (see [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
 
 To edit email settings:
 
 1. Click on the **gear** icon in the upper right.
 2. Select **Admin Settings**.
-3. From the default **Settings** tab, click on **Notification channels** in the left sidebar.
-4. Select **Email**.
+3. From the default **Settings** tab.
+4. Select **Email** in the left sidebar.
 
-## Metabase Cloud
+## Email on Metabase Cloud
 
-Metabase Cloud manages an email server for you, so you don't need to set up email (and you won't see SMTP settings in your Admin console).
+On Metabase Cloud, you can use the default SMTP server, or set up a custom server.
+
+### Default SMTP server on Metabase Cloud
+
+By default, Metabase Cloud will manage an email server for you, so you don't need to set up email.
 
 If you like, you can still set up:
 
-- A name for your Cloud email account (from name)
-- An email address to receive email replies (reply-to address)
+- A name for your Cloud email account (from name). The email will still be sent from a Metabase address, however.
+- An email address to receive email replies (reply-to address).
+
+### Custom SMTP Server on Metabase Cloud
+
+{% include plans-blockquote.html feature="Custom SMTP server on Metabase Cloud" %}
+
+If you'd prefer that Metabase send emails from a non-Metabase address, you can bring your own SMTP server. You may want to use your own SMTP server if you're [white-labeling Metabase](./appearance.md).
+
+When setting up a custom SMTP server on Metabase Cloud, you'll configure these fields:
+
+- **SMTP HOST**: The address of the SMTP server that handles your emails (e.g., smtp.yourservice.com).
+- **SMTP PORT**: The port your SMTP server uses for outgoing emails. Only encrypted email ports are supported:
+  - 465 (SSL)
+  - 587 (TLS)
+  - 2525 (STARTTLS)
+- **SMTP SECURITY**: Choose the security protocol for your connection:
+  - SSL
+  - TLS
+  - STARTTLS
+- **SMTP USERNAME**: Your SMTP account username.
+- **SMTP PASSWORD**: Your SMTP account password.
+
+You'll also need to specify:
+
+- **From address**: The email address you want to use for the sender of emails.
+- **Reply-to address**: The email address you want replies to go to, if different from the from address.
+
+You can edit these settings at any time. You can also toggle between this custom SMTP server and the server managed by Metabase Cloud.
 
 ## Configuring your email account
 
