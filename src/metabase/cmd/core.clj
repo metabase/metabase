@@ -270,6 +270,10 @@
       (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
+(defn ^:command start-transform-worker
+  []
+  (call-enterprise 'metabase-enterprise.transforms.server/start!))
+
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
 (defn- arg-list-count-ok? [arg-list arg-count]
