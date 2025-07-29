@@ -24,29 +24,25 @@ import type { RecentItem } from "metabase-types/api";
 
 import { getItemUrl, isItemActive } from "./util";
 
-interface FooterComponentProps {
-  isSelected?: boolean;
-  onFooterSelect?: () => void;
-}
-
 type RecentsListContentProps = {
   isLoading: boolean;
   results: RecentItem[];
   onClick?: (item: RecentItem) => void;
-  footerComponent?: (props: FooterComponentProps) => JSX.Element | null;
-  onFooterSelect?: () => void;
+  headerChildren?: JSX.Element[];
+  footerChildren?: JSX.Element[];
+  onSelect?: () => void;
 };
 
 export const RecentsListContent = ({
   isLoading,
   results,
   onClick,
-  footerComponent,
-  onFooterSelect,
+  headerChildren = [],
+  footerChildren = [],
 }: RecentsListContentProps) => {
   const list = useMemo(() => {
-    return footerComponent ? [...results, footerComponent] : results;
-  }, [results, footerComponent]);
+    return [...headerChildren, ...results, ...footerChildren];
+  }, [results, headerChildren, footerChildren]);
 
   const { getRef, cursorIndex } = useListKeyboardNavigation<
     (typeof list)[number],
@@ -55,7 +51,7 @@ export const RecentsListContent = ({
     list,
     onEnter: (item) => {
       if (typeof item === "function") {
-        onFooterSelect?.();
+        item?.onClick?.();
       } else {
         onClick?.(item);
       }
@@ -86,9 +82,17 @@ export const RecentsListContent = ({
         pb="sm"
         data-testid="recents-list-container"
       >
+        {headerChildren.map((component, index) =>
+          component({
+            key: `header-${index}`,
+            isSelected: cursorIndex === 0,
+            onClick: component.onClick,
+          }),
+        )}
         <Title order={4} px="sm">{t`Recently viewed`}</Title>
         <Stack gap={0}>
-          {results.map((item, index) => {
+          {results.map((item, resultIndex) => {
+            const index = resultIndex + headerChildren.length;
             const isActive = isItemActive(item);
 
             return (
@@ -132,11 +136,15 @@ export const RecentsListContent = ({
           })}
         </Stack>
       </Stack>
-      {footerComponent &&
-        footerComponent({
-          isSelected: cursorIndex === list.length - 1,
-          onFooterSelect,
-        })}
+      {footerChildren.map((component, footerIndex) =>
+        component({
+          key: `footer-${footerIndex}`,
+          isSelected:
+            cursorIndex ===
+            headerChildren.length + results.length + footerIndex,
+          onClick: component.onClick,
+        }),
+      )}
     </>
   );
 };

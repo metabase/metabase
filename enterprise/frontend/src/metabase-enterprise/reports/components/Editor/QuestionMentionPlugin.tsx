@@ -1,9 +1,8 @@
 import type { Editor } from "@tiptap/react";
-import { text } from "d3";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useCreateCardMutation , useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import Search from "metabase/entities/search";
 import { getName } from "metabase/lib/name";
@@ -16,7 +15,7 @@ import {
   SearchResultContainer,
 } from "metabase/search/components/SearchResult";
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
-import { Box, Button, Group, Icon, Popover, TextInput } from "metabase/ui";
+import { Box, Group, Icon, Popover } from "metabase/ui";
 import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import type {
@@ -29,21 +28,18 @@ const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
 type InsertionMode = "mention" | "embed" | "text" | "metabot";
 
-interface SearchResultsFooterProps {
+interface ExtraItemProps {
   isSelected?: boolean;
-  onFooterSelect?: () => void;
+  onClick?: () => void;
 }
 
-const SearchResultsFooter = ({
-  isSelected,
-  onFooterSelect,
-}: SearchResultsFooterProps) => (
+const SearchResultsFooter = ({ isSelected, onClick }: ExtraItemProps) => (
   <Box mx="sm" mb="sm" mt={-8}>
     <SearchResultContainer
       align="center"
       isActive
       isSelected={isSelected}
-      onClick={onFooterSelect}
+      onClick={onClick}
     >
       <IconWrapper active archived={false} type="search">
         <Icon name="search" />
@@ -64,6 +60,33 @@ const SearchResultsFooter = ({
   </Box>
 );
 
+const MetabotMenuItem = ({ isSelected, onClick }: ExtraItemProps) => (
+  <Box mx="sm" mb="sm" mt={-8}>
+    <SearchResultContainer
+      align="center"
+      isActive
+      isSelected={isSelected}
+      onClick={onClick}
+    >
+      <IconWrapper active archived={false} type="search">
+        <Icon name="metabot" />
+      </IconWrapper>
+
+      <ResultNameSection justify="center" gap="xs">
+        <Group gap="xs" align="center" wrap="nowrap">
+          <ResultTitle
+            role="heading"
+            data-testid="search-result-item-name"
+            truncate
+          >
+            {t`Ask metabot`}
+          </ResultTitle>
+        </Group>
+      </ResultNameSection>
+    </SearchResultContainer>
+  </Box>
+);
+
 interface QuestionMentionPluginProps {
   editor: Editor;
 }
@@ -75,8 +98,7 @@ export const QuestionMentionPlugin = ({
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
-  const [textInput, setTextInput] = useState("");
-  const [createQuestion] = useCreateCardMutation();
+
   const [mentionRange, setMentionRange] = useState<{
     from: number;
     to: number;
@@ -86,7 +108,6 @@ export const QuestionMentionPlugin = ({
     null,
   );
   const virtualRef = useRef<HTMLDivElement>(null);
-  const textInputRef = useRef<HTMLInputElement>(null);
 
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, { refetchOnMountOrArgChange: true });
@@ -95,115 +116,24 @@ export const QuestionMentionPlugin = ({
     .filter((item) => item.model === "card" || item.model === "dataset")
     .slice(0, 4);
 
-  const metabot = useMetabotAgent();
-
-  const handleTextSubmit = useCallback(async () => {
-    if (!mentionRange || !textInput.trim()) {
+  const insertMetabotBlock = useCallback(async () => {
+    if (!mentionRange) {
       return;
     }
 
     const insertPosition = mentionRange.from;
 
-    const loadingText = t`⏳`;
-
     editor
       .chain()
       .focus()
       .deleteRange(mentionRange)
-      .insertContentAt(insertPosition, loadingText.trim())
-      .setTextSelection(insertPosition + loadingText.trim().length)
-      .run();
-
-    const extra = ", do not ask me any further clarifying questions";
-    const actionPromise = metabot.submitInput(textInput.trim() + extra);
-    metabot.setVisible(false);
-    const action = await actionPromise;
-
-    const toolCall = action.payload.data.history.filter(i => i.role === "tool");
-    const lastTool = toolCall[toolCall.length - 1];
-    if (!lastTool) {
-      console.error("No tool call found in Metabot response");
-      return;
-    }
-
-    const notebookQuery = action.payload.data.history.find(
-      (i) => i?.["tool-calls"]?.some(call => call.name === "construct_notebook_query"));
-
-    console.log("notebookQuery", notebookQuery);
-
-    const args = JSON.parse(notebookQuery?.["tool-calls"][0].arguments);
-    const vizSettings = args.viz_settings || {};
-
-    console.log("vizSettings", vizSettings);
-
-    // captures text inside triple backticks
-    const query = JSON.parse(lastTool.content.match(/```(.*?)```/s)[1]);
-    if (!query) {
-      console.error("No query found in Metabot response");
-      return;
-    }
-
-    console.log("query", query);
-
-    const result = await createQuestion({
-      dataset_query: query,
-      name: "Ad-hoc exploration",
-      type: "question",
-      collection_id: 7,
-      display: vizSettings.type ?? "table",
-      visualization_settings: vizSettings ?? {},
-    });
-
-    const questionId = result.data.id;
-
-    const snapshot = await createSnapshot({
-      card_id: questionId,
-    }).unwrap();
-
-    dispatch(
-      fetchReportQuestionData({
-        cardId: snapshot.card_id,
-        snapshotId: snapshot.snapshot_id,
-      }),
-    );
-
-    const scrollId = `scroll-${_.uniqueId()}`;
-    editor
-      .chain()
-      .deleteRange(mentionRange)
       .insertContentAt(insertPosition, {
-        type: "cardEmbed",
-        attrs: {
-          snapshotId: snapshot.snapshot_id,
-          cardId: snapshot.card_id,
-          questionName: result.data.name,
-          model: result.data.model,
-          scrollId,
-        },
+        type: "metabot",
+        attrs: {},
       })
       .setTextSelection(insertPosition + 1)
       .run();
-
-    editor
-      .chain()
-      .insertContent(args.instructions || "")
-      .setTextSelection(insertPosition + 1 + args.instructions.length)
-      .run();
-
-    setTimeout(() => {
-      const domElement = document.querySelector(
-        `[data-scroll-id=${scrollId}]`,
-      );
-
-      if (domElement) {
-        domElement.scrollIntoView({ block: "end" });
-      }
-    }, 300);
-
-    setShowPopover(false);
-    setMentionRange(null);
-    setTextInput("");
-  }, [editor, mentionRange, textInput, createQuestion, createSnapshot, dispatch, metabot]);
+  }, [editor, mentionRange]);
 
   useEffect(() => {
     if (!editor) {
@@ -220,12 +150,12 @@ export const QuestionMentionPlugin = ({
           "",
         );
 
-        if (currentText.startsWith("/") || currentText.startsWith("@") || currentText.startsWith("#")) {
-          if (mentionRange.mode === "text") {
-            setTextInput(currentText.slice(1));
-          } else {
-            setQuery(currentText.slice(1));
-          }
+        if (
+          currentText.startsWith("/") ||
+          currentText.startsWith("@") ||
+          currentText.startsWith("#")
+        ) {
+          setQuery(currentText.slice(1));
           setMentionRange({
             from: mentionRange.from,
             to: $from.pos,
@@ -267,24 +197,12 @@ export const QuestionMentionPlugin = ({
         setAnchorPos({ x: coords.left, y: coords.bottom });
 
         setShowPopover(true);
-        if (mode === "text") {
-          setTextInput("");
-        } else {
-          setQuery("");
-        }
+        setQuery("");
       }
     };
 
     const keydownHandler = (event: KeyboardEvent) => {
       if (!showPopover) {
-        return;
-      }
-
-      // Handle Enter key for text input mode
-      if (event.key === "Enter" && mentionRange?.mode === "text") {
-        event.preventDefault();
-        event.stopPropagation();
-        handleTextSubmit();
         return;
       }
 
@@ -299,7 +217,6 @@ export const QuestionMentionPlugin = ({
         event.stopPropagation();
         setShowPopover(false);
         setMentionRange(null);
-        setTextInput("");
         editor.commands.focus();
       }
     };
@@ -315,16 +232,7 @@ export const QuestionMentionPlugin = ({
       editor.off("selectionUpdate", updateHandler);
       editorElement.removeEventListener("keydown", keydownHandler, true);
     };
-  }, [editor, mentionRange, showPopover, handleTextSubmit]);
-
-  // Focus text input when text mode is activated
-  useEffect(() => {
-    if (showPopover && mentionRange?.mode === "text" && textInputRef.current) {
-      setTimeout(() => {
-        textInputRef.current?.focus();
-      }, 100);
-    }
-  }, [showPopover, mentionRange?.mode]);
+  }, [editor, mentionRange, showPopover]);
 
   const handleSelect = async (item: UnrestrictedLinkEntity | null) => {
     if (!mentionRange) {
@@ -340,12 +248,7 @@ export const QuestionMentionPlugin = ({
     const wrappedItem = Search.wrapEntity(item, dispatch);
     const insertPosition = mentionRange.from;
 
-    if (mentionRange.mode === "metabot") {
-      // Metabot functionality - placeholder for now
-    } else if (mentionRange.mode === "text") {
-      // Text mode is handled by handleTextSubmit, not handleSelect
-      return;
-    } else if (mentionRange.mode === "embed") {
+    if (mentionRange.mode === "embed") {
       try {
         editor
           .chain()
@@ -417,7 +320,6 @@ export const QuestionMentionPlugin = ({
         onClose={() => {
           setShowPopover(false);
           setMentionRange(null);
-          setTextInput("");
         }}
       >
         <Popover.Target>
@@ -433,23 +335,7 @@ export const QuestionMentionPlugin = ({
             overflow: "auto",
           }}
         >
-          {mentionRange?.mode === "metabot" ? (
-            <Box p="sm">
-              <TextInput
-                ref={textInputRef}
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder={t`What can metabot do for you?`}
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleTextSubmit();
-                  }
-                }}
-              />
-            </Box>
-          ) : query.length > 0 ? (
+          {query.length > 0 ? (
             <SearchResults
               searchText={query}
               limit={4}
@@ -461,13 +347,23 @@ export const QuestionMentionPlugin = ({
               showFooterOnNoResults
             />
           ) : (
-            <RecentsListContent
-              isLoading={isRecentsLoading}
-              results={filteredRecents}
-              onClick={handleRecentSelect}
-              footerComponent={SearchResultsFooter}
-              onFooterSelect={() => setModal("question-picker")}
-            />
+            <>
+              <RecentsListContent
+                isLoading={isRecentsLoading}
+                results={filteredRecents}
+                onClick={handleRecentSelect}
+                headerChildren={[
+                  Object.assign(MetabotMenuItem, {
+                    onClick: insertMetabotBlock,
+                  }),
+                ]}
+                footerChildren={[
+                  Object.assign(SearchResultsFooter, {
+                    onClick: () => setModal("question-picker"),
+                  }),
+                ]}
+              />
+            </>
           )}
         </Popover.Dropdown>
       </Popover>
