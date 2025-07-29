@@ -8,8 +8,8 @@ import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatasetQuery } from "metabase-types/api";
 
-import { NewTransformModal } from "../../components/NewTransformModal";
 import { TransformQueryBuilder } from "../../components/TransformQueryBuilder";
+import { TransformTargetModal } from "../../components/TransformTargetModal";
 import { getTransformListUrl } from "../../utils/urls";
 
 type NewTransformQueryPageParams = {
@@ -70,7 +70,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />
-      <NewTransformModal
+      <TransformTargetModal
         query={query}
         isOpened={isModalOpened}
         onClose={handleCloseClick}
