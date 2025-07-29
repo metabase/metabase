@@ -97,16 +97,16 @@ export const CardEmbedNode = Node.create<{
         this.options.HTMLAttributes,
       ),
       node.attrs.customName
-        ? `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`
-        : `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}}}`,
+        ? `{% card id=${node.attrs.cardId} snapshot=${node.attrs.snapshotId} name="${node.attrs.customName}" %}`
+        : `{% card id=${node.attrs.cardId} snapshot=${node.attrs.snapshotId} %}`,
     ];
   },
 
   renderText({ node }) {
     if (node.attrs.customName) {
-      return `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`;
+      return `{% card id=${node.attrs.cardId} snapshot=${node.attrs.snapshotId} name="${node.attrs.customName}" %}`;
     }
-    return `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}}}`;
+    return `{% card id=${node.attrs.cardId} snapshot=${node.attrs.snapshotId} %}`;
   },
 
   addNodeView() {
@@ -229,35 +229,6 @@ export const CardEmbedComponent = memo(
       }
     };
 
-    const handleCopyStaticQuestion = () => {
-      if (rawSeries && card) {
-        const markdown = `{{static-card:${card.name}:series-${utf8_to_b64url(JSON.stringify(rawSeries[0].data))}:viz-${utf8_to_b64url(JSON.stringify(card.visualization_settings))}:display-${card.display}}}`;
-
-        navigator.clipboard.writeText(markdown);
-      }
-    };
-
-    const handleReplaceStaticQuestion = () => {
-      const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
-
-      if (typeof pos === "number" && card && rawSeries) {
-        editor
-          .chain()
-          .focus()
-          .setTextSelection({ from: pos, to: pos + node.nodeSize })
-          .deleteSelection()
-          .insertContent({
-            type: "cardStatic",
-            attrs: {
-              questionName: card.name,
-              series: utf8_to_b64url(JSON.stringify(rawSeries[0].data)),
-              viz: utf8_to_b64url(JSON.stringify(card.visualization_settings)),
-              display: card.display,
-            },
-          })
-          .run();
-      }
-    };
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
@@ -478,15 +449,6 @@ export const CardEmbedComponent = memo(
                         disabled={!canWrite}
                       >
                         {t`Replace question`}
-                      </Menu.Item>
-                      <Menu.Item onClick={handleCopyStaticQuestion}>
-                        {t`Copy Static Question Markdown`}
-                      </Menu.Item>
-                      <Menu.Item
-                        onClick={handleReplaceStaticQuestion}
-                        disabled={!canWrite}
-                      >
-                        {t`Replace With Static Question`}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>

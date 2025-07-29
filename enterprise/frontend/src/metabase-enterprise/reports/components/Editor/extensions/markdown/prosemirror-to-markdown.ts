@@ -3,7 +3,6 @@ import Bold from "@tiptap/extension-bold";
 import BulletList from "@tiptap/extension-bullet-list";
 import Code from "@tiptap/extension-code";
 import CodeBlock from "@tiptap/extension-code-block";
-import Document from "@tiptap/extension-document";
 import HardBreak from "@tiptap/extension-hard-break";
 import Heading from "@tiptap/extension-heading";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
@@ -22,19 +21,52 @@ import {
 
 // Node serializers - how ProseMirror nodes are converted to markdown
 export const NODE_SERIALIZERS: MarkdownSerializer["nodes"] = {
-  // Document node
-  [Document.name]: (state, node) => state.renderContent(node),
+  doc: (state, node) => {
+    state.renderContent(node);
+  },
 
   // Text nodes
   [Text.name]: defaultMarkdownSerializer.nodes.text,
   [Paragraph.name]: (state, node, parent, index) => {
-    // FIXME: this does not work :(
-    // Handle empty paragraphs to preserve blank lines
-    if (node.content.size === 0) {
-      // For empty paragraphs, write a newline to preserve the blank line
-      state.write("\n");
+    // Handle empty paragraphs at document level
+    if (parent.type.name === "doc" && node.content.size === 0) {
+      // Look ahead to find consecutive empty paragraphs
+      let emptyCount = 1; // Current paragraph is empty
+      let nextIndex = index + 1;
+
+      while (nextIndex < parent.childCount) {
+        const nextChild = parent.child(nextIndex);
+        if (
+          nextChild.type.name === "paragraph" &&
+          nextChild.content.size === 0
+        ) {
+          emptyCount++;
+          nextIndex++;
+        } else {
+          break;
+        }
+      }
+
+      // Only output spacer for the FIRST empty paragraph in a sequence
+      // The rest will be skipped by checking if we're in the middle of a sequence
+      let isFirstInSequence = true;
+      if (index > 0) {
+        const prevChild = parent.child(index - 1);
+        if (
+          prevChild.type.name === "paragraph" &&
+          prevChild.content.size === 0
+        ) {
+          isFirstInSequence = false;
+        }
+      }
+
+      if (isFirstInSequence) {
+        state.write(`{% spacer lines=${emptyCount} %}`);
+        state.closeBlock(node);
+      }
+      // Skip subsequent empty paragraphs in the sequence
     } else {
-      // Use default behavior for non-empty paragraphs
+      // Handle non-empty paragraphs or paragraphs in nested contexts normally
       defaultMarkdownSerializer.nodes.paragraph(state, node, parent, index);
     }
   },
@@ -57,6 +89,27 @@ export const NODE_SERIALIZERS: MarkdownSerializer["nodes"] = {
 
   // Image (from TipTap Image extension)
   [Image.name]: defaultMarkdownSerializer.nodes.image,
+
+  // Card embed nodes
+  cardEmbed: (state, node) => {
+    if (node.attrs.customName) {
+      state.write(
+        `{% card id=${node.attrs.cardId} snapshot=${node.attrs.snapshotId} name="${node.attrs.customName}" %}`,
+      );
+    } else {
+      state.write(
+        `{% card id=${node.attrs.cardId} snapshot=${node.attrs.snapshotId} %}`,
+      );
+    }
+    state.closeBlock(node);
+  },
+
+  // Smart link nodes
+  smartLink: (state, node) => {
+    state.write(
+      `{% link url="${node.attrs.url}" text="${node.attrs.text}" icon="${node.attrs.icon}" %}`,
+    );
+  },
 };
 
 // Mark serializers - how ProseMirror marks are converted to markdown

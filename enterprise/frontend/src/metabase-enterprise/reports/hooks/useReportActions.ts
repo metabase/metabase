@@ -52,37 +52,11 @@ export function useReportActions() {
         return;
       }
 
-      if (cardWithDraftSettings.id.toString().includes("static")) {
-        const { doc } = editorInstance.state;
-        const tr = editorInstance.state.tr;
-
-        doc.descendants((node: any, pos: number) => {
-          if (node.type.name === "cardStatic" && node.attrs.id === embed.id) {
-            const display = cardWithDraftSettings.display;
-            const viz = utf8_to_b64url(
-              JSON.stringify(cardWithDraftSettings.visualization_settings),
-            );
-
-            const newAttrs = {
-              ...node.attrs,
-              display,
-              viz,
-            };
-            tr.setNodeMarkup(pos, undefined, newAttrs);
-            return false;
-          }
-        });
-
-        if (tr.docChanged) {
-          editorInstance.view.dispatch(tr);
-        }
-        dispatch(clearDraftState());
-      } else {
-        try {
-          const { id, created_at, updated_at, ...cardWithoutExcluded } =
-            cardWithDraftSettings;
-          const result = await createReportSnapshot({
-            ...cardWithoutExcluded,
+      try {
+        const { id, created_at, updated_at, ...cardWithoutExcluded } =
+          cardWithDraftSettings;
+        const result = await createReportSnapshot({
+          ...cardWithoutExcluded,
             name: cardWithDraftSettings.name,
           }).unwrap();
 
@@ -123,7 +97,6 @@ export function useReportActions() {
         } catch (error) {
           console.error("Failed to commit visualization changes:", error);
         }
-      }
     },
     [store, createReportSnapshot, dispatch],
   );

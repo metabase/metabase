@@ -36,11 +36,6 @@ export const useCardEmbedSelection = (
         return;
       }
 
-      // Check if the node at the cursor position is a question static
-      if (node && node.type.name === "cardStatic") {
-        onCardSelect(node.attrs.id);
-        return;
-      }
 
       // If not directly on a question node, check if selection is inside a question embed
       let foundCardId: number | null = null;

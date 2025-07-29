@@ -54,9 +54,8 @@ export const ReportPage = ({
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [currentEditorContent, setCurrentEditorContent] = useState<
-    string | null
-  >(null);
+  const [hasInitializedContent, setHasInitializedContent] = useState(false);
+  const [isContentModified, setIsContentModified] = useState(false);
   const [createReport] = useCreateReportMutation();
   const [updateReport] = useUpdateReportMutation();
   const [
@@ -65,6 +64,13 @@ export const ReportPage = ({
   ] = useDisclosure(false);
   const [sendToast] = useToast();
   const previousReportId = usePrevious(reportId);
+  
+  // Reset modification flag when switching reports
+  useEffect(() => {
+    if (reportId !== previousReportId) {
+      setIsContentModified(false);
+    }
+  }, [reportId, previousReportId]);
 
   const selectedVersion = location?.query?.version
     ? Number(location.query.version)
@@ -102,40 +108,38 @@ export const ReportPage = ({
     return hasUnsavedChanges();
   });
 
+  // Set up editor change tracking
   useEffect(() => {
     if (!editorInstance) {
       return;
     }
 
-    const handleUpdate = () => {
-      const content = editorInstance.commands.getMarkdown() ?? "";
-      setCurrentEditorContent(content);
-    };
+    // Mark that content has been initialized once we have an editor
+    if (!hasInitializedContent) {
+      setHasInitializedContent(true);
+    }
 
-    // Initialize with current content
-    const initialContent = editorInstance.commands.getMarkdown() ?? "";
-    setCurrentEditorContent(initialContent);
+    // Track when content is modified
+    const handleUpdate = () => {
+      setIsContentModified(true);
+    };
 
     editorInstance.on("update", handleUpdate);
 
     return () => {
       editorInstance.off("update", handleUpdate);
     };
-  }, [editorInstance]);
+  }, [editorInstance, hasInitializedContent, reportContent]);
 
-  // Initialize currentEditorContent when report loads
+  // Reset state when creating a new report
   useEffect(() => {
-    if (report && currentEditorContent === null) {
-      setCurrentEditorContent(report.document || "");
-    }
-
     if (reportId === "new" && previousReportId !== "new") {
       setReportTitle("");
       setReportContent("");
+      setHasInitializedContent(false);
+      setIsContentModified(false);
     }
   }, [
-    report,
-    currentEditorContent,
     reportId,
     setReportTitle,
     setReportContent,
@@ -143,26 +147,25 @@ export const ReportPage = ({
   ]);
 
   const hasUnsavedChanges = useCallback(() => {
-    // Don't show save button until content is initialized
-    if (currentEditorContent === null) {
+    // Don't check for changes until we have an editor
+    if (!editorInstance || !hasInitializedContent) {
       return false;
     }
 
     const currentTitle = reportTitle.trim();
 
-    // For new reports, show Save if there's title or content
+    // For new reports, show Save if there's title or content has been modified
     if (reportId === "new") {
-      return currentTitle.length > 0 || currentEditorContent.length > 0;
+      return currentTitle.length > 0 || isContentModified;
     }
 
-    // For existing reports, check if title or content changed
+    // For existing reports, check if title changed
     const originalTitle = report?.name || "";
-    const originalContent = report?.document || "";
+    const titleChanged = currentTitle !== originalTitle;
 
-    return (
-      currentTitle !== originalTitle || currentEditorContent !== originalContent
-    );
-  }, [reportTitle, reportId, report, currentEditorContent]);
+    // Return true if either title changed or content was modified
+    return titleChanged || isContentModified;
+  }, [reportTitle, reportId, report, editorInstance, hasInitializedContent, isContentModified]);
 
   const showSaveButton = hasUnsavedChanges() && canWrite;
 
@@ -176,7 +179,7 @@ export const ReportPage = ({
         // Commit all pending visualization changes before saving
         await commitAllPendingChanges(editorInstance);
 
-        const markdown = editorInstance.commands.getMarkdown() ?? "";
+        const markdown = editorInstance.storage.markdown.getMarkdown() ?? "";
         const newReportData = {
           name: reportTitle,
           document: markdown as string,
@@ -211,6 +214,8 @@ export const ReportPage = ({
               ? t`Report v${result?.version} saved`
               : t`Report created`,
           });
+          // Reset modification flag after successful save
+          setIsContentModified(false);
         }
       } catch (error) {
         console.error("Failed to save report:", error);
@@ -287,7 +292,7 @@ export const ReportPage = ({
     (async () => {
       try {
         setIsDownloading(true);
-        const rawMarkdown = editorInstance.commands.getMarkdown();
+        const rawMarkdown = editorInstance.storage.markdown.getMarkdown();
         const processedMarkdown = await getDownloadableMarkdown(
           rawMarkdown,
           cardEmbeds,

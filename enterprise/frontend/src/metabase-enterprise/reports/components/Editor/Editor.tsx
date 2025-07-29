@@ -9,7 +9,7 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import cx from "classnames";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
@@ -20,8 +20,6 @@ import { Box } from "metabase/ui";
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
-import { CardStaticNode } from "./extensions/CardStatic/CardStatic";
-import { ColumnExtension } from "./extensions/Columns/Columns";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
@@ -62,37 +60,36 @@ export const Editor: React.FC<EditorProps> = ({
         placeholder: t`Start writing, press "/" to insert a chart, or "@" to insert a reference...`,
       }),
       Markdown,
-      // CardEmbed.configure({
-      //   HTMLAttributes: {
-      //     class: "card-embed",
-      //   },
-      // }),
-      // CardStaticNode,
-      // SmartLinkEmbed.configure({
-      //   HTMLAttributes: {
-      //     class: "smart-link",
-      //   },
-      // }),
-      // MarkdownSerializer,
-      // ColumnExtension,
+      CardEmbed.configure({
+        HTMLAttributes: {
+          class: "card-embed",
+        },
+      }),
+      SmartLinkEmbed.configure({
+        HTMLAttributes: {
+          class: "smart-link",
+        },
+      }),
     ],
     autofocus: true,
   });
 
+  // Initialize content only once when editor is ready
+  const hasInitialized = useRef(false);
   useEffect(() => {
-    if (editor && content) {
-      editor.commands.setMarkdown(content);
-    }
-  }, [content, editor]);
-
-  useEffect(() => {
-    if (editor && content) {
-      const currentContent = editor.commands.getMarkdown() as unknown as string;
-      if (currentContent !== content) {
-        editor.commands.setMarkdown(content);
+    if (editor && content && !editor.isDestroyed && !hasInitialized.current) {
+      // Use storage method directly to avoid command timing issues
+      try {
+        editor.storage.markdown.setMarkdown(content);
+        hasInitialized.current = true;
+      } catch (error) {
+        console.error("Failed to set initial markdown content:", error);
+        // Fallback to setting content as HTML if markdown parsing fails
+        editor.commands.setContent(content);
+        hasInitialized.current = true;
       }
     }
-  }, [content, editor]);
+  }, [editor, content]);
 
   // Update editor editable state
   useEffect(() => {

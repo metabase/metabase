@@ -16,6 +16,7 @@ import Underline from "@tiptap/extension-underline";
 import type { Token } from "markdown-it";
 import type { ParseSpec } from "prosemirror-markdown";
 
+
 // Parser tokens - how markdown tokens are converted to ProseMirror nodes/marks
 export const PARSER_TOKENS: Record<string, ParseSpec> = {
   // Basic blocks
@@ -67,6 +68,26 @@ export const PARSER_TOKENS: Record<string, ParseSpec> = {
   },
   s: { mark: Strike.name },
   u: { mark: Underline.name },
+
+  // Custom nodes
+  card: {
+    node: "cardEmbed",
+    getAttrs: (tok: Token) => ({
+      cardId: parseInt(tok.attrGet("id") || "0", 10),
+      snapshotId: parseInt(tok.attrGet("snapshot") || "0", 10),
+      customName: tok.attrGet("name") || null,
+      questionName: tok.attrGet("name") || "",
+      model: "card",
+    }),
+  },
+  smartlink: {
+    node: "smartLink",
+    getAttrs: (tok: Token) => ({
+      url: tok.attrGet("url"),
+      text: tok.attrGet("text"),
+      icon: tok.attrGet("icon"),
+    }),
+  },
 };
 
 export function createParserTokens(
