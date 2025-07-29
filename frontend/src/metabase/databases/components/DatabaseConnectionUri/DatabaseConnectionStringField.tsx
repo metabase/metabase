@@ -5,6 +5,10 @@ import { t } from "ttag";
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
 
+import {
+  connectionStringParsedFailed,
+  connectionStringParsedSuccess,
+} from "./analytics";
 import { mapDatabaseValues } from "./databaseFieldMapper";
 import { parseConnectionUriRegex } from "./parseConnectionRegex";
 
@@ -31,10 +35,12 @@ export function DatabaseConnectionStringField({
   setFieldValue,
   engine,
   engineKey,
+  location,
 }: {
   setFieldValue: (field: string, value: string | boolean | undefined) => void;
   engine: Engine | undefined;
   engineKey: string | undefined;
+  location: "admin" | "setup" | "embedding_setup";
 }) {
   const [connectionString, setConnectionString] = useState("");
   const [status, setStatus] = useState<"success" | "failure" | null>(null);
@@ -60,6 +66,7 @@ export function DatabaseConnectionStringField({
       if (!parsedValues) {
         setStatus("failure");
         deleayedClearStatus();
+        connectionStringParsedFailed(location);
         return () => clearTimeout();
       }
 
@@ -69,6 +76,7 @@ export function DatabaseConnectionStringField({
       fieldsMap.forEach((value, field) => setFieldValue(field, value));
       setStatus(hasValues ? "success" : "failure");
       deleayedClearStatus();
+      connectionStringParsedSuccess(location);
 
       return () => {
         clearTimeout();
