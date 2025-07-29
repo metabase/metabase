@@ -147,8 +147,7 @@
                                                   {:lib/uuid                (str (random-uuid))
                                                    :source-field            id
                                                    ::new-field-dimension-id (u/the-id dimension)}
-                                                  ;; if the original ref had a join alias, then the new one should as well
-                                                  (when-let [join-alias (lib/current-join-alias original-ref)]
+                                                  (when-let [join-alias (:metabase.lib.join/join-alias col)]
                                                     {:join-alias join-alias}))
                                                  (u/the-id (:human-readable-field-id dimension))]
                          :dimension             (assoc dimension
