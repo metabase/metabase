@@ -315,11 +315,6 @@
    id-or-name   :- [:or :string ::lib.schema.id/field]]
   (log/debugf "Resolving %s from previous stage, source table, or source card" (u/cprint-to-str id-or-name))
   (merge-metadata
-   (when-let [model-cols (not-empty (model-metadata query stage-number))]
-     (when-some [col (resolve-in-metadata query model-cols id-or-name)]
-       (-> col
-           lib.field.util/update-keys-for-col-from-previous-stage
-           (select-keys model-propagated-keys))))
    (let [stage (lib.util/query-stage query stage-number)]
      (or (b/cond
            :let []
@@ -361,7 +356,12 @@
          (when (pos-int? id-or-name)
            (field-metadata query id-or-name))
          ;; if we STILL can't find a match, return made-up fallback metadata.
-         (fallback-metadata id-or-name)))))
+         (fallback-metadata id-or-name)))
+   (when-let [model-cols (not-empty (model-metadata query stage-number))]
+     (when-some [col (resolve-in-metadata query model-cols id-or-name)]
+       (-> col
+           lib.field.util/update-keys-for-col-from-previous-stage
+           (select-keys model-propagated-keys))))))
 
 (mu/defn resolve-field-ref :- ::lib.metadata.calculation/column-metadata-with-source
   "Resolve metadata for a `:field` ref. This is part of the implementation
@@ -395,11 +395,7 @@
   TODO (Cam 7/28/25) -- We should probably prefer [[lib.equality/find-matching-column]] directly instead; if this
   function does something that [[lib.equality]] doesn't, we should fix the code in `lib.equality` instead of having
   our own bespoke way of finding matching columns here."
-  [metadata-providerable                 :- ::lib.schema.metadata/metadata-providerable
-   [_tag opts id-or-name, :as field-ref] :- :mbql.clause/field
-   cols                                  :- [:sequential ::lib.schema.metadata/column]]
-  (merge-metadata
-   {:lib/type :metadata/column}
-   (resolve-in-metadata metadata-providerable cols id-or-name)
-   (options-metadata opts)
-   {:lib/original-ref field-ref}))
+  [metadata-providerable                   :- ::lib.schema.metadata/metadata-providerable
+   [_tag _opts id-or-name, :as _field-ref] :- :mbql.clause/field
+   cols                                    :- [:sequential ::lib.schema.metadata/column]]
+  (resolve-in-metadata metadata-providerable cols id-or-name))
