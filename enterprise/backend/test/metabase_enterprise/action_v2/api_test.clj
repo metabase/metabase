@@ -599,42 +599,85 @@
 (deftest execute-form-built-in-table-action-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
-      (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
-                                                     :text      [:text]
-                                                     :int       [:int]
-                                                     :timestamp [:timestamp]
-                                                     :date [:date]
-                                                     :inactive [:text]}
-                                                    {:primary-key [:id]}]]
+      (testing "Non auto-incrementing pk"
+        (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
+                                                       :text      [:text]
+                                                       :int       [:int]
+                                                       :timestamp [:timestamp]
+                                                       :date [:date]
+                                                       :inactive [:text]}
+                                                      {:primary-key [:id]}]]
         ;; This inactive field should not show up
-        (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
-        (testing "table actions"
-          (let [create-id           "data-grid.row/create"
-                update-id           "data-grid.row/update"
-                delete-id           "data-grid.row/delete"
-                scope               {:table-id table-id}]
+          (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
+          (testing "table actions"
+            (let [create-id           "data-grid.row/create"
+                  update-id           "data-grid.row/update"
+                  delete-id           "data-grid.row/delete"
+                  scope               {:table-id table-id}]
 
-            (testing "create"
-              (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
-                                    {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
-                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
-                                    {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
-                      (mt/user-http-request :crowberto :post 200 execute-form-url
-                                            {:scope     scope
-                                             :action create-id}))))
+              (testing "create"
+                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"     :optional false :readonly false}
+                                      {:id "text"      :display_name "Text"      :input_type "text"     :optional true  :readonly false}
+                                      {:id "int"       :display_name "Int"       :input_type "text"     :optional true  :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime" :optional true  :readonly false}
+                                      {:id "date"      :display_name "Date"      :input_type "date"     :optional true  :readonly false}]}
+                        (mt/user-http-request :crowberto :post 200 execute-form-url
+                                              {:scope     scope
+                                               :action create-id}))))
 
-            (testing "update"
-              (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text",     :optional false, :readonly true}
-                                    {:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
-                                    {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
-                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
-                                    {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
-                      (mt/user-http-request :crowberto :post 200 execute-form-url
-                                            {:scope     scope
-                                             :action update-id}))))
+              (testing "update"
+                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"     :optional false :readonly true}
+                                      {:id "text"      :display_name "Text"      :input_type "text"     :optional true  :readonly false}
+                                      {:id "int"       :display_name "Int"       :input_type "text"     :optional true  :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime" :optional true  :readonly false}
+                                      {:id "date"      :display_name "Date"      :input_type "date"     :optional true  :readonly false}]}
+                        (mt/user-http-request :crowberto :post 200 execute-form-url
+                                              {:scope     scope
+                                               :action update-id}))))
 
-            (testing "delete"
-              (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text", :optional false, :readonly true}]}
-                      (mt/user-http-request :crowberto :post 200 execute-form-url
-                                            {:scope     scope
-                                             :action delete-id}))))))))))
+              (testing "delete"
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text" :optional false :readonly true}]}
+                        (mt/user-http-request :crowberto :post 200 execute-form-url
+                                              {:scope     scope
+                                               :action delete-id}))))))))
+
+      (testing "Auto incrementing pk"
+        (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+                                                       :text      [:text]
+                                                       :int       [:int]
+                                                       :timestamp [:timestamp]
+                                                       :date [:date]
+                                                       :inactive [:text]}
+                                                      {:primary-key [:id]}]]
+        ;; This inactive field should not show up
+          (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
+          (testing "table actions"
+            (let [create-id           "data-grid.row/create"
+                  update-id           "data-grid.row/update"
+                  delete-id           "data-grid.row/delete"
+                  scope               {:table-id table-id}]
+
+              (testing "create"
+                (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
+                                      {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
+                                      {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
+                        (mt/user-http-request :crowberto :post 200 execute-form-url
+                                              {:scope     scope
+                                               :action create-id}))))
+
+              (testing "update"
+                (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text",     :optional false, :readonly true}
+                                      {:id "text"      :display_name "Text"      :input_type "text",     :optional true, :readonly false}
+                                      {:id "int"       :display_name "Int"       :input_type "text",     :optional true, :readonly false}
+                                      {:id "timestamp" :display_name "Timestamp" :input_type "datetime", :optional true, :readonly false}
+                                      {:id "date"      :display_name "Date"      :input_type "date",     :optional true, :readonly false}]}
+                        (mt/user-http-request :crowberto :post 200 execute-form-url
+                                              {:scope     scope
+                                               :action update-id}))))
+
+              (testing "delete"
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text", :optional false, :readonly true}]}
+                        (mt/user-http-request :crowberto :post 200 execute-form-url
+                                              {:scope     scope
+                                               :action delete-id})))))))))))
