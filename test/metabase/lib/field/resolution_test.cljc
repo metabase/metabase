@@ -275,7 +275,7 @@
           (is (=? {:lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
                   (#'lib.field.resolution/options-metadata (second field-ref)))))
         (testing `lib.field.resolution/resolve-field-ref
-          (is (=? {:lib/card-id     1
+          (is (=? {:lib/card-id     2
                    :lib/source      :source/previous-stage
                    :name            "EXAMPLE_TIMESTAMP"
                    :lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
