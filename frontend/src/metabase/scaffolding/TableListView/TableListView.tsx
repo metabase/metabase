@@ -14,12 +14,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { Label } from "metabase/metadata/components/FieldOrderPicker/Label";
 import { getUrl } from "metabase/metadata/pages/DataModel/utils";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import {
-  ActionIcon,
   Box,
   Button,
   Group,
@@ -329,24 +329,40 @@ export const TableListView = ({ location, params }: Props) => {
             </Popover>
 
             {!isEditing && (
-              <Button
-                leftSection={<Icon name="gear" />}
-                variant="outline"
-                onClick={() => setIsEditing(true)}
-              >
-                {t`Display settings`}
-              </Button>
+              <SegmentedControl
+                data={[
+                  {
+                    value: "table",
+                    label: <Label icon="table2" tooltip={t`Table`} />,
+                  },
+                  {
+                    value: "list",
+                    label: <Label icon="list" tooltip={t`List`} />,
+                  },
+                  {
+                    value: "gallery",
+                    label: <Label icon="grid" tooltip={t`Gallery`} />,
+                  },
+                ]}
+                value={settings.list_view.view}
+                onChange={handleViewChange}
+              />
+            )}
+
+            {!isEditing && (
+              <Tooltip label={t`Display settings`}>
+                <Button
+                  leftSection={<Icon name="gear" />}
+                  onClick={() => setIsEditing(true)}
+                />
+              </Tooltip>
             )}
 
             {!isSyncInProgress(table) && (
               <Menu position="bottom-end">
                 <Menu.Target>
                   <Tooltip label={t`More`}>
-                    <ActionIcon aria-label={t`More`} variant="transparent">
-                      <Box c="text-primary">
-                        <Icon name="ellipsis" />
-                      </Box>
-                    </ActionIcon>
+                    <Button leftSection={<Icon name="ellipsis" />} />
                   </Tooltip>
                 </Menu.Target>
 
