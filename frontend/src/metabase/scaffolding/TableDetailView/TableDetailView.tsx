@@ -479,7 +479,7 @@ function ObjectViewSection({
     <Box
       className={S.ObjectViewSection}
       pos="relative"
-      bg={isEdit ? "bg-medium" : "bg-white"}
+      bg={isEdit && !isListView ? "bg-medium" : "bg-white"}
       px="md"
       py="sm"
       style={{
