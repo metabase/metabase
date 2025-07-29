@@ -345,7 +345,7 @@ function ObjectViewSection({
     <Box
       className={S.ObjectViewSection}
       pos="relative"
-      bg="bg-medium"
+      bg={isEdit ? "bg-medium" : undefined}
       px="md"
       py="sm"
       style={{ borderRadius: "var(--default-border-radius)" }}
