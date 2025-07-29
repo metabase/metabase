@@ -201,7 +201,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         );
       });
 
-      getSdkRoot().within(() => {
+      cy.get("body").within(() => {
         cy.findByText("loading").should("exist");
         cy.findByText("success").should("exist");
       });

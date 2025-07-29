@@ -21,9 +21,14 @@ export function useMetabaseProviderPropsStore() {
     };
   }, []);
 
-  return useSyncExternalStore(
+  const props = useSyncExternalStore(
     storeRef.current.subscribe,
     storeRef.current.getSnapshot,
     storeRef.current.getSnapshot,
   );
+
+  return {
+    props,
+    store: storeRef.current,
+  };
 }

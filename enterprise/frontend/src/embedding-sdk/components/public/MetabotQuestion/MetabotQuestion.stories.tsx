@@ -3,7 +3,6 @@ import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box } from "metabase/ui";
 
 import { MetabotQuestion } from "./MetabotQuestion";
 
@@ -20,14 +19,16 @@ export default {
 
 const Template: StoryFn<MetabotQuestionProps> = () => {
   return (
-    <Box
-      bg="var(--mb-color-background)"
-      mih="100vh"
-      bd="1px solid #000"
-      pt="2rem"
+    <div
+      style={{
+        background: "var(--mb-color-background)",
+        padding: "2rem",
+        minHeight: "100vh",
+        border: "1px solid #000",
+      }}
     >
       <MetabotQuestion />
-    </Box>
+    </div>
   );
 };
 

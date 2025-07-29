@@ -36,7 +36,9 @@ export const useInitializeMetabaseProviderPropsStore = (
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useMemo(() => ensureMetabaseProviderPropsStore(initialProps), []);
 
-  const { initialized = false } = useMetabaseProviderPropsStore();
+  const {
+    props: { initialized = false },
+  } = useMetabaseProviderPropsStore();
 
   useEffect(() => {
     incrementProvidersCount();

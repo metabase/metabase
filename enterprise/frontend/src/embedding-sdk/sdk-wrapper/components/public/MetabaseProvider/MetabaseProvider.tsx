@@ -15,15 +15,10 @@ const _MetabaseProvider = ({ children, ...props }: MetabaseProviderProps) => {
   const reduxStore = isLoading
     ? null
     : getWindow()?.MetabaseEmbeddingSDK?.getSdkStore();
-  const Component = isLoading
-    ? null
-    : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
 
   return (
     <MetabaseProviderInner reduxStore={reduxStore} props={props}>
-      {({ initialized }) =>
-        initialized && Component ? <Component>{children}</Component> : children
-      }
+      {children}
     </MetabaseProviderInner>
   );
 };
