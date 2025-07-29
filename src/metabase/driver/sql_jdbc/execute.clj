@@ -813,6 +813,17 @@
              ;; TODO - we should probably be using [[reducible-rows]] instead to convert to the correct types
              (reduce rf init (jdbc/reducible-result-set rs {})))))))))
 
+(defmethod driver/execute-raw-write-query! :sql-jdbc [driver connection-details [query & args]]
+  (do-with-connection-with-options
+   driver
+   connection-details
+   nil
+   (fn [^java.sql.Connection source-conn]
+     (with-open [stmt (statement-or-prepared-statement driver source-conn query args nil)]
+       (if (instance? PreparedStatement stmt)
+         (.executeUpdate ^PreparedStatement stmt)
+         (.executeUpdate stmt query))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Actions Stuff                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
