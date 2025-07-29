@@ -14,6 +14,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { push } from "react-router-redux";
 
 import { skipToken } from "metabase/api/api";
@@ -27,14 +28,16 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui/components";
-import { Button } from "metabase/ui/components/buttons";
+import { ActionIcon, Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,
   ObjectViewSectionSettings,
   RowValues,
   StructuredDatasetQuery,
+  TableId,
 } from "metabase-types/api";
 
 import {
@@ -260,6 +263,7 @@ export function TableDetailViewInner({
                   section={section}
                   columns={columns}
                   row={row}
+                  tableId={tableId}
                   isEdit={isEdit}
                   isListView={isListView}
                   onUpdateSection={(update) =>
@@ -292,6 +296,7 @@ type SortableSectionProps = {
   section: ObjectViewSectionSettings;
   columns: DatasetColumn[];
   row: RowValues;
+  tableId: TableId;
   isEdit: boolean;
   isListView: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
@@ -328,6 +333,7 @@ type ObjectViewSectionProps = {
   section: ObjectViewSectionSettings;
   columns: DatasetColumn[];
   row: RowValues;
+  tableId: TableId;
   isEdit: boolean;
   isListView: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
@@ -339,12 +345,15 @@ function ObjectViewSection({
   section,
   columns,
   row,
+  tableId,
   isEdit,
   isListView,
   onUpdateSection,
   onRemoveSection,
   dragHandleProps,
 }: ObjectViewSectionProps) {
+  const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
+
   return (
     <Box
       className={S.ObjectViewSection}
@@ -412,6 +421,24 @@ function ObjectViewSection({
             onClick={onRemoveSection}
           />
         </Group>
+      )}
+
+      {isListView && (
+        <ActionIcon
+          className={S.link}
+          component={Link}
+          pos="absolute"
+          top={8}
+          right={8}
+          to={
+            pkIndex !== undefined && pkIndex >= 0
+              ? `/table/${tableId}/detail/${row[pkIndex]}`
+              : ""
+          }
+          variant="outline"
+        >
+          <Icon name="share" />
+        </ActionIcon>
       )}
     </Box>
   );
