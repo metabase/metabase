@@ -11,11 +11,11 @@ import { TransformTargetModal } from "metabase-enterprise/transforms/components/
 import { getTableMetadataUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform, TransformTarget } from "metabase-types/api";
 
-export type UpdateTargetButtonProps = {
+export type EditTargetButtonProps = {
   transform: Transform;
 };
 
-export function UpdateTargetButton({ transform }: UpdateTargetButtonProps) {
+export function EditTargetButton({ transform }: EditTargetButtonProps) {
   const { id, source, target } = transform;
   const [updateTransform] = useUpdateTransformMutation();
   const { show: askConfirmation, modalContent: confirmationModal } =

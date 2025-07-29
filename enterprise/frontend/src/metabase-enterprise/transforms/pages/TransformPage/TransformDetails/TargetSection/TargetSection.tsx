@@ -7,7 +7,7 @@ import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/
 import { getTableMetadataUrl } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform, TransformTarget } from "metabase-types/api";
 
-import { UpdateTargetButton } from "./UpdateTargetButton";
+import { EditTargetButton } from "./EditTargetButton";
 
 export type TargetSectionProps = {
   transform: Transform;
@@ -20,7 +20,7 @@ export function TargetSection({ transform }: TargetSectionProps) {
       description={t`Change what this transform generates and where.`}
     >
       <Group px="xl" py="lg">
-        <UpdateTargetButton transform={transform} />
+        <EditTargetButton transform={transform} />
         {transform.table && (
           <Button
             component={Link}
