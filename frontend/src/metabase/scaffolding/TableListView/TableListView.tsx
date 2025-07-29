@@ -476,7 +476,7 @@ export const TableListView = ({ location, params }: Props) => {
             <Group justify="space-between" align="center">
               <Title order={2}>{t`Display settings`}</Title>
 
-              <Button
+              {/* <Button
                 aria-label={t`Close`}
                 c="text-medium"
                 size="compact-sm"
@@ -484,7 +484,7 @@ export const TableListView = ({ location, params }: Props) => {
                 onClick={handleCancel}
               >
                 <Icon name="close" />
-              </Button>
+              </Button> */}
             </Group>
           </Box>
 
