@@ -94,7 +94,7 @@ jobs:
         run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && github.event_name != 'workflow_dispatch'
         with:
           input-path: ./target/junit
           output-name: frontend-unit
