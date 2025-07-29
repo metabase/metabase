@@ -78,15 +78,6 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
       <Button leftSection={<Icon name="pencil_lines" />} onClick={open}>
         {t`Change target`}
       </Button>
-      {transform.table && (
-        <Button
-          component={Link}
-          to={getTableMetadataUrl(transform.table)}
-          leftSection={<Icon name="label" />}
-        >
-          {t`Edit this view’s metadata`}
-        </Button>
-      )}
       {source.query.database != null && (
         <TransformTargetModal
           databaseId={source.query.database}

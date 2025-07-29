@@ -43,13 +43,15 @@ export function FormSegmentedControl<T extends string>({
 
   return (
     <Input.Wrapper label={label} description={description} error={error}>
-      <SegmentedControl
-        {...props}
-        name={name}
-        value={value}
-        onChange={handleChange}
-        onBlur={handleBlur}
-      />
+      <div>
+        <SegmentedControl
+          {...props}
+          name={name}
+          value={value}
+          onChange={handleChange}
+          onBlur={handleBlur}
+        />
+      </div>
     </Input.Wrapper>
   );
 }

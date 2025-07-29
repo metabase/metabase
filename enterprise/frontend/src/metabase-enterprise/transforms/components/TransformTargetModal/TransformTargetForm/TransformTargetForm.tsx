@@ -14,7 +14,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Button, Flex, Stack } from "metabase/ui";
+import { Button, Group, Stack } from "metabase/ui";
 import type { DatabaseId, TransformTarget } from "metabase-types/api";
 
 type TransformTargetFormProps = {
@@ -73,33 +73,37 @@ export function TransformTargetForm({
       validationSchema={TARGET_SCHEMA}
       onSubmit={onSubmit}
     >
-      <Form>
-        <Stack>
-          <FormSegmentedControl
-            name="type"
-            label={t`Should this transform create a view or a table in the database?`}
-            data={TYPE_OPTIONS}
-          />
-          <FormTextInput
-            name="name"
-            label={t`What should it be called in the database?`}
-          />
-          <FormSelect
-            name="schema"
-            label={t`In which schema should it go?`}
-            data={schemas}
-          />
-          <FormErrorMessage />
-          <Flex justify="end">
-            {target ? (
-              <Button variant="filled">{t`Save changes`}</Button>
-            ) : (
-              <FormSubmitButton label={t`Save`} variant="filled" />
-            )}
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
-          </Flex>
-        </Stack>
-      </Form>
+      {({ values }) => (
+        <Form>
+          <Stack>
+            <FormSegmentedControl
+              name="type"
+              label={t`Should this transform create a view or a table in the database?`}
+              data={TYPE_OPTIONS}
+            />
+            <FormTextInput
+              name="name"
+              label={t`What should it be called in the database?`}
+            />
+            <FormSelect
+              name="schema"
+              label={t`In which schema should it go?`}
+              data={schemas}
+            />
+            <FormErrorMessage />
+            <Group justify="end">
+              <Button onClick={onCancel}>{t`Cancel`}</Button>
+              {target ? (
+                <Button variant="filled" onClick={() => onSubmit(values)}>
+                  {t`Save changes`}
+                </Button>
+              ) : (
+                <FormSubmitButton label={t`Save`} variant="filled" />
+              )}
+            </Group>
+          </Stack>
+        </Form>
+      )}
     </FormProvider>
   );
 }
