@@ -52,6 +52,7 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
+  location: "admin" | "setup" | "embedding_setup";
   /**
    * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
    */
@@ -67,6 +68,7 @@ export const DatabaseForm = ({
   onCancel,
   onEngineChange,
   setIsDirty,
+  location,
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
   config = {},
@@ -125,6 +127,7 @@ export const DatabaseForm = ({
         config={config}
         showSampleDatabase={showSampleDatabase}
         ContinueWithoutDataSlot={ContinueWithoutDataSlot}
+        location={location}
       />
     </FormProvider>
   );
@@ -143,6 +146,7 @@ interface DatabaseFormBodyProps {
   config: DatabaseFormConfig;
   showSampleDatabase?: boolean;
   ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
+  location: "admin" | "setup" | "embedding_setup";
 }
 
 const DatabaseFormBody = ({
@@ -158,6 +162,7 @@ const DatabaseFormBody = ({
   config,
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
+  location,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty, setFieldValue } = useFormikContext<DatabaseData>();
 
@@ -192,6 +197,7 @@ const DatabaseFormBody = ({
         setFieldValue={setFieldValue}
         engine={engine}
         engineKey={engineKey}
+        location={location}
       />
       {engine && (
         <DatabaseNameField
