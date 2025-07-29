@@ -1,14 +1,17 @@
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
+import { TransformNavBar } from "./components/TransformNavBar";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { TransformPage } from "./pages/TransformPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformSettingsPage } from "./pages/TransformSettingsPage";
+import { isTransformsRoute } from "./utils/urls";
 
-PLUGIN_TRANSFORMS.canAccessTransforms = getUserIsAdmin;
+PLUGIN_TRANSFORMS.TransformNavBar = TransformNavBar;
+
+PLUGIN_TRANSFORMS.isTransformsRoute = isTransformsRoute;
 
 PLUGIN_TRANSFORMS.getRoutesWithSidebar = () => (
   <>

@@ -80,6 +80,7 @@ import type {
   TableId,
   Timeline,
   TimelineEvent,
+  TransformId,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -805,14 +806,21 @@ export const PLUGIN_SMTP_OVERRIDE: {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
+export type TransformNavBarProps = {
+  transformId: TransformId | undefined;
+  isActive: boolean;
+};
+
 export type TransformsPlugin = {
-  canAccessTransforms: (state: State) => boolean;
+  TransformNavBar: ComponentType<TransformNavBarProps>;
+  isTransformsRoute: (path: string) => boolean;
   getRoutesWithSidebar(): ReactNode;
   getRoutesWithoutSidebar(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  canAccessTransforms: () => false,
+  TransformNavBar: PluginPlaceholder,
+  isTransformsRoute: () => false,
   getRoutesWithSidebar: () => null,
   getRoutesWithoutSidebar: () => null,
 };

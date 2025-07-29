@@ -4,6 +4,7 @@ import type {
   SchemaId,
   SchemaName,
   TableId,
+  TransformId,
 } from "metabase-types/api";
 
 export type RouteParams = {
@@ -11,6 +12,7 @@ export type RouteParams = {
   fieldId?: string;
   schemaId?: SchemaId;
   tableId?: string;
+  transformId?: string;
 };
 
 export type ParsedRouteParams = {
@@ -18,6 +20,7 @@ export type ParsedRouteParams = {
   fieldId: FieldId | undefined;
   schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
+  transformId: TransformId | undefined;
 };
 
 export type Column = "nav" | "table" | "field" | "preview";

@@ -7,6 +7,10 @@ import type {
 
 const ROOT_URL = "/admin/datamodel/transforms";
 
+export function isTransformsRoute(path: string) {
+  return path.startsWith(ROOT_URL);
+}
+
 export function getTransformListUrl() {
   return ROOT_URL;
 }

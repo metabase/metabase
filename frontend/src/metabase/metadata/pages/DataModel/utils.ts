@@ -15,6 +15,7 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
       : params.schemaId,
     tableId: Urls.extractEntityId(params.tableId),
     fieldId: Urls.extractEntityId(params.fieldId),
+    transformId: Urls.extractEntityId(params.transformId),
   };
 }
 
