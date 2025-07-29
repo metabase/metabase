@@ -17,6 +17,7 @@ describe("scenarios > embedding > sdk iframe embed setup > user settings persist
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
       "persistSettings",
