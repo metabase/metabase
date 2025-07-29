@@ -261,6 +261,7 @@ export function TableDetailViewInner({
                   columns={columns}
                   row={row}
                   isEdit={isEdit}
+                  isListView={isListView}
                   onUpdateSection={(update) =>
                     updateSection(section.id, update)
                   }
@@ -292,6 +293,7 @@ type SortableSectionProps = {
   columns: DatasetColumn[];
   row: RowValues;
   isEdit: boolean;
+  isListView: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection: () => void;
 };
@@ -327,6 +329,7 @@ type ObjectViewSectionProps = {
   columns: DatasetColumn[];
   row: RowValues;
   isEdit: boolean;
+  isListView: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
   onRemoveSection: () => void;
   dragHandleProps?: any;
@@ -337,6 +340,7 @@ function ObjectViewSection({
   columns,
   row,
   isEdit,
+  isListView,
   onUpdateSection,
   onRemoveSection,
   dragHandleProps,
@@ -351,7 +355,7 @@ function ObjectViewSection({
       style={{ borderRadius: "var(--default-border-radius)" }}
     >
       <Group gap="xs">
-        {isEdit && (
+        {isEdit && !isListView && (
           <Icon
             name="grabber"
             style={{ cursor: "grab" }}
@@ -393,7 +397,7 @@ function ObjectViewSection({
           );
         })}
       </Flex>
-      {isEdit && (
+      {isEdit && !isListView && (
         <Group
           className={S.ObjectViewSectionActions}
           pos="absolute"
