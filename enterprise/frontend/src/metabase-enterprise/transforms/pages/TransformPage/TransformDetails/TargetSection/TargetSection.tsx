@@ -3,10 +3,12 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Button, Group, Icon } from "metabase/ui";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformTarget } from "metabase-types/api";
 
 import { getTableMetadataUrl } from "../../../../utils/urls";
 import { CardSection } from "../CardSection";
+
+import { UpdateTargetButton } from "./UpdateTargetButton";
 
 export type TargetSectionProps = {
   transform: Transform;
@@ -15,13 +17,11 @@ export type TargetSectionProps = {
 export function TargetSection({ transform }: TargetSectionProps) {
   return (
     <CardSection
-      label={getLabel(transform)}
+      label={getSectionLabel(transform.target)}
       description={t`Change what this transform generates and where.`}
     >
       <Group px="xl" py="lg">
-        <Button
-          leftSection={<Icon name="pencil_lines" />}
-        >{t`Change target`}</Button>
+        <UpdateTargetButton transform={transform} />
         {transform.table && (
           <Button
             component={Link}
@@ -36,8 +36,8 @@ export function TargetSection({ transform }: TargetSectionProps) {
   );
 }
 
-function getLabel(transform: Transform) {
-  return match(transform.target.type)
+function getSectionLabel(target: TransformTarget) {
+  return match(target.type)
     .with("view", () => t`Generated view`)
     .with("table", () => t`Generated table`)
     .exhaustive();

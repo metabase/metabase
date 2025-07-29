@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -6,7 +6,7 @@ import type { ButtonProps } from "metabase/ui";
 
 export type ConfirmationState = {
   title: string;
-  message?: string;
+  message?: ReactNode;
   onConfirm: () => void;
   onCancel?: () => void;
   confirmButtonText?: string;
