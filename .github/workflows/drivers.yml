@@ -37,7 +37,25 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "A relevant team label is present. Tier 3 driver tests will run."
           else
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Checking for changes in relevant folders..."
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+
+            # Initialize an empty array to store folders with changes
+            CHANGED_FOLDERS=()
+            for folder in "src/metabase/lib" "src/metabase/query_processor" "modules/drivers"; do
+              if echo "$CHANGED_FILES" | grep -q "$folder"; then
+                CHANGED_FOLDERS+=("$folder")
+              fi
+            done
+
+            if [[ ${#CHANGED_FOLDERS[@]} -gt 0 ]]; then
+              echo "skip=false" >> $GITHUB_OUTPUT
+              echo "Changes detected in the following folders: ${CHANGED_FOLDERS[*]}."
+              echo "Tier 3 driver tests will run."
+            else
+              echo "skip=true" >> $GITHUB_OUTPUT
+              echo "No relevant team label, not merging into master/release, and no changes in relevant folders. Tier 3 driver tests will be skipped."
+            fiecho "skip=true" >> $GITHUB_OUTPUT
             echo "Not labeled with required team and not merging into master/release. Tier 3 driver tests will be skipped."
           fi
         shell: bash
