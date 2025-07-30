@@ -14,6 +14,7 @@ import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
+import { SearchSettingsWidget } from "../widgets/SearchSettingsWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
 
 export function GeneralSettingsPage() {
@@ -35,6 +36,8 @@ export function GeneralSettingsPage() {
         <SiteUrlWidget />
 
         <HttpsOnlyWidget />
+
+        <SearchSettingsWidget />
 
         <CustomHomepageDashboardSetting />
 
