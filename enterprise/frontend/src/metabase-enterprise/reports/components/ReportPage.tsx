@@ -96,11 +96,8 @@ export const ReportPage = ({
     reportContent,
   ]);
 
-  const {
-    commitVisualizationChanges,
-    commitAllPendingChanges,
-    refreshAllData,
-  } = useReportActions();
+  const { commitVisualizationChanges, commitAllPendingChanges } =
+    useReportActions();
   useRegisterReportMetabotContext();
   useBeforeUnload(() => {
     // warn if you try to navigate away with unsaved changes
@@ -236,10 +233,6 @@ export const ReportPage = ({
     }
   }, [selectedEmbedIndex, commitVisualizationChanges, editorInstance]);
 
-  const handleRefreshAllData = useCallback(async () => {
-    await refreshAllData(editorInstance);
-  }, [refreshAllData, editorInstance]);
-
   const handleDownloadMarkdown = useCallback(() => {
     if (!editorInstance) {
       return;
@@ -323,13 +316,6 @@ export const ReportPage = ({
                     >
                       {isDownloading ? t`Downloading...` : t`Download`}
                     </Menu.Item>
-                    <Menu.Item
-                      leftSection={<Icon name="refresh" />}
-                      onClick={handleRefreshAllData}
-                      disabled={!canWrite}
-                    >
-                      {t`Refresh all data`}
-                    </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               </Box>
@@ -353,7 +339,6 @@ export const ReportPage = ({
           <Box className={styles.sidebar}>
             <EmbedQuestionSettingsSidebar
               cardId={selectedQuestionId}
-              snapshotId={cardEmbeds[selectedEmbedIndex]?.snapshotId || 0}
               onClose={() => dispatch(closeSidebar())}
               editorInstance={editorInstance}
             />

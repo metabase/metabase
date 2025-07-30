@@ -14,16 +14,14 @@ export const getReportCard = createSelector(
 );
 
 export const getReportDataset = createSelector(
-  [getReportsState, (_, snapshotId: number) => snapshotId],
-  (reports, snapshotId) => reports.datasets[snapshotId],
+  [getReportsState, (_, cardId: CardId) => cardId],
+  (reports, cardId) => reports.datasets[cardId],
 );
 
 export const getReportQuestionData = createSelector(
   [
-    (state: any, cardId: CardId, _snapshotId: number) =>
-      getReportCard(state, cardId),
-    (state: any, _cardId: CardId, snapshotId: number) =>
-      getReportDataset(state, snapshotId),
+    (state: any, cardId: CardId) => getReportCard(state, cardId),
+    (state: any, cardId: CardId) => getReportDataset(state, cardId),
   ],
   (card, dataset) => (card && dataset ? { card, dataset } : null),
 );
@@ -34,9 +32,8 @@ export const getIsLoadingCard = createSelector(
 );
 
 export const getIsLoadingDataset = createSelector(
-  [getReportsState, (_, snapshotId: number) => snapshotId],
-  (reports, snapshotId): boolean =>
-    reports.loadingDatasets[snapshotId] ?? false,
+  [getReportsState, (_, cardId: CardId) => cardId],
+  (reports, cardId): boolean => reports.loadingDatasets[cardId] ?? false,
 );
 
 export const getSelectedQuestionId = createSelector(
@@ -52,10 +49,10 @@ export const getSelectedQuestionId = createSelector(
 
 export const getReportRawSeries = createSelector(
   [
-    (state: any, cardId: CardId, _snapshotId: number, _embedId?: string) =>
+    (state: any, cardId: CardId, _embedId?: string) =>
       getReportCard(state, cardId),
-    (state: any, _cardId: CardId, snapshotId: number, _embedId?: string) =>
-      getReportDataset(state, snapshotId),
+    (state: any, cardId: CardId, _embedId?: string) =>
+      getReportDataset(state, cardId),
   ],
   (card, dataset) => {
     if (!card || !dataset?.data) {
@@ -68,10 +65,9 @@ export const getReportRawSeries = createSelector(
 // Get series with draft settings merged for the currently selected embed
 export const getReportRawSeriesWithDraftSettings = createSelector(
   [
-    (state: any, cardId: CardId, _snapshotId: number) =>
+    (state: any, cardId: CardId) =>
       getReportCardWithDraftSettings(state, cardId),
-    (state: any, _cardId: CardId, snapshotId: number) =>
-      getReportDataset(state, snapshotId),
+    (state: any, cardId: CardId) => getReportDataset(state, cardId),
   ],
   (card, dataset) => {
     if (!card || !dataset?.data) {

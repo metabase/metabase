@@ -21,7 +21,6 @@ const extractCardEmbeds = (editor: TiptapEditor): CardEmbedRef[] => {
       refs.push({
         id: node.attrs.id,
         name: node.attrs.name,
-        snapshotId: node.attrs.snapshotId,
       });
     }
   });
@@ -60,9 +59,6 @@ export const useCardEmbedsTracking = (
       const refs = extractCardEmbeds(editor);
       onCardEmbedsChange(refs);
     };
-
-    // Perform initial scan
-    updateCardEmbeds();
 
     // Listen for document updates
     editor.on("update", updateCardEmbeds);

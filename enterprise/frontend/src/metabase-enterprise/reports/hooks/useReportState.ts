@@ -23,14 +23,7 @@ export function useReportState(reportData?: {
   // Sync cardEmbeds changes with data fetching
   useEffect(() => {
     cardEmbeds.forEach((embed: CardEmbedRef) => {
-      if (embed.snapshotId) {
-        dispatch(
-          fetchReportQuestionData({
-            cardId: embed.id,
-            snapshotId: embed.snapshotId,
-          }),
-        );
-      }
+      dispatch(fetchReportQuestionData({ cardId: embed.id }));
     });
   }, [cardEmbeds, dispatch]);
 
@@ -52,7 +45,6 @@ export function useReportState(reportData?: {
           (embed, index) =>
             !prevEmbeds[index] ||
             embed.id !== prevEmbeds[index].id ||
-            embed.snapshotId !== prevEmbeds[index].snapshotId ||
             embed.name !== prevEmbeds[index].name,
         );
 

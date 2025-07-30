@@ -76,7 +76,6 @@ export const PARSER_TOKENS: Record<string, ParseSpec> = {
     node: CardEmbedNode.name,
     getAttrs: (tok: Token) => ({
       id: parseInt(tok.attrGet("id") || "0", 10),
-      snapshotId: parseInt(tok.attrGet("snapshot") || "0", 10),
       name: tok.attrGet("name") || null,
     }),
   },

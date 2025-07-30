@@ -44,14 +44,12 @@ import {
 
 interface EmbedQuestionSettingsSidebarProps {
   cardId: number;
-  snapshotId: number;
   onClose: () => void;
   editorInstance?: any;
 }
 
 export const EmbedQuestionSettingsSidebar = ({
   cardId,
-  snapshotId,
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
@@ -68,14 +66,14 @@ export const EmbedQuestionSettingsSidebar = ({
   );
   const series = useReportsSelector((state) =>
     selectedEmbedIndex !== null
-      ? getReportRawSeriesWithDraftSettings(state, cardId, snapshotId)
+      ? getReportRawSeriesWithDraftSettings(state, cardId)
       : null,
   );
   const isCardLoading = useReportsSelector((state) =>
     getIsLoadingCard(state, cardId),
   );
   const isResultsLoading = useReportsSelector((state) =>
-    getIsLoadingDataset(state, snapshotId),
+    getIsLoadingDataset(state, cardId),
   );
 
   const question = useMemo(
@@ -84,9 +82,8 @@ export const EmbedQuestionSettingsSidebar = ({
   );
 
   const dataset =
-    useReportsSelector((state) =>
-      getReportRawSeries(state, cardId, snapshotId),
-    )?.[0]?.data || null;
+    useReportsSelector((state) => getReportRawSeries(state, cardId))?.[0]
+      ?.data || null;
 
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
     return getSensibleVisualizations({ result: dataset });

@@ -1,7 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListRecentsQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
@@ -18,7 +17,6 @@ import {
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
 import { Box, Group, Icon, Popover } from "metabase/ui";
 import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
-import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 import type {
   RecentItem,
   SearchModel,
@@ -74,7 +72,6 @@ export const QuestionMentionPlugin = ({
   editor,
 }: QuestionMentionPluginProps) => {
   const dispatch = useDispatch();
-  const [createSnapshot] = useCreateReportSnapshotMutation();
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
@@ -199,18 +196,7 @@ export const QuestionMentionPlugin = ({
 
     if (mentionRange.mode === "embed") {
       try {
-        const snapshot = await createSnapshot({
-          card_id: wrappedItem.id,
-        }).unwrap();
-
-        dispatch(
-          fetchReportQuestionData({
-            cardId: snapshot.card_id,
-            snapshotId: snapshot.snapshot_id,
-          }),
-        );
-
-        const scrollId = `scroll-${_.uniqueId()}`;
+        dispatch(fetchReportQuestionData({ cardId: wrappedItem.id }));
         editor
           .chain()
           .focus()
@@ -218,22 +204,11 @@ export const QuestionMentionPlugin = ({
           .insertContentAt(insertPosition, {
             type: "cardEmbed",
             attrs: {
-              snapshotId: snapshot.snapshot_id,
-              id: snapshot.card_id,
+              id: wrappedItem.id,
             },
           })
           .setTextSelection(insertPosition + 1)
           .run();
-
-        setTimeout(() => {
-          const domElement = document.querySelector(
-            `[data-scroll-id=${scrollId}]`,
-          );
-
-          if (domElement) {
-            domElement.scrollIntoView({ block: "end" });
-          }
-        }, 300);
 
         setShowPopover(false);
         setMentionRange(null);

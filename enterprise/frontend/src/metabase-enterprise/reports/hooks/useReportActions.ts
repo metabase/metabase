@@ -1,21 +1,12 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { cardApi } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import { isNotNull } from "metabase/lib/types";
-import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
+import type { Card } from "metabase-types/api";
 
-import type { CardEmbedRef } from "../components/Editor/types";
-import {
-  useReportsDispatch,
-  useReportsSelector,
-  useReportsStore,
-} from "../redux-utils";
-import {
-  clearDraftState,
-  fetchReportQuestionData,
-  updateCardEmbeds,
-} from "../reports.slice";
+import { useReportsDispatch, useReportsStore } from "../redux-utils";
+import { clearDraftState, fetchReportQuestionData } from "../reports.slice";
 import {
   getCardEmbeds,
   getHasDraftChanges,
@@ -27,9 +18,9 @@ import {
 export function useReportActions() {
   const dispatch = useReportsDispatch();
   const store = useReportsStore();
-  const cardEmbeds = useReportsSelector(getCardEmbeds);
-  const [createReportSnapshot] = useCreateReportSnapshotMutation();
   const [sendToast] = useToast();
+  const [createCard] = cardApi.useCreateCardMutation();
+  const [updateCard] = cardApi.useUpdateCardMutation();
 
   const commitVisualizationChanges = useCallback(
     async (embedIndex: number, editorInstance: any) => {
@@ -57,52 +48,86 @@ export function useReportActions() {
       }
 
       try {
-        const { id, created_at, updated_at, ...cardWithoutExcluded } =
-          cardWithDraftSettings;
-        const result = await createReportSnapshot({
-          ...cardWithoutExcluded,
-          name: cardWithDraftSettings.name,
-        }).unwrap();
-
-        dispatch(clearDraftState());
-        const { doc } = editorInstance.state;
-        const tr = editorInstance.state.tr;
-
-        // Only update the specific embed at this index
-        let nodeCount = 0;
-        let updated = false;
-        doc.descendants((node: any, pos: number) => {
-          if (updated) {
-            return false;
-          } // Stop if we already updated
-
-          if (node.type.name === "cardEmbed") {
-            if (nodeCount === embedIndex) {
-              const newAttrs = {
-                ...node.attrs,
-                id: result.card_id,
-                snapshotId: result.snapshot_id,
-              };
-              tr.setNodeMarkup(pos, undefined, newAttrs);
-              updated = true;
-              return false; // Stop traversing
-            }
-            nodeCount++;
-          }
-        });
-
-        if (tr.docChanged) {
-          editorInstance.view.dispatch(tr);
+        const originalCard = getReportCard(state, embed.id);
+        if (!originalCard || !cardWithDraftSettings) {
+          return;
         }
 
+        let updatedCard: Card;
+
+        if (originalCard.type === "in_report") {
+          // Card is already an in_report type, just update it
+          updatedCard = await updateCard({
+            id: originalCard.id,
+            display: cardWithDraftSettings.display,
+            visualization_settings:
+              cardWithDraftSettings.visualization_settings,
+          }).unwrap();
+        } else {
+          // Card is a regular card, create a new in_report card
+          const { id, created_at, updated_at, ...cardData } =
+            cardWithDraftSettings;
+          updatedCard = await createCard({
+            ...cardData,
+            type: "in_report",
+            display: cardWithDraftSettings.display,
+            visualization_settings:
+              cardWithDraftSettings.visualization_settings,
+            collection_id: originalCard.collection_id,
+          }).unwrap();
+
+          // Update the embed to point to the new card
+          const { doc } = editorInstance.state;
+          const tr = editorInstance.state.tr;
+          let nodeCount = 0;
+          let updated = false;
+
+          doc.descendants((node: any, pos: number) => {
+            if (updated) {
+              return false;
+            }
+
+            if (node.type.name === "cardEmbed") {
+              if (nodeCount === embedIndex) {
+                const newAttrs = {
+                  ...node.attrs,
+                  id: updatedCard.id,
+                };
+                tr.setNodeMarkup(pos, undefined, newAttrs);
+                updated = true;
+                return false;
+              }
+              nodeCount++;
+            }
+          });
+
+          if (tr.docChanged) {
+            editorInstance.view.dispatch(tr);
+          }
+        }
+
+        dispatch(clearDraftState());
+
+        // Force refresh the card data to show latest changes
         dispatch(
-          updateCardEmbeds([{ embedIndex, snapshotId: result.snapshot_id }]),
+          fetchReportQuestionData({
+            cardId: updatedCard.id,
+            forceRefresh: true,
+          }),
         );
+
+        sendToast({
+          message: t`Visualization settings updated`,
+        });
       } catch (error) {
         console.error("Failed to commit visualization changes:", error);
+        sendToast({
+          message: t`Failed to update visualization settings`,
+          icon: "warning",
+        });
       }
     },
-    [store, createReportSnapshot, dispatch],
+    [store, dispatch, sendToast, createCard, updateCard],
   );
 
   // Commit all pending changes (used when saving report)
@@ -124,98 +149,8 @@ export function useReportActions() {
     [store, commitVisualizationChanges],
   );
 
-  const refreshAllData = useCallback(
-    async (editorInstance: any) => {
-      if (!editorInstance || cardEmbeds.length === 0) {
-        return;
-      }
-
-      try {
-        const state = store.getState();
-        const { doc } = editorInstance.state;
-        const tr = editorInstance.state.tr;
-
-        // Create new snapshots for all question embeds in parallel
-        const snapshotPromises = cardEmbeds.map(
-          async (cardEmbed: CardEmbedRef, index: number) => {
-            const card = getReportCard(state, cardEmbed.id);
-            if (!card || card.id.toString().includes("static")) {
-              return null;
-            }
-
-            // Create snapshot using existing card_id to maintain consistency
-            const result = await createReportSnapshot({
-              card_id: cardEmbed.id,
-            }).unwrap();
-
-            return {
-              embedIndex: index,
-              snapshotId: result.snapshot_id,
-            };
-          },
-        );
-
-        const snapshotResults = await Promise.all(snapshotPromises);
-        const validResults = snapshotResults.filter(isNotNull);
-
-        // Update specific question embeds in the document by index
-        let hasChanges = false;
-        validResults.forEach(({ embedIndex, snapshotId }) => {
-          const embed = cardEmbeds[embedIndex];
-          if (embed) {
-            let nodeCount = 0;
-            doc.descendants((node: any, pos: number) => {
-              if (node.type.name === "cardEmbed") {
-                if (nodeCount === embedIndex) {
-                  const newAttrs = {
-                    ...node.attrs,
-                    snapshotId: snapshotId,
-                  };
-                  tr.setNodeMarkup(pos, undefined, newAttrs);
-                  hasChanges = true;
-                  return false; // Stop traversing for this specific embed
-                }
-                nodeCount++;
-              }
-            });
-          }
-        });
-
-        // Apply all document changes at once
-        if (hasChanges && tr.docChanged) {
-          editorInstance.view.dispatch(tr);
-        }
-
-        // Update cardEmbeds state with all new snapshot IDs at once
-        dispatch(updateCardEmbeds(validResults));
-
-        // Fetch new data for all updated question embeds to refresh the visible report
-        validResults.forEach(({ embedIndex, snapshotId }) => {
-          const embed = cardEmbeds[embedIndex];
-          if (embed) {
-            dispatch(
-              fetchReportQuestionData({
-                cardId: embed.id,
-                snapshotId: snapshotId,
-              }),
-            );
-          }
-        });
-
-        sendToast({
-          message: t`All data refreshed`,
-        });
-      } catch (error) {
-        console.error("Failed to refresh all data:", error);
-        sendToast({ message: t`Error refreshing data`, icon: "warning" });
-      }
-    },
-    [cardEmbeds, store, createReportSnapshot, dispatch, sendToast],
-  );
-
   return {
     commitVisualizationChanges,
     commitAllPendingChanges,
-    refreshAllData,
   };
 }

@@ -1,13 +1,9 @@
 // Shared utility for generating card embed markdown format
-export function formatCardEmbed(attrs: {
-  id: number;
-  snapshotId?: number;
-  name?: string;
-}): string {
+export function formatCardEmbed(attrs: { id: number; name?: string }): string {
   if (attrs.name) {
-    return `{% card id=${attrs.id} snapshot=${attrs.snapshotId} name="${attrs.name}" %}`;
+    return `{% card id=${attrs.id} name="${attrs.name}" %}`;
   } else {
-    return `{% card id=${attrs.id} snapshot=${attrs.snapshotId} %}`;
+    return `{% card id=${attrs.id} %}`;
   }
 }
 
@@ -27,7 +23,7 @@ export function formatSpacer(lines: number): string {
 
 // Regex pattern for matching card embeds in markdown
 export const CARD_EMBED_PATTERN =
-  /{%\s*card\s+id=(\d+)\s+snapshot=(\d+)(?:\s+name="([^"]*)")?\s*%}/g;
+  /{%\s*card\s+id=(\d+)(?:\s+name="([^"]*)")?\s*%}/g;
 
 // Regex pattern for matching smart links in markdown
 export const SMART_LINK_PATTERN =

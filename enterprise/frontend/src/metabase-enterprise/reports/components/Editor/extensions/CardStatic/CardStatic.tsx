@@ -107,10 +107,10 @@ export const CardStaticNode = Node.create<{
 
 export const QuestionStaticComponent = memo(
   ({ node, selected }: NodeViewProps) => {
-    const { questionName, id, snapshotId } = node.attrs;
+    const { questionName, id } = node.attrs;
 
     const rawSeries = useReportsSelector((state) =>
-      getReportRawSeries(state, id, snapshotId),
+      getReportRawSeries(state, id),
     );
 
     const error = !rawSeries;
