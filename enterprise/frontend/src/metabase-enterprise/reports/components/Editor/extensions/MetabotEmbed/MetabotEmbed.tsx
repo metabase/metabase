@@ -6,9 +6,8 @@ import {
 } from "@tiptap/react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { Button, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 
 import { useMetabotReportQuery } from "../../hooks/useMetabotReportQuery";
 
@@ -80,34 +79,43 @@ export const MetabotNode = Node.create<{
 });
 
 export const MetabotComponent = memo(
-  ({ editor, getPos, deleteNode }: NodeViewProps) => {
-    const [prompt, setPrompt] = useState("");
+  ({ editor, getPos, deleteNode, updateAttributes, node }: NodeViewProps) => {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [errorText, setErrorText] = useState("");
     const queryMetabot = useMetabotReportQuery();
+    const { text: prompt } = node.attrs;
 
     const handleRunMetabot = useCallback(async () => {
       setIsLoading(true);
+      setErrorText("");
       editor.commands.focus();
 
-      const { cardId, snapshotId, description, title } = await queryMetabot({
+      const { cardId, snapshotId, description, error } = await queryMetabot({
         prompt: prompt.trim(),
       });
 
       setIsLoading(false);
+
+      if (error) {
+        setErrorText(error);
+        return;
+      }
+
       const nodePosition = getPos();
 
-      const scrollId = `scroll-${_.uniqueId()}`;
+      if (nodePosition == null) {
+        setErrorText(t`Could not find Metabot block`);
+        return;
+      }
+
       editor
         .chain()
         .insertContentAt(nodePosition, {
           type: "cardEmbed",
           attrs: {
+            id: cardId,
             snapshotId,
-            cardId,
-            questionName: title,
-            model: "question",
-            scrollId,
           },
         })
         .insertContentAt(
@@ -124,10 +132,19 @@ export const MetabotComponent = memo(
       // Grab focus from TipTap editor and put it in textarea when component mounts
       if (inputRef.current) {
         setTimeout(() => {
-          inputRef.current.focus();
+          inputRef.current?.focus();
+          const unfocus = (e: KeyboardEvent) => {
+            if (e.key === "Tab") {
+              editor.commands.focus();
+            }
+          };
+
+          inputRef.current?.addEventListener("keydown", unfocus);
+          return () =>
+            inputRef.current?.removeEventListener("keydown", unfocus);
         }, 50); // Small delay to ensure focus is set after rendering
       }
-    }, [inputRef]);
+    }, [inputRef, editor.commands]);
 
     useEffect(() => {
       const currentInput = inputRef.current;
@@ -148,19 +165,41 @@ export const MetabotComponent = memo(
     return (
       <NodeViewWrapper as="span">
         <Flex
-          p="md"
+          p="sm"
           bg="bg-light"
           bd="1px solid var(--border-color)"
+          gap="sm"
           style={{ borderRadius: "4px" }}
+          pos="relative"
         >
-          <textarea
-            disabled={isLoading}
-            ref={inputRef}
-            className={Styles.codeBlockTextArea}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={t`Can you show me monthly sales data for the past year in a line chart?`}
-          />
+          <Button
+            variant="subtle"
+            pos="absolute"
+            top={0}
+            right={0}
+            p="sm"
+            size="sm"
+            opacity="0.5"
+            onClick={() => deleteNode()}
+          >
+            <Icon name="close" />
+          </Button>
+          <Box w="100%">
+            <textarea
+              disabled={isLoading}
+              ref={inputRef}
+              className={Styles.codeBlockTextArea}
+              value={prompt}
+              onChange={(e) => updateAttributes({ text: e.target.value })}
+              placeholder={t`Can you show me monthly sales data for the past year in a line chart?`}
+            />
+            {errorText && (
+              <Flex align="center" gap="sm">
+                <Icon name="warning" style={{ flexShrink: 0 }} />
+                {errorText}
+              </Flex>
+            )}
+          </Box>
           <Flex direction="column" justify="end" style={{ flexShrink: 0 }}>
             <Button
               size="compact"

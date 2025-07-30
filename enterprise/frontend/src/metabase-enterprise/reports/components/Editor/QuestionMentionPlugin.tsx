@@ -15,7 +15,7 @@ import {
   SearchResultContainer,
 } from "metabase/search/components/SearchResult";
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
-import { Box, Group, Icon, Popover } from "metabase/ui";
+import { Box, Group, Icon, Popover, Text } from "metabase/ui";
 import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import type {
@@ -61,18 +61,13 @@ const SearchResultsFooter = ({ isSelected, onClick }: ExtraItemProps) => (
 );
 
 const MetabotMenuItem = ({ isSelected, onClick }: ExtraItemProps) => (
-  <Box mx="sm" mb="sm" mt={-8}>
-    <SearchResultContainer
-      align="center"
-      isActive
-      isSelected={isSelected}
-      onClick={onClick}
-    >
+  <Box>
+    <SearchResultContainer isActive isSelected={isSelected} onClick={onClick}>
       <IconWrapper active archived={false} type="search">
         <Icon name="metabot" />
       </IconWrapper>
 
-      <ResultNameSection justify="center" gap="xs">
+      <ResultNameSection gap="xs">
         <Group gap="xs" align="center" wrap="nowrap">
           <ResultTitle
             role="heading"
@@ -82,6 +77,9 @@ const MetabotMenuItem = ({ isSelected, onClick }: ExtraItemProps) => (
             {t`Ask metabot`}
           </ResultTitle>
         </Group>
+        <Text size="sm" c="text-medium">
+          {t`It wants to help!`}
+        </Text>
       </ResultNameSection>
     </SearchResultContainer>
   </Box>

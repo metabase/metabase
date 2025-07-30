@@ -18,18 +18,26 @@ import {
   ResultTitle,
   SearchResultContainer,
 } from "metabase/search/components/SearchResult";
-import { SearchResultLink } from "metabase/search/components/SearchResultLink";
-import { Group, Loader, Stack, Title } from "metabase/ui";
+import { Group, Loader, Stack, Text, Title } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
 import { getItemUrl, isItemActive } from "./util";
+
+type RenderableComponent = {
+  (props: {
+    key?: string;
+    isSelected?: boolean;
+    onClick?: () => void;
+  }): React.ReactElement;
+  onClick?: () => void;
+};
 
 type RecentsListContentProps = {
   isLoading: boolean;
   results: RecentItem[];
   onClick?: (item: RecentItem) => void;
-  headerChildren?: JSX.Element[];
-  footerChildren?: JSX.Element[];
+  headerChildren?: RenderableComponent[];
+  footerChildren?: RenderableComponent[];
   onSelect?: () => void;
 };
 
@@ -82,14 +90,14 @@ export const RecentsListContent = ({
         pb="sm"
         data-testid="recents-list-container"
       >
-        {headerChildren.map((component, index) =>
-          component({
-            key: `header-${index}`,
-            isSelected: cursorIndex === 0,
-            onClick: component.onClick,
-          }),
-        )}
         <Title order={4} px="sm">{t`Recently viewed`}</Title>
+        {headerChildren.map((C, index) => (
+          <C
+            key={`header-${index}`}
+            isSelected={cursorIndex === index}
+            onClick={C.onClick}
+          />
+        ))}
         <Stack gap={0}>
           {results.map((item, resultIndex) => {
             const index = resultIndex + headerChildren.length;
@@ -122,9 +130,9 @@ export const RecentsListContent = ({
                       size={14}
                     />
                   </Group>
-                  <SearchResultLink>
+                  <Text size="sm" c="text-medium">
                     {getTranslatedEntityName(item.model)}
-                  </SearchResultLink>
+                  </Text>
                 </ResultNameSection>
                 {isItemLoading(item) && (
                   <LoadingSection px="xs">
@@ -136,15 +144,13 @@ export const RecentsListContent = ({
           })}
         </Stack>
       </Stack>
-      {footerChildren.map((component, footerIndex) =>
-        component({
-          key: `footer-${footerIndex}`,
-          isSelected:
-            cursorIndex ===
-            headerChildren.length + results.length + footerIndex,
-          onClick: component.onClick,
-        }),
-      )}
+      {footerChildren.map((C, index) => (
+        <C
+          key={`footer-${index}`}
+          isSelected={cursorIndex === index}
+          onClick={C.onClick}
+        />
+      ))}
     </>
   );
 };

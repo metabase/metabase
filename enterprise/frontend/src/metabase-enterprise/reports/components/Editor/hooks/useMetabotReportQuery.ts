@@ -34,47 +34,55 @@ export const useMetabotReportQuery = () => {
         {},
       );
 
-      // FIXME: get the backend to do all this processing
-
-      const assistantMessage = response?.history?.filter(
+      // FIXME: get the backend to do all this processing - this is just a hacky prototype
+      const assistantMessage = response?.history?.findLast(
         (m) => m.role === "assistant",
-      );
-      const { content: description } =
-        assistantMessage[assistantMessage.length - 1] ??
-        t`No response from Metabot`;
+      ) ?? {
+        content: t`Couldn't make a query from that prompt 😞`,
+      };
+      const { content: description } = assistantMessage;
 
       const toolCall = response.history.filter((i) => i.role === "tool");
       const lastTool = toolCall[toolCall.length - 1];
       if (!lastTool) {
         console.error("No tool call found in Metabot response");
-        return { description: "No tool call found in Metabot response" };
+        return { error: description };
       }
 
       const notebookQuery = response.history.find((i) =>
         i?.["tool-calls"]?.some(
-          (call) => call.name === "construct_notebook_query",
+          (call: any) => call.name === "construct_notebook_query",
         ),
       );
-
-      const args = JSON.parse(notebookQuery?.["tool-calls"][0].arguments);
-      const vizSettings = args.viz_settings || {};
+      let vizSettings: any = {};
+      try {
+        const args =
+          JSON.parse(notebookQuery?.["tool-calls"][0].arguments) || {};
+        vizSettings = args.vizSettings ?? {};
+      } catch (e) {
+        return { error: description };
+      }
 
       // captures text inside triple backticks
       const query = JSON.parse(lastTool.content.match(/```(.*?)```/s)[1]);
       if (!query) {
-        return { description: "No query found in Metabot response" };
+        return { error: description };
       }
 
       const createQuestionResponse = await createQuestion({
         dataset_query: query,
         name: "Ad-hoc exploration",
         type: "question",
-        collection_id: 7,
+        collection_id: 624, // WHERE TO SAVE????
         display: vizSettings.type ?? "table",
         visualization_settings: vizSettings ?? {},
       });
 
-      const questionId = createQuestionResponse.data.id;
+      const questionId = createQuestionResponse?.data?.id;
+
+      if (!questionId) {
+        return { error: t`Failed to create question from Metabot response` };
+      }
 
       const snapshot = await createSnapshot({
         card_id: questionId,
