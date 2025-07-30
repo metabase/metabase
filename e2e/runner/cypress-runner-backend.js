@@ -164,8 +164,4 @@ class LiveBackend extends BaseBackend {
   }
 }
 
-const jarBackend = new JarBackend();
-const liveBackend = new LiveBackend();
-Object.assign(jarBackend, { JarBackend: jarBackend, LiveBackend: liveBackend });
-
-module.exports = jarBackend;
+module.exports = { JarBackend, LiveBackend };

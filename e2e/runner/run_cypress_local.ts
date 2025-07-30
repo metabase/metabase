@@ -1,5 +1,5 @@
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
-import Backends from "./cypress-runner-backend";
+import { JarBackend, LiveBackend } from "./cypress-runner-backend";
 import runCypress from "./cypress-runner-run-tests";
 import {
   booleanify,
@@ -67,8 +67,9 @@ printBold(`Running Cypress with options:
   - TZ                 : ${options.TZ}
 `);
 
-const { JarBackend, LiveBackend } = Backends as any;
-const CypressBackend = options.LIVE_BACKEND ? LiveBackend : JarBackend;
+const CypressBackend = options.LIVE_BACKEND
+  ? new LiveBackend()
+  : new JarBackend();
 
 const init = async () => {
   if (options.START_CONTAINERS) {
