@@ -14,13 +14,14 @@
 (def ^:private ollama-supported-models
   "Map of supported Ollama models to their embedding dimensions."
   {"mxbai-embed-large" 1024
+   "snowflake-arctic-embed2:568m" 1024
    "nomic-embed-text" 768
    "all-minilm" 384})
 
 (def ^:private openai-supported-models
   "Map of supported OpenAI models to their embedding dimensions."
   {"text-embedding-3-small" 1536
-   "text-embedding-3-large" 3072
+   "Snowflake/snowflake-arctic-embed-l-v2.0" 1024
    "text-embedding-ada-002" 1536})
 
 ;;; Token Counting for OpenAI Models
@@ -149,7 +150,7 @@
 
 (defn- openai-get-embeddings-batch [model-name texts]
   (let [api-key (semantic-settings/openai-api-key)
-        endpoint "https://api.openai.com/v1/embeddings"]
+        endpoint (str (semantic-settings/openai-api-base-url) "/v1/embeddings")]
     (when-not api-key
       (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
     (try
