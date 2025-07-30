@@ -47,6 +47,7 @@
                                                 [:not-in :group_id (excluded-group-ids)]]})
          [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
                                                                          (excluded-group-ids)))]
+
      (sync-group-memberships*! user-or-id to-remove to-add)))
   ([user-or-id new-groups-or-ids mapped-groups-or-ids]
    (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
