@@ -197,8 +197,7 @@
    [:cat
     #_tag :any
     #_opts [:map
-            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
-            [:ident {:optional true} [:ref {:decode/normalize common/normalize-string-key} ::common/non-blank-string]]]
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
     #_args [:* :any]]
    [:fn
     {:error/message "non-aggregation expression"}

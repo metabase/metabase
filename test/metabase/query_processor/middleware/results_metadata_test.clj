@@ -99,7 +99,6 @@
                       (qp/userland-query
                        query
                        {:card-id        (u/the-id card)
-                        :card-entity-id (:entity_id card)
                         :query-hash     (qp.util/query-hash {})}))]
           (when-not (= :completed (:status result))
             (throw (ex-info "Query failed." result))))
@@ -207,15 +206,13 @@
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"
-    (let [card-eid (u/generate-nano-id)]
-      (is (=? {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
-                           (-> col (update :semantic_type keyword) (update :base_type keyword)))}
-              (-> (qp/process-query
-                   (qp/userland-query
-                    (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
-                    {:card-entity-id card-eid}))
-                  (get-in [:data :results_metadata])
-                  round-to-2-decimals))))))
+    (is (=? {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
+                         (-> col (update :semantic_type keyword) (update :base_type keyword)))}
+            (-> (qp/process-query
+                 (qp/userland-query
+                  (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})))
+                (get-in [:data :results_metadata])
+                round-to-2-decimals)))))
 
 (deftest ^:parallel metadata-in-results-test-2
   (testing "models"
@@ -236,13 +233,11 @@
                                                :base_type)
                                               cols)))]
         (testing "native"
-          (let [card-eid (u/generate-nano-id)
-                fields (str/join ", " (map :name (default-card-results-native)))
+          (let [fields (str/join ", " (map :name (default-card-results-native)))
                 native-query (str "SELECT " fields " FROM VENUES")
                 existing-metadata (add-preserved (default-card-results-native))
                 results (-> (mt/native-query   {:query native-query})
-                            (qp/userland-query {:metadata/model-metadata existing-metadata
-                                                :card-entity-id          card-eid})
+                            (qp/userland-query {:metadata/model-metadata existing-metadata})
                             qp/process-query)]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))
@@ -311,7 +306,6 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "Native queries should come back with valid results metadata (#12265)"
       (let [metadata (-> (mt/mbql-query venues) qp.compile/compile mt/native-query
-                         (assoc-in [:info :card-entity-id] (u/generate-nano-id))
                          results-metadata)]
         (is (seq metadata))
         (is (not (me/humanize (mr/explain qr/ResultsMetadata metadata))))))))
@@ -324,7 +318,6 @@
     ;; PS: the above comment is likely outdated with H2 v2
     ;; TODO: is this still relevant? -jpc
     (let [results (-> (mt/native-query {:query "select date_trunc('day', checkins.\"DATE\") as d FROM checkins"})
-                      (assoc-in [:info :card-entity-id] (u/generate-nano-id))
                       qp/process-query
                       :data)]
       (testing "Sanity check: annotate should infer correct type from `:cols`"
@@ -493,7 +486,6 @@
                                                                                                     :q1  141761.53790523874
                                                                                                     :q3  141761.53790523874
                                                                                                     :sd  nil}}}
-                                                                :ident          "aggregation_skXR69-dlhJST5C7Rd9nR@0__0"
                                                                 :name           "sum"
                                                                 :semantic_type  nil}])))))
 

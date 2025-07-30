@@ -6,7 +6,7 @@ import {
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 
-import type { InteractiveQuestionProps } from "../../SdkQuestion";
+import type { SdkQuestionProps } from "../../SdkQuestion";
 
 import {
   EditableDashboard,
@@ -16,7 +16,7 @@ import {
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 type CustomArgs = {
-  "dataPickerProps.entityTypes"?: InteractiveQuestionProps["entityTypes"];
+  "dataPickerProps.entityTypes"?: SdkQuestionProps["entityTypes"];
 };
 
 const meta = {
@@ -36,7 +36,7 @@ const meta = {
         "model",
         "table",
         "question",
-      ] satisfies InteractiveQuestionProps["entityTypes"],
+      ] satisfies SdkQuestionProps["entityTypes"],
       description: "`question` doesn't have effect on simple data picker",
     },
 

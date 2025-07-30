@@ -16,10 +16,10 @@
 (deftest sync-single-indexed-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :index-info)
     (mt/dataset (mt/dataset-definition "single_index"
-                                       ["table"
-                                        [{:field-name "indexed" :indexed? true :base-type :type/Integer}
-                                         {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]])
+                                       [["table"
+                                         [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                                          {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                                         [[1 2]]]])
       (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :indexed))))
       (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
 
