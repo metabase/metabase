@@ -300,7 +300,9 @@
                      (sync-util/name-for-logging table)
                      (:deactivated_at table)
                      new-name)
-          (t2/update! :model/Table (:id table)
+          (t2/update! :model/Table
+                      {:id (:id table)
+                       :active false}
                       {:archived_at (mi/now)
                        :name new-name})
           (swap! archived inc))))
