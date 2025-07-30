@@ -103,21 +103,28 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
   const [isOpened, { open, close }] = useDisclosure();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const handleUpdateTarget = (newTarget: TransformTarget) => {
+  const handleUpdateTarget = async (newTarget: TransformTarget) => {
+    const { error } = await updateTransform({ id, target: newTarget });
+    if (error) {
+      sendErrorToast("Failed to update transform target");
+    } else {
+      sendSuccessToast("Transform target updated");
+    }
+  };
+
+  const handleSubmitTarget = (newTarget: TransformTarget) => {
     close();
-    askConfirmation({
-      title: getConfirmationTitle(target),
-      message: getConfirmationMessage(target),
-      confirmButtonText: getConfirmationButtonLabel(target),
-      onConfirm: async () => {
-        const { error } = await updateTransform({ id, target: newTarget });
-        if (error) {
-          sendErrorToast("Failed to update transform target");
-        } else {
-          sendSuccessToast("Transform target updated");
-        }
-      },
-    });
+
+    if (transform.table != null) {
+      askConfirmation({
+        title: getConfirmationTitle(target),
+        message: getConfirmationMessage(target),
+        confirmButtonText: getConfirmationButtonLabel(target),
+        onConfirm: () => handleUpdateTarget(newTarget),
+      });
+    } else {
+      handleUpdateTarget(newTarget);
+    }
   };
 
   return (
@@ -130,7 +137,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
           databaseId={source.query.database}
           target={target}
           isOpened={isOpened}
-          onSubmit={handleUpdateTarget}
+          onSubmit={handleSubmitTarget}
           onClose={close}
         />
       )}
