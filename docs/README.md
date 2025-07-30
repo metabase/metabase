@@ -34,7 +34,7 @@ With your data connected, get started asking questions, creating dashboards, and
 
 ### [A tour of Metabase](https://www.metabase.com/learn/metabase-basics/overview/tour-of-metabase)
 
-Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
+Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and row and column security, and more.
 
 ## Documentation topics
 
@@ -181,8 +181,8 @@ Metabase's reference documentation.
 - [Data permissions](./permissions/data.md)
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
-- [Data sandboxes](./permissions/data-sandboxes.md)
-- [Data sandbox examples](./permissions/data-sandbox-examples.md)
+- [Row and column security](./permissions/data-sandboxes.md)
+- [Row and column security examples](./permissions/data-sandbox-examples.md)
 - [Connection impersonation](./permissions/impersonation.md)
 - [Database routing](./permissions/database-routing.md)
 - [Snippets folder permissions](./permissions/snippets.md)
