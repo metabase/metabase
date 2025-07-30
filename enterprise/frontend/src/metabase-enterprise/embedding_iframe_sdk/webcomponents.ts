@@ -34,7 +34,7 @@ export const parseAttributeValue = (value: string | null): unknown => {
       return JSON.parse(value);
     } catch {
       console.error(
-        "Error while trying ot parse an attribute as JSON. Complex attributes such as arrays and objects should be valid JSON with keys and values wrapped in double quotes. Received:",
+        "Error while trying to parse an attribute as JSON. Complex attributes such as arrays and objects should be valid JSON with keys and values wrapped in double quotes. Received:",
         value,
       );
     }
