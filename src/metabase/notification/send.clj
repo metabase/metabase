@@ -115,11 +115,11 @@
 
 (defmulti do-after-notification-sent
   "Performs post-notification actions based on the notification type."
-  {:arglists '([notification-info notification-payload skip-reason])}
-  (fn [notification-info _notification-payload _skip-reason]
+  {:arglists '([notification-info notification-payload skipped?])}
+  (fn [notification-info _notification-payload _skipped?]
     (:payload_type notification-info)))
 
-(defmethod do-after-notification-sent :default [_notification-info _notification-payload _skip-reason] nil)
+(defmethod do-after-notification-sent :default [_notification-info _notification-payload _skipped?] nil)
 
 (def ^:private payload-labels         (for [payload-type (keys (methods notification.payload/payload))]
                                         {:payload-type payload-type}))
@@ -178,7 +178,7 @@
                         (catch Exception e
                           (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))
                   (log/info "Sent successfully")))
-              (do-after-notification-sent hydrated-notification notification-payload reason)
+              (do-after-notification-sent hydrated-notification notification-payload (some? reason))
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
           (log/error e "Failed to send")

@@ -69,9 +69,9 @@
 (mu/defmethod notification.send/do-after-notification-sent :notification/card
   [{:keys [id creator_id handlers] :as notification-info} :- ::models.notification/FullyHydratedNotification
    notification-payload
-   skip-reason]
+   skipped?]
   (when (and (-> notification-info :payload :send_once)
-             (nil? skip-reason))
+             (not skipped?))
     (log/info "Archiving due to send_once")
     (t2/update! :model/Notification (:id notification-info) {:active false}))
   (try
@@ -79,7 +79,7 @@
       (notification.payload/cleanup! rows))
     (catch Exception e
       (log/warn e "Error cleaning up temp files for notification" id)))
-  (when-not skip-reason
+  (when-not skipped?
     (events/publish-event! :event/alert-send
                            {:id      id
                             :user-id creator_id
