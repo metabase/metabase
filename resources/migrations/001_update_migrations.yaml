@@ -12182,9 +12182,9 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v55.2025-07-30T09:31:00
+      id: v55.2025-07-30T09:41:00
       author: bronsa
-      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id and schema (PostgreSQL)
+      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id (PostgreSQL)
       dbms: postgresql
       preConditions:
         - onFail: MARK_RAN
@@ -12196,7 +12196,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               CREATE INDEX idx_metabase_table_db_schema_archived_deactivated
-              ON metabase_table (db_id, schema, deactivated_at)
+              ON metabase_table (db_id, deactivated_at)
               WHERE archived_at IS NULL AND deactivated_at IS NOT NULL;
       rollback:
         - dropIndex:
@@ -12204,9 +12204,9 @@ databaseChangeLog:
             indexName: idx_metabase_table_db_schema_archived_deactivated
 
   - changeSet:
-      id: v55.2025-07-30T09:31:01
+      id: v55.2025-07-30T09:42:01
       author: bronsa
-      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id and schema (MySQL/MariaDB/H2)
+      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id (MySQL/MariaDB/H2)
       dbms: mysql,mariadb,h2
       preConditions:
         - onFail: MARK_RAN
@@ -12222,8 +12222,6 @@ databaseChangeLog:
               - column:
                   name: db_id
               - column:
-                  name: schema
-              - column:
                   name: archived_at
               - column:
                   name: deactivated_at
@@ -12233,7 +12231,7 @@ databaseChangeLog:
             indexName: idx_metabase_table_db_schema_archived_deactivated
 
   - changeSet:
-      id: v55.2025-07-30T09:32:00
+      id: v55.2025-07-30T09:43:00
       author: bronsa
       comment: Backfill deactivated_at for existing inactive tables
       changes:
