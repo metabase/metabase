@@ -13,7 +13,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
-import { POST } from "metabase/lib/api";
+// import { POST } from "metabase/lib/api";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { Label } from "metabase/metadata/components/FieldOrderPicker/Label";
@@ -23,7 +23,6 @@ import { MultiStageFilterPicker } from "metabase/querying/filters/components/Fil
 import type { FilterChangeOpts } from "metabase/querying/filters/components/FilterPicker/types";
 import { closeNavbar } from "metabase/redux/app";
 import {
-  ActionIcon,
   Box,
   Button,
   Flex,
@@ -120,7 +119,7 @@ export const TableListView = ({ location, params }: Props) => {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterPickerOpen, setIsFilterPickerOpen] = useState(false);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  // const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   const handleViewChange = (view: "table" | "list" | "gallery") => {
     setSettings((settings) => ({
@@ -196,60 +195,60 @@ export const TableListView = ({ location, params }: Props) => {
     setDataQuery(newQuery);
   };
 
-  const handleGenerateAIConfig = async () => {
-    if (!table) {
-      return;
-    }
+  // const handleGenerateAIConfig = async () => {
+  //   if (!table) {
+  //     return;
+  //   }
 
-    setIsGeneratingAI(true);
-    try {
-      const viewType =
-        settings.list_view.view === "table"
-          ? "table"
-          : settings.list_view.view === "list"
-            ? "list"
-            : "gallery";
-      const response = await POST("/api/ee/metabot-tools/table-view-config")({
-        table_id: table.id,
-        view_type: viewType,
-      });
+  //   setIsGeneratingAI(true);
+  //   try {
+  //     const viewType =
+  //       settings.list_view.view === "table"
+  //         ? "table"
+  //         : settings.list_view.view === "list"
+  //           ? "list"
+  //           : "gallery";
+  //     const response = await POST("/api/ee/metabot-tools/table-view-config")({
+  //       table_id: table.id,
+  //       view_type: viewType,
+  //     });
 
-      if (response.success && response.config) {
-        if (viewType === "table" && response.config.list_view) {
-          setSettings((settings) => ({
-            ...settings,
-            list_view: {
-              ...settings.list_view,
-              table: {
-                ...settings.list_view.table,
-                ...response.config.list_view,
-              },
-            },
-          }));
-        } else if (
-          (viewType === "list" || viewType === "gallery") &&
-          response.config.object_view?.sections
-        ) {
-          const key = viewType as "list" | "gallery";
-          setSettings((settings) => ({
-            ...settings,
-            list_view: {
-              ...settings.list_view,
-              [key]: {
-                sections: response.config.object_view.sections,
-              },
-            },
-          }));
-        }
-      } else {
-        console.error("Failed to generate configuration:", response.error);
-      }
-    } catch (error) {
-      console.error("Error generating configuration:", error);
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  };
+  //     if (response.success && response.config) {
+  //       if (viewType === "table" && response.config.list_view) {
+  //         setSettings((settings) => ({
+  //           ...settings,
+  //           list_view: {
+  //             ...settings.list_view,
+  //             table: {
+  //               ...settings.list_view.table,
+  //               ...response.config.list_view,
+  //             },
+  //           },
+  //         }));
+  //       } else if (
+  //         (viewType === "list" || viewType === "gallery") &&
+  //         response.config.object_view?.sections
+  //       ) {
+  //         const key = viewType as "list" | "gallery";
+  //         setSettings((settings) => ({
+  //           ...settings,
+  //           list_view: {
+  //             ...settings.list_view,
+  //             [key]: {
+  //               sections: response.config.object_view.sections,
+  //             },
+  //           },
+  //         }));
+  //       }
+  //     } else {
+  //       console.error("Failed to generate configuration:", response.error);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error generating configuration:", error);
+  //   } finally {
+  //     setIsGeneratingAI(false);
+  //   }
+  // };
 
   useMount(() => {
     dispatch(closeNavbar());
@@ -648,21 +647,6 @@ export const TableListView = ({ location, params }: Props) => {
                     >
                       {t`Layout`}
                     </Text>
-
-                    <ActionIcon
-                      variant="filled"
-                      color="brand"
-                      size="md"
-                      loading={isGeneratingAI}
-                      onClick={handleGenerateAIConfig}
-                      aria-label={t`Generate with AI`}
-                      style={{
-                        background:
-                          "linear-gradient(135deg, var(--mb-color-brand) 0%, var(--mb-color-brand-light) 100%)",
-                      }}
-                    >
-                      <Icon name="ai" size={18} />
-                    </ActionIcon>
                   </Flex>
 
                   <SegmentedControl
