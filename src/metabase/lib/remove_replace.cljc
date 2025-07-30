@@ -262,8 +262,17 @@
                           (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
                           (normalize-fields-clauses location))
                       new-query)
-          new-stage (lib.util/query-stage new-query stage-number)]
-      (if (or (not changing-breakout?) (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
+          new-stage (lib.util/query-stage new-query stage-number)
+          valid-change? (if changing-breakout?
+                          (or
+                           ;; breakout was removed
+                           (not (contains? new-stage :breakout))
+                           ;; breakout updated -- check for distinct refs. We can actually just use normalization to
+                           ;; clean this up -- why don't we do that?
+                           (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
+                          ;; any change to something other than breakouts is always considered valid
+                          true)]
+      (if valid-change?
         new-query
         query))))
 
