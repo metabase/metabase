@@ -298,6 +298,14 @@
   (str/starts-with? (.getMessage e) "Code: 60."))
 
 (defmethod driver/compile-transform :clickhouse
-  [_driver {:keys [sql output-table primary-key]}]
-  (sql.qp/format-honeysql {:create-table-as [output-table [:order-by primary-key]]
-                           :raw sql}))
+  [driver {:keys [sql output-table primary-key]}]
+  (let [primary-key (if (vector? primary-key)
+                      (mapv keyword primary-key)
+                      (keyword primary-key))
+        pieces [(sql.qp/format-honeysql driver {:create-table output-table})
+                (sql.qp/format-honeysql driver {:order-by primary-key})
+                ["AS"]
+                (sql.qp/format-honeysql driver {:raw sql})]
+        query (str/join " " (map first pieces))
+        params (reduce into [] (map rest pieces))]
+    (into [query] params)))
