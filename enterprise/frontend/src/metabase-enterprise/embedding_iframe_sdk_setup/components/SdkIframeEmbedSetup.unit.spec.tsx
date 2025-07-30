@@ -126,7 +126,7 @@ describe("Embed flow > usage terms card", () => {
 
     expect(screen.getByText("First, some legalese.")).toBeInTheDocument();
     expect(
-      screen.getByText(/When using the Embedded Analytics JS/),
+      screen.getByText(/When using Embedded Analytics JS/),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Got it" })).toBeInTheDocument();
   });

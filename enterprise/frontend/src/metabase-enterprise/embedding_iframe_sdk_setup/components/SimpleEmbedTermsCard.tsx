@@ -53,7 +53,7 @@ export const SimpleEmbedTermsCard = ({
 
 export const getMessages = () => [
   // eslint-disable-next-line no-literal-metabase-strings -- used in embed flow in main app
-  t`When using the Embedded Analytics JS, each end user should have their own Metabase account.`,
+  t`When using Embedded Analytics JS, each end user should have their own Metabase account.`,
 
   t`Sharing accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account.`,
 
