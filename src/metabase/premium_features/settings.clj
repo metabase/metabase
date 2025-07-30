@@ -252,9 +252,8 @@
 
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
-  "Should we enable simple embedding features?"
-  ; TODO: rename the feature token name to `:embedding-simple` before beta!
-  :embedding-iframe-sdk)
+  "Should we enable Embedded Analytics JS?"
+  :embedding-simple)
 
 (define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
   "Should Metabase do AI analysis on entities?"
@@ -295,7 +294,7 @@
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
-   :embedding_iframe_sdk           (enable-embedding-simple-feature?)
+   :embedding_simple               (enable-embedding-simple-feature?)
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)

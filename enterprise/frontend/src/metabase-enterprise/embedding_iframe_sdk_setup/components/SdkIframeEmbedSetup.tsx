@@ -38,13 +38,13 @@ const SdkIframeEmbedSetupContent = () => {
   const acceptSimpleEmbedTerms = () =>
     updateSettings({ "show-simple-embed-terms": false });
 
-  // Automatically enable the embedding SDK if it's not already enabled.
+  // Automatically enable embedding if it's not already enabled.
   useEffect(() => {
     if (!isSimpleEmbeddingEnabled) {
       updateSettings({ "enable-embedding-simple": true });
 
       sendToast({
-        message: t`Simple embedding is enabled. You can configure it in admin settings.`,
+        message: t`Embedded Analytics JS is enabled. You can configure it in admin settings.`,
       });
     }
   }, [isSimpleEmbeddingEnabled, sendToast, updateSettings]);

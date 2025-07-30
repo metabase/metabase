@@ -182,7 +182,7 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
-  "embedding-iframe-sdk",
+  "embedding-simple",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -236,7 +236,7 @@ export const tokenFeatures = [
   "disable_password_login",
   "embedding",
   "embedding_sdk",
-  "embedding_iframe_sdk",
+  "embedding_simple",
   "hosting",
   "official_collections",
   "sandboxes",
@@ -583,6 +583,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-email": string | null;
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
+  "jwt-attribute-groups": string | null;
   "jwt-group-sync": boolean | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
