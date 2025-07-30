@@ -135,3 +135,13 @@
   "Check if the client has indicated it is from simple embedding"
   [request]
   (= (get-in request [:headers "x-metabase-client"]) "embedding-simple"))
+
+(defn filter-non-stringable-attributes
+  "Removes vectors and map json attribute values that cannot be turned into strings."
+  [attrs]
+  (->> attrs
+       (filter (fn [[key value]]
+                 (if (or (vector? value) (map? value) (nil? value))
+                   (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                   value)))
+       (into {})))
