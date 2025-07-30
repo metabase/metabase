@@ -664,7 +664,7 @@
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
       (assert-valid-type (merge old-card-info changes))
-      (assert-valid-report-card-constraints #p card))))
+      (assert-valid-report-card-constraints card))))
 
 (defn- add-query-description-to-metric-card
   "Add `:query_description` key to returned card.
