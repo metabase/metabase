@@ -282,6 +282,7 @@
         threshold-expr (apply
                         (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
+        ;; TODO: ensure it uses the index
         tables-to-archive (t2/select :model/Table
                                      :db_id (u/the-id database)
                                      :active false
