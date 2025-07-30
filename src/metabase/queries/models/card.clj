@@ -170,7 +170,7 @@
    cards k
    (fn []
      (let [card-ids       (map u/the-id cards)
-           all-dashboards (t2/query {:union-all [ ;; First get dashboards from direct card connections
+           all-dashboards (t2/query {:union-all [;; First get dashboards from direct card connections
                                                  {:nest
                                                   {:select   [[:dc.card_id :card_id]
                                                               :d.name
