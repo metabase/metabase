@@ -3,7 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db :as semantic.db]
-   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
@@ -17,15 +17,6 @@
   []
   (first (filter search.engine/supported-engine?
                  search.engine/fallback-engine-priority)))
-
-(defn- get-pgvector-datasource! []
-  (or @semantic.db/data-source (semantic.db/init-db!)))
-
-(defn- get-configured-embedding-model []
-  (semantic.embedding/get-configured-model))
-
-(defn- get-index-metadata []
-  semantic.index-metadata/default-index-metadata)
 
 (defn- index-active? [pgvector index-metadata]
   (boolean (semantic.index-metadata/get-active-index-state pgvector index-metadata)))
@@ -44,8 +35,8 @@
   [search-ctx]
   (try
     (let [semantic-results (semantic.pgvector-api/query
-                            (get-pgvector-datasource!)
-                            (get-index-metadata)
+                            (semantic.env/get-pgvector-datasource!)
+                            (semantic.env/get-index-metadata)
                             search-ctx)
           result-count (count semantic-results)]
       (if (>= result-count (semantic.settings/semantic-search-min-results-threshold))
@@ -65,11 +56,11 @@
   "Enterprise implementation of semantic index updating."
   :feature :semantic-search
   [document-reducible]
-  (let [pgvector (get-pgvector-datasource!)
-        index-metadata (get-index-metadata)]
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
       (log/warn "update-index! called prior to init!")
-      (semantic.pgvector-api/index-documents!
+      (semantic.pgvector-api/gate-updates!
        pgvector
        index-metadata
        document-reducible))))
@@ -78,11 +69,11 @@
   "Enterprise implementation of semantic index deletion."
   :feature :semantic-search
   [model ids]
-  (let [pgvector (get-pgvector-datasource!)
-        index-metadata (get-index-metadata)]
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)]
     (if-not (index-active? pgvector index-metadata)
       (log/warn "delete-from-index! called prior to init!")
-      (semantic.pgvector-api/delete-documents!
+      (semantic.pgvector-api/gate-deletes!
        pgvector
        index-metadata
        model
@@ -93,9 +84,9 @@
   "Initialize the semantic search table and populate it with initial data."
   :feature :semantic-search
   [searchable-documents _opts]
-  (let [pgvector (get-pgvector-datasource!)
-        index-metadata (get-index-metadata)
-        embedding-model (get-configured-embedding-model)]
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
+        index-metadata  (semantic.env/get-index-metadata)
+        embedding-model (semantic.env/get-configured-embedding-model)]
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))
     (semantic.pgvector-api/index-documents! pgvector index-metadata searchable-documents)))
@@ -104,9 +95,9 @@
   "Reindex the semantic search index."
   :feature :semantic-search
   [searchable-documents _opts]
-  (let [pgvector (get-pgvector-datasource!)
-        index-metadata (get-index-metadata)
-        embedding-model (get-configured-embedding-model)]
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
+        index-metadata  (semantic.env/get-index-metadata)
+        embedding-model (semantic.env/get-configured-embedding-model)]
     ;; todo force a new index
     (jdbc/with-transaction [tx pgvector]
       (semantic.pgvector-api/init-semantic-search! tx index-metadata embedding-model))

@@ -18,7 +18,7 @@
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
   (:import
-   [java.time LocalDate]
+   [java.time Instant LocalDate OffsetDateTime]
    [org.postgresql.util PGobject]))
 
 (set! *warn-on-reflection* true)
@@ -83,6 +83,20 @@
                        :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
+(defn- to-instant
+  [document-timestamp]
+  (cond
+    ;; loosey-goosey, but applies to json encoded instants from the gate table
+    ;; important: assumes all observable timestamps are encoded in an Instant friendly way (ISO8601)
+    (string? document-timestamp)
+    (Instant/parse document-timestamp)
+
+    ;; needs special handling as (inst-ms) is not extended to OffsetDateTime
+    (instance? OffsetDateTime document-timestamp)
+    (.toInstant ^OffsetDateTime document-timestamp)
+
+    :else (Instant/ofEpochMilli (inst-ms document-timestamp))))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
@@ -91,9 +105,9 @@
   {:model               model
    :model_id            id
    :creator_id          creator_id
-   :model_created_at    created_at
+   :model_created_at    (some-> created_at to-instant)
    :last_editor_id      last_editor_id
-   :model_updated_at    updated_at
+   :model_updated_at    (some-> updated_at to-instant)
    :pinned              pinned
    :archived            archived
    :verified            verified
@@ -102,16 +116,16 @@
    :collection_id       collection_id
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
-   :last_viewed_at      last_viewed_at
+   :last_viewed_at      (some-> last_viewed_at to-instant)
    :display_type        display_type
    :embedding           [:raw (format-embedding embedding-vec)]
    :name                (:name doc)
    :content             searchable_text
-   :text_search_vector (if (:name doc)
-                         [:||
-                          (search/weighted-tsvector "A" (:name doc))
-                          (search/weighted-tsvector "B" (:searchable_text doc ""))]
-                         (search/weighted-tsvector "A" (:searchable_text doc "")))
+   :text_search_vector  (if (:name doc)
+                          [:||
+                           (search/weighted-tsvector "A" (:name doc))
+                           (search/weighted-tsvector "B" (:searchable_text doc ""))]
+                          (search/weighted-tsvector "A" (:searchable_text doc "")))
    :text_search_with_native_query_vector
    (if (:name doc)
      [:||
@@ -746,9 +760,10 @@
    model-ids))
 
 (comment
+  (def pgvector ((requiring-resolve 'metabase-enterprise.semantic-search.env/get-pgvector-datasource!)))
   (def embedding-model (embedding/get-configured-model))
   (def index (default-index embedding-model))
-  (create-index-table-if-not-exists! index {:force-reset? true})
+  (create-index-table-if-not-exists! pgvector index {:force-reset? true})
   (upsert-index! db index [{:model "card"
                             :id "1"
                             :searchable_text "This is a test card"}])
