@@ -17,8 +17,11 @@ import type { Transform } from "metabase-types/api";
 
 import S from "./TransformPicker.module.css";
 
-export function TransformPicker({ isActive }: TransformPickerProps) {
-  const [isExpanded, { toggle }] = useDisclosure();
+export function TransformPicker({
+  transformId,
+  isActive,
+}: TransformPickerProps) {
+  const [isExpanded, { toggle }] = useDisclosure(transformId != null);
   const { data: transforms = [] } = useListTransformsQuery();
 
   return (
@@ -32,7 +35,11 @@ export function TransformPicker({ isActive }: TransformPickerProps) {
       {isExpanded && (
         <div>
           {transforms.map((transform) => (
-            <TransformItem key={transform.id} transform={transform} />
+            <TransformItem
+              key={transform.id}
+              transform={transform}
+              isActive={transform.id === transformId}
+            />
           ))}
         </div>
       )}
@@ -42,15 +49,17 @@ export function TransformPicker({ isActive }: TransformPickerProps) {
 
 type TransformItemProps = {
   transform: Transform;
+  isActive: boolean;
 };
 
-function TransformItem({ transform }: TransformItemProps) {
+function TransformItem({ transform, isActive }: TransformItemProps) {
   return (
     <TreeItem
       label={transform.name}
       icon="refresh_downstream"
       to={getTransformUrl(transform.id)}
       level={1}
+      isActive={isActive}
     />
   );
 }
