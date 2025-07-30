@@ -77,7 +77,7 @@ function TransformRootItem({
       label={t`Transforms`}
       icon="refresh_downstream"
       to={isExpandable ? "" : getTransformRootUrl()}
-      isActive={isActive}
+      isActive={isActive && !isExpandable}
       isExpanded={isExpanded}
       isExpandable={isExpandable}
       onClick={onToggle}
