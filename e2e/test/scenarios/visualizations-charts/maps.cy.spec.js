@@ -169,7 +169,7 @@ describe("scenarios > visualizations > maps", () => {
     });
 
     // this should not create a 400 error
-    cy.wait("@dataset").then((xhr) => {
+    cy.wait("@tiles").then((xhr) => {
       expect(xhr.response.statusCode).to.equal(200);
     });
   });

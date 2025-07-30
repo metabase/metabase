@@ -43,6 +43,10 @@ export function getTileUrl(params: TileUrlParams): string {
     if (typeof dashboardId === "string" && dashboardId.startsWith("/auto")) {
       return adhocQueryTileUrl(zoom, coord, latField, lonField, datasetQuery);
     }
+
+    if (typeof dashboardId === "string") {
+      throw Error("dashboardId must be an int");
+    }
     const isPublicDashboard = uuid;
 
     if (isPublicDashboard) {
