@@ -73,7 +73,9 @@ const defaultConfig = {
     // cypress-terminal-report
     if (isCI) {
       installLogsPrinter(on, {
-        printLogsToConsole: "never",
+        printLogsToConsole: process.env.CYPRESS_IS_EMBEDDING_SDK
+          ? "onFail"
+          : "never",
       });
     }
 
