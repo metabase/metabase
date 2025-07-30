@@ -8,19 +8,9 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "uladzimirdev",
         "wzimrin",
         "ericnormand",
         "galdre"
-      ]
-    },
-    {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "kamilmielnik",
-        "lbrdnk",
-        "bronsa"
       ]
     },
     {
@@ -49,9 +39,11 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber",
         "spalt08",
-        "stasgavrylov"
+        "stasgavrylov",
+        "uladzimirdev",
+        "kulyk",
+        "kamilmielnik"
       ]
     },
     {
@@ -64,7 +56,8 @@
         "iethree",
         "nvoxland",
         "fraserdrops",
-        "edpaget"
+        "edpaget",
+        "deniskaber"
       ]
     },
     {
@@ -72,7 +65,6 @@
       "label": ".Team/DashViz",
       "members": [
         "alxnddr",
-        "kulyk",
         "bpander"
       ]
     },
@@ -94,7 +86,9 @@
         "sloansparger",
         "somtom",
         "wotbrew",
-        "tsplude"
+        "tsplude",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {

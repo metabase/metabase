@@ -14,7 +14,9 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
-   [ring.util.response :as response])
+   [metabase.util.log :as log]
+   [ring.util.response :as response]
+   [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)))
 
@@ -31,7 +33,8 @@
               :last_name        last-name
               :email            email
               :sso_source       :jwt
-              :login_attributes user-attributes}]
+              :login_attributes {}
+              :jwt_attributes   user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
@@ -52,13 +55,24 @@
   "Registered claims in the JWT standard which we should not interpret as login attributes"
   [:iss :iat :sub :aud :exp :nbf :jti])
 
+(defn- filter-non-string-attributes
+  [jwt-data]
+  (->> jwt-data
+       (filter (fn [[key value]]
+                 (if (string? value)
+                   value
+                   (log/warnf "Dropping JWT claim '%s' with non-string value: %s" (name key) value))))
+       (into {})))
+
 (defn- jwt-data->login-attributes [jwt-data]
-  (apply dissoc
-         jwt-data
-         (jwt-attribute-email)
-         (jwt-attribute-firstname)
-         (jwt-attribute-lastname)
-         registered-claims))
+  (filter-non-string-attributes
+   (apply dissoc
+          jwt-data
+          (jwt-attribute-email)
+          (jwt-attribute-firstname)
+          (jwt-attribute-lastname)
+          (jwt-attribute-groups)
+          registered-claims)))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start
@@ -67,9 +81,11 @@
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]
-  (set
-   (mapcat (sso-settings/jwt-group-mappings)
-           (map keyword group-names))))
+  (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
+    (set
+     (mapcat name-mappings
+             (map keyword group-names)))
+    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
 
 (defn- all-mapped-group-ids
   "Returns the set of all MB group IDs that have configured mappings"
@@ -85,9 +101,11 @@
   (when (sso-settings/jwt-group-sync)
     (when-let [groups-attribute (jwt-attribute-groups)]
       (when-let [group-names (get jwt-data groups-attribute)]
-        (sso/sync-group-memberships! user
-                                     (group-names->ids group-names)
-                                     (all-mapped-group-ids))))))
+        (if (empty? (sso-settings/jwt-group-mappings))
+          (sso/sync-group-memberships! user (group-names->ids group-names))
+          (sso/sync-group-memberships! user
+                                       (group-names->ids group-names)
+                                       (all-mapped-group-ids)))))))
 
 (defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]

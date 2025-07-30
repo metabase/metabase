@@ -95,7 +95,7 @@
                                :strategy     :left-join
                                :condition    [:= $category_id 1]}
                               {:source-table $$categories
-                               :alias        "__join"
+                               :alias        "__join_2"
                                :strategy     :left-join
                                :condition    [:= $category_id 2]}]
                :source-table (mt/id :venues)})
