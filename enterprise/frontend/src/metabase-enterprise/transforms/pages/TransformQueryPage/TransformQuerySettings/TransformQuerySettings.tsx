@@ -44,6 +44,7 @@ export function TransformQuerySettings({
     <TransformQueryBuilder
       name={transform.name}
       query={transform.source.query}
+      isNew={false}
       isSaving={isLoading}
       onSave={handleSave}
       onCancel={handleCancel}

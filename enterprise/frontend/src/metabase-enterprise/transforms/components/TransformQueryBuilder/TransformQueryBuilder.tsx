@@ -13,16 +13,18 @@ import { useQueryResults } from "./use-query-results";
 import { useQueryState } from "./use-query-state";
 
 type TransformQueryBuilderProps = {
-  name?: string;
   query: DatasetQuery;
+  name?: string;
+  isNew?: boolean;
   isSaving?: boolean;
   onSave: (newQuery: DatasetQuery) => void;
   onCancel: () => void;
 };
 
 export function TransformQueryBuilder({
-  name,
   query: initialQuery,
+  name,
+  isNew = true,
   isSaving = false,
   onSave,
   onCancel,
@@ -58,6 +60,7 @@ export function TransformQueryBuilder({
       <TransformHeader
         name={name}
         canSave={canSave}
+        isNew={isNew}
         isSaving={isSaving}
         onSave={handleSave}
         onCancel={onCancel}

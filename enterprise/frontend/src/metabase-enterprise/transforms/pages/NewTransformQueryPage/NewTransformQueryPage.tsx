@@ -80,6 +80,7 @@ function NewTransformPageBody({ initialQuery }: NewTransformPageBodyProps) {
     <>
       <TransformQueryBuilder
         query={query}
+        isNew
         onSave={handleSaveClick}
         onCancel={handleCancelClick}
       />

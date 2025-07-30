@@ -6,6 +6,7 @@ import EditBar from "metabase/common/components/EditBar";
 type TransformHeaderProps = {
   name?: string;
   canSave: boolean;
+  isNew: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
@@ -14,6 +15,7 @@ type TransformHeaderProps = {
 export function TransformHeader({
   name,
   canSave,
+  isNew,
   isSaving,
   onSave,
   onCancel,
@@ -26,7 +28,7 @@ export function TransformHeader({
       small
       disabled={!canSave || isSaving}
     >
-      {isSaving ? t`Saving changes` : t`Save changes`}
+      {getSaveButtonLabel(isNew, isSaving)}
     </Button>
   );
 
@@ -36,9 +38,25 @@ export function TransformHeader({
 
   return (
     <EditBar
-      title={name ?? t`You’re creating a new transform`}
+      title={getTitle(name, isNew)}
       admin
       buttons={[saveButton, cancelButton]}
     />
   );
+}
+
+function getTitle(name: string | undefined, isNew: boolean) {
+  if (isNew) {
+    return t`You’re creating a new transform`;
+  } else {
+    return name ?? t`You’re editing a transform`;
+  }
+}
+
+function getSaveButtonLabel(isNew: boolean, isSaving: boolean) {
+  if (isSaving) {
+    return isNew ? t`Saving` : t`Saving changes`;
+  } else {
+    return isNew ? t`Save` : t`Save changes`;
+  }
 }
