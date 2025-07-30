@@ -3,6 +3,7 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
   setupUserKeyValueEndpoints,
@@ -20,7 +21,9 @@ import { EmbeddingSdkSettings } from "../EmbeddingSdkSettings";
 
 export interface SetupOpts {
   showSdkEmbedTerms?: Settings["show-sdk-embed-terms"];
+  showSimpleEmbedTerms?: Settings["show-simple-embed-terms"];
   isEmbeddingSdkEnabled?: Settings["enable-embedding-sdk"];
+  isEmbeddingSimpleEnabled?: Settings["enable-embedding-simple"];
   isHosted?: Settings["is-hosted?"];
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
@@ -28,14 +31,18 @@ export interface SetupOpts {
 
 export async function setup({
   showSdkEmbedTerms = true,
+  showSimpleEmbedTerms = true,
   isEmbeddingSdkEnabled = false,
+  isEmbeddingSimpleEnabled = false,
   isHosted = false,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
 }: SetupOpts = {}) {
   const settings = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
+    "show-simple-embed-terms": showSimpleEmbedTerms,
     "enable-embedding-sdk": isEmbeddingSdkEnabled,
+    "enable-embedding-simple": isEmbeddingSimpleEnabled,
     "is-hosted?": isHosted,
     "token-features": createMockTokenFeatures(tokenFeatures),
   });
@@ -46,6 +53,7 @@ export async function setup({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
+    setupTokenStatusEndpoint(true);
   }
 
   setupPropertiesEndpoints(settings);
@@ -64,8 +72,17 @@ export async function setup({
 
   await waitFor(async () => {
     const gets = await findRequests("GET");
-    expect(gets).toHaveLength(3);
+    expect(gets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/api/setting"),
+        }),
+        expect.objectContaining({
+          url: expect.stringContaining("/api/session/properties"),
+        }),
+      ]),
+    );
   });
 
-  await screen.findByText("Embedding SDK");
+  await screen.findByText("SDK for React");
 }

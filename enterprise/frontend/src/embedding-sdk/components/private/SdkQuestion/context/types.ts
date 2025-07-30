@@ -10,6 +10,10 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk/types/question";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type {
+  ClickActionModeGetter,
+  QueryClickActionsMode,
+} from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { DashboardId } from "metabase-types/api";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
@@ -72,6 +76,8 @@ type SdkQuestionConfig = {
   onNavigateBack?: () => void;
 
   /**
+   * @internal
+   *
    * When provided, this dashboard will be used to navigate back to the dashboard from other view
    * instead of the state from Redux in `qb.parentDashboard.dashboardId`
    */
@@ -90,7 +96,15 @@ export type SdkQuestionProviderProps = PropsWithChildren<
   SdkQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
       questionId: SdkQuestionId | null;
-      variant?: "static" | "interactive";
+      /**
+       * @internal
+       */
+      getClickActionMode?: ClickActionModeGetter | undefined;
+
+      /**
+       * @internal
+       */
+      navigateToNewCard?: Nullable<LoadQuestionHookResult["navigateToNewCard"]>;
     }
 >;
 
@@ -106,10 +120,9 @@ export type SdkQuestionContextType = Omit<
     | "targetCollection"
     | "withDownloads"
     | "backToDashboard"
-  > &
-  Pick<SdkQuestionProviderProps, "variant"> & {
+  > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
-    mode: Mode | null | undefined;
+    mode: QueryClickActionsMode | Mode | null | undefined;
     originalId: SdkQuestionId | null;
     resetQuestion: () => void;
     onReset: () => void;
