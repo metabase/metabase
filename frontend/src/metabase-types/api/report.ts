@@ -16,4 +16,5 @@ export type ReportVersions = Report[];
 
 export type CreateReportRequest = Pick<Report, "name" | "document"> & {
   collection_id?: CollectionId;
+  used_card_ids?: number[];
 };

@@ -43,7 +43,9 @@ export const reportApi = EnterpriseApi.injectEndpoints({
     }),
     updateReport: builder.mutation<
       Report,
-      Pick<Report, "id" | "name" | "document">
+      Pick<Report, "id" | "name" | "document"> & {
+        used_card_ids?: number[];
+      }
     >({
       query: (report) => ({
         method: "PUT",

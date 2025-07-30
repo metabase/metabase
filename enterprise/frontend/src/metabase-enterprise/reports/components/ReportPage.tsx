@@ -6,7 +6,11 @@ import { usePrevious } from "react-use";
 import useBeforeUnload from "react-use/lib/useBeforeUnload";
 import { t } from "ttag";
 
-import { skipToken, useGetCollectionQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCollectionQuery,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
@@ -70,6 +74,10 @@ export const ReportPage = ({
 
   const { data: collection } = useGetCollectionQuery(
     report?.collection_id ? { id: report.collection_id } : skipToken,
+  );
+
+  const { data: selectedCard } = useGetCardQuery(
+    selectedQuestionId ? { id: selectedQuestionId } : skipToken,
   );
 
   const canWrite = reportId === "new" ? true : collection?.can_write;
@@ -155,6 +163,7 @@ export const ReportPage = ({
         const newReportData = {
           name: reportTitle,
           document: currentContent,
+          used_card_ids: [...new Set(cardEmbeds.map((embed) => embed.id))],
         };
 
         const result = await (reportId !== "new" && report?.id
@@ -204,6 +213,7 @@ export const ReportPage = ({
       dispatch,
       commitAllPendingChanges,
       reportId,
+      cardEmbeds,
     ],
   );
 
@@ -228,10 +238,19 @@ export const ReportPage = ({
   }, [hasUnsavedChanges, handleSave, reportId, showCollectionPicker]);
 
   const handleQuestionSelect = useCallback(async () => {
-    if (selectedEmbedIndex !== null) {
-      await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
+    if (selectedEmbedIndex !== null && selectedCard) {
+      await commitVisualizationChanges(
+        selectedEmbedIndex,
+        editorInstance,
+        selectedCard,
+      );
     }
-  }, [selectedEmbedIndex, commitVisualizationChanges, editorInstance]);
+  }, [
+    selectedEmbedIndex,
+    commitVisualizationChanges,
+    editorInstance,
+    selectedCard,
+  ]);
 
   const handleDownloadMarkdown = useCallback(() => {
     if (!editorInstance) {
