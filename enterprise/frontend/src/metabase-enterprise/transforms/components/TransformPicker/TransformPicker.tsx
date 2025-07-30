@@ -77,13 +77,6 @@ function TransformRootItem({
   isExpandable,
   onToggle,
 }: TransformRootItemProps) {
-  const handleItemClick = (event: MouseEvent) => {
-    if (isExpandable) {
-      onToggle();
-      event.preventDefault();
-    }
-  };
-
   const handleIconClick = (event: MouseEvent) => {
     event.stopPropagation();
   };
@@ -92,11 +85,11 @@ function TransformRootItem({
     <TreeItem
       label={t`Transforms`}
       icon="refresh_downstream"
-      to={getTransformRootUrl()}
+      to={isExpandable ? "" : getTransformRootUrl()}
       isActive={isActive && !isExpandable}
       isExpanded={isExpanded}
       isExpandable={isExpandable}
-      onClick={handleItemClick}
+      onClick={onToggle}
     >
       {isExpandable && (
         <Flex>
