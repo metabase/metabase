@@ -270,7 +270,9 @@
                 :schema schema
                 {:schema new-schema})))
 
-(def ^:private archive-tables-threshold [-14 :day])
+(def ^:private
+  ^{:doc "threshold after which deactivated tables will be archived"}
+  archive-tables-threshold [-14 :day])
 
 (defn- archive-tables!
   "Mark tables that have been deactivated for longer than the configured threshold as archived
