@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.core :as semantic]
    [metabase-enterprise.semantic-search.db :as semantic.db]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]))
 
@@ -17,8 +18,8 @@
     (try
       (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)
       (with-redefs [semantic.db/data-source (atom nil)
-                    semantic/get-index-metadata (constantly semantic.tu/mock-index-metadata)
-                    semantic/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)]
+                    semantic.env/get-index-metadata (constantly semantic.tu/mock-index-metadata)
+                    semantic.env/get-configured-embedding-model (constantly semantic.tu/mock-embedding-model)]
         (test-func))
       (finally
         (semantic.tu/cleanup-index-metadata! semantic.tu/db semantic.tu/mock-index-metadata)))))
