@@ -7,6 +7,7 @@ import type {
   DataKey,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,
   HoveredObject,
@@ -96,3 +97,37 @@ export const getHoveredEChartsSeriesDataKeyAndIndex = (
 
   return { hoveredSeriesDataKey, hoveredEChartsSeriesIndex };
 };
+
+export type SeriesDatum = { seriesIndex: number; dataIndex: number };
+
+export function getSeriesDatumFromEvent(
+  option: EChartsCoreOption,
+  ev: EChartsSeriesMouseEvent,
+): SeriesDatum | null {
+  const e = ev as unknown as {
+    seriesIndex?: number;
+    seriesId?: string | number;
+    dataIndex?: number;
+  };
+
+  if (typeof e.dataIndex !== "number") {
+    return null;
+  }
+
+  if (typeof e.seriesIndex === "number") {
+    return { seriesIndex: e.seriesIndex, dataIndex: e.dataIndex };
+  }
+
+  const seriesArr = Array.isArray((option as any).series)
+    ? ((option as any).series as Array<{ id?: string | number }>)
+    : [];
+
+  if (e.seriesId != null) {
+    const idx = seriesArr.findIndex((s) => s && s.id === e.seriesId);
+    if (idx >= 0) {
+      return { seriesIndex: idx, dataIndex: e.dataIndex };
+    }
+  }
+
+  return null;
+}
