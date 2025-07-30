@@ -1837,6 +1837,7 @@
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.init}
    :uses #{api
+           config
            driver
            events
            models

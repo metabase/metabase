@@ -1,21 +1,18 @@
 (ns metabase-enterprise.transforms.execute
   (:require
    [clj-http.client :as http]
-   [clojure.string :as str]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(def mb-id "mb-1")
+(set! *warn-on-reflection* true)
+
+(def ^:private mb-id "mb-1")
 
 (defn- sync-table!
   [database target]
@@ -23,7 +20,9 @@
                   (sync/create-table! database (select-keys target [:schema :name])))]
     (sync/sync-table! table)))
 
-(defn execute-transform! [{:keys [driver connection-details query primary-key output-table overwrite?] :as data}]
+(defn execute-transform!
+  "Executes a query transform. "
+  [{:keys [driver connection-details query primary-key output-table overwrite?] :as _data}]
   (let [driver (keyword driver)
         queries (cond->> (list (driver/compile-transform driver
                                                          {:query query
@@ -35,7 +34,7 @@
 (defn- worker-uri []
   (config/config-str :mb-transform-worker-uri))
 
-(defn- worker-route [path]
+(defn- worker-route [^String path]
   (when-let [base-uri (worker-uri)]
     (-> base-uri
         java.net.URI.
@@ -43,30 +42,32 @@
         str)))
 
 (defn execute-mbql-transform-remote!
+  "Execute a transform on a remote worker."
   [data]
-  (prn "executing remote transform" (:work-id data))
+  (log/info "executing remote transform" (pr-str (:work-id data)))
   (let [{:keys [body]} (http/post (worker-route "/transform")
                                   {:form-params data
                                    :content-type :json})
-        {:keys [run-id]} (json/decode+kw body)]
-    (loop [wait 2000
-           total 0]
+        {:keys [run-id]} (json/decode+kw body)
+        ;; timeout after 1 hour
+        timeout-limit (+ (System/currentTimeMillis) (* 60 60 1000))
+        wait 2000]
+    (loop []
       (Thread/sleep wait)
-      (prn "polling for remote transform" (:work-id data) "after wait" wait)
+      (log/trace "polling for remote transform" (pr-str (:work-id data)) "after wait" wait)
       (let [{poll-body :body} (http/get (worker-route (str "/transform/" run-id)))]
         (case poll-body
-          "running" (if (> total (* 60 60 1000))
-                      ;; timeout after 1 hour
-                      (throw (ex-info (str "Remote execution of transform timed out")
+          "running" (if (> (System/currentTimeMillis) timeout-limit)
+                      (throw (ex-info "Remote execution of transform timed out"
                                       {:transform data}))
-                      (recur wait
-                             (+ wait total)))
+                      (recur))
           ("success" "error") nil
           (throw (ex-info (str "Unrecognized status response from remote worker: " poll-body)
                           {:transform data})))))))
 
 (defn execute-mbql-transform-local!
-  [{:keys [work-id mb-source] :as data}]
+  "Execute a transform on locally."
+  [data]
   (execute-transform! data))
 
 (defn execute-mbql-transform-inner!
@@ -89,7 +90,8 @@
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
-           feature (transforms.util/required-database-feature transform)]
+           feature (transforms.util/required-database-feature transform)
+           live-target (:live_target transform)]
        (when-not (driver.u/supports? driver feature database)
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :feature feature})))
@@ -100,12 +102,19 @@
                                  :execution_status :started}))
          (throw (ex-info "The transform is running (or missing)." {:transform-id id})))
        ;; remove the live table if it's not our target anymore
-       (when (not= (:target transform) (:live_target transform))
-         (transforms.util/delete-live-target-table! transform))
+       (when (and live-target
+                  (not= target live-target))
+         (log/info "Deleting old target table" (pr-str live-target))
+         (transforms.util/delete-live-target-table! transform)
+         (when-let [table (transforms.util/target-table (:id database) live-target)]
+           ;; there is a metabase table, sync it away
+           (log/info "Syncing away old target table" (->  table (select-keys [:db_id :id :schema :name]) pr-str))
+           (sync/sync-table! table)))
        (when start-promise
          (deliver start-promise :started))
        ;; start the execution for real
        (try
+         (log/info "Executing transform" id "with target" (pr-str target))
          (execute-mbql-transform-inner!
           {:work-id id
            :driver driver
@@ -123,6 +132,7 @@
            (throw t)))
        ;; sync the new table (note that even a failed sync status means that the execution succeeded)
        (try
+         (log/info "Syncing target" (pr-str target) "for transform" id)
          (sync-table! database target)
          (t2/update! :model/Transform id
                      :execution_status [:= :exec-succeeded]
@@ -139,15 +149,3 @@
          ;; but we assume nobody would catch the exception anyway
          (deliver start-promise t)
          (throw t))))))
-
-(comment
-  (->> (iterate #(if (>= % 2000)
-                   (int (* % 1.1))
-                   (* 5 %))
-                200)
-       (map #(double (/ % 1000)))
-       (take 50)
-       (reduce (fn [[lst total] next]
-                 (let [new-total (int (+ total next))]
-                   [(conj lst [next new-total]) new-total]))
-               [[] 0])))

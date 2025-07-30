@@ -82,8 +82,10 @@
   (log/info "get transform" id)
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
-        database-id (source-database-id transform)]
-    (assoc transform :table (transforms.util/target-table database-id (:target transform)))))
+        database-id (source-database-id transform)
+        live-target (:live_target transform)]
+    (cond-> transform
+      live-target (assoc :live_table (transforms.util/target-table database-id live-target)))))
 
 (api.macros/defendpoint :put "/:id"
   [{:keys [id]} :- [:map

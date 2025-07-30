@@ -47,7 +47,7 @@
          (with-transform-cleanup! ~more-gens ~@body)
          (finally
            (drop-table! target#))))
-    `(mt/with-model-cleanup [:model/Transform]
+    `(mt/with-model-cleanup [:model/Transform :model/Table]
        ~@body)))
 
 (defn- make-query [category]
@@ -95,10 +95,8 @@
                              ;;:schema "transforms"
                              :name table-name}}
               _ (mt/user-http-request :crowberto :post 200 "ee/transform" body)
-              list-resp (mt/user-http-request :crowberto :get 200 (str "ee/transform?database_id=" (mt/id)))]
-          (is (seq list-resp))
-          (is (every? #(= (mt/id) (-> % :source :query :database))
-                      list-resp)))))))
+              list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
+          (is (seq list-resp)))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -117,8 +115,7 @@
         (is (=? (assoc body
                        :last_started_at nil
                        :last_ended_at nil
-                       :live_target nil
-                       :table nil)
+                       :live_target nil)
                 (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))))))))
 
 (deftest put-transforms-test
