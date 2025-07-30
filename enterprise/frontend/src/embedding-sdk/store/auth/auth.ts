@@ -117,7 +117,7 @@ export const refreshTokenAsync = createAsyncThunk(
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
     const state = getState() as SdkStoreState;
 
-    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSdkIframeEmbedAuth) {
+    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
       return requestSessionTokenFromEmbedJs();
     }
 
