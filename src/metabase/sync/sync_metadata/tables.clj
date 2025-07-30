@@ -1,9 +1,9 @@
 (ns metabase.sync.sync-metadata.tables
   "Logic for updating Metabase Table models from metadata fetched from a physical DB."
   (:require
-   [clj-time.core :as time]
    [clojure.data :as data]
    [clojure.set :as set]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
@@ -280,7 +280,7 @@
   [database]
   (let [;; we use UTC time for suffix, may not match db timezone but
         ;; it doesn't matter much, as long as it's consistent
-        suffix (str "__archived__" (time/now))
+        suffix (str "__archived__" (t/truncate-to (t/offset-date-time) :seconds))
         threshold-expr (apply
                         (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
@@ -294,14 +294,17 @@
       (doseq [table tables-to-archive
               :let [new-name (str (:name table) suffix)]]
 
-        (log/infof "Archiving table %s (deactivated at %s, new-name %s)"
-                   (sync-util/name-for-logging table)
-                   (:deactivated_at table)
-                   new-name)
+        (if (> (count new-name) 256)
+          (log/warnf "Cannot archive table %s, name too long" (:name table))
+          (do
+            (log/infof "Archiving table %s (deactivated at %s, new-name %s)"
+                       (sync-util/name-for-logging table)
+                       (:deactivated_at table)
+                       new-name)
 
-        (t2/update! :model/Table (:id table)
-                    {:archived_at (mi/now)
-                     :name new-name}))
+            (t2/update! :model/Table (:id table)
+                        {:archived_at (mi/now)
+                         :name new-name}))))
 
       (count tables-to-archive))))
 
