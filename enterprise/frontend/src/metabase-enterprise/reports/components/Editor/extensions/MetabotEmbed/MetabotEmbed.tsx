@@ -13,11 +13,6 @@ import { useMetabotReportQuery } from "../../hooks/useMetabotReportQuery";
 
 import Styles from "./MetabotEmbed.module.css";
 
-export interface MetabotAttributes {
-  status: string;
-  text: string;
-}
-
 const createTextNode = (str: string) => ({
   type: "paragraph",
   content: [{ type: "text", text: str }],
@@ -34,10 +29,6 @@ export const MetabotNode = Node.create<{
 
   addAttributes() {
     return {
-      status: {
-        default: null,
-        parseHTML: (element) => element.getAttribute("data-status"),
-      },
       text: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-text"),
@@ -64,17 +55,16 @@ export const MetabotNode = Node.create<{
         HTMLAttributes,
         {
           "data-type": "metabot",
-          "data-status": node.attrs.status,
           "data-text": node.attrs.text,
         },
         this.options.HTMLAttributes,
       ),
-      `{{ metabot:${node.attrs.status}:${node.attrs.text} }}`,
+      `{{ metabot:${node.attrs.text} }}`,
     ];
   },
 
   renderText({ node }) {
-    return `{{ metabot:${node.attrs.status}:${node.attrs.text} }}`;
+    return `{{ metabot:${node.attrs.text} }}`;
   },
 });
 
@@ -218,7 +208,6 @@ export const MetabotComponent = memo(
   (prevProps, nextProps) => {
     return (
       prevProps.node.attrs.text === nextProps.node.attrs.text &&
-      prevProps.node.attrs.status === nextProps.node.attrs.status &&
       prevProps.selected === nextProps.selected
     );
   },

@@ -148,11 +148,7 @@ export const QuestionMentionPlugin = ({
           "",
         );
 
-        if (
-          currentText.startsWith("/") ||
-          currentText.startsWith("@") ||
-          currentText.startsWith("#")
-        ) {
+        if (currentText.startsWith("/") || currentText.startsWith("@")) {
           setQuery(currentText.slice(1));
           setMentionRange({
             from: mentionRange.from,
@@ -174,13 +170,6 @@ export const QuestionMentionPlugin = ({
         // Check if we're typing after "/" and it's the start of the paragraph
         if (text.trimStart() === "/") {
           return "embed";
-        }
-        // Check if we're typing after "#" for text input
-        if (text.endsWith("#")) {
-          return "text";
-        }
-        if (text.trimStart() === "$") {
-          return "metabot";
         }
         return null;
       };

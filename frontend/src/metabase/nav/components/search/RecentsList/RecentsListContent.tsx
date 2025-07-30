@@ -147,7 +147,9 @@ export const RecentsListContent = ({
       {footerChildren.map((C, index) => (
         <C
           key={`footer-${index}`}
-          isSelected={cursorIndex === index}
+          isSelected={
+            cursorIndex === index + results.length + headerChildren.length
+          }
           onClick={C.onClick}
         />
       ))}
