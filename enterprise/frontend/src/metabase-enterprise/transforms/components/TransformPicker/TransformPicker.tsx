@@ -3,12 +3,13 @@ import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { TreeItem } from "metabase/metadata/components/TreePicker/TreeItem";
+import type { TransformPickerProps } from "metabase/plugins";
 import { ActionIcon, Flex, Icon } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
 import {
+  getTransformRootUrl,
   getTransformSettingsUrl,
   getTransformUrl,
 } from "metabase-enterprise/transforms/utils/urls";
@@ -16,15 +17,18 @@ import type { Transform } from "metabase-types/api";
 
 import S from "./TransformPicker.module.css";
 
-export function TransformPicker() {
+export function TransformPicker({ isActive }: TransformPickerProps) {
   const [isExpanded, { toggle }] = useDisclosure();
-  const { data: transforms = [] } = useListTransformsQuery(
-    isExpanded ? undefined : skipToken,
-  );
+  const { data: transforms = [] } = useListTransformsQuery();
 
   return (
     <div>
-      <TransformRootItem isExpanded={isExpanded} onToggle={toggle} />
+      <TransformRootItem
+        isActive={isActive}
+        isExpanded={isExpanded}
+        isExpandable={transforms.length > 0}
+        onToggle={toggle}
+      />
       {isExpanded && (
         <div>
           {transforms.map((transform) => (
@@ -52,11 +56,18 @@ function TransformItem({ transform }: TransformItemProps) {
 }
 
 type TransformRootItemProps = {
+  isActive: boolean;
   isExpanded: boolean;
+  isExpandable: boolean;
   onToggle: () => void;
 };
 
-function TransformRootItem({ isExpanded, onToggle }: TransformRootItemProps) {
+function TransformRootItem({
+  isActive,
+  isExpanded,
+  isExpandable,
+  onToggle,
+}: TransformRootItemProps) {
   const handleClick = (event: MouseEvent) => {
     event.stopPropagation();
   };
@@ -65,31 +76,34 @@ function TransformRootItem({ isExpanded, onToggle }: TransformRootItemProps) {
     <TreeItem
       label={t`Transforms`}
       icon="refresh_downstream"
-      to=""
+      to={isExpandable ? "" : getTransformRootUrl()}
+      isActive={isActive}
       isExpanded={isExpanded}
-      isExpandable
+      isExpandable={isExpandable}
       onClick={onToggle}
     >
-      <Flex>
-        <ActionIcon
-          className={S.icon}
-          component={Link}
-          variant="transparent"
-          to={getTransformSettingsUrl()}
-          onClick={handleClick}
-        >
-          <Icon name="gear" />
-        </ActionIcon>
-        <NewTransformMenu>
+      {isExpandable && (
+        <Flex>
           <ActionIcon
             className={S.icon}
+            component={Link}
             variant="transparent"
+            to={getTransformSettingsUrl()}
             onClick={handleClick}
           >
-            <Icon name="add" />
+            <Icon name="gear" />
           </ActionIcon>
-        </NewTransformMenu>
-      </Flex>
+          <NewTransformMenu>
+            <ActionIcon
+              className={S.icon}
+              variant="transparent"
+              onClick={handleClick}
+            >
+              <Icon name="add" />
+            </ActionIcon>
+          </NewTransformMenu>
+        </Flex>
+      )}
     </TreeItem>
   );
 }

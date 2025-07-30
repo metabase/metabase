@@ -114,7 +114,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
 
         <Box className={S.footer} mx="xl" py="sm">
-          <PLUGIN_TRANSFORMS.TransformNavBar
+          <PLUGIN_TRANSFORMS.TransformPicker
             transformId={undefined}
             isActive={isTransforms}
           />

@@ -1,7 +1,7 @@
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
-import { TransformNavBar } from "./components/TransformNavBar";
+import { TransformPicker } from "./components/TransformPicker";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
 import { TransformPage } from "./pages/TransformPage";
@@ -9,7 +9,7 @@ import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformSettingsPage } from "./pages/TransformSettingsPage";
 import { isTransformsRoute } from "./utils/urls";
 
-PLUGIN_TRANSFORMS.TransformNavBar = TransformNavBar;
+PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
 
 PLUGIN_TRANSFORMS.isTransformsRoute = isTransformsRoute;
 

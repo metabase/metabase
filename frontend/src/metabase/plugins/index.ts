@@ -806,20 +806,20 @@ export const PLUGIN_SMTP_OVERRIDE: {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
-export type TransformNavBarProps = {
+export type TransformPickerProps = {
   transformId: TransformId | undefined;
   isActive: boolean;
 };
 
 export type TransformsPlugin = {
-  TransformNavBar: ComponentType<TransformNavBarProps>;
+  TransformPicker: ComponentType<TransformPickerProps>;
   isTransformsRoute: (path: string) => boolean;
   getRoutesWithSidebar(): ReactNode;
   getRoutesWithoutSidebar(): ReactNode;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  TransformNavBar: PluginPlaceholder,
+  TransformPicker: PluginPlaceholder,
   isTransformsRoute: () => false,
   getRoutesWithSidebar: () => null,
   getRoutesWithoutSidebar: () => null,

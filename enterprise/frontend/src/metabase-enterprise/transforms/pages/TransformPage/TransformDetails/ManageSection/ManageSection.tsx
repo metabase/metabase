@@ -1,8 +1,10 @@
 import { Link } from "react-router";
+import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks";
+import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon } from "metabase/ui";
 import {
@@ -10,7 +12,10 @@ import {
   useExecuteTransformMutation,
 } from "metabase-enterprise/api";
 import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/TransformDetails/CardSection";
-import { getTransformQueryUrl } from "metabase-enterprise/transforms/utils/urls";
+import {
+  getTransformQueryUrl,
+  getTransformRootUrl,
+} from "metabase-enterprise/transforms/utils/urls";
 import type { Transform, TransformTarget } from "metabase-types/api";
 
 export type ManageSectionProps = {
@@ -87,6 +92,7 @@ function DeleteButton({ transform }: DeleteButtonProps) {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const dispatch = useDispatch();
 
   const handleDelete = () => {
     askConfirmation({
@@ -99,6 +105,7 @@ function DeleteButton({ transform }: DeleteButtonProps) {
           sendErrorToast("Failed to delete transform");
         } else {
           sendSuccessToast("Transform deleted");
+          dispatch(push(getTransformRootUrl()));
         }
       },
     });
