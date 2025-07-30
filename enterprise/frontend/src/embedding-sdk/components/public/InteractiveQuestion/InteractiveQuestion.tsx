@@ -15,7 +15,7 @@ import {
   QuestionSettingsDropdown,
   QuestionVisualization,
   SaveButton,
-  type SdkSaveQuestionForm,
+  SdkSaveQuestionForm,
   Summarize,
   SummarizeDropdown,
   Title,
@@ -25,7 +25,6 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk/components/public/SdkQuestion/SdkQuestion";
-import { SaveQuestionForm } from "metabase/common/components/SaveQuestionForm";
 
 /**
  * @interface
@@ -88,7 +87,7 @@ InteractiveQuestion.Editor = Editor;
 InteractiveQuestion.NotebookButton = EditorButton;
 InteractiveQuestion.EditorButton = EditorButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
-InteractiveQuestion.SaveQuestionForm = SaveQuestionForm;
+InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
