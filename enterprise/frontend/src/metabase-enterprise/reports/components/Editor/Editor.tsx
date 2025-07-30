@@ -28,6 +28,7 @@ interface EditorProps {
   onEditorReady?: (editor: TiptapEditor) => void;
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   content: string;
+  onChange?: (content: string) => void;
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
 }
@@ -35,7 +36,8 @@ interface EditorProps {
 export const Editor: React.FC<EditorProps> = ({
   onEditorReady,
   onCardEmbedsChange,
-  content = "",
+  content,
+  onChange,
   editable = true,
   onQuestionSelect,
 }) => {
@@ -71,31 +73,54 @@ export const Editor: React.FC<EditorProps> = ({
     autofocus: true,
   });
 
-  // Track the previous content to detect changes
+  // Track the previous content to avoid unnecessary updates
   const previousContent = useRef<string>("");
 
+  // Update editor content when content prop changes
   useEffect(() => {
-    if (editor && !editor.isDestroyed) {
-      // Only update if content has actually changed (including empty string)
-      if (content !== previousContent.current) {
-        // Defer the content update to avoid flushSync warning
-        queueMicrotask(() => {
-          if (editor && !editor.isDestroyed) {
-            // Use storage method directly to avoid command timing issues
-            try {
-              editor.storage.markdown.setMarkdown(content || "");
-              previousContent.current = content;
-            } catch (error) {
-              console.error("Failed to set markdown content:", error);
-              // Fallback to setting content as HTML if markdown parsing fails
-              editor.commands.setContent(content || "");
-              previousContent.current = content;
-            }
-          }
-        });
+    if (editor && !editor.isDestroyed && content !== previousContent.current) {
+      try {
+        if (!content || content.trim() === "") {
+          editor.commands.setContent("");
+        } else {
+          // Expect JSON AST format
+          const parsedContent = JSON.parse(content);
+          editor.commands.setContent(parsedContent);
+        }
+        previousContent.current = content;
+      } catch (error) {
+        console.error("Failed to parse JSON AST content:", error);
+        // Set empty document if JSON parsing fails
+        editor.commands.setContent("");
+        previousContent.current = content;
       }
     }
   }, [editor, content]);
+
+  // Notify parent when editor is ready
+  useEffect(() => {
+    if (editor && onEditorReady) {
+      onEditorReady(editor);
+    }
+  }, [editor, onEditorReady]);
+
+  // Set up change handler
+  useEffect(() => {
+    if (!editor || !onChange) {
+      return;
+    }
+
+    const handleUpdate = () => {
+      const currentAst = JSON.stringify(editor.state.doc.toJSON());
+      onChange(currentAst);
+    };
+
+    editor.on("update", handleUpdate);
+
+    return () => {
+      editor.off("update", handleUpdate);
+    };
+  }, [editor, onChange]);
 
   // Update editor editable state
   useEffect(() => {
@@ -106,12 +131,6 @@ export const Editor: React.FC<EditorProps> = ({
 
   useCardEmbedsTracking(editor, onCardEmbedsChange);
   useQuestionSelection(editor, onQuestionSelect);
-
-  useEffect(() => {
-    if (editor && onEditorReady) {
-      onEditorReady(editor);
-    }
-  }, [editor, onEditorReady]);
 
   if (!editor) {
     return null;

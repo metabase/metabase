@@ -48,8 +48,7 @@ export const ReportPage = ({
   const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
   const [editorInstance, setEditorInstance] = useState<any>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [hasInitializedContent, setHasInitializedContent] = useState(false);
-  const [isContentModified, setIsContentModified] = useState(false);
+  const [currentContent, setCurrentContent] = useState<string>("");
   const [createReport] = useCreateReportMutation();
   const [updateReport] = useUpdateReportMutation();
   const [
@@ -63,12 +62,6 @@ export const ReportPage = ({
   const previousReportId = usePrevious(reportId);
   const previousVersion = usePrevious(selectedVersion);
 
-  useEffect(() => {
-    if (reportId !== previousReportId || selectedVersion !== previousVersion) {
-      setIsContentModified(false);
-      setHasInitializedContent(false);
-    }
-  }, [reportId, previousReportId, selectedVersion, previousVersion]);
   const { data: report, isLoading: isReportLoading } = useGetReportQuery(
     reportId && reportId !== "new"
       ? { id: reportId, version: selectedVersion }
@@ -90,6 +83,19 @@ export const ReportPage = ({
     updateCardEmbeds,
   } = useReportState(report);
 
+  // Reset current content when report changes
+  useEffect(() => {
+    if (reportId !== previousReportId || selectedVersion !== previousVersion) {
+      setCurrentContent(reportContent || "");
+    }
+  }, [
+    reportId,
+    previousReportId,
+    selectedVersion,
+    previousVersion,
+    reportContent,
+  ]);
+
   const {
     commitVisualizationChanges,
     commitAllPendingChanges,
@@ -101,68 +107,40 @@ export const ReportPage = ({
     return hasUnsavedChanges();
   });
 
-  // Set up editor change tracking
+  // Update current content when report content changes
   useEffect(() => {
-    if (!editorInstance) {
-      return;
-    }
-
-    // Mark that content has been initialized once we have an editor
-    if (!hasInitializedContent) {
-      setHasInitializedContent(true);
-    }
-
-    // Track when content is modified
-    const handleUpdate = () => {
-      setIsContentModified(true);
-    };
-
-    editorInstance.on("update", handleUpdate);
-
-    return () => {
-      editorInstance.off("update", handleUpdate);
-    };
-  }, [editorInstance, hasInitializedContent, reportContent]);
+    setCurrentContent(reportContent || "");
+  }, [reportContent]);
 
   // Reset state when creating a new report
   useEffect(() => {
     if (reportId === "new" && previousReportId !== "new") {
       setReportTitle("");
       setReportContent("");
-      setHasInitializedContent(false);
-      setIsContentModified(false);
+      setCurrentContent("");
       // Clear the Redux state to ensure no card embeds from previous report
       dispatch(resetReports());
     }
   }, [reportId, setReportTitle, setReportContent, previousReportId, dispatch]);
 
   const hasUnsavedChanges = useCallback(() => {
-    // Don't check for changes until we have an editor
-    if (!editorInstance || !hasInitializedContent) {
-      return false;
-    }
-
     const currentTitle = reportTitle.trim();
-
-    // For new reports, show Save if there's title or content has been modified
-    if (reportId === "new") {
-      return currentTitle.length > 0 || isContentModified;
-    }
-
-    // For existing reports, check if title changed
     const originalTitle = report?.name || "";
     const titleChanged = currentTitle !== originalTitle;
 
-    // Return true if either title changed or content was modified
-    return titleChanged || isContentModified;
-  }, [
-    reportTitle,
-    reportId,
-    report,
-    editorInstance,
-    hasInitializedContent,
-    isContentModified,
-  ]);
+    // For new reports, show Save if there's title or content exists
+    if (reportId === "new") {
+      const emptyDocAst = JSON.stringify({ type: "doc", content: [] });
+      const hasContent =
+        currentContent !== emptyDocAst && currentContent !== "";
+      return currentTitle.length > 0 || hasContent;
+    }
+
+    // For existing reports, compare current content with report content
+    const contentChanged = currentContent !== (reportContent ?? "");
+
+    return titleChanged || contentChanged;
+  }, [reportTitle, reportId, report, currentContent, reportContent]);
 
   const showSaveButton = hasUnsavedChanges() && canWrite;
 
@@ -176,10 +154,10 @@ export const ReportPage = ({
         // Commit all pending visualization changes before saving
         await commitAllPendingChanges(editorInstance);
 
-        const markdown = editorInstance.storage.markdown.getMarkdown() ?? "";
+        // Use the current content (already in JSON AST format)
         const newReportData = {
           name: reportTitle,
-          document: markdown as string,
+          document: currentContent,
         };
 
         const result = await (reportId !== "new" && report?.id
@@ -211,8 +189,7 @@ export const ReportPage = ({
               ? t`Report v${result?.version} saved`
               : t`Report created`,
           });
-          // Reset modification flag after successful save
-          setIsContentModified(false);
+          // Content will be updated automatically when the new report data loads
         }
       } catch (error) {
         console.error("Failed to save report:", error);
@@ -225,6 +202,7 @@ export const ReportPage = ({
       updateReport,
       report,
       reportTitle,
+      currentContent,
       sendToast,
       dispatch,
       commitAllPendingChanges,
@@ -360,11 +338,11 @@ export const ReportPage = ({
               <Loader />
             ) : (
               <Editor
-                key={`${reportId}-${selectedVersion || "latest"}`}
                 onEditorReady={setEditorInstance}
                 onCardEmbedsChange={updateCardEmbeds}
                 onQuestionSelect={handleQuestionSelect}
-                content={reportContent}
+                content={reportContent || ""}
+                onChange={setCurrentContent}
                 editable={canWrite}
               />
             )}
