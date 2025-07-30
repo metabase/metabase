@@ -11,7 +11,6 @@ import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { ClickObject } from "metabase-lib";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
 import type { SankeyChartModel } from "../graph/sankey/model/types";
@@ -130,28 +129,29 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
       .join("\n");
   }, [hexColors]);
 
-  const style = useMemo(
+  return useMemo(
     () =>
       cssString !== null ? (
         <style nonce={window.MetabaseNonce}>{cssString}</style>
       ) : null,
     [cssString],
   );
-
-  return style;
 };
 
 export const useClickedStateTooltipSync = (
   chart?: EChartsType,
-  clicked?: ClickObject | null,
+  clicked?: unknown | null,
 ) => {
-  useEffect(
-    function toggleTooltip() {
-      const isTooltipEnabled = clicked == null;
-      chart?.setOption({ tooltip: { show: isTooltipEnabled } }, false);
-    },
-    [chart, clicked],
-  );
+  useEffect(() => {
+    if (!chart) {
+      return;
+    }
+
+    if (clicked) {
+      chart.dispatchAction({ type: "hideTip" });
+      chart.dispatchAction({ type: "updateAxisPointer", currTrigger: "leave" });
+    }
+  }, [chart, clicked]);
 };
 
 export const useCartesianChartSeriesColorsClasses = (
