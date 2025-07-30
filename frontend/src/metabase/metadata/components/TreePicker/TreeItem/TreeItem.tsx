@@ -12,7 +12,7 @@ const INDENT_OFFSET = 18;
 type TreeItemProps = HTMLAttributes<HTMLDivElement> & {
   label?: string;
   icon: IconName;
-  href: string;
+  to: string;
   level?: number;
   isActive?: boolean;
   isSelected?: boolean;
@@ -27,7 +27,7 @@ export function TreeItem({
   className,
   label,
   icon,
-  href,
+  to,
   level = 0,
   isActive,
   isSelected,
@@ -57,7 +57,7 @@ export function TreeItem({
         ...style,
         marginLeft: level * INDENT_OFFSET,
       }}
-      to={href}
+      to={to}
       align="center"
       justify="space-between"
       gap="sm"

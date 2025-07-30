@@ -11,6 +11,7 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { TreeItem } from "metabase/metadata/components/TreePicker/TreeItem";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Box, Flex, Stack, rem } from "metabase/ui";
@@ -19,7 +20,6 @@ import S from "./DataModel.module.css";
 import {
   FieldSection,
   FieldValuesModal,
-  NavigationLink,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
@@ -118,11 +118,11 @@ export const DataModel = ({ children, location, params }: Props) => {
             transformId={undefined}
             isActive={isTransforms}
           />
-          <NavigationLink
+          <TreeItem
             label={t`Segments`}
             icon="pie"
-            active={isSegments}
             to="/admin/datamodel/segments"
+            isActive={isSegments}
           />
         </Box>
       </Stack>

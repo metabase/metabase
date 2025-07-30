@@ -1,6 +1,5 @@
 export * from "./FieldSection";
 export * from "./FieldValuesModal";
-export * from "./NavigationLink";
 export * from "./NoDatabasesEmptyState";
 export * from "./PreviewSection";
 export * from "./ResponsiveButton";

@@ -64,16 +64,20 @@ function TransformToggle({ isExpanded, onToggle }: TransformToggleProps) {
     <TreeItem
       label={t`Transforms`}
       icon="refresh_downstream"
-      href=""
+      to=""
       isExpanded={isExpanded}
       isExpandable
       onClick={onToggle}
     >
-      <ActionIcon component={Link} to={getTransformSettingsUrl()}>
+      <ActionIcon
+        component={Link}
+        variant="transparent"
+        to={getTransformSettingsUrl()}
+      >
         <Icon name="gear" c="text-primary" />
       </ActionIcon>
       <NewTransformMenu>
-        <ActionIcon>
+        <ActionIcon variant="transparent">
           <Icon name="add" c="text-primary" />
         </ActionIcon>
       </NewTransformMenu>
@@ -90,7 +94,7 @@ function TransformItem({ transform }: TransformItemProps) {
     <TreeItem
       label={transform.name}
       icon="refresh_downstream"
-      href={getTransformUrl(transform.id)}
+      to={getTransformUrl(transform.id)}
       level={1}
     />
   );

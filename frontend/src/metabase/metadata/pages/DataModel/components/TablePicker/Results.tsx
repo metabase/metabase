@@ -190,7 +190,7 @@ export function Results({
               className={S.item}
               label={label}
               icon={TYPE_ICONS[type]}
-              href={getUrl({
+              to={getUrl({
                 databaseId: value?.databaseId,
                 schemaName:
                   type === "schema" || type === "table"
