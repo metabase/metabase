@@ -1,5 +1,7 @@
 import { P, match } from "ts-pattern";
 
+import type { EngineKey } from "metabase-types/api/settings";
+
 import type { RegexFields } from "./parseConnectionRegex";
 
 function mapBigQueryValues(parsedValues: RegexFields) {
@@ -203,6 +205,7 @@ function mapSqliteValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.db", parsedValues.path],
   ]);
+
   return fieldsMap;
 }
 
@@ -284,7 +287,7 @@ function mapVerticaValues(parsedValues: RegexFields) {
 
 export function mapDatabaseValues(
   parsedValues: RegexFields,
-  engineKey: string | undefined,
+  engineKey: EngineKey | undefined,
 ) {
   return match([parsedValues.protocol, engineKey])
     .with([P.union("awsathena", "athena"), "athena"], () =>

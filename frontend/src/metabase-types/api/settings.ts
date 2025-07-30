@@ -31,6 +31,29 @@ export interface CurrencyFormattingSettings {
   currency_in_header?: boolean;
 }
 
+export const engineKeys = [
+  "athena",
+  "bigquery-cloud-sdk",
+  "clickhouse",
+  "databricks",
+  "druid",
+  "druid-jdbc",
+  "databricks",
+  "mysql",
+  "oracle",
+  "postgres",
+  "presto-jdbc",
+  "redshift",
+  "snowflake",
+  "sparksql",
+  "sqlite",
+  "sqlserver",
+  "starburst",
+  "vertica",
+] as const;
+
+export type EngineKey = (typeof engineKeys)[number];
+
 export interface Engine {
   "driver-name": string;
   "details-fields"?: EngineField[];

@@ -288,5 +288,5 @@ export type SimpleEvent =
   | DashboardFilterCreatedEvent
   | DashboardFilterMovedEvent
   | EmbedWizardEvent
-  | ConnectionStringParsedSuccess
-  | ConnectionStringParsedFailed;
+  | ConnectionStringParsedSuccessEvent
+  | ConnectionStringParsedFailedEvent;
