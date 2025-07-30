@@ -50,10 +50,7 @@ With [Connection impersonation](./impersonation.md), you can manage permissions 
 [collections]: ../exploration-and-organization/collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
-[data-sandboxing]: ./row-and-column-security.md
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
-[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
-[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [snippet-folders]: ../questions/native-editor/snippets.md
 [troubleshooting-permissions]: ../troubleshooting-guide/permissions.md

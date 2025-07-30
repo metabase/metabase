@@ -52,7 +52,7 @@ For any group that has their **View data** access set to `No self-service (depre
 
 - [Can view](./data.md#can-view-data-permission)
 - [Impersonated](./data.md#impersonated-view-data-permission)
-- [Sandboxed](./data.md#sandboxed-view-data-permission)
+- [Sandboxed](./data.md#row-and-column-security)
 - [Blocked](./data.md#blocked-view-data-permission)
 
 If you take no action, Metabase will change any groups with View data access set to `No self-service (deprecated)` to `Blocked` in a future release. We're defaulting to "Blocked", the least permissive View data access, to prevent any unintended access to data. But this change to Blocked could cause people to lose access to data they previously had access to.

@@ -58,7 +58,7 @@ If you're on a [pro](https://www.metabase.com/product/pro) or [Enterprise](https
 
 User attributes can't be synced with regular Google Sign-In. To synchronize user attributes, you'll need to set up [Google SAML][google-saml-docs] or [JWT][jwt-docs] instead.
 
-[data-sandboxing-docs]: ../permissions/row-and-column-security.md
+[row-and-column-security]: ../permissions/row-and-column-security.md
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md

@@ -169,11 +169,11 @@ To reduce the number of tables and fields Metabase needs to scan in order to sta
 
 Here's the kind of data that scans get and why:
 
-| What                                           | Why                                      |
-| ---------------------------------------------- | ---------------------------------------- |
-| Distinct values for category fields            | Dropdown filter UI instead of text entry |
-| Cached values for active fields                | Improves filter UI experience            |
-| Advanced field values (with filtering context) | Values when the data is sandboxed        |
+| What                                           | Why                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------- |
+| Distinct values for category fields            | Dropdown filter UI instead of text entry                      |
+| Cached values for active fields                | Improves filter UI experience                                 |
+| Advanced field values (with filtering context) | Values when the data is restricted by row and column security |
 
 ## Periodically refingerprint tables
 

@@ -86,7 +86,7 @@ MongoDB lets you "successfully connect" to any collection name, even if the coll
 ## Related topics
 
 - [Table visibility](../data-modeling/metadata-editing.md#table-visibility).
-- [My row and column security aren't working](./sandboxing.md).
+- [My row and column security aren't working](./row-and-column-security.md)
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
 - [My visualizations are wrong](./visualization.md).
 

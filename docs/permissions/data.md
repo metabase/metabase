@@ -54,7 +54,7 @@ Permission levels include:
 
 - [Can view](#can-view-data-permission)
 - [Granular](#granular-view-data-permission)
-- [Sandboxed](#sandboxed-view-data-permission)
+- [Row and column security](#row-and-column-security)
 - [Impersonated](#impersonated-view-data-permission)
 - [Blocked](#blocked-view-data-permission)
 
@@ -90,11 +90,11 @@ This option lets you set View data permissions for individual schemas or tables.
 
 For tables, you have the option to set either **Can view** or **Sandboxed**.
 
-### Sandboxed view data permission
+### Row and column security
 
-{% include plans-blockquote.html feature="Sandboxed view data permission" %}
+{% include plans-blockquote.html feature="Row and column security" %}
 
-Allows you to set row-level permissions based on user attributes. Can only be configured at the table level.
+Allows you to set row-level permissions based on user attributes, as well as custom views. Can only be configured at the table level.
 
 See [Row and column security](./row-and-column-security.md).
 
@@ -187,14 +187,9 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 - [Impersonation](./impersonation.md)
 - [Learn permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
-- [Row and column security: setting row-level permissions][sandbox-rows]
-- [Advanced row and column security: limiting access to columns][sandbox-columns]
 - [Users, roles, and privileges](../databases/users-roles-privileges.md)
 
 [collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-sandboxing]: ./row-and-column-security.md
 [permissions-overview]: ./introduction.md
-[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions.html
-[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions.html
 [sql-snippet-folders]: ../questions/native-editor/snippets.md

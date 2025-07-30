@@ -1,5 +1,7 @@
 ---
 title: Troubleshooting row and column security access
+redirect_from:
+- /docs/latest/troubleshooting-guide/sandboxing
 ---
 
 # Troubleshooting row and column security access

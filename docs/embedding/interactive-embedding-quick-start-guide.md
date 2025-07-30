@@ -211,7 +211,7 @@ If you're using our sample app, edit the `signUserToken` function used to create
 {% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-attribute-sign-user-token-helper" %}
 ```
 
-That user ID will correspond to the `Account ID` column in the Sample Database's Invoices table. We'll use this `account_id` user attribute to sandbox the Invoices table, so people will only see rows in that table that contain their account ID.
+That user ID will correspond to the `Account ID` column in the Sample Database's Invoices table. We'll use this `account_id` user attribute for row and column security on the Invoices table, so people will only see rows in that table that contain their account ID.
 
 Note that to persist the user attribute in Metabase, you'll need to log in. Log in to your app as a non-admin, and visit the page with your embedded Metabase.
 
@@ -227,17 +227,17 @@ Next, Metabase will prompt you with a modal to associate a column in that table 
 
 Leave the **Filter by a column in a table** option checked, and associate the "Account ID" column in the Invoices table with the user attribute `account_id`. (Note that Metabase will only display the user attributes if the user has signed in through SSO before.)
 
-![Mapping a column in the sandboxed table to a user attribute.](./images/map-user-attribute.png)
+![Mapping a column to a user attribute.](./images/map-user-attribute.png)
 
 Click **Save** to confirm your select. Then click the **Save changes** button in the upper right.
 
 Metabase will ask if you're sure you want to do this. You are sure.
 
-### CHECKPOINT: view sandboxed dashboard
+### CHECKPOINT: view secured dashboard
 
 Make sure you've logged out of your previous session.
 
-Log in to your app, navigate to `/analytics`. The dashboard will now present different information, since only a subset of the data is visible to this person. Click on **Browse Data** at the bottom of the left nav. View your sandboxed **Invoices** table, and you should only see rows in that table that are associated with the person's account.
+Log in to your app, navigate to `/analytics`. The dashboard will now present different information, since only a subset of the data is visible to this person. Click on **Browse Data** at the bottom of the left nav. View your secured **Invoices** table, and you should only see rows in that table that are associated with the person's account.
 
 ## Hiding Metabase elements
 

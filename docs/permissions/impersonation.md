@@ -14,15 +14,15 @@ This page covers the [View data](./data.md#view-data-permissions) permission lev
 
 **Impersonation access** allows admins to "outsource" View data permissions to roles in your database. Admins can associate user attributes with database-defined roles and their privileges. If someone is in a group with their View data permission set to Impersonation, the person will be able to view and query data based on the privileges granted to the role specified by their user attribute.
 
-## Impersonation vs sandboxing
+## Impersonation vs row and column security
 
 ### Impersonation sets permissions for questions written in both the SQL editor and the query builder
 
 Impersonation operates at the database level. In a database engine, setting the role before the query runs can alter the results of the query, as the role defines the permissions that your database should use when it executes the statements.
 
-### Sandboxing only sets permissions for query builder questions
+### Row and column security only sets permissions for query builder questions
 
-Sandboxing operates at the Metabase level. Since Metabase can't parse SQL queries to find out what data people are allowed to view, sandboxing only applies to questions composed in the query builder (where Metabase can interpret the queries).
+Sandboxing operates at the Metabase level. Since Metabase can't parse SQL queries to find out what data people are allowed to view, row and column security only applies to questions composed in the query builder (where Metabase can interpret the queries).
 
 ## Example use case for impersonation
 

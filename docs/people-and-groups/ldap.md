@@ -88,7 +88,7 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 
 {% include plans-blockquote.html feature="LDAP advanced features" %}
 
-You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [row and column security][data-sandboxing-docs], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
+You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [row and column security][row-and-column-security], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
 
 ## Troubleshooting login issues
 
@@ -100,7 +100,7 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
 - [Permissions overview](../permissions/start.md).
 
-[data-sandboxing-docs]: ../permissions/row-and-column-security.md
+[row-and-column-security]: ../permissions/row-and-column-security.md
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md

@@ -167,7 +167,7 @@ For code samples, see the [static embedding reference app](https://github.com/me
 Interactive embedding integrates with SSO ([JWT](/docs/latest/people-and-groups/authenticating-with-jwt) or [SAML](/docs/latest/people-and-groups/authenticating-with-saml)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 
 - [Tables](../permissions/data.md)
-- [Rows](../permissions/row-and-column-security.md#basic-row-and-column-security-filter-by-a-column-in-the-table)
+- [Rows](../permissions/row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table)
 - [Columns](../permissions/row-and-column-security.md#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table)
 - [Other data permissions](../permissions/data.md), such as data download permissions or SQL access.
 
@@ -219,9 +219,9 @@ To set up these multi-tenant permissions, we'll need to:
 4. Synchronize group membership between Metabase and our IdP so that:
    - People with `role=tenant` are assigned to the Tenant group.
    - People with `role=customer` are assigned to the Customers group.
-5. Set up a sandboxed view of the Accounts table for each group:
-   - For the Customers group, the Accounts table will be sandboxed (filtered) to `Account ID = primary_id`.
-   - For the Tenants group,, the Accounts table will be sandboxed to `Tenant ID = primary_id`.
+5. Set up row and column security on the Accounts table for each group:
+   - For the Customers group, the Accounts table will be restricted with `Account ID = primary_id`.
+   - For the Tenants group,, the Accounts table will be restricted with `Tenant ID = primary_id`.
 
 When Tenant A logs in with SSO for the first time:
 
@@ -229,7 +229,7 @@ When Tenant A logs in with SSO for the first time:
 - Our IdP will send the `role=tenant` and `primary_id=999` attributes to Metabase.
 - Metabase will automatically assign Tenant A to the Tenant group.
 - Tenant A will get the Tenant group's permissions (including row and column security).
-- Tenant A will see a sandboxed view of the Accounts table everywhere in Metabase:
+- Tenant A will see a restricted view of the Accounts table everywhere in Metabase:
 
 | Tenant ID | Account ID | Plan  | Status   |
 | --------- | ---------- | ----- | -------- |

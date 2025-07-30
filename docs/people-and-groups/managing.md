@@ -50,7 +50,7 @@ To add a user attribute manually:
 4. Click **+ Add an attribute**.
 5. Add the name of the user attribute under "Key". For example, "Department".
 6. Add the value that applies to the specific person. For example, "Engineering".
-7. Optional: if a group for sandboxed people doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permissions, such as "Sandboxed people".
+7. Optional: [create a group](#creating-a-group) to organize people who will get get row and column security.
 8. Add the person to the group.
 
 You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).

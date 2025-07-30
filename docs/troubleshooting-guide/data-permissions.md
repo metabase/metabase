@@ -13,7 +13,7 @@ If a person has the wrong level of access to the data that's returned by a quest
 ### Native query (SQL) permissions
 
 - [A user group can't access the SQL editor][sql-access].
-- [A user group with SQL permissions isn't being restricted by their row and column security][sql-sandboxing].
+- [A user group with SQL permissions isn't being restricted by their row and column security](../permissions/row-and-column-security.md).
 
 ### Table or schema permissions
 
@@ -122,9 +122,5 @@ If you can’t solve your problem using the troubleshooting guides:
 [pricing]: https://www.metabase.com/pricing
 [proxies]: ./proxies.md
 [sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
-[sql-sandboxing]: ./sandboxing.md#is-the-question-written-in-sql
-[troubleshooting-row-and-column-security]: ./sandboxing.md
-[troubleshooting-permissions]: ./permissions.md
 [unrestricted]: ../permissions/data.md#can-view-data-permission
 [view-edit]: ./cant-view-or-edit.md
-[troubleshooting-row-and-column-security]: ./sandboxing.md
