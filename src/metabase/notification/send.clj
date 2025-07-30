@@ -115,11 +115,11 @@
 
 (defmulti do-after-notification-sent
   "Performs post-notification actions based on the notification type."
-  {:arglists '([notification-info notification-payload])}
-  (fn [notification-info _notification-payload]
+  {:arglists '([notification-info notification-payload skip-reason])}
+  (fn [notification-info _notification-payload _skip-reason]
     (:payload_type notification-info)))
 
-(defmethod do-after-notification-sent :default [_notification-info _notification-payload] nil)
+(defmethod do-after-notification-sent :default [_notification-info _notification-payload _skip-reason] nil)
 
 (def ^:private payload-labels         (for [payload-type (keys (methods notification.payload/payload))]
                                         {:payload-type payload-type}))
@@ -153,8 +153,9 @@
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-            (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))]
-              (if-let [reason (notification.payload/skip-reason notification-payload)]
+            (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))
+                  reason               (notification.payload/skip-reason notification-payload)]
+              (if reason
                 (log/info "Skipping" {:reason reason})
                 (do
                   (log/debugf "Found %d handlers" (count handlers))
@@ -175,9 +176,9 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
-                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))))
-              (do-after-notification-sent hydrated-notification notification-payload)
-              (log/info "Sent successfully")
+                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))
+                  (log/info "Sent successfully")))
+              (do-after-notification-sent hydrated-notification notification-payload reason)
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
           (log/error e "Failed to send")
