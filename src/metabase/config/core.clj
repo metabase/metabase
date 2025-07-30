@@ -20,10 +20,10 @@
     (catch Throwable _
       false)))
 
-(def ^{:doc "Indicates whether Dev code is available" :added "0.56.0"} dev-available?
+(def ^{:doc "Indicates whether Dev extensions are available" :added "0.56.0"} dev-available?
   (try
     #_{:clj-kondo/ignore [:metabase/modules]}
-    (require 'dev)
+    (require 'dev.dummy-namespace)
     true
     (catch Throwable _
       false)))
