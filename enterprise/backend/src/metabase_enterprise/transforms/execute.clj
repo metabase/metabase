@@ -49,19 +49,28 @@
                                   {:form-params data
                                    :content-type :json})
         {:keys [run-id]} (json/decode+kw body)
-        ;; timeout after 1 hour
-        timeout-limit (+ (System/currentTimeMillis) (* 60 60 1000))
+        ;; timeout after 4 hours
+        timeout-limit (+ (System/currentTimeMillis) (* 4 60 60 1000))
         wait 2000]
     (loop []
-      (Thread/sleep wait)
+      (Thread/sleep (long (* wait (inc (- (/ (rand) 5) 0.1)))))
       (log/trace "polling for remote transform" (pr-str (:work-id data)) "after wait" wait)
       (let [{poll-body :body} (http/get (worker-route (str "/transform/" run-id)))]
         (case poll-body
-          "running" (if (> (System/currentTimeMillis) timeout-limit)
-                      (throw (ex-info "Remote execution of transform timed out"
-                                      {:transform data}))
-                      (recur))
-          ("success" "error") nil
+          "running"
+          (if (> (System/currentTimeMillis) timeout-limit)
+            (throw (ex-info "Remote execution of transform timed out"
+                            {:transform data}))
+            (recur))
+
+          "success"
+          (do (log/info "remote transform execution" (pr-str (:work-id data)) "succeeded")
+              nil)
+
+          "error"
+          (throw (ex-info (str "Remote execution of" (pr-str (:work-id data)) " failed.")
+                          {:transform data}))
+
           (throw (ex-info (str "Unrecognized status response from remote worker: " poll-body)
                           {:transform data})))))))
 
