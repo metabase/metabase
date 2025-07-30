@@ -84,7 +84,7 @@
               ;; `id-or-name` is an ID
               (or (m/find-first #(= (:id %) id-or-name) cols)
                   (do
-                    (log/debug (u/format-color :red "Failed to find column in metadata with ID %s" (pr-str id-or-name)))
+                    (log/debugf "Failed to find column in metadata with ID %s" (pr-str id-or-name))
                     (when-some [field (lib.metadata/field metadata-providerable id-or-name)]
                       (log/debugf "Looking for match in metadata with name %s" (pr-str (:name field)))
                       (when-some [col (resolve* (:name field))]
@@ -97,10 +97,9 @@
       (if <>
         (log/debugf "Found match\n%s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
-        (log/debug (u/format-color :red
-                                   "Failed to find match. Found:\n%s"
-                                   (u/pprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
-                                                         cols))))))))
+        (log/debugf "Failed to find match. Found:\n%s"
+                    (u/pprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
+                                          cols)))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -347,7 +346,7 @@
 (defn- resolve-ref-missing-join-alias
   "Try finding a match in joins (field ref is missing `:join-alias`)."
   [query stage-number id-or-name]
-  (log/info (u/format-color :red "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number)))
+  (log/infof "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
   (or (when (string? id-or-name)
         (let [parts (str/split id-or-name #"__")]
           (when (>= (count parts) 2)
@@ -360,7 +359,7 @@
               (resolve-in-join query stage-number (:alias join) id-or-name))
             (:joins (lib.util/query-stage query stage-number)))
       (do
-        (log/debug (u/format-color :red "Failed to find a match in one of the query's joins in stage %s" (pr-str stage-number)))
+        (log/debugf "Failed to find a match in one of the query's joins in stage %s" (pr-str stage-number))
         nil)))
 
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/column-metadata-with-source
