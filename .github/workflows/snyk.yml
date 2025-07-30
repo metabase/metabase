@@ -78,7 +78,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
-        run: snyk test --file=${{ matrix.project.file }} --package-manager=${{ matrix.project.package-manager }} --sarif-file-output=snyk-${{ matrix.project.category }}.sarif
+        run: snyk test --org="metabase-AnD9iS4Wfu4eBYMsG2DZ5N" --remote-repo-url="https://github.com/metabase/metabase" --file=${{ matrix.project.file }} --package-manager=${{ matrix.project.package-manager }} --sarif-file-output=snyk-${{ matrix.project.category }}.sarif
       - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -159,7 +159,8 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
-        run: snyk test --file=${{ matrix.project.file }} --package-manager=maven --sarif-file-output=snyk-${{ matrix.project.category }}.sarif
+        run: snyk test --org="metabase-AnD9iS4Wfu4eBYMsG2DZ5N" --remote-repo-url="https://github.com/metabase/metabase" --file=${{ matrix.project.file }} --package-manager=maven --sarif-file-output=snyk-${{ matrix.project.category }}.sarif
+
       - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
