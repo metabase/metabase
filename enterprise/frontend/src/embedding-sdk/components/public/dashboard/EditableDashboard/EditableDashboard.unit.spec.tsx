@@ -120,11 +120,18 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     // Default `entityTypes` should be `["model", "table"]`
+    // The EmbeddingDataPicker now makes 2 calls: one for model count, one for data sources
     const dataPickerDataCalls = fetchMock.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(1);
-    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
-    expect(dataPickerDataCallUrl).toContain("models=dataset");
-    expect(dataPickerDataCallUrl).toContain("models=table");
+    expect(dataPickerDataCalls).toHaveLength(2);
+
+    // Find the call that fetches both models and tables (data sources call)
+    const dataSourceCall = dataPickerDataCalls.find(
+      ([url]) => url.includes("models=dataset") && url.includes("models=table"),
+    );
+    expect(dataSourceCall).toBeDefined();
+    const [dataSourceCallUrl] = dataSourceCall;
+    expect(dataSourceCallUrl).toContain("models=dataset");
+    expect(dataSourceCallUrl).toContain("models=table");
   });
 
   it("should allow to go back to the dashboard after seeing the query builder", async () => {
@@ -186,10 +193,17 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     const dataPickerDataCalls = fetchMock.calls("path:/api/search");
-    expect(dataPickerDataCalls).toHaveLength(1);
-    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
-    expect(dataPickerDataCallUrl).toContain("models=dataset");
-    expect(dataPickerDataCallUrl).not.toContain("models=table");
+    expect(dataPickerDataCalls).toHaveLength(2);
+
+    // Find the call that fetches only models (should be the filtered data sources call)
+    const modelOnlyCall = dataPickerDataCalls.find(
+      ([url]) =>
+        url.includes("models=dataset") && !url.includes("models=table"),
+    );
+    expect(modelOnlyCall).toBeDefined();
+    const [modelOnlyCallUrl] = modelOnlyCall;
+    expect(modelOnlyCallUrl).toContain("models=dataset");
+    expect(modelOnlyCallUrl).not.toContain("models=table");
   });
 });
 

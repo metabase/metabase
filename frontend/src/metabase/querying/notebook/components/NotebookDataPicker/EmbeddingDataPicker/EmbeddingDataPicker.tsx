@@ -38,10 +38,7 @@ export function EmbeddingDataPicker({
   onChange,
 }: EmbeddingDataPickerProps) {
   const { data: dataSourceCountData, isLoading: isDataSourceCountLoading } =
-    useSearchQuery({
-      models: ["dataset", "table"],
-      limit: 0,
-    });
+    useSearchQuery({ models: ["dataset", "table"], limit: 0 });
 
   const { data: modelCountData, isLoading: isModelCountLoading } =
     useSearchQuery({ models: ["dataset"], limit: 0 });
@@ -72,15 +69,19 @@ export function EmbeddingDataPicker({
     isFetching: isSourceModelFetching,
   } = useSourceEntityCollectionId(query);
 
-  const defaultEmbeddingEntityTypes = useMemo(() => {
+  const effectiveEntityTypes = useMemo(() => {
     const modelCount = modelCountData?.total ?? 0;
 
-    // Hide tables by default when there are a certain number of models,
-    // as tables add noise to the data picker.
-    return modelCount > HIDE_TABLES_IF_MORE_THAN_N_MODELS
-      ? DEFAULT_EMBEDDING_ENTITY_TYPES.filter((type) => type !== "table")
-      : DEFAULT_EMBEDDING_ENTITY_TYPES;
-  }, [modelCountData]);
+    // Auto-hide tables when there are more than a certain number of models
+    if (entityTypes.length === 0) {
+      return modelCount > HIDE_TABLES_IF_MORE_THAN_N_MODELS
+        ? DEFAULT_EMBEDDING_ENTITY_TYPES.filter((type) => type !== "table")
+        : DEFAULT_EMBEDDING_ENTITY_TYPES;
+    }
+
+    // EntityTypes were explicitly set, use them as-is
+    return entityTypes;
+  }, [modelCountData, entityTypes]);
 
   if (isDataSourceCountLoading || isModelCountLoading) {
     return null;
@@ -92,13 +93,13 @@ export function EmbeddingDataPicker({
     dataSourceCountData.total < USE_SIMPLE_DATA_PICKER_IF_LESS_THAN_N_ITEMS;
 
   if (shouldUseSimpleDataPicker) {
-    const filteredEntityTypes = entityTypes.filter((entityType) =>
+    const filteredEntityTypes = effectiveEntityTypes.filter((entityType) =>
       ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
     );
     const simpleDataPickerEntityTypes =
       filteredEntityTypes.length > 0
         ? filteredEntityTypes
-        : defaultEmbeddingEntityTypes;
+        : effectiveEntityTypes;
     return (
       <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
@@ -139,9 +140,9 @@ export function EmbeddingDataPicker({
       selectedCollectionId={
         normalizedCard?.collection_id ?? sourceModelCollectionId
       }
-      canSelectModel={entityTypes.includes("model")}
-      canSelectTable={entityTypes.includes("table")}
-      canSelectQuestion={entityTypes.includes("question")}
+      canSelectModel={effectiveEntityTypes.includes("model")}
+      canSelectTable={effectiveEntityTypes.includes("table")}
+      canSelectQuestion={effectiveEntityTypes.includes("question")}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}

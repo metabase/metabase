@@ -44,6 +44,30 @@ describe("EmbeddingDataPicker", () => {
       expect(screen.getByText("Reviews")).toBeInTheDocument();
     });
 
+    it("should show tables by default when there is one model", async () => {
+      setup({ modelCount: 1 });
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should show tables by default when there are two models", async () => {
+      setup({ modelCount: 2 });
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should hide tables by default when there are more than two models", async () => {
+      setup({ modelCount: 3 });
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
     describe("entity_types", () => {
       it('should show only models when `entity_types=["models"]`', async () => {
         setup({
@@ -78,6 +102,18 @@ describe("EmbeddingDataPicker", () => {
 
       it('should show both models and tables when `entity_types=["models", "table"]`', async () => {
         setup({
+          entityTypes: ["model", "table"],
+        });
+
+        expect(await screen.findByText("Models")).toBeInTheDocument();
+        expect(screen.getByText("Raw Data")).toBeInTheDocument();
+
+        expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      });
+
+      it('should override default hide tables behavior when `entity_types=["model", "table"]` is explicitly set with more than 2 models', async () => {
+        setup({
+          modelCount: 3,
           entityTypes: ["model", "table"],
         });
 

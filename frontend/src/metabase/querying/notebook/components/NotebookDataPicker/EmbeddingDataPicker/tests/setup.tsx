@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import {
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
@@ -21,15 +23,18 @@ import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
 interface SetupOpts {
   hasModels?: boolean;
+  modelCount?: number;
   entityTypes?: EmbeddingEntityType[];
 }
 
 const DEFAULT_OPTS: Partial<SetupOpts> = {
   hasModels: true,
+  modelCount: 2,
 };
 
 export function setup({
   hasModels = DEFAULT_OPTS.hasModels,
+  modelCount = DEFAULT_OPTS.modelCount,
   entityTypes,
 }: SetupOpts = {}) {
   const query = createEmptyQuery();
@@ -37,9 +42,44 @@ export function setup({
   setupEmbeddingDataPickerDecisionEndpoints("staged");
 
   if (hasModels) {
-    setupSearchEndpoints(createSearchResults());
+    // Mock the specific model count query made by EmbeddingDataPicker
+    const modelResults = createMockSearchResults(modelCount ?? 2);
+    setupSearchEndpoints(modelResults);
+
+    fetchMock.get(
+      {
+        url: "path:/api/search",
+        query: { models: "dataset", limit: "0" },
+      },
+      {
+        data: modelResults,
+        total: modelResults.length,
+        models: ["dataset"],
+        available_models: ["dataset"],
+        limit: 0,
+        offset: 0,
+      },
+      { overwriteRoutes: false },
+    );
   } else {
     setupSearchEndpoints([]);
+
+    // Mock empty model count query
+    fetchMock.get(
+      {
+        url: "path:/api/search",
+        query: { models: "dataset", limit: "0" },
+      },
+      {
+        data: [],
+        total: 0,
+        models: ["dataset"],
+        available_models: [],
+        limit: 0,
+        offset: 0,
+      },
+      { overwriteRoutes: false },
+    );
   }
   setupDatabasesEndpoints([createDatabase()]);
 
@@ -53,15 +93,13 @@ export function setup({
       placeholder="Pick your starting data"
       table={undefined}
     />,
-    entityTypes
-      ? {
-          storeInitialState: createMockState({
-            embeddingDataPicker: {
-              entityTypes,
-            },
-          }),
-        }
-      : undefined,
+    {
+      storeInitialState: createMockState({
+        embeddingDataPicker: {
+          entityTypes: entityTypes || [], // Use empty array to indicate "use defaults"
+        },
+      }),
+    },
   );
 }
 
@@ -76,17 +114,10 @@ function createDatabase() {
   });
 }
 
-function createSearchResults() {
-  return [
-    createMockModelResult({
-      id: 1,
-      name: "Orders model",
-    }),
-    createMockModelResult({
-      id: 2,
-      name: "People model",
-    }),
-  ];
+function createMockSearchResults(modelCount: number = 2) {
+  return Array.from({ length: modelCount }, (_, i) =>
+    createMockModelResult({ id: i, name: `Model ${i + 1}` }),
+  );
 }
 
 function createEmptyQuery(): Query {
