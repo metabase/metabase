@@ -7,10 +7,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -55,11 +56,9 @@
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
-   {database-id :database_id} :- [:map [:database_id {:optional true} [:maybe ms/PositiveInt]]]]
+   _query-params]
   (api/check-superuser)
-
-  (t2/select :model/Transform (cond-> {}
-                                database-id (assoc :where [:= :database_id database-id]))))
+  (t2/select :model/Transform))
 
 (api.macros/defendpoint :post "/"
   [_route-params
@@ -74,10 +73,8 @@
   (check-database-feature body)
   (when (transforms.util/target-table-exists? body)
     (api/throw-403))
-  (let [transform (t2/insert-returning-instance!
-                   :model/Transform (select-keys body [:name :description :source :target :schedule]))]
-    (transforms.execute/exec-transform transform)
-    transform))
+  (t2/insert-returning-instance!
+   :model/Transform (select-keys body [:name :description :source :target :schedule])))
 
 (api.macros/defendpoint :get "/:id"
   [{:keys [id]} :- [:map
@@ -102,25 +99,20 @@
   (api/check-superuser)
   (let [old (t2/select-one :model/Transform id)
         new (merge old body)
-        target-fields #(-> % :target (select-keys [:schema :name]))
-        query-fields #(select-keys % [:source :target])]
+        target-fields #(-> % :target (select-keys [:schema :name]))]
     (check-database-feature new)
     (when (and (not= (target-fields old) (target-fields new))
                (transforms.util/target-table-exists? new))
-      (api/throw-403))
-    (when (not= (query-fields new) (query-fields old))
-      (transforms.util/delete-target-table! old)))
+      (api/throw-403)))
   (t2/update! :model/Transform id body)
-  (let [transform (t2/select-one :model/Transform id)]
-    (transforms.execute/exec-transform transform)
-    transform))
+  (t2/select-one :model/Transform id))
 
 (api.macros/defendpoint :delete "/:id"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (log/info "delete transform" id)
   (api/check-superuser)
-  (transforms.util/delete-target-table-by-id! id)
+  (transforms.util/delete-live-target-table-by-id! id)
   (t2/delete! :model/Transform id)
   nil)
 
@@ -129,7 +121,7 @@
                     [:id ms/PositiveInt]]]
   (log/info "delete transform target table" id)
   (api/check-superuser)
-  (transforms.util/delete-target-table-by-id! id)
+  (transforms.util/delete-live-target-table-by-id! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/execute"
@@ -137,8 +129,10 @@
                     [:id ms/PositiveInt]]]
   (log/info "execute transform" id)
   (api/check-superuser)
-  (transforms.execute/exec-transform (t2/select-one :model/Transform id))
-  nil)
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+    (transforms.execute/start-transform! transform)
+    (-> (response/response {:message (deferred-tru "Transform execution started")})
+        (assoc :status 202))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform` routes."

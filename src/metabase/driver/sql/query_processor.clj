@@ -2074,14 +2074,11 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [sql output-table]}]
+  [driver {:keys [query output-table]}]
   (format-honeysql driver
-                   {:create-table-as [output-table]
-                    :raw sql}
-                   #_{:select [:*]
-                      :from [[[:raw (str "(" sql ")")] (str (random-uuid))]]
-                      :into output-table}))
+                   {:create-table-as [(keyword output-table)]
+                    :raw query}))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]
-  (format-honeysql driver {:drop-table [:if-exists table]}))
+  (format-honeysql driver {:drop-table [:if-exists (keyword table)]}))
