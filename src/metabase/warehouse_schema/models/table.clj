@@ -320,6 +320,8 @@
                :database_require_filter :is_defective_duplicate :unique_table_helper]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
+               :archived_at (serdes/date)
+               :deactivated_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]

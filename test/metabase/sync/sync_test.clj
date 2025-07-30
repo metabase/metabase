@@ -123,6 +123,8 @@
     :db_id       true
     :entity_type :entity/GenericTable
     :id          true
+    :archived_at false
+    :deactivated_at false
     :updated_at  true}))
 
 (defn- field-defaults []
