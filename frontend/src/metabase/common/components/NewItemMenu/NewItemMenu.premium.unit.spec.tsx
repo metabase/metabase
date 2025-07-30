@@ -58,5 +58,6 @@ describe("NewItemMenu (EE with token)", () => {
     await setup({ tokenFeatures: { embedding_simple: true } });
 
     expect(await screen.findByText("Embed")).toBeInTheDocument();
+    expect(screen.queryAllByText("Beta")).toHaveLength(1);
   });
 });
