@@ -190,8 +190,9 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.main().realHover();
-        H.getEmbeddedDashboardCardMenu().click();
-        cy.findByLabelText("Download results").should("be.visible");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "be.visible",
+        );
       });
 
       it("#downloads=false should disable result downloads", () => {
@@ -199,7 +200,9 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.main().realHover();
-        H.getEmbeddedDashboardCardMenu().should("not.exist");
+        cy.findByRole("button", { name: "Download results" }).should(
+          "not.exist",
+        );
       });
 
       it("should be able to download the question as PNG", () => {
@@ -227,7 +230,6 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.main().realHover();
-        H.getEmbeddedDashboardCardMenu().click();
         cy.findByLabelText("Download results").should("be.visible");
 
         const uuid = publicLink.split("/").at(-1);
@@ -307,7 +309,6 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         H.main().realHover();
-        H.getEmbeddedDashboardCardMenu().click();
         cy.findByLabelText("Download results").should("be.visible");
 
         cy.location("pathname").then((pathname) => {
