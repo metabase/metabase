@@ -34,25 +34,25 @@
 
 (defn track-start!
   [work-id work-type mb-source]
-  (first (first (run-query! :postgres (config/config-str :worker-db)
+  (first (first (run-query! :postgres (config/config-str :mb-worker-db)
                             "INSERT INTO worker_runs (work_id, type, source, status) VALUES (?, ?, ?, ?) RETURNING run_id"
                             [work-id work-type mb-source "running"]))))
 
 (defn track-finish!
   [run-id]
-  (run-update! :postgres (config/config-str :worker-db)
+  (run-update! :postgres (config/config-str :mb-worker-db)
                "UPDATE worker_runs SET status = ?, end_time = now() WHERE run_id = ?"
                ["success" run-id]))
 
 (defn track-error!
   [run-id]
-  (run-update! :postgres (config/config-str :worker-db)
+  (run-update! :postgres (config/config-str :mb-worker-db)
                "UPDATE worker_runs SET status = ?, end_time = now() WHERE run_id = ?"
                ["error" run-id]))
 
 (defn get-status
   [run-id mb-source]
-  (first (run-query! :postgres (config/config-str :worker-db)
+  (first (run-query! :postgres (config/config-str :mb-worker-db)
                      "SELECT status FROM worker_runs WHERE run_id = ? AND source = ?"
                      [run-id mb-source])))
 

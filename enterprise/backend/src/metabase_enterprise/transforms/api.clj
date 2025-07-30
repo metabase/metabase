@@ -130,7 +130,7 @@
   (log/info "execute transform" id)
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (transforms.execute/exec-transform transform)
+    (transforms.execute/start-transform! transform)
     (-> (response/response {:message (deferred-tru "Transform execution started")})
         (assoc :status 202))))
 

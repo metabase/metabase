@@ -19,11 +19,11 @@
 
 (mu/defn- run-migrations-from-resource!
   "Run Liquibase migrations from a resource file in the classpath.
-  
+
   Parameters:
   - data-source: A javax.sql.DataSource for the target database
   - resource-path: Path to the Liquibase changelog file in resources (e.g. \"migrations/my-db-changelog.yaml\")
-  
+
   Example:
     (run-migrations-from-resource! my-datasource \"migrations/external-db-changelog.yaml\")"
   [data-source :- (ms/InstanceOfClass DataSource)
@@ -90,7 +90,7 @@
 (defn run!
   "Run migrations for the worker."
   []
-  (let [worker-db-connection-string (config/config-str :worker-db)]
+  (let [worker-db-connection-string (config/config-str :mb-worker-db)]
     (run-migrations-from-resource-with-connection-string! worker-db-connection-string
                                                           "migrations/workers/worker_runs.yaml")))
 

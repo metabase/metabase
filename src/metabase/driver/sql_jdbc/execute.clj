@@ -813,17 +813,6 @@
              ;; TODO - we should probably be using [[reducible-rows]] instead to convert to the correct types
              (reduce rf init (jdbc/reducible-result-set rs {})))))))))
 
-(defmethod driver/execute-raw-write-query! :sql-jdbc [driver connection-details [query & args]]
-  (do-with-connection-with-options
-   driver
-   connection-details
-   nil
-   (fn [^java.sql.Connection source-conn]
-     (with-open [stmt (statement-or-prepared-statement driver source-conn query args nil)]
-       (if (instance? PreparedStatement stmt)
-         (.executeUpdate ^PreparedStatement stmt)
-         (.executeUpdate stmt query))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Actions Stuff                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -858,30 +847,26 @@
                       (.executeUpdate ^PreparedStatement stmt)
                       (.executeUpdate stmt sql))}))
 
-(defmethod driver/execute-transform! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native} {:keys [before-queries after-queries]}]
-  {:pre [(string? sql)]}
+(defmethod driver/execute-raw-queries! :sql-jdbc
+  [driver connection-details queries]
   (try
     (do-with-connection-with-options
      driver
-     (driver-api/database (driver-api/metadata-provider))
-     {:write? true
-      :session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))}
+     connection-details
+     {:write? true}
      (fn [^Connection conn]
        (.setAutoCommit conn false)
        (try
-         (doseq [[sql params] before-queries]
-           (create-and-execute-statement! driver conn sql params))
-         (create-and-execute-statement! driver conn sql params)
-         (doseq [[sql params] after-queries]
-           (create-and-execute-statement! driver conn sql params))
-         (.commit conn)
+         (let [result (doall (for [[sql params] queries]
+                               (create-and-execute-statement! driver conn sql params)))]
+           (.commit conn)
+           result)
          (catch Throwable t
            (.rollback conn)
            (throw t)))))
     (catch Throwable e
-      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type driver-api/qp.error-type.invalid-query}
+      (throw (ex-info (tru "Error executing raw queries: {0}" (ex-message e))
+                      {:queries queries, :type driver-api/qp.error-type.invalid-query}
                       e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

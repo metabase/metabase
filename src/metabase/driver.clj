@@ -1100,10 +1100,22 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti execute-transform!
-  "Execute a transform query and, if provided in `opts`, before-queries and/or after-queries.
+(defmulti compile-transform dispatch-on-initialized-driver :hierarchy #'hierarchy)
+
+(defmulti compile-drop-table dispatch-on-initialized-driver :hierarchy #'hierarchy)
+
+(defmulti execute-raw-queries!
+  "Executes a series of 'raw' queries.  A raw query is a vector of a sql string and arguments, in the case of sql
+  drivers.
+
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.56.0", :arglists '([driver query opts])}
+  {:added "0.56.0", :arglists '([driver connection-details queries])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti connection-details
+  "Get connection details for a given driver and db object"
+  {:added "0.56.0", :arglists '([driver db])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1367,20 +1379,3 @@
   :hierarchy #'hierarchy)
 
 (defmethod table-known-to-not-exist? ::driver [_ _] false)
-
-(defmulti compile-transform dispatch-on-initialized-driver :hierarchy #'hierarchy)
-
-(defmulti compile-drop-table dispatch-on-initialized-driver :hierarchy #'hierarchy)
-
-(defmulti execute-raw-write-query!
-  "Execute an 'raw' write query (a query that doesn't return data).  A raw query is a vector of a sql string and
-  arguments, in the case of sql drivers."
-  {:arglists '([driver connection-details query])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti connection-details
-  "Get connection details for a given driver and db object"
-  {:arglists '([driver db])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)

@@ -265,15 +265,10 @@
   (check-read-only-statements query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/execute-transform! :h2
-  [driver query {:keys [before-queries after-queries] :as opts}]
-  (check-native-query-not-using-default-user query)
-  (check-action-commands-allowed query)
-  (doseq [pre-or-post-query (concat before-queries after-queries)
-          :let [sql (first pre-or-post-query)]
-          :when sql]
-    (check-action-commands-allowed (assoc-in query [:native :query] sql)))
-  ((get-method driver/execute-transform! :sql-jdbc) driver query opts))
+(defmethod driver/execute-raw-queries! :h2
+  [driver connection-details queries]
+  ;; FIXME: need to check the equivalent of check-native-query-not-using-default-user and check-action-commands-allowed
+  ((get-method driver/execute-raw-queries! :sql-jdbc) driver connection-details queries))
 
 (defn- dateadd [unit amount expr]
   (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone" "date"} expr)]
