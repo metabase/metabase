@@ -1,6 +1,8 @@
 (ns metabase.search.settings
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :as i18n]))
 
@@ -15,10 +17,19 @@
 
 (defsetting search-engine
   (i18n/deferred-tru "Which engine to use by default when performing search. Supported values are :in-place, :appdb, and :semantic")
-  :visibility :internal
-  :export?    false
+  :visibility :authenticated
+  :export?    true
   :default    :appdb
-  :type       :keyword)
+  :type       :keyword
+  :setter     (fn [new-value]
+                (let [value (or new-value
+                                (if (= :postgres (app-db/db-type)) :appdb :in-place))]
+                  (when (some? value)
+                    (assert (#{:in-place :appdb :semantic} (keyword value))
+                            (i18n/tru "Invalid search-engine, only values of in-place, appdb, and semantic are allowed."))
+                    (when (= :semantic (keyword value))
+                      (premium-features/assert-has-feature :semantic-search (i18n/tru "Semantic search"))))
+                  (setting/set-value-of-type! :keyword :search-engine value))))
 
 (defsetting experimental-search-weight-overrides
   (i18n/deferred-tru "Used to override weights used for search ranking")
