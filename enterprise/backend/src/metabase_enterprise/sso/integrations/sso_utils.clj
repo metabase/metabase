@@ -140,8 +140,8 @@
   "Removes vectors and map json attribute values that cannot be turned into strings."
   [attrs]
   (->> attrs
-       (filter (fn [[key value]]
-                 (if (or (vector? value) (map? value) (nil? value))
-                   (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
-                   value)))
+       (keep (fn [[key value]]
+               (if (or (vector? value) (map? value) (nil? value))
+                 (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                 [key value])))
        (into {})))

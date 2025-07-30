@@ -601,7 +601,7 @@
                                                       :last_name  "Toucan"
                                                       :string_attr "valid-string"
                                                       :number_attr 42
-                                                      :boolean_attr true
+                                                      :boolean_attr false
                                                       :array_attr ["item1" "item2"]
                                                       :object_attr {:nested "value"}
                                                       :null_attr nil}
@@ -611,7 +611,7 @@
           (testing "only string attributes are saved to jwt_attributes"
             (is (= {"string_attr" "valid-string"
                     "number_attr" 42
-                    "boolean_attr" true}
+                    "boolean_attr" false}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
 
           (testing "warning messages are logged for non-stringable values"
