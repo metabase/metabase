@@ -1,4 +1,6 @@
-export const enginesConfig = new Map<string, { placeholder: string }>([
+import type { EngineKey } from "metabase-types/api/settings";
+
+export const enginesConfig = new Map<EngineKey, { placeholder: string }>([
   [
     "athena",
     {

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
+import { type EngineKey, engineKeys } from "metabase-types/api/settings";
 
 import {
   connectionStringParsedFailed,
@@ -11,6 +12,13 @@ import {
 import { mapDatabaseValues } from "./database-field-mapper";
 import { enginesConfig } from "./engines-config";
 import { parseConnectionUriRegex } from "./parseConnectionRegex";
+
+/**
+ * Type guard function that checks if a string is a valid EngineKey
+ */
+export function isEngineKey(value: string | undefined): value is EngineKey {
+  return engineKeys.includes(value as EngineKey);
+}
 
 export function DatabaseConnectionStringField({
   setFieldValue,
@@ -34,7 +42,7 @@ export function DatabaseConnectionStringField({
 
   useEffect(
     function handleConnectionStringChange() {
-      if (!connectionString) {
+      if (!connectionString || !isEngineKey(engineKey)) {
         deleayedClearStatus();
         return () => clearTimeout();
       }
@@ -71,6 +79,10 @@ export function DatabaseConnectionStringField({
       setStatus,
     ],
   );
+
+  if (!isEngineKey(engineKey)) {
+    return null;
+  }
 
   if (!enginesConfig.has(engineKey ?? "")) {
     return null;
