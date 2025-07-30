@@ -1,5 +1,5 @@
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
-import CypressBackend from "./cypress-runner-backend";
+import Backends from "./cypress-runner-backend";
 import runCypress from "./cypress-runner-run-tests";
 import {
   booleanify,
@@ -23,13 +23,14 @@ const userOptions = {
   GENERATE_SNAPSHOTS: true,
   QUIET: false,
   TZ: "UTC",
+  LIVE_BACKEND: false,
   ...booleanify(process.env),
 };
 
 const derivedOptions = {
   CYPRESS_MB_ALL_FEATURES_TOKEN: userOptions.ENTERPRISE_TOKEN,
   QA_DB_ENABLED: userOptions.START_CONTAINERS,
-  BUILD_JAR: userOptions.BACKEND_PORT === 4000,
+  BUILD_JAR: !userOptions.LIVE_BACKEND && userOptions.BACKEND_PORT === 4000,
   START_BACKEND: userOptions.BACKEND_PORT === 4000,
   CYPRESS_IS_EMBEDDING_SDK: String(userOptions.TEST_SUITE === "component"),
   MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
@@ -57,6 +58,7 @@ printBold(`Running Cypress with options:
   - START_CONTAINERS   : ${options.START_CONTAINERS}
   - STOP_CONTAINERS    : ${options.STOP_CONTAINERS}
   - BUILD_JAR          : ${options.BUILD_JAR}
+  - LIVE_BACKEND       : ${options.LIVE_BACKEND}
   - GENERATE_SNAPSHOTS : ${options.GENERATE_SNAPSHOTS}
   - BACKEND_PORT       : ${options.BACKEND_PORT}
   - START_BACKEND      : ${options.START_BACKEND}
@@ -64,6 +66,9 @@ printBold(`Running Cypress with options:
   - SHOW_BACKEND_LOGS  : ${options.SHOW_BACKEND_LOGS}
   - TZ                 : ${options.TZ}
 `);
+
+const { JarBackend, LiveBackend } = Backends as any;
+const CypressBackend = options.LIVE_BACKEND ? LiveBackend : JarBackend;
 
 const init = async () => {
   if (options.START_CONTAINERS) {
@@ -88,7 +93,24 @@ const init = async () => {
         process.exit(FAILURE_EXIT_CODE);
       }
 
-      printBold("⏳ Starting backend");
+      printBold("⏳ Starting backend (jar mode)");
+      await CypressBackend.start();
+    }
+  } else if (options.LIVE_BACKEND) {
+    if (options.START_BACKEND) {
+      const isBackendRunning = shell(
+        `lsof -ti:${options.BACKEND_PORT} || echo ""`,
+        { quiet: true },
+      );
+      if (isBackendRunning) {
+        printBold(
+          "⚠️ Your backend is already running, you may want to kill pid " +
+            isBackendRunning,
+        );
+        process.exit(FAILURE_EXIT_CODE);
+      }
+
+      printBold("⏳ Starting backend (live mode)");
       await CypressBackend.start();
     }
   } else {
@@ -138,8 +160,8 @@ const init = async () => {
 };
 
 const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
-  if (options.BUILD_JAR) {
-    printBold("⏳ Cleaning up...");
+  if (options.START_BACKEND) {
+    printBold("⏳ Cleaning up backend...");
     await CypressBackend.stop();
   }
 
