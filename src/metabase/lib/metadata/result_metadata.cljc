@@ -269,17 +269,33 @@
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
 
+;; For unambiguous columns we should use broken legacy refs to maintain backward compatibility with legacy viz
+;; settings, which use them as keys. Since ambiguous refs have never worked correctly it is ok to return
+;; 'modern' refs instead.
+(defn- deduplicate-field-refs [cols]
+  (let [duplicate-refs (->> (frequencies (map :field-ref cols))
+                            (m/filter-vals #(> % 1))
+                            keys
+                            set)]
+    (cond->> cols
+      (seq duplicate-refs) (mapv (fn [col]
+                                   (cond-> col
+                                     (duplicate-refs (:field-ref col))
+                                     (update :field-ref (fn [[tag _id-or-name opts]]
+                                                          [tag (:lib/deduplicated-name col) (assoc opts :base-type (:base-type col))]))))))))
+
 (mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-map]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064632710409?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
   (lib.convert/with-aggregation-list (lib.aggregation/aggregations query)
-    (mapv (fn [col]
-            (let [field-ref (super-broken-legacy-field-ref query col)]
-              (cond-> col
-                field-ref (assoc :field-ref field-ref))))
-          cols)))
+    (let [cols (mapv (fn [col]
+                       (let [field-ref (super-broken-legacy-field-ref query col)]
+                         (cond-> col
+                           field-ref (assoc :field-ref field-ref))))
+                     cols)]
+      (deduplicate-field-refs cols))))
 
 (mu/defn- deduplicate-names :- [:sequential ::kebab-cased-map]
   "Needed for legacy FE viz settings purposes for the time being. See
@@ -356,7 +372,7 @@
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
 ;;; should maybe have `:lib/source-uuid` but I don't think they should have `:lib/uuid`.
 (defn- remove-lib-uuids [col]
-  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref :ident))
+  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
   "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love
@@ -380,7 +396,13 @@
                                {:error/message "columns should have unique :name(s)"}
                                (fn [cols]
                                  (or (empty? cols)
-                                     (apply distinct? (map :name cols))))]]
+                                     (apply distinct? (map :name cols))))]
+                              ;; QUE-1623
+                              [:fn
+                               {:error/message "columns should have unique :field-ref(s)"}
+                               (fn [cols]
+                                 (or (empty? cols)
+                                     (apply distinct? (map :field-ref cols))))]]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column

@@ -81,7 +81,6 @@
                  68861]
                 [:field {:source-field   68847
                          :lib/uuid       "615c7a01-e368-430a-a3ab-0b7be86570e4"
-                         :ident          "L64Uof03Cj0qfGBL6qMqt"
                          :base-type      :type/Text
                          :effective-type :type/Text
                          :join-alias     "PRODUCTS__via__PRODUCT_ID"}
@@ -1127,3 +1126,35 @@
                          :expressions [[:+ {:lib/expression-name "CC"} 1 1]]
                          :order-by    [[:asc {} [:field {:join-alias "Products"} (meta/id :products :id)]]]}]}
               (qp.add-implicit-joins/add-implicit-joins query))))))
+
+(deftest ^:parallel add-multiple-implicit-joins-for-different-source-fields-test
+  (testing "Test multiple implicit joins against the same table"
+    (let [mp    (-> meta/metadata-provider
+                    ;; mock VENUES.ID being an FK to CATEGORIES.ID (required for implicit joins to work)
+                    (lib.tu/merged-mock-metadata-provider
+                     {:fields [{:id                 (meta/id :venues :id)
+                                :fk-target-field-id (meta/id :categories :id)}]}))
+          query {:lib/type     :mbql/query
+                 :database     (meta/id)
+                 :lib/metadata mp
+                 :stages       [{:lib/type     :mbql.stage/mbql
+                                 :source-table (meta/id :venues)
+                                 :fields       [[:field
+                                                 {:lib/uuid  "00000000-0000-0000-0000-000000000000"
+                                                  :base-type :type/BigInteger}
+                                                 (meta/id :venues :id)]
+                                                [:field
+                                                 {:source-field (meta/id :venues :category-id)
+                                                  :lib/uuid     "00000000-0000-0000-0000-000000000006"
+                                                  :base-type    :type/Text}
+                                                 (meta/id :categories :name)]
+                                                [:field
+                                                 {:source-field (meta/id :venues :id)
+                                                  :lib/uuid     "00000000-0000-0000-0000-000000000007"
+                                                  :base-type    :type/Text}
+                                                 (meta/id :categories :name)]]}]}
+          path  [:stages 0]
+          stage (get-in query path)]
+      (is (=? {:joins [{:alias "CATEGORIES__via__CATEGORY_ID"}
+                       {:alias "CATEGORIES__via__ID"}]}
+              (#'qp.add-implicit-joins/resolve-implicit-joins-this-level query path stage))))))

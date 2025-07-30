@@ -3,7 +3,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { entityPickerModal } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -28,6 +27,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -80,7 +80,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
 
@@ -139,7 +139,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("selected question should be shown in the preview");
     cy.wait("@cardQuery");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
   });
@@ -157,7 +157,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByTestId("embed-browse-entity-button").click();
     });
 
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByText("Select a dashboard").should("be.visible");
       cy.findByText("Dashboards").click();
       cy.findByText(SECOND_DASHBOARD_NAME).click();
@@ -181,7 +181,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.wait("@dashboard");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
   });
@@ -195,7 +195,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByTestId("embed-browse-entity-button").click();
     });
 
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByText("Select a chart").should("be.visible");
       cy.findByText("Questions").click();
       cy.findByText(FIRST_QUESTION_NAME).click();
@@ -217,7 +217,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.wait("@cardQuery");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
     });
   });
@@ -246,7 +246,7 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findByText(/search for dashboards/).click();
       });
 
-      entityPickerModal().within(() => {
+      H.entityPickerModal().within(() => {
         cy.findByText("Select a dashboard").should("be.visible");
       });
     });
@@ -266,7 +266,7 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findByText(/search for charts/).click();
       });
 
-      entityPickerModal().within(() => {
+      H.entityPickerModal().within(() => {
         cy.findByText("Select a chart").should("be.visible");
       });
     });

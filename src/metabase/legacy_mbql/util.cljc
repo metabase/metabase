@@ -6,7 +6,6 @@
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
         [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
@@ -560,10 +559,7 @@
   (let [existing-orderables (into #{}
                                   (map (fn [[_dir orderable]]
                                          orderable))
-                                  (:order-by inner-query))
-        ;; Remove any :ident the orderable might have had. `:ident` in the options of a ref is for clauses that
-        ;; create columns, eg. breakouts; it's not referring to another clause by ident.
-        orderable           (m/update-existing orderable 2 #(not-empty (dissoc % :ident)))]
+                                  (:order-by inner-query))]
     (if (existing-orderables orderable)
       ;; Field already referenced, nothing to do
       inner-query

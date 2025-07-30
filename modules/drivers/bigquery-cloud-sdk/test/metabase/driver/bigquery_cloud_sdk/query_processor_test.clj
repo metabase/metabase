@@ -62,36 +62,34 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
                   "post-processing ordering shouldn't apply (metabase#2821)")
-      (let [eid (u/generate-nano-id)]
-        (is (=? [{:name         "venue_id"
-                  :display_name "venue_id"
-                  :source       :native
-                  :base_type    :type/Integer
-                  :effective_type :type/Integer
-                  :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
-                 {:name         "user_id"
-                  :display_name "user_id"
-                  :source       :native
-                  :base_type    :type/Integer
-                  :effective_type :type/Integer
-                  :field_ref    [:field "user_id" {:base-type :type/Integer}]}
-                 {:name         "checkins_id"
-                  :display_name "checkins_id"
-                  :source       :native
-                  :base_type    :type/Integer
-                  :effective_type :type/Integer
-                  :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
-                (mt/cols
-                 (qp/process-query
-                  {:native   {:query (with-test-db-name
-                                       (str "SELECT `v4_test_data.checkins`.`venue_id` AS `venue_id`, "
-                                            "       `v4_test_data.checkins`.`user_id` AS `user_id`, "
-                                            "       `v4_test_data.checkins`.`id` AS `checkins_id` "
-                                            "FROM `v4_test_data.checkins` "
-                                            "LIMIT 2"))}
-                   :type     :native
-                   :info     {:card-entity-id eid}
-                   :database (mt/id)}))))))))
+      (is (=? [{:name         "venue_id"
+                :display_name "venue_id"
+                :source       :native
+                :base_type    :type/Integer
+                :effective_type :type/Integer
+                :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
+               {:name         "user_id"
+                :display_name "user_id"
+                :source       :native
+                :base_type    :type/Integer
+                :effective_type :type/Integer
+                :field_ref    [:field "user_id" {:base-type :type/Integer}]}
+               {:name         "checkins_id"
+                :display_name "checkins_id"
+                :source       :native
+                :base_type    :type/Integer
+                :effective_type :type/Integer
+                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
+              (mt/cols
+               (qp/process-query
+                {:native   {:query (with-test-db-name
+                                     (str "SELECT `v4_test_data.checkins`.`venue_id` AS `venue_id`, "
+                                          "       `v4_test_data.checkins`.`user_id` AS `user_id`, "
+                                          "       `v4_test_data.checkins`.`id` AS `checkins_id` "
+                                          "FROM `v4_test_data.checkins` "
+                                          "LIMIT 2"))}
+                 :type     :native
+                 :database (mt/id)})))))))
 
 (deftest ^:parallel native-query-test-3
   (mt/test-driver :bigquery-cloud-sdk
