@@ -55,7 +55,7 @@ To add a user attribute manually:
 
 You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
 
-User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
+User attributes are required for [row and column security](../permissions/row-and-column-security.md) permissions.
 
 You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonated-view-data-permission).
 

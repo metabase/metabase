@@ -112,7 +112,7 @@ A personal collection works just like any other collection except that its permi
 [collection-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/collection-permissions
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
-[data-sandboxing]: ../permissions/data-sandboxes.md
+[data-sandboxing]: ../permissions/row-and-column-security.md
 [offical-collections]: ../exploration-and-organization/collections.md#official-collections
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions

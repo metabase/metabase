@@ -1,15 +1,15 @@
 ---
-title: Troubleshooting sandbox access to rows and columns
+title: Troubleshooting row and column security access
 ---
 
-# Troubleshooting sandbox access to rows and columns
+# Troubleshooting row and column security access
 
-[Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).
+[Row and column security][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement row and column security, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).
 
-These articles will help you understand how sandboxing works:
+These articles will help you understand how row and column security works:
 
-- [Data Sandboxing: setting row-level permissions][row-permissions].
-- [Advanced data sandboxing: limiting access to columns][column-permissions].
+- [Row and column security: setting row-level permissions][row-permissions].
+- [Advanced row and column security: limiting access to columns][column-permissions].
 
 If you have a different data access issue, see [related problems](#do-you-have-a-different-problem).
 
@@ -61,7 +61,7 @@ You should _avoid_ public sharing when you are sandboxing data. See [public shar
 
 ### Is the question retrieving data from a non-SQL data source?
 
-**Root cause:** Data sandboxes do not support non-SQL databases.
+**Root cause:** Row and column security do not support non-SQL databases.
 
 **Steps to take:**
 
@@ -174,8 +174,8 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
 [public-sharing]: ../embedding/public-links.md
 [row-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
-[sandboxing-your-data]: ../permissions/data-sandboxes.md
+[sandboxing-your-data]: ../permissions/row-and-column-security.md
 [static-embedding]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#enable-embedding-in-other-applications
-[sandbox-limitations]: ../permissions/data-sandboxes.md#limitations
+[sandbox-limitations]: ../permissions/row-and-column-security.md#limitations
 [troubleshooting-permissions]: ./permissions.md
-[unsupported-databases]: ../permissions/data-sandboxes.md#limitations
+[unsupported-databases]: ../permissions/row-and-column-security.md#limitations

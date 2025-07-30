@@ -1,15 +1,17 @@
 ---
-title: Data sandbox examples
+title: Row and column security examples
+redirect_from:
+  - /docs/latest/permissions/row-and-column-security-examples
 ---
 
-# Data sandbox examples
+# Row and column security examples
 
-{% include plans-blockquote.html feature="Data sandboxes" %}
+{% include plans-blockquote.html feature="Row and column security" %}
 
-[Data sandboxes](./data-sandboxes.md) let you:
+[Row and column security](./row-and-column-security.md) let you:
 
-- Restrict **rows** using a [basic sandbox](./data-sandboxes.md#basic-data-sandboxes-filter-by-a-column-in-the-table).
-- Restrict **columns** (and rows) using a [custom sandbox](./data-sandboxes.md#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-of-a-table).
+- Restrict **rows** using a [basic sandbox](./row-and-column-security.md#basic-row-and-column-security-filter-by-a-column-in-the-table).
+- Restrict **columns** (and rows) using a [custom sandbox](./row-and-column-security.md#custom-row-and-column-security-use-a-saved-question-to-create-a-custom-view-of-a-table).
 
 ## Setup for all examples below
 

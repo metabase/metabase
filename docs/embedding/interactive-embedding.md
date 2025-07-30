@@ -226,7 +226,7 @@ To change an embedding URL, send a "location" message from your app to Metabase:
 
 If you want multiple people from a single customer account to collaborate on questions and dashboards, you'll need to set up one [group](../people-and-groups/managing.md#groups) per customer account.
 
-You can handle [data sandboxing](../permissions/data-sandboxes.md) with a single, separate group that just sandboxes your data. For example, each person could be part of a customer group that sets up data permissions with sandboxing via a certain attribute that applies to everyone across all your customer accounts.
+You can handle [row and column security](../permissions/row-and-column-security.md) with a single, separate group that just sandboxes your data. For example, each person could be part of a customer group that sets up data permissions with sandboxing via a certain attribute that applies to everyone across all your customer accounts.
 
 Additionally, each person within a single customer account could also be a member of a group specific to that customer account. That way they can collaborate on collections with other people in their organization, without seeing stuff created by people from other customers' accounts.
 

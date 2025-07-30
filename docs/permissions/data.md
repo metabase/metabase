@@ -96,7 +96,7 @@ For tables, you have the option to set either **Can view** or **Sandboxed**.
 
 Allows you to set row-level permissions based on user attributes. Can only be configured at the table level.
 
-See [Data sandboxes](./data-sandboxes.md).
+See [Row and column security](./row-and-column-security.md).
 
 ### Impersonated view data permission
 
@@ -187,13 +187,13 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 - [Impersonation](./impersonation.md)
 - [Learn permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
-- [Data sandboxing: setting row-level permissions][sandbox-rows]
-- [Advanced data sandboxing: limiting access to columns][sandbox-columns]
+- [Row and column security: setting row-level permissions][sandbox-rows]
+- [Advanced row and column security: limiting access to columns][sandbox-columns]
 - [Users, roles, and privileges](../databases/users-roles-privileges.md)
 
 [collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-sandboxing]: ./data-sandboxes.md
+[data-sandboxing]: ./row-and-column-security.md
 [permissions-overview]: ./introduction.md
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions.html

@@ -26,7 +26,7 @@ Problems, their causes, how to detect them, and how to fix them.
 ## Permissions
 
 - [My permissions aren't working][permissions].
-- [My data sandboxes aren't working][sandbox].
+- [My row and column security aren't working][sandbox].
 
 ## Databases
 
