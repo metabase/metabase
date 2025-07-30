@@ -46,8 +46,12 @@ describe("StaticDashboard", () => {
       },
     });
 
-    expect(screen.getByLabelText("Download results")).toBeInTheDocument();
-    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    const ellipsisIcon = screen.queryByLabelText("ellipsis icon");
+    expect(ellipsisIcon).toBeInTheDocument();
+    await userEvent.click(ellipsisIcon!);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Download results")).toBeInTheDocument();
+    });
   });
 
   it("should show no button in the dashcard when downloads are disabled", async () => {
