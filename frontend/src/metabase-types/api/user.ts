@@ -34,22 +34,22 @@ export interface BaseUser {
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
-
+  group_ids: number[];
+  tenant_id: number | null;
+  personal_collection_id: CollectionId;
+  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   date_joined: string;
   last_login: string;
-  first_login: string;
   updated_at: string;
 }
 
 export interface User extends BaseUser {
+  first_login: string;
   login_attributes: UserAttributeMap | null;
   structured_attributes?: StructuredUserAttributes;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
   is_installer: boolean;
-  has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
-  personal_collection_id: CollectionId;
-  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
