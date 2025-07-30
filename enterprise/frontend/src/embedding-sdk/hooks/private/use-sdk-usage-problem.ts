@@ -33,7 +33,7 @@ export function useSdkUsageProblem({
       return true;
     }
 
-    return getTokenFeature(state, "embedding_sdk");
+    return getTokenFeature(state, EMBEDDING_SDK_CONFIG.tokenFeatureKey);
   });
 
   const isDevelopmentMode = useSdkSelector((state) => {
