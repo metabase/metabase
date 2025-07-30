@@ -101,14 +101,10 @@ jobs:
             13,
             14,
             15,
-            16,
-            17,
-            18,
-            19,
-            20,
+         
           ] # 10 shards for parallel execution
     env:
-      SHARDS: 20 # should match matrix above
+      SHARDS: 15 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
