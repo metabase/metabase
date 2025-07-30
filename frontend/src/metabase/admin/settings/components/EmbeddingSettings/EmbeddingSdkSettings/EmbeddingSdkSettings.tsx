@@ -117,13 +117,13 @@ export function EmbeddingSdkSettings() {
     .otherwise(() => null);
 
   return (
-    <SettingsPageWrapper title={t`Embedding SDK`}>
+    <SettingsPageWrapper title={t`Modular embedding`}>
       <UpsellDevInstances location="embedding-page" />
 
       <Flex direction="column" p="lg" className={S.SectionCard} gap="sm">
         <Group>
           <Text size="lg" fw={600} c="text-dark">
-            {t`Embedded analytics SDK for React`}
+            {t`SDK for React`}
           </Text>
         </Group>
 
@@ -165,7 +165,7 @@ export function EmbeddingSdkSettings() {
           <Flex direction="column" gap="sm">
             <Group gap="sm">
               <Text size="lg" fw={600} c="text-dark">
-                {t`Simple SDK Embedding`}
+                {t`Embedded Analytics JS`}
               </Text>
 
               <Badge size="sm">{t`Beta`}</Badge>
@@ -214,7 +214,7 @@ export function EmbeddingSdkSettings() {
               <Text c="text-medium" fz="md">
                 {isEmbeddingAvailable
                   ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
-                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and enter the origins for the websites or apps where you want to allow SDK and simple embedding.`}
+                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
               </Text>
 
               {isEmbeddingAvailable && (

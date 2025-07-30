@@ -31,7 +31,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       screen.getByText("Embedded analytics SDK for React"),
     ).toBeInTheDocument();
 
-    expect(screen.getByText("Simple SDK Embedding")).toBeInTheDocument();
+    expect(screen.getByText("Embedded Analytics JS")).toBeInTheDocument();
     expect(screen.queryAllByText("Beta")).toHaveLength(1);
   });
 
