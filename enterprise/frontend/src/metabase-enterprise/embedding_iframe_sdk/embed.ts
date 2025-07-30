@@ -251,6 +251,14 @@ class MetabaseEmbed {
   private _getIsLocalhost() {
     const { hostname } = window.location;
 
+    try {
+      const instanceUrl = new URL(this._settings?.instanceUrl);
+
+      if (hostname === instanceUrl.hostname) {
+        return true;
+      }
+    } catch (error) {}
+
     return hostname === "localhost" || hostname === "127.0.0.1";
   }
 
