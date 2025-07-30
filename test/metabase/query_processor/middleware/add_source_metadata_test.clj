@@ -244,7 +244,9 @@
     (is (=? (lib.tu.macros/mbql-query venues
               {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
                                  :source-metadata (venues-source-metadata :id :name)}
-               :source-metadata (venues-source-metadata :id :name)})
+               :source-metadata (let [[id-col name-col] (venues-source-metadata :id :name)]
+                                  [(assoc id-col :field_ref [:field "ID" {:base-type :type/BigInteger}])
+                                   (assoc name-col :field_ref [:field "NAME" {:base-type :type/Text}])])})
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
                {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
@@ -261,7 +263,8 @@
              (lib.tu.macros/mbql-query venues
                {:source-table $$venues
                 :joins        [{:source-query {:source-table $$venues
-                                               :fields       [$id $name]}}]}))))))
+                                               :fields       [$id $name]}
+                                :condition    [:= "A" "B"]}]}))))))
 
 (deftest ^:parallel binned-fields-test
   (testing "source metadata should handle source queries that have binned fields"
