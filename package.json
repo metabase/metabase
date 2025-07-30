@@ -363,7 +363,7 @@
     "elliptic": "^6.6.1",
     "debug": "^4.3.4",
     "follow-redirects": "^1.15.5",
-    "jsdom": "^26.1.0",
+    "jsdom": "^22.1.0",
     "json5": "2.2.2",
     "nth-check": "2.0.1",
     "@types/react": "^18.2.42",
