@@ -54,6 +54,7 @@
      [:legacy_input :jsonb]
      [:embedding [:raw (format "vector(%d)" vector-dimensions)] :not-null]
      [:text_search_vector :tsvector :not-null]
+     [:text_search_with_native_query_vector :tsvector :not-null]
      [:content :text :not-null]
      [:metadata :jsonb]
      [[:constraint unique-constraint-name]
@@ -90,6 +91,16 @@
                           (search/weighted-tsvector "A" (:name doc))
                           (search/weighted-tsvector "B" (:searchable_text doc ""))]
                          (search/weighted-tsvector "A" (:searchable_text doc "")))
+   :text_search_with_native_query_vector
+   (if (:name doc)
+     [:||
+      (search/weighted-tsvector "A" (:name doc))
+      (search/weighted-tsvector "B"
+                                (str/join " " (remove str/blank? [(:searchable_text doc "")
+                                                                  (:native_query doc "")])))]
+     (search/weighted-tsvector "A"
+                               (str/join " " (remove str/blank? [(:searchable_text doc "")
+                                                                 (:native_query doc "")]))))
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode doc) :jsonb]})
 
@@ -149,7 +160,7 @@
   "Returns the default index spec for a model."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
-        table-name (str "index_table__" provider "__" model-name "__" vector-dimensions)]
+        table-name (str "index_table_" provider "_" model-name "_" vector-dimensions)]
     {:embedding-model embedding-model
      :table-name table-name
      :version 0}))
@@ -197,15 +208,31 @@
   [connectable index]
   (jdbc/execute! connectable (drop-index-table-sql index)))
 
+;; We can't use full column names in the various index names, because otherwise we overflow postgres' max name length.
+;; NOTE If you add a new index, add it to index-embedding-name-length-test as well
+;; TODO Maybe we should also abbreviate the model / provider names in the :table-name to give some breathing room.
+(defn- index-name
+  "Returns the name for an index for the given index configuration, column, and index type."
+  [index suffix]
+  (str (:table-name index) suffix))
+
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."
   [index]
-  (str (:table-name index) "__hnsw_idx"))
+  ;; embedding => embed
+  (index-name index "_embed_hnsw_idx"))
 
 (defn fts-index-name
   "Returns the name for a full-text database index for the given semantic search index configuration."
   [index]
-  (str (:table-name index) "__gin_idx"))
+  ;; text_search_vector => tsv
+  (index-name index "_tsv_gin_idx"))
+
+(defn fts-native-index-name
+  "Returns the name for a full-text database index with native queries for the given semantic search index configuration."
+  [index]
+  ;; text_search_with_native_query_vector => tswnqv
+  (index-name index "_tswnqv_gin_idx"))
 
 (defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
@@ -234,7 +261,13 @@
        connectable
        (-> (sql.helpers/create-index
             [(keyword (fts-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-gin [:raw "text_search_vector"]])
+            [(keyword table-name) :using-gin :text_search_vector])
+           sql-format-quoted))
+      (jdbc/execute!
+       connectable
+       (-> (sql.helpers/create-index
+            [(keyword (fts-native-index-name index)) :if-not-exists]
+            [(keyword table-name) :using-gin :text_search_with_native_query_vector])
            sql-format-quoted)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {} e)))))
@@ -246,7 +279,7 @@
   (def index (default-index embedding-model))
   (drop-index-table! db index)
   (create-index-table-if-not-exists! db index)
-  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table__%'"]))
+  (jdbc/execute! db ["select table_name from INFORMATION_SCHEMA.tables where table_name like 'index_table_%'"]))
 
 (defn- search-filters
   "Generate WHERE conditions based on search context filters."
@@ -276,22 +309,27 @@
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
         ts-search-expr (search/to-tsquery-expr (:search-string search-context))
-        tsv-lang (search/tsv-language)]
+        tsv-lang (search/tsv-language)
+        vector-column (if (:search-native-query search-context)
+                        :text_search_with_native_query_vector
+                        :text_search_vector)]
     {:select [[:id :id]
               [:model_id :model_id]
               [:model :model]
               [:content :content]
               [:verified :verified]
               [:metadata :metadata]
-              [[:raw "row_number() OVER (ORDER BY ts_rank_cd(text_search_vector, query) DESC)"] :keyword_rank]]
+              [[:raw (format "row_number() OVER (ORDER BY ts_rank_cd(%s, query) DESC)" (name vector-column))]
+               :keyword_rank]]
      :from [(keyword (:table-name index))]
      ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
      ;; This follows the same secure pattern as metabase.search.appdb.specialization.postgres/base-query
      :join [[[:raw "to_tsquery('" tsv-lang "', " [:lift ts-search-expr] ")"]
              :query] [:= 1 1]]
-     :where (if (seq filters)
-              (into [:and [:raw "text_search_vector @@ query"]] [filters])
-              [:raw "text_search_vector @@ query"])
+     :where (let [ts-query-filter [:raw (format "%s @@ query" (name vector-column))]]
+              (if (seq filters)
+                (into [:and ts-query-filter] [filters])
+                ts-query-filter))
      :order-by [[:keyword_rank :asc]]
      :limit 100}))
 
@@ -360,10 +398,14 @@
   [row]
   (into {} (map (fn [[k v]] [(keyword (name k)) v]) row)))
 
+(defn- unwrap-pgobject
+  [^PGobject obj]
+  (.getValue ^PGobject obj))
+
 (defn- decode-pgobject
   "Decode a PGObject (returned from a jsonb field) into a Clojure map."
   [^PGobject obj]
-  (json/decode (.getValue ^PGobject obj) true))
+  (json/decode (unwrap-pgobject obj) true))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
