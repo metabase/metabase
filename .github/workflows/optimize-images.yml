@@ -1,18 +1,19 @@
 name: Auto-Optimize Docs PNG Images
 
 on:
-  push:
-    paths:
-      - 'docs/**/*.png'
+  pull_request:
+    types:
+      - labeled
 
 jobs:
   optimize-images:
     runs-on: ubuntu-latest
-
+    if: ${{ contains(github.event.pull_request.labels.*.name,'Type:Documentation') }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
+        ref: ${{ github.head_ref }}
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Install pngcrush and bc
@@ -20,25 +21,15 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y pngcrush bc
 
-    - name: Skip Merge Commits
-      id: merge-check
-      run: |
-        if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -gt 2 ]; then
-          echo "Merge commit detected. Skipping."
-          echo "skip=true" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-
     - name: Get changed PNG files
       id: changed-files
-      if: steps.merge-check.outputs.skip != 'true'
       uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
       with:
         files: |
           docs/**/*.png
 
     - name: Optimize changed PNG files
-      if: steps.changed-files.outputs.any_changed == 'true' && steps.merge-check.outputs.skip != 'true'
+      if: steps.changed-files.outputs.any_changed == 'true'
       id: optimize
       run: |
         echo "Optimizing new PNG files with pngcrush..."
@@ -82,7 +73,7 @@ jobs:
         echo "Total bytes saved: ${total_saved} (${total_before} -> ${total_after})"
 
     - name: Check for changes after optimization
-      if: steps.changed-files.outputs.any_changed == 'true' && steps.merge-check.outputs.skip != 'true'
+      if: steps.changed-files.outputs.any_changed == 'true'
       id: check_changes
       run: |
         git add ${{ steps.changed-files.outputs.all_changed_files }}
@@ -96,7 +87,7 @@ jobs:
         fi
 
     - name: Commit optimized images
-      if: steps.changed-files.outputs.any_changed == 'true' && steps.check_changes.outputs.has_changes == 'true' && steps.merge-check.outputs.skip != 'true'
+      if: steps.changed-files.outputs.any_changed == 'true' && steps.check_changes.outputs.has_changes == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       run: |
@@ -133,7 +124,7 @@ jobs:
         echo 'Applied: pngcrush -rem alla -brute -ow'
 
     - name: Output summary
-      if: steps.changed-files.outputs.any_changed == 'true' && steps.merge-check.outputs.skip != 'true'
+      if: steps.changed-files.outputs.any_changed == 'true'
       run: |
         if [ "${{ steps.check_changes.outputs.has_changes }}" = "false" ]; then
           echo "PNG files were already optimized - no changes needed"

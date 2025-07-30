@@ -1,9 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const QUESTION: H.StructuredQuestionDetails = {
+const QUESTION: StructuredQuestionDetails = {
   name: "Return input value",
   display: "scalar",
   query: {

@@ -5,6 +5,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -24,10 +25,10 @@
     {:error/message "Should not have :condition"}
     (complement :condition)]])
 
-(mu/defn- add-join-alias
-  [{:keys [table-id], field-id :id, :as field}
-   {:keys [joins source-query]}   :- InnerQuery
-   [_ id-or-name opts :as clause] :- mbql.s/field:id]
+(mu/defn- add-join-alias :- mbql.s/field:id
+  [{:keys [table-id], field-id :id, :as field}   :- ::lib.schema.metadata/column
+   {:keys [joins source-query], :as inner-query} :- InnerQuery
+   [_ id-or-name opts :as field-ref]             :- mbql.s/field:id]
   (let [candidate-tables (filter (fn [join]
                                    (when-let [source-table-id (mbql.u/join->source-table-id join)]
                                      (= source-table-id table-id)))
@@ -42,21 +43,23 @@
       ;; can't do anything, so return field as-is
       0
       (if (empty? source-query)
-        clause
-        (recur field source-query clause))
+        field-ref
+        (recur field source-query field-ref))
 
       ;; if there are multiple candidates, try ignoring the implicit ones
       ;; presence of `:fk-field-id` indicates that the join was implicit, as the result of an `fk->` form
       (let [explicit-joins (remove :fk-field-id joins)]
         (if (= (count explicit-joins) 1)
-          (recur field {:joins explicit-joins} clause)
-          (let [{:keys [name]} (lib.metadata/table (qp.store/metadata-provider) table-id)]
+          (recur field {:joins explicit-joins} field-ref)
+          (let [{table-name :name} (lib.metadata/table (qp.store/metadata-provider) table-id)]
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
-                                 name field-id)
-                            {:field      field
-                             :error      qp.error-type/invalid-query
-                             :joins      joins
-                             :candidates candidate-tables}))))))))
+                                 (pr-str table-name) (pr-str table-id))
+                            {:field       field
+                             :field-ref   field-ref
+                             :type        qp.error-type/invalid-query
+                             :joins       joins
+                             :candidates  candidate-tables
+                             :inner-query inner-query}))))))))
 
 (defn- primary-source-table-id
   "Get the ID of the 'primary' table towards which this query is pointing at: either the `:source-table` or indirectly
@@ -90,12 +93,12 @@
                source-query (assoc :source-query source-query))]
     ;; now deduplicate :fields clauses
     (lib.util.match/replace form
-      (m :guard (every-pred map? :fields))
+      (m :guard (every-pred map? #(sequential? (:fields %))))
       (update m :fields distinct))))
 
 (defn- add-join-alias-to-fields-if-needed
   [form]
-  ;; look for any form that has `:joins`, then wrap stuff as needed
+  ;; look for any MBQL inner query, then wrap stuff as needed
   (lib.util.match/replace form
     (m :guard (every-pred map? (mr/validator InnerQuery)))
     (cond-> m

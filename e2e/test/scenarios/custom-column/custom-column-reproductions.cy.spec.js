@@ -2152,9 +2152,6 @@ describe("Issue 25189", () => {
             },
           ],
         },
-        "expression-idents": {
-          "CCreated At": "fch45EQTl38tSb9N-zkvL",
-        },
       },
     }).then((res) => {
       H.createQuestion(
@@ -2198,9 +2195,6 @@ describe("Issue 25189", () => {
               "base-type": "type/DateTime",
             },
           ],
-        },
-        "expression-idents": {
-          "Created At": "fch45EQTl38tSb9N-zkvL",
         },
       },
     }).then((res) => {

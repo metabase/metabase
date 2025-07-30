@@ -543,7 +543,7 @@
     :development-mode
     :embedding
     :embedding-sdk
-    :embedding-iframe-sdk
+    :embedding-simple
     :enhancements
     :etl-connections
     :etl-connections-pg
