@@ -261,13 +261,13 @@
        connectable
        (-> (sql.helpers/create-index
             [(keyword (fts-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-gin [:raw "text_search_vector"]])
+            [(keyword table-name) :using-gin :text_search_vector])
            sql-format-quoted))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
             [(keyword (fts-native-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-gin [:raw "text_search_with_native_query_vector"]])
+            [(keyword table-name) :using-gin :text_search_with_native_query_vector])
            sql-format-quoted)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {} e)))))
