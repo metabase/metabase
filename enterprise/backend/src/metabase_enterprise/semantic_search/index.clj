@@ -14,7 +14,7 @@
    [next.jdbc :as jdbc]
    [toucan2.core :as t2])
   (:import
-   [java.time LocalDate]
+   [java.time Instant LocalDate]
    [org.postgresql.util PGobject]))
 
 (set! *warn-on-reflection* true)
@@ -74,6 +74,11 @@
                        :embedding embedding}))))
   (str "'[" (str/join ", " embedding) "]'::vector"))
 
+(defn- to-instant [temporal-or-string]
+  (if (string? temporal-or-string)
+    (Instant/parse temporal-or-string)
+    (Instant/ofEpochMilli (inst-ms temporal-or-string))))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
@@ -81,9 +86,9 @@
   {:model               model
    :model_id            id
    :creator_id          creator_id
-   :model_created_at    created_at
+   :model_created_at    (some-> created_at to-instant)
    :last_editor_id      last_editor_id
-   :model_updated_at    updated_at
+   :model_updated_at    (some-> updated_at to-instant)
    :archived            archived
    :verified            verified
    :official_collection official_collection
