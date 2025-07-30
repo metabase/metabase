@@ -35,6 +35,44 @@
            :else x))
        x)))
 
+(defn- stabilize-reader-fn-args
+  "Calling with-key on a reader-macro generated function will cause it to have
+  gensym'd arguments
+
+  Using this gives us this property in with-key:
+
+  (= (::key (meta (with-key #(+ 1 %))))
+     (::key (meta (with-key #(+ 1 %)))))
+  ;; => true
+  "
+  [form]
+  (let [arguments (set (remove #{'&} (second form)))
+        replacements '[a b c d e f g h i j k l m n o p q r s t u v w x y z]
+        _ (when (> (count arguments) (count replacements))
+            (throw (ex-info (str
+                             "Not enough replacements for arguments in fn* form. Do you mean to use more than "
+                             (count replacements)
+                             " arguments to your reader-macro-function?")
+                            {:form form
+                             :arguments arguments
+                             :replacements replacements})))
+        argument-replacement (zipmap arguments replacements)]
+    (perf/postwalk
+     (fn [x] (if-let [new (argument-replacement x)] new x))
+     form)))
+
+(defn- fn-form-generated-by-reader-macro? [form]
+  (and (coll? form)
+       (= 'fn* (first form))))
+
+(defn- stabilize-schema-fn-args
+  [form]
+  (perf/postwalk
+   (fn [frm] (if (fn-form-generated-by-reader-macro? frm)
+               (stabilize-reader-fn-args frm)
+               frm))
+   form))
+
 (defmacro with-key
   "Adds `::mr/key` metadata, which is a pr-str'd string of body, to body. Be careful not to call this
   on functions taking parameters, since it uses the shape of the literal body passed to it as a key.
@@ -44,7 +82,7 @@
     If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly."
   [body]
   `(try (with-meta ~body
-                   (assoc (meta ~body) ::key ~(pr-str body)))
+                   (assoc (meta ~body) ::key ~(pr-str (stabilize-schema-fn-args body))))
         (catch Exception _# ~body)))
 
 (def ^:dynamic *cache-miss-hook*

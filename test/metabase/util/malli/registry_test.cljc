@@ -48,8 +48,7 @@
       (is (= (count (:validator @@#'mr/cache))
              before-count)))))
 
-(mr/def ::int
-  :int)
+(mr/def ::int :int)
 
 (deftest ^:parallel explainer-test
   (is (= ["should be an integer"]
@@ -77,15 +76,10 @@
     (is (= 1 (count misses))))
 
   (let [misses (with-returning-cache-misses
-                 (is (not ;; FIXME -- reader macro functions are read and eval'd before
-                          ;; being passed to the mr/with-key macro, so they are not
-                          ;; identical? to each other, and we can't cache them.
-                      (identical? (mr/explainer (mr/with-key [:fn #(even? %)]))
-                                  (mr/explainer (mr/with-key [:fn #(even? %)])))))
+                 (is (identical? (mr/explainer (mr/with-key [:fn #(even? %)]))
+                                 (mr/explainer (mr/with-key [:fn #(even? %)]))))
                  (is (nil? (mr/explain (mr/with-key [:fn #(even? %)]) 2))))]
-    ;; 3 #(fn ...) => 3 misses, because each of the three
-    ;; functions is a different instance
-    (is (= 3 (count misses)))))
+    (is (= 1 (count misses)))))
 
 (deftest ^:parallel resolve-test
   (is (mc/schema? (mr/resolve-schema :int)))
