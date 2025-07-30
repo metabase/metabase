@@ -3,11 +3,10 @@
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
              [net.cgrand.macrovich :as macros]))
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
    [malli.util :as mut]
-   [metabase.util.log :as log])
+   [metabase.util.performance :as perf])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -24,7 +23,7 @@
   Also handles functions to prevent cache key instability from composed/anonymous functions."
   [x]
   (or (some-> x meta ::key)
-      (walk/postwalk
+      (perf/postwalk
        (fn [x]
          (cond
            (instance? #?(:clj java.util.regex.Pattern
