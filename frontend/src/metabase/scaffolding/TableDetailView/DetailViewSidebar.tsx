@@ -276,13 +276,28 @@ function DetailViewSidebar({
           items={sections.map((section) => section.id)}
           strategy={verticalListSortingStrategy}
         >
+          {onCreateSection && (
+            <Button
+              variant="subtle"
+              size="compact-sm"
+              leftSection={<Icon name="add" />}
+              mt="md"
+              onClick={() => onCreateSection({ position: "start" })}
+            >{t`Add section`}</Button>
+          )}
+
+          <Divider mt="lg" mb="sm" />
           {sections.map((section) => (
             <SortableSectionSettings
               key={section.id}
               columns={visibleColumns}
               section={section}
               onUpdateSection={(update) => onUpdateSection(section.id, update)}
-              onRemoveSection={() => onRemoveSection(section.id)}
+              onRemoveSection={
+                sections.length > 1
+                  ? () => onRemoveSection(section.id)
+                  : undefined
+              }
               isDraggingSection={isDraggingSection}
             />
           ))}
@@ -375,7 +390,7 @@ type SectionSettingsProps = {
   section: ObjectViewSectionSettings;
   columns: DatasetColumn[];
   onUpdateSection: (update: Partial<ObjectViewSectionSettings>) => void;
-  onRemoveSection: () => void;
+  onRemoveSection?: () => void;
   dragHandleProps?: any;
   isDraggingSection?: boolean;
 };

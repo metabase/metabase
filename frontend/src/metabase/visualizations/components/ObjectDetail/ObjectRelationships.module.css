@@ -1,0 +1,6 @@
+.objectRelationships {
+  overflow-y: auto;
+  flex: 0 0 100%;
+  padding: 2rem;
+  background-color: var(--mb-color-bg-light);
+}

@@ -5,13 +5,11 @@ import { jt, t } from "ttag";
 import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
-import { Icon, Loader } from "metabase/ui";
+import { Box, type BoxProps, Icon, Loader } from "metabase/ui";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
-import {
-  ObjectRelationContent,
-  ObjectRelationships,
-} from "./ObjectRelationships.styled";
+import S from "./ObjectRelationships.module.css";
+import { ObjectRelationContent } from "./ObjectRelationships.styled";
 import type { ForeignKeyReferences } from "./types";
 
 export interface RelationshipsProps {
@@ -26,7 +24,8 @@ export function Relationships({
   tableForeignKeys,
   tableForeignKeyReferences,
   foreignKeyClicked,
-}: RelationshipsProps): JSX.Element | null {
+  ...rest
+}: RelationshipsProps & BoxProps): JSX.Element | null {
   if (!tableForeignKeys || !tableForeignKeys?.length) {
     return null;
   }
@@ -44,7 +43,7 @@ export function Relationships({
   );
 
   return (
-    <ObjectRelationships>
+    <Box className={S.objectRelationships} {...rest}>
       <div className={cx(CS.textBold, CS.textMedium)}>
         {jt`${(
           <span className={CS.textDark} key={objectName}>
@@ -72,7 +71,7 @@ export function Relationships({
           />
         ))}
       </ul>
-    </ObjectRelationships>
+    </Box>
   );
 }
 

@@ -18,16 +18,32 @@ export function useDetailViewSections(
     setSections(initialSections);
   }, [initialSections]);
 
-  const createSection = () => {
-    setSections([
-      ...sections,
-      {
-        id: generateId(),
-        title: "Section",
-        direction: "horizontal",
-        fields: [],
-      },
-    ]);
+  const createSection = ({
+    position = "end",
+  }: {
+    position: "start" | "end";
+  }) => {
+    if (position === "end") {
+      setSections([
+        ...sections,
+        {
+          id: generateId(),
+          title: "Section",
+          direction: "horizontal",
+          fields: [],
+        },
+      ]);
+    } else {
+      setSections([
+        {
+          id: generateId(),
+          title: "Section",
+          direction: "horizontal",
+          fields: [],
+        },
+        ...sections,
+      ]);
+    }
   };
 
   const removeSection = (id: number) => {

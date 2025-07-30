@@ -28,6 +28,7 @@ import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import {
   useGetTableQueryMetadataQuery,
+  useListTableForeignKeysQuery,
   useUpdateTableComponentSettingsMutation,
 } from "metabase/api/table";
 import EditableText from "metabase/common/components/EditableText";
@@ -35,9 +36,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { POST } from "metabase/lib/api";
 import { formatValue } from "metabase/lib/formatting/value";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Flex, Group, Stack, Text } from "metabase/ui/components";
+import { question } from "metabase/lib/urls";
+import { Box, Flex, Group, Stack, Text, Tooltip } from "metabase/ui/components";
 import { ActionIcon, Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
+import { Relationships } from "metabase/visualizations/components/ObjectDetail/ObjectRelationships";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 import { isDate, isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
@@ -57,6 +61,7 @@ import { DetailViewHeader } from "./DetailViewHeader";
 import { DetailViewSidebar } from "./DetailViewSidebar";
 import S from "./TableDetailView.module.css";
 import { useDetailViewSections } from "./use-detail-view-sections";
+import { useForeignKeyReferences } from "./use-foreign-key-references";
 
 interface TableDetailViewLoaderProps {
   params: {
@@ -76,6 +81,7 @@ export function TableDetailView({
   const rowId = parseInt(params.rowId, 10);
 
   const { data: table } = useGetTableQueryMetadataQuery({ id: tableId });
+  const { data: tableForeignKeys = [] } = useListTableForeignKeysQuery(tableId);
 
   const query = useMemo<StructuredDatasetQuery | undefined>(() => {
     return table ? getTableQuery(table) : undefined;
@@ -93,6 +99,7 @@ export function TableDetailView({
       rowId={rowId}
       dataset={dataset}
       table={table}
+      tableForeignKeys={tableForeignKeys}
       isEdit={isEdit}
       isListView={isListView}
     />
@@ -104,17 +111,20 @@ interface TableDetailViewProps {
   rowId: number;
   dataset: Dataset;
   table: any;
+  tableForeignKeys: any[];
   isEdit: boolean;
   isListView?: boolean;
   sectionsOverride?: ObjectViewSectionSettings[];
 }
 
 const emptyColumns: DatasetColumn[] = [];
+const defaultRow = {};
 export function TableDetailViewInner({
   tableId,
   rowId,
   dataset,
   table,
+  tableForeignKeys,
   isEdit = false,
   isListView = false,
   sectionsOverride,
@@ -127,7 +137,14 @@ export function TableDetailViewInner({
   const columns = dataset?.data?.results_metadata?.columns ?? emptyColumns;
 
   const rows = useMemo(() => dataset?.data?.rows || [], [dataset]);
-  const row = rows[currentRowIndex] || {};
+  const row = rows[currentRowIndex] || defaultRow;
+
+  const { tableForeignKeyReferences } = useForeignKeyReferences({
+    tableForeignKeys,
+    row,
+    columns,
+    tableDatabaseId: table.database_id,
+  });
 
   const defaultSections = useMemo(
     () => getDefaultObjectViewSettings(table).sections,
@@ -200,6 +217,42 @@ export function TableDetailViewInner({
     rowId,
   ]);
 
+  // Handle foreign key navigation
+  const handleFollowForeignKey = useCallback(
+    (fk: ForeignKey) => {
+      const pkIndex = columns.findIndex(isPK);
+      if (pkIndex === -1) {
+        return;
+      }
+
+      const objectId = row[pkIndex];
+      if (objectId == null) {
+        return;
+      }
+
+      // Navigate to a question with the foreign key filter
+      if (fk.origin?.table_id) {
+        // Create a card with the foreign key query
+        const card = {
+          type: "question" as const,
+          dataset_query: {
+            type: "query" as const,
+            query: {
+              "source-table": fk.origin.table_id,
+              filter: ["=", ["field", fk.origin.id, null], objectId],
+            },
+            database: fk.origin.table?.db_id || table.database_id,
+          },
+        } as any;
+
+        // Navigate to the question URL with the card as hash
+        const questionUrl = question(card, { hash: card });
+        dispatch(push(questionUrl));
+      }
+    },
+    [row, columns, table.database_id, dispatch],
+  );
+
   useEffect(() => {
     if (!rows.length) {
       return;
@@ -265,6 +318,9 @@ export function TableDetailViewInner({
 
   const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
 
+  // Check if we have relationships to show
+  const hasRelationships = tableForeignKeys.length > 0;
+
   const DetailContainer = ({ children }: { children: ReactNode }) => (
     <Stack
       gap="xl"
@@ -299,6 +355,31 @@ export function TableDetailViewInner({
           borderTop: "1px solid var(--border-color)",
         }}
       >
+        {hasRelationships && !isListView && (
+          <Box
+            bg="bg-white"
+            flex="0 0 auto"
+            mih={0}
+            miw={300}
+            h="100%"
+            p="lg"
+            style={{
+              borderRight: `1px solid var(--mb-color-border)`,
+              overflowY: "auto",
+            }}
+          >
+            <Text fw={600} size="lg" mb="md">{t`Relationships`}</Text>
+            <Relationships
+              objectName={rowName ? String(rowName) : String(rowId)}
+              tableForeignKeys={tableForeignKeys as any}
+              tableForeignKeyReferences={tableForeignKeyReferences}
+              foreignKeyClicked={handleFollowForeignKey}
+              bg="bg-white"
+              p="xs"
+            />
+          </Box>
+        )}
+
         <Stack
           align="center"
           bg="bg-white"
@@ -371,13 +452,16 @@ export function TableDetailViewInner({
   );
 
   const Container = isListView ? ListContainer : DetailContainer;
-
   return (
-    <Container
-      style={{
-        borderRadius: 8,
-      }}
-    >
+    <Container>
+      {/* {isEdit && !isListView && (
+        <Flex align="center" justify="center" w="100%" mt="md">
+          <Tooltip label={t`Add section`}>
+            <Button leftSection={<Icon name="add" />} onClick={() => createSection({ position: "start" })} />
+          </Tooltip>
+        </Flex>
+      )} */}
+
       <Stack gap="md" mt={isListView ? 0 : "md"} mb={isListView ? 0 : "sm"}>
         <DndContext
           sensors={sensors}
@@ -398,7 +482,11 @@ export function TableDetailViewInner({
                 isEdit={isEdit}
                 isListView={isListView}
                 onUpdateSection={(update) => updateSection(section.id, update)}
-                onRemoveSection={() => removeSection(section.id)}
+                onRemoveSection={
+                  notEmptySections.length > 1
+                    ? () => removeSection(section.id)
+                    : undefined
+                }
               />
             ))}
           </SortableContext>
@@ -407,7 +495,9 @@ export function TableDetailViewInner({
 
       {isEdit && !isListView && (
         <Flex align="center" justify="center" w="100%" mt="md">
-          <Button leftSection={<Icon name="add" />} onClick={createSection} />
+          <Tooltip label={t`Add section`}>
+            <Button leftSection={<Icon name="add" />} onClick={createSection} />
+          </Tooltip>
         </Flex>
       )}
     </Container>
@@ -422,7 +512,7 @@ type SortableSectionProps = {
   isEdit: boolean;
   isListView: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
-  onRemoveSection: () => void;
+  onRemoveSection?: () => void;
 };
 
 function SortableSection(props: SortableSectionProps) {
@@ -459,7 +549,7 @@ type ObjectViewSectionProps = {
   isEdit: boolean;
   isListView: boolean;
   onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
-  onRemoveSection: () => void;
+  onRemoveSection?: () => void;
   dragHandleProps?: any;
 };
 
@@ -549,7 +639,7 @@ function ObjectViewSection({
           );
         })}
       </Flex>
-      {isEdit && !isListView && (
+      {isEdit && !isListView && onRemoveSection && (
         <Group
           className={S.ObjectViewSectionActions}
           pos="absolute"
