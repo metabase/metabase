@@ -120,7 +120,7 @@ export function EmbeddingSdkSettings() {
     <SettingsPageWrapper title={t`Modular embedding`}>
       <UpsellDevInstances location="embedding-page" />
 
-      <Flex direction="column" p="lg" className={S.SectionCard} gap="sm">
+      <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
         <Group>
           <Text size="lg" fw={600} c="text-dark">
             {t`SDK for React`}
@@ -161,8 +161,8 @@ export function EmbeddingSdkSettings() {
       </Flex>
 
       {isSimpleEmbedFeatureEnabled && (
-        <Box p="lg" className={S.SectionCard}>
-          <Flex direction="column" gap="sm">
+        <Box p="xl" className={S.SectionCard}>
+          <Flex direction="column" gap="md">
             <Group gap="sm">
               <Text size="lg" fw={600} c="text-dark">
                 {t`Embedded Analytics JS`}
@@ -210,7 +210,7 @@ export function EmbeddingSdkSettings() {
         <AdminSettingInput
           title={t`Cross-Origin Resource Sharing (CORS)`}
           description={
-            <Group align="center" mt="xs" gap="sm">
+            <Group align="center" gap="sm">
               <Text c="text-medium" fz="md">
                 {isEmbeddingAvailable
                   ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
@@ -261,16 +261,17 @@ export function EmbeddingSdkSettings() {
 
       <Alert
         data-testid="sdk-settings-alert-info"
-        icon={
-          <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
-        }
-        px="lg"
+        px="xl"
         bg="none"
         bd="1px solid var(--mb-color-border)"
       >
-        <Text size="sm" c="text-medium" lh="lg">
-          {apiKeyBannerText}
-        </Text>
+        <Group gap="sm">
+          <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
+
+          <Text size="sm" c="text-medium" lh="lg">
+            {apiKeyBannerText}
+          </Text>
+        </Group>
       </Alert>
     </SettingsPageWrapper>
   );
