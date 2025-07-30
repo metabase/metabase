@@ -122,7 +122,7 @@ export function EmbeddingSdkSettings() {
 
       <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
         <Group>
-          <Text size="lg" fw={600} c="text-dark">
+          <Text fz="h3" fw={600} c="text-dark">
             {t`SDK for React`}
           </Text>
         </Group>
@@ -164,7 +164,7 @@ export function EmbeddingSdkSettings() {
         <Box p="xl" className={S.SectionCard}>
           <Flex direction="column" gap="md">
             <Group gap="sm">
-              <Text size="lg" fw={600} c="text-dark">
+              <Text fz="h3" fw={600} c="text-dark">
                 {t`Embedded Analytics JS`}
               </Text>
 
