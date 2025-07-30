@@ -169,35 +169,38 @@
   (mi/instances-with-hydrated-data
    cards k
    (fn []
-     (let [card-ids (map :id cards)
-           ;; First get dashboards from direct card connections
-           direct-dashboards (t2/query {:select [[:dc.card_id :card_id]
-                                                 :d.name
-                                                 :d.collection_id
-                                                 :d.description
-                                                 :d.id
-                                                 :d.archived]
-                                        :from [[:report_dashboardcard :dc]]
-                                        :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                                        :where [:in :dc.card_id card-ids]})
-           ;; Then get dashboards from series
-           series-dashboards (t2/query {:select [[:dcs.card_id :card_id]
-                                                 :d.name
-                                                 :d.collection_id
-                                                 :d.description
-                                                 :d.id
-                                                 :d.archived]
-                                        :from [[:dashboardcard_series :dcs]]
-                                        :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                               [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                                        :where [:in :dcs.card_id card-ids]})
-           ;; Combine and group all results
-           all-dashboards (concat direct-dashboards series-dashboards)]
+     (let [card-ids          (map u/the-id cards)
+           all-dashboards    (t2/query {:union-all [ ;; First get dashboards from direct card connections
+                                                    {:nest
+                                                     {:select   [[:dc.card_id :card_id]
+                                                                 :d.name
+                                                                 :d.collection_id
+                                                                 :d.description
+                                                                 :d.id
+                                                                 :d.archived]
+                                                      :from     [[:report_dashboardcard :dc]]
+                                                      :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
+                                                      :where    [:in :dc.card_id [:inline card-ids]]
+                                                      :order-by [[:d.id :asc]]}}
+                                                    ;; Then get dashboards from series
+                                                    {:nest
+                                                     {:select   [[:dcs.card_id :card_id]
+                                                                 :d.name
+                                                                 :d.collection_id
+                                                                 :d.description
+                                                                 :d.id
+                                                                 :d.archived]
+                                                      :from     [[:dashboardcard_series :dcs]]
+                                                      :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
+                                                                 [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                                                      :where    [:in :dcs.card_id [:inline card-ids]]
+                                                      :order-by [[:d.id :asc]]}}]})]
        (update-vals
         (group-by :card_id all-dashboards)
         (fn [dashes]
           (->> dashes
                (map #(dissoc % :card_id))
+               ;; TODO (Cam 7/30/25) -- we could probably do the 'distinct' in the query itself
                distinct
                (mapv #(t2/instance :model/Dashboard %)))))))
    :id

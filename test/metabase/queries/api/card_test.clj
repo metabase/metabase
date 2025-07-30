@@ -4065,20 +4065,22 @@
                    :model/Card {card-id :id} {}]
       (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id :archived true}))))
 
-(deftest we-can-get-a-list-of-dashboards-a-card-appears-in
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in
   (testing "a card in one dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (is (= [{:id dash-id
                :name "My Dashboard"}]
-             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-2
   (testing "card in no dashboards"
     (mt/with-temp [:model/Card {card-id :id} {}]
       (is (= []
-             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-3
   (testing "card in multiple dashboards"
     (mt/with-temp [:model/Dashboard {dash-id1 :id} {:name "Dashboard One"}
                    :model/Dashboard {dash-id2 :id} {:name "Dashboard Two"}
@@ -4087,27 +4089,31 @@
                    :model/DashboardCard _ {:dashboard_id dash-id2 :card_id card-id}]
       (is (= [{:id dash-id1 :name "Dashboard One"}
               {:id dash-id2 :name "Dashboard Two"}]
-             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-4
   (testing "card in the same dashboard twice"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (is (= [{:id dash-id :name "My Dashboard"}]
-             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-5
   (testing "If it's in the dashboard in a series, it's counted as 'in' the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard {dc-id :id} {:dashboard_id dash-id}
                    :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
       (is (= [{:id dash-id :name "My Dashboard"}]
-             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards")))))))
 
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-6
   (testing "nonexistent card"
-    (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards"))
+    (mt/user-http-request :rasta :get 404 "card/invalid-id/dashboards")))
 
+(deftest ^:parallel we-can-get-a-list-of-dashboards-a-card-appears-in-7
   (testing "Don't have permissions on all the dashboards involved"
     (mt/with-temp [:model/Collection {allowed-coll-id :id} {:name "The allowed collection"}
                    :model/Collection {forbidden-coll-id :id} {:name "The forbidden collection"}
