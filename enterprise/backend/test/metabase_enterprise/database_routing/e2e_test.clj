@@ -233,17 +233,17 @@
       (binding [tx/*use-routing-dataset* true
                 tx/*use-routing-details* true]
         (mt/dataset (mt/dataset-definition (routed-dataset-name driver/*driver*)
-                                           ["t"
-                                            [{:field-name "f", :base-type :type/Text}]
-                                            [["routed-foo"]
-                                             ["routed-bar"]]])
+                                           [["t"
+                                             [{:field-name "f", :base-type :type/Text}]
+                                             [["routed-foo"]
+                                              ["routed-bar"]]]])
           (let [routed (mt/db)]
             (binding [tx/*use-routing-details* false]
               (mt/dataset (mt/dataset-definition (router-dataset-name driver/*driver*)
-                                                 ["t"
-                                                  [{:field-name "f", :base-type :type/Text}]
-                                                  [["router-foo"]
-                                                   ["router-bar"]]])
+                                                 [["t"
+                                                   [{:field-name "f", :base-type :type/Text}]
+                                                   [["router-foo"]
+                                                    ["router-bar"]]]])
                 (let [router (mt/db)]
                   (wire-routing {:parent router :children [routed]})
                   (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
