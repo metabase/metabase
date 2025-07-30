@@ -51,6 +51,8 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -59,6 +61,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -180,6 +183,27 @@
 (defn- field-table-id [field-clause]
   (:table-id (field-instance field-clause)))
 
+(defn- resolve-field-source-table-alias-with-lib-field-resolution
+  "This is only an absolute last resort -- use Lib `resolve-field-ref` to resolve a field ref if the code we have here
+  can't do it.
+
+  We should actually rewrite this entire namespace to just use Lib in the first place for everything, but that's a
+  project for another day. (See #59589)"
+  [inner-query field-ref]
+  (try
+    (let [lib-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
+      (when-let [resolved (lib.field.resolution/resolve-field-ref lib-query -1 (lib/->pMBQL field-ref))]
+        (cond
+          (= (:lib/source resolved) :source/previous-stage)
+          ::source
+
+          (= (:lib/source resolved) :source/joins)
+          (when-let [join-alias (:metabase.lib.join/join-alias resolved)]
+            (get-in inner-query [::join-alias->escaped join-alias] join-alias)))))
+    (catch Throwable e
+      (log/error e "Failed to convert inner query to Lib query, unable to do fallback matching" (pr-str inner-query))
+      nil)))
+
 (mu/defn- field-source-table-alias :- [:or
                                        ::lib.schema.common/non-blank-string
                                        ::lib.schema.id/table
@@ -195,10 +219,11 @@
       (and table-id (= table-id source-table)) table-id
       source-query                             ::source
       :else
-      (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
-                      {:type   qp.error-type/invalid-query
-                       :clause field-clause
-                       :query  inner-query})))))
+      (or (resolve-field-source-table-alias-with-lib-field-resolution inner-query field-clause)
+          (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
+                          {:type   qp.error-type/invalid-query
+                           :clause field-clause
+                           :query  inner-query}))))))
 
 (mr/def ::exported-clause
   [:or ::mbql.s/field ::mbql.s/expression ::mbql.s/aggregation-options])
@@ -309,18 +334,18 @@
         (let [[_ id-or-name opts] field-clause]
           (when (string? id-or-name)
             (when-let [[_match undeduplicated] (re-find #"(^.*)_\d+$" id-or-name)]
-              (log/warn (u/format-color :yellow "Looking for matches for %s" (u/cprint-to-str undeduplicated)))
+              (log/warnf "Looking for matches for %s" (pr-str undeduplicated))
               (let [clause' [:field undeduplicated opts]]
                 (matching-field-in-source-query* source-query source-metadata clause')))))
 
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)
-          (log/warnf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
-                     (u/cprint-to-str field-clause)
-                     (u/cprint-to-str (into #{}
-                                            (map (some-fn ::desired-alias :name identity))
-                                            all-exports)))))))
+          (log/debugf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
+                      (pr-str field-clause)
+                      (u/pprint-to-str (into #{}
+                                             (map (some-fn ::desired-alias :name identity))
+                                             all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -555,7 +580,8 @@
                                            (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
                             aggregations)))))
 
-(defn- add-alias-info* [inner-query]
+(mu/defn- add-alias-info* :- ::mbql.s/SourceQuery
+  [inner-query :- ::mbql.s/SourceQuery]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
     (-> (lib.util.match/replace inner-query

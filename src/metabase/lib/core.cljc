@@ -11,6 +11,7 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.convert.metadata-to-legacy]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
@@ -52,6 +53,7 @@
          lib.column-group/keep-me
          lib.common/keep-me
          lib.convert/keep-me
+         metabase.lib.convert.metadata-to-legacy/keep-me
          lib.database/keep-me
          lib.drill-thru.column-extract/keep-me
          lib.drill-thru.pivot/keep-me
@@ -132,6 +134,9 @@
   ->pMBQL
   legacy-default-join-alias
   without-cleaning]
+ [metabase.lib.convert.metadata-to-legacy
+  lib-metadata-column->legacy-metadata-column
+  lib-metadata-column-key->legacy-metadata-column-key]
  [lib.database
   database-id]
  [lib.drill-thru
@@ -359,8 +364,7 @@
   rename-join
   replace-clause
   replace-join]
- [metabase.lib.schema.util
-  ref-distinct-key]
+ [metabase.lib.schema.util]
  [lib.segment
   available-segments]
  [lib.stage

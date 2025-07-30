@@ -158,14 +158,14 @@
    ;; specific columns.
    (ensure-pmbql #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
-   #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
+   #'qp.resolve-fields/resolve-fields   ; this middleware actually works with either MBQL 5 or legacy
    (ensure-legacy #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-pmbql #'resolve-joins/resolve-joins)
-   (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
-   (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
+   (ensure-pmbql #'resolve-joined-fields/resolve-joined-fields)
+   (ensure-pmbql #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
