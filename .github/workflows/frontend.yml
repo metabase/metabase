@@ -23,6 +23,10 @@ on:
         description: "Skip type check"
         type: boolean
         default: false
+      skip-timezones:
+        description: "Skip timezone tests"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -109,7 +113,7 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   fe-tests-timezones:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !inputs.skip-timezones }}
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
