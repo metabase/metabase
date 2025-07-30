@@ -86,8 +86,10 @@
 
    ;; ^/api/ -> All other API routes
    (context "/api" [] (api-handler api-routes))
-   ;; ^/app/ -> static files under frontend_client/app
+   ;; ^/app/ -> static files under frontend_client/embed (external bundles) or frontend_client/app (main FE)
    (context "/app" []
+     ;; serve external embed/hosted bundles first so they are not shadowed by main app assets
+     (route/resources "/" {:root "frontend_client/embed"})
      (route/resources "/" {:root "frontend_client/app"})
      ;; return 404 for anything else starting with ^/app/ that doesn't exist
      (route/not-found {:status 404, :body "Not found."}))
