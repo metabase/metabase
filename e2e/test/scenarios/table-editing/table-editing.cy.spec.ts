@@ -61,6 +61,17 @@ describe("scenarios > table-editing", () => {
     });
   });
 
+  describe("non-admin user", () => {
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+    });
+
+    it("should not allow to open table data view", () => {
+      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
+      cy.findByTestId("edit-table-data-restricted").should("be.visible");
+    });
+  });
+
   describe("table edit mode", () => {
     beforeEach(() => {
       cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
