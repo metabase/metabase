@@ -316,7 +316,7 @@
                                          (lib/with-join-alias "B")))
                            (lib/join (-> (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])
                                          (lib/with-join-alias "C"))))]
-      (is (=? {:stages [{:joins [{ :alias     "B"
+      (is (=? {:stages [{:joins [{:alias     "B"
                                   :stages     [{:source-table 2}]
                                   :conditions [[:= {}
                                                 [:field {} 2]
