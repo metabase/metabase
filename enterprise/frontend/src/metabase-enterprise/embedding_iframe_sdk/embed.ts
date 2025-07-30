@@ -257,7 +257,9 @@ class MetabaseEmbed {
       if (hostname === instanceUrl.hostname) {
         return true;
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error("unable to construct the URL:", error);
+    }
 
     return hostname === "localhost" || hostname === "127.0.0.1";
   }
