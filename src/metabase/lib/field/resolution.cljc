@@ -116,10 +116,19 @@
     key-in-opts => key-in-col-metadata
 
   `:join-alias` is not automatically propagated from opts because it may or may not be correct... [[resolve-in-join]]
-  will include the join alias in result metadata if appropriate."
+  will include the join alias in result metadata if appropriate. Ideally you're only supposed to use `:join-alias` in
+  the stage where the join was performed. Subsequent stages are supposed to use field name refs, e.g.
+  `My_Join__CATEGORY` or something like that. Historically a lot of field refs use IDs plus `:join-alias` well beyond
+  the stage where the join originally happened... this is fine (since we can easily resolve it) but we do not want
+  metadata to include `:metabase.lib.join/join-alias` in this case since it means the join happened in the current
+  stage. If we include it incorrectly then it is liable to break code downstream and 'double-dip' the desired alias
+  calculation code (e.g. we might spit out `My_Join__My_Join__CATEGORY`).
+
+  `:source-field` => `:fk-field-id` is not automatically propagated either, because the join may have been done in a
+  previous stage (in which case having `:source-field` in the first place was probably incorrect). If appropriate it
+  is propagated by [[resolve-in-implicit-join]]."
   {:lib/uuid                :lib/source-uuid
    :binning                 :metabase.lib.field/binning
-   :source-field            :fk-field-id
    :source-field-join-alias :fk-join-alias
    :source-field-name       :fk-field-name
    :temporal-unit           :metabase.lib.field/temporal-unit
@@ -234,7 +243,7 @@
                     (pr-str join-alias)
                     (pr-str stage-number))
         (let [join-cols (lib.metadata.calculation/returned-columns query stage-number join)]
-          (when-let [col (resolve-in-metadata query join-cols id-or-name)]
+          (when-some [col (resolve-in-metadata query join-cols id-or-name)]
             (-> (merge
                  ;; run this thru `update-keys-for-col-from-previous-stage` so things like binning or bucketing in the
                  ;; last stage of the join don't get propagated incorrectly. Don't update source or desired aliases
@@ -242,7 +251,10 @@
                  ;; `lib.field.util/update-keys-for-col-from-previous-stage` will mess them up.
                  (-> (lib.field.util/update-keys-for-col-from-previous-stage col)
                      (dissoc :lib/source-column-alias :lib/desired-column-alias))
-                 (select-keys col [:lib/source-column-alias :lib/desired-column-alias]))
+                 (select-keys col [:lib/source-column-alias :lib/desired-column-alias])
+                 ;; include the `fk-field-id` specified in the join
+                 (when-some [fk-field-id (:fk-field-id join)]
+                   {:fk-field-id fk-field-id}))
                 ;; now make sure join alias and what not is still set correctly for a column coming directly from a join
                 (as-> $col (lib.join/column-from-join query stage-number $col join-alias))))))
       ;; a join with this alias does not exist at this stage of the query... try looking recursively in previous stage(s)
@@ -259,17 +271,75 @@
             (log/debug "No more previous stages =(")
             nil))))))
 
+(defn- resolve-in-previous-stage-cols [query previous-stage-columns id-or-name]
+  (log/tracef "Previous stage columns: %s" (pr-str (map (juxt :id :lib/desired-column-alias) previous-stage-columns)))
+  (when-some [col (resolve-in-metadata query previous-stage-columns id-or-name)]
+    (-> col
+        lib.field.util/update-keys-for-col-from-previous-stage
+        (assoc :lib/source :source/previous-stage))))
+
+(mu/defn- resolve-in-implicit-join
+  [query           :- ::lib.schema/query
+   stage-number    :- :int
+   source-field-id :- ::lib.schema.id/field
+   id-or-name      :- [:or :string ::lib.schema.id/field]]
+  (log/debugf "Resolving implicitly joined %s (source Field ID = %s) in stage %s"
+              (pr-str id-or-name) (pr-str source-field-id) (pr-str stage-number))
+  ;; first, try to resolve the implicit join from the previous stage columns -- the join might have already been
+  ;; performed there and `:source-field` was specified incorrectly. (You're only supposed to specify this in the stage
+  ;; the implicit join happens; after that you should drop it and use field name refs instead e.g.
+  ;; `CATEGORIES__via__CATEGORY_ID`.) If this did happen in a previous stage we should return
+  ;; `:lib/original-fk-field-id` in the metadata instead of the usual `:source-field` => `:fk-field-id` mapping,
+  ;; otherwise we're liable to construct incorrect desired column
+  ;; aliases. [[lib.field.util/update-keys-for-col-from-previous-stage]] should take care of the renaming.
+  (or
+   (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+     ;; only look for columns from the previous stage that were originally implicitly joined using the same FK. (It is
+     ;; possible to implicitly join the same Table more than once with different FKs.)
+     (let [previous-stage-cols (filter #(= ((some-fn :fk-field-id :lib/original-fk-field-id) %)
+                                           source-field-id)
+                                       (lib.metadata.calculation/returned-columns query previous-stage-number))]
+       (resolve-in-previous-stage-cols query previous-stage-cols id-or-name)))
+   ;; if there is no previous stage or we were unable to find the column in a previous stage then that means the
+   ;; implicit join is happening in the current stage.
+   (when-some [col (if (pos-int? id-or-name)
+                     ;; easy enough to resolve Field ID refs.
+                     (field-metadata query id-or-name)
+                     ;;
+                     ;; string name ref
+                     ;;
+                     ;; You REALLY shouldn't be specifying `:source-field` in a field name ref, since it makes
+                     ;; resolution 10x harder. There's a 99.9% chance that using a field name ref with `:source-field`
+                     ;; is a bad idea and broken, I even considered banning it at the schema level, but decided to let
+                     ;; it be for now since we should still be able to resolve it.
+                     ;; we need to do the lookup as follows:
+                     ;;
+                     ;;    Source Field (FK)
+                     ;;    =>
+                     ;;    Target Field (Field with `:fk-target-field-id` AKA the field the FK points to)
+                     ;;    =>
+                     ;;    Target Table (Table to implicitly join)
+                     ;;    =>
+                     ;;    Resolve in Target Table metadata
+                     (when-some [source-field (lib.metadata/field query source-field-id)]
+                       (when-some [fk-target-field-id (:fk-target-field-id source-field)]
+                         (when-some [target-field (lib.metadata/field query fk-target-field-id)]
+                           (when-some [target-table (lib.metadata/table query (:table-id target-field))]
+                             (resolve-in-metadata query
+                                                  (lib.metadata.calculation/returned-columns query target-table)
+                                                  id-or-name))))))]
+     ;; if we managed to resolve it then update metadata appropriately.
+     (assoc col
+            :lib/source :source/implicitly-joinable
+            :fk-field-id source-field-id))))
+
 (mu/defn- resolve-in-previous-stage :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   [query                 :- ::lib.schema/query
    previous-stage-number :- :int
    id-or-name            :- [:or :string ::lib.schema.id/field]]
   (log/debugf "Resolving %s in previous stage returned columns" (pr-str id-or-name))
   (when-some [previous-stage-columns (lib.metadata.calculation/returned-columns query previous-stage-number)]
-    (log/tracef "Previous stage columns: %s" (pr-str (map (juxt :id :lib/desired-column-alias) previous-stage-columns)))
-    (when-some [col (resolve-in-metadata query previous-stage-columns id-or-name)]
-      (-> col
-          lib.field.util/update-keys-for-col-from-previous-stage
-          (assoc :lib/source :source/previous-stage)))))
+    (resolve-in-previous-stage-cols query previous-stage-columns id-or-name)))
 
 (mu/defn- resolve-in-card-returned-columns :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
   [query          :- ::lib.schema/query
@@ -322,7 +392,7 @@
     :let [stage (lib.util/query-stage query stage-number)]
     (and (pos-int? id-or-name)
          (:source-table stage))
-    (when-let [col (field-metadata query id-or-name)]
+    (when-some [col (field-metadata query id-or-name)]
       ;; don't return this field if it's not actually from the source table. We want some of the fallback
       ;; resolution pathways to figure out what join this came from.
       (when (= (:table-id col) (:source-table stage))
@@ -377,7 +447,7 @@
            (assoc col ::fallback-metadata? true)))
        ;; if we STILL can't find a match, return made-up fallback metadata.
        (fallback-metadata id-or-name))
-   (when-let [model-cols (not-empty (model-metadata query stage-number))]
+   (when-some [model-cols (not-empty (model-metadata query stage-number))]
      (when-some [col (resolve-in-metadata query model-cols id-or-name)]
        (-> col
            lib.field.util/update-keys-for-col-from-previous-stage
@@ -388,15 +458,16 @@
   for [[metabase.lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                                           :- ::lib.schema/query
    stage-number                                                    :- :int
-   [_tag {:keys [join-alias], :as opts} id-or-name, :as field-ref] :- :mbql.clause/field]
+   [_tag {:keys [source-field join-alias], :as opts} id-or-name, :as field-ref] :- :mbql.clause/field]
   ;; this is just for easier debugging
   (let [stage-number (lib.util/canonical-stage-index query stage-number)]
     (log/debugf "Resolving %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
     (-> (merge-metadata
          {:lib/type :metadata/column}
-         (or (if join-alias
-               (resolve-in-join query stage-number join-alias id-or-name)
-               (resolve-from-previous-stage-or-source query stage-number id-or-name))
+         (or (cond
+               join-alias   (resolve-in-join query stage-number join-alias id-or-name)
+               source-field (resolve-in-implicit-join query stage-number source-field id-or-name)
+               :else        (resolve-from-previous-stage-or-source query stage-number id-or-name))
              (merge
               (fallback-metadata id-or-name)
               (when join-alias

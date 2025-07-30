@@ -376,10 +376,9 @@
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query venues
                    {:fields [&Category.categories.name]
-                    ;; This is a hand-rolled implicit join clause.
                     :joins  [{:alias        "Category"
                               :source-table $$categories
-                              :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                              :condition    [:= $category-id &Category.categories.id]
                               :strategy     :left-join
                               :fk-field-id  %category-id}]}))
           col   (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))]
@@ -1026,3 +1025,144 @@
               (lib.field.resolution/resolve-field-ref
                query -1
                [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (meta/id :products :id)]))))))
+
+(defn- resolve-column-from-implicit-join-test-query
+  "A query with two implicit joins against `PRODUCTS` using two different FK fields (to make sure we don't get them
+  mixed up.)"
+  []
+  (lib/query
+   meta/metadata-provider
+   {:lib/type :mbql/query
+    :database (meta/id)
+    :stages   [{:lib/type     :mbql.stage/mbql
+                :aggregation  [[:count {}]]
+                :source-table (meta/id :orders)
+                :breakout     [;; same ID, but different `:source-field`; make sure we do not resolve
+                               ;; to the wrong field. Test them both to make sure each is resolved
+                               ;; correctly.
+                               [:field
+                                {:source-field (meta/id :orders :id)}
+                                (meta/id :products :category)]
+                               [:field
+                                {:source-field (meta/id :orders :product-id)}
+                                (meta/id :products :category)]]}
+               {:lib/type :mbql.stage/mbql
+                :fields   [[:field
+                            {:source-field (meta/id :orders :id)}
+                            (meta/id :products :category)]
+                           [:field
+                            ;; having `:source-field` here AGAIN is probably not necessary since the
+                            ;; join was actually already done in the previous stage; at any rate we
+                            ;; should still return correct info.
+                            {:source-field (meta/id :orders :product-id)}
+                            (meta/id :products :category)]
+                           [:field {:base-type :type/Integer} "count"]]
+                :filters  [[:>
+                            {}
+                            [:field {:base-type :type/Integer} "count"]
+                            0]]}
+               {:lib/type :mbql.stage/mbql}]}))
+
+(deftest ^:parallel resolve-column-from-implicit-join-test
+  (let [query (resolve-column-from-implicit-join-test-query)]
+    (testing "PRODUCTS__via__PRODUCT_ID"
+      (let [field-ref (lib/normalize
+                       :mbql.clause/field
+                       [:field {:source-field (meta/id :orders :product-id)} (meta/id :products :category)])]
+        (binding [lib.metadata.calculation/*display-name-style* :long]
+          (testing "first stage"
+            (let [expected {:name         "CATEGORY"
+                            :display-name "Product → Category"
+                            :lib/source   :source/implicitly-joinable
+                            :fk-field-id  (meta/id :orders :product-id)}]
+              (is (=? expected
+                      (lib.field.resolution/resolve-field-ref query 0 field-ref)))
+              ;; 99.9% chance that using a field name ref with `:source-field` is a bad idea and broken, I even
+              ;; considered banning it at the schema level, but decided to let it be for now since we should still be
+              ;; able to resolve it. This should also work for subsequent stages but you would need to use `CATEGORY_2`
+              ;; or `PRODUCTS__via__PRODUCT_ID__CATEGORY` here to make it work; `:source-table` is not even needed at
+              ;; that point.
+              (testing "should also be able to use a field name ref here if you are a psycho"
+                (is (=? expected
+                        (lib.field.resolution/resolve-field-ref query 0 (lib/normalize
+                                                                         :mbql.clause/field
+                                                                         [:field {:source-field (meta/id :orders :product-id)
+                                                                                  :base-type    :type/Text}
+                                                                          "CATEGORY"])))))))
+          ;; actually incorrect to use `:source-field` if the implicit join happened in the previous stage, since
+          ;; that's sorta instructing us to perform the implicit join again. Either way we should be able to figure
+          ;; out what you meant here.
+          (testing "second stage"
+            (is (=? {:name                     "CATEGORY"
+                     :display-name             "Product → Category"
+                     :lib/source               :source/previous-stage
+                     :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                     :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                     :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                     :lib/original-fk-field-id (meta/id :orders :product-id)}
+                    (lib.field.resolution/resolve-field-ref query 1 field-ref))))
+          (testing "third stage"
+            (is (=? {:name                     "CATEGORY"
+                     :display-name             "Product → Category"
+                     :lib/source               :source/previous-stage
+                     :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                     :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                     :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                     :lib/original-fk-field-id (meta/id :orders :product-id)}
+                    (lib.field.resolution/resolve-field-ref query 2 field-ref)))))))))
+
+(deftest ^:parallel resolve-column-from-implicit-join-test-2
+  (let [query (resolve-column-from-implicit-join-test-query)]
+    (testing "PRODUCTS__via__ID"
+      (let [field-ref (lib/normalize
+                       :mbql.clause/field
+                       [:field {:source-field (meta/id :orders :id)} (meta/id :products :category)])]
+        (binding [lib.metadata.calculation/*display-name-style* :long]
+          (testing "first stage"
+            (is (=? {:name         "CATEGORY"
+                     :display-name "ID → Category"
+                     :lib/source   :source/implicitly-joinable
+                     :fk-field-id  (meta/id :orders :id)}
+                    (lib.field.resolution/resolve-field-ref query 0 field-ref))))
+          (testing "second stage"
+            (is (=? {:name                     "CATEGORY"
+                     :display-name             "ID → Category"
+                     :lib/source               :source/previous-stage
+                     :lib/source-column-alias  "PRODUCTS__via__ID__CATEGORY"
+                     :lib/desired-column-alias "PRODUCTS__via__ID__CATEGORY"
+                     :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                     :lib/original-fk-field-id (meta/id :orders :id)}
+                    (lib.field.resolution/resolve-field-ref query 1 field-ref))))
+          (testing "third stage"
+            (is (=? {:name                     "CATEGORY"
+                     :display-name             "ID → Category"
+                     :lib/source               :source/previous-stage
+                     :lib/source-column-alias  "PRODUCTS__via__ID__CATEGORY"
+                     :lib/desired-column-alias "PRODUCTS__via__ID__CATEGORY"
+                     :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                     :lib/original-fk-field-id (meta/id :orders :id)}
+                    (lib.field.resolution/resolve-field-ref query 2 field-ref)))))))))
+
+(deftest ^:parallel include-fk-field-id-from-join-test
+  (testing "If join includes `:fk-field-id`, include it in metadata for `:join-alias` ref"
+    (let [query (-> (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query venues
+                       {:fields [&Category.categories.name]
+                        :joins  [{:alias        "Category"
+                                  :source-table $$categories
+                                  :condition    [:= $category-id &Category.categories.id]
+                                  :strategy     :left-join
+                                  :fk-field-id  %category-id}]}))
+                    lib/append-stage)]
+      (testing "first stage"
+        (is (=? {:fk-field-id (meta/id :venues :category-id)}
+                (lib.field.resolution/resolve-field-ref
+                 query 0
+                 (lib/normalize :mbql.clause/field [:field {:join-alias "Category"} (meta/id :categories :id)])))))
+      (testing "second stage"
+        (is (=? {:fk-field-id              (symbol "nil #_\"key is not present.\"")
+                 :lib/original-fk-field-id (meta/id :venues :category-id)}
+                (lib.field.resolution/resolve-field-ref
+                 query 1
+                 (lib/normalize :mbql.clause/field [:field {:base-type :type/Integer} "Category__ID"]))))))))

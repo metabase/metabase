@@ -343,7 +343,9 @@
                          :limit    3})]
             (is (= ["Title"                     ; products.title
                     "Category"                  ; products.category
-                    "Product → Title"           ; orders.title
+                    ;; when generating the display name for Product ID -> Orders Title we take the name of the FK
+                    ;; column and strip off ID (`Product`) which results in `Product → Title`.
+                    "Product → Title"           ; product.title, remapped from orders.product_id
                     "Orders → Sum of Quantity"] ; sum(orders.quantity)
                    (map :display_name (qp.preprocess/query->expected-cols query))))
             (mt/with-native-query-testing-context query
@@ -352,7 +354,7 @@
                   (testing "Metadata"
                     (is (= [["TITLE"    nil      "Title"]                     ; products.title
                             ["CATEGORY" nil      "Category"]                  ; products.category
-                            ["TITLE_2"  "Orders" "Product → Title"]           ; Orders.title (remapped from orders.product-id => products.title)
+                            ["TITLE_2"  "Orders" "Product → Title"]           ; product.title, remapped from orders.product_id
                             ["sum"      "Orders" "Orders → Sum of Quantity"]] ; sum(orders.quantity)
                            (map (juxt :name :metabase.lib.join/join-alias :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
