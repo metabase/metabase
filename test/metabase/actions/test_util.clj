@@ -116,7 +116,7 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (apply tx/dataset-definition "temp-test-data" ~table-definitions) (fn [] ~@body)))
+  `(do-with-dataset-definition (tx/dataset-definition "temp-test-data" ~table-definitions) (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
@@ -125,7 +125,7 @@
    reuse a single database for all tests."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition (tx/dataset-definition "empty-test-db") (fn [] ~@body)))
+  `(do-with-dataset-definition (tx/dataset-definition "empty-test-db" []) (fn [] ~@body)))
 
 (defn- delete-categories-1-query []
   (sql.qp/format-honeysql

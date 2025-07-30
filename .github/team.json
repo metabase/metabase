@@ -14,14 +14,6 @@
       ]
     },
     {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "lbrdnk",
-        "bronsa"
-      ]
-    },
-    {
       "name": "Drivers",
       "label": ".Team/Drivers",
       "members": [
@@ -94,7 +86,9 @@
         "sloansparger",
         "somtom",
         "wotbrew",
-        "tsplude"
+        "tsplude",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
