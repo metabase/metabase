@@ -6,6 +6,7 @@ import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
 import { useSetting } from "metabase/common/hooks";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { getTokenFeature } from "metabase/setup/selectors";
 
 export function useSdkUsageProblem({
@@ -22,7 +23,8 @@ export function useSdkUsageProblem({
   // When the setting haven't been loaded or failed to query, we assume that the
   // feature is _enabled_ first. Otherwise, when a user's instance is temporarily down,
   // their customer would see an alarming error message on production.
-  const isEnabled = useSetting("enable-embedding-sdk") ?? true;
+  const isEnabled =
+    useSetting(EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey) ?? true;
 
   const hasTokenFeature = useSdkSelector((state) => {
     // We also assume that the feature is enabled if the token-features are missing.

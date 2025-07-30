@@ -5,10 +5,12 @@ import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
 } from "metabase/embedding-sdk/config";
 
-// Enable SDK mode for new iframe embedding.
-// Note that this is also defined in the SDK's entry point.
+/**
+ * Configuration overrides for simple embedding.
+ */
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
+EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-simple";
 
 // Use the iframe embedding auth flow instead of the regular auth flow.
 EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSdkIframeEmbedAuth = true;
