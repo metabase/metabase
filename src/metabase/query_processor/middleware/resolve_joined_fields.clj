@@ -15,19 +15,21 @@
    stage :- ::lib.schema/stage]
   (let [first-stage-path (conj (vec (butlast path)) 0)
         source-table     (get-in query (conj first-stage-path :source-table))
-        stage'           (lib.util.match/replace stage
-                           ;; don't recurse into joins. But should we update conditions? We probably should.
-                           (_ :guard (constantly (contains? (set &parents) :joins)))
-                           &match
+        update-fields    (fn update-fields [form]
+                           (lib.util.match/replace form
+                             ;; don't recurse into joins. But should we update conditions tho.
+                             (join :guard (every-pred map? #(= (:lib/type %) :mbql/join)))
+                             (update join :conditions update-fields)
 
-                           [:field (_opts :guard (complement :join-alias)) (id :guard pos-int?)]
-                           (or (when-let [col (lib.metadata/field query id)]
-                                 (when-not (= (:table-id col) source-table)
-                                   (when-let [resolved (lib.walk/apply-f-for-stage-at-path
-                                                        lib.field.resolution/resolve-field-ref
-                                                        query path &match)]
-                                     (lib/ref resolved))))
-                               &match))]
+                             [:field (_opts :guard (complement :join-alias)) (id :guard pos-int?)]
+                             (or (when-let [col (lib.metadata/field query id)]
+                                   (when-not (= (:table-id col) source-table)
+                                     (when-let [resolved (lib.walk/apply-f-for-stage-at-path
+                                                          lib.field.resolution/resolve-field-ref
+                                                          query path &match)]
+                                       (lib/ref resolved))))
+                                 &match)))
+        stage' (update-fields stage)]
     (when-not (= stage' stage)
       ;; normalizing the stage will remove any duplicate `:fields` or `:breakouts`
       (lib/normalize ::lib.schema/stage stage'))))

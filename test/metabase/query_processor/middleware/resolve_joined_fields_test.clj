@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
@@ -269,3 +271,61 @@
                                &Q2.birth-date
                                &Q2.*count/BigInteger]
                 :limit        3}))))))
+
+(deftest ^:parallel resolve-join-conditions-test
+  (testing "Resolve fields in join :conditions"
+    (let [mp           (lib.tu/mock-metadata-provider
+                        {:database meta/database
+                         :tables   [{:id 1, :name "table_a"}
+                                    {:id 2, :name "table_b"}
+                                    {:id 3, :name "table_c"}]
+                         :fields   [{:id            1
+                                     :name          "a_id"
+                                     :base-type     :type/Text
+                                     :semantic-type :type/PK
+                                     :table-id      1}
+                                    {:id            2
+                                     :name          "b_id"
+                                     :base-type     :type/Text
+                                     :semantic-type :type/FK
+                                     :table-id      1}
+                                    {:id            3
+                                     :name          "b_id"
+                                     :base-type     :type/Text
+                                     :semantic-type :type/PK
+                                     :table-id      2}
+                                    {:id            4
+                                     :name          "c_id"
+                                     :base-type     :type/Text
+                                     :semantic-type :type/FK
+                                     :table-id      2}
+                                    {:id            5
+                                     :name          "c_id"
+                                     :base-type     :type/Text
+                                     :semantic-type :type/PK
+                                     :table-id      3}]})
+          table-a      (lib.metadata/table mp 1)
+          table-b      (lib.metadata/table mp 2)
+          table-c      (lib.metadata/table mp 3)
+          table-a-b-id (lib.metadata/field mp 2)
+          table-b-b-id (lib.metadata/field mp 3)
+          table-b-c-id (lib.metadata/field mp 4)
+          table-c-c-id (lib.metadata/field mp 5)
+          query        (-> (lib/query mp table-a)
+                           (lib/join (-> (lib/join-clause table-b [(lib/= table-a-b-id  table-b-b-id)])
+                                         (lib/with-join-alias "B")))
+                           (lib/join (-> (lib/join-clause table-c [(lib/= table-b-c-id table-c-c-id)])
+                                         (lib/with-join-alias "C"))))]
+      (is (=? {:stages [{:joins [{ :alias     "B"
+                                  :stages     [{:source-table 2}]
+                                  :conditions [[:= {}
+                                                [:field {} 2]
+                                                [:field {:join-alias "B"} 3]]]}
+                                 {:alias      "C"
+                                  :stages     [{:source-table 3}]
+                                  :conditions [[:=
+                                                {}
+                                                [:field {:join-alias "B"} 4] ; join alias should get added here
+                                                [:field {:join-alias "C"}
+                                                 5]]]}]}]}
+              (resolve-joined-fields/resolve-joined-fields query))))))
