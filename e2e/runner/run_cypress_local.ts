@@ -78,43 +78,28 @@ const init = async () => {
   }
 
   if (options.BUILD_JAR) {
-    printBold("⏳ Building backend");
+    printBold("⏳ Building backend (uberjar)");
     shell("./bin/build-for-test");
+  }
 
-    if (options.START_BACKEND) {
-      const isBackendRunning = shell(
-        `lsof -ti:${options.BACKEND_PORT} || echo ""`,
-        { quiet: true },
+  if (options.START_BACKEND) {
+    const isBackendRunning = shell(
+      `lsof -ti:${options.BACKEND_PORT} || echo ""`,
+      { quiet: true },
+    );
+    if (isBackendRunning) {
+      printBold(
+        "⚠️ Your backend is already running, you may want to kill pid " +
+          isBackendRunning,
       );
-      if (isBackendRunning) {
-        printBold(
-          "⚠️ Your backend is already running, you may want to kill pid " +
-            isBackendRunning,
-        );
-        process.exit(FAILURE_EXIT_CODE);
-      }
-
-      printBold("⏳ Starting backend (jar mode)");
-      await CypressBackend.start();
+      process.exit(FAILURE_EXIT_CODE);
     }
-  } else if (options.LIVE_BACKEND) {
-    if (options.START_BACKEND) {
-      const isBackendRunning = shell(
-        `lsof -ti:${options.BACKEND_PORT} || echo ""`,
-        { quiet: true },
-      );
-      if (isBackendRunning) {
-        printBold(
-          "⚠️ Your backend is already running, you may want to kill pid " +
-            isBackendRunning,
-        );
-        process.exit(FAILURE_EXIT_CODE);
-      }
 
-      printBold("⏳ Starting backend (live mode)");
-      await CypressBackend.start();
-    }
-  } else {
+    const modeLabel = options.LIVE_BACKEND ? "live" : "jar";
+    printBold(`⏳ Starting backend (${modeLabel} mode)`);
+    await CypressBackend.start();
+  } else if (!options.BUILD_JAR) {
+    // Not building jar and not starting backend – assume external server
     printBold(
       `Not building a jar, expecting metabase to be running on port ${options.BACKEND_PORT}. Make sure your metabase instance is running with an h2 app db and the following environment variables:
   - MB_ENABLE_TEST_ENDPOINTS=true
