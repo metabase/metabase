@@ -49,12 +49,6 @@ export type StaticQuestionProps = PropsWithChildren<
   >
 >;
 
-/**
- * A component that renders a static question.
- *
- * @function
- * @category StaticQuestion
- */
 const _StaticQuestion = ({
   questionId: initialQuestionId,
   withChartTypeSelector,
@@ -119,6 +113,12 @@ const _StaticQuestion = ({
   );
 };
 
+/**
+ * A question component without drill-downs.
+ *
+ * @function
+ * @category StaticQuestion
+ */
 export const StaticQuestion = _StaticQuestion as typeof _StaticQuestion & {
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;

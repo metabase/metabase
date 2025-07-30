@@ -37,16 +37,16 @@ export type InteractiveQuestionProps = Omit<
   "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
 >;
 
+export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
+  <SdkQuestion {...props} />
+);
+
 /**
  * A question component with drill-downs enabled.
  *
  * @function
  * @category InteractiveQuestion
  */
-export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
-  <SdkQuestion {...props} />
-);
-
 export const InteractiveQuestion =
   _InteractiveQuestion as typeof _InteractiveQuestion & {
     BackButton: typeof BackButton;
