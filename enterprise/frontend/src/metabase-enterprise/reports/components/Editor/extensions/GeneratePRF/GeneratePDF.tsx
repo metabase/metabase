@@ -2,6 +2,24 @@ import { Extension } from "@tiptap/core";
 import type { Editor, Node } from "@tiptap/react";
 
 import { convertQuestionToPng } from "metabase-enterprise/reports/components/exports";
+import { getSubpathSafeUrl } from "metabase/lib/urls";
+import { Icons } from "metabase/ui";
+
+const svgToPNG = async (datauri: string) => {
+  return new Promise((res) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.height = 300;
+      canvas.width = 300;
+      canvas.getContext("2d")?.drawImage(img, 0, 0, 300, 300);
+      res(canvas.toDataURL());
+    };
+
+    img.src = datauri;
+  });
+};
 
 export const PDFGenerator = Extension.create({
   name: "RyanIsScared",
@@ -13,44 +31,11 @@ export const PDFGenerator = Extension.create({
         async ({ editor }: { editor: Editor }) => {
           const { default: jspdf } = await import("jspdf");
           const pdf = new PDF("test", { jsPDF: jspdf });
-          // editor.state.doc.forEach(async (node) => {
-          // for (const node of editor.state.doc.children) {
-          //   switch (node.type.name) {
-          //     case "paragraph": {
-          //       pdf.addText(node.textContent);
-          //       break;
-          //     }
-          //     case "heading": {
-          //       pdf.addHeading(node.textContent, { level: node.attrs.level });
-          //       break;
-          //     }
-          //     case "bulletList": {
-          //       const content = node.content.content.map((n) => n.textContent);
-          //       pdf.addBulletList(content);
-          //       break;
-          //     }
-          //     case "orderedList": {
-          //       const content = node.content.content.map((n) => n.textContent);
-          //       pdf.addOrderedList(content);
-          //       break;
-          //     }
-          //     case "cardEmbed": {
-          //       const { cardId } = node.attrs;
-          //       const dataUri = await convertQuestionToPng(cardId);
-          //       pdf.addImageFromDataUri(dataUri);
-          //       break;
-          //     }
-          //     default: {
-          //       console.log("Panic! I don't know what this is");
-          //       console.log({ node, nodeType: node.type.name });
-          //       // pdf.addText(node.textContent);
-          //     }
-          //   }
-          // }
-
           await walkNodes(editor.state.doc, pdf);
 
-          pdf.output();
+          setTimeout(() => {
+            pdf.output();
+          }, 300);
         },
     };
   },
@@ -58,21 +43,40 @@ export const PDFGenerator = Extension.create({
 
 const walkNodes = async (root: Node, pdf: PDF) => {
   for (const node of root.children) {
+    console.log({ nodeType: node.type.name, node });
     switch (node.type.name) {
       case "text": {
-        pdf.addText(node.text);
+        pdf.addInlineText(node.text);
         break;
       }
       case "smartLink": {
-        pdf.addText(node.attrs.text);
+        const { text, icon, url } = node.attrs;
+
+        const iconSVG = Icons[icon].source;
+
+        const datauri = await svgToPNG(
+          `data:image/svg+xml;base64,${btoa(iconSVG)}`,
+        );
+
+        pdf.addSVGInline(datauri);
+
+        const origin = new URL(window.location).origin;
+
+        pdf.addInlineText(text, { isLink: true, url: `${origin}${url}` });
         break;
       }
       case "paragraph": {
-        walkNodes(node, pdf);
+        pdf.startParagraph();
+        await walkNodes(node, pdf);
+        pdf.endParagraph();
         break;
       }
       case "heading": {
-        pdf.addHeading(node.textContent, { level: node.attrs.level });
+        const level = node.attrs.level || 3;
+        pdf.startHeading({ level });
+        await walkNodes(node, pdf);
+        //pdf.addHeading(node.textContent, { level: node.attrs.level });
+        pdf.endParagraph({ margin: level === "1" ? 6 : 4 });
         break;
       }
       case "bulletList": {
@@ -140,6 +144,10 @@ class PDF {
       );
       this._doc.line(padding[3], height - padding[2], padding[3], padding[0]);
     }
+
+    this._fontSize = defaultFontSize;
+    this._fontWeight = "normal";
+    this._fontStyle = "normal";
   }
 
   // Getter
@@ -159,7 +167,25 @@ class PDF {
     return this._maxWidth;
   }
 
+  get lineStart() {
+    return this._padding[3];
+  }
+
+  get fontInfo() {
+    return {
+      size: this._fontSize,
+      weight: this._fontWeight,
+      name: "helvetica",
+      style: this._fontStyle,
+    };
+  }
+
   // Setter
+
+  setFont({ size, weight }) {
+    this._fontSize = size;
+    this._fontWeight = weight;
+  }
 
   setPosition(newX, newY) {
     if (newX) {
@@ -172,6 +198,7 @@ class PDF {
   }
 
   resetPosition() {
+    console.log("resetting position");
     this._x = this._padding[3];
     this._y = this._padding[0];
   }
@@ -246,6 +273,108 @@ class PDF {
     }
   }
 
+  addInlineText(
+    text: string,
+    {
+      movePosition = true,
+      color = "black",
+      align = "left",
+      indent = 0,
+      isLink = false,
+      url = "",
+    } = {},
+  ) {
+    if (url) {
+      console.log(url);
+    }
+    const font = this.fontInfo;
+
+    this._doc.setTextColor(color);
+    this._doc.setFontSize(font.size);
+    this._doc.setFont(font.name, font.style, font.weight);
+
+    let lineHeight =
+      this._doc.getLineHeight(text) / this._doc.internal.scaleFactor;
+
+    if (this._x === this.lineStart) {
+      this._y += lineHeight;
+    }
+
+    // Figure out what can be added to the rest of the current line:
+
+    const firstLineRemainingWidth = this.maxWidth + this._padding[3] - this._x;
+    const firstLineSplittedText = this._doc.splitTextToSize(
+      text,
+      firstLineRemainingWidth,
+    );
+
+    if (isLink) {
+      this._doc.textWithLink(
+        firstLineSplittedText[0],
+        this._x + indent,
+        this._y,
+
+        {
+          align: align,
+          maxWidth: firstLineRemainingWidth,
+          url,
+        },
+      );
+    } else {
+      this._doc.text(this._x + indent, this._y, firstLineSplittedText[0], {
+        align: align,
+        maxWidth: firstLineRemainingWidth,
+      });
+    }
+
+    if (firstLineSplittedText.length === 1) {
+      const width = this._doc.getTextWidth(firstLineSplittedText[0]);
+      this._x += width;
+      console.log({ x: this._x, width });
+      return;
+    }
+
+    // If we get here, we have more text to add. Start a new line
+    this._y += lineHeight;
+    this._x = this._padding[3];
+
+    //Get the remaining text
+    const remainingText = text.slice(firstLineSplittedText[0].length).trim();
+
+    let blockMaxWidth = this._maxWidth - indent; // somehow we need to subtract 1 so the padding is not crossed
+    let splittedText = this._doc.splitTextToSize(remainingText, blockMaxWidth);
+
+    let lineCount = splittedText.length; // splitted text is a string array
+
+    if (this._y + lineHeight > this._height - this._padding[2]) {
+      this.addPage();
+      this.resetPosition();
+    }
+
+    if (isLink) {
+      this._doc.textWithLink(splittedText, this._x + indent, this._y, {
+        align: align,
+        maxWidth: firstLineRemainingWidth,
+        url,
+      });
+    } else {
+      this._doc.text(this._x + indent, this._y, splittedText, {
+        align: align,
+        maxWidth: blockMaxWidth,
+      });
+    }
+
+    // Add the block height, which is the amount of lines minus one multiplied by the line height
+    // Minus one, because the starting point is from the bottom of the text and we already added the first line
+    if (movePosition) {
+      const lastLineText = splittedText[splittedText.length - 1];
+      this._y += lineHeight * (lineCount - 1);
+      this._x += this._doc.getTextWidth(lastLineText);
+    } else {
+      this._y -= lineHeight;
+    }
+  }
+
   addHeading(text, { level }) {
     const levelSize = {
       "1": 24,
@@ -298,25 +427,20 @@ class PDF {
     this._y += scaledHeight + marginBottom;
   }
 
-  addImageFromDataElement(element, { marginBottom = 6 } = {}) {
-    const props = this._doc.getImageProperties(element);
+  addSVGInline(datauri) {
+    const props = this._doc.getImageProperties(datauri);
 
-    const { x, y, maxWidth } = this;
+    console.log({
+      height: props.height,
+      width: props.width,
+    });
 
-    const { height, width, fileType } = props;
+    const size =
+      this._doc.getLineHeight("I'm helping") / this._doc.internal.scaleFactor;
 
-    const documentFactor = maxWidth / width;
+    this._doc.addImage(datauri, this._x, this._y - size, size, size);
 
-    const scaledHeight = height * documentFactor;
-    const scaledWidth = width * documentFactor;
-
-    console.log({ height, width, scaledHeight, scaledWidth });
-
-    this._doc.addImage(element, fileType, x, y, scaledWidth, scaledHeight);
-
-    this._y += scaledHeight + marginBottom;
-
-    console.log({ props });
+    this._x += size;
   }
 
   drawLineIfDebug = (color, size = 100) => {
@@ -326,8 +450,31 @@ class PDF {
     }
   };
 
+  startParagraph() {
+    this.setFont({ size: 12, weight: "normal" });
+  }
+
+  startHeading({ level = "3" }: { level: "1" | "2" | "3" }) {
+    const levelSize = {
+      "1": 24,
+      "2": 18,
+      "3": 16,
+    };
+
+    this.setFont({
+      size: levelSize[level],
+      weight: "bold",
+    });
+  }
+
+  endParagraph({ margin = 4 } = {}) {
+    this._x = this.lineStart;
+    this._y += margin;
+  }
+
   output() {
-    window.open(this._doc.output("bloburl"), "_blank");
+    window.open(this._doc.output("bloburi"), "_blank");
+
     // this._doc.save(this._name);
   }
 }
