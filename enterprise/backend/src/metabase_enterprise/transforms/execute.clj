@@ -51,10 +51,11 @@
     run-id))
 
 (defn- worker-uri []
-  (-> (config/config-str :mb-transform-worker-uri)
-      java.net.URI.
-      (.resolve "/transform")
-      str))
+  (when-let [mb-transform-worker-uri (config/config-str :mb-transform-worker-uri)]
+    (-> mb-transform-worker-uri
+        java.net.URI.
+        (.resolve "/transform")
+        str)))
 
 (defn start-transform-inner!
   "Execute locally or remotely."
