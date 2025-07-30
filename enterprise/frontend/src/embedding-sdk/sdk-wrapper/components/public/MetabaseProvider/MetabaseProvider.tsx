@@ -1,14 +1,16 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
+import { useInitializeMetabaseProviderPropsStore } from "embedding-sdk/sdk-wrapper/hooks/private/use-initialize-metabase-provider-props-store";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-load-sdk-bundle";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
 import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
-import { MetabaseProviderInner } from "../../private/MetabaseProviderInner/MetabaseProviderInner";
+const MetabaseProviderInner = (props: MetabaseProviderProps) => {
+  const { children, ...metabaseProviderProps } = props;
 
-const _MetabaseProvider = ({ children, ...props }: MetabaseProviderProps) => {
   useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
   const { isLoading } = useWaitForSdkBundle();
 
@@ -16,11 +18,18 @@ const _MetabaseProvider = ({ children, ...props }: MetabaseProviderProps) => {
     ? null
     : getWindow()?.MetabaseEmbeddingSDK?.getSdkStore();
 
-  return (
-    <MetabaseProviderInner reduxStore={reduxStore} props={props}>
-      {children}
-    </MetabaseProviderInner>
+  useInitializeMetabaseProviderPropsStore(metabaseProviderProps, reduxStore);
+
+  useEffect(
+    function updateMetabaseProviderProps() {
+      const { children, ...metabaseProviderProps } = props;
+
+      ensureMetabaseProviderPropsStore().setProps(metabaseProviderProps);
+    },
+    [props],
   );
+
+  return <>{children}</>;
 };
 
 /**
@@ -35,7 +44,7 @@ export const MetabaseProvider = memo(function MetabaseProvider({
 }: MetabaseProviderProps) {
   return (
     <ClientSideOnlyWrapper ssrFallback={children}>
-      <_MetabaseProvider {...props}>{children}</_MetabaseProvider>
+      <MetabaseProviderInner {...props}>{children}</MetabaseProviderInner>
     </ClientSideOnlyWrapper>
   );
 });
