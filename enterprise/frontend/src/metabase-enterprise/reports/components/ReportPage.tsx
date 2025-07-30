@@ -14,6 +14,7 @@ import {
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { ActionIcon, Box, Button, Icon, Loader, Menu } from "metabase/ui";
 import {
@@ -65,6 +66,7 @@ export const ReportPage = ({
     : undefined;
   const previousReportId = usePrevious(reportId);
   const previousVersion = usePrevious(selectedVersion);
+  const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
 
   const { data: report, isLoading: isReportLoading } = useGetReportQuery(
     reportId && reportId !== "new"
@@ -170,11 +172,13 @@ export const ReportPage = ({
           ? updateReport({ ...newReportData, id: report.id }).then(
               (response) => {
                 if (response.data) {
-                  dispatch(
-                    push(
-                      `/report/${response.data.id}?version=${response.data.version}`,
-                    ),
-                  );
+                  scheduleNavigation(() => {
+                    dispatch(
+                      push(
+                        `/report/${response.data.id}?version=${response.data.version}`,
+                      ),
+                    );
+                  });
                 }
                 return response.data;
               },
@@ -184,7 +188,9 @@ export const ReportPage = ({
               collection_id: collectionId,
             }).then((response) => {
               if (response.data) {
-                dispatch(replace(`/report/${response.data.id}`));
+                scheduleNavigation(() => {
+                  dispatch(replace(`/report/${response.data.id}`));
+                });
               }
               return response.data;
             }));
@@ -214,6 +220,7 @@ export const ReportPage = ({
       commitAllPendingChanges,
       reportId,
       cardEmbeds,
+      scheduleNavigation,
     ],
   );
 
@@ -376,7 +383,10 @@ export const ReportPage = ({
             }}
           />
         )}
-        <LeaveRouteConfirmModal isEnabled={hasUnsavedChanges()} route={route} />
+        <LeaveRouteConfirmModal
+          isEnabled={hasUnsavedChanges() && !isNavigationScheduled}
+          route={route}
+        />
       </Box>
     </Box>
   );
