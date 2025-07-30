@@ -7,7 +7,7 @@ interface TileCoordinate {
 
 interface TileUrlParams {
   cardId?: number;
-  dashboardId?: number;
+  dashboardId?: number | string;
   dashcardId?: number;
   zoom: string | number;
   coord: TileCoordinate;
@@ -39,6 +39,10 @@ export function getTileUrl(params: TileUrlParams): string {
   const isDashboard = dashboardId && dashcardId && cardId;
 
   if (isDashboard) {
+    // isAutoDashboard
+    if (typeof dashboardId === "string" && dashboardId.startsWith("/auto")) {
+      return adhocQueryTileUrl(zoom, coord, latField, lonField, datasetQuery);
+    }
     const isPublicDashboard = uuid;
 
     if (isPublicDashboard) {
