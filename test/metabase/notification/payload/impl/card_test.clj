@@ -415,7 +415,46 @@
 
       (testing "archive if the send is successful"
         (notification/send-notification! notification)
-        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))
+        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))
+        (testing "once archived, notifications will be skipped if trying to send"
+          (notification.tu/test-send-notification!
+           notification
+           {:channel/email
+            (fn [emails]
+              (is (empty? emails)))}))))))
+
+(deftest send-once-with-goal-test
+  (notification.tu/with-card-notification
+    [notification {:card              {:dataset_query          (mt/mbql-query
+                                                                 checkins
+                                                                 {:aggregation [["count"]]
+                                                                  :filter      [:between $date "2014-04-01" "2014-06-01"]
+                                                                  :breakout    [!day.date]})
+                                       :display                :line
+                                       :visualization_settings {:graph.show_goal  true
+                                                                :graph.goal_value 0
+                                                                :graph.dimensions ["DATE"]
+                                                                :graph.metrics    ["count"]}}
+                   :notification-card {:send_condition :goal_below
+                                       :send_once      true}
+                   :handlers          [@notification.tu/default-email-handler]}]
+    (testing "if the goal is not met, no email is sent and notification is active"
+      (notification.tu/test-send-notification!
+       notification
+       {:channel/email
+        (fn [emails]
+          (is (zero? (count emails)))
+          (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))}))
+
+    (testing "if the goal is met, notification is sent then archived"
+      ;; flip the condition so the goal is met now
+      (t2/update! :model/NotificationCard (get-in notification [:payload :id]) {:send_condition :goal_above})
+      (notification.tu/test-send-notification!
+       (t2/select-one :model/Notification (:id notification))
+       {:channel/email
+        (fn [emails]
+          (is (= 1 (count emails)))
+          (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))}))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
