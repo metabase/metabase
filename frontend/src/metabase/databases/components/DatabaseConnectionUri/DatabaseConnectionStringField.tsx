@@ -1,44 +1,23 @@
 import { useTimeout } from "@mantine/hooks";
 import { useEffect, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { Group, Icon, Text, Textarea, Transition } from "metabase/ui";
-import type { Engine } from "metabase-types/api";
 
 import {
   connectionStringParsedFailed,
   connectionStringParsedSuccess,
 } from "./analytics";
-import { mapDatabaseValues } from "./databaseFieldMapper";
+import { mapDatabaseValues } from "./database-field-mapper";
+import { enginesConfig } from "./engines-config";
 import { parseConnectionUriRegex } from "./parseConnectionRegex";
-
-const supportedEngines = new Set([
-  "Amazon Athena",
-  "Amazon Redshift",
-  "BigQuery",
-  "ClickHouse",
-  "Databricks",
-  "Druid",
-  "Druid JDBC",
-  "MySQL",
-  "Oracle",
-  "PostgreSQL",
-  "Presto",
-  "Snowflake",
-  "Spark SQL",
-  "SQL Server",
-  "Starburst (Trino)",
-  "Vertica",
-]);
 
 export function DatabaseConnectionStringField({
   setFieldValue,
-  engine,
   engineKey,
   location,
 }: {
   setFieldValue: (field: string, value: string | boolean | undefined) => void;
-  engine: Engine | undefined;
   engineKey: string | undefined;
   location: "admin" | "setup" | "embedding_setup";
 }) {
@@ -93,9 +72,13 @@ export function DatabaseConnectionStringField({
     ],
   );
 
-  if (!supportedEngines.has(engine?.["driver-name"] ?? "")) {
+  if (!enginesConfig.has(engineKey ?? "")) {
     return null;
   }
+
+  const placeholderEngineUri = enginesConfig.get(engineKey ?? "")?.placeholder;
+  const placeholder = c("{0} is the value is a sample URI of engine")
+    .t`e.g. ${placeholderEngineUri}`;
 
   return (
     <Textarea
@@ -105,6 +88,7 @@ export function DatabaseConnectionStringField({
       value={connectionString}
       onChange={(e) => setConnectionString(e.target.value)}
       mb="md"
+      placeholder={placeholder}
     />
   );
 }

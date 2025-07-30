@@ -199,6 +199,13 @@ function mapSparkSqlValues(parsedValues: RegexFields) {
   return fieldsMap;
 }
 
+function mapSqliteValues(parsedValues: RegexFields) {
+  const fieldsMap = new Map<string, string | boolean | undefined>([
+    ["details.db", parsedValues.path],
+  ]);
+  return fieldsMap;
+}
+
 function mapSqlServerValues(parsedValues: RegexFields) {
   const fieldsMap = new Map<string, string | boolean | undefined>([
     ["details.host", parsedValues.host],
@@ -303,6 +310,7 @@ export function mapDatabaseValues(
       mapSparkSqlValues(parsedValues),
     )
     .with(["sqlserver", "sqlserver"], () => mapSqlServerValues(parsedValues))
+    .with(["sqlite", "sqlite"], () => mapSqliteValues(parsedValues))
     .with(["trino", "starburst"], () => mapStarburstTrinoValues(parsedValues))
     .with(["vertica", "vertica"], () => mapVerticaValues(parsedValues))
     .otherwise(() => new Map());

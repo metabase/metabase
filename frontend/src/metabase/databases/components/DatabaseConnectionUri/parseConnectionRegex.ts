@@ -15,9 +15,8 @@ export interface RegexFields {
 const jdbcPrefix = "(?<hasJdbcPrefix>jdbc:)?";
 const userPass = "(?:(?<username>[^:/?#]+)(?::(?<password>[^@/?#]*))?@)?";
 const hostAndPort = "(?<host>[^:/?#]+)?(?::(?<port>\\d+)?)?";
-const params = "(?:\\?(?<params>.*))?";
+const params = "(?:(?<params>.*))?";
 const semicolonParams = ";?(?<semicolonParams>.*)?;?";
-// const semicolonParams = "([^;]*)(?<semicolonParams>.*)?";
 
 const connectionStringRegexes = {
   "amazon-athena": new RegExp(
@@ -54,7 +53,7 @@ const connectionStringRegexes = {
   clickhouse: new RegExp(
     "^" +
       jdbcPrefix +
-      "(?<protocol>clickhouse)://" +
+      "(?<protocol>clickhouse|ch):(?:https?:)?//" +
       userPass +
       hostAndPort +
       "(?:/(?<database>[^/?#]*))?" +
@@ -122,23 +121,6 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-
-  sqlite: new RegExp(
-    "^" + jdbcPrefix + "(?<protocol>sqlite):///(?<filepath>.+)$",
-    "i",
-  ),
-
-  mongodb: new RegExp(
-    "^" +
-      jdbcPrefix +
-      "(?<protocol>mongodb(?:\\+srv)?)://" +
-      userPass +
-      "(?<hosts>[^/?#]+)(?:/(?<database>[^/?#]*))?" +
-      params +
-      "$",
-    "i",
-  ),
-
   snowflake: new RegExp(
     "^" +
       jdbcPrefix +
@@ -150,12 +132,10 @@ const connectionStringRegexes = {
       "$",
     "i",
   ),
-
   "spark-sql": new RegExp(
     "^" + jdbcPrefix + "(?<protocol>sparksql):" + semicolonParams + "$",
     "i",
   ),
-
   "spark-sql-hive2": new RegExp(
     "^" +
       jdbcPrefix +
@@ -164,6 +144,10 @@ const connectionStringRegexes = {
       "(?:/(?<database>[^/?#;]*))?" +
       semicolonParams +
       "$",
+    "i",
+  ),
+  sqlite: new RegExp(
+    "^" + jdbcPrefix + "(?<protocol>sqlite):///(?<path>.+)$",
     "i",
   ),
   "sql-server": new RegExp(
@@ -198,8 +182,12 @@ const connectionStringRegexes = {
 };
 
 export function parseConnectionUriRegex(
-  connectionUri: string,
+  connectionUri: string | undefined,
 ): RegexFields | null {
+  if (!connectionUri) {
+    return null;
+  }
+
   for (const regex of Object.values(connectionStringRegexes)) {
     const match = connectionUri.match(regex);
     if (match) {
