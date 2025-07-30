@@ -16,7 +16,7 @@ import {
   getTransformQueryUrl,
   getTransformRootUrl,
 } from "metabase-enterprise/transforms/utils/urls";
-import type { Transform, TransformTarget } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 export type ManageSectionProps = {
   transform: Transform;
@@ -87,7 +87,6 @@ type DeleteButtonProps = {
 };
 
 function DeleteButton({ transform }: DeleteButtonProps) {
-  const { id, target } = transform;
   const [deleteTransform] = useDeleteTransformMutation();
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -96,11 +95,11 @@ function DeleteButton({ transform }: DeleteButtonProps) {
 
   const handleDelete = () => {
     askConfirmation({
-      title: getConfirmationTitle(target),
-      message: getConfirmationMessage(target),
-      confirmButtonText: getConfirmationButtonLabel(target),
+      title: getConfirmationTitle(transform),
+      message: getConfirmationMessage(transform),
+      confirmButtonText: getConfirmationButtonLabel(transform),
       onConfirm: async () => {
-        const { error } = await deleteTransform(id);
+        const { error } = await deleteTransform(transform.id);
         if (error) {
           sendErrorToast("Failed to delete transform");
         } else {
@@ -121,14 +120,22 @@ function DeleteButton({ transform }: DeleteButtonProps) {
   );
 }
 
-function getConfirmationTitle(target: TransformTarget) {
+function getConfirmationTitle({ target, table }: Transform) {
+  if (table == null) {
+    return t`Delete this transform?`;
+  }
+
   return match(target.type)
     .with("view", () => t`Delete the transform and its view?`)
     .with("table", () => t`Delete the transform and its table?`)
     .exhaustive();
 }
 
-function getConfirmationMessage(target: TransformTarget) {
+function getConfirmationMessage({ target, table }: Transform) {
+  if (table == null) {
+    return null;
+  }
+
   return match(target.type)
     .with(
       "view",
@@ -147,7 +154,11 @@ function getConfirmationMessage(target: TransformTarget) {
     .exhaustive();
 }
 
-function getConfirmationButtonLabel(target: TransformTarget) {
+function getConfirmationButtonLabel({ target, table }: Transform) {
+  if (table == null) {
+    return t`Delete`;
+  }
+
   return match(target.type)
     .with("view", () => t`Delete the transform and its view`)
     .with("table", () => t`Delete the transform and its table`)
