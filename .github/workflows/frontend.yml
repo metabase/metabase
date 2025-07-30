@@ -19,6 +19,10 @@ on:
         description: "Skip linting jobs (prettier, eslint, css variables check)"
         type: boolean
         default: false
+      skip-type-check:
+        description: "Skip type check"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -54,7 +58,7 @@ jobs:
         run: yarn run lint-eslint-pure
 
   fe-type-check:
-    if: ${{ !inputs.skip }}
+    if: ${{ !inputs.skip && !inputs.skip-type-check }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
