@@ -353,7 +353,6 @@ export const ReportPage = ({
           <Box className={styles.sidebar}>
             <EmbedQuestionSettingsSidebar
               cardId={selectedQuestionId}
-              snapshotId={cardEmbeds[selectedEmbedIndex]?.snapshotId || 0}
               onClose={() => dispatch(closeSidebar())}
               editorInstance={editorInstance}
             />

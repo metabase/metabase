@@ -18,7 +18,6 @@ import {
 import { IconWrapper } from "metabase/search/components/SearchResult/components/ItemIcon.styled";
 import { Box, Group, Icon, Popover } from "metabase/ui";
 import { getSearchIconName } from "metabase/visualizations/visualizations/LinkViz/EntityDisplay";
-import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 import type {
   RecentItem,
   SearchModel,
@@ -74,7 +73,6 @@ export const QuestionMentionPlugin = ({
   editor,
 }: QuestionMentionPluginProps) => {
   const dispatch = useDispatch();
-  const [createSnapshot] = useCreateReportSnapshotMutation();
   const [showPopover, setShowPopover] = useState(false);
   const [modal, setModal] = useState<"question-picker" | null>(null);
   const [query, setQuery] = useState("");
@@ -199,16 +197,8 @@ export const QuestionMentionPlugin = ({
 
     if (mentionRange.mode === "embed") {
       try {
-        const snapshot = await createSnapshot({
-          card_id: wrappedItem.id,
-        }).unwrap();
-
-        dispatch(
-          fetchReportQuestionData({
-            cardId: snapshot.card_id,
-            snapshotId: snapshot.snapshot_id,
-          }),
-        );
+        // Fetch the card data directly without creating a snapshot
+        dispatch(fetchReportQuestionData({ cardId: wrappedItem.id }));
 
         const scrollId = `scroll-${_.uniqueId()}`;
         editor
@@ -218,8 +208,7 @@ export const QuestionMentionPlugin = ({
           .insertContentAt(insertPosition, {
             type: "cardEmbed",
             attrs: {
-              snapshotId: snapshot.snapshot_id,
-              id: snapshot.card_id,
+              id: wrappedItem.id,
             },
           })
           .setTextSelection(insertPosition + 1)

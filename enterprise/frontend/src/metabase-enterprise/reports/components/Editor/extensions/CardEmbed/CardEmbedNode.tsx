@@ -4,7 +4,6 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
 import { useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
@@ -13,12 +12,13 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
-import { useCreateReportSnapshotMutation } from "../../../../../api/report";
 import { useReportsSelector } from "../../../../redux-utils";
-import { openVizSettingsSidebar } from "../../../../reports.slice";
+import {
+  fetchReportQuestionData,
+  openVizSettingsSidebar,
+} from "../../../../reports.slice";
 import {
   getIsLoadingCard,
-  getIsLoadingDataset,
   getReportCard,
   getReportRawSeries,
   getReportRawSeriesWithDraftSettings,
@@ -31,7 +31,6 @@ import { ModifyQuestionModal } from "./ModifyQuestionModal";
 
 export interface CardEmbedAttributes {
   id: number;
-  snapshotId?: number;
   name?: string;
 }
 export const CardEmbedNode = Node.create<{
@@ -45,16 +44,6 @@ export const CardEmbedNode = Node.create<{
 
   addAttributes() {
     return {
-      snapshotId: {
-        default: null,
-        parseHTML: (element) => {
-          const snapshotId = element.getAttribute("data-snapshot-id");
-          if (snapshotId) {
-            return parseInt(snapshotId);
-          }
-          return null;
-        },
-      },
       id: {
         default: null,
         parseHTML: (element) => {
@@ -87,7 +76,6 @@ export const CardEmbedNode = Node.create<{
         HTMLAttributes,
         {
           "data-type": CardEmbedNode.name,
-          "data-snapshot-id": node.attrs.snapshotId,
           "data-id": node.attrs.id,
           "data-name": node.attrs.name,
         },
@@ -120,7 +108,7 @@ export const CardEmbedNode = Node.create<{
 
 export const CardEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
-    const { snapshotId, id, name } = node.attrs;
+    const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
@@ -151,21 +139,20 @@ export const CardEmbedComponent = memo(
     // Use draft settings if this embed is currently being edited
     const rawSeries = useReportsSelector((state) =>
       isCurrentlyEditing
-        ? getReportRawSeriesWithDraftSettings(state, id, snapshotId)
-        : getReportRawSeries(state, id, snapshotId),
+        ? getReportRawSeriesWithDraftSettings(state, id)
+        : getReportRawSeries(state, id),
     );
     const isLoadingCard = useReportsSelector((state) =>
       getIsLoadingCard(state, id),
     );
     const isLoadingDataset = useReportsSelector((state) =>
-      getIsLoadingDataset(state, snapshotId),
+      getIsLoadingCard(state, id),
     );
     const metadata = useReportsSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
-    const [createReportSnapshot] = useCreateReportSnapshotMutation();
 
     const displayName = name || card?.name;
     const isGuiQuestion = card?.dataset_query?.type !== "native";
@@ -206,21 +193,6 @@ export const CardEmbedComponent = memo(
       }
     };
 
-    const handleReplaceQuestion = () => {
-      // Get the position of this node in the editor
-      const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
-
-      if (typeof pos === "number") {
-        editor
-          .chain()
-          .focus()
-          .setTextSelection({ from: pos, to: pos + node.nodeSize })
-          .deleteSelection()
-          .insertContent("@")
-          .run();
-      }
-    };
-
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
         dispatch(openVizSettingsSidebar({ embedIndex }));
@@ -239,21 +211,10 @@ export const CardEmbedComponent = memo(
       }
     };
 
-    const handleRefreshSnapshot = async () => {
-      if (!card) {
-        return;
-      }
-
-      try {
-        const result = await createReportSnapshot({
-          card_id: id,
-        }).unwrap();
-
-        updateAttributes({
-          snapshotId: result.snapshot_id,
-        });
-      } catch (error) {
-        console.error("Failed to refresh snapshot:", error);
+    const handleRefreshData = async () => {
+      // Dispatch action to refetch the card dataset with force refresh
+      if (id) {
+        dispatch(fetchReportQuestionData({ cardId: id, forceRefresh: true }));
       }
     };
 
@@ -407,10 +368,10 @@ export const CardEmbedComponent = memo(
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item
-                        onClick={handleRefreshSnapshot}
+                        onClick={handleRefreshData}
                         disabled={!canWrite}
                       >
-                        {t`Refresh snapshot`}
+                        {t`Refresh`}
                       </Menu.Item>
                       <Menu.Item
                         onClick={handleEditVisualizationSettings}
@@ -426,12 +387,6 @@ export const CardEmbedComponent = memo(
                           {t`Edit Query`}
                         </Menu.Item>
                       )}
-                      <Menu.Item
-                        onClick={handleReplaceQuestion}
-                        disabled={!canWrite}
-                      >
-                        {t`Replace question`}
-                      </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
                 )}
@@ -451,12 +406,6 @@ export const CardEmbedComponent = memo(
                   showTitle={false}
                 />
               </Box>
-              {rawSeries[0].started_at && (
-                <Box className={styles.questionTimestamp}>
-                  {t`Snapshot at:`}
-                  <DateTime value={rawSeries[0].started_at} />
-                </Box>
-              )}
             </>
           ) : (
             <Box className={styles.loadingContainer}>
@@ -473,7 +422,6 @@ export const CardEmbedComponent = memo(
             onSave={(result) => {
               updateAttributes({
                 id: result.card_id,
-                snapshotId: result.snapshot_id,
                 name: null,
               });
               setIsModifyModalOpen(false);
@@ -485,7 +433,6 @@ export const CardEmbedComponent = memo(
   },
   (prevProps, nextProps) => {
     return (
-      prevProps.node.attrs.snapshotId === nextProps.node.attrs.snapshotId &&
       prevProps.node.attrs.id === nextProps.node.attrs.id &&
       prevProps.node.attrs.name === nextProps.node.attrs.name &&
       prevProps.selected === nextProps.selected

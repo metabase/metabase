@@ -3,6 +3,7 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { cardApi } from "metabase/api";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -12,7 +13,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import { useCreateReportSnapshotMutation } from "../../../../../api/report";
 import { useReportsSelector } from "../../../../redux-utils";
 
 interface ModifyQuestionModalProps {
@@ -21,7 +21,6 @@ interface ModifyQuestionModalProps {
   onClose: () => void;
   onSave: (result: {
     card_id: number;
-    snapshot_id: number;
     name: string;
   }) => void;
 }
@@ -38,7 +37,8 @@ export const ModifyQuestionModal = ({
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
-  const [createReportSnapshot] = useCreateReportSnapshotMutation();
+  const [createCard] = cardApi.useCreateCardMutation();
+  const [updateCard] = cardApi.useUpdateCardMutation();
 
   const metadataState = useAsync(async () => {
     if (isOpen && card) {
@@ -107,20 +107,33 @@ export const ModifyQuestionModal = ({
 
     try {
       const cardName = t`Copy of ${card.name}`;
-      const { id, created_at, updated_at, ...cardWithoutExcluded } = card;
-      const result = await createReportSnapshot({
-        ...cardWithoutExcluded,
-        dataset_query: modifiedQuestion.datasetQuery(),
-        display: modifiedQuestion.display(),
-        name: cardName,
-        visualization_settings:
-          modifiedQuestion.card().visualization_settings || {},
-        collection_id: card.collection_id || null,
-      }).unwrap();
+      let savedCard;
+
+      if (card.type === "in_report") {
+        // Card is already an in_report type, just update it
+        savedCard = await updateCard({
+          id: card.id,
+          dataset_query: modifiedQuestion.datasetQuery(),
+          display: modifiedQuestion.display(),
+          name: cardName,
+          visualization_settings: modifiedQuestion.card().visualization_settings || {},
+        }).unwrap();
+      } else {
+        // Card is a regular card, create a new in_report card
+        const { id, created_at, updated_at, ...cardData } = card;
+        savedCard = await createCard({
+          ...cardData,
+          type: "in_report",
+          dataset_query: modifiedQuestion.datasetQuery(),
+          display: modifiedQuestion.display(),
+          name: cardName,
+          visualization_settings: modifiedQuestion.card().visualization_settings || {},
+          collection_id: card.collection_id || null,
+        }).unwrap();
+      }
 
       onSave({
-        card_id: result.card_id,
-        snapshot_id: result.snapshot_id,
+        card_id: savedCard.id,
         name: cardName,
       });
       onClose();

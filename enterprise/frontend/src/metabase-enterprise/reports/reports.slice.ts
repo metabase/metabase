@@ -3,7 +3,6 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { reportApi } from "metabase-enterprise/api";
 import type {
   Card,
   CardDisplayType,
@@ -49,35 +48,41 @@ export const fetchReportCard = createAsyncThunk<Card, CardId>(
   },
 );
 
-export const fetchReportSnapshot = createAsyncThunk<Dataset, number>(
-  "reports/fetchSnapshot",
-  async (snapshotId, { dispatch }) => {
+export const fetchCardDataset = createAsyncThunk<Dataset, CardId>(
+  "reports/fetchCardDataset",
+  async (cardId, { dispatch }) => {
     const result = await dispatch(
-      reportApi.endpoints.getReportSnapshot.initiate(snapshotId),
+      cardApi.endpoints.getCardQuery.initiate(
+        { cardId },
+        { forceRefetch: true },
+      ),
     );
     if (result.data != null) {
       return result.data;
     }
-    throw new Error("Failed to fetch snapshot");
+    throw new Error("Failed to fetch card dataset");
   },
 );
 
 export const fetchReportQuestionData = createAsyncThunk<
   { card: Card; dataset: Dataset },
-  { cardId: CardId; snapshotId: number }
+  { cardId: CardId; forceRefresh?: boolean }
 >(
   "reports/fetchQuestionData",
-  async ({ cardId, snapshotId }, { dispatch, getState, rejectWithValue }) => {
+  async (
+    { cardId, forceRefresh = false },
+    { dispatch, getState, rejectWithValue },
+  ) => {
     const state = getState() as any;
     const existingCard = state.plugins?.reports?.cards[cardId];
-    const existingDataset = state.plugins?.reports?.datasets[snapshotId];
+    const existingDataset = state.plugins?.reports?.datasets[cardId];
 
     const promises = [];
-    if (!existingCard) {
+    if (!existingCard || forceRefresh) {
       promises.push(dispatch(fetchReportCard(cardId)));
     }
-    if (!existingDataset) {
-      promises.push(dispatch(fetchReportSnapshot(snapshotId)));
+    if (!existingDataset || forceRefresh) {
+      promises.push(dispatch(fetchCardDataset(cardId)));
     }
 
     if (promises.length > 0) {
@@ -93,7 +98,7 @@ export const fetchReportQuestionData = createAsyncThunk<
     const finalState = getState() as any;
     const card = finalState.plugins?.reports?.cards[cardId] || existingCard;
     const dataset =
-      finalState.plugins?.reports?.datasets[snapshotId] || existingDataset;
+      finalState.plugins?.reports?.datasets[cardId] || existingDataset;
 
     if (card && dataset) {
       return {
@@ -155,30 +160,17 @@ const reportsSlice = createSlice({
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
     },
-    updateCardEmbed: (
-      state,
-      action: PayloadAction<{ embedIndex: number; snapshotId: number }>,
-    ) => {
-      const { embedIndex, snapshotId } = action.payload;
-      if (state.cardEmbeds[embedIndex]) {
-        state.cardEmbeds[embedIndex] = {
-          ...state.cardEmbeds[embedIndex],
-          snapshotId,
-        };
-      }
+    updateCardEmbed: (state, action: PayloadAction<{ embedIndex: number }>) => {
+      const { embedIndex } = action.payload;
+      // This action now just triggers a refresh, no longer updating snapshot ID
+      // The actual data will be refreshed by the component
     },
     updateCardEmbeds: (
       state,
-      action: PayloadAction<Array<{ embedIndex: number; snapshotId: number }>>,
+      action: PayloadAction<Array<{ embedIndex: number }>>,
     ) => {
-      action.payload.forEach(({ embedIndex, snapshotId }) => {
-        if (state.cardEmbeds[embedIndex]) {
-          state.cardEmbeds[embedIndex] = {
-            ...state.cardEmbeds[embedIndex],
-            snapshotId,
-          };
-        }
-      });
+      // This action now just triggers a refresh, no longer updating snapshot IDs
+      // The actual data will be refreshed by the components
     },
     resetReports: () => initialState,
   },
@@ -203,43 +195,43 @@ const reportsSlice = createSlice({
       .addCase(fetchReportCard.rejected, (state, action) => {
         state.loadingCards[action.meta.arg] = false;
       })
-      .addCase(fetchReportSnapshot.pending, (state, action) => {
+      .addCase(fetchCardDataset.pending, (state, action) => {
         state.loadingDatasets[action.meta.arg] = true;
       })
-      .addCase(fetchReportSnapshot.fulfilled, (state, action) => {
+      .addCase(fetchCardDataset.fulfilled, (state, action) => {
         const dataset = action.payload;
-        const snapshotId = action.meta.arg;
+        const cardId = action.meta.arg;
 
-        state.datasets[snapshotId] = dataset;
+        state.datasets[cardId] = dataset;
 
-        state.loadingDatasets[snapshotId] = false;
+        state.loadingDatasets[cardId] = false;
       })
-      .addCase(fetchReportSnapshot.rejected, (state, action) => {
+      .addCase(fetchCardDataset.rejected, (state, action) => {
         state.loadingDatasets[action.meta.arg] = false;
       })
       .addCase(fetchReportQuestionData.pending, (state, action) => {
-        const { cardId, snapshotId } = action.meta.arg;
+        const { cardId } = action.meta.arg;
         if (!state.cards[cardId]) {
           state.loadingCards[cardId] = true;
         }
-        if (!state.datasets[snapshotId]) {
-          state.loadingDatasets[snapshotId] = true;
+        if (!state.datasets[cardId]) {
+          state.loadingDatasets[cardId] = true;
         }
       })
       .addCase(fetchReportQuestionData.fulfilled, (state, action) => {
         const { card, dataset } = action.payload;
-        const { snapshotId } = action.meta.arg;
+        const { cardId } = action.meta.arg;
 
         state.cards[card.id] = card;
-        state.datasets[snapshotId] = dataset;
+        state.datasets[cardId] = dataset;
 
         state.loadingCards[card.id] = false;
-        state.loadingDatasets[snapshotId] = false;
+        state.loadingDatasets[cardId] = false;
       })
       .addCase(fetchReportQuestionData.rejected, (state, action) => {
-        const { cardId, snapshotId } = action.meta.arg;
+        const { cardId } = action.meta.arg;
         state.loadingCards[cardId] = false;
-        state.loadingDatasets[snapshotId] = false;
+        state.loadingDatasets[cardId] = false;
       });
   },
 });

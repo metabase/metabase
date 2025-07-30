@@ -55,7 +55,7 @@ export const getDownloadableMarkdown = async (
 
   for (let i = 0; i < cardMatches.length; i++) {
     const match = cardMatches[i];
-    const [fullMatch, cardIdStr, _snapshotIdStr, customName] = match;
+    const [fullMatch, cardIdStr, customName] = match;
     const cardId = parseInt(cardIdStr, 10);
 
     try {
