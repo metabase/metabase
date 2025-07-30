@@ -5,6 +5,10 @@ import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { ErrorMessage } from "embedding-sdk/sdk-wrapper/components/private/ErrorMessage/ErrorMessage";
 import { Loader } from "embedding-sdk/sdk-wrapper/components/private/Loader/Loader";
+import {
+  SDK_BUNDLE_LOADING_ERROR_MESSAGE,
+  SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE,
+} from "embedding-sdk/sdk-wrapper/config";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
 
 type Props<TComponentProps> = {
@@ -17,14 +21,18 @@ const ComponentWrapperInner = <TComponentProps,>({
   componentProps,
 }: Props<TComponentProps>) => {
   const { props: metabaseProviderProps } = useMetabaseProviderPropsStore();
-  const { isLoading, isError } = useWaitForSdkBundle();
+  const { isNotStartedLoading, isLoading, isError } = useWaitForSdkBundle();
 
-  if (isLoading || !metabaseProviderProps.initialized) {
-    return <Loader />;
+  if (isNotStartedLoading) {
+    return <ErrorMessage message={SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE} />;
   }
 
   if (isError) {
-    return <ErrorMessage />;
+    return <ErrorMessage message={SDK_BUNDLE_LOADING_ERROR_MESSAGE} />;
+  }
+
+  if (isLoading || !metabaseProviderProps.initialized) {
+    return <Loader />;
   }
 
   const MetabaseProvider = isLoading
