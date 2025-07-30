@@ -43,8 +43,8 @@
       (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))
 
     (mt/with-temporary-setting-values [ee-embedding-provider "openai"
-                                       ee-embedding-model "text-embedding-3-large"]
-      (is (= 3072 (:vector-dimensions (embedding/get-configured-model)))))))
+                                       ee-embedding-model "text-embedding-ada-002"]
+      (is (= 1536 (:vector-dimensions (embedding/get-configured-model)))))))
 
 (deftest test-default-models
   (testing "Provider defaults are used when no override is set"
@@ -67,8 +67,8 @@
 
   (testing "get-model uses override when specified"
     (mt/with-temporary-setting-values [ee-embedding-provider "openai"
-                                       ee-embedding-model "text-embedding-3-large"]
-      (is (= "text-embedding-3-large" (:model-name (embedding/get-configured-model)))))))
+                                       ee-embedding-model "text-embedding-ada-002"]
+      (is (= "text-embedding-ada-002" (:model-name (embedding/get-configured-model)))))))
 
 (deftest test-openai-provider-validation
   (testing "OpenAIProvider throws when API key not configured"
