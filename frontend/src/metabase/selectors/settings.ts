@@ -47,13 +47,9 @@ export type StorePaths =
   /** EE, self-hosted upsell that communicates back with the instance */
   | "checkout/upgrade/self-hosted";
 
-export function getStoreUrlFromState(state: State, path: StorePaths = "") {
-  const storeUrl = getSetting(state, "store-url");
-  if (!storeUrl) {
-    return undefined;
-  }
-
+export function getStoreUrl(state: State, path: StorePaths = "") {
   try {
+    const storeUrl = getSetting(state, "store-url");
     const url = new URL(path, storeUrl);
     return url.toString();
   } catch {
