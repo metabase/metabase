@@ -115,3 +115,15 @@
           batches (#'embedding/create-batches 5 #'embedding/count-tokens texts)]
       ;; Should skip the long text and batch the short ones
       (is (= [["Short" "Also short"]] batches)))))
+
+(deftest ^:parallel model->abbrev-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "all models have an abbreviation defined"
+      (doseq [provider (keys embedding/supported-models-for-provider)
+              [model _] (get embedding/supported-models-for-provider provider)]
+        (testing (str "\n" provider " " model)
+          (is (some? (embedding/model->abbrev model))))))
+    (testing "all abbreviations are unique"
+      (doseq [[abbrev frequency] (frequencies (vals embedding/model->abbrev))]
+        (testing abbrev
+          (is (= 1 frequency)))))))
