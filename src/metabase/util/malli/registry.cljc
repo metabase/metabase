@@ -16,8 +16,9 @@
   "Make schemas that aren't `=` to identical ones e.g.
     [:re #\"\\d{4}\"]
     [:or [:re #\"\\d{4}\"] :int]
-    [:fn (constantly true)]
     [:fn even?]
+    (mr/with-key [:fn (constantly true)])
+
   work correctly as cache keys instead of creating new entries every time the code is evaluated.
 
   Also handles functions to prevent cache key instability from composed/anonymous functions."
@@ -45,8 +46,15 @@
     (mr/with-key (my-schema))
     If you change `my-schema` to return `:keyword` here, the cache will not invalidate properly."
   [body]
-  `(try (with-meta ~body (merge (meta ~body) {::key ~(pr-str body)}))
+  `(try (with-meta ~body
+                   (assoc (meta ~body) ::key ~(pr-str body)))
         (catch Exception _# ~body)))
+
+(def ^:dynamic *cache-miss-hook*
+  "A hook that is called whenever there is a cache miss, for side effects.
+  This is used in tests or to monitor cache misses."
+  ;; (fn [_k _schema _value] nil)
+  nil)
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
@@ -59,6 +67,7 @@
   (let [schema-key (schema-cache-key schema)]
     (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
         (let [v (value-thunk)]
+          (when *cache-miss-hook* (*cache-miss-hook* k schema v))
           (swap! cache assoc-in [k schema-key] v)
           v))))
 
