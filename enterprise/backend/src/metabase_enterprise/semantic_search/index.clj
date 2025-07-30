@@ -160,7 +160,7 @@
   "Returns the default index spec for a model."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
-        sanitized-model-name (clojure.string/replace model-name #"[/:.]" "_")
+        sanitized-model-name (str/replace model-name #"[/:.]" "_")
         table-name (str "index_table_" provider "_" sanitized-model-name "_" vector-dimensions)]
     {:embedding-model embedding-model
      :table-name table-name
