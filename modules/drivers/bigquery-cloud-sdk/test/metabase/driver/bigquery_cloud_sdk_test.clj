@@ -640,7 +640,7 @@
                                   (try
                                     (mt/id :fv_partitioned_table :category)
                                     (catch Exception e
-                                      (sync/sync-database! {:scan :schema})
+                                      (sync/sync-database! (mt/db) {:scan :schema})
                                       (throw e))))]
           (t2/update! :model/Field category-field-id {:has_field_values :search})
           (t2/delete! :model/FieldValues :field_id category-field-id)
