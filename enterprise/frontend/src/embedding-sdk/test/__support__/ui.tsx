@@ -3,13 +3,11 @@ import type * as React from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import {
-  MetabaseProviderInternal,
-  type MetabaseProviderProps,
-} from "embedding-sdk/components/public/MetabaseProvider";
+import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStore, SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import type { MantineThemeOverride } from "metabase/ui";
