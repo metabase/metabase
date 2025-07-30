@@ -70,6 +70,25 @@
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :table_id (:id table)))
 
+(t2/define-before-update :model/Table
+  [table]
+  (let [changes (t2/changes table)
+        original-table (t2/original table)
+        current-active (:active original-table)
+        new-active (:active changes)]
+    (cond
+      ;; active: true -> false (table being deactivated)
+      (and (true? current-active) (false? new-active))
+      (assoc changes :deactivated_at (mi/now))
+
+      ;; active: false -> true (table being reactivated)
+      (and (false? current-active) (true? new-active))
+      (assoc changes
+             :deactivated_at nil
+             :archived_at nil)
+
+      :else changes)))
+
 (defn- set-new-table-permissions!
   [table]
   (t2/with-transaction [_conn]
