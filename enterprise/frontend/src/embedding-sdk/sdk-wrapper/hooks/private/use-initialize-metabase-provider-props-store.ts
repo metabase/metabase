@@ -40,7 +40,7 @@ export const useInitializeMetabaseProviderPropsStore = (
     props: { initialized = false },
   } = useMetabaseProviderPropsStore();
 
-  useEffect(() => {
+  useEffect(function updateProvidersCount() {
     incrementProvidersCount();
 
     if (alreadyInitialized()) {
@@ -59,14 +59,17 @@ export const useInitializeMetabaseProviderPropsStore = (
     };
   }, []);
 
-  useEffect(() => {
-    if (reduxStore && !initialized) {
-      ensureMetabaseProviderPropsStore().updateInternalProps({
-        reduxStore,
-        initialized: true,
-      });
-    }
-  }, [reduxStore, initialized]);
+  useEffect(
+    function initializeReduxStore() {
+      if (reduxStore && !initialized) {
+        ensureMetabaseProviderPropsStore().updateInternalProps({
+          reduxStore,
+          initialized: true,
+        });
+      }
+    },
+    [reduxStore, initialized],
+  );
 
   return {
     initialized,
