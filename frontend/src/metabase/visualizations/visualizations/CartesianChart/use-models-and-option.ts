@@ -21,6 +21,21 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 
+type ModelsAndOptionInput = Pick<
+  VisualizationProps,
+  | "rawSeries"
+  | "settings"
+  | "card"
+  | "fontFamily"
+  | "width"
+  | "height"
+  | "hiddenSeries"
+  | "timelineEvents"
+  | "selectedTimelineEventIds"
+  | "onRender"
+  | "isFullscreen"
+>;
+
 export function useModelsAndOption(
   {
     rawSeries,
@@ -33,9 +48,8 @@ export function useModelsAndOption(
     timelineEvents,
     selectedTimelineEventIds,
     onRender,
-    hovered,
     isFullscreen,
-  }: VisualizationProps,
+  }: ModelsAndOptionInput,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
   const tc = useTranslateContent();
@@ -125,17 +139,8 @@ export function useModelsAndOption(
   );
 
   const selectedOrHoveredTimelineEventIds = useMemo(() => {
-    const ids = [];
-
-    if (selectedTimelineEventIds != null) {
-      ids.push(...selectedTimelineEventIds);
-    }
-    if (hovered?.timelineEvents != null) {
-      ids.push(...hovered.timelineEvents.map((e) => e.id));
-    }
-
-    return ids;
-  }, [selectedTimelineEventIds, hovered?.timelineEvents]);
+    return selectedTimelineEventIds ?? [];
+  }, [selectedTimelineEventIds]);
 
   const tooltipOption = useMemo(() => {
     return getTooltipOption(
