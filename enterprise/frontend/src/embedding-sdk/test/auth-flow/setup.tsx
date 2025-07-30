@@ -10,7 +10,7 @@ import {
   MetabaseProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
-import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 import {
   createMockCard,
   createMockCardQueryMetadata,
