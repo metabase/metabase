@@ -31,7 +31,7 @@ export function TransformPage({ params }: TransformPageProps) {
 
   if (isLoading || error != null) {
     return (
-      <Center w="100%" h="100%">
+      <Center>
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
@@ -39,7 +39,7 @@ export function TransformPage({ params }: TransformPageProps) {
 
   if (transform == null) {
     return (
-      <Center w="100%" h="100%">
+      <Center>
         <LoadingAndErrorWrapper error={t`No transform found.`} />
       </Center>
     );

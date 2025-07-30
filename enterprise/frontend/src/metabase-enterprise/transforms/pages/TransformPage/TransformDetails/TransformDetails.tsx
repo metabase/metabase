@@ -14,7 +14,7 @@ export function TransformDetails({ transform }: TransformDetailsProps) {
   return (
     <Flex
       className={S.root}
-      w="100%"
+      flex="10 1 0"
       h="100%"
       direction="column"
       align="center"

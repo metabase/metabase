@@ -10,7 +10,7 @@ export function NewTransformPage() {
       direction="column"
       justify="center"
       align="center"
-      w="100%"
+      flex="10 1 0"
       h="100%"
       p="md"
     >
