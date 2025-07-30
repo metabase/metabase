@@ -111,10 +111,10 @@
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
-(defn create-session-from-jwt!
-  "Public wrapper for creating a session from JWT token data. Used by the to_session endpoint."
+(defn jwt->session
+  "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
   [jwt request]
-  (session-data jwt request))
+  (-> (session-data jwt request) :session :key))
 
 (defn- throw-react-sdk-embedding-disabled
   []

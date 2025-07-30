@@ -23,6 +23,7 @@
 (set! *warn-on-reflection* true)
 
 ;; load the SSO integrations so their implementations for the multimethods below are available.
+;; `jwt` is actually used here, but keeping it below to document the requirement in case it's removed someday
 (comment jwt/keep-me
          metabase-enterprise.sso.integrations.saml/keep-me)
 
@@ -93,35 +94,16 @@
 
 ;; POST /auth/sso/to_session
 (api.macros/defendpoint :post "/to_session"
-  "Convert JWT token to user session"
+  "If a user wants to simply convert a JWT to a session token (which they'll manage)
+  this provides a path for them to do so."
   [_route-params
    _query-params
-   {:keys [jwt]} :- [:map
-                     [:jwt {:optional true} [:maybe ms/NonBlankString]]]
+   {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
    request]
-  (try
-    (when-not (sso-settings/jwt-enabled)
-      (throw (ex-info "JWT authentication is not enabled"
-                      {:status "error-jwt-disabled" :status-code 400})))
-    (when-not jwt
-      (throw (ex-info "JWT token is required"
-                      {:status "error-jwt-missing" :status-code 400})))
-    (let [jwt-data (try
-                     (jwt/create-session-from-jwt! jwt request)
-                     (catch Throwable e
-                       (throw (ex-info "Invalid JWT token"
-                                       {:status "error-jwt-invalid" :status-code 401}
-                                       e))))
-          session (:session jwt-data)
-          session-token (:key session)]
-      {:session_token (str session-token)
-       :exp (:exp (:jwt-data jwt-data))
-       :iat (:iat (:jwt-data jwt-data))})
-    (catch Throwable e
-      (log/error e "Error converting JWT to session")
-      (let [ex-data (ex-data e)]
-        (throw (ex-info (.getMessage e)
-                        (or ex-data {:status-code 500})))))))
+  (when-not (sso-settings/jwt-enabled)
+    (throw (ex-info "JWT authentication is not enabled"
+                    {:status-code 400})))
+  {:session_token (jwt/jwt->session jwt request)})
 
 ;; POST /auth/sso/handle_slo
 (api.macros/defendpoint :post "/handle_slo"
