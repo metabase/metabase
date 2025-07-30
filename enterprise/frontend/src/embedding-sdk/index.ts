@@ -66,11 +66,11 @@ export {
   type InteractiveQuestionComponents,
   type InteractiveQuestionProps,
 } from "./components/public/InteractiveQuestion";
-export { type MetabaseProviderProps } from "./components/public/MetabaseProvider";
 export {
   type StaticQuestionProps,
   type StaticQuestionComponents,
 } from "./components/public/StaticQuestion";
+export { type MetabaseProviderProps } from "./types/metabase-provider";
 
 export type {
   CustomDashboardCardMenuItem,

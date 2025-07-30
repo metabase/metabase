@@ -16,10 +16,10 @@ const ComponentWrapperInner = <TComponentProps,>({
   getComponent,
   componentProps,
 }: Props<TComponentProps>) => {
-  const { props: metabaseProviderStoreProps } = useMetabaseProviderPropsStore();
+  const { props: metabaseProviderProps } = useMetabaseProviderPropsStore();
   const { isLoading, isError } = useWaitForSdkBundle();
 
-  if (isLoading || !metabaseProviderStoreProps.initialized) {
+  if (isLoading || !metabaseProviderProps.initialized) {
     return <Loader />;
   }
 
@@ -32,12 +32,15 @@ const ComponentWrapperInner = <TComponentProps,>({
     : getWindow()?.MetabaseEmbeddingSDK?.MetabaseProvider;
   const Component = getComponent();
 
-  if (!MetabaseProvider || !Component) {
+  if (!MetabaseProvider || !Component || !metabaseProviderProps.reduxStore) {
     return null;
   }
 
   return (
-    <MetabaseProvider>
+    <MetabaseProvider
+      {...metabaseProviderProps}
+      reduxStore={metabaseProviderProps.reduxStore}
+    >
       <Component
         {...(componentProps as JSX.IntrinsicAttributes & TComponentProps)}
       />

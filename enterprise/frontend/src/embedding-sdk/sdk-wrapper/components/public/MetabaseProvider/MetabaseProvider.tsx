@@ -1,10 +1,10 @@
 import { memo } from "react";
 
-import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { useLoadSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-load-sdk-bundle";
 import { useWaitForSdkBundle } from "embedding-sdk/sdk-wrapper/hooks/private/use-wait-for-sdk-bundle";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
 import { MetabaseProviderInner } from "../../private/MetabaseProviderInner/MetabaseProviderInner";
 

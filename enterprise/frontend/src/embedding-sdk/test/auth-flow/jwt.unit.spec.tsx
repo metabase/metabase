@@ -7,8 +7,8 @@ import {
   MetabaseProvider,
   StaticQuestion,
 } from "embedding-sdk/components/public";
-import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { defineMetabaseAuthConfig } from "embedding-sdk/sdk-wrapper/lib/public/define-metabase-auth-config";
+import type { MetabaseProviderProps } from "embedding-sdk/types/metabase-provider";
 
 import {
   MOCK_INSTANCE_URL,
