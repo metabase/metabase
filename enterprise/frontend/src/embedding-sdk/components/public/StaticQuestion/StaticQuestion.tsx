@@ -1,6 +1,23 @@
 import type { PropsWithChildren } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk/components/private/FlexibleSizeComponent";
+import {
+  Breakout,
+  BreakoutDropdown,
+  ChartTypeDropdown,
+  ChartTypeSelector,
+  DownloadWidget,
+  DownloadWidgetDropdown,
+  Filter,
+  FilterDropdown,
+  QuestionResetButton,
+  QuestionSettings,
+  QuestionSettingsDropdown,
+  QuestionVisualization,
+  Summarize,
+  SummarizeDropdown,
+  Title,
+} from "embedding-sdk/components/private/SdkQuestion/components";
 import { DefaultViewTitle } from "embedding-sdk/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import {
   SdkQuestion,
@@ -103,35 +120,35 @@ const _StaticQuestion = ({
 };
 
 export const StaticQuestion = _StaticQuestion as typeof _StaticQuestion & {
-  Filter: typeof SdkQuestion.Filter;
-  FilterDropdown: typeof SdkQuestion.FilterDropdown;
-  ResetButton: typeof SdkQuestion.ResetButton;
-  Title: typeof SdkQuestion.Title;
-  Summarize: typeof SdkQuestion.Summarize;
-  SummarizeDropdown: typeof SdkQuestion.SummarizeDropdown;
-  QuestionVisualization: typeof SdkQuestion.QuestionVisualization;
-  ChartTypeSelector: typeof SdkQuestion.ChartTypeSelector;
-  ChartTypeDropdown: typeof SdkQuestion.ChartTypeDropdown;
-  QuestionSettings: typeof SdkQuestion.QuestionSettings;
-  QuestionSettingsDropdown: typeof SdkQuestion.QuestionSettingsDropdown;
-  Breakout: typeof SdkQuestion.Breakout;
-  BreakoutDropdown: typeof SdkQuestion.BreakoutDropdown;
-  DownloadWidget: typeof SdkQuestion.DownloadWidget;
-  DownloadWidgetDropdown: typeof SdkQuestion.DownloadWidgetDropdown;
+  Filter: typeof Filter;
+  FilterDropdown: typeof FilterDropdown;
+  ResetButton: typeof QuestionResetButton;
+  Title: typeof Title;
+  Summarize: typeof Summarize;
+  SummarizeDropdown: typeof SummarizeDropdown;
+  QuestionVisualization: typeof QuestionVisualization;
+  ChartTypeSelector: typeof ChartTypeSelector;
+  ChartTypeDropdown: typeof ChartTypeDropdown;
+  QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
+  Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
-StaticQuestion.Filter = SdkQuestion.Filter;
-StaticQuestion.FilterDropdown = SdkQuestion.FilterDropdown;
-StaticQuestion.ResetButton = SdkQuestion.ResetButton;
-StaticQuestion.Title = SdkQuestion.Title;
-StaticQuestion.Summarize = SdkQuestion.Summarize;
-StaticQuestion.SummarizeDropdown = SdkQuestion.SummarizeDropdown;
-StaticQuestion.QuestionVisualization = SdkQuestion.QuestionVisualization;
-StaticQuestion.ChartTypeSelector = SdkQuestion.ChartTypeSelector;
-StaticQuestion.QuestionSettings = SdkQuestion.QuestionSettings;
-StaticQuestion.QuestionSettingsDropdown = SdkQuestion.QuestionSettingsDropdown;
-StaticQuestion.BreakoutDropdown = SdkQuestion.BreakoutDropdown;
-StaticQuestion.Breakout = SdkQuestion.Breakout;
-StaticQuestion.ChartTypeDropdown = SdkQuestion.ChartTypeDropdown;
-StaticQuestion.DownloadWidget = SdkQuestion.DownloadWidget;
-StaticQuestion.DownloadWidgetDropdown = SdkQuestion.DownloadWidgetDropdown;
+StaticQuestion.Filter = Filter;
+StaticQuestion.FilterDropdown = FilterDropdown;
+StaticQuestion.ResetButton = QuestionResetButton;
+StaticQuestion.Title = Title;
+StaticQuestion.Summarize = Summarize;
+StaticQuestion.SummarizeDropdown = SummarizeDropdown;
+StaticQuestion.QuestionVisualization = QuestionVisualization;
+StaticQuestion.ChartTypeSelector = ChartTypeSelector;
+StaticQuestion.QuestionSettings = QuestionSettings;
+StaticQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
+StaticQuestion.BreakoutDropdown = BreakoutDropdown;
+StaticQuestion.Breakout = Breakout;
+StaticQuestion.ChartTypeDropdown = ChartTypeDropdown;
+StaticQuestion.DownloadWidget = DownloadWidget;
+StaticQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
