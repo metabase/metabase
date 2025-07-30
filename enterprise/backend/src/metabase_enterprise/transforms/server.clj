@@ -8,16 +8,19 @@
    [metabase-enterprise.transforms.tracking :as transforms.track]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [ring.adapter.jetty :as ring-jetty]
    [ring.util.response :as response])
-  (:import (java.util.concurrent Executors Semaphore)
+  (:import (java.util.concurrent Executors ExecutorService Semaphore)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 (set! *warn-on-reflection* true)
 
 ;; allow no more than 1000 running workers at a time
 (defonce ^:private ^Semaphore semaphore (Semaphore. 1000 true))
+
+(defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
 (defn- parse-body
   "Parse request body based on Content-Type header"
@@ -60,10 +63,18 @@
   (prn "handling transform post")
   (let [success? (.tryAcquire semaphore)]
     (if success?
-      (let [parsed-data (:parsed-body request)
-            run-id (-> parsed-data
-                       (assoc :finally-fn #(.release semaphore))
-                       transforms.execute/execute-transform!)]
+      (let [{:keys [work-id mb-source] :as parsed-data} (:parsed-body request)
+            run-id (transforms.track/track-start! work-id "transform" mb-source)]
+        (.submit executor
+                 ^Runnable #(try
+                              (-> (assoc parsed-data :run-id run-id)
+                                  transforms.execute/execute-transform!)
+                              (transforms.track/track-finish! run-id)
+                              (catch Throwable t
+                                (log/error t "Error executing transform")
+                                (transforms.track/track-error! run-id))
+                              (finally
+                                (.release semaphore))))
         (-> (response/response (json/encode {:message "Transform started"
                                              :run-id run-id}))
             (response/content-type "application/json")))
@@ -75,7 +86,6 @@
   [run-id]
   (prn "handling transform get")
   (let [resp (transforms.track/get-status (Integer/parseInt run-id) "mb-1")]
-    (prn "resp" resp)
     (if (seq resp)
       (response/response (first resp))
       (-> (response/response "Not found")

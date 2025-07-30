@@ -38,17 +38,20 @@
                             "INSERT INTO worker_runs (work_id, type, source, status) VALUES (?, ?, ?, ?) RETURNING run_id"
                             [work-id work-type mb-source "running"]))))
 
-(defn track-finish!
-  [run-id]
+(defn set-status!
+  [run-id status]
   (run-update! :postgres (config/config-str :mb-worker-db)
                "UPDATE worker_runs SET status = ?, end_time = now() WHERE run_id = ?"
-               ["success" run-id]))
+               [status run-id])
+  status)
+
+(defn track-finish!
+  [run-id]
+  (set-status! run-id "success"))
 
 (defn track-error!
   [run-id]
-  (run-update! :postgres (config/config-str :mb-worker-db)
-               "UPDATE worker_runs SET status = ?, end_time = now() WHERE run_id = ?"
-               ["error" run-id]))
+  (set-status! run-id "error"))
 
 (defn get-status
   [run-id mb-source]
