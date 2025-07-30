@@ -51,3 +51,25 @@
   margin-right: var(--mantine-spacing-sm);
   border-top-color: var(--mb-color-border);
 }
+
+.itemSoftDisabled {
+  cursor: not-allowed;
+}
+
+.itemSoftDisabled:hover {
+  color: var(--mb-color-text-light);
+}
+
+.itemLabelSoftDisabled {
+  color: var(--mb-color-text-light);
+  opacity: 0.6;
+}
+
+.itemSectionLeftSoftDisabled[data-position="left"] {
+  color: var(--mb-color-text-light);
+  opacity: 0.6;
+}
+
+.itemSoftDisabled:hover .itemSection[data-position="right"] {
+  color: inherit;
+}

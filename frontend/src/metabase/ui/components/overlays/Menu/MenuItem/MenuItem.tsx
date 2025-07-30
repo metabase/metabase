@@ -1,30 +1,83 @@
 import type { MenuItemProps, PolymorphicComponentProps } from "@mantine/core";
 import { Menu } from "@mantine/core";
-import { type MouseEvent, type TouchEvent, forwardRef } from "react";
+import clsx from "clsx";
+import {
+  type MouseEvent,
+  type MouseEventHandler,
+  type Ref,
+  type TouchEvent,
+  forwardRef,
+} from "react";
 
-// hack to prevent parent Popover from closing when selecting a Menu.Item
-// check useClickOutside hook in mantine
+import Styles from "../Menu.module.css";
+
+type WithOnClick = MenuItemProps & {
+  onClick?: MouseEventHandler<HTMLElement>;
+};
+
 // eslint-disable-next-line react/display-name
 export const MenuItem = forwardRef(
   <C = "button",>(
-    props: PolymorphicComponentProps<C, MenuItemProps>,
-    ref: React.Ref<HTMLButtonElement>,
+    rawProps: PolymorphicComponentProps<C, MenuItemProps> & {
+      /** Looks disabled, but keeps rightSection interactive */
+      softDisabled?: boolean;
+    },
+    ref: Ref<HTMLButtonElement>,
   ) => {
-    const typeCastedProps = props as MenuItemProps;
+    // existing hack: do not close parent popover
+    const onMouseDownCapture = (e: MouseEvent) =>
+      e.nativeEvent.stopImmediatePropagation();
+    const onTouchStartCapture = (e: TouchEvent) =>
+      e.nativeEvent.stopImmediatePropagation();
 
-    const handleMouseDownCapture = (event: MouseEvent) => {
-      event.nativeEvent.stopImmediatePropagation();
+    const {
+      softDisabled,
+      classNames,
+      styles: userStyles,
+      onClick: userOnClick,
+      ...rest
+    } = rawProps as unknown as WithOnClick & {
+      softDisabled?: boolean;
     };
-    const handleTouchStartCapture = (event: TouchEvent) => {
-      event.nativeEvent.stopImmediatePropagation();
+
+    const isInsideRightSection = (target: EventTarget | null) =>
+      target instanceof HTMLElement &&
+      !!target.closest('[data-position="right"]');
+
+    const onItemClick: MouseEventHandler<HTMLElement> | undefined = (e) => {
+      if (softDisabled) {
+        if (isInsideRightSection(e.target)) {
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      userOnClick?.(e);
     };
 
     return (
       <Menu.Item
-        {...typeCastedProps}
+        {...(rest as MenuItemProps)}
         ref={ref}
-        onMouseDownCapture={handleMouseDownCapture}
-        onTouchStartCapture={handleTouchStartCapture}
+        onMouseDownCapture={onMouseDownCapture}
+        onTouchStartCapture={onTouchStartCapture}
+        onClick={onItemClick}
+        aria-disabled={softDisabled || undefined}
+        classNames={{
+          ...classNames,
+          item: clsx(classNames?.item, softDisabled && Styles.itemSoftDisabled),
+          itemLabel: clsx(
+            classNames?.itemLabel,
+            softDisabled && Styles.itemLabelSoftDisabled,
+          ),
+          itemSection: clsx(
+            classNames?.itemSection,
+            softDisabled && Styles.itemSectionLeftSoftDisabled,
+          ),
+        }}
+        styles={userStyles}
       />
     );
   },
