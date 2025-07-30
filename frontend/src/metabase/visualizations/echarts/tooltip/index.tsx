@@ -11,6 +11,7 @@ import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
 import type { SankeyChartModel } from "../graph/sankey/model/types";
@@ -140,7 +141,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
 
 export const useClickedStateTooltipSync = (
   chart?: EChartsType,
-  clicked?: unknown | null,
+  clicked?: ClickObject | null,
 ) => {
   useEffect(() => {
     if (!chart) {
