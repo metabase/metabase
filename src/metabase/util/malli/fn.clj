@@ -257,7 +257,10 @@
                                       'more [:maybe [:* :any]]
                                       'kvs  [:* :any]
                                       :any))
-                  `(validate-input ~error-context (mr/with-key ~schema) ~arg-name)))
+                  `(validate-input ~error-context
+                                   ;; wrapping with [:schema ...] needed here to not eval `keyword?` etc. into a
+                                   ;; function which will not work for schema resolution
+                                   (mr/with-key [:schema ~schema]) ~arg-name)))
               arg-names
               schemas)
          (filter some?))))
@@ -295,7 +298,11 @@
         result-form            (if (and output-schema
                                         (not= output-schema :any))
                                  `(->> ~result-form
-                                       (validate-output ~error-context (mr/with-key ~output-schema)))
+                                       (validate-output ~error-context
+                                                        ;; wrapping with [:schema ...] needed here to not eval
+                                                        ;; `keyword?` etc. into a function which will not work for
+                                                        ;; schema resolution
+                                                        (mr/with-key [:schema ~output-schema])))
                                  result-form)]
     `(~arglist
       (try
