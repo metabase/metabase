@@ -47,13 +47,15 @@ export type StorePaths =
   /** EE, self-hosted upsell that communicates back with the instance */
   | "checkout/upgrade/self-hosted";
 
+const DEFAULT_STORE_URL = "https://store.metabase.com/";
+
 export function getStoreUrl(state: State, path: StorePaths = "") {
   try {
     const storeUrl = getSetting(state, "store-url");
     const url = new URL(path, storeUrl);
     return url.toString();
   } catch {
-    return undefined;
+    return DEFAULT_STORE_URL;
   }
 }
 

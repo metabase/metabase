@@ -166,7 +166,9 @@ describe("getStoreUrlFromState", () => {
       }),
     });
 
-    expect(getStoreUrl(stateUndefined)).toBeUndefined();
-    expect(getStoreUrl(stateCorruptedString)).toBeUndefined();
+    expect(getStoreUrl(stateUndefined)).toBe("https://store.metabase.com/");
+    expect(getStoreUrl(stateCorruptedString)).toBe(
+      "https://store.metabase.com/",
+    );
   });
 });
