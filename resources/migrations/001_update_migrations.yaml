@@ -12154,6 +12154,102 @@ databaseChangeLog:
             where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
       rollback: # not necessary
 
+  - changeSet:
+      id: v55.2025-07-30T09:30:00
+      author: bronsa
+      comment: Add deactivated_at and archived_at columns to metabase_table for time-delayed permissions reset
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_table
+                columnName: deactivated_at
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: deactivated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp when the table was deactivated (active changed from true to false)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp when the table was marked for archiving
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v55.2025-07-30T09:31:00
+      author: bronsa
+      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id and schema (PostgreSQL)
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_table
+                indexName: idx_metabase_table_db_schema_archived_deactivated
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_metabase_table_db_schema_archived_deactivated
+              ON metabase_table (db_id, schema, deactivated_at)
+              WHERE archived_at IS NULL AND deactivated_at IS NOT NULL;
+      rollback:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_db_schema_archived_deactivated
+
+  - changeSet:
+      id: v55.2025-07-30T09:31:01
+      author: bronsa
+      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id and schema (MySQL/MariaDB/H2)
+      dbms: mysql,mariadb,h2
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_table
+                indexName: idx_metabase_table_db_schema_archived_deactivated
+      changes:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_db_schema_archived_deactivated
+            columns:
+              - column:
+                  name: db_id
+              - column:
+                  name: schema
+              - column:
+                  name: archived_at
+              - column:
+                  name: deactivated_at
+      rollback:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_db_schema_archived_deactivated
+
+  - changeSet:
+      id: v55.2025-07-30T09:32:00
+      author: bronsa
+      comment: Backfill deactivated_at for existing inactive tables
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET deactivated_at = updated_at
+              WHERE active = false
+                AND deactivated_at IS NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET deactivated_at = NULL;
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
