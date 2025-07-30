@@ -1754,6 +1754,7 @@
            pulse
            query-processor
            request
+           search
            server
            settings
            sync
