@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { utf8_to_b64url } from "metabase/lib/encoding";
 import { isNotNull } from "metabase/lib/types";
 import { useCreateReportSnapshotMutation } from "metabase-enterprise/api";
 
@@ -57,77 +56,50 @@ export function useReportActions() {
         return;
       }
 
-      if (cardWithDraftSettings.id.toString().includes("static")) {
+      try {
+        const { id, created_at, updated_at, ...cardWithoutExcluded } =
+          cardWithDraftSettings;
+        const result = await createReportSnapshot({
+          ...cardWithoutExcluded,
+          name: cardWithDraftSettings.name,
+        }).unwrap();
+
+        dispatch(clearDraftState());
         const { doc } = editorInstance.state;
         const tr = editorInstance.state.tr;
 
+        // Only update the specific embed at this index
+        let nodeCount = 0;
+        let updated = false;
         doc.descendants((node: any, pos: number) => {
-          if (node.type.name === "cardStatic" && node.attrs.id === embed.id) {
-            const display = cardWithDraftSettings.display;
-            const viz = utf8_to_b64url(
-              JSON.stringify(cardWithDraftSettings.visualization_settings),
-            );
-
-            const newAttrs = {
-              ...node.attrs,
-              display,
-              viz,
-            };
-            tr.setNodeMarkup(pos, undefined, newAttrs);
+          if (updated) {
             return false;
+          } // Stop if we already updated
+
+          if (node.type.name === "cardEmbed") {
+            if (nodeCount === embedIndex) {
+              const newAttrs = {
+                ...node.attrs,
+                id: result.card_id,
+                snapshotId: result.snapshot_id,
+              };
+              tr.setNodeMarkup(pos, undefined, newAttrs);
+              updated = true;
+              return false; // Stop traversing
+            }
+            nodeCount++;
           }
         });
 
         if (tr.docChanged) {
           editorInstance.view.dispatch(tr);
         }
-        dispatch(clearDraftState());
-      } else {
-        try {
-          const { id, created_at, updated_at, ...cardWithoutExcluded } =
-            cardWithDraftSettings;
-          const result = await createReportSnapshot({
-            ...cardWithoutExcluded,
-            name: cardWithDraftSettings.name,
-          }).unwrap();
 
-          dispatch(clearDraftState());
-          const { doc } = editorInstance.state;
-          const tr = editorInstance.state.tr;
-
-          // Only update the specific embed at this index
-          let nodeCount = 0;
-          let updated = false;
-          doc.descendants((node: any, pos: number) => {
-            if (updated) {
-              return false;
-            } // Stop if we already updated
-
-            if (node.type.name === "cardEmbed") {
-              if (nodeCount === embedIndex) {
-                const newAttrs = {
-                  ...node.attrs,
-                  cardId: result.card_id,
-                  snapshotId: result.snapshot_id,
-                };
-                tr.setNodeMarkup(pos, undefined, newAttrs);
-                updated = true;
-                return false; // Stop traversing
-              }
-              nodeCount++;
-            }
-          });
-
-          if (tr.docChanged) {
-            editorInstance.view.dispatch(tr);
-          }
-
-          dispatch(
-            updateCardEmbeds([{ embedIndex, snapshotId: result.snapshot_id }]),
-          );
-        } catch (error) {
-          console.error("Failed to commit visualization changes:", error);
-        }
+        dispatch(
+          updateCardEmbeds([{ embedIndex, snapshotId: result.snapshot_id }]),
+        );
+      } catch (error) {
+        console.error("Failed to commit visualization changes:", error);
       }
     },
     [store, createReportSnapshot, dispatch],

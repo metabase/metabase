@@ -57,13 +57,12 @@ export const SmartLinkNode = Node.create<{
         },
         this.options.HTMLAttributes,
       ),
-      `{{link:${node.attrs.url}:${node.attrs.text}:${node.attrs.icon}}}`,
+      `{% link url="${node.attrs.url}" text="${node.attrs.text}" icon="${node.attrs.icon}" %}`,
     ];
   },
 
   renderText({ node }) {
-    // FIXME: This doesn't copy the link text right
-    return `{{link:${node.attrs.url}:${node.attrs.text}:${node.attrs.icon}}}`;
+    return `{% link url="${node.attrs.url}" text="${node.attrs.text}" icon="${node.attrs.icon}" %}`;
   },
 });
 

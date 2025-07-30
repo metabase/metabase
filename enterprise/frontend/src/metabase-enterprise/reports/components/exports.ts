@@ -3,6 +3,11 @@ import {
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
 
+import {
+  CARD_EMBED_PATTERN,
+  SMART_LINK_PATTERN,
+  SPACER_PATTERN,
+} from "./Editor/extensions/markdown/card-embed-format";
 import type { CardEmbedRef } from "./Editor/types";
 
 // Helper function to convert a question to PNG data URL using existing Metabase utilities
@@ -27,9 +32,19 @@ export const getDownloadableMarkdown = async (
 ): Promise<string> => {
   let processedMarkdown = markdown;
 
-  // Extract card references from markdown using regex
-  const cardPattern = /{{card:(\d+)(?::([^}]+))?}}/g;
-  const cardMatches = Array.from(markdown.matchAll(cardPattern));
+  // First, remove all spacers
+  processedMarkdown = processedMarkdown.replace(SPACER_PATTERN, "");
+
+  // Replace smart links with regular markdown links
+  processedMarkdown = processedMarkdown.replace(
+    SMART_LINK_PATTERN,
+    (match, url, text) => `[${text}](${url})`,
+  );
+
+  // Extract card references from markdown using shared regex pattern
+  const cardMatches = Array.from(
+    processedMarkdown.matchAll(CARD_EMBED_PATTERN),
+  );
 
   // eslint-disable-next-line no-console
   console.log("Processing cards found in markdown:", cardMatches.length);
@@ -40,7 +55,7 @@ export const getDownloadableMarkdown = async (
 
   for (let i = 0; i < cardMatches.length; i++) {
     const match = cardMatches[i];
-    const [fullMatch, cardIdStr, customName] = match;
+    const [fullMatch, cardIdStr, _snapshotIdStr, customName] = match;
     const cardId = parseInt(cardIdStr, 10);
 
     try {

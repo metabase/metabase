@@ -13,7 +13,7 @@ export function useEditorActions() {
       let targetPos = null;
 
       doc.descendants((node: any, pos: number) => {
-        if (node.type.name === "cardEmbed" && node.attrs.cardId === cardId) {
+        if (node.type.name === "cardEmbed" && node.attrs.id === cardId) {
           targetPos = pos;
           return false;
         }

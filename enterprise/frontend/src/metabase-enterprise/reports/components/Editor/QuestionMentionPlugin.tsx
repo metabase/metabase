@@ -219,10 +219,7 @@ export const QuestionMentionPlugin = ({
             type: "cardEmbed",
             attrs: {
               snapshotId: snapshot.snapshot_id,
-              cardId: snapshot.card_id,
-              questionName: wrappedItem.name,
-              model: wrappedItem.model,
-              scrollId,
+              id: snapshot.card_id,
             },
           })
           .setTextSelection(insertPosition + 1)

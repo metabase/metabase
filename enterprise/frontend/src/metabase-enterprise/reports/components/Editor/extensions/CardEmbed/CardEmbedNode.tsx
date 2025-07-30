@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
-import { utf8_to_b64url } from "metabase/lib/encoding";
 import { useDispatch } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
@@ -25,16 +24,15 @@ import {
   getReportRawSeriesWithDraftSettings,
   getSelectedEmbedIndex,
 } from "../../../../selectors";
+import { formatCardEmbed } from "../markdown/card-embed-format";
 
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 
 export interface CardEmbedAttributes {
-  cardId: number;
+  id: number;
   snapshotId?: number;
-  questionName: string;
-  customName?: string;
-  model: string;
+  name?: string;
 }
 export const CardEmbedNode = Node.create<{
   HTMLAttributes: Record<string, any>;
@@ -49,28 +47,27 @@ export const CardEmbedNode = Node.create<{
     return {
       snapshotId: {
         default: null,
-        parseHTML: (element) =>
-          element.getAttribute("data-snapshot-id")
-            ? parseInt(element.getAttribute("data-snapshot-id") || "0")
-            : null,
+        parseHTML: (element) => {
+          const snapshotId = element.getAttribute("data-snapshot-id");
+          if (snapshotId) {
+            return parseInt(snapshotId);
+          }
+          return null;
+        },
       },
-      cardId: {
+      id: {
         default: null,
-        parseHTML: (element) =>
-          parseInt(element.getAttribute("data-card-id") || "0"),
+        parseHTML: (element) => {
+          const id = element.getAttribute("data-id");
+          if (id) {
+            return parseInt(id);
+          }
+          return null;
+        },
       },
-      questionName: {
-        default: "",
-      },
-      customName: {
+      name: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-custom-name"),
-      },
-      model: {
-        default: "card",
-      },
-      scrollId: {
-        default: null,
+        parseHTML: (element) => element.getAttribute("data-name"),
       },
     };
   },
@@ -78,7 +75,7 @@ export const CardEmbedNode = Node.create<{
   parseHTML() {
     return [
       {
-        tag: 'div[data-type="card-embed"]',
+        tag: `div[data-type="${CardEmbedNode.name}"]`,
       },
     ];
   },
@@ -89,31 +86,25 @@ export const CardEmbedNode = Node.create<{
       mergeAttributes(
         HTMLAttributes,
         {
-          "data-type": "card-embed",
+          "data-type": CardEmbedNode.name,
           "data-snapshot-id": node.attrs.snapshotId,
-          "data-card-id": node.attrs.cardId,
-          "data-question-name": node.attrs.questionName,
-          "data-model": node.attrs.model,
+          "data-id": node.attrs.id,
+          "data-name": node.attrs.name,
         },
         this.options.HTMLAttributes,
       ),
-      node.attrs.customName
-        ? `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`
-        : `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}}}`,
+      formatCardEmbed(node.attrs),
     ];
   },
 
   renderText({ node }) {
-    if (node.attrs.customName) {
-      return `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}:${node.attrs.customName}}}`;
-    }
-    return `{{card:${node.attrs.cardId}:${node.attrs.snapshotId}}}`;
+    return formatCardEmbed(node.attrs);
   },
 
   addNodeView() {
     return () => {
       const dom = document.createElement("div");
-      dom.setAttribute("data-type", "card-embed");
+      dom.setAttribute("data-type", CardEmbedNode.name);
       dom.className = styles.embedContainer;
 
       const content = document.createElement("div");
@@ -129,7 +120,7 @@ export const CardEmbedNode = Node.create<{
 
 export const CardEmbedComponent = memo(
   ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
-    const { snapshotId, cardId, questionName, customName } = node.attrs;
+    const { snapshotId, id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 
@@ -152,7 +143,7 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    const card = useReportsSelector((state) => getReportCard(state, cardId));
+    const card = useReportsSelector((state) => getReportCard(state, id));
     const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
     const isCurrentlyEditing =
       selectedEmbedIndex === embedIndex && embedIndex !== -1;
@@ -160,30 +151,30 @@ export const CardEmbedComponent = memo(
     // Use draft settings if this embed is currently being edited
     const rawSeries = useReportsSelector((state) =>
       isCurrentlyEditing
-        ? getReportRawSeriesWithDraftSettings(state, cardId, snapshotId)
-        : getReportRawSeries(state, cardId, snapshotId),
+        ? getReportRawSeriesWithDraftSettings(state, id, snapshotId)
+        : getReportRawSeries(state, id, snapshotId),
     );
     const isLoadingCard = useReportsSelector((state) =>
-      getIsLoadingCard(state, cardId),
+      getIsLoadingCard(state, id),
     );
     const isLoadingDataset = useReportsSelector((state) =>
       getIsLoadingDataset(state, snapshotId),
     );
     const metadata = useReportsSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
-    const [editedTitle, setEditedTitle] = useState(customName || "");
+    const [editedTitle, setEditedTitle] = useState(name || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [createReportSnapshot] = useCreateReportSnapshotMutation();
 
-    const displayName = customName || card?.name || questionName;
+    const displayName = name || card?.name;
     const isGuiQuestion = card?.dataset_query?.type !== "native";
     const isLoading = isLoadingCard || isLoadingDataset;
 
     // Only show error if we've tried to load and failed, not if we haven't tried yet
     const hasTriedToLoad = card || isLoadingCard || isLoadingDataset;
     const error =
-      hasTriedToLoad && !isLoading && cardId && !card
+      hasTriedToLoad && !isLoading && id && !card
         ? "Failed to load question"
         : null;
 
@@ -197,9 +188,9 @@ export const CardEmbedComponent = memo(
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
       if (trimmedTitle && trimmedTitle !== card?.name) {
-        updateAttributes({ customName: trimmedTitle });
+        updateAttributes({ name: trimmedTitle });
       } else {
-        updateAttributes({ customName: null });
+        updateAttributes({ name: null });
         setEditedTitle("");
       }
       setIsEditingTitle(false);
@@ -210,7 +201,7 @@ export const CardEmbedComponent = memo(
         e.preventDefault();
         handleTitleSave();
       } else if (e.key === "Escape") {
-        setEditedTitle(customName || "");
+        setEditedTitle(name || "");
         setIsEditingTitle(false);
       }
     };
@@ -226,39 +217,6 @@ export const CardEmbedComponent = memo(
           .setTextSelection({ from: pos, to: pos + node.nodeSize })
           .deleteSelection()
           .insertContent("@")
-          .run();
-      }
-    };
-
-    // Keep these for later
-    // eslint-disable-next-line
-    const handleCopyStaticQuestion = () => {
-      if (rawSeries && card) {
-        const markdown = `{{static-card:${card.name}:series-${utf8_to_b64url(JSON.stringify(rawSeries[0].data))}:viz-${utf8_to_b64url(JSON.stringify(card.visualization_settings))}:display-${card.display}}}`;
-
-        navigator.clipboard.writeText(markdown);
-      }
-    };
-
-    // eslint-disable-next-line
-    const handleReplaceStaticQuestion = () => {
-      const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
-
-      if (typeof pos === "number" && card && rawSeries) {
-        editor
-          .chain()
-          .focus()
-          .setTextSelection({ from: pos, to: pos + node.nodeSize })
-          .deleteSelection()
-          .insertContent({
-            type: "cardStatic",
-            attrs: {
-              questionName: card.name,
-              series: utf8_to_b64url(JSON.stringify(rawSeries[0].data)),
-              viz: utf8_to_b64url(JSON.stringify(card.visualization_settings)),
-              display: card.display,
-            },
-          })
           .run();
       }
     };
@@ -288,7 +246,7 @@ export const CardEmbedComponent = memo(
 
       try {
         const result = await createReportSnapshot({
-          card_id: cardId,
+          card_id: id,
         }).unwrap();
 
         updateAttributes({
@@ -335,10 +293,7 @@ export const CardEmbedComponent = memo(
 
     if (isLoading) {
       return (
-        <NodeViewWrapper
-          className={styles.embedWrapper}
-          data-scroll-id={node.attrs.scrollId}
-        >
+        <NodeViewWrapper className={styles.embedWrapper}>
           <Box className={styles.loadingContainer}>
             <Loader size="sm" />
             <Text>Loading question...</Text>
@@ -349,22 +304,16 @@ export const CardEmbedComponent = memo(
 
     if (error) {
       return (
-        <NodeViewWrapper
-          className={styles.embedWrapper}
-          data-scroll-id={node.attrs.scrollId}
-        >
+        <NodeViewWrapper className={styles.embedWrapper}>
           <Box className={styles.errorContainer}>
-            <Text color="error">{t`Failed to load question: {questionName}`}</Text>
+            <Text color="error">{t`Failed to load question`}</Text>
           </Box>
         </NodeViewWrapper>
       );
     }
 
     return (
-      <NodeViewWrapper
-        className={styles.embedWrapper}
-        data-scroll-id={node.attrs.scrollId}
-      >
+      <NodeViewWrapper className={styles.embedWrapper}>
         <Box
           className={`${styles.cardEmbed} ${selected ? styles.selected : ""}`}
         >
@@ -523,10 +472,9 @@ export const CardEmbedComponent = memo(
             onClose={() => setIsModifyModalOpen(false)}
             onSave={(result) => {
               updateAttributes({
-                cardId: result.card_id,
-                questionName: result.name,
+                id: result.card_id,
                 snapshotId: result.snapshot_id,
-                customName: null,
+                name: null,
               });
               setIsModifyModalOpen(false);
             }}
@@ -536,13 +484,10 @@ export const CardEmbedComponent = memo(
     );
   },
   (prevProps, nextProps) => {
-    // Custom comparison function to prevent re-renders
-    // Only re-render if these specific props change
     return (
       prevProps.node.attrs.snapshotId === nextProps.node.attrs.snapshotId &&
-      prevProps.node.attrs.cardId === nextProps.node.attrs.cardId &&
-      prevProps.node.attrs.questionName === nextProps.node.attrs.questionName &&
-      prevProps.node.attrs.customName === nextProps.node.attrs.customName &&
+      prevProps.node.attrs.id === nextProps.node.attrs.id &&
+      prevProps.node.attrs.name === nextProps.node.attrs.name &&
       prevProps.selected === nextProps.selected
     );
   },

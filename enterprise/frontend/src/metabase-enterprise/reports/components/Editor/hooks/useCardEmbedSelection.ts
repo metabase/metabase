@@ -32,12 +32,6 @@ export const useCardEmbedSelection = (
 
       // Check if the node at the cursor position is a question embed
       if (node && node.type.name === "cardEmbed") {
-        onCardSelect(node.attrs.cardId);
-        return;
-      }
-
-      // Check if the node at the cursor position is a question static
-      if (node && node.type.name === "cardStatic") {
         onCardSelect(node.attrs.id);
         return;
       }
@@ -47,7 +41,7 @@ export const useCardEmbedSelection = (
 
       editor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
         if (node.type.name === "cardEmbed") {
-          foundCardId = node.attrs.cardId;
+          foundCardId = node.attrs.id;
           // Return false to stop iteration once we find a question embed
           return false;
         }
