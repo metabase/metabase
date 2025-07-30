@@ -14,6 +14,8 @@ export const SdkJsIcon = ({ disabled }: EmbeddingOptionIconProps) => {
       className={cx(EmbeddingOptionS.EmbeddingOptionIcon, {
         [EmbeddingOptionS.Disabled]: disabled,
       })}
+      data-testid="sdk-js-icon"
+      data-disabled={disabled}
     >
       <rect
         x="1"
