@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Card, Flex, Stack, Title } from "metabase/ui";
+import { Card, Flex, Select, Stack, Title } from "metabase/ui";
 
 import S from "./TransformSettingsPage.module.css";
 
@@ -19,6 +19,7 @@ export function TransformSettingsPage() {
         <Card p="lg">
           <Stack gap="lg">
             <Title order={4}>{t`Schedule`}</Title>
+            <Select label={t`How often should transforms run?`} data={[]} />
           </Stack>
         </Card>
       </Stack>
