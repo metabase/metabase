@@ -84,7 +84,7 @@
       ;; no specific behaviour, only proxies the active index to the index search
       (testing "is only a proxy for the active index call"
         (let [{:keys [proxy calls]} (spy semantic.index/upsert-index!)
-              documents semantic.tu/mock-documents]
+              documents (semantic.tu/mock-documents)]
           (with-redefs [semantic.index/upsert-index! proxy]
             (testing "check proxies correct args and ret is untouched"
               (let [ret (sut pgvector index-metadata documents)]
@@ -108,7 +108,7 @@
         model1         semantic.tu/mock-embedding-model
         model2         (assoc semantic.tu/mock-embedding-model :model-name "embedagain")
         sut            semantic.pgvector-api/delete-documents!
-        documents      semantic.tu/mock-documents
+        documents      (semantic.tu/mock-documents)
         {card-ids "card", dash-ids "dashboard"} (u/group-by :model :id documents)]
     (test-not-initialized sut pgvector index-metadata model1)
     (with-open [index-ref (open-semantic-search! pgvector index-metadata model1)]

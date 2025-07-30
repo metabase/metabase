@@ -49,21 +49,11 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
 
   const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
     if (!val) {
-      const omitKeys = _.compact([
-        key,
-        // when enabling semantic search, prevent native queries from being searched
-        key === SearchFilterKeys.DisableSemanticSearch &&
-          SearchFilterKeys.NativeQuery,
-      ]);
-      onChange(_.omit(value, omitKeys));
+      onChange(_.omit(value, key));
     } else {
       onChange({
         ...value,
         [key]: val,
-        // when enabling native queries search, prevent semantic search from being used
-        ...(key === SearchFilterKeys.NativeQuery && val
-          ? { [SearchFilterKeys.DisableSemanticSearch]: "true" }
-          : {}),
       });
     }
   };

@@ -10,6 +10,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.protocols :as jdbc.protocols]
@@ -116,23 +117,36 @@
 (defn delete-from-index! [model ids]
   (semantic.index/delete-from-index! db mock-index model ids))
 
-(def mock-documents
-  [{:model "card"
-    :id "123"
-    :searchable_text "Dog Training Guide"
-    :created_at #t "2025-01-01T12:00:00Z"
-    :creator_id 1
-    :archived false
-    :legacy_input {:model "card" :id "123"}
-    :metadata {:title "Dog Training Guide" :description "How to teach an old dog new tricks"}}
-   {:model "dashboard"
-    :id "456"
-    :searchable_text "Elephant Migration"
-    :created_at #t "2025-02-01T12:00:00Z"
-    :creator_id 2
-    :archived true
-    :legacy_input {:model "dashboard" :id "456"}
-    :metadata {:title "Elephant Migration" :description "How do elephants deal with schema upgrades?"}}])
+(defn dog-training-native-query []
+  (mt/native-query {:query "SELECT AVG(tricks) FROM dogs WHERE age > 7 GROUP BY breed"}))
+
+(defn dog-training-native-query-json []
+  (-> (dog-training-native-query)
+      json/encode))
+
+(defn mock-documents []
+  (let [native-query-json (dog-training-native-query-json)]
+    [{:model "card"
+      :id "123"
+      :searchable_text "Dog Training Guide"
+      :created_at #t "2025-01-01T12:00:00Z"
+      :creator_id 1
+      :archived false
+      :legacy_input {:id "123"
+                     :model "card"
+                     :dataset_query native-query-json}
+      :native_query native-query-json
+      :metadata {:title "Dog Training Guide"
+                 :description "How to teach an old dog new tricks"
+                 :native-query native-query-json}}
+     {:model "dashboard"
+      :id "456"
+      :searchable_text "Elephant Migration"
+      :created_at #t "2025-02-01T12:00:00Z"
+      :creator_id 2
+      :archived true
+      :legacy_input {:model "dashboard" :id "456"}
+      :metadata {:title "Elephant Migration" :description "How do elephants deal with schema upgrades?"}}]))
 
 (defn filter-for-mock-embeddings
   "Filter results to only include items whose names are keys in mock-embeddings map."
@@ -166,7 +180,8 @@
 
                     :model/Collection       {col3# :id}  {:name "Cryptozoology", :archived false}
 
-                    :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false}
+                    :model/Card             {card1# :id} {:name "Dog Training Guide" :collection_id col1# :creator_id (mt/user->id :crowberto) :archived false
+                                                          :query_type "native" :dataset_query (dog-training-native-query)}
 
                     :model/Card             {}           {:name "Bird Watching Tips" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
 
@@ -179,13 +194,9 @@
                     :model/Card             {}           {:name "Bigfoot Sightings" :collection_id col3# :creator_id (mt/user->id :crowberto), :archived false}
 
                     :model/ModerationReview {}           {:moderated_item_type "card"
-
                                                           :moderated_item_id card1#
-
                                                           :moderator_id (mt/user->id :crowberto)
-
                                                           :status "verified"
-
                                                           :most_recent true}
 
                     :model/Dashboard        {}           {:name "Elephant Migration" :collection_id col1# :creator_id (mt/user->id :rasta) :archived false}
