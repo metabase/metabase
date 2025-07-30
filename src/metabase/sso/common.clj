@@ -12,7 +12,7 @@
   []
   #{(u/the-id (perms/all-users-group))})
 
-(defn- sync-group-memeberships*!
+(defn- sync-group-memberships*!
   [user-or-id to-remove to-add]
   (when (seq to-remove)
     (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
@@ -40,7 +40,6 @@
   "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
   ([user-or-id new-groups-or-ids]
-   (sync-group-memberships! user-or-id new-groups-or-ids nil)
    (let [current-group-ids  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                                               {:where
                                                [:and
@@ -48,7 +47,8 @@
                                                 [:not-in :group_id (excluded-group-ids)]]})
          [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
                                                                          (excluded-group-ids)))]
-     (sync-group-memeberships*! user-or-id to-remove to-add)))
+
+     (sync-group-memberships*! user-or-id to-remove to-add)))
   ([user-or-id new-groups-or-ids mapped-groups-or-ids]
    (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
          current-group-ids  (when (seq mapped-group-ids)
@@ -62,4 +62,4 @@
                                 (set/intersection mapped-group-ids)
                                 (set/difference (excluded-group-ids)))
          [to-remove to-add] (data/diff current-group-ids new-group-ids)]
-     (sync-group-memeberships*! user-or-id to-remove to-add))))
+     (sync-group-memberships*! user-or-id to-remove to-add))))

@@ -93,7 +93,7 @@
                source-query (assoc :source-query source-query))]
     ;; now deduplicate :fields clauses
     (lib.util.match/replace form
-      (m :guard (every-pred map? :fields))
+      (m :guard (every-pred map? #(sequential? (:fields %))))
       (update m :fields distinct))))
 
 (defn- add-join-alias-to-fields-if-needed
