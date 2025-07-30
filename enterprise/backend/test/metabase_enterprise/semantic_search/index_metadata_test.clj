@@ -18,8 +18,8 @@
       (is (= {:table-name "foo_bar_baz"} (sut {:table-name "bar"} {:index-table-qualifier "foo_%s_baz"})))
       (is (= {:table-name "bar"} (sut {:table-name "bar"} {:index-table-qualifier "%s"})))
       (testing "qualifier applies to derived index names"
-        (is (= "foo_bar__hnsw_idx" (-> (sut {:table-name "bar"} {:index-table-qualifier "foo_%s"})
-                                       semantic.index/hnsw-index-name)))))))
+        (is (= "foo_bar_embed_hnsw_idx" (-> (sut {:table-name "bar"} {:index-table-qualifier "foo_%s"})
+                                            semantic.index/hnsw-index-name)))))))
 
 (deftest create-tables-if-not-exists!-test
   (let [pgvector       semantic.tu/db

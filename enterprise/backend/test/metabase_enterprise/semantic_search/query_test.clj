@@ -29,6 +29,82 @@
             (let [results (semantic.tu/query-index {:search-string "avian"})]
               (is (= "Bird Watching Tips" (-> results first :name))))))))))
 
+(defn- index-of-name
+  "Return the index of the item with :name `name` in `coll`"
+  [coll name]
+  (first (keep-indexed (fn [idx item]
+                         (when (= name (:name item))
+                           idx))
+                       coll)))
+
+(deftest native-query-test
+  (testing "Tests for :search-native-query"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/as-admin
+        (semantic.tu/with-index!
+          (let [not-top-10? #(or (nil? %) (< 10 %))]
+            (doseq [{:keys [name desc search-string search-native-query? expected-index?]}
+                    [{:name "Dog Training Guide"
+                      :desc "contains"
+                      :search-string "AVG(tricks)"
+                      :search-native-query? false
+                      :expected-index? not-top-10?}
+                     {:name "Dog Training Guide"
+                      :desc "contains"
+                      :search-string "AVG(tricks)"
+                      :search-native-query? true
+                      :expected-index? zero?}
+                     {:name "Dog Training Guide"
+                      :desc "contains"
+                      :search-string "GROUP BY breed"
+                      :search-native-query? false
+                      :expected-index? not-top-10?}
+                     {:name "Dog Training Guide"
+                      :desc "contains"
+                      :search-string "GROUP BY breed"
+                      :search-native-query? true
+                      :expected-index? zero?}
+                     {:name "Dog Training Guide"
+                      :desc "does not contain"
+                      :search-string "SUM(tricks)"
+                      :search-native-query? false
+                      :expected-index? not-top-10?}
+                     {:name "Dog Training Guide"
+                      :desc "does not contain"
+                      :search-string "SUM(tricks)"
+                      :search-native-query? true
+                      :expected-index? not-top-10?}
+                     {:name "Bird Watching Tips"
+                      :desc "does not contain (no native query)"
+                      :search-string "AVG(tricks)"
+                      :search-native-query? true
+                      :expected-index? not-top-10?}
+                     {:name "Dog Training Guide"
+                      :desc "semantic search"
+                      :search-string "puppy"
+                      :search-native-query? true
+                      :expected-index? zero?}
+                     {:name "Bird Watching Tips"
+                      :desc "semantic search"
+                      :search-string "avian"
+                      :search-native-query? true
+                      :expected-index? zero?}
+                     {:name "Dog Training Guide"
+                      :desc "non-native keyword query"
+                      :search-string "Training"
+                      :search-native-query? true
+                      :expected-index? zero?}
+                     {:name "Bird Watching Tips"
+                      :desc "non-native keyword query"
+                      :search-string "Watching"
+                      :search-native-query? true
+                      :expected-index? zero?}]]
+              (testing (format "\n%s %s %s %s" name desc search-string search-native-query?)
+                (is (-> (semantic.tu/query-index {:search-string search-string
+                                                  :search-native-query search-native-query?})
+                        (index-of-name name)
+                        expected-index?))))))))))
+
 (deftest model-filtering-test
   (testing "Filter results by model type"
     (mt/with-premium-features #{:semantic-search}
