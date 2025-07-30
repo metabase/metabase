@@ -12,8 +12,9 @@ export function useWaitForSdkBundle() {
     getWindow()?.EMBEDDING_SDK_BUNDLE_LOADING_STATE ?? "loading",
   );
 
-  const isLoaded = loadingState === "loaded";
+  const isNotStartedLoading = loadingState === "not-started-loading";
   const isLoading = loadingState === "loading";
+  const isLoaded = loadingState === "loaded";
   const isError = loadingState === "error";
 
   const handleSdkLoadingEvent = useCallback((event: Event) => {
@@ -24,19 +25,31 @@ export function useWaitForSdkBundle() {
     }
   }, []);
 
-  useEffect(() => {
-    document.addEventListener(
-      SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME,
-      handleSdkLoadingEvent,
-    );
+  useEffect(function handleSdkBundleUninitializedState() {
+    setTimeout(() => {
+      // If the EMBEDDING_SDK_BUNDLE_LOADING_STATE is not set after 1 second, it means the `useLoadSdkBundle` was not called
+      if (!window.EMBEDDING_SDK_BUNDLE_LOADING_STATE) {
+        setLoadingState("not-started-loading");
+      }
+    }, 1000);
+  }, []);
 
-    return () => {
-      document.removeEventListener(
+  useEffect(
+    function setupScriptLoadingEventHandlers() {
+      document.addEventListener(
         SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME,
         handleSdkLoadingEvent,
       );
-    };
-  }, [handleSdkLoadingEvent]);
 
-  return { isLoaded, isLoading, isError };
+      return () => {
+        document.removeEventListener(
+          SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME,
+          handleSdkLoadingEvent,
+        );
+      };
+    },
+    [handleSdkLoadingEvent],
+  );
+
+  return { isNotStartedLoading, isLoading, isLoaded, isError };
 }
