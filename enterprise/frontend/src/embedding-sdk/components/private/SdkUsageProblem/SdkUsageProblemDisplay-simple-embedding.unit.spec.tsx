@@ -35,7 +35,7 @@ jest.mock("metabase/embedding-sdk/config", () => ({
     tokenFeatureKey: "embedding_simple",
   },
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG: {
-    isSdkIframeEmbedAuth: true,
+    isSimpleEmbedding: true,
     useExistingUserSession: false,
   },
 }));

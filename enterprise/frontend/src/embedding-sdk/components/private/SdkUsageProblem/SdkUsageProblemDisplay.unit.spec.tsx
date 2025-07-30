@@ -117,10 +117,6 @@ describe("SdkUsageProblemDisplay", () => {
     const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
 
     expect(
-      within(card).getByText("This embed is powered by the Metabase SDK."),
-    ).toBeInTheDocument();
-
-    expect(
       within(card).getByText(
         /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
       ),
@@ -175,7 +171,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(
       within(card).getByText(
-        /The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK./,
+        /Embedding is not enabled for this instance. Please enable it in settings./,
       ),
     ).toBeInTheDocument();
 
