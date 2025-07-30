@@ -115,7 +115,7 @@
 
 (defn- stage-with-joins-and-namespaced-keys-removed
   "For ref validation purposes we should ignore `:joins` and any namespaced keys that might be used to record additional
-  info e.g. `:lib/metadata`."
+  info e.g. `:lib/stage-metadata`."
   [stage]
   (reduce-kv (fn [acc k _]
                (if (or (qualified-keyword? k)
