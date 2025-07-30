@@ -399,7 +399,9 @@ jobs:
             });
 
   trigger-ee-extra-pr:
-    needs: verify-s3-download
+    needs:
+      - containerize-ee
+      - verify-s3-download
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
