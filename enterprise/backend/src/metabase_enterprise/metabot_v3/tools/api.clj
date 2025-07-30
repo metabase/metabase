@@ -4,6 +4,7 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clojure.set :as set]
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
@@ -25,13 +26,69 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+;; Constants for entity type mappings
+(def ^:private entity-type->search-model
+  "Maps API entity types to search engine model types"
+  {"table" "table"
+   "model" "dataset"
+   "question" "card"
+   "dashboard" "dashboard"
+   "metric" "metric"})
+
+(def ^:private search-model->result-type
+  "Maps search engine model types to result types"
+  {"dashboard" :dashboard
+   "table" :table
+   "dataset" :model
+   "card" :question
+   "metric" :metric})
+
+(defn- transform-search-result
+  "Transform a single search result to match the appropriate entity-specific schema.
+
+   Field mapping:
+   - Tables: name = technical table name (table_name), include database_id and database_schema
+   - Models: name = display name, include database_id and database_schema
+   - Other entities: name = display name, no database fields"
+  [result]
+  (let [model (:model result)
+        result-type (search-model->result-type model)]
+    (case model
+      "table"
+      {:id (:id result)
+       :type result-type
+       :name (:table_name result)           ; Technical table name for tables
+       :display_name (:name result)
+       :description (:description result)
+       :database_id (:database_id result)
+       :database_schema (:table_schema result)}
+
+      "dataset"  ; Models
+      {:id (:id result)
+       :type result-type
+       :name (:name result)                 ; Use the display name here as well since there is no technical name
+       :display_name (:name result)
+       :description (:description result)
+       :database_id (:database_id result)
+       :verified (boolean (:verified result))}  ;; Fallback to False if not provided
+
+      ;; For dashboards, questions, and metrics:
+      {:id (:id result)
+       :type result-type
+       :name (:name result)                 ; Display name
+       :description (:description result)
+       :verified (boolean (or (:verified result)  ;; Fallback to False if not provided
+                              (= "verified" (:moderated_status result))))})))
 
 (defn- decode-ai-service-token
   [token]
@@ -379,7 +436,8 @@
   [:merge
    ::basic-metric
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:queryable_dimensions {:optional true} ::columns]]])
+    [:queryable_dimensions {:optional true} ::columns]
+    [:verified {:optional true} :boolean]]])
 
 (mr/def ::find-metric-result
   [:or
@@ -443,7 +501,6 @@
                          [:name :string]
                          [:email_address :string]]]]
    [:map [:output :string]]])
-
 (mr/def ::get-dashboard-details-result
   [:or
    [:map
@@ -452,7 +509,8 @@
                          [:id :int]
                          [:type [:= :dashboard]]
                          [:name :string]
-                         [:description {:optional true} :string]]]]
+                         [:description {:optional true} :string]
+                         [:verified {:optional true} :boolean]]]]
    [:map [:output :string]]])
 
 (mr/def ::get-metric-details-arguments
@@ -507,7 +565,8 @@
                          [:type [:= :question]]
                          [:name :string]
                          [:description {:optional true} [:maybe :string]]
-                         [:result_columns ::columns]]]]
+                         [:result_columns ::columns]
+                         [:verified {:optional true} :boolean]]]]
    [:map [:output :string]]])
 
 (mr/def ::get-document-details-arguments
@@ -581,6 +640,9 @@
    [:id :int]
    [:type [:enum :model :table]]
    [:name :string]
+   [:display_name :string]
+   [:database_id :int]
+   [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
    [:fields ::columns]
    [:description {:optional true} [:maybe :string]]
    [:metrics {:optional true} [:sequential ::basic-metric]]])
@@ -604,6 +666,78 @@
     [:structured_output [:map
                          [:metrics [:sequential ::full-metric]]
                          [:models  [:sequential ::full-table]]]]]
+   [:map [:output :string]]])
+
+(mr/def ::search-data-sources-arguments
+  [:and
+   [:map
+    [:keywords {:optional true} [:maybe [:sequential :string]]]
+    [:description {:optional true} [:maybe :string]]
+    [:database_id {:optional true} [:maybe :int]]
+    [:entity_types {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric"]]]]
+    [:limit {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:database_id :database-id})}]])
+
+(mr/def ::search-table-result
+  "Schema for table/model search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:enum :table :model]]
+   [:name :string]                                   ; Table name (technical for tables, display for models)
+   [:display_name {:optional true} [:maybe :string]] ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:database_schema {:optional true} [:maybe :string]]])
+
+(mr/def ::search-dashboard-result
+  "Schema for dashboard search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :dashboard]]
+   [:name :string]                                    ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]])
+
+(mr/def ::search-question-result
+  "Schema for question search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :question]]
+   [:name :string]                                    ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]])
+
+(mr/def ::search-metric-result
+  "Schema for metric search results"
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:type [:= :metric]]
+   [:name :string]                                    ; Display name
+   [:description {:optional true} [:maybe :string]]
+   [:verified {:optional true} :boolean]])
+
+(mr/def ::search-result-item
+  "Union of all search result types.
+
+   We use dedicated schemas per entity type because:
+   - Tables need technical names and database context
+   - Models need display names and database context
+   - Other entities use display names and don't need database fields
+   - Type-specific validation ensures correct field usage"
+  [:or
+   ::search-table-result
+   ::search-dashboard-result
+   ::search-question-result
+   ::search-metric-result])
+
+(mr/def ::search-data-sources-result
+  [:or
+   [:map
+    {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:data [:sequential ::search-result-item]]
+                         [:total_count :int]]]]
    [:map [:output :string]]])
 
 (api.macros/defendpoint :post "/answer-sources" :- [:merge ::answer-sources-result ::tool-request]
@@ -872,6 +1006,64 @@
                          (mtx/transformer {:name :tool-api-response}))
               (assoc :conversation_id conversation_id))
       (metabot-v3.context/log :llm.log/be->llm))))
+
+(api.macros/defendpoint :post "/search-data-sources" :- [:merge ::search-data-sources-result ::tool-request]
+  "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::search-data-sources-arguments]]
+                                                    ::tool-request]]
+  (metabot-v3.context/log (assoc body :api :search-data-sources) :llm.log/llm->be)
+  (try
+    (let [options (mc/encode ::search-data-sources-arguments
+                             arguments (mtx/transformer {:name :tool-api-request}))
+          {:keys [keywords description database-id entity_types limit]} options
+          ;; Default entity_types to all allowed values if not provided or empty
+          entity_types (if (seq entity_types)
+                         entity_types
+                         ["table" "model" "question" "dashboard" "metric"])
+          ;; Treat empty string description as nil
+          normalized-description (if (and (string? description) (str/blank? description)) nil description)
+          search-terms (concat (or keywords []) (when normalized-description [normalized-description]))
+          search-models (set (keep entity-type->search-model entity_types))
+          ;; Run a search for each keyword/description separately
+          all-results (->> search-terms
+                           (map (fn [term]
+                                  (let [search-context (search/search-context
+                                                        {:search-string term
+                                                         :models search-models
+                                                         :table-db-id database-id
+                                                         :current-user-id api/*current-user-id*
+                                                         ;;TODO: Do we need those impersonated, sandboxed, superuser checks?
+                                                         :is-impersonated-user? (perms/impersonated-user?)
+                                                         :is-sandboxed-user? (perms/sandboxed-user?)
+                                                         :is-superuser? api/*is-superuser?*
+                                                         :current-user-perms @api/*current-user-permissions-set*
+                                                         :context :default ;; TODO: Does this need to be a specific Metabot context maybe?
+                                                         :archived false
+                                                         :limit (or limit 50)
+                                                         :offset 0})
+                                        search-results (search/search search-context)]
+                                    (:data search-results))))
+                           (apply concat))
+          ;; Deduplicate by id/type
+          unique-results (vals (into {} (map (fn [r]
+                                               [(str (:id r) ":" (:model r)) r])
+                                             all-results)))
+          transformed-results (map transform-search-result unique-results)
+          response-data {:data transformed-results
+                         :total_count (count transformed-results)}]
+      (doto (-> (mc/decode ::search-data-sources-result
+                           {:structured_output response-data}
+                           (mtx/transformer {:name :tool-api-response}))
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))
+    (catch Exception e
+      (log/error e "Error in search-data-sources")
+      (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
+                (assoc :conversation_id conversation_id))
+        (metabot-v3.context/log :llm.log/be->llm)))))
 
 (defn- enforce-authentication
   "Middleware that returns a 401 response if no `ai-session` can be found for  `request`."
