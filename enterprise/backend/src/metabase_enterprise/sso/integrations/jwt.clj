@@ -14,7 +14,6 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
@@ -55,17 +54,8 @@
   "Registered claims in the JWT standard which we should not interpret as login attributes"
   [:iss :iat :sub :aud :exp :nbf :jti])
 
-(defn- filter-non-string-attributes
-  [jwt-data]
-  (->> jwt-data
-       (filter (fn [[key value]]
-                 (if (string? value)
-                   value
-                   (log/warnf "Dropping JWT claim '%s' with non-string value: %s" (name key) value))))
-       (into {})))
-
 (defn- jwt-data->login-attributes [jwt-data]
-  (filter-non-string-attributes
+  (sso-utils/filter-non-stringable-attributes
    (apply dissoc
           jwt-data
           (jwt-attribute-email)

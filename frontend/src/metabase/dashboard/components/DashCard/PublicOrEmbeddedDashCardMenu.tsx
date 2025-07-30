@@ -1,8 +1,8 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useSelector, useStore } from "metabase/lib/redux";
@@ -10,27 +10,33 @@ import { checkNotNull } from "metabase/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { getMetadata } from "metabase/selectors/metadata";
-import { ActionIcon, Icon, Popover, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardCard, Dataset } from "metabase-types/api";
 
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 
-type DashCardQuestionDownloadButtonProps = {
+type PublicOrEmbeddedDashCardMenuProps = {
   result: Dataset;
   dashcard: DashboardCard;
 };
 
-export const DashCardQuestionDownloadButton = ({
+export const PublicOrEmbeddedDashCardMenu = ({
   result,
   dashcard,
-}: DashCardQuestionDownloadButtonProps) => {
+}: PublicOrEmbeddedDashCardMenuProps) => {
   const store = useStore();
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const token = getDashcardTokenId(dashcard);
   const uuid = getDashcardUuid(dashcard);
   const { dashboardId } = useDashboardContext();
+
+  const [menuView, setMenuView] = useState<string | null>(null);
+  const [isOpen, { close, toggle }] = useDisclosure(false, {
+    onClose: () => {
+      setMenuView(null);
+    },
+  });
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(
@@ -50,37 +56,47 @@ export const DashCardQuestionDownloadButton = ({
   });
 
   return (
-    <Popover
-      opened={isPopoverOpen}
-      onChange={setIsPopoverOpen}
-      position="bottom-end"
-    >
-      <Popover.Target>
-        <Tooltip label={t`Download results`}>
-          <ActionIcon
-            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-            className={cx(
-              SAVING_DOM_IMAGE_HIDDEN_CLASS,
-              CS.hoverChild,
-              CS.hoverChildSmooth,
-            )}
-            loading={isDownloadingData}
-            aria-label={t`Download results`}
+    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+      <Menu.Target>
+        <ActionIcon
+          size="xs"
+          className={cx({
+            [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
+          })}
+          onClick={toggle}
+          data-testid="public-or-embedded-dashcard-menu"
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Menu.Target>
+
+      <Menu.Dropdown>
+        {menuView === "downloads" ? (
+          <QuestionDownloadWidget
+            question={question}
+            result={result}
+            onDownload={(opts) => {
+              close();
+              handleDownload(opts);
+            }}
+          />
+        ) : (
+          <Menu.Item
+            fw="bold"
+            leftSection={<Icon name="download" aria-hidden />}
+            aria-label={
+              isDownloadingData ? t`Downloading…` : t`Download results`
+            }
+            disabled={isDownloadingData}
+            closeMenuOnClick={false}
+            onClick={() => {
+              setMenuView("downloads");
+            }}
           >
-            <Icon name="download" />
-          </ActionIcon>
-        </Tooltip>
-      </Popover.Target>
-      <Popover.Dropdown p="0.75rem">
-        <QuestionDownloadWidget
-          question={question}
-          result={result}
-          onDownload={(opts) => {
-            setIsPopoverOpen(false);
-            handleDownload(opts);
-          }}
-        />
-      </Popover.Dropdown>
-    </Popover>
+            {isDownloadingData ? t`Downloading…` : t`Download results`}
+          </Menu.Item>
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
 };
