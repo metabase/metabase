@@ -136,6 +136,13 @@ export const SettingsJWTForm = () => {
                       settingDetails?.["jwt-attribute-lastname"],
                     )}
                   />
+                  <FormTextInput
+                    name="jwt-attribute-groups"
+                    label={t`Group assignment attribute`}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-attribute-groups"],
+                    )}
+                  />
                 </Stack>
               </FormSection>
               <FormSection
@@ -178,6 +185,7 @@ const getFormValues = (
     "jwt-attribute-email",
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
+    "jwt-attribute-groups",
   ]);
 
   if (jwtSettings["jwt-user-provisioning-enabled?"] == null) {
