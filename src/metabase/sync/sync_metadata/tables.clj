@@ -288,24 +288,24 @@
                                      :db_id (u/the-id database)
                                      :active false
                                      :archived_at nil
-                                     :deactivated_at [:< threshold-expr])]
-    (when (seq tables-to-archive)
-      (doseq [table tables-to-archive
-              :let [new-name (str (:name table) suffix)]]
+                                     :deactivated_at [:< threshold-expr])
+        archived (atom 0)]
+    (doseq [table tables-to-archive
+            :let [new-name (str (:name table) suffix)]]
 
-        (if (> (count new-name) 256)
-          (log/warnf "Cannot archive table %s, name too long" (:name table))
-          (do
-            (log/infof "Archiving table %s (deactivated at %s, new-name %s)"
-                       (sync-util/name-for-logging table)
-                       (:deactivated_at table)
-                       new-name)
+      (if (> (count new-name) 256)
+        (log/warnf "Cannot archive table %s, name too long" (:name table))
+        (do
+          (log/infof "Archiving table %s (deactivated at %s, new-name %s)"
+                     (sync-util/name-for-logging table)
+                     (:deactivated_at table)
+                     new-name)
+          (t2/update! :model/Table (:id table)
+                      {:archived_at (mi/now)
+                       :name new-name})
+          (swap! archived inc))))
 
-            (t2/update! :model/Table (:id table)
-                        {:archived_at (mi/now)
-                         :name new-name}))))
-
-      (count tables-to-archive))))
+    @archived))
 
 (mu/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
