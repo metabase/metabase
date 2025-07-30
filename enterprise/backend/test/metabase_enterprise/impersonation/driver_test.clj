@@ -23,6 +23,8 @@
    (java.sql Connection)
    (java.util.concurrent CountDownLatch)))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel connection-impersonation-role-test
   (testing "Returns nil when no impersonations are in effect"
     (mt/with-test-user :rasta
