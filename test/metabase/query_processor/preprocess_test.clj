@@ -586,3 +586,48 @@
                 ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
                (map (juxt :display_name :lib/desired-column-alias)
                     (qp.preprocess/query->expected-cols query))))))))
+
+(deftest ^:parallel sane-desired-column-aliases-test
+  (testing "Do not 'double-dip' a desired-column alias and do `__via__` twice"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:type     :query
+                  :database (meta/id)
+                  :query    {:aggregation  [[:count]]
+                             :source-table (meta/id :orders)
+                             :breakout     [[:field
+                                             (meta/id :products :category)
+                                             {:source-field (meta/id :orders :product-id)}]]}})]
+      (testing "one stage"
+        (is (=? [{:name                     "CATEGORY"
+                  :display_name             "Product → Category"
+                  ;; technically this should probably be `:source/implicitly-joinable` but we reify the join during
+                  ;; preprocessing so it comes from joins now I guess. Probably fine. Note that join alias doesn't come
+                  ;; back in this case because [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]]
+                  ;; strips it out. We should probably leave it in, but we were doing it for some sort of reason.
+                  :lib/source               :source/joins
+                  :lib/breakout?            true
+                  :lib/source-column-alias  "CATEGORY"
+                  :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                  :fk_field_id              (meta/id :orders :product-id)}
+                 {:name                     "count"
+                  :display_name             "Count"
+                  :lib/source               :source/aggregations
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"}]
+                (qp.preprocess/query->expected-cols query))))
+      ;; in the second stage keys like `:fk-field-id` need to get renamed to `:lib/original-fk-field-id`. and
+      ;; desired-alias => new source-alias
+      (testing "two stages"
+        (let [query (lib/append-stage query)]
+          (is (=? [{:name                     "CATEGORY"
+                    :display_name             "Product → Category"
+                    :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                    :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                    :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                    :lib/original-fk-field-id (meta/id :orders :product-id)}
+                   {:name                     "count"
+                    :display_name             "Count"
+                    :lib/source-column-alias  "count"
+                    :lib/desired-column-alias "count"}]
+                  (qp.preprocess/query->expected-cols query))))))))

@@ -231,6 +231,7 @@
        true))])
 
 ;;; TODO (Cam 7/1/25) -- disabled for now because of bugs like QUE-1496; once that's fixed we should re-enable this.
+;;; Note we probably also need to remove [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]]
 #_(mr/def ::column.validate-join-alias
     "* Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
      `:source/joins`
@@ -251,6 +252,12 @@
         (if (= (:lib/source m) :source/joins)
           (:metabase.lib.join/join-alias m)
           true))]])
+
+;;; TODO (Cam 7/30/25) -- we should also validate that if `:lib/source` is `:source/implicitly-joinable` it includes
+;;; `:fk-field-id`, and vice-versa (actually this is also allowed if source is `:source/joins` as well.) The implicit
+;;; join could have only happened if the was a `:field` ref with `:source-field` (the mapped key in this case).
+;;; `:fk-field-id` should not be allowed for columns from `:source/previous-stage` or whatever... in that case we
+;;; should be using `:lib/original-fk-field-id` instead.
 
 (def column-visibility-types
   "Possible values for column `:visibility-type`."

@@ -1451,7 +1451,7 @@
                                                                                          [:field 45507 {:base-type :type/Text}]]}}]}}))))
 
 (deftest ^:parallel mongo-native-query->legacy-test
-  (testing "Don't try fail if we run into MongoDB :projections that sorta look like aggregation clauses"
+  (testing "Don't fail if we run into MongoDB :projections that sorta look like aggregation clauses"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type    :mbql.stage/native
                                  :projections [:count]

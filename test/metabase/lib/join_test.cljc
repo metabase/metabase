@@ -220,7 +220,7 @@
       (is (=? [{:name        "NAME"
                 :id          (meta/id :categories :name)
                 :fk-field-id (meta/id :venues :category-id)
-                :lib/source  :source/table-defaults}]
+                :lib/source  :source/implicitly-joinable}]
               (lib/returned-columns query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test

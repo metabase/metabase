@@ -223,7 +223,9 @@
     (when-some [card-id (:qp/stage-is-from-source-card stage)]
       (when-some [card (lib.metadata/card query card-id)]
         (when (= (:type card) :model)
-          (for [col (lib.metadata.calculation/returned-columns query card)]
+          ;; card returned columns should be the same regardless of which stage number we pass in, so always use the
+          ;; last stage so we can hit the cache more often
+          (for [col (lib.metadata.calculation/returned-columns query 0 card)]
             (assoc col :lib/source :source/card, :lib/card-id card-id)))))))
 
 (mu/defn- resolve-in-join :- [:maybe ::lib.metadata.calculation/column-metadata-with-source]
@@ -347,9 +349,7 @@
    id-or-name     :- [:or :string ::lib.schema.id/field]]
   (log/debugf "Resolving %s in source Card %s metadata" (pr-str id-or-name) (pr-str source-card-id))
   (when-some [card (lib.metadata/card query source-card-id)]
-    ;; card returned columns should be the same regardless of which stage number we pass in, so always use zero so we
-    ;; can hit the cache more often
-    (let [card-metadata-columns (lib.metadata.calculation/returned-columns query card)]
+    (let [card-metadata-columns (lib.metadata.calculation/returned-columns query 0 card)]
       (when-some [col (resolve-in-metadata query card-metadata-columns id-or-name)]
         (-> col
             lib.field.util/update-keys-for-col-from-previous-stage
@@ -416,12 +416,11 @@
 (defn- resolve-ref-missing-join-alias
   "Try finding a match in joins (field ref is missing `:join-alias`)."
   [query stage-number id-or-name]
-  (log/infof "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
+  (log/debugf "Assuming %s is from a join, and missing :join-alias" (pr-str id-or-name))
   (or (when (string? id-or-name)
-        (let [parts (str/split id-or-name #"__")]
-          (when (>= (count parts) 2)
-            (let [join-alias (first parts)
-                  field-name (str/join "__" (rest parts))]
+        (let [parts (str/split id-or-name #"__" 2)]
+          (when (= (count parts) 2)
+            (let [[join-alias field-name] parts]
               (log/debugf "Split field name into join alias %s and field name %s" (pr-str join-alias) (pr-str field-name))
               (resolve-in-join query stage-number join-alias field-name)))))
       (some (fn [join]
@@ -439,7 +438,9 @@
   (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
   (merge-metadata
    (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
-       (resolve-ref-missing-join-alias query stage-number id-or-name)
+       (do
+         (log/infof "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number))
+         (resolve-ref-missing-join-alias query stage-number id-or-name))
        ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a Field ID ref.
        ;; It's likely a ref that makes little or no sense (e.g. wrong table) but we can let QP code worry about that.
        (when (pos-int? id-or-name)

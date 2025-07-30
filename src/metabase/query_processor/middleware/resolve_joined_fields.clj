@@ -13,8 +13,8 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
-  (let [first-stage-path (conj (vec (butlast path)) 0)
-        source-table     (get-in query (conj first-stage-path :source-table))
+  (let [first-stage-path (conj (pop (vec path)) 0)
+        source-table     (:source-table (get-in query first-stage-path))
         update-fields    (fn update-fields [form]
                            (lib.util.match/replace form
                              ;; don't recurse into joins. But should we update conditions tho.

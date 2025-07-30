@@ -66,8 +66,8 @@
 
 (defn- mbql-clauses?
   [xs]
-  (or (empty? xs)
-      (and (sequential? xs)
+  (and (sequential? xs)
+       (or (empty? xs)
            (every? mbql-clause? xs))))
 
 (defn- opts-distinct-key [opts]

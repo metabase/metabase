@@ -102,7 +102,9 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000000"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63401]]])))
+         63401]]]
+
+      [])))
 
 (deftest ^:parallel distinct-mbql-clauses-schema-test-2
   (testing "non-distinct MBQL clauses ignoring named keys and type info"
@@ -125,7 +127,11 @@
          {:lib/uuid "00000000-0000-0000-0000-000000000001"
           :base-type :type/BigInteger
           :effective-type :type/BigInteger}
-         63400]]])))
+         63400]]]
+
+      nil
+
+      {})))
 
 (deftest ^:parallel distinct-mbql-clauses-schema-test-3
   (testing "humanized error message"
