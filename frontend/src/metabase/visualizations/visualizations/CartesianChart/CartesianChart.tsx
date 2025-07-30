@@ -1,13 +1,13 @@
 import type { EChartsType } from "echarts/core";
-import {
+import React, {
   type MouseEvent,
+  memo,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import React from "react";
 import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/lib/browser";
@@ -17,6 +17,7 @@ import { LegendCaption } from "metabase/visualizations/components/legend/LegendC
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useCartesianChartSeriesColorsClasses,
+  useClickedStateTooltipSync,
   useCloseTooltipOnScroll,
 } from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -26,9 +27,20 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 
-import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
+
+export const StableEChartsRenderer = memo(ResponsiveEChartsRenderer);
+export const ClickedTooltipSync = memo(function ClickedTooltipSync({
+  chartRef,
+  clicked,
+}: {
+  chartRef: React.MutableRefObject<EChartsType | undefined>;
+  clicked: any;
+}) {
+  useClickedStateTooltipSync(chartRef.current, clicked);
+  return null;
+});
 
 function _CartesianChart(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,17 +79,39 @@ function _CartesianChart(props: VisualizationProps) {
     [originalSettings, gridSize],
   );
 
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption(
-    {
-      ...props,
+  const modelInputs = useMemo(
+    () => ({
+      rawSeries,
+      settings,
+      card,
+      fontFamily: props.fontFamily,
       width: chartSize.width,
       height: chartSize.height,
       hiddenSeries,
+      timelineEvents: props.timelineEvents,
+      selectedTimelineEventIds: props.selectedTimelineEventIds,
+      onRender: props.onRender,
+      isFullscreen,
+    }),
+    [
+      rawSeries,
       settings,
-    },
+      card,
+      props.fontFamily,
+      chartSize.width,
+      chartSize.height,
+      hiddenSeries,
+      props.timelineEvents,
+      props.selectedTimelineEventIds,
+      props.onRender,
+      isFullscreen,
+    ],
+  );
+
+  const { chartModel, timelineEventsModel, option } = useModelsAndOption(
+    modelInputs,
     containerRef,
   );
-  useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
 
@@ -179,13 +213,14 @@ function _CartesianChart(props: VisualizationProps) {
         width={outerWidth}
         height={outerHeight}
       >
-        <ResponsiveEChartsRenderer
+        <StableEChartsRenderer
           ref={containerRef}
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}
           onInit={handleInit}
         />
+        <ClickedTooltipSync chartRef={chartRef} clicked={props.clicked} />
       </CartesianChartLegendLayout>
       {seriesColorsCss}
     </CartesianChartRoot>
