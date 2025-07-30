@@ -133,7 +133,7 @@ LIMIT 0
 
 By default, this query runs against your database during setup and again every hour. This scanning query is fast with most relational databases but can be slower with MongoDB and some [community-built database drivers](../developers-guide/community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
-Here's the kind of data that syncs get and why:
+Here's the kind of data that gets synced and why:
 
 | What             | Why                                          |
 | ---------------- | -------------------------------------------- |

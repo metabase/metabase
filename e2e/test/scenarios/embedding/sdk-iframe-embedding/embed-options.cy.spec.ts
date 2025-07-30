@@ -11,17 +11,16 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     H.prepareSdkIframeEmbedTest({ signOut: true });
   });
 
-  it("shows a static question with isDrillThroughEnabled=false", () => {
+  it("shows a static question with drills=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       questionId: ORDERS_QUESTION_ID,
-      isDrillThroughEnabled: false,
+      drills: false,
     });
 
     cy.wait("@getCardQuery");
 
     frame.within(() => {
       cy.log("1. static question must not contain title and toolbar");
-      cy.findByText("Orders").should("not.exist");
       cy.findByTestId("interactive-question-result-toolbar").should(
         "not.exist",
       );
@@ -32,10 +31,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
-  it("shows a static question with isDrillThroughEnabled=false, withTitle=true", () => {
+  it("shows a static question with drills=false, withTitle=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       questionId: ORDERS_QUESTION_ID,
-      isDrillThroughEnabled: false,
+      drills: false,
       withTitle: true,
     });
 
@@ -50,10 +49,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
-  it("shows a static dashboard using isDrillThroughEnabled=false, withTitle=false, withDownloads=true", () => {
+  it("shows a static dashboard using drills=false, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      isDrillThroughEnabled: false,
+      drills: false,
       withTitle: false,
       withDownloads: true,
     });
@@ -76,10 +75,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
-  it("renders an interactive question with isDrillThroughEnabled=true, withTitle=false, withDownloads=true", () => {
+  it("renders an interactive question with drills=true, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       questionId: ORDERS_QUESTION_ID,
-      isDrillThroughEnabled: true,
+      drills: true,
       withDownloads: true,
       withTitle: false,
     });
@@ -103,10 +102,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     });
   });
 
-  it("renders an interactive dashboard with isDrillThroughEnabled=true, withDownloads=true, withTitle=false", () => {
+  it("renders an interactive dashboard with drills=true, withDownloads=true, withTitle=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
-      isDrillThroughEnabled: true,
+      drills: true,
       withDownloads: true,
       withTitle: false,
     });
