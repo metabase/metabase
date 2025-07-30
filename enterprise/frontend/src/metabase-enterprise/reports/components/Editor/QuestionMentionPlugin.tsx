@@ -23,8 +23,6 @@ import type {
   UnrestrictedLinkEntity,
 } from "metabase-types/api";
 
-import { fetchReportQuestionData } from "../../reports.slice";
-
 const MODELS_TO_SEARCH: SearchModel[] = ["card", "dataset"];
 
 type InsertionMode = "mention" | "embed";
@@ -196,7 +194,6 @@ export const QuestionMentionPlugin = ({
 
     if (mentionRange.mode === "embed") {
       try {
-        dispatch(fetchReportQuestionData({ cardId: wrappedItem.id }));
         editor
           .chain()
           .focus()

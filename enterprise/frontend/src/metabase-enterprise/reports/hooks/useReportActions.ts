@@ -6,11 +6,10 @@ import { useToast } from "metabase/common/hooks";
 import type { Card } from "metabase-types/api";
 
 import { useReportsDispatch, useReportsStore } from "../redux-utils";
-import { clearDraftState, fetchReportQuestionData } from "../reports.slice";
+import { clearDraftState } from "../reports.slice";
 import {
   getCardEmbeds,
   getHasDraftChanges,
-  getReportCard,
   getReportCardWithDraftSettings,
   getReportsState,
 } from "../selectors";
@@ -23,9 +22,9 @@ export function useReportActions() {
   const [updateCard] = cardApi.useUpdateCardMutation();
 
   const commitVisualizationChanges = useCallback(
-    async (embedIndex: number, editorInstance: any) => {
+    async (embedIndex: number, editorInstance: any, originalCard: Card) => {
       const state = store.getState();
-      const hasDraftChanges = getHasDraftChanges(state);
+      const hasDraftChanges = getHasDraftChanges(state, originalCard);
       const cardEmbeds = getCardEmbeds(state);
 
       if (
@@ -41,6 +40,7 @@ export function useReportActions() {
       const cardWithDraftSettings = getReportCardWithDraftSettings(
         state,
         embed.id,
+        originalCard,
       );
 
       if (!cardWithDraftSettings) {
@@ -48,7 +48,6 @@ export function useReportActions() {
       }
 
       try {
-        const originalCard = getReportCard(state, embed.id);
         if (!originalCard || !cardWithDraftSettings) {
           return;
         }
@@ -108,14 +107,6 @@ export function useReportActions() {
 
         dispatch(clearDraftState());
 
-        // Force refresh the card data to show latest changes
-        dispatch(
-          fetchReportQuestionData({
-            cardId: updatedCard.id,
-            forceRefresh: true,
-          }),
-        );
-
         sendToast({
           message: t`Visualization settings updated`,
         });
@@ -132,18 +123,22 @@ export function useReportActions() {
 
   // Commit all pending changes (used when saving report)
   const commitAllPendingChanges = useCallback(
-    async (editorInstance: any) => {
+    async (editorInstance: any, originalCard?: Card) => {
       if (!editorInstance) {
         return;
       }
 
       const state = store.getState();
-      const hasDraftChanges = getHasDraftChanges(state);
+      const hasDraftChanges = getHasDraftChanges(state, originalCard);
       const selectedEmbedIndex = getReportsState(state).selectedEmbedIndex;
 
       // Commit changes if there are any and we have a selected embed
-      if (hasDraftChanges && selectedEmbedIndex !== null) {
-        await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
+      if (hasDraftChanges && selectedEmbedIndex !== null && originalCard) {
+        await commitVisualizationChanges(
+          selectedEmbedIndex,
+          editorInstance,
+          originalCard,
+        );
       }
     },
     [store, commitVisualizationChanges],

@@ -4,7 +4,9 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -13,15 +15,9 @@ import { getUrl } from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
 import { useReportsSelector } from "../../../../redux-utils";
+import { openVizSettingsSidebar } from "../../../../reports.slice";
 import {
-  fetchReportQuestionData,
-  openVizSettingsSidebar,
-} from "../../../../reports.slice";
-import {
-  getIsLoadingCard,
-  getReportCard,
-  getReportRawSeries,
-  getReportRawSeriesWithDraftSettings,
+  getReportCardWithDraftSettings,
   getSelectedEmbedIndex,
 } from "../../../../selectors";
 import { formatCardEmbed } from "../markdown/card-embed-format";
@@ -131,35 +127,52 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    const card = useReportsSelector((state) => getReportCard(state, id));
+    const {
+      data: card,
+      isLoading: isLoadingCard,
+      refetch: refetchCard,
+    } = useGetCardQuery({ id }, { skip: !id });
+    const {
+      data: dataset,
+      isLoading: isLoadingDataset,
+      refetch: refetchDataset,
+    } = useGetCardQueryQuery({ cardId: id }, { skip: !id || !card });
+
     const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
     const isCurrentlyEditing =
       selectedEmbedIndex === embedIndex && embedIndex !== -1;
 
     // Use draft settings if this embed is currently being edited
-    const rawSeries = useReportsSelector((state) =>
-      isCurrentlyEditing
-        ? getReportRawSeriesWithDraftSettings(state, id)
-        : getReportRawSeries(state, id),
+    const cardWithDraft = useReportsSelector((state) =>
+      isCurrentlyEditing && card
+        ? getReportCardWithDraftSettings(state, id, card)
+        : card,
     );
-    const isLoadingCard = useReportsSelector((state) =>
-      getIsLoadingCard(state, id),
-    );
-    const isLoadingDataset = useReportsSelector((state) =>
-      getIsLoadingCard(state, id),
-    );
+
+    const rawSeries =
+      cardWithDraft && dataset?.data
+        ? [
+            {
+              card: cardWithDraft,
+              started_at: dataset.started_at,
+              data: dataset.data,
+            },
+          ]
+        : null;
+
     const metadata = useReportsSelector(getMetadata);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
 
-    const displayName = name || card?.name;
-    const isGuiQuestion = card?.dataset_query?.type !== "native";
+    const displayName = name || cardWithDraft?.name;
+    const isGuiQuestion = cardWithDraft?.dataset_query?.type !== "native";
     const isLoading = isLoadingCard || isLoadingDataset;
 
     // Only show error if we've tried to load and failed, not if we haven't tried yet
-    const hasTriedToLoad = card || isLoadingCard || isLoadingDataset;
+    const hasTriedToLoad =
+      card !== undefined || isLoadingCard || isLoadingDataset;
     const error =
       hasTriedToLoad && !isLoading && id && !card
         ? "Failed to load question"
@@ -174,7 +187,7 @@ export const CardEmbedComponent = memo(
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
-      if (trimmedTitle && trimmedTitle !== card?.name) {
+      if (trimmedTitle && trimmedTitle !== cardWithDraft?.name) {
         updateAttributes({ name: trimmedTitle });
       } else {
         updateAttributes({ name: null });
@@ -193,16 +206,22 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    useEffect(() => {
+      if (card) {
+        dispatch(loadMetadataForCard(card));
+      }
+    }, [card, dispatch]);
+
     const handleEditVisualizationSettings = () => {
-      if (embedIndex !== -1) {
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+      if (embedIndex !== -1 && card) {
+        dispatch(openVizSettingsSidebar({ embedIndex, card }));
       }
     };
 
     const handleTitleClick = () => {
-      if (card && metadata) {
+      if (cardWithDraft && metadata) {
         try {
-          const question = new Question(card, metadata);
+          const question = new Question(cardWithDraft, metadata);
           const url = getUrl(question, { includeDisplayIsLocked: true });
           dispatch(push(url));
         } catch (error) {
@@ -211,12 +230,13 @@ export const CardEmbedComponent = memo(
       }
     };
 
-    const handleRefreshData = async () => {
-      // Dispatch action to refetch the card dataset with force refresh
+    const handleRefreshData = useCallback(() => {
+      // Use RTK Query to refetch the card and dataset
       if (id) {
-        dispatch(fetchReportQuestionData({ cardId: id, forceRefresh: true }));
+        refetchCard();
+        refetchDataset();
       }
-    };
+    }, [id, refetchCard, refetchDataset]);
 
     // Handle drill-through navigation
     const handleChangeCardAndRun = useCallback(

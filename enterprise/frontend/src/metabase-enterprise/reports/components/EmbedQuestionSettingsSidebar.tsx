@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { cardApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
@@ -33,12 +34,7 @@ import {
 } from "../reports.slice";
 import {
   getHasDraftChanges,
-  getIsLoadingCard,
-  getIsLoadingDataset,
-  getReportCard,
   getReportCardWithDraftSettings,
-  getReportRawSeries,
-  getReportRawSeriesWithDraftSettings,
   getSelectedEmbedIndex,
 } from "../selectors";
 
@@ -55,38 +51,45 @@ export const EmbedQuestionSettingsSidebar = ({
   const dispatch = useDispatch();
   const metadata = useReportsSelector(getMetadata);
   const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
-  const hasDraftChanges = useReportsSelector(getHasDraftChanges);
   const { commitVisualizationChanges } = useReportActions();
 
+  const { data: card, isLoading: isCardLoading } = cardApi.useGetCardQuery(
+    { id: cardId },
+    { skip: !cardId },
+  );
+  const { data: dataset, isLoading: isResultsLoading } =
+    cardApi.useGetCardQueryQuery({ cardId }, { skip: !cardId || !card });
+
   // Use card with draft settings merged for the sidebar
-  const card = useReportsSelector((state) =>
-    selectedEmbedIndex !== null
-      ? getReportCardWithDraftSettings(state, cardId)
-      : getReportCard(state, cardId),
+  const cardWithDraft = useReportsSelector((state) =>
+    selectedEmbedIndex !== null && card
+      ? getReportCardWithDraftSettings(state, cardId, card)
+      : card,
   );
-  const series = useReportsSelector((state) =>
-    selectedEmbedIndex !== null
-      ? getReportRawSeriesWithDraftSettings(state, cardId)
-      : null,
+
+  const hasDraftChanges = useReportsSelector((state) =>
+    getHasDraftChanges(state, card),
   );
-  const isCardLoading = useReportsSelector((state) =>
-    getIsLoadingCard(state, cardId),
-  );
-  const isResultsLoading = useReportsSelector((state) =>
-    getIsLoadingDataset(state, cardId),
-  );
+
+  const series = useMemo(() => {
+    return cardWithDraft && dataset?.data
+      ? [
+          {
+            card: cardWithDraft,
+            started_at: dataset.started_at,
+            data: dataset.data,
+          },
+        ]
+      : null;
+  }, [cardWithDraft, dataset]);
 
   const question = useMemo(
-    () => (card ? new Question(card, metadata) : null),
-    [card, metadata],
+    () => (cardWithDraft ? new Question(cardWithDraft, metadata) : null),
+    [cardWithDraft, metadata],
   );
 
-  const dataset =
-    useReportsSelector((state) => getReportRawSeries(state, cardId))?.[0]
-      ?.data || null;
-
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
-    return getSensibleVisualizations({ result: dataset });
+    return getSensibleVisualizations({ result: dataset ?? null });
   }, [dataset]);
 
   const getVisualizationItems = (visualizationType: CardDisplayType) => {
@@ -115,10 +118,12 @@ export const EmbedQuestionSettingsSidebar = ({
 
   const selectedElem = useMemo(
     () =>
-      getVisualizationItems((card?.display as CardDisplayType) ?? "table") ??
+      getVisualizationItems(
+        (cardWithDraft?.display as CardDisplayType) ?? "table",
+      ) ??
       sensibleItems[0] ??
       nonsensibleItems[0],
-    [card?.display, sensibleItems, nonsensibleItems],
+    [cardWithDraft?.display, sensibleItems, nonsensibleItems],
   );
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
@@ -135,8 +140,12 @@ export const EmbedQuestionSettingsSidebar = ({
 
   const handleDone = useCallback(async () => {
     if (selectedEmbedIndex !== null) {
-      if (hasDraftChanges) {
-        await commitVisualizationChanges(selectedEmbedIndex, editorInstance);
+      if (hasDraftChanges && card) {
+        await commitVisualizationChanges(
+          selectedEmbedIndex,
+          editorInstance,
+          card,
+        );
       } else {
         // No changes, just clear the draft state to show UsedContent
         dispatch(clearDraftState());
@@ -148,6 +157,7 @@ export const EmbedQuestionSettingsSidebar = ({
     commitVisualizationChanges,
     editorInstance,
     dispatch,
+    card,
   ]);
 
   if (isCardLoading || isResultsLoading || !series) {
@@ -170,7 +180,7 @@ export const EmbedQuestionSettingsSidebar = ({
     );
   }
 
-  if (!card || !series) {
+  if (!cardWithDraft || !series) {
     return (
       <Stack gap="lg" p="lg" style={{ height: "100%" }}>
         <Box
@@ -270,7 +280,7 @@ export const EmbedQuestionSettingsSidebar = ({
           question={question as any}
           series={series}
           onChange={handleSettingsChange}
-          computedSettings={card.visualization_settings || {}}
+          computedSettings={cardWithDraft.visualization_settings || {}}
         />
       </Box>
       <Box

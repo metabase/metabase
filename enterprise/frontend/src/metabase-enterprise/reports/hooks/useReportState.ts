@@ -5,7 +5,7 @@ import type { CollectionId } from "metabase-types/api";
 
 import type { CardEmbedRef } from "../components/Editor/types";
 import { useReportsSelector } from "../redux-utils";
-import { fetchReportQuestionData, setCardEmbeds } from "../reports.slice";
+import { setCardEmbeds } from "../reports.slice";
 import { getCardEmbeds } from "../selectors";
 
 export function useReportState(reportData?: {
@@ -19,13 +19,6 @@ export function useReportState(reportData?: {
   const [reportCollectionId, setReportCollectionId] =
     useState<CollectionId | null>(null);
   const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
-
-  // Sync cardEmbeds changes with data fetching
-  useEffect(() => {
-    cardEmbeds.forEach((embed: CardEmbedRef) => {
-      dispatch(fetchReportQuestionData({ cardId: embed.id }));
-    });
-  }, [cardEmbeds, dispatch]);
 
   // Sync report data when it changes
   useEffect(() => {

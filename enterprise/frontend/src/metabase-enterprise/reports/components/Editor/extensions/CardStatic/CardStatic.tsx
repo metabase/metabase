@@ -9,9 +9,8 @@ import { t } from "ttag";
 
 import { Box, Loader, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { getReportRawSeries } from "metabase-enterprise/reports/selectors";
+import type { RawSeries } from "metabase-types/api";
 
-import { useReportsSelector } from "../../../../redux-utils";
 import styles from "../CardEmbed/CardEmbedNode.module.css";
 
 export const STATIC_CARD_REGEX =
@@ -107,11 +106,10 @@ export const CardStaticNode = Node.create<{
 
 export const QuestionStaticComponent = memo(
   ({ node, selected }: NodeViewProps) => {
-    const { questionName, id } = node.attrs;
+    const { questionName } = node.attrs;
 
-    const rawSeries = useReportsSelector((state) =>
-      getReportRawSeries(state, id),
-    );
+    // FIXME: removed cards, datasets from state, this component is unused
+    const rawSeries: RawSeries = [];
 
     const error = !rawSeries;
 

@@ -3,7 +3,7 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { cardApi } from "metabase/api";
+import { useCreateCardMutation, useUpdateCardMutation } from "metabase/api";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -14,7 +14,6 @@ import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
 import { useReportsSelector } from "../../../../redux-utils";
-import { fetchCardDataset } from "../../../../reports.slice";
 
 interface ModifyQuestionModalProps {
   card: Card;
@@ -35,8 +34,8 @@ export const ModifyQuestionModal = ({
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
-  const [createCard] = cardApi.useCreateCardMutation();
-  const [updateCard] = cardApi.useUpdateCardMutation();
+  const [createCard] = useCreateCardMutation();
+  const [updateCard] = useUpdateCardMutation();
 
   const metadataState = useAsync(async () => {
     if (isOpen && card) {
@@ -113,11 +112,10 @@ export const ModifyQuestionModal = ({
           dataset_query: modifiedQuestion.datasetQuery(),
           display: modifiedQuestion.display(),
           visualization_settings:
-            modifiedQuestion.card().visualization_settings || {},
+            modifiedQuestion.card().visualization_settings ?? {},
         });
 
-        // Refetch the dataset after updating the in_report card
-        await dispatch(fetchCardDataset(card.id));
+        // Dataset will be refetched by RTK Query automatically
 
         onSave({
           card_id: card.id,
@@ -133,8 +131,8 @@ export const ModifyQuestionModal = ({
           display: modifiedQuestion.display(),
           name: cardName,
           visualization_settings:
-            modifiedQuestion.card().visualization_settings || {},
-          collection_id: card.collection_id || null,
+            modifiedQuestion.card().visualization_settings ?? {},
+          collection_id: card.collection_id ?? null,
         }).unwrap();
 
         onSave({
