@@ -51,19 +51,30 @@ class BaseBackend {
     if (!this.server.process) {
       const { cmd, args } = this.getCommand();
 
+      /**
+       * This ENV is used for Cloud instances only, and is subject to change.
+       * As such, it is not documented anywhere in the code base!
+       *
+       * WARNING:
+       * Changing values here will break the related E2E test.
+       */
+      const userDefaults = {
+        MB_USER_DEFAULTS: JSON.stringify({
+          token: "123456",
+          user: {
+            first_name: "Testy",
+            last_name: "McTestface",
+            email: "testy@metabase.test",
+            site_name: "Epic Team",
+          },
+        }),
+      };
+
       this.server.process = spawn(cmd, args, {
         env: {
           ...process.env,
           ...this.getEnv(),
-          MB_USER_DEFAULTS: JSON.stringify({
-            token: "123456",
-            user: {
-              first_name: "Testy",
-              last_name: "McTestface",
-              email: "testy@metabase.test",
-              site_name: "Epic Team",
-            },
-          }),
+          ...userDefaults,
         },
         stdio:
           process.env["DISABLE_LOGGING"] ||
@@ -80,6 +91,7 @@ class BaseBackend {
       );
       while (!(await isReady(this.server.host))) {
         if (!process.env.CI) {
+          // disable for CI since it breaks CircleCI's no_output_timeout
           process.stdout.write(".");
         }
         await delay(500);
@@ -96,28 +108,34 @@ class BaseBackend {
     }
 
     async function isReady(host) {
-      const reqJson = (url) =>
-        new Promise((resolve, reject) => {
+      // This is needed until we can use NodeJS native `fetch`.
+      function request(url) {
+        return new Promise((resolve, reject) => {
           const req = http.get(url, (res) => {
             let body = "";
-            res.on("data", (c) => (body += c));
+
+            res.on("data", (chunk) => {
+              body += chunk;
+            });
+
             res.on("end", () => {
-              try {
-                resolve(JSON.parse(body));
-              } catch {
-                resolve({});
-              }
+              resolve(JSON.parse(body));
             });
           });
-          req.on("error", reject);
+
+          req.on("error", (e) => {
+            reject(e);
+          });
         });
+      }
 
       try {
-        const { status } = await reqJson(`${host}/api/health`);
-        return status === "ok";
-      } catch {
-        return false;
-      }
+        const { status } = await request(`${host}/api/health`);
+        if (status === "ok") {
+          return true;
+        }
+      } catch (e) {}
+      return false;
     }
   }
 
@@ -132,17 +150,17 @@ class BaseBackend {
       if (this?.server?.dbFile) {
         fs.unlinkSync(`${this.server.dbFile}.mv.db`);
       }
-    } catch {}
+    } catch (e) {}
   }
 }
 
 class JarBackend extends BaseBackend {
   getCommand() {
     const javaFlags = [
-      "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version
-      "-Dh2.bindAddress=localhost",
-      "-Djava.awt.headless=true",
-      "-Dmail.smtps.ssl.trust=*",
+      "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+      "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+      "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+      "-Dmail.smtps.ssl.trust=*", // trust self signed certs for testing
       "-Duser.timezone=US/Pacific",
       process.env.SHOW_BACKEND_LOGS === "true"
         ? null
