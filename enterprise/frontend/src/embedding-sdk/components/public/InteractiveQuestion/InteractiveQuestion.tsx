@@ -36,6 +36,13 @@ export type InteractiveQuestionProps = Omit<
   SdkQuestionProps,
   "getClickActionMode" | "navigateToNewCard" | "backToDashboard"
 >;
+
+/**
+ * A question component with drill-downs enabled.
+ *
+ * @function
+ * @category InteractiveQuestion
+ */
 export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
   <SdkQuestion {...props} />
 );
