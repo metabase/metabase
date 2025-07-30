@@ -16,7 +16,10 @@ export const getEmbedSidebar = () => cy.findByRole("complementary");
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
+export const visitNewEmbedPage = ({
+  locale,
+  dismissEmbedTerms = true,
+}: { locale?: string; dismissEmbedTerms?: boolean } = {}) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
   const params = new URLSearchParams();
@@ -26,6 +29,23 @@ export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
   }
 
   cy.visit("/embed-iframe?" + params);
+
+  if (dismissEmbedTerms) {
+    cy.log("simple embedding terms card should be shown");
+    cy.findByTestId("simple-embed-terms-card").within(() => {
+      cy.findByText("First, some legalese.").should("be.visible");
+
+      cy.findByText(
+        "When using Embedded Analytics JS, each end user should have their own Metabase account.",
+      ).should("be.visible");
+
+      cy.findByText("Got it").should("be.visible").click();
+    });
+
+    cy.log("simple embedding terms card should be dismissed");
+    cy.findByTestId("simple-embed-terms-card").should("not.exist");
+  }
+
   cy.wait("@dashboard");
 
   cy.get("#iframe-embed-container", {
@@ -55,8 +75,12 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 };
 
 type NavigateToStepOptions =
-  | { experience: "exploration"; resourceName?: never }
-  | ({ experience: "dashboard" | "chart" } & (
+  | {
+      experience: "exploration";
+      dismissEmbedTerms?: boolean;
+      resourceName?: never;
+    }
+  | ({ experience: "dashboard" | "chart"; dismissEmbedTerms?: boolean } & (
       | { resourceName: string; skipResourceSelection?: never }
       | { skipResourceSelection: true }
     ));
@@ -64,9 +88,9 @@ type NavigateToStepOptions =
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience } = options;
+  const { experience, dismissEmbedTerms } = options;
 
-  visitNewEmbedPage();
+  visitNewEmbedPage({ dismissEmbedTerms });
 
   cy.log("select an experience");
 
