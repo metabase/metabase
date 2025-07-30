@@ -55,8 +55,7 @@ jobs:
             else
               echo "skip=true" >> $GITHUB_OUTPUT
               echo "No relevant team label, not merging into master/release, and no changes in relevant folders. Tier 3 driver tests will be skipped."
-            fiecho "skip=true" >> $GITHUB_OUTPUT
-            echo "Not labeled with required team and not merging into master/release. Tier 3 driver tests will be skipped."
+            fi
           fi
         shell: bash
   be-tests-athena-ee:
