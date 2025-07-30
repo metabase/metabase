@@ -1,9 +1,9 @@
+import { enginesConfig } from "./engines-config";
 import { parseConnectionUriRegex } from "./parseConnectionRegex";
 
 describe("parseConnectionUriRegex - Amazon Athena", () => {
   it("should parse a basic Amazon Athena connection string", () => {
-    const connectionString =
-      "jdbc:athena://WorkGroup=primary;Region=us-east-1;";
+    const connectionString = enginesConfig.get("athena")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
@@ -39,15 +39,14 @@ describe("parseConnectionUriRegex - Amazon Athena", () => {
 
 describe("parseConnectionUriRegex - Amazon Redshift", () => {
   it("should parse a Amazon Redshift connection string", () => {
-    const connectionString =
-      "jdbc:redshift://examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com:5439/dbname";
+    const connectionString = enginesConfig.get("redshift")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
         protocol: "redshift",
         host: "examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com",
         port: "5439",
-        database: "dbname",
+        database: "dev",
         hasJdbcPrefix: true,
       }),
     );
@@ -76,7 +75,7 @@ describe("parseConnectionUriRegex - Amazon Redshift", () => {
 describe("parseConnectionUriRegex - BigQuery", () => {
   it("should parse a BigQuery connection string", () => {
     const connectionString =
-      "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;";
+      enginesConfig.get("bigquery-cloud-sdk")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
@@ -92,18 +91,16 @@ describe("parseConnectionUriRegex - BigQuery", () => {
 
 describe("parseConnectionUriRegex - Clickhouse", () => {
   it("should parse a Clickhouse connection string", () => {
-    const connectionString =
-      "jdbc:clickhouse://john:aa@127.0.0.1:8123/myDatabase?param1=value1";
+    const connectionString = enginesConfig.get("clickhouse")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
         protocol: "clickhouse",
-        host: "127.0.0.1",
-        port: "8123",
+        host: "localhost",
+        port: "8443",
         hasJdbcPrefix: true,
-        database: "myDatabase",
         params: {
-          param1: "value1",
+          ssl: "true",
         },
       }),
     );
@@ -112,8 +109,7 @@ describe("parseConnectionUriRegex - Clickhouse", () => {
 
 describe("parseConnectionUriRegex - Databricks", () => {
   it("should parse a Databricks connection string", () => {
-    const connectionString =
-      "jdbc:databricks://127.0.0.1:8123;httpPath=/sql/1.0/endpoints/abc;OAuthSecret=1234567890;OAuth2ClientId=xyz";
+    const connectionString = enginesConfig.get("databricks")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
@@ -151,8 +147,7 @@ describe("parseConnectionUriRegex - Databricks", () => {
 
 describe("parseConnectionUriRegex - Druid", () => {
   it("should parse a Druid connection string", () => {
-    const connectionString =
-      "jdbc:avatica:remote:url=http://localhost:8888/druid/v2/sql/avatica/;transparent_reconnection=true";
+    const connectionString = enginesConfig.get("druid")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
@@ -171,7 +166,7 @@ describe("parseConnectionUriRegex - Druid", () => {
 
 describe("parseConnectionUriRegex - MySQL", () => {
   it("should parse a MySQL connection string", () => {
-    const connectionString = "jdbc:mysql://user:pass@host:3306/dbname?ssl=true";
+    const connectionString = enginesConfig.get("mysql")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual({
       username: "user",
@@ -190,8 +185,7 @@ describe("parseConnectionUriRegex - MySQL", () => {
 
 describe("parseConnectionUriRegex - Oracle", () => {
   it("should parse a Oracle connection string", () => {
-    const connectionString =
-      "jdbc:oracle:thin:@mydbhost:1521/mydbservice?ssl_server_cert_dn=ServerDN";
+    const connectionString = enginesConfig.get("oracle")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
@@ -229,6 +223,18 @@ describe("parseConnectionUriRegex - Oracle", () => {
 
 describe("parseConnectionUriRegex - PostgreSQL", () => {
   it("should parse a PostgreSQL connection string", () => {
+    const connectionString = enginesConfig.get("postgres")?.placeholder;
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual({
+      host: "localhost",
+      port: "5432",
+      database: "mydb",
+      protocol: "postgresql",
+      hasJdbcPrefix: true,
+    });
+  });
+
+  it("should parse a PostgreSQL connection string with encoded parameters", () => {
     const connectionString =
       "postgres://user:pass@host:5432/dbname?param1=pe%40ce%26lo%2F3";
     const result = parseConnectionUriRegex(connectionString);
@@ -282,26 +288,27 @@ describe("parseConnectionUriRegex - Presto", () => {
 
 describe("parseConnectionUriRegex - SQLite", () => {
   it("should parse a SQLite connection string", () => {
-    const connectionString = "sqlite:///C:/path/to/database.db";
+    const connectionString = enginesConfig.get("sqlite")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
-    expect(result).toEqual({
-      protocol: "sqlite",
-      filepath: "C:/path/to/database.db",
-      hasJdbcPrefix: false,
-    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        protocol: "sqlite",
+        path: "C:/path/to/database.db",
+        hasJdbcPrefix: true,
+      }),
+    );
   });
 });
 
 describe("parseConnectionUriRegex - Snowflake", () => {
   it("should parse a Snowflake connection string", () => {
-    const connectionString =
-      "snowflake://johnsnow.snowflakecomputing.com/?db=maindb&warehouse=mainwarehouse";
+    const connectionString = enginesConfig.get("snowflake")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
         username: undefined,
         password: undefined,
-        host: "johnsnow.snowflakecomputing.com",
+        host: "example.snowflakecomputing.com",
         database: undefined,
         port: undefined,
         protocol: "snowflake",
@@ -316,15 +323,15 @@ describe("parseConnectionUriRegex - Snowflake", () => {
 
 describe("parseConnectionUriRegex - Spark SQL", () => {
   it("should parse a Spark SQL connection string", () => {
-    const connectionString = "jdbc:sparksql:Server=127.0.0.1;";
+    const connectionString = enginesConfig.get("sparksql")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
+        protocol: "sparksql",
+        hasJdbcPrefix: true,
         params: {
           Server: "127.0.0.1",
         },
-        protocol: "sparksql",
-        hasJdbcPrefix: true,
       }),
     );
   });
@@ -350,6 +357,21 @@ describe("parseConnectionUriRegex - Spark SQL", () => {
 
 describe("parseConnectionUriRegex - SQL Server", () => {
   it("should parse a SQL Server connection string", () => {
+    const connectionString = enginesConfig.get("sqlserver")?.placeholder;
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        params: {
+          databaseName: "mydb",
+        },
+        host: "mydbhost",
+        port: "1433",
+        protocol: "sqlserver",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+  it("should parse a SQL Server connection string with username and password", () => {
     const connectionString =
       "jdbc:sqlserver://localhost:1433;encrypt=true;databaseName=AdventureWorks;integratedSecurity=true;username=john;password=password";
     const result = parseConnectionUriRegex(connectionString);
@@ -373,8 +395,7 @@ describe("parseConnectionUriRegex - SQL Server", () => {
 
 describe("parseConnectionUriRegex - Starburst", () => {
   it("should parse a Starburst connection string", () => {
-    const connectionString =
-      "jdbc:trino://starburst.example.com:43011/hive/sales?user=test&password=secret&SSL=true&roles=system:myrole";
+    const connectionString = enginesConfig.get("starburst")?.placeholder;
     const result = parseConnectionUriRegex(connectionString);
     expect(result).toEqual(
       expect.objectContaining({
@@ -396,7 +417,21 @@ describe("parseConnectionUriRegex - Starburst", () => {
 });
 
 describe("parseConnectionUriRegex - Vertica", () => {
-  it("should parse a Vertica connection string", () => {
+  it("should parse a Vertica connection strin", () => {
+    const connectionString =
+      "jdbc:vertica://vertica.example.com:1234/databaseName";
+    const result = parseConnectionUriRegex(connectionString);
+    expect(result).toEqual(
+      expect.objectContaining({
+        host: "vertica.example.com",
+        port: "1234",
+        database: "databaseName",
+        protocol: "vertica",
+        hasJdbcPrefix: true,
+      }),
+    );
+  });
+  it("should parse a Vertica connection string with username and password", () => {
     const connectionString =
       "jdbc:vertica://vertica.example.com:1234/databaseName?user=jane&password=pass1234";
     const result = parseConnectionUriRegex(connectionString);
