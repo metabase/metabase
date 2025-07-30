@@ -1254,3 +1254,61 @@ describe("issue 49577", () => {
     });
   });
 });
+
+describe.skip("issue 61418", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to use field filters when the current user doesn't have create queries permissions (metabase#61418)", () => {
+    cy.log("revoke create-queries permissions");
+    H.activateToken("pro-self-hosted");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
+      },
+      [USER_GROUPS.DATA_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
+      },
+    });
+
+    cy.log("create a native query with a field filter");
+    H.createNativeQuestion(
+      {
+        native: {
+          query: "SELECT * FROM products WHERE {{category}}",
+          "template-tags": {
+            category: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+              name: "category",
+              display_name: "Category",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              "widget-type": "string/=",
+              default: null,
+            },
+          },
+        },
+      },
+      { wrapId: true },
+    );
+
+    cy.log("filter should work without create-queries permissions");
+    cy.signInAsNormalUser();
+    H.visitQuestion("@questionId");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.runButtonOverlay().click();
+    H.assertQueryBuilderRowCount(53);
+  });
+});
