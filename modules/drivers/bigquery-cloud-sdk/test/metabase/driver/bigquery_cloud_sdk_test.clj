@@ -635,7 +635,13 @@
       :bigquery-cloud-sdk
       (mt/dataset
         native-dataset
-        (let [category-field-id (mt/id :fv_partitioned_table :category)]
+        (let [category-field-id (u/auto-retry
+                                 1
+                                  (try
+                                    (mt/id :fv_partitioned_table :category)
+                                    (catch Exception e
+                                      (sync/sync-database! {:scan :schema})
+                                      (throw e))))]
           (t2/update! :model/Field category-field-id {:has_field_values :search})
           (t2/delete! :model/FieldValues :field_id category-field-id)
           (= [["coffee"]]
