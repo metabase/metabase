@@ -85,9 +85,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [5] # 10 shards for parallel execution
+        shard: [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+          ] # 10 shards for parallel execution
     env:
-      SHARDS: 10 # should match matrix above
+      SHARDS: 20 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
