@@ -183,6 +183,32 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
     });
   });
 
+  describe("Components", () => {
+    it("should display an SDK question with custom layout components", () => {
+      cy.window().then((win) => {
+        cy.spy(win.console, "warn").as("consoleWarn");
+      });
+
+      cy.get<string>("@questionId").then((questionId) => {
+        cy.mount(
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={questionId}>
+              <InteractiveQuestion.Title />
+
+              <InteractiveQuestion.QuestionVisualization />
+            </InteractiveQuestion>
+          </MetabaseProvider>,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Test Question").should("exist");
+
+        cy.findByTestId("visualization-root").should("be.visible");
+      });
+    });
+  });
+
   describe("Hooks", () => {
     it("should call SDK hooks properly when called inside MetabaseProvider", () => {
       const Wrapper = () => {
