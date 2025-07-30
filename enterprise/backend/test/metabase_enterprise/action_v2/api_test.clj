@@ -42,8 +42,6 @@
 (defn create-rows!
   ([table-id rows]
    (create-rows! table-id :crowberto 200 rows))
-  ([table-id response-code rows]
-   (create-rows! table-id :crowberto response-code rows))
   ([table-id user response-code rows]
    (mt/user-http-request user :post response-code execute-bulk-url
                          {:action :data-grid.row/create
@@ -53,8 +51,8 @@
 (defn- update-rows!
   ([table-id rows]
    (update-rows! table-id :crowberto 200 rows))
-  ([table-id response-code rows]
-   (update-rows! table-id :crowberto response-code rows))
+  ([table-id rows params]
+   (update-rows! table-id :crowberto 200 rows params))
   ([table-id user response-code rows & [params]]
    (mt/user-http-request user :post response-code execute-bulk-url
                          (cond->
@@ -66,8 +64,6 @@
 (defn- delete-rows!
   ([table-id rows]
    (delete-rows! table-id :crowberto 200 rows))
-  ([table-id response-code rows]
-   (delete-rows! table-id :crowberto response-code rows))
   ([table-id user response-code rows]
    (mt/user-http-request user :post response-code execute-bulk-url
                          {:action :data-grid.row/delete
@@ -122,7 +118,7 @@
                    {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (update-rows! table-id :crowberto 200 [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
+                   (update-rows! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
 
           (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
                    [2 "Speacolumn" "The Star-Spangled Banner"]
@@ -185,7 +181,7 @@
                      {:op "updated", :table-id table-id, :row {:id (str id-2), :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                    (set
                     (:outputs
-                     (update-rows! table-id :crowberto 200
+                     (update-rows! table-id
                                    [{:id id-1}
                                     {:id id-2}]
                                    {:song "The Star-Spangled Banner"})))))
@@ -250,7 +246,7 @@
                    {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (update-rows! table-id :crowberto 200
+                   (update-rows! table-id
                                  [{:id_1 1, :id_2 0}
                                   {:id_1 2, :id_2 0}]
                                  {:song "The Star-Spangled Banner"})))))
