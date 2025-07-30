@@ -38,8 +38,7 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId, transformId } =
-    parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
@@ -116,7 +115,7 @@ export const DataModel = ({ children, location, params }: Props) => {
 
         <Box className={S.footer} mx="xl" py="sm">
           <PLUGIN_TRANSFORMS.TransformNavBar
-            transformId={transformId}
+            transformId={undefined}
             isActive={isTransforms}
           />
           <NavigationLink
