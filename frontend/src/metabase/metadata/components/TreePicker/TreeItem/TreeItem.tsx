@@ -7,11 +7,13 @@ import { Box, Flex, Icon, type IconName, Skeleton, rem } from "metabase/ui";
 import S from "./TreeItem.module.css";
 
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
+const INDENT_OFFSET = 18;
 
 type TreeItemProps = HTMLAttributes<HTMLDivElement> & {
   label?: string;
   icon: IconName;
   href: string;
+  level?: number;
   isActive?: boolean;
   isSelected?: boolean;
   isExpanded?: boolean;
@@ -22,9 +24,11 @@ type TreeItemProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export function TreeItem({
+  className,
   label,
   icon,
   href,
+  level = 0,
   isActive,
   isSelected,
   isExpanded,
@@ -33,23 +37,32 @@ export function TreeItem({
   isHidden,
   isDisabled,
   children,
+  style,
   ...props
 }: TreeItemProps) {
   return (
     <Flex
       component={Link}
-      aria-selected={isActive}
+      className={cx(
+        S.item,
+        {
+          [S.active]: isActive,
+          [S.selected]: isSelected,
+          [S.expandable]: isExpandable,
+          [S.disabled]: isDisabled,
+        },
+        className,
+      )}
+      style={{
+        ...style,
+        marginLeft: level * INDENT_OFFSET,
+      }}
+      to={href}
       align="center"
       justify="space-between"
       gap="sm"
-      className={cx(S.item, {
-        [S.active]: isActive,
-        [S.selected]: isSelected,
-        [S.expandable]: isExpandable,
-        [S.disabled]: isDisabled,
-      })}
-      to={href}
       tabIndex={isDisabled ? -1 : 0}
+      aria-selected={isActive}
       data-open={isExpanded}
       data-testid="tree-item"
       {...props}

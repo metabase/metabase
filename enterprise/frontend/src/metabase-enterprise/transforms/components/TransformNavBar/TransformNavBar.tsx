@@ -1,13 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
+import { TreeItem } from "metabase/metadata/components/TreePicker/TreeItem";
 import type { TransformNavBarProps } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ActionIcon, Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
+import { ActionIcon, Icon } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
 import {
@@ -15,8 +15,6 @@ import {
   getTransformUrl,
 } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform } from "metabase-types/api";
-
-import S from "./TransformNavBar.module.css";
 
 export function TransformNavBar({ isActive }: TransformNavBarProps) {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -45,11 +43,11 @@ function TransformList({ isActive }: TransformListProps) {
         onToggle={toggle}
       />
       {isExpanded && (
-        <Box pl="lg">
+        <div>
           {transforms.map((transform) => (
             <TransformItem key={transform.id} transform={transform} />
           ))}
-        </Box>
+        </div>
       )}
     </div>
   );
@@ -63,22 +61,14 @@ type TransformToggleProps = {
 
 function TransformToggle({ isExpanded, onToggle }: TransformToggleProps) {
   return (
-    <Flex align="center">
-      <UnstyledButton flex={1} mr="md" h={rem(32)} onClick={onToggle}>
-        <Flex align="center">
-          <Icon
-            className={cx(S.chevron, {
-              [S.expanded]: isExpanded,
-            })}
-            name="chevronright"
-            c="text-light"
-            mr="xs"
-            size={10}
-          />
-          <Icon name="refresh_downstream" c="text-secondary" mr="sm" />
-          <Box c="text-primary" flex={1} mr="md">{t`Transforms`}</Box>
-        </Flex>
-      </UnstyledButton>
+    <TreeItem
+      label={t`Transforms`}
+      icon="refresh_downstream"
+      href=""
+      isExpanded={isExpanded}
+      isExpandable
+      onClick={onToggle}
+    >
       <ActionIcon component={Link} to={getTransformSettingsUrl()}>
         <Icon name="gear" c="text-primary" />
       </ActionIcon>
@@ -87,7 +77,7 @@ function TransformToggle({ isExpanded, onToggle }: TransformToggleProps) {
           <Icon name="add" c="text-primary" />
         </ActionIcon>
       </NewTransformMenu>
-    </Flex>
+    </TreeItem>
   );
 }
 
@@ -97,17 +87,11 @@ type TransformItemProps = {
 
 function TransformItem({ transform }: TransformItemProps) {
   return (
-    <Flex
-      className={S.item}
-      component={Link}
-      h={rem(32)}
-      align="center"
-      to={getTransformUrl(transform.id)}
-    >
-      <Icon name="refresh_downstream" c="text-secondary" mr="sm" />
-      <Box c="text-primary" flex={1}>
-        {transform.name}
-      </Box>
-    </Flex>
+    <TreeItem
+      label={transform.name}
+      icon="refresh_downstream"
+      href={getTransformUrl(transform.id)}
+      level={1}
+    />
   );
 }

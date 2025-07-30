@@ -15,7 +15,6 @@ import { TYPE_ICONS, hasChildren } from "./utils";
 
 const VIRTUAL_OVERSCAN = 5;
 const ITEM_MIN_HEIGHT = 32; // items can vary in size because of text wrapping
-const INDENT_OFFSET = 18;
 
 interface Props {
   items: FlatItem[];
@@ -200,6 +199,7 @@ export function Results({
                 tableId: type === "table" ? value?.tableId : undefined,
                 fieldId: undefined,
               })}
+              level={level}
               isActive={isActive}
               isSelected={index === selectedIndex}
               isExpanded={isExpanded}
@@ -211,10 +211,7 @@ export function Results({
                 item.table.visibility_type != null
               }
               isDisabled={disabled}
-              style={{
-                top: start,
-                marginLeft: level * INDENT_OFFSET,
-              }}
+              style={{ top: start }}
               data-type={type}
               data-index={index}
               onKeyDown={handleKeyDown}
