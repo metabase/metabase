@@ -31,6 +31,7 @@ const generalSettings = {
   "humanization-strategy": "simple",
   "enable-xrays": false,
   "allowed-iframe-hosts": "https://cooldashboards.limo",
+  "search-engine": "appdb",
 } as const;
 
 const setup = async () => {
