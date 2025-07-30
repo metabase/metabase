@@ -1,0 +1,33 @@
+.ObjectViewSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSection {
+  &:hover .ObjectViewSectionActions {
+    visibility: visible;
+  }
+}
+
+.ObjectViewSidebarSectionActions {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarSection {
+  &:hover .ObjectViewSidebarSectionActions {
+    visibility: visible;
+  }
+}
+
+.ObjectViewSidebarColumnActionIcon {
+  visibility: hidden;
+}
+
+.ObjectViewSidebarColumn {
+  &:hover .ObjectViewSidebarColumnActionIcon {
+    visibility: visible;
+  }
+}
+
+.SectionContent {
+  overflow-x: auto;
+}

@@ -73,6 +73,7 @@ import {
 } from "./route-guards";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { TableDetailView } from "./scaffolding/TableDetailView/TableDetailView";
+import { TableDetailView as TableDetailView2 } from "./scaffolding/TableDetailView2/TableDetailView";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -323,6 +324,17 @@ export const getRoutes = (store) => {
               path=":tableId/detail/:rowId/edit"
               component={(props) => (
                 <TableDetailView {...props} isEdit={true} />
+              )}
+            />
+          </Route>
+
+          <Route path="table2">
+            <Route path=":tableId" component={TableDetailView2} />
+            <Route path=":tableId/detail/:rowId" component={TableDetailView2} />
+            <Route
+              path=":tableId/detail/:rowId/edit"
+              component={(props) => (
+                <TableDetailView2 {...props} isEdit={true} />
               )}
             />
           </Route>
