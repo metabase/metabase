@@ -347,7 +347,7 @@
 (defn- resolve-ref-missing-join-alias
   "Try finding a match in joins (field ref is missing `:join-alias`)."
   [query stage-number id-or-name]
-  (log/info (u/format-color :red "Failed to resolve %s in stage %s" (pr-str id-or-name) (pr-str stage-number)))
+  (log/info (u/format-color :red "Failed to resolve Field %s in stage %s" (pr-str id-or-name) (pr-str stage-number)))
   (or (when (string? id-or-name)
         (let [parts (str/split id-or-name #"__")]
           (when (>= (count parts) 2)
