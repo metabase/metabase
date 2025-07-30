@@ -105,7 +105,7 @@
            version}}
 
   analyze
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.analyze.core
            metabase.analyze.query-results}
    :uses #{config
@@ -578,7 +578,6 @@
           metabase.lib.field
           metabase.lib.field.resolution
           metabase.lib.filter
-          metabase.lib.ident
           metabase.lib.init
           metabase.lib.join.util
           metabase.lib.metadata
@@ -601,7 +600,10 @@
           metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
+          metabase.lib.schema.metadata.fingerprint
+          metabase.lib.schema.order-by
           metabase.lib.schema.parameter
+          metabase.lib.schema.ref
           metabase.lib.schema.template-tag
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.util
@@ -766,6 +768,7 @@
            audit-app
            collections
            config
+           events
            models
            premium-features
            request
@@ -1164,7 +1167,7 @@
    :uses #{util}}
 
   sync
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api #{metabase.sync.api
           metabase.sync.core
           metabase.sync.init
@@ -1249,13 +1252,13 @@
            util}}
 
   types
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.types.core
            metabase.types.init}
    :uses #{util}}
 
   upload
-  {:team "Semantic Layer"
+  {:team "Querying"
    :api  #{metabase.upload.api
            metabase.upload.core
            metabase.upload.init}
@@ -1612,7 +1615,6 @@
            util
            warehouse-schema
            warehouses}}
-
 
   enterprise/email
   {:team "Admin Webapp"

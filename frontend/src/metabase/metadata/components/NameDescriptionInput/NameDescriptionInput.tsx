@@ -32,7 +32,7 @@ export const NameDescriptionInput = ({
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
-  const leftSectionWidth = sectionWidth > 0 ? sectionWidth : 40;
+  const leftSectionWidth = Math.max(sectionWidth, 40);
 
   const handleDescriptionChange = (value: string) => {
     const newDescription = value.trim();

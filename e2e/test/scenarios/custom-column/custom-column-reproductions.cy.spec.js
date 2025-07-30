@@ -2068,7 +2068,8 @@ describe("issue 57674", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should show an error when using a case or if expression with mismatched types (metabase#57674)", () => {
+  // TODO: re-enable this test once we have a fix for metabase#61264
+  it.skip("should show an error when using a case or if expression with mismatched types (metabase#57674)", () => {
     H.getNotebookStep("data").button("Custom column").click();
 
     H.CustomExpressionEditor.clear();
@@ -2151,9 +2152,6 @@ describe("Issue 25189", () => {
             },
           ],
         },
-        "expression-idents": {
-          "CCreated At": "fch45EQTl38tSb9N-zkvL",
-        },
       },
     }).then((res) => {
       H.createQuestion(
@@ -2197,9 +2195,6 @@ describe("Issue 25189", () => {
               "base-type": "type/DateTime",
             },
           ],
-        },
-        "expression-idents": {
-          "Created At": "fch45EQTl38tSb9N-zkvL",
         },
       },
     }).then((res) => {

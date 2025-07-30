@@ -29,7 +29,7 @@
   [filter-key]
   (case filter-key
     ;; Boolean filters
-    (:archived? :has-temporal-dimensions? :search-native-query :verified) true
+    (:archived? :search-native-query :verified) true
     ;; Collection filters (sets/sequences)
     (:created-by :last-edited-by :ids) #{1}
     :display-type #{"table"}
@@ -66,19 +66,20 @@
                (search.filter/search-context->applicable-models search-ctx)))))))
 
 (def kitchen-sink-filter-context
-  {:archived?                           true
-   :created-at                          "2024-10-01"
-   :created-by                          [123]
-   :include-dashboard-questions?        true
-   :table-db-id                         231
-   :last-edited-by                      [321]
-   :last-edited-at                      "2024-10-02"
-   :search-native-query                 true
-   :verified                            true
-   :ids                                 [1 2 3 4]
-   :models                              (disj search.config/all-models "dataset")
-   :display-type                        ["line"]
-   :has-temporal-dimensions?            true})
+  {:archived?                    true
+   :created-at                   "2024-10-01"
+   :created-by                   [123]
+   :include-dashboard-questions? true
+   :table-db-id                  231
+   :last-edited-by               [321]
+   :last-edited-at               "2024-10-02"
+   :search-native-query          true
+   :verified                     true
+   :ids                          [1 2 3 4]
+   :non-temporal-dim-ids         "[1]"
+   :has-temporal-dim             true
+   :display-type                 ["line"]
+   :models                       (disj search.config/all-models "dataset")})
 
 (deftest with-filters-test
   (testing "The kitchen sink context is complete"
@@ -119,7 +120,8 @@
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
                       [:in :search_index.last_editor_id [321]]
-                      [:in :search_index.display_type ["line"]]
-                      [:= :search_index.has_temporal_dimensions true]}}
+                      [:= :search_index.non_temporal_dim_ids "[1]"]
+                      [:= :search_index.has_temporal_dim true]
+                      [:in :search_index.display_type ["line"]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

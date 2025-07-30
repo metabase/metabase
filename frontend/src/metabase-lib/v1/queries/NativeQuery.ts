@@ -339,7 +339,13 @@ export default class NativeQuery {
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ): NativeQuery {
-    const newParameter = getTemplateTagParameter(tag, config);
+    const oldParameter = this.question()
+      .parameters()
+      .find((parameter) => parameter.id === tag.id);
+    const newParameter = getTemplateTagParameter(tag, {
+      ...oldParameter,
+      ...config,
+    });
     return this.question()
       .setParameter(tag.id, newParameter)
       .legacyNativeQuery();

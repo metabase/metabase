@@ -44,6 +44,7 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
     cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+    cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
@@ -425,6 +426,31 @@ describe("scenarios > admin > datamodel", () => {
               `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
+
+          cy.log("databases, schemas, and tables should be links");
+          TablePicker.getDatabase("Sample Database").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres12")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${WRITABLE_DB_ID}`,
+            );
+          TablePicker.getSchema("Domestic")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
+            );
+          TablePicker.getTable("Orders")
+            .should("have.prop", "tagName", "A")
+            .and(
+              "have.attr",
+              "href",
+              `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+            );
         });
 
         it("should allow to search for tables", () => {
@@ -518,30 +544,164 @@ describe("scenarios > admin > datamodel", () => {
         });
       });
 
-      // TODO: https://linear.app/metabase/issue/SEM-299
-      it.skip("should allow hiding and restoring all tables in a schema", () => {
+      it("should allow hiding and restoring all tables in a single-schema database", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: ORDERS_ID,
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("4 Queryable Tables").should("be.visible");
-        cy.findByLabelText("Hide all").click();
+
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+        ]);
+        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
+
+        TablePicker.getDatabase("Sample Database")
+          .button("Hide all tables")
+          .click();
         cy.wait("@updateTables");
 
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("8 Hidden Tables").should("be.visible");
-        cy.findByLabelText("Unhide all").click();
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+          "Orders",
+          "People",
+          "Products",
+          "Reviews",
+        ]);
+        verifyToastAndUndo("Tables hidden");
         cy.wait("@updateTables");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("8 Queryable Tables").should("be.visible");
+
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+        ]);
+        verifyTablesVisible(["Orders", "People", "Products", "Reviews"]);
+
+        TablePicker.getDatabase("Sample Database")
+          .button("Hide all tables")
+          .click();
+        cy.wait("@updateTables");
+        verifyAndCloseToast("Tables hidden");
+
+        verifyTablesHidden([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+          "Orders",
+          "People",
+          "Products",
+          "Reviews",
+        ]);
+
+        TablePicker.getDatabase("Sample Database")
+          .button("Unhide all tables")
+          .click();
+        cy.wait("@updateTables");
+        verifyAndCloseToast("Tables unhidden");
+
+        verifyTablesVisible([
+          "Accounts",
+          "Analytic Events",
+          "Feedback",
+          "Invoices",
+          "Orders",
+          "People",
+          "Products",
+          "Reviews",
+        ]);
       });
+
+      it(
+        "should allow hiding and restoring all tables in a single-schema database",
+        { tags: ["@external"] },
+        () => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          H.DataModel.visit();
+
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres12")
+            .button("Hide all tables")
+            .should("not.exist");
+          TablePicker.getSchema("Domestic")
+            .button("Hide all tables")
+            .should("not.exist");
+          TablePicker.getSchema("Wild")
+            .button("Hide all tables")
+            .should("not.exist");
+
+          TablePicker.getSchema("Wild").click();
+          TablePicker.getDatabase("Writable Postgres12")
+            .button("Hide all tables")
+            .should("not.exist");
+          TablePicker.getSchema("Domestic")
+            .button("Hide all tables")
+            .should("not.exist");
+          verifyTablesVisible(["Animals", "Birds"]);
+
+          TablePicker.getSchema("Wild")
+            .button("Hide all tables")
+            .should("exist")
+            .click();
+          cy.wait("@updateTables");
+          verifyTablesHidden(["Animals", "Birds"]);
+
+          verifyToastAndUndo("Tables hidden");
+          cy.wait("@updateTables");
+          verifyTablesVisible(["Animals", "Birds"]);
+        },
+      );
+
+      it(
+        "should update the table picker state when toggling visibility of not currently selected branch",
+        { tags: ["@external"] },
+        () => {
+          H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
+          H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+          H.DataModel.visit();
+
+          TablePicker.getDatabase("Sample Database").click();
+          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getSchema("Wild").click();
+          TablePicker.getTable("Animals").click();
+
+          TablePicker.getTable("Accounts")
+            .button("Unhide table")
+            .should("exist")
+            .click();
+          cy.wait("@updateTable");
+          verifyTablesVisible(["Accounts"]);
+
+          TablePicker.getDatabase("Sample Database")
+            .button("Hide all tables")
+            .should("exist")
+            .click();
+          cy.wait("@updateTables");
+          verifyTablesHidden([
+            "Accounts",
+            "Analytic Events",
+            "Feedback",
+            "Invoices",
+            "Orders",
+            "People",
+            "Products",
+            "Reviews",
+          ]);
+        },
+      );
 
       it("hidden table should not show up in various places in UI", () => {
         cy.signInAsAdmin();
@@ -1882,6 +2042,52 @@ describe("scenarios > admin > datamodel", () => {
               expect(rect.bottom).lessThan(viewportHeight);
             });
         });
+
+        it(
+          "should show an error with links to other fields with 'Entity name' semantic type",
+          { tags: "@external" },
+          () => {
+            H.restore("postgres-writable");
+            H.resetTestTable({ type: "postgres", table: "many_data_types" });
+            cy.signInAsAdmin();
+            H.resyncDatabase({
+              dbId: WRITABLE_DB_ID,
+              tableName: "many_data_types",
+            });
+
+            H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+            TablePicker.getTable("Many Data Types").click();
+            TableSection.clickField("Json → D");
+            FieldSection.getSemanticTypeInput().click();
+            H.popover().findByText("Entity Name").click();
+
+            TableSection.clickField("Text");
+            FieldSection.getSemanticTypeInput().click();
+            H.popover().findByText("Entity Name").click();
+
+            FieldSection.get().should(
+              "contain.text",
+              "There are other fields with this semantic type: Json: Json → D",
+            );
+            FieldSection.get()
+              .findByRole("link", { name: "Json: Json → D" })
+              .should("be.visible")
+              .click();
+
+            FieldSection.getNameInput().should("have.value", "Json → D");
+
+            FieldSection.get().should(
+              "contain.text",
+              "There are other fields with this semantic type: Text",
+            );
+            FieldSection.get()
+              .findByRole("link", { name: "Text" })
+              .should("be.visible")
+              .click();
+
+            FieldSection.getNameInput().should("have.value", "Text");
+          },
+        );
       });
     });
 
@@ -2622,7 +2828,6 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         it("should let you enable/disable 'Unfold JSON' for JSON columns", () => {
-          // Go to field settings
           H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
           TablePicker.getTable("Many Data Types").click();
 
@@ -2918,12 +3123,10 @@ describe("scenarios > admin > datamodel", () => {
         PreviewSection.get().should("not.exist");
 
         FieldSection.getPreviewButton().click();
-        FieldSection.getPreviewButton().should("not.exist");
         PreviewSection.get().should("be.visible");
 
         cy.realPress("Escape");
         PreviewSection.get().should("not.exist");
-        FieldSection.getPreviewButton().should("be.visible");
       });
 
       it("should not close the preview when hitting Esc key while modal is open", () => {
@@ -3012,6 +3215,65 @@ describe("scenarios > admin > datamodel", () => {
         PreviewSection.getPreviewTypeInput().findByText("Detail").click();
         PreviewSection.get().findByText("No data to show").should("be.visible");
       });
+    });
+
+    it("should not auto-focus inputs in filtering preview", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("A list of all values").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Search the list")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      TableSection.clickField("Tax");
+
+      PreviewSection.get()
+        .findByPlaceholderText("Min")
+        .should("be.visible")
+        .and("not.be.focused");
+
+      FieldSection.getFilteringInput().click();
+      H.popover().findByText("Search box").click();
+
+      PreviewSection.get()
+        .findByPlaceholderText("Enter a number")
+        .should("be.visible")
+        .and("not.be.focused");
+    });
+
+    it("should not crash when viewing filtering preview of a hidden table", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+      });
+
+      TablePicker.getTable("Orders").button("Hide table").click();
+      cy.wait("@updateTable");
+
+      FieldSection.getPreviewButton().click();
+      PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
+      PreviewSection.get()
+        .findByPlaceholderText("Enter an ID")
+        .should("be.visible");
+      H.main().findByText("Something’s gone wrong").should("not.exist");
     });
   });
 
@@ -3345,6 +3607,74 @@ describe("scenarios > admin > datamodel", () => {
       FieldSection.getMiniBarChartToggle().should("not.be.checked");
     });
   });
+
+  describe("Responsiveness", () => {
+    it("should hide labels of buttons when they don't fit", () => {
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
+
+      cy.log("buttons should show labels when they fit");
+      TableSection.getSyncOptionsButton().should("have.text", "Sync options");
+      TableSection.getSortButton().should("have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("have.text", "Done").click();
+      FieldSection.getPreviewButton().should("have.text", "Preview");
+      FieldSection.getFieldValuesButton().should("have.text", "Field values");
+
+      cy.log("buttons should not show labels when they don't fit");
+      cy.viewport(800, 800);
+      TableSection.getSyncOptionsButton().should(
+        "not.have.text",
+        "Sync options",
+      );
+      TableSection.getSortButton().should("not.have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("not.have.text", "Done").click();
+      FieldSection.getPreviewButton().should("not.have.text", "Preview");
+      FieldSection.getFieldValuesButton().should(
+        "not.have.text",
+        "Field values",
+      );
+
+      cy.log("buttons should have tooltips when labels are not shown");
+      TableSection.getSyncOptionsButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Sync options");
+
+      TableSection.getSortButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Sorting");
+
+      TableSection.getSortButton().click();
+      TableSection.getSortDoneButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Done");
+      TableSection.getSortDoneButton().click();
+
+      FieldSection.getPreviewButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Preview");
+
+      FieldSection.getFieldValuesButton().realHover({
+        scrollBehavior: "center",
+      });
+      H.tooltip().should("be.visible").and("have.text", "Field values");
+
+      cy.log("button labels should reappear when they can fit again");
+      cy.viewport(1200, 800);
+      TableSection.getSyncOptionsButton().should("have.text", "Sync options");
+      TableSection.getSortButton().should("have.text", "Sorting").click();
+      TableSection.getSortDoneButton().should("have.text", "Done").click();
+      FieldSection.getPreviewButton().should("have.text", "Preview");
+      FieldSection.getFieldValuesButton().should("have.text", "Field values");
+    });
+  });
 });
 
 function turnTableVisibilityOff(tableId: TableId) {
@@ -3466,4 +3796,16 @@ function verifyToastAndUndo(message: string) {
   H.undoToast().button("Undo").click();
   H.undoToast().should("contain.text", "Change undone");
   H.undoToast().icon("close").click();
+}
+
+function verifyTablesVisible(tables: string[]) {
+  for (const table of tables) {
+    TablePicker.getTable(table).button("Hide table").should("exist");
+  }
+}
+
+function verifyTablesHidden(tables: string[]) {
+  for (const table of tables) {
+    TablePicker.getTable(table).button("Unhide table").should("be.visible");
+  }
 }

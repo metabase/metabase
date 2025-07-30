@@ -136,7 +136,7 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup();
 
         expect(
-          screen.getByText("Restrict access to this table"),
+          screen.getByText("Configure row and column security for this table"),
         ).toBeInTheDocument();
 
         expect(
@@ -154,7 +154,9 @@ describe("EditSandboxingModal", () => {
         await userEvent.click(await screen.findByText("Pick a column"));
         await userEvent.click(await screen.findByText("ID"));
 
-        await userEvent.click(screen.getByText("Pick a user attribute"));
+        await userEvent.click(
+          screen.getByPlaceholderText("Pick a user attribute"),
+        );
         await userEvent.click(await screen.findByText("foo"));
 
         await userEvent.click(screen.getByText("Save"));
@@ -179,7 +181,7 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup({ features: [] });
 
         expect(
-          screen.getByText("Restrict access to this table"),
+          screen.getByText("Configure row and column security for this table"),
         ).toBeInTheDocument();
 
         expect(
@@ -197,7 +199,9 @@ describe("EditSandboxingModal", () => {
         await userEvent.click(await screen.findByText("Pick a column"));
         await userEvent.click(await screen.findByText("ID"));
 
-        await userEvent.click(screen.getByText("Pick a user attribute"));
+        await userEvent.click(
+          screen.getByPlaceholderText("Pick a user attribute"),
+        );
         await userEvent.click(await screen.findByText("foo"));
 
         await userEvent.click(screen.getByText("Save"));
@@ -222,7 +226,7 @@ describe("EditSandboxingModal", () => {
         const { onSave } = await setup({ shouldMockQuestions: true });
 
         expect(
-          screen.getByText("Restrict access to this table"),
+          screen.getByText("Configure row and column security for this table"),
         ).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
@@ -272,7 +276,7 @@ describe("EditSandboxingModal", () => {
       });
 
       expect(
-        screen.getByText("Restrict access to this table"),
+        screen.getByText("Configure row and column security for this table"),
       ).toBeInTheDocument();
 
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();

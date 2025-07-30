@@ -190,6 +190,10 @@ You can only use the **URL** option for [custom destinations](../dashboards/inte
 
 You can propagate filter values into the external URL, unless the filter is locked.
 
+## Translating static embeds
+
+See [Translating embedded questions and dashboards](./translations.md).
+
 ## Further reading
 
 - [Parameters for static embeds](./static-embedding-parameters.md).

@@ -17,7 +17,7 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   );
   cy.intercept("GET", "/api/setting").as("getSettings");
   cy.signInAsAdmin();
-  cy.visit("/admin/settings/localization");
+  cy.visit("/admin/settings/embedding-in-other-applications/standalone");
   cy.wait("@getSettings");
 
   cy.findByTestId("content-localization-setting").findByText(
@@ -40,7 +40,7 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
   cy.wait("@uploadDictionary");
 
   cy.findByRole("heading", {
-    name: "Localizing user-generated content",
+    name: "Translate embedded dashboards and questions",
   }).scrollIntoView();
 };
 
