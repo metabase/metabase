@@ -5,7 +5,10 @@ import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
 } from "metabase-enterprise/embedding_iframe_sdk/constants";
-import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type {
+  QuestionEmbedOptions,
+  SdkIframeEmbedBaseSettings,
+} from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import type {
   SdkIframeEmbedSetupExperience,
@@ -25,28 +28,56 @@ export function getEmbedSnippet({
   instanceUrl: string;
   experience: SdkIframeEmbedSetupExperience;
 }): string {
+  // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+  return `<script defer src="${instanceUrl}/app/embed.js"></script>
+<script>
+function defineMetabaseConfig(config) {
+  window.metabaseConfig = config;
+}
+</script>
+
+<script>
+  defineMetabaseConfig({
+    ${getMetabaseConfigSnippet(settings, instanceUrl)}
+  });
+</script>
+
+${getEmbedCustomElementSnippet({ settings, experience })}`;
+}
+
+export function getEmbedCustomElementSnippet({
+  settings,
+  experience,
+  id,
+}: {
+  settings: SdkIframeEmbedSetupSettings;
+  experience: SdkIframeEmbedSetupExperience;
+  id?: string;
+}): string {
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
     .with("chart", () => "metabase-question")
     .with("exploration", () => "metabase-question")
     .exhaustive();
 
+  const settingsWithExplorationOverride = match(experience)
+    .with(
+      "exploration",
+      () =>
+        ({
+          ...settings,
+          questionId: "new" as const,
+          template: undefined,
+        }) as QuestionEmbedOptions,
+    )
+    .otherwise(() => settings);
+
   const attributes = transformEmbedSettingsToAttributes(
-    settings,
+    settingsWithExplorationOverride,
     ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
-  // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-  return `<script src="${instanceUrl}/app/embed.js"></script>
-
-<script>
-  const { defineMetabaseConfig } = window["metabase.embed"];
-  defineMetabaseConfig({
-    ${getMetabaseConfigSnippet(settings, instanceUrl)}
-  });
-</script>
-
-<${elementName} ${attributes}></${elementName}>`;
+  return `<${elementName} ${attributes} ${id ? `id="${id}"` : ""}></${elementName}>`;
 }
 
 // Convert camelCase keys to lower-dash-case for web components
@@ -77,13 +108,6 @@ export function transformEmbedSettingsToAttributes(
 
     // Skip base configuration keys that go into defineMetabaseConfig
     if (ALLOWED_EMBED_SETTING_KEYS_MAP.base.includes(key as SettingKey)) {
-      continue;
-    }
-
-    // TODO: rename the setting field to `drills` to match the attribute name
-    // transform isDrillThroughEnabled to drills
-    if (key === "isDrillThroughEnabled") {
-      attributes.push(`drills=${formatAttributeValue(value)}`);
       continue;
     }
 

@@ -147,7 +147,9 @@ const EditSandboxingModal = ({
 
   return (
     <div>
-      <h2 className={CS.p3}>{t`Restrict access to this table`}</h2>
+      <h2
+        className={CS.p3}
+      >{t`Configure row and column security for this table`}</h2>
 
       <div>
         <div className={cx(CS.px3, CS.pb3)}>
@@ -398,8 +400,9 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
     ) {
       return (
         <span>
-          {c("{0} is a name of a variable being used by sandboxing")
-            .jt`${(<strong>{target[1][1]}</strong>)} variable`}
+          {c(
+            "{0} is a name of a variable being used by row and column security",
+          ).jt`${(<strong>{target[1][1]}</strong>)} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -437,8 +440,9 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
             const columnInfo = Lib.displayInfo(query, stageIndex, column);
             return (
               <span>
-                {c("{0} is a name of a field being used by sandboxing")
-                  .jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
+                {c(
+                  "{0} is a name of a field being used by row and column security",
+                ).jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
               </span>
             );
           }}

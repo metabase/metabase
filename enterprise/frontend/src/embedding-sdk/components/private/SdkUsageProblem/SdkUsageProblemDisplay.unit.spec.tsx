@@ -7,6 +7,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
+import { setUsageProblem } from "embedding-sdk/store/reducer";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import {
   createMockApiKeyConfig,
@@ -24,6 +25,12 @@ import { createMockState } from "metabase-types/store/mocks";
 const TEST_USER = createMockUser();
 
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
+
+const mockSdkDispatchFn = jest.fn();
+jest.mock("embedding-sdk/store", () => ({
+  ...jest.requireActual("embedding-sdk/store"),
+  useSdkDispatch: () => mockSdkDispatchFn,
+}));
 
 interface Options {
   authConfig: MetabaseAuthConfig;
@@ -211,5 +218,21 @@ describe("SdkUsageProblemDisplay", () => {
       "href",
       "https://www.metabase.com/upgrade",
     );
+  });
+
+  it("hides the problem when 'hide' is clicked", async () => {
+    setup({
+      authConfig: createMockSdkConfig(),
+      isEmbeddingSdkEnabled: true,
+      isDevelopmentMode: true,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    await userEvent.click(within(card).getByText("Hide warning"));
+
+    expect(mockSdkDispatchFn).toHaveBeenCalledWith(setUsageProblem(null));
   });
 });
