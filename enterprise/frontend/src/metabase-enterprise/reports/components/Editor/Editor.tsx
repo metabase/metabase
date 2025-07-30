@@ -14,7 +14,7 @@ import { t } from "ttag";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import CS from "metabase/css/core/index.css";
-import { Box } from "metabase/ui";
+import { Box, Loader } from "metabase/ui";
 
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
@@ -31,6 +31,7 @@ interface EditorProps {
   onChange?: (content: string) => void;
   onQuestionSelect?: (cardId: number | null) => void;
   editable?: boolean;
+  isLoading?: boolean;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -40,6 +41,7 @@ export const Editor: React.FC<EditorProps> = ({
   onChange,
   editable = true,
   onQuestionSelect,
+  isLoading = false,
 }) => {
   const editor = useEditor({
     extensions: [
@@ -71,6 +73,7 @@ export const Editor: React.FC<EditorProps> = ({
       }),
     ],
     autofocus: true,
+    immediatelyRender: false,
   });
 
   // Track the previous content to avoid unnecessary updates
@@ -79,21 +82,28 @@ export const Editor: React.FC<EditorProps> = ({
   // Update editor content when content prop changes
   useEffect(() => {
     if (editor && !editor.isDestroyed && content !== previousContent.current) {
-      try {
-        if (!content || content.trim() === "") {
-          editor.commands.setContent("");
-        } else {
-          // Expect JSON AST format
-          const parsedContent = JSON.parse(content);
-          editor.commands.setContent(parsedContent);
+      // Use microtask to defer content update and avoid flushSync warning
+      queueMicrotask(() => {
+        if (editor.isDestroyed) {
+          return;
         }
-        previousContent.current = content;
-      } catch (error) {
-        console.error("Failed to parse JSON AST content:", error);
-        // Set empty document if JSON parsing fails
-        editor.commands.setContent("");
-        previousContent.current = content;
-      }
+
+        try {
+          if (!content || content.trim() === "") {
+            editor.commands.setContent("");
+          } else {
+            // Expect JSON AST format
+            const parsedContent = JSON.parse(content);
+            editor.commands.setContent(parsedContent);
+          }
+          previousContent.current = content;
+        } catch (error) {
+          console.error("Failed to parse JSON AST content:", error);
+          // Set empty document if JSON parsing fails
+          editor.commands.setContent("");
+          previousContent.current = content;
+        }
+      });
     }
   }, [editor, content]);
 
@@ -134,6 +144,14 @@ export const Editor: React.FC<EditorProps> = ({
 
   if (!editor) {
     return null;
+  }
+
+  if (isLoading) {
+    return (
+      <Box className={cx(styles.editor, DND_IGNORE_CLASS_NAME)}>
+        <Loader />
+      </Box>
+    );
   }
 
   return (

@@ -339,18 +339,15 @@ export const ReportPage = ({
                 </Menu>
               </Box>
             </Box>
-            {isReportLoading ? (
-              <Loader />
-            ) : (
-              <Editor
-                onEditorReady={setEditorInstance}
-                onCardEmbedsChange={updateCardEmbeds}
-                onQuestionSelect={handleQuestionSelect}
-                content={reportContent || ""}
-                onChange={setCurrentContent}
-                editable={canWrite}
-              />
-            )}
+            <Editor
+              onEditorReady={setEditorInstance}
+              onCardEmbedsChange={updateCardEmbeds}
+              onQuestionSelect={handleQuestionSelect}
+              content={reportContent || ""}
+              onChange={setCurrentContent}
+              editable={canWrite}
+              isLoading={isReportLoading}
+            />
           </Box>
         </Box>
 
