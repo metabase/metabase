@@ -22,6 +22,15 @@
   :export? false
   :doc "This feature is experimental. Leave empty to use provider defaults.")
 
+(defsetting openai-api-host
+  (deferred-tru "Override the default OpenAI host with a compitable API")
+  :encryption :no
+  :visibility :settings-manager
+  :default "https://vllm.coredev.metabase.com/v1" ;; "https://api.openai.com"
+  :export? false
+  :doc "This feature is experimental.")
+
+
 (defn openai-api-key
   "Get the OpenAI API key from the existing LLM settings."
   []
