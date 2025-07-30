@@ -120,7 +120,6 @@ const toError = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
   type,
   severity: "warning",
-  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
   title: getTitle(),
   message: USAGE_PROBLEM_MESSAGES[type],
   documentationUrl: USAGE_PROBLEM_DOC_URLS[type],

@@ -8,13 +8,11 @@ import {
 /**
  * Configuration overrides for simple embedding.
  */
+EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
 EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-simple";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
-
-// Use the iframe embedding auth flow instead of the regular auth flow.
-EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
 
 // load the embedding_iframe_sdk EE plugin
 import "sdk-iframe-embedding-ee-plugins";
