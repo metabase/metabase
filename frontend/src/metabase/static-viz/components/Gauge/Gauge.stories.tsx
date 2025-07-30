@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 
 import { color } from "metabase/lib/colors";
 import GaugeContainer, {

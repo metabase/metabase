@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 
 import { createMockMetadata } from "__support__/metadata";
 import { ReduxProvider } from "__support__/storybook";

@@ -1,6 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
-import { useArgs } from "@storybook/preview-api";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
+import { useArgs } from "storybook/preview-api";
 import { t } from "ttag";
 import _ from "underscore";
 

@@ -1,6 +1,6 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { StoryContext, StoryFn } from "@storybook/react";
+import type { StoryContext, StoryFn } from "@storybook/react-webpack5";
 import { HttpResponse, http } from "msw";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";

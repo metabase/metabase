@@ -1,6 +1,6 @@
-import { action } from "@storybook/addon-actions";
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 import { type ComponentProps, useState } from "react";
+import { action } from "storybook/actions";
 
 import {
   createMockNotification,

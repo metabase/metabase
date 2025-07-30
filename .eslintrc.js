@@ -333,5 +333,11 @@ module.exports = {
         "no-color-literals": "off",
       },
     },
+    {
+      files: ["*.stories.*"],
+      rules: {
+        "import/no-unresolved": "off",
+      },
+    },
   ],
 };

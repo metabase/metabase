@@ -1,6 +1,6 @@
-import type { StoryContext, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import type { StoryContext, StoryFn } from "@storybook/react-webpack5";
 import { HttpResponse, http } from "msw";
+import { userEvent, within } from "storybook/test";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";

@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { StoryFn } from "@storybook/react-webpack5";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { Box } from "metabase/ui";
