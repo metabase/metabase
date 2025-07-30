@@ -38,8 +38,8 @@ class BaseBackend {
       MB_ENABLE_TEST_ENDPOINTS: "true",
       MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
       MB_LAST_ANALYTICS_CHECKSUM: "-1",
-      MB_DB_CONNECTION_URI: "",
-      MB_CONFIG_FILE_PATH: "__cypress__",
+      MB_DB_CONNECTION_URI: "", // ignore connection URI in favor of the db file
+      MB_CONFIG_FILE_PATH: "__cypress__", // ignore config.yml
     };
   }
 
@@ -90,7 +90,7 @@ class BaseBackend {
         `Waiting for backend (host=${this.server.host}, dbFile=${this.server.dbFile})`,
       );
       while (!(await isReady(this.server.host))) {
-        if (!process.env.CI) {
+        if (!process.env["CI"]) {
           // disable for CI since it breaks CircleCI's no_output_timeout
           process.stdout.write(".");
         }
@@ -104,7 +104,7 @@ class BaseBackend {
     );
 
     if (process.env.CI) {
-      this.server.process.unref();
+      this.server.process.unref(); // detach console
     }
 
     async function isReady(host) {
