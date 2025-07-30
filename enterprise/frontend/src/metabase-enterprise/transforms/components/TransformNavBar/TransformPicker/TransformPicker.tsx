@@ -1,10 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { TreeItem } from "metabase/metadata/components/TreePicker/TreeItem";
-import { ActionIcon, Icon } from "metabase/ui";
+import { ActionIcon, Flex, Icon } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
 import { NewTransformMenu } from "metabase-enterprise/transforms/components/NewTransformMenu";
 import {
@@ -12,6 +13,8 @@ import {
   getTransformUrl,
 } from "metabase-enterprise/transforms/utils/urls";
 import type { Transform } from "metabase-types/api";
+
+import S from "./TransformPicker.module.css";
 
 export function TransformPicker() {
   const [isExpanded, { toggle }] = useDisclosure();
@@ -21,7 +24,7 @@ export function TransformPicker() {
 
   return (
     <div>
-      <TransformToggle isExpanded={isExpanded} onToggle={toggle} />
+      <TransformRootItem isExpanded={isExpanded} onToggle={toggle} />
       {isExpanded && (
         <div>
           {transforms.map((transform) => (
@@ -30,37 +33,6 @@ export function TransformPicker() {
         </div>
       )}
     </div>
-  );
-}
-
-type TransformToggleProps = {
-  isExpanded: boolean;
-  onToggle: () => void;
-};
-
-function TransformToggle({ isExpanded, onToggle }: TransformToggleProps) {
-  return (
-    <TreeItem
-      label={t`Transforms`}
-      icon="refresh_downstream"
-      to=""
-      isExpanded={isExpanded}
-      isExpandable
-      onClick={onToggle}
-    >
-      <ActionIcon
-        component={Link}
-        variant="transparent"
-        to={getTransformSettingsUrl()}
-      >
-        <Icon name="gear" c="text-primary" />
-      </ActionIcon>
-      <NewTransformMenu>
-        <ActionIcon variant="transparent">
-          <Icon name="add" c="text-primary" />
-        </ActionIcon>
-      </NewTransformMenu>
-    </TreeItem>
   );
 }
 
@@ -76,5 +48,48 @@ function TransformItem({ transform }: TransformItemProps) {
       to={getTransformUrl(transform.id)}
       level={1}
     />
+  );
+}
+
+type TransformRootItemProps = {
+  isExpanded: boolean;
+  onToggle: () => void;
+};
+
+function TransformRootItem({ isExpanded, onToggle }: TransformRootItemProps) {
+  const handleClick = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <TreeItem
+      label={t`Transforms`}
+      icon="refresh_downstream"
+      to=""
+      isExpanded={isExpanded}
+      isExpandable
+      onClick={onToggle}
+    >
+      <Flex>
+        <ActionIcon
+          className={S.icon}
+          component={Link}
+          variant="transparent"
+          to={getTransformSettingsUrl()}
+          onClick={handleClick}
+        >
+          <Icon name="gear" />
+        </ActionIcon>
+        <NewTransformMenu>
+          <ActionIcon
+            className={S.icon}
+            variant="transparent"
+            onClick={handleClick}
+          >
+            <Icon name="add" />
+          </ActionIcon>
+        </NewTransformMenu>
+      </Flex>
+    </TreeItem>
   );
 }
