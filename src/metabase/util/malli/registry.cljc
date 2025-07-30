@@ -18,9 +18,7 @@
     [:fn even?]
     (mr/with-key [:fn (constantly true)])
 
-  work correctly as cache keys instead of creating new entries every time the code is evaluated.
-
-  Also handles functions to prevent cache key instability from composed/anonymous functions."
+  work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
   (or (some-> x meta ::key)
       (perf/postwalk
