@@ -276,7 +276,9 @@
   "Mark tables that have been deactivated for longer than the configured threshold as archived
   and suffixes their names."
   [database]
-  (let [suffix (str "__archived__" (time/now))
+  (let [;; we use UTC time for suffix, may not match db timezone but
+        ;; it doesn't matter much, as long as it's consistent
+        suffix (str "__archived__" (time/now))
         threshold-expr (apply
                         (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
