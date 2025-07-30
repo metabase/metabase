@@ -127,16 +127,14 @@ export const CardEmbedComponent = memo(
       });
     }
 
-    const {
-      data: card,
-      isLoading: isLoadingCard,
-      refetch: refetchCard,
-    } = useGetCardQuery({ id }, { skip: !id });
-    const {
-      data: dataset,
-      isLoading: isLoadingDataset,
-      refetch: refetchDataset,
-    } = useGetCardQueryQuery({ cardId: id }, { skip: !id || !card });
+    const { data: card, isLoading: isLoadingCard } = useGetCardQuery(
+      { id },
+      { skip: !id },
+    );
+    const { data: dataset, isLoading: isLoadingDataset } = useGetCardQueryQuery(
+      { cardId: id },
+      { skip: !id || !card },
+    );
 
     const selectedEmbedIndex = useReportsSelector(getSelectedEmbedIndex);
     const isCurrentlyEditing =
@@ -230,13 +228,20 @@ export const CardEmbedComponent = memo(
       }
     };
 
-    const handleRefreshData = useCallback(() => {
-      // Use RTK Query to refetch the card and dataset
-      if (id) {
-        refetchCard();
-        refetchDataset();
+    const handleReplaceQuestion = () => {
+      // Get the position of this node in the editor
+      const pos = editor.state.doc.nodeAt(0) ? getPos() : 0;
+
+      if (typeof pos === "number") {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from: pos, to: pos + node.nodeSize })
+          .deleteSelection()
+          .insertContent("/")
+          .run();
       }
-    }, [id, refetchCard, refetchDataset]);
+    };
 
     // Handle drill-through navigation
     const handleChangeCardAndRun = useCallback(
@@ -388,12 +393,6 @@ export const CardEmbedComponent = memo(
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item
-                        onClick={handleRefreshData}
-                        disabled={!canWrite}
-                      >
-                        {t`Refresh`}
-                      </Menu.Item>
-                      <Menu.Item
                         onClick={handleEditVisualizationSettings}
                         disabled={!canWrite}
                       >
@@ -407,6 +406,12 @@ export const CardEmbedComponent = memo(
                           {t`Edit Query`}
                         </Menu.Item>
                       )}
+                      <Menu.Item
+                        onClick={handleReplaceQuestion}
+                        disabled={!canWrite}
+                      >
+                        {t`Replace question`}
+                      </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
                 )}
