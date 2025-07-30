@@ -64,7 +64,7 @@ export const PublicOrEmbeddedDashCardMenu = ({
             [SAVING_DOM_IMAGE_HIDDEN_CLASS]: true,
           })}
           onClick={toggle}
-          data-testid="public-or-embeddeddashcard-menu"
+          data-testid="public-or-embedded-dashcard-menu"
         >
           <Icon name="ellipsis" />
         </ActionIcon>
