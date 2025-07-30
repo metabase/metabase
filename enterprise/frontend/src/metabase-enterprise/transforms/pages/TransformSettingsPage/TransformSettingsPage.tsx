@@ -8,7 +8,7 @@ export function TransformSettingsPage() {
   return (
     <Flex
       className={S.root}
-      w="100%"
+      flex={1}
       h="100%"
       direction="column"
       align="center"

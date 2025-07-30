@@ -8,9 +8,9 @@ export function NewTransformPage() {
   return (
     <Flex
       direction="column"
+      flex={1}
       justify="center"
       align="center"
-      flex="10 1 0"
       h="100%"
       p="md"
     >

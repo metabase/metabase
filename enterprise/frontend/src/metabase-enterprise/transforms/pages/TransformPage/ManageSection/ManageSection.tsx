@@ -11,7 +11,7 @@ import {
   useDeleteTransformMutation,
   useExecuteTransformMutation,
 } from "metabase-enterprise/api";
-import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/TransformDetails/CardSection";
+import { CardSection } from "metabase-enterprise/transforms/pages/TransformPage/CardSection";
 import {
   getTransformQueryUrl,
   getTransformRootUrl,
