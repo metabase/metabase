@@ -1,8 +1,11 @@
-import { SDK_BUNDLE_LOADING_ERROR_MESSAGE } from "embedding-sdk/sdk-wrapper/config";
 import { colors } from "metabase/lib/colors/colors";
 
+type Props = {
+  message: string;
+};
+
 // Mimics the frontend/src/metabase/common/components/Alert/Alert.styled.tsx
-export const ErrorMessage = () => (
+export const ErrorMessage = ({ message }: Props) => (
   <div style={{ padding: "0.5rem" }} data-testid="sdk-error-container">
     <div
       style={{
@@ -17,7 +20,7 @@ export const ErrorMessage = () => (
         lineHeight: "1.4rem",
       }}
     >
-      {SDK_BUNDLE_LOADING_ERROR_MESSAGE}
+      {message}
     </div>
   </div>
 );

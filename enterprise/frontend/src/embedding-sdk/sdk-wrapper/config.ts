@@ -5,6 +5,10 @@ export const SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED =
 
 export const SDK_BUNDLE_SCRIPT_LOADING_EVENT_NAME = "sdk-bundle-script-loading";
 
+export const SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE =
+  // eslint-disable-next-line no-literal-metabase-strings -- error message
+  "Error loading Metabase Embedding SDK. Please verify that all SDK components are wrapped in the `MetabaseProvider` component.";
+
 export const SDK_BUNDLE_LOADING_ERROR_MESSAGE =
   // eslint-disable-next-line no-literal-metabase-strings -- error message
   "Error loading Metabase Embedding SDK. Please verify that\n" +

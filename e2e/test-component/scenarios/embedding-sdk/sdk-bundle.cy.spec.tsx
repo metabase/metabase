@@ -207,6 +207,25 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
         cy.findByTestId("visualization-root").should("be.visible");
       });
     });
+
+    it("it should show an error on a component level if SDK bundle is uninitialized", () => {
+      (window as any).EMBEDDING_SDK_BUNDLE_LOADING_STATE = undefined;
+      getSdkBundleScriptElement()?.remove();
+
+      cy.window().then((win) => {
+        cy.spy(win.console, "warn").as("consoleWarn");
+      });
+
+      cy.get<string>("@questionId").then((questionId) => {
+        cy.mount(<InteractiveQuestion questionId={questionId} />);
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText(
+          /Please verify that all SDK components are wrapped in the `MetabaseProvider` component/,
+        ).should("exist");
+      });
+    });
   });
 
   describe("Hooks", () => {
