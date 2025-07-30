@@ -47,23 +47,15 @@
       ]
     },
     {
-      "name": "Admin Webapp",
-      "label": ".Team/AdminWebapp",
+      "name": "UX West",
+      "label": ".Team/UXWest",
       "members": [
         "npfitz",
         "johnswanson",
-        "rafpaf",
         "iethree",
         "nvoxland",
-        "fraserdrops",
         "edpaget",
-        "deniskaber"
-      ]
-    },
-    {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
+        "deniskaber",
         "alxnddr",
         "bpander"
       ]
