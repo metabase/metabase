@@ -154,9 +154,9 @@
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
             (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))
-                  reason               (notification.payload/skip-reason notification-payload)]
-              (if reason
-                (log/info "Skipping" {:reason reason})
+                  skip-reason          (notification.payload/skip-reason notification-payload)]
+              (if skip-reason
+                (log/info "Skipping" {:skip-reason skip-reason})
                 (do
                   (log/debugf "Found %d handlers" (count handlers))
                   (doseq [handler handlers]
@@ -178,7 +178,7 @@
                         (catch Exception e
                           (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))
                   (log/info "Sent successfully")))
-              (do-after-notification-sent hydrated-notification notification-payload (some? reason))
+              (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
           (log/error e "Failed to send")
