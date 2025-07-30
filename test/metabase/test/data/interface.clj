@@ -56,7 +56,7 @@
 
 (p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
 
-(p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
+(p.types/defrecord+ DatabaseDefinition [database-name table-definitions options])
 
 (def ^:private FieldDefinitionSchema
   [:map {:closed true}
@@ -101,7 +101,9 @@
   [:and
    [:map {:closed true}
     [:database-name ms/NonBlankString] ; this must be unique
-    [:table-definitions [:sequential ValidTableDefinition]]]
+    [:table-definitions [:sequential ValidTableDefinition]]
+    [:options [:map {:closed true}
+               [:native-ddl {:optional true} [:sequential :any]]]]]
    (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
@@ -672,13 +674,19 @@
 (mu/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  [database-name :- ms/NonBlankString & table-definitions]
-  (mu/validate-throw
-   (ms/InstanceOfClass DatabaseDefinition)
-   (map->DatabaseDefinition
-    {:database-name     database-name
-     :table-definitions (for [table table-definitions]
-                          (dataset-table-definition table))})))
+  ([database-name :- ms/NonBlankString
+    table-definitions]
+   (dataset-definition database-name table-definitions {}))
+  ([database-name :- ms/NonBlankString
+    table-definitions
+    options]
+   (mu/validate-throw
+    (ms/InstanceOfClass DatabaseDefinition)
+    (map->DatabaseDefinition
+     {:database-name     database-name
+      :table-definitions (for [table table-definitions]
+                           (dataset-table-definition table))
+      :options           options}))))
 
 (defmacro defdataset
   "Define a new dataset to test against. Definition should be of the format
@@ -703,7 +711,37 @@
   ([dataset-name docstring definition]
    {:pre [(symbol? dataset-name)]}
    `(~(if config/is-dev? 'def 'defonce) ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-                                        (apply dataset-definition ~(name dataset-name) ~definition))))
+                                        (dataset-definition ~(name dataset-name) ~definition))))
+
+(p.types/deftype+ ^:private NativeDatasetDefinition [dataset-name table-definitions native-ddl]
+  pretty/PrettyPrintable
+  (pretty [_]
+    (list `native-dataset-definition dataset-name table-definitions native-ddl)))
+
+(defn native-dataset-definition [dataset-name table-definitions native-ddl]
+  (NativeDatasetDefinition. dataset-name table-definitions native-ddl))
+
+(defmethod get-dataset-definition NativeDatasetDefinition
+  [^NativeDatasetDefinition this]
+  (dataset-definition
+   (.-dataset-name this)
+   (.-table-definitions this)
+   {:native-ddl (.-native-ddl this)}))
+
+(comment
+  (native-dataset-definition
+   "foobar"
+   [["categories"
+     [{:field-name "name" :base-type :type/Text}]
+     [["Asian"]
+      ["Burger"]]]
+    ["venues"
+     [{:field-name "name" :base-type :type/Text}
+      {:field-name "category_id" :base-type :type/Integer}]
+     [["Red Medicine" 1]
+      ["Stout Burgers & Beers" 2]
+      ["The Apple Pan" 2]]]]
+   [["create view " "arg1"]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            EDN Dataset Definitions                                             |
@@ -728,7 +766,7 @@
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
                                        (slurp (str edn-definitions-dir dataset-name ".edn")))]
-                    (apply dataset-definition dataset-name file-contents)))]
+                    (dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 
 (defmacro defdataset-edn
