@@ -87,7 +87,7 @@
              :deactivated_at nil
              :archived_at nil)
 
-      :else changes)))
+      :else table)))
 
 (defn- set-new-table-permissions!
   [table]
