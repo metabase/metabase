@@ -22,7 +22,7 @@
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
-                              :embedding-iframe-sdk
+                              :embedding-simple
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -60,7 +60,7 @@
             :email_restrict_recipients      true
             :embedding                      true
             :embedding_sdk                  true
-            :embedding_iframe_sdk           true
+            :embedding_simple               true
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
