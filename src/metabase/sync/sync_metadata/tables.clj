@@ -300,13 +300,14 @@
                      (sync-util/name-for-logging table)
                      (:deactivated_at table)
                      new-name)
-          (t2/update! :model/Table
-                      {:id (:id table)
-                       :active false}
-                      {:archived_at (mi/now)
-                       :name new-name})
-          (swap! archived inc))))
-
+          (let [did-update (t2/update! :model/Table
+                                       {:id (:id table)
+                                        :active false}
+                                       {:archived_at (mi/now)
+                                        :name new-name})]
+            (when (zero? did-update)
+              (log/warnf "Did not archive table %s" (sync-util/name-for-logging table)))
+            (swap! archived + did-update)))))
     @archived))
 
 (mu/defn sync-tables-and-database!
