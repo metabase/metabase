@@ -1,12 +1,6 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import type * as React from "react";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   GOAL_LINE_SERIES_ID,
@@ -19,7 +13,6 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { createAxisVisibilityOption } from "metabase/visualizations/echarts/cartesian/option/axis";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
@@ -40,8 +33,10 @@ import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
 import {
+  type SeriesDatum,
   getHoveredEChartsSeriesDataKeyAndIndex,
   getHoveredSeriesDataKey,
+  getSeriesDatumFromEvent,
 } from "./utils";
 
 export const useChartEvents = (
@@ -69,7 +64,20 @@ export const useChartEvents = (
     isDashboard,
   }: VisualizationProps,
 ) => {
-  const isBrushing = useRef<boolean>();
+  const isBrushing = useRef<boolean>(false);
+  const lastTimelineHover = useRef<SeriesDatum | null>(null);
+  const clickedRef = useRef(!!clicked);
+  useEffect(() => {
+    clickedRef.current = !!clicked;
+  }, [clicked]);
+  const hoveredRef = useRef(hovered);
+  useEffect(() => {
+    hoveredRef.current = hovered;
+  }, [hovered]);
+  const optionRef = useRef(option);
+  useEffect(() => {
+    optionRef.current = option;
+  }, [option]);
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
@@ -83,23 +91,27 @@ export const useChartEvents = (
         onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, rawSeries, visualizerRawSeries, isVisualizerViz, onChangeCardAndRun],
+    [isVisualizerViz, visualizerRawSeries, onChangeCardAndRun, rawSeries, card],
   );
 
   const hoveredSeriesDataKey = useMemo(
-    () => getHoveredSeriesDataKey(chartModel.seriesModels, hovered),
-    [chartModel.seriesModels, hovered],
+    () => getHoveredSeriesDataKey(chartModel.seriesModels, hoveredRef.current),
+    [chartModel.seriesModels],
   );
 
   /**
-   * We intentionally use useLayoutEffect here and not useEffect.
-   * This is so that chart.setOption is always called in a different tick than
-   * chart.setOption from useClickedStateTooltipSync. If they're called in the
-   * same tick (which may happen non-deterministically), then the 2nd chart.setOption
-   * call (whichever is 2nd) will throw "Cannot read property 'coordinateSystem' of undefined" error.
+   * Interaction updates must not call chart.setOption().
+   * We use dispatchAction for hover/click/brush to avoid ECharts rebuilds.
+   * The only setOption here is Y-axis visibility, deferred via rAF so it
+   * cannot collide with renderer setOption calls. If you add new setOption
+   * calls, defer them (rAF) or they may race.
    */
-  useLayoutEffect(
+  useEffect(
     function updateYAxisVisibility() {
+      if (clickedRef.current) {
+        return;
+      }
+
       const hasSingleYAxis = !(
         chartModel.leftAxisModel != null && chartModel.rightAxisModel != null
       );
@@ -133,7 +145,19 @@ export const useChartEvents = (
         ];
       }
 
-      chartRef.current?.setOption({ yAxis: yAxisShowOption }, false, true);
+      const chart = chartRef.current;
+      const raf = requestAnimationFrame(() => {
+        chart?.setOption(
+          { yAxis: yAxisShowOption },
+          {
+            notMerge: false,
+            lazyUpdate: true,
+            silent: true,
+            replaceMerge: ["yAxis"],
+          },
+        );
+      });
+      return () => cancelAnimationFrame(raf);
     },
     [
       chartModel.leftAxisModel,
@@ -149,18 +173,48 @@ export const useChartEvents = (
         eventName: "mouseout",
         query: "series",
         handler: () => {
-          onHoverChange?.(null);
+          if (!clickedRef.current) {
+            onHoverChange?.(null);
+
+            const chart = chartRef.current;
+
+            if (chart && lastTimelineHover.current) {
+              chart.dispatchAction({
+                type: "downplay",
+                ...lastTimelineHover.current,
+              });
+              lastTimelineHover.current = null;
+            }
+          }
         },
       },
       {
         eventName: "mousemove",
         query: "series",
         handler: (event: EChartsSeriesMouseEvent) => {
-          if (isBrushing.current) {
+          if (isBrushing.current || clickedRef.current) {
             return;
           }
 
           if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
+            const chart = chartRef.current;
+
+            if (chart) {
+              const cur = getSeriesDatumFromEvent(optionRef.current, event);
+              if (!cur) {
+                return;
+              }
+
+              if (lastTimelineHover.current) {
+                chart.dispatchAction({
+                  type: "downplay",
+                  ...lastTimelineHover.current,
+                });
+              }
+              chart.dispatchAction({ type: "highlight", ...cur });
+              lastTimelineHover.current = cur;
+            }
+
             const eventData = getTimelineEventsHoverData(
               timelineEventsModel,
               event,
@@ -182,9 +236,10 @@ export const useChartEvents = (
           }
 
           const hoveredObject = getSeriesHovered(chartModel, event);
+          const prev = hoveredRef.current;
           const isSameDatumHovered =
-            hoveredObject?.index === hovered?.index &&
-            hoveredObject?.datumIndex === hovered?.datumIndex;
+            hoveredObject?.index === prev?.index &&
+            hoveredObject?.datumIndex === prev?.datumIndex;
 
           if (!isSameDatumHovered) {
             onHoverChange?.(hoveredObject);
@@ -194,6 +249,10 @@ export const useChartEvents = (
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent) => {
+          if (isBrushing.current) {
+            return;
+          }
+
           const clickData = getSeriesClickData(chartModel, settings, event);
 
           if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
@@ -222,18 +281,18 @@ export const useChartEvents = (
             return;
           }
 
-          if (!visualizationIsClickable(clickData)) {
+          if (visualizationIsClickable(clickData)) {
+            onVisualizationClick?.(clickData);
+          } else {
             onOpenQuestion(clickData?.cardId);
           }
-
-          onVisualizationClick?.(clickData);
         },
       },
       {
         eventName: "brush",
         handler: () => {
           if (!isBrushing.current) {
-            chartRef.current?.setOption({ tooltip: { show: false } }, false);
+            chartRef.current?.dispatchAction({ type: "hideTip" });
             isBrushing.current = true;
           }
         },
@@ -251,26 +310,27 @@ export const useChartEvents = (
           if (eventData) {
             onChangeCardAndRun?.(eventData);
           }
+
+          isBrushing.current = false;
         },
       },
     ],
     [
-      chartRef,
       onHoverChange,
+      chartRef,
       timelineEventsModel,
       chartModel,
-      hovered,
       settings,
       visualizationIsClickable,
-      onVisualizationClick,
       onOpenTimelines,
       selectedTimelineEventIds,
       onSelectTimelineEvents,
       onDeselectTimelineEvents,
+      onVisualizationClick,
       onOpenQuestion,
-      rawSeries,
-      visualizerRawSeries,
       isVisualizerViz,
+      visualizerRawSeries,
+      rawSeries,
       metadata,
       onChangeCardAndRun,
     ],
@@ -283,18 +343,22 @@ export const useChartEvents = (
         return;
       }
 
+      if (clickedRef.current) {
+        return;
+      }
+
       const { hoveredSeriesDataKey, hoveredEChartsSeriesIndex } =
         getHoveredEChartsSeriesDataKeyAndIndex(
           chartModel.seriesModels,
           option,
-          hovered,
+          hoveredRef.current,
         );
 
-      if (hovered == null || hoveredEChartsSeriesIndex == null) {
+      if (hoveredRef.current == null || hoveredEChartsSeriesIndex == null) {
         return;
       }
 
-      const { datumIndex: originalDatumIndex } = hovered;
+      const { datumIndex: originalDatumIndex } = hoveredRef.current;
 
       let dataIndex: number | undefined;
 
@@ -342,47 +406,40 @@ export const useChartEvents = (
       chartModel.seriesModels,
       chartModel.transformedDataset,
       chartRef,
-      hovered,
       option,
     ],
   );
 
-  useClickedStateTooltipSync(chartRef.current, clicked);
+  const brushEnabledRef = useRef<boolean | null>(null);
 
   // In order to keep brushing always enabled we have to re-enable it on every model change
   useEffect(
     function toggleBrushing() {
       const shouldEnableBrushing =
         canBrush(rawSeries, settings, onChangeCardAndRun) &&
-        !hovered &&
-        !clicked;
+        !clickedRef.current;
 
-      setTimeout(() => {
-        if (shouldEnableBrushing) {
-          chartRef.current?.dispatchAction({
-            type: "takeGlobalCursor",
-            key: "brush",
-            brushOption: {
-              brushType: "lineX",
-              brushMode: "single",
-            },
-          });
-        } else {
-          chartRef.current?.dispatchAction({
-            type: "takeGlobalCursor",
-          });
-        }
-      }, 0);
+      const chart = chartRef.current;
+      if (!chart) {
+        return;
+      }
+
+      if (brushEnabledRef.current === shouldEnableBrushing) {
+        return;
+      }
+      brushEnabledRef.current = shouldEnableBrushing;
+
+      if (shouldEnableBrushing) {
+        chart.dispatchAction({
+          type: "takeGlobalCursor",
+          key: "brush",
+          brushOption: { brushType: "lineX", brushMode: "single" },
+        });
+      } else {
+        chart.dispatchAction({ type: "takeGlobalCursor" });
+      }
     },
-    [
-      chartRef,
-      hovered,
-      onChangeCardAndRun,
-      option,
-      rawSeries,
-      settings,
-      clicked,
-    ],
+    [chartRef, onChangeCardAndRun, rawSeries, settings, clicked],
   );
 
   const onSelectSeries = useCallback(
