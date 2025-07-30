@@ -25,9 +25,7 @@
    [false
     [:and
      [:sequential {:min 1} [:ref :mbql.clause/field]]
-     [:fn
-      {:error/message "join :fields must be distinct"}
-      #'lib.schema.util/distinct-refs?]]]])
+     [:ref ::lib.schema.util/distinct-mbql-clauses]]]])
 
 (mr/def ::alias
   "The name used to alias the joined table or query. This is usually generated automatically and generally looks like
@@ -80,6 +78,27 @@
                                                                                   :columns  (:source-metadata join)})
             (dissoc :source-metadata))))))
 
+(mr/def ::validate-field-aliases-match-join-alias
+  [:fn
+   {:error/message    "All join :fields should have a :join-alias that matches the join's :alias"
+    :decode/normalize (fn [join]
+                        (cond-> join
+                          (and (:alias join)
+                               (sequential? (:fields join)))
+                          (update :fields (fn [fields]
+                                            (mapv (fn [[tag opts id-or-name :as _field-ref]]
+                                                    [tag (assoc opts :join-alias (:alias join)) id-or-name])
+                                                  fields)))))}
+   (fn [{join-alias :alias, fields :fields, :as _join}]
+     (or
+      (not (sequential? fields))
+      ;; a [[metabase.lib.join.util/PartialJoin]] (a join being built) might not have an alias yet; do not validate
+      ;; in that case.
+      (not join-alias)
+      (every? (fn [[_tag opts _id-or-name :as _field-ref]]
+                (= (:join-alias opts) join-alias))
+              fields)))])
+
 (mr/def ::join
   [:and
    [:map
@@ -96,17 +115,7 @@
    [:fn
     {:error/message "join should not have metadata attached directly to them; attach metadata to their last stage instead"}
     (complement (some-fn :lib/stage-metadata :source-metadata))]
-   [:fn
-    {:error/message "All join :fields should have a :join-alias that matches the join's :alias"}
-    (fn [{join-alias :alias, fields :fields, :as _join}]
-      (or
-       (not (sequential? fields))
-       ;; a [[metabase.lib.join.util/PartialJoin]] (a join being built) might not have an alias yet; do not validate
-       ;; in that case.
-       (not join-alias)
-       (every? (fn [[_tag opts _id-or-name, :as _field-ref]]
-                 (= (:join-alias opts) join-alias))
-               fields)))]])
+   [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins
   [:and

@@ -31,7 +31,7 @@
                                  []
                                  (comp (map #(lib/with-join-alias % join-alias))
                                        (map lib/ref)
-                                       (m/distinct-by lib.schema.util/ref-distinct-key))
+                                       (m/distinct-by lib.schema.util/mbql-clause-distinct-key))
                                  cols)]
        {:fields fields}))))
 
