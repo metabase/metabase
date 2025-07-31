@@ -57,7 +57,7 @@
     (loop []
       (Thread/sleep (long (* wait (inc (- (/ (rand) 5) 0.1)))))
       (log/trace "polling for remote transform" (pr-str (:work-id data)) "after wait" wait)
-      (let [{:keys [status]} (json-body (http/get (worker-route (str "/transform/" run-id))))]
+      (let [{:keys [status]} (json-body (http/get (worker-route (str "/status/" run-id))))]
         (case status
           "running"
           (if (> (System/currentTimeMillis) timeout-limit)

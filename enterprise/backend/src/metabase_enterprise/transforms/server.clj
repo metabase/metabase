@@ -59,7 +59,7 @@
       (-> (response/response "Too many requests")
           (response/status 429)))))
 
-(defn- handle-transform-get
+(defn- handle-status-get
   [run-id]
   (prn "handling transform get")
   (let [resp (transforms.track/get-status (Integer/parseInt run-id) "mb-1")]
@@ -72,7 +72,7 @@
   (compojure/routes
    (compojure/GET "/health-check" [] "healthy")
    (compojure/POST "/transform" request (handle-transform request))
-   (compojure/GET "/transform/:run-id" [run-id] (handle-transform-get run-id))
+   (compojure/GET "/status/:run-id" [run-id] (handle-status-get run-id))
    (route/not-found "Page not found")))
 
 (def ^:private handler
