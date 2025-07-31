@@ -71,7 +71,8 @@
                               :uuid-type                 true
                               :uploads                   true
                               :database-routing          true
-                              :transforms/table          true}]
+                              :transforms/table          true
+                              :transforms/view           true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))

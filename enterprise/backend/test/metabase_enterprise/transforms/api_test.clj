@@ -8,7 +8,8 @@
    [metabase.driver :as driver]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,13 +53,17 @@
 
 (defn- make-query [category]
   (let [q (if (= :clickhouse driver/*driver*)
-            (mt/mbql-query products {:where [:= $category category]
+            (mt/mbql-query products {:filter [:= $category category]
                                      :expressions {"clickhouse_merge_table_id" $id}})
-            (mt/mbql-query products {:where [:= $category category]}))]
-    (:query (qp.compile/compile q))))
+            (mt/mbql-query products {:filter [:= $category category]}))
+        sql (:query (qp.compile/compile q))]
+    ;; inline the parameter
+    (str/replace-first sql "?" (str \' category \'))))
+
 (comment
   (binding [driver/*driver* :clickhouse]
-    (make-query "Gadget")))
+    (make-query "Gadget"))
+  -)
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -234,39 +239,55 @@
           (Thread/sleep 100)
           (recur))))))
 
+(defn- check-query-results
+  [table-name ids category]
+  (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name table-name)
+        id-field-id (t2/select-one-fn :id :model/Field :table_id table-id :position 0)
+        category-field-id (t2/select-one-fn :id :model/Field :table_id table-id :position 3)]
+    (is (= (mapv vector ids (repeat category))
+           (mt/rows
+            (mt/run-mbql-query nil
+              {:source-table table-id
+               :fields [[:field id-field-id nil] [:field category-field-id nil]]
+               :order-by [[[:field id-field-id nil] :asc]]
+               :limit 3}))))))
+
 (deftest execute-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (with-transform-cleanup! [table1-name "dookey_products"
-                              table2-name "doohickey_products"]
-      (let [query2 (make-query "Doohickey")
-            original {:name "Gadget Products"
-                      :source {:type "query"
-                               :query {:database (mt/id)
-                                       :type "native"
-                                       :native {:query (make-query "Gadget")
-                                                :template-tags {}}}}
-                      :target {:type "table"
-                               ;;:schema "transforms"
-                               :name table1-name}}
-            {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                                     original)
-            _ (test-execution transform-id)
-            _ (is (true? (transforms.util/target-table-exists? original)))
-            updated {:name "Doohickey Products"
-                     :description "Desc"
-                     :source {:type "query"
-                              :query {:database (mt/id)
-                                      :type "native",
-                                      :native {:query query2
-                                               :template-tags {}}}}
-                     :target {:type "table"
-                              :name table2-name}}]
-        (is (=? (assoc updated
-                       :execution_trigger "none"
-                       :execution_status "sync-succeeded"
-                       :last_started_at string?
-                       :last_ended_at string?)
-                (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
-        (test-execution transform-id)
-        (is (true? (transforms.util/target-table-exists? original)))
-        (is (true? (transforms.util/target-table-exists? updated)))))))
+    (doseq [target-type ["table" "view"]]
+      (with-transform-cleanup! [table1-name "dookey_products"
+                                table2-name "doohickey_products"]
+        (let [query2 (make-query "Doohickey")
+              original {:name "Gadget Products"
+                        :source {:type "query"
+                                 :query {:database (mt/id)
+                                         :type "native"
+                                         :native {:query (make-query "Gadget")
+                                                  :template-tags {}}}}
+                        :target {:type target-type
+                                 ;;:schema "transforms"
+                                 :name table1-name}}
+              {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                       original)
+              _ (test-execution transform-id)
+              _ (is (true? (transforms.util/target-table-exists? original)))
+              _ (check-query-results table1-name [5 11 16] "Gadget")
+              updated {:name "Doohickey Products"
+                       :description "Desc"
+                       :source {:type "query"
+                                :query {:database (mt/id)
+                                        :type "native",
+                                        :native {:query query2
+                                                 :template-tags {}}}}
+                       :target {:type target-type
+                                :name table2-name}}]
+          (is (=? (assoc updated
+                         :execution_trigger "none"
+                         :execution_status "sync-succeeded"
+                         :last_started_at string?
+                         :last_ended_at string?)
+                  (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)))
+          (test-execution transform-id)
+          (is (true? (transforms.util/target-table-exists? original)))
+          (is (true? (transforms.util/target-table-exists? updated)))
+          (check-query-results table2-name [2 3 4] "Doohickey"))))))

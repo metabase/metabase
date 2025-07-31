@@ -64,7 +64,8 @@
                               :identifiers-with-spaces                true
                               :split-part                             true
                               :now                                    true
-                              :database-routing                       false}]
+                              :database-routing                       false
+                              :transforms/view                        true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake

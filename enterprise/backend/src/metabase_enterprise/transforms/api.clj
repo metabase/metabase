@@ -23,7 +23,7 @@
 
 (mr/def ::transform-target
   [:map
-   [:type [:= "table"]]
+   [:type [:enum "table" "view"]]
    [:schema {:optional true} :string]
    [:name :string]])
 
