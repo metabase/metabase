@@ -16,14 +16,185 @@ function chooseDatabase(database: string) {
   selectFieldOption("Database type", database);
 }
 
+const databaseTestCases = [
+  {
+    engine: "Athena",
+    connectionString: "jdbc:athena://WorkGroup=primary;Region=us-east-1;",
+    expectedFields: [
+      { label: "Region", value: "us-east-1" },
+      { label: "Workgroup", value: "primary" },
+    ],
+  },
+  {
+    engine: "BigQuery",
+    connectionString:
+      "jdbc:bigquery://https://www.googleapis.com/bigquery/v2:443;ProjectId=MyBigQueryProject;OAuthType=1;",
+    expectedFields: [
+      { label: "Project ID (override)", value: "MyBigQueryProject" },
+    ],
+  },
+  {
+    engine: "ClickHouse",
+    connectionString:
+      "jdbc:clickhouse://localhost:8443/testdb?ssl=true&user=testuser",
+    expectedFields: [
+      { label: "Host", value: "localhost" },
+      { label: "Port", value: "8443" },
+      { label: "Databases", value: "testdb" },
+      { label: "Username", value: "testuser" },
+      { label: "Additional JDBC connection string options", value: "ssl=true" },
+      { label: "Use a secure connection (SSL)", value: "on", isChecked: true },
+    ],
+  },
+  {
+    engine: "Druid",
+    connectionString:
+      "jdbc:avatica:remote:url=http://localhost:8888/druid/v2/sql/avatica/;transparent_reconnection=true",
+    expectedFields: [
+      { label: "Host", value: "localhost" },
+      { label: "Broker node port", value: "8888" },
+    ],
+  },
+  {
+    engine: "Databricks",
+    connectionString:
+      "jdbc:databricks://127.0.0.1:8123;httpPath=/sql/1.0/endpoints/abc;OAuthSecret=1234567890;OAuth2ClientId=xyz",
+    expectedFields: [
+      { label: "Host", value: "127.0.0.1" },
+      { label: "HTTP Path", value: "/sql/1.0/endpoints/abc" },
+      { label: "Service Principal OAuth Secret", value: "1234567890" },
+      { label: "Service Principal Client ID", value: "xyz" },
+    ],
+  },
+  {
+    engine: "MySQL",
+    connectionString:
+      "jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true",
+    expectedFields: [
+      { label: "Host", value: "host" },
+      { label: "Port", value: "3306" },
+      { label: "Database name", value: "dbname" },
+      { label: "Username", value: "testuser" },
+      { label: "Password", value: "testpass" },
+      { label: "Use a secure connection (SSL)", value: "on", isChecked: true },
+    ],
+  },
+  {
+    engine: "Oracle",
+    connectionString:
+      "jdbc:oracle:thin:testuser/testpass@mydbhost:1521/mydbservice?ssl_server_cert_dn=ServerDN",
+    expectedFields: [
+      { label: "Host", value: "mydbhost" },
+      { label: "Port", value: "1521" },
+      { label: "Oracle service name", value: "mydbservice" },
+      { label: "Username", value: "testuser" },
+      { label: "Password", value: "testpass" },
+    ],
+  },
+  {
+    engine: "PostgreSQL",
+    connectionString: "jdbc:postgresql://testuser:testpass@localhost:5432/mydb",
+    expectedFields: [
+      { label: "Host", value: "localhost" },
+      { label: "Port", value: "5432" },
+      { label: "Database name", value: "mydb" },
+      { label: "Username", value: "testuser" },
+      { label: "Password", value: "testpass" },
+    ],
+  },
+  {
+    engine: "Presto",
+    connectionString:
+      "jdbc:presto://host:1234/sample-catalog/sample-schema?SSL=true&SSLTrustStorePassword=1234",
+    expectedFields: [
+      { label: "Host", value: "host" },
+      { label: "Port", value: "1234" },
+      { label: "Catalog", value: "sample-catalog" },
+      { label: "Schema (optional)", value: "sample-schema" },
+      { label: "Use a secure connection (SSL)", value: "on", isChecked: true },
+      { label: "Additional JDBC options", value: "SSLTrustStorePassword=1234" },
+    ],
+  },
+  {
+    engine: "Redshift",
+    connectionString:
+      "jdbc:redshift://examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com:5439/dev",
+    expectedFields: [
+      {
+        label: "Host",
+        value: "examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com",
+      },
+      { label: "Port", value: "5439" },
+      { label: "Database name", value: "dev" },
+    ],
+  },
+  {
+    engine: "Snowflake",
+    connectionString:
+      "snowflake://testuser:testpass@example.snowflakecomputing.com/?db=maindb&warehouse=mainwarehouse",
+    expectedFields: [
+      {
+        label: "Account name",
+        value: "example.snowflakecomputing.com",
+      },
+      { label: "Database name (case sensitive)", value: "maindb" },
+      { label: "Warehouse", value: "mainwarehouse" },
+      { label: "Username", value: "testuser" },
+      { label: "Password", value: "testpass" },
+    ],
+  },
+  {
+    engine: "Spark SQL",
+    connectionString: "jdbc:sparksql:Server=127.0.0.1;Port=10000",
+    expectedFields: [{ label: "Host", value: "127.0.0.1" }],
+  },
+  {
+    engine: "SQLite",
+    connectionString: "jdbc:sqlite:///C:/path/to/database.db",
+    expectedFields: [{ label: "Filename", value: "C:/path/to/database.db" }],
+  },
+  {
+    engine: "SQL Server",
+    connectionString:
+      "jdbc:sqlserver://mydbhost:1433;databaseName=mydb;username=testuser;password=testpass",
+    expectedFields: [
+      { label: "Host", value: "mydbhost" },
+      { label: "Port", value: "1433" },
+      { label: "Database name", value: "mydb" },
+    ],
+  },
+  {
+    engine: "Starburst (Trino)",
+    connectionString:
+      "jdbc:trino://starburst.example.com:43011/hive/sales?user=test&password=secret&SSL=true&roles=system:myrole",
+    expectedFields: [
+      { label: "Host", value: "starburst.example.com" },
+      { label: "Port", value: "43011" },
+      { label: "Catalog", value: "hive" },
+      { label: "Schema (optional)", value: "sales" },
+    ],
+  },
+];
+
 describe("Database connection strings", () => {
-  it("should parse a connection string", () => {
+  it("should parse connection strings for all supported databases", () => {
     cy.visit("/admin/databases/create");
-    chooseDatabase("Athena");
-    cy.findByLabelText("Connection string (optional)").paste(
-      "jdbc:athena://WorkGroup=primary;Region=us-east-1;",
+
+    databaseTestCases.forEach(
+      ({ engine, connectionString, expectedFields }) => {
+        chooseDatabase(engine);
+
+        cy.findByLabelText("Connection string (optional)").paste(
+          connectionString,
+        );
+
+        expectedFields.forEach(({ label, value, isChecked }) => {
+          cy.findByLabelText(label).should("have.value", value);
+          if (isChecked) {
+            cy.findByLabelText(label).should("be.checked");
+          }
+        });
+      },
     );
-    cy.findByLabelText("Region").should("have.value", "us-east-1");
-    cy.findByLabelText("Workgroup").should("have.value", "primary");
   });
 });
