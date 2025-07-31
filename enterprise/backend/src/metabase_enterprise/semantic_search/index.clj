@@ -443,6 +443,23 @@
                               [(:id doc) (doc->t2-model doc)]))]
     (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) docs)))
 
+(defn- get-personal-collection-ids
+  "Get the set of personal collection IDs by extracting root collection IDs from locations."
+  [collections-map]
+  (let [root-collection-ids (->> collections-map
+                                 vals
+                                 (map :location)
+                                 (keep (fn [location]
+                                         (when-let [match (re-find #"^/(\d+)/" location)]
+                                           (parse-long (second match)))))
+                                 distinct)]
+    (when (seq root-collection-ids)
+      (->> (t2/select [:collection :id]
+                      :id [:in root-collection-ids]
+                      :personal_owner_id [:not= nil])
+           (map :id)
+           set))))
+
 (defn- filter-by-collection
   "Filter documents based on personal collection preferences.
   Equivalent to metabase.search.filter/personal-collections-where-clause but operates on docs in memory.
@@ -457,47 +474,58 @@
   "
   [docs {:keys [filter-items-in-personal-collection current-user-id]}]
   (let [filter-type (or filter-items-in-personal-collection "all")]
-    (case filter-type
-      "all" docs
+    (if (= filter-type "all")
+      docs
+      (let [collection-ids (keep :collection_id docs)
+            collections-map (when (seq collection-ids)
+                              (->> (t2/select [:collection :id :location :personal_owner_id]
+                                              :id [:in collection-ids])
+                                   (into {} (map (juxt :id identity)))))
+            personal-collection-ids (when (not= filter-type "only-mine")
+                                      (get-personal-collection-ids collections-map))
+            user-personal-collection-id (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id])
+            is-personal-collection?   (fn [coll] (some? (:personal_owner_id coll)))
+            is-owned-by-user?         (fn [coll] (= (:personal_owner_id coll) current-user-id))
+            is-in-user-personal-tree? (fn [coll] (str/starts-with? (:location coll) (str "/" user-personal-collection-id "/")))
+            is-in-any-personal-tree?  (fn [coll]
+                                        (when-let [match (re-find #"^/(\d+)/" (:location coll))]
+                                          (contains? personal-collection-ids (parse-long (second match)))))]
+        (case filter-type
+          "only-mine"
+          (filterv (fn [doc]
+                     (when-let [collection (get collections-map (:collection_id doc))]
+                       (or (is-owned-by-user? collection)
+                           (is-in-user-personal-tree? collection))))
+                   docs)
 
-      "only-mine"
-      (let [user-personal-collection-id (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id])
-            user-personal-location-pattern (when user-personal-collection-id (str "/" user-personal-collection-id "/"))]
-        (filterv (fn [doc]
-                   (when-let [collection-id (:collection_id doc)]
-                     (when-let [collection (t2/select-one [:collection :personal_owner_id :location] :id collection-id)]
-                       (or (= (:personal_owner_id collection) current-user-id)
-                           ;; Sub-collection of user's personal collection
-                           (and user-personal-location-pattern
-                                (str/starts-with? (str (:location collection)) user-personal-location-pattern))))))
-                 docs))
+          "only"
+          (filterv (fn [doc]
+                     (when-let [collection (get collections-map (:collection_id doc))]
+                       (or (is-personal-collection? collection)
+                           (is-in-any-personal-tree? collection))))
+                   docs)
 
-      "exclude-others"
-      (let [only-mine-docs (filter-by-collection docs {:filter-items-in-personal-collection "only-mine" :current-user-id current-user-id})
-            exclude-docs   (filter-by-collection docs {:filter-items-in-personal-collection "exclude" :current-user-id current-user-id})]
-        (vec (concat only-mine-docs exclude-docs)))
+          "exclude"
+          (filterv (fn [doc]
+                     (let [collection-id (:collection_id doc)]
+                       (or (nil? collection-id)
+                           (when-let [collection (get collections-map collection-id)]
+                             (and (not (is-personal-collection? collection))
+                                  (not (is-in-any-personal-tree? collection)))))))
+                   docs)
 
-      "only"
-      (filterv (fn [doc]
-                 (when-let [collection-id (:collection_id doc)]
-                   (when-let [collection (t2/select-one [:collection :personal_owner_id :location] :id collection-id)]
-                     (let [personal-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
-                           child-patterns (map #(str "/" % "/") personal-ids)]
-                       (or (and (some? (:personal_owner_id collection))
-                                (= (:location collection) "/"))
-                           (some #(str/starts-with? (str (:location collection)) %) child-patterns))))))
-               docs)
+          "exclude-others"
+          (filterv (fn [doc]
+                     (let [collection-id (:collection_id doc)]
+                       (or (nil? collection-id)
+                           (when-let [collection (get collections-map collection-id)]
+                             (or (is-owned-by-user? collection)
+                                 (is-in-user-personal-tree? collection)
+                                 (and (not (is-personal-collection? collection))
+                                      (not (is-in-any-personal-tree? collection))))))))
+                   docs)
 
-      "exclude"
-      (filterv (fn [doc]
-                 (let [collection-id (:collection_id doc)]
-                   (or (nil? collection-id)
-                       (when-let [collection (t2/select-one [:collection :personal_owner_id :location] :id collection-id)]
-                         (let [personal-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
-                               child-patterns (map #(str "/" % "/") personal-ids)]
-                           (and (nil? (:personal_owner_id collection))
-                                (not (some #(str/starts-with? (str (:location collection)) %) child-patterns))))))))
-               docs))))
+          docs)))))
 
 (defn- apply-collection-filter
   "Apply personal collection filtering with logging."
