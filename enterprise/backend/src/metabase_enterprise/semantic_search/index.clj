@@ -416,16 +416,17 @@
 (defn- filter-can-read-indexed-entity
   "Check permissions for indexed entities by resolving to their parent model / card"
   [indexed-entity-docs]
-  (let [model-index-ids (map #(-> % :id (str/split #":") first parse-long) indexed-entity-docs)
+  (let [model-index-ids (into #{} (map #(-> % :id (str/split #":") first parse-long) indexed-entity-docs))
         model-indexes (when (seq model-index-ids)
                         (t2/select :model/ModelIndex :id [:in model-index-ids]))
         index-id->card (when (seq model-indexes)
                          (let [card-ids    (map :model_id model-indexes)
                                cards       (t2/select :model/Card :id [:in card-ids])
                                cards-by-id (u/index-by :id cards)]
-                           (into {} (map (fn [model-index]
-                                           [(:id model-index) (get cards-by-id (:model_id model-index))])
-                                         model-indexes))))]
+                           (into {}
+                                 (map (fn [model-index]
+                                        [(:id model-index) (get cards-by-id (:model_id model-index))])
+                                      model-indexes))))]
     (filterv (fn [doc]
                (when-let [model-index-id (-> doc :id (str/split #":") first parse-long)]
                  (when-let [parent-card (get index-id->card model-index-id)]
@@ -442,8 +443,8 @@
                      t2-instance)
         permitted-entities (filter-can-read-indexed-entity indexed-entities)
         doc->t2 (comp (u/index-by (juxt :id t2/model) other-docs)
-                      (fn [doc] [(:id doc) (doc->t2-model doc)]))]
-    (concat
+                      (juxt :id doc->t2-model))]
+    (into
      (filterv (fn [doc] (some-> doc doc->t2 mi/can-read?)) regular-docs)
      permitted-entities)))
 
