@@ -16,7 +16,19 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
+<<<<<<< HEAD
 (set! *warn-on-reflection* true)
+=======
+(defn- verified-review?
+  "Return true if the most recent ModerationReview for the given item id/type is verified."
+  [id item-type]
+  (let [review (t2/select-one [:model/ModerationReview :status]
+                              :moderated_item_id id
+                              :moderated_item_type item-type
+                              :most_recent true
+                              {:order-by [[:id :desc]]})]
+    (= (:status review) "verified")))
+>>>>>>> 03904327539 (More tests and better split out of logic into separate files)
 
 (defn get-current-user
   "Get information about the current user."
@@ -35,16 +47,11 @@
   [{:keys [dashboard-id]}]
   (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
     (do (api/read-check dashboard)
-        (let [review (t2/select-one [:model/ModerationReview :status]
-                                    :moderated_item_id dashboard-id
-                                    :moderated_item_type "dashboard"
-                                    :most_recent true
-                                    {:order-by [[:id :desc]]})]
-          {:structured-output
-           (-> dashboard
-               (dissoc :collection_id)
-               (assoc :type :dashboard
-                      :verified (= (:status review) "verified")))}))
+        {:structured-output
+         (-> dashboard
+             (dissoc :collection_id)
+             (assoc :type :dashboard
+                    :verified (verified-review? dashboard-id "dashboard")))})
     {:output "dashboard not found"}))
 
 (defn- get-field-values [id->values id]
@@ -97,12 +104,7 @@
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))
                                           (m/find-first lib.types.isa/temporal?)))
-         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)
-         review (t2/select-one [:model/ModerationReview :status]
-                               :moderated_item_id id
-                               :moderated_item_type "card"
-                               :most_recent true
-                               {:order-by [[:id :desc]]})]
+         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (cond-> {:id id
               :type :metric
               :name (:name card)
@@ -114,7 +116,7 @@
                                                       (col-index default-temporal-breakout)
                                                       field-id-prefix)
                                                      :field-id))
-              :verified (= (:status review) "verified")}
+              :verified (verified-review? id "card")}
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
                                           (comp (map #(add-table-reference base-query %))
@@ -161,8 +163,8 @@
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
-            ;; :name should be (lib/display-name table-query), but we want to avoid creating the query if possible
             :name (:name base)
+            ;; :display_name should be (lib/display-name table-query), but we want to avoid creating the query if possible
             :display_name (some->> (:name base)
                                    (u.humanization/name->human-readable-name :simple))
             :database_id (:db_id base)
@@ -210,12 +212,8 @@
                                  (u.humanization/name->human-readable-name :simple))
           :database_id (:database_id base)
           :queryable-foreign-key-tables []
-          :verified (let [review (t2/select-one [:model/ModerationReview :status]
-                                                :moderated_item_id id
-                                                :moderated_item_type "card"
-                                                :most_recent true
-                                                {:order-by [[:id :desc]]})]
-                      (= (:status review) "verified"))}
+          :verified (verified-review? id "card")}
+
          (m/assoc-some :description (:description base)
                        :metrics (when with-metrics?
                                   (not-empty (mapv #(convert-metric % metadata-provider options)
