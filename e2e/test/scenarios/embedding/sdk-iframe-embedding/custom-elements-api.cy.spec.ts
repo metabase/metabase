@@ -328,7 +328,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="new" entity-types='["table"]' />
+      <metabase-question question-id="new" entity-types="['table']" />
       `);
 
         H.getSimpleEmbedIframeContent().should("contain", "Orders");
