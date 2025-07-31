@@ -10,4 +10,17 @@ If clearing your cache doesn't resolve the issue, please ensure \
 all of your deployed instances of metabase are on the same version.`,
     );
   };
+
+  if (window.parent) {
+    window.parent.postMessage({ height: document.body.scrollHeight }, '*');
+  }
+
+  let resizeTimeout = null;
+  window.onresize = () => {
+      if (resizeTimeout) {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = null;
+      }
+      resizeTimeout = setTimeout(() => window.parent && window.parent.postMessage({ height: document.body.scrollHeight }, '*'), 300);
+  };
 })();
