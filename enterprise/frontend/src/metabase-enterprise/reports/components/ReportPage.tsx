@@ -36,7 +36,6 @@ import { getSelectedEmbedIndex, getSelectedQuestionId } from "../selectors";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
 import styles from "./ReportPage.module.css";
-import { VersionSelect } from "./VersionSelect";
 import { downloadFile, getDownloadableMarkdown } from "./exports";
 
 export const ReportPage = ({
@@ -301,10 +300,6 @@ export const ReportPage = ({
                   placeholder={t`New report`}
                   readOnly={!canWrite}
                   className={styles.titleInput}
-                />
-                <VersionSelect
-                  reportId={reportId}
-                  currentVersion={report?.version}
                 />
               </Box>
               <Box
