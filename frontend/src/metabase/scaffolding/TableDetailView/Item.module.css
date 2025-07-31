@@ -1,12 +1,4 @@
-$font-weight: 400;
-$background-color: #fff;
-$border-color: #efefef;
-$text-color: #333;
-$handle-color: rgba(0, 0, 0, 0.25);
-$box-shadow-border: 0 0 0 calc(1px / var(--scale-x, 1)) rgba(63, 63, 68, 0.05);
-$box-shadow-common: 0 1px calc(3px / var(--scale-x, 1)) 0 rgba(34, 33, 81, 0.15);
-$box-shadow: $box-shadow-border, $box-shadow-common;
-$focused-outline-color: #4c9ffe;
+/* $focused-outline-color: #4c9ffe; */
 
 @keyframes pop {
   0% {
@@ -30,6 +22,8 @@ $focused-outline-color: #4c9ffe;
 
 .Wrapper {
   display: flex;
+
+  width: 100%;
   box-sizing: border-box;
   transform: translate3d(var(--translate-x, 0), var(--translate-y, 0), 0)
     scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1));
@@ -41,11 +35,7 @@ $focused-outline-color: #4c9ffe;
   }
 
   &.dragOverlay {
-    --scale: 1.05;
-    --box-shadow: $box-shadow;
-    --box-shadow-picked-up: $box-shadow-border,
-      -1px 0 15px 0 rgba(34, 33, 81, 0.01),
-      0px 15px 15px 0 rgba(34, 33, 81, 0.25);
+    /* --scale: 1.05; */
     z-index: 999;
   }
 }
@@ -53,11 +43,9 @@ $focused-outline-color: #4c9ffe;
 .Item {
   position: relative;
   display: flex;
+  width: 100%;
   flex-grow: 1;
   align-items: center;
-  padding: 18px 20px;
-  background-color: $background-color;
-  box-shadow: $box-shadow;
   outline: none;
   border-radius: calc(4px / var(--scale-x, 1));
   box-sizing: border-box;
@@ -66,17 +54,11 @@ $focused-outline-color: #4c9ffe;
 
   -webkit-tap-highlight-color: transparent;
 
-  color: $text-color;
-  font-weight: $font-weight;
   font-size: 1rem;
   white-space: nowrap;
 
   transform: scale(var(--scale, 1));
   transition: box-shadow 200ms cubic-bezier(0.18, 0.67, 0.6, 1.22);
-
-  &:focus-visible {
-    box-shadow: 0 0px 4px 1px $focused-outline-color, $box-shadow;
-  }
 
   &:not(.withHandle) {
     touch-action: manipulation;
@@ -86,20 +68,13 @@ $focused-outline-color: #4c9ffe;
   &.dragging:not(.dragOverlay) {
     opacity: var(--dragging-opacity, 0.5);
     z-index: 0;
-
-    &:focus {
-      box-shadow: $box-shadow;
-    }
   }
 
-  &.disabled {
+  /* &.disabled {
     color: #999;
     background-color: #f1f1f1;
-    &:focus {
-      box-shadow: 0 0px 4px 1px rgba(0, 0, 0, 0.1), $box-shadow;
-    }
     cursor: not-allowed;
-  }
+  } */
 
   &.dragOverlay {
     cursor: inherit;
@@ -111,7 +86,7 @@ $focused-outline-color: #4c9ffe;
   }
 
   &.color:before {
-    content: '';
+    content: "";
     position: absolute;
     top: 50%;
     transform: translateY(-50%);

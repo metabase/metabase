@@ -81,7 +81,7 @@ export const Container = forwardRef<HTMLDivElement, Props>(
             </div>
           </div>
         ) : null}
-        {placeholder ? children : <ul>{children}</ul>}
+        {children}
       </div>
     );
   },

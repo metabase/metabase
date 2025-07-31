@@ -4,6 +4,7 @@ import classNames from "classnames";
 import type React from "react";
 import { forwardRef, memo, useEffect } from "react";
 
+import { Box } from "metabase/ui";
 import type {
   DatasetColumn,
   FieldId,
@@ -134,13 +135,14 @@ const ItemBase = forwardRef<HTMLLIElement, Props>(
         value,
       })
     ) : (
-      <li
+      <Box
         className={classNames(
           styles.Wrapper,
           fadeIn && styles.fadeIn,
           sorting && styles.sorting,
           dragOverlay && styles.dragOverlay,
         )}
+        mt="sm"
         style={
           {
             ...wrapperStyle,
@@ -186,7 +188,7 @@ const ItemBase = forwardRef<HTMLLIElement, Props>(
             onHideField={() => handleHideField(fieldSettings.field_id)}
           />
         </div>
-      </li>
+      </Box>
     );
   },
 );

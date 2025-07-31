@@ -38,9 +38,8 @@ export function ColumnListItem({
 }: Props) {
   return (
     <Box
-      component="li"
       className={S.ObjectViewSidebarColumn}
-      mt="sm"
+      w="100%"
       // style={{
       //   transition,
       //   transform: CSS.Transform.toString(transform),
