@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/core";
-import type { Editor, Node } from "@tiptap/react";
+import type { Editor, Mark, Node } from "@tiptap/react";
 
 import { convertQuestionToPng } from "metabase-enterprise/reports/components/exports";
 import { Icons } from "metabase/ui";
@@ -40,12 +40,33 @@ export const PDFGenerator = Extension.create({
   },
 });
 
+const handleMarks = (marks: Mark[], pdf: PDF) => {
+  for (const mark of marks) {
+    switch (mark.type.name) {
+      case "bold": {
+        pdf.setFont({ weight: "bold" });
+        break;
+      }
+      case "italic": {
+        pdf.setFont({ style: "italic" });
+        break;
+      }
+      default: {
+        console.log("I don't know what to do. Call Ryan");
+      }
+    }
+  }
+};
+
 const walkNodes = async (root: Node, pdf: PDF) => {
   for (const node of root.children) {
     console.log({ nodeType: node.type.name, node });
     switch (node.type.name) {
       case "text": {
+        handleMarks(node.marks, pdf);
         pdf.addInlineText(node.text);
+
+        pdf.setFont({ weight: "normal", style: "normal" });
         break;
       }
       case "listItem": {
@@ -202,9 +223,24 @@ class PDF {
 
   // Setter
 
-  setFont({ size, weight }) {
-    this._fontSize = size;
-    this._fontWeight = weight;
+  setFont({
+    size,
+    weight,
+    style,
+  }: {
+    size?: string | number;
+    weight?: string | number;
+    style?: "normal" | "italic";
+  }) {
+    if (size) {
+      this._fontSize = size;
+    }
+    if (weight) {
+      this._fontWeight = weight;
+    }
+    if (style) {
+      this._fontStyle = style;
+    }
   }
 
   setPosition(newX, newY) {
