@@ -1,6 +1,8 @@
 (ns metabase-enterprise.semantic-search.test-util
   (:require
+   [clojure.test :refer :all]
    [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.core]
    [metabase-enterprise.semantic-search.db :as semantic.db]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
@@ -278,3 +280,104 @@
   (->> ["select table_name from information_schema.tables"]
        (jdbc/execute! pgvector)
        (mapv :tables/table_name)))
+
+(defn- decode-column
+  [row column]
+  (update row column #'semantic.index/decode-pgobject))
+
+(defn- unwrap-column
+  [row column]
+  (update row column #'semantic.index/unwrap-pgobject))
+
+(defn- decode-embedding
+  "Decode `row`'s `:embedding` column."
+  [row]
+  (decode-column row :embedding))
+
+(defn- unwrap-tsvectors
+  "Decode `row`'s `:text_search_vector` and `:text_search_with_native_query_vector` columns."
+  [row]
+  (-> row
+      (unwrap-column :text_search_vector)
+      (unwrap-column :text_search_with_native_query_vector)))
+
+#_:clj-kondo/ignore
+(defn full-index
+  "Query the full index table and return all documents with decoded embeddings.
+  Not used in tests, but useful for debugging."
+  []
+  (->> (jdbc/execute! db
+                      (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
+                          (sql.helpers/from (keyword (:table-name mock-index)))
+                          semantic.index/sql-format-quoted))
+       (mapv (comp decode-embedding
+                   #'semantic.index/unqualify-keys))))
+
+(defn query-embeddings
+  "Query the `mock-index` table and return the decoded `:embedding`s for the given `model`"
+  [{:keys [model model_id]}]
+  (->> (jdbc/execute! db
+                      (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
+                          (sql.helpers/from (keyword (:table-name mock-index)))
+                          (sql.helpers/where :and
+                                             [:= :model model]
+                                             [:= :model_id model_id])
+                          semantic.index/sql-format-quoted))
+       (mapv (comp decode-embedding
+                   #'semantic.index/unqualify-keys))))
+
+(defn query-tsvectors
+  "Query the `mock-index` table and return the unwrapped tsvector columns for the given `model`"
+  [{:keys [model model_id]}]
+  (->> (jdbc/execute! db
+                      (-> (sql.helpers/select :model :model_id :content :creator_id
+                                              :text_search_vector :text_search_with_native_query_vector)
+                          (sql.helpers/from (keyword (:table-name mock-index)))
+                          (sql.helpers/where :and
+                                             [:= :model model]
+                                             [:= :model_id model_id])
+                          semantic.index/sql-format-quoted))
+       (mapv (comp unwrap-tsvectors
+                   #'semantic.index/unqualify-keys))))
+
+(defn check-index-has-no-mock-card []
+  (testing "no mock card present"
+    (is (= []
+           (query-embeddings {:model "card"
+                              :model_id "123"})))))
+
+(defn check-index-has-no-mock-dashboard []
+  (testing "no mock dashboard present"
+    (is (= []
+           (query-embeddings {:model "dashboard"
+                              :model_id "456"})))))
+
+(defn check-index-has-no-mock-docs []
+  (let [{:keys [table-name]}     mock-index
+        table-exists-sql         "select exists(select * from information_schema.tables where table_name = ?) table_exists"
+        [{:keys [table_exists]}] (jdbc/execute! db [table-exists-sql table-name])]
+    (when table_exists
+      (check-index-has-no-mock-card)
+      (check-index-has-no-mock-dashboard))))
+
+(defn check-index-has-mock-card []
+  (is (= [{:model "card"
+           :model_id "123"
+           :creator_id 1
+           :content "Dog Training Guide"
+           :embedding (get-mock-embedding "Dog Training Guide")}]
+         (query-embeddings {:model "card"
+                            :model_id "123"}))))
+
+(defn check-index-has-mock-dashboard []
+  (is (= [{:model "dashboard"
+           :model_id "456"
+           :creator_id 2
+           :content "Elephant Migration"
+           :embedding (get-mock-embedding "Elephant Migration")}]
+         (query-embeddings {:model "dashboard"
+                            :model_id "456"}))))
+
+(defn check-index-has-mock-docs []
+  (check-index-has-mock-card)
+  (check-index-has-mock-dashboard))
