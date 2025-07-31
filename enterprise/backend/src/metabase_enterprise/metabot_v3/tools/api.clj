@@ -4,7 +4,6 @@
    [buddy.core.hash :as buddy-hash]
    [buddy.sign.jwt :as jwt]
    [clojure.set :as set]
-   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
@@ -20,75 +19,20 @@
    [metabase-enterprise.metabot-v3.tools.find-metric :as metabot-v3.tools.find-metric]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.search-data-sources :as metabot-v3.tools.search-data-sources]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.macros :as api.macros]
    [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
-   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-;; Constants for entity type mappings
-(def ^:private entity-type->search-model
-  "Maps API entity types to search engine model types"
-  {"table" "table"
-   "model" "dataset"
-   "question" "card"
-   "dashboard" "dashboard"
-   "metric" "metric"})
-
-(def ^:private search-model->result-type
-  "Maps search engine model types to result types"
-  {"dashboard" :dashboard
-   "table" :table
-   "dataset" :model
-   "card" :question
-   "metric" :metric})
-
-(defn- transform-search-result
-  "Transform a single search result to match the appropriate entity-specific schema.
-
-   Field mapping:
-   - Tables: name = technical table name (table_name), include database_id and database_schema
-   - Models: name = display name, include database_id and database_schema
-   - Other entities: name = display name, no database fields"
-  [result]
-  (let [model (:model result)
-        result-type (search-model->result-type model)]
-    (case model
-      "table"
-      {:id (:id result)
-       :type result-type
-       :name (:table_name result)           ; Technical table name for tables
-       :display_name (:name result)
-       :description (:description result)
-       :database_id (:database_id result)
-       :database_schema (:table_schema result)}
-
-      "dataset"  ; Models
-      {:id (:id result)
-       :type result-type
-       :name (:name result)                 ; Use the display name here as well since there is no technical name
-       :display_name (:name result)
-       :description (:description result)
-       :database_id (:database_id result)
-       :verified (boolean (:verified result))}  ;; Fallback to False if not provided
-
-      ;; For dashboards, questions, and metrics:
-      {:id (:id result)
-       :type result-type
-       :name (:name result)                 ; Display name
-       :description (:description result)
-       :verified (boolean (or (:verified result)  ;; Fallback to False if not provided
-                              (= "verified" (:moderated_status result))))})))
 
 (defn- decode-ai-service-token
   [token]
@@ -677,7 +621,8 @@
     [:entity_types {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric"]]]]
     [:limit {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
    [:map {:encode/tool-api-request
-          #(set/rename-keys % {:database_id :database-id})}]])
+          #(set/rename-keys % {:database_id :database-id
+                               :entity_types :entity-types})}]])
 
 (mr/def ::search-table-result
   "Schema for table/model search results"
@@ -1018,42 +963,9 @@
   (try
     (let [options (mc/encode ::search-data-sources-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))
-          {:keys [keywords description database-id entity_types limit]} options
-          ;; Default entity_types to all allowed values if not provided or empty
-          entity_types (if (seq entity_types)
-                         entity_types
-                         ["table" "model" "question" "dashboard" "metric"])
-          ;; Treat empty string description as nil
-          normalized-description (if (and (string? description) (str/blank? description)) nil description)
-          search-terms (concat (or keywords []) (when normalized-description [normalized-description]))
-          search-models (set (keep entity-type->search-model entity_types))
-          ;; Run a search for each keyword/description separately
-          all-results (->> search-terms
-                           (map (fn [term]
-                                  (let [search-context (search/search-context
-                                                        {:search-string term
-                                                         :models search-models
-                                                         :table-db-id database-id
-                                                         :current-user-id api/*current-user-id*
-                                                         ;;TODO: Do we need those impersonated, sandboxed, superuser checks?
-                                                         :is-impersonated-user? (perms/impersonated-user?)
-                                                         :is-sandboxed-user? (perms/sandboxed-user?)
-                                                         :is-superuser? api/*is-superuser?*
-                                                         :current-user-perms @api/*current-user-permissions-set*
-                                                         :context :default ;; TODO: Does this need to be a specific Metabot context maybe?
-                                                         :archived false
-                                                         :limit (or limit 50)
-                                                         :offset 0})
-                                        search-results (search/search search-context)]
-                                    (:data search-results))))
-                           (apply concat))
-          ;; Deduplicate by id/type
-          unique-results (vals (into {} (map (fn [r]
-                                               [(str (:id r) ":" (:model r)) r])
-                                             all-results)))
-          transformed-results (map transform-search-result unique-results)
-          response-data {:data transformed-results
-                         :total_count (count transformed-results)}]
+          results (metabot-v3.tools.search-data-sources/search-data-sources options)
+          response-data {:data results
+                         :total_count (count results)}]
       (doto (-> (mc/decode ::search-data-sources-result
                            {:structured_output response-data}
                            (mtx/transformer {:name :tool-api-response}))
