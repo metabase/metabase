@@ -57,6 +57,12 @@ export const getOrRefreshSession = createAsyncThunk(
   },
 );
 
+const SET_IS_SDK_COMPATIBLE_WITH_INSTANCE =
+  "sdk/SET_IS_SDK_COMPATIBLE_WITH_INSTANCE";
+export const setIsSdkCompatibleWithInstance = createAction<boolean>(
+  SET_IS_SDK_COMPATIBLE_WITH_INSTANCE,
+);
+
 const SET_PLUGINS = "sdk/SET_PLUGINS";
 export const setPlugins = createAction<MetabasePluginsConfig | null>(
   SET_PLUGINS,
@@ -74,6 +80,7 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 
 const initialState: SdkState = {
   metabaseInstanceUrl: "",
+  isSdkCompatibleWithInstance: true,
   token: {
     token: null,
     loading: false,
@@ -121,6 +128,10 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setLoaderComponent, (state, action) => {
     state.loaderComponent = action.payload;
+  });
+
+  builder.addCase(setIsSdkCompatibleWithInstance, (state, action) => {
+    return { ...state, isSdkCompatibleWithInstance: action.payload };
   });
 
   builder.addCase(setPlugins, (state, action) => {
