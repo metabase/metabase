@@ -5,6 +5,7 @@
    [compojure.core :as compojure]
    [compojure.route :as route]
    [metabase-enterprise.transforms.core :as transforms]
+   [metabase-enterprise.worker.tracking :as tracking]
    [metabase.api.util.handlers :as handlers]
    [metabase.server.core :as server]
    [metabase.util :as u]
@@ -24,59 +25,51 @@
 
 (defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
-(defn- apply-middleware
-  [handler]
-  (reduce (fn [handler middleware-fn]
-            (middleware-fn handler))
-          handler
-          [#'server/wrap-json-body
-           #'server/wrap-streamed-json-response
-           #'wrap-keyword-params]))
-
-(defn handle-transform
-  "Handle POST /transform requests"
-  [request]
-  (prn "handling transform post")
-  (let [success? (.tryAcquire semaphore)]
-    (if success?
-      (let [{:keys [work-id mb-source] :as body} (:body request)
-            run-id (transforms/track-start! work-id "transform" mb-source)]
+(defn- handle-transform-put
+  [{:keys [params body]}]
+  (log/trace "Handling transform POST request")
+  (if (.tryAcquire semaphore)
+    (let [{:keys [run-id]} params
+          {:keys [mb-source] :as body} (assoc body :run-id run-id)]
+      ;; TODO (eric): Add validation for body
+      (when (tracking/track-start! run-id mb-source)
         (.submit executor
                  ^Runnable #(try
-                              (-> (assoc body :run-id run-id)
-                                  transforms/execute-transform!)
-                              (transforms/track-finish! run-id)
+                              (transforms/execute-transform! body)
+                              (tracking/track-finish! run-id)
                               (catch Throwable t
                                 (log/error t "Error executing transform")
-                                (transforms/track-error! run-id))
+                                (tracking/track-error! run-id (.getMessage t)))
                               (finally
-                                (.release semaphore))))
-        (-> (response/response {:message "Transform started"
-                                :run-id run-id})
-            (response/content-type "application/json")))
+                                (.release semaphore)))))
+      (-> (response/response (tracking/get-status run-id mb-source))
+          (response/content-type "application/json")))
 
-      (-> (response/response "Too many requests")
-          (response/status 429)))))
+    (-> (response/response "Too many requests")
+        (response/status 429))))
 
 (defn- handle-status-get
   [run-id]
-  (log/info "Handling transform status GET request")
-  (let [resp (transforms/get-status (Integer/parseInt run-id) "mb-1")]
-    (if (seq resp)
-      (response/response {:status (first resp)})
-      (-> (response/response "Not found")
-          (response/status 404)))))
+  (log/info "Handling status GET request")
+  (if-let [resp (tracking/get-status (Integer/parseInt run-id) "mb-1")]
+    (response/response resp)
+    (-> (response/response "Not found")
+        (response/status 404))))
 
 (def ^:private routes
-  (compojure/routes
+  (handlers/routes
    (compojure/GET "/health-check" [] "healthy")
-   (compojure/POST "/transform" request (handle-transform request))
+   (compojure/PUT "/transform/:run-id" request (handle-transform-put request))
    (compojure/GET "/status/:run-id" [run-id] (handle-status-get run-id))
    (route/not-found "Page not found")))
 
 (def ^:private handler
-  (-> routes
-      apply-middleware))
+  (reduce (fn [handler middleware-fn]
+            (middleware-fn handler))
+          routes
+          [server/wrap-json-body
+           server/wrap-streamed-json-response
+           wrap-keyword-params]))
 
 (defonce ^:private instance (atom nil))
 
@@ -93,7 +86,7 @@
    (log/info "Starting worker server")
    (let [thread-pool (doto (new QueuedThreadPool)
                        (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))]
-     (reset! instance (ring-jetty/run-jetty handler
+     (reset! instance (ring-jetty/run-jetty #'handler
                                             {:port 3030
                                              :thread-pool thread-pool
                                              :join? (not (:dev opts))})))))

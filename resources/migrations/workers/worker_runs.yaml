@@ -70,3 +70,49 @@ databaseChangeLog:
             columns:
               - column:
                   name: start_time
+  - changeSet:
+      id: 2025-07-31-worker-runs-uuid
+      author: eric
+      comment: Change run_id from bigint autoincrement to UUID-4
+      changes:
+        - dropPrimaryKey:
+            tableName: worker_runs
+        - sql:
+            sql: ALTER TABLE worker_runs ALTER COLUMN run_id DROP IDENTITY
+        - modifyDataType:
+            tableName: worker_runs
+            columnName: run_id
+            newDataType: varchar(36)
+        - addPrimaryKey:
+            tableName: worker_runs
+            columnNames: run_id
+            constraintName: pk_worker_runs
+  - changeSet:
+      id: 2025-07-31-worker-runs-remove-columns
+      author: eric
+      comment: Remove work_id and type columns from worker_runs table
+      changes:
+        - dropIndex:
+            tableName: worker_runs
+            indexName: idx_worker_runs_type_id
+        - dropColumn:
+            tableName: worker_runs
+            columnName: work_id
+        - dropColumn:
+            tableName: worker_runs
+            columnName: type
+  - changeSet:
+      id: 2025-07-31-worker-runs-add-note
+      author: eric
+      comment: Add note column for storing additional information
+      changes:
+        - addColumn:
+            tableName: worker_runs
+            columns:
+              - column:
+                  name: note
+                  type: text
+                  remarks: 'Additional notes or information about the worker run'
+                  defaultValueComputed: "''"
+                  constraints:
+                    nullable: false

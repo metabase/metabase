@@ -48,9 +48,9 @@
   "Execute a transform on a remote worker."
   [data]
   (log/info "executing remote transform" (pr-str (:work-id data)))
-  (let [{:keys [run-id]} (json-body (http/post (worker-route "/transform")
-                                               {:form-params data
-                                                :content-type :json}))
+  (let [{:keys [run-id]} (json-body (http/put (worker-route (str "/transform/"))
+                                              {:form-params data
+                                               :content-type :json}))
         ;; timeout after 4 hours
         timeout-limit (+ (System/currentTimeMillis) (* 4 60 60 1000))
         wait 2000]
