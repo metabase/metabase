@@ -85,3 +85,16 @@ export function getTableQuery(
     type: "query",
   };
 }
+
+export function getStyleProps(style: "bold" | "dim" | "title" | "normal") {
+  switch (style) {
+    case "bold":
+      return { fw: 700 };
+    case "dim":
+      return { color: "text-light" };
+    case "title":
+      return { size: "xl", fw: 700 };
+    default:
+      return {};
+  }
+}

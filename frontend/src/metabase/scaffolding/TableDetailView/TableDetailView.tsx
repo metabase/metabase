@@ -9,10 +9,8 @@ import {
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   type ReactNode,
   useCallback,
@@ -31,9 +29,7 @@ import {
   useListTableForeignKeysQuery,
   useUpdateTableComponentSettingsMutation,
 } from "metabase/api/table";
-import EditableText from "metabase/common/components/EditableText";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
-import { formatValue } from "metabase/lib/formatting/value";
 import { useDispatch } from "metabase/lib/redux";
 import { question } from "metabase/lib/urls";
 import { closeNavbar } from "metabase/redux/app";
@@ -42,21 +38,18 @@ import { Button } from "metabase/ui/components/buttons";
 import { Icon } from "metabase/ui/components/icons";
 import { Relationships } from "metabase/visualizations/components/ObjectDetail/ObjectRelationships";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import { isDate, isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isEntityName, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   Dataset,
   DatasetColumn,
-  ObjectViewSectionSettings,
-  RowValues,
   StructuredDatasetQuery,
-  TableId,
 } from "metabase-types/api";
 
 import { getDefaultObjectViewSettings, getTableQuery } from "../utils";
 
 import { DetailViewHeader } from "./DetailViewHeader";
 import { DetailViewSidebar } from "./DetailViewSidebar";
-import S from "./TableDetailView.module.css";
+import { SortableSection } from "./SortableSection";
 import { useDetailViewSections } from "./use-detail-view-sections";
 import { useForeignKeyReferences } from "./use-foreign-key-references";
 
@@ -441,169 +434,4 @@ export function TableDetailViewInner({
       )}
     </DetailContainer>
   );
-}
-
-type SortableSectionProps = {
-  section: ObjectViewSectionSettings;
-  columns: DatasetColumn[];
-  row: RowValues;
-  tableId: TableId;
-  isEdit: boolean;
-  onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
-  onRemoveSection?: () => void;
-};
-
-function SortableSection(props: SortableSectionProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: props.section.id });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <ObjectViewSection
-        {...props}
-        dragHandleProps={{ ...attributes, ...listeners }}
-      />
-    </div>
-  );
-}
-
-type ObjectViewSectionProps = {
-  section: ObjectViewSectionSettings;
-  columns: DatasetColumn[];
-  row: RowValues;
-  tableId: TableId;
-  isEdit: boolean;
-  onUpdateSection: (section: Partial<ObjectViewSectionSettings>) => void;
-  onRemoveSection?: () => void;
-  dragHandleProps?: any;
-};
-
-function ObjectViewSection({
-  section,
-  columns,
-  row,
-  // tableId,
-  isEdit,
-  onUpdateSection,
-  onRemoveSection,
-  dragHandleProps,
-}: ObjectViewSectionProps) {
-  // const pkIndex = columns.findIndex(isPK); // TODO: handle multiple PKs
-
-  return (
-    <Box
-      className={S.ObjectViewSection}
-      pos="relative"
-      bg={isEdit ? "bg-medium" : "bg-white"}
-      px="md"
-      py="sm"
-      style={{
-        border: "1px solid var(--border-color)",
-        borderRadius: "var(--default-border-radius)",
-      }}
-    >
-      <Group gap="xs">
-        {isEdit && (
-          <Icon
-            name="grabber"
-            style={{ cursor: "grab" }}
-            role="button"
-            tabIndex={0}
-            {...dragHandleProps}
-          />
-        )}
-        <EditableText
-          initialValue={section.title}
-          isDisabled={!isEdit}
-          onChange={(title) => onUpdateSection({ title })}
-          style={{ fontWeight: 700 }}
-        />
-      </Group>
-      <Flex
-        direction={section.direction === "vertical" ? "column" : "row"}
-        gap="md"
-        mt={"sm"}
-        px="xs"
-        className={S.SectionContent}
-      >
-        {section.fields.map(({ field_id, style }) => {
-          const columnIndex = columns.findIndex(
-            (column) => column.id === field_id,
-          );
-          const column = columns[columnIndex];
-
-          if (!column) {
-            return null;
-          }
-
-          const value = row[columnIndex];
-
-          return (
-            <Box key={field_id}>
-              <Text
-                c="text-dark"
-                fw={600}
-                size="sm"
-                style={{
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {column.display_name}
-              </Text>
-              <Text
-                {...getStyleProps(style)}
-                lineClamp={5}
-                style={{
-                  ...(isDate(column) ? { whiteSpace: "nowrap" } : {}),
-                }}
-              >
-                {formatValue(value, { column })}
-              </Text>
-            </Box>
-          );
-        })}
-      </Flex>
-      {isEdit && onRemoveSection && (
-        <Group
-          className={S.ObjectViewSectionActions}
-          pos="absolute"
-          bg="bg-white"
-          style={{ borderRadius: "var(--default-border-radius)" }}
-          top={-5}
-          right={-5}
-        >
-          <Button
-            size="compact-xs"
-            leftSection={<Icon name="close" />}
-            onClick={onRemoveSection}
-          />
-        </Group>
-      )}
-    </Box>
-  );
-}
-
-function getStyleProps(style: "bold" | "dim" | "title" | "normal") {
-  switch (style) {
-    case "bold":
-      return { fw: 700 };
-    case "dim":
-      return { color: "text-light" };
-    case "title":
-      return { size: "xl", fw: 700 };
-    default:
-      return {};
-  }
 }
