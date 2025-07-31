@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import type { Card } from "metabase-types/api";
 
@@ -14,12 +13,13 @@ import {
   getReportsState,
 } from "../selectors";
 
+import { useCardSaveStrategy } from "./useCardSaveStrategy";
+
 export function useReportActions() {
   const dispatch = useReportsDispatch();
   const store = useReportsStore();
   const [sendToast] = useToast();
-  const [createCard] = cardApi.useCreateCardMutation();
-  const [updateCard] = cardApi.useUpdateCardMutation();
+  const { saveCard } = useCardSaveStrategy();
 
   const commitVisualizationChanges = useCallback(
     async (embedIndex: number, editorInstance: any, originalCard: Card) => {
@@ -52,30 +52,18 @@ export function useReportActions() {
           return;
         }
 
-        let updatedCard: Card;
-
-        if (originalCard.type === "in_report") {
-          // Card is already an in_report type, just update it
-          updatedCard = await updateCard({
-            id: originalCard.id,
+        const result = await saveCard({
+          card: originalCard,
+          modifiedCardData: {
             display: cardWithDraftSettings.display,
             visualization_settings:
               cardWithDraftSettings.visualization_settings,
-          }).unwrap();
-        } else {
-          // Card is a regular card, create a new in_report card
-          const { id, created_at, updated_at, ...cardData } =
-            cardWithDraftSettings;
-          updatedCard = await createCard({
-            ...cardData,
-            type: "in_report",
-            display: cardWithDraftSettings.display,
-            visualization_settings:
-              cardWithDraftSettings.visualization_settings,
-            collection_id: originalCard.collection_id,
-          }).unwrap();
+          },
+          editor: editorInstance,
+        });
 
-          // Update the embed to point to the new card
+        // If a new card was created, update the embed to point to it
+        if (result.card_id !== originalCard.id) {
           const { doc } = editorInstance.state;
           const tr = editorInstance.state.tr;
           let nodeCount = 0;
@@ -90,7 +78,7 @@ export function useReportActions() {
               if (nodeCount === embedIndex) {
                 const newAttrs = {
                   ...node.attrs,
-                  id: updatedCard.id,
+                  id: result.card_id,
                 };
                 tr.setNodeMarkup(pos, undefined, newAttrs);
                 updated = true;
@@ -118,7 +106,7 @@ export function useReportActions() {
         });
       }
     },
-    [store, dispatch, sendToast, createCard, updateCard],
+    [store, dispatch, sendToast, saveCard],
   );
 
   // Commit all pending changes (used when saving report)

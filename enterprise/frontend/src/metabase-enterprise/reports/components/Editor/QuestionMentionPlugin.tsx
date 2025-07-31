@@ -257,7 +257,7 @@ export const QuestionMentionPlugin = ({
         const clonedCard = await createCard({
           ...cardData,
           type: "in_report",
-          collection_id: originalCard.collection_id ?? null,
+          collection_id: originalCard.collection_id,
         }).unwrap();
 
         editor
