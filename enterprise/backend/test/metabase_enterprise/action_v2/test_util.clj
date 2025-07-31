@@ -11,6 +11,41 @@
 
 (set! *warn-on-reflection* true)
 
+(def execute-bulk-url "/ee/action-v2/execute-bulk")
+
+;; TODO make non-bulk versions, and DRY up  bit
+
+(defn create-rows!
+  ([table-id rows]
+   (create-rows! table-id :crowberto 200 rows))
+  ([table-id user response-code rows]
+   (mt/user-http-request user :post response-code execute-bulk-url
+                         {:action :data-grid.row/create
+                          :scope  {:table-id table-id}
+                          :inputs rows})))
+
+(defn update-rows!
+  ([table-id rows]
+   (update-rows! table-id :crowberto 200 rows))
+  ([table-id rows params]
+   (update-rows! table-id :crowberto 200 rows params))
+  ([table-id user response-code rows & [params]]
+   (mt/user-http-request user :post response-code execute-bulk-url
+                         (cond->
+                          {:action :data-grid.row/update
+                           :scope  {:table-id table-id}
+                           :inputs rows}
+                           params (assoc :params params)))))
+
+(defn delete-rows!
+  ([table-id rows]
+   (delete-rows! table-id :crowberto 200 rows))
+  ([table-id user response-code rows]
+   (mt/user-http-request user :post response-code execute-bulk-url
+                         {:action :data-grid.row/delete
+                          :scope  {:table-id table-id}
+                          :inputs rows})))
+
 (defn sync-new-table!
   "Syncs a new table by name, returns the table id."
   [db table-name]

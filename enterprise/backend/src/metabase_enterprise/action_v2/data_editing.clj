@@ -1,9 +1,13 @@
 (ns metabase-enterprise.action-v2.data-editing
   (:require
    [clojure.set :as set]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.action-v2.coerce :as data-editing.coerce]
+   [metabase-enterprise.action-v2.models.undo :as undo]
+   [metabase.actions.core :as actions]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -163,3 +167,37 @@
   ;; still feels messy, revisit this
   (let [pk-fields (select-table-pk-fields table-id)]
     (query-db-rows table-id pk-fields rows)))
+
+(defn- row-update-event
+  "Given a :effect/row.modified diff, figure out what kind of mutation it was."
+  [{:keys [before after]}]
+  (case [(some? before) (some? after)]
+    [false true]  :event/row.created
+    [true  true]  :event/row.updated
+    [true  false] :event/row.deleted
+    ;; should not happen
+    [false false] ::no-op))
+
+(defmethod actions/handle-effects!* :effect/row.modified
+  [_ {:keys [user-id invocation-stack scope]} diffs]
+  (let [table-ids        (distinct (map :table-id diffs))
+        table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
+        diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
+                                     :when (or before after)]
+                           [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
+                                  :before before
+                                  :after  after}])]
+    ;; undo snapshots, but only if we're not executing an undo
+    ;; TODO fix tests that execute actions without a user scope
+    (when user-id
+      (when-not (some (comp #{:data-editing/undo :data-editing/redo} first) invocation-stack)
+        (undo/track-change!
+         user-id
+         scope
+         (u/for-map [[table-id diffs] (group-by :table-id diffs)]
+           [table-id (u/for-map [{:keys [before after deleted-children] :as diff} diffs
+                                 :when (or before after)
+                                 :let [{:keys [pk before after]} (diff->pk-diff diff)]]
+                       [pk {:raw_before before
+                            :raw_after  after
+                            :undoable   (empty? deleted-children)}])]))))))

@@ -1,13 +1,17 @@
 (ns metabase-enterprise.action-v2.actions
   (:require
    [metabase-enterprise.action-v2.data-editing :as data-editing]
+   [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (derive :data-grid.row/create :data-grid.row/common)
 (derive :data-grid.row/update :data-grid.row/common)
@@ -45,6 +49,12 @@
   [_action input]
   (-> (assoc input :database (:id (actions/cached-database-via-table-id (:table-id input))))
       (update :row #(update-keys % u/qualified-name))))
+
+(defmethod actions/action-arg-map-schema :data-editing/undo [_action] :map)
+(defmethod actions/action-arg-map-schema :data-editing/redo [_action] :map)
+
+(defmethod actions/normalize-action-arg-map :data-editing/undo [_action _input] {})
+(defmethod actions/normalize-action-arg-map :data-editing/redo [_action _input] {})
 
 (defn- perform-table-row-action!
   "Perform an action directly, skipping permissions checks etc, and generate outputs based on the table modifications."
@@ -90,3 +100,27 @@
 (mu/defmethod actions/default-mapping :data-grid.row/common
   [_ scope]
   (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.action-v2.api/root))
+
+(defn- translate-undo-error [e]
+  (case (:error (ex-data e))
+    :undo/none            (ex-info (tru "Nothing to do")                                         {:status-code 204} e)
+    :undo/cannot-undelete (ex-info (tru "You cannot undo your previous change.")                 {:status-code 405} e)
+    :undo/cannot-undo     (ex-info (tru "Your previous change cannot be undone")                 {:status-code 405} e)
+    :undo/conflict        (ex-info (tru "Your previous change has a conflict with another edit") {:status-code 409} e)
+    e))
+
+(methodical/defmethod actions/perform-action!* [:sql-jdbc :data-editing/undo]
+  [_action context _inputs]
+  (try
+    {:context context
+     :outputs (undo/undo! context (:user-id context) (:scope context))}
+    (catch ExceptionInfo e
+      (throw (translate-undo-error e)))))
+
+(methodical/defmethod actions/perform-action!* [:sql-jdbc :data-editing/redo]
+  [_action context _inputs]
+  (try
+    {:context context
+     :outputs (undo/redo! context (:user-id context) (:scope context))}
+    (catch ExceptionInfo e
+      (throw (translate-undo-error e)))))
