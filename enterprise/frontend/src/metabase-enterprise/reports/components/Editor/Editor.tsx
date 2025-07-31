@@ -19,6 +19,7 @@ import { Box, Loader } from "metabase/ui";
 import styles from "./Editor.module.css";
 import { QuestionMentionPlugin } from "./QuestionMentionPlugin";
 import { CardEmbed } from "./extensions/CardEmbed";
+import { DisableMetabotSidebar } from "./extensions/DisableMetabotSidebar";
 import { MetabotNode } from "./extensions/MetabotEmbed";
 import { SmartLinkEmbed } from "./extensions/SmartLink";
 import { Markdown } from "./extensions/markdown/index";
@@ -73,6 +74,7 @@ export const Editor: React.FC<EditorProps> = ({
         },
       }),
       MetabotNode,
+      DisableMetabotSidebar,
     ],
     autofocus: true,
     immediatelyRender: false,
