@@ -107,6 +107,7 @@ export function DatabaseConnectionStringField({
 
 const FEEDBACK_TIMEOUT = 2000;
 const TRANSITION_DURATION = 250;
+const TRANSITION = "fade";
 
 function ConnectionStringDescription({
   status,
@@ -116,7 +117,7 @@ function ConnectionStringDescription({
   const defaultDescription = (
     <Transition
       mounted={status === null}
-      transition="fade-right"
+      transition={TRANSITION}
       duration={TRANSITION_DURATION}
       timingFunction="ease"
       exitDelay={0}
@@ -132,7 +133,7 @@ function ConnectionStringDescription({
   const failureMessage = (
     <Transition
       mounted={status === "failure"}
-      transition="fade-right"
+      transition={TRANSITION}
       duration={TRANSITION_DURATION}
       timingFunction="ease"
     >
@@ -160,7 +161,7 @@ function ConnectionStringDescription({
   const successMessage = (
     <Transition
       mounted={status === "success"}
-      transition="fade-right"
+      transition={TRANSITION}
       duration={TRANSITION_DURATION}
       timingFunction="ease"
     >
