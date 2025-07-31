@@ -608,6 +608,9 @@
     ;; implement [[execute-write-query!]]
     :actions/custom
 
+    ;; Does the driver support editing data within database tables.
+    :actions/data-editing
+
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
     :test/jvm-timezone-setting
 
