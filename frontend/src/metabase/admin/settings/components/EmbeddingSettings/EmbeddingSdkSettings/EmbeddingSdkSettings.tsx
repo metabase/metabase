@@ -79,6 +79,7 @@ export function EmbeddingSdkSettings() {
     <ExternalLink
       key="switch-metabase-binaries"
       href={switchMetabaseBinariesUrl}
+      className={cx(CS.link, CS.textBold)}
     >
       {t`switch Metabase binaries`}
     </ExternalLink>
@@ -117,13 +118,13 @@ export function EmbeddingSdkSettings() {
     .otherwise(() => null);
 
   return (
-    <SettingsPageWrapper title={t`Embedding SDK`}>
+    <SettingsPageWrapper title={t`Modular embedding`}>
       <UpsellDevInstances location="embedding-page" />
 
-      <Flex direction="column" p="lg" className={S.SectionCard} gap="sm">
+      <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
         <Group>
-          <Text size="lg" fw={600} c="text-dark">
-            {t`Embedded analytics SDK for React`}
+          <Text fz="h3" fw={600} c="text-dark">
+            {t`SDK for React`}
           </Text>
         </Group>
 
@@ -161,11 +162,11 @@ export function EmbeddingSdkSettings() {
       </Flex>
 
       {isSimpleEmbedFeatureEnabled && (
-        <Box p="lg" className={S.SectionCard}>
-          <Flex direction="column" gap="sm">
+        <Box p="xl" className={S.SectionCard}>
+          <Flex direction="column" gap="md">
             <Group gap="sm">
-              <Text size="lg" fw={600} c="text-dark">
-                {t`Simple SDK Embedding`}
+              <Text fz="h3" fw={600} c="text-dark">
+                {t`Embedded Analytics JS`}
               </Text>
 
               <Badge size="sm">{t`Beta`}</Badge>
@@ -210,11 +211,11 @@ export function EmbeddingSdkSettings() {
         <AdminSettingInput
           title={t`Cross-Origin Resource Sharing (CORS)`}
           description={
-            <Group align="center" mt="xs" gap="sm">
+            <Group align="center" gap="sm">
               <Text c="text-medium" fz="md">
                 {isEmbeddingAvailable
                   ? t`Enter the origins for the websites or apps where you want to allow SDK embedding.`
-                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and enter the origins for the websites or apps where you want to allow SDK and simple embedding.`}
+                  : jt`Try out the SDK on localhost. To enable other sites, ${(<UpsellSdkLink />)} and enter the origins for the websites or apps where you want to allow SDK and Embedded Analytics JS.`}
               </Text>
 
               {isEmbeddingAvailable && (
@@ -261,16 +262,23 @@ export function EmbeddingSdkSettings() {
 
       <Alert
         data-testid="sdk-settings-alert-info"
-        icon={
-          <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
-        }
-        px="lg"
+        px="xl"
         bg="none"
         bd="1px solid var(--mb-color-border)"
       >
-        <Text size="sm" c="text-medium" lh="lg">
-          {apiKeyBannerText}
-        </Text>
+        <Flex gap="sm">
+          <Box>
+            <Icon
+              color="var(--mb-color-text-secondary)"
+              name="info_filled"
+              mt="2px"
+            />
+          </Box>
+
+          <Text c="text-medium" lh="lg">
+            {apiKeyBannerText}
+          </Text>
+        </Flex>
       </Alert>
     </SettingsPageWrapper>
   );

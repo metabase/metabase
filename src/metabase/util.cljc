@@ -1046,6 +1046,16 @@
   "Like `conj` but returns a vector instead of a list"
   (fnil conj []))
 
+(defmacro for-map
+  "Like `for` but builds a map for the result stream of pairs."
+  [& args]
+  `(->> (for ~@args) (into {})))
+
+(defmacro for-ordered-map
+  "Like `for-map` but builds an order-preserving map for the result stream of pairs."
+  [& args]
+  `(->> (for ~@args) (into (ordered-map))))
+
 (defn string-byte-count
   "Number of bytes in a string using UTF-8 encoding."
   [s]

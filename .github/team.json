@@ -52,18 +52,10 @@
       "members": [
         "npfitz",
         "johnswanson",
-        "rafpaf",
         "iethree",
         "nvoxland",
-        "fraserdrops",
         "edpaget",
-        "deniskaber"
-      ]
-    },
-    {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
+        "deniskaber",
         "alxnddr",
         "bpander"
       ]
@@ -101,6 +93,13 @@
       "label": "cloud",
       "members": [
         "filipesilva"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "eliotmetabase"
       ]
     }
   ]
