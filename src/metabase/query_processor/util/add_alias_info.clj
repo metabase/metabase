@@ -512,6 +512,7 @@
    (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
                                                  (constantly (lib.util/unique-name-generator))
                                                  lib.util/unique-name-generator)]
+     ;; TODO (Cam 7/30/25) -- do this in MBQL 5
      (as-> query-or-inner-query $q
        ;; first escape all the join aliases
        (walk/postwalk

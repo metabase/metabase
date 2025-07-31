@@ -13,7 +13,6 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
-   [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -196,17 +195,16 @@
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
   and Toucan 2 model `:type` metadata).
 
-  Try to avoid using this, we would like to remove this in the near future."
+  Try to avoid using this, we would like to remove this in the near future.
+
+  (Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] instead of this
+  function if you REALLY need to do this sort of conversion.)"
   {:deprecated "0.48.0"}
-  [mlv2-metadata]
-  (let [model (case (:lib/type mlv2-metadata)
+  [lib-metadata-col]
+  (let [model (case (:lib/type lib-metadata-col)
                 :metadata/database :model/Database
                 :metadata/table    :model/Table
                 :metadata/column   :model/Field)]
-    (-> mlv2-metadata
-        (dissoc :lib/type)
-        (update-keys u/->snake_case_en)
-        (vary-meta assoc :type model)
-        ;; TODO: This is converting a freestanding field ref into legacy form. Then again, the `:field_ref` on MLv2
-        ;; metadata is already in legacy form.
-        (m/update-existing :field_ref lib/->legacy-MBQL))))
+    (-> lib-metadata-col
+        lib/lib-metadata-column->legacy-metadata-column
+        (vary-meta assoc :type model))))

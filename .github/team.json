@@ -14,14 +14,6 @@
       ]
     },
     {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "lbrdnk",
-        "bronsa"
-      ]
-    },
-    {
       "name": "Drivers",
       "label": ".Team/Drivers",
       "members": [
@@ -55,23 +47,15 @@
       ]
     },
     {
-      "name": "Admin Webapp",
-      "label": ".Team/AdminWebapp",
+      "name": "UX West",
+      "label": ".Team/UXWest",
       "members": [
         "npfitz",
         "johnswanson",
-        "rafpaf",
         "iethree",
         "nvoxland",
-        "fraserdrops",
         "edpaget",
-        "deniskaber"
-      ]
-    },
-    {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
+        "deniskaber",
         "alxnddr",
         "bpander"
       ]
@@ -94,7 +78,9 @@
         "sloansparger",
         "somtom",
         "wotbrew",
-        "tsplude"
+        "tsplude",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {

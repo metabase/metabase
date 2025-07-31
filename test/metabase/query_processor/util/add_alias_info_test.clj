@@ -14,6 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.uuid-dogs-metadata-provider :as lib.tu.uuid-dogs-metadata-provider]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -1027,3 +1028,33 @@
                                     "Reviews__CREATED_AT"
                                     {::add/source-alias "Reviews__CREATED_AT", ::add/desired-alias "Reviews__CREATED_AT"}]]]}
                       (-> expected :query :source-query (dissoc :source-query)))))))))))
+
+;;; adapted from [[metabase.query-processor-test.uuid-test/joined-uuid-query-test]]
+(deftest ^:parallel resolve-field-missing-join-alias-test
+  (testing "should resolve broken refs missing join-alias correctly"
+    (let [mp      lib.tu.uuid-dogs-metadata-provider/metadata-provider
+          query   {:database 1
+                   :type     :query
+                   :query    {:source-table 1                 ; people
+                              :joins        [{:source-table 2 ; dogs
+                                              :condition    [:=
+                                                             [:field #_dogs.person-id 5 {:join-alias "j"}]
+                                                             [:field #_people.id 1 nil]]
+                                              :alias        "d"
+                                              :fields       :all}]
+                              :filter [:=
+                                       ;; incorrect field ref! Should have the join alias `d`. But we should be able to
+                                       ;; figure it out anyway.
+                                       [:field #_dogs.id 4 nil]
+                                       "00000000-0000-0000-0000-000000000000"]}}]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :h2
+          (is (=? {:filter [:=
+                            [:field
+                             4
+                             {::add/source-table "d", ::add/source-alias "name"}]
+                            [:value "00000000-0000-0000-0000-000000000000" {}]]}
+                  (-> query
+                      qp.preprocess/preprocess
+                      add/add-alias-info
+                      :query))))))))
