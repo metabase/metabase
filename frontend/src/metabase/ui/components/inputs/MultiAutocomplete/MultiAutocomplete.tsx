@@ -11,15 +11,9 @@ import {
   Tooltip,
   type __InputWrapperProps,
   extractStyleProps,
-  getParsedComboboxData,
-  isOptionsGroup,
 } from "@mantine/core";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
 import { t } from "ttag";
-
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 import { Icon } from "../../icons";
 
@@ -87,43 +81,6 @@ export function MultiAutocomplete({
   onOptionSubmit,
   ...otherProps
 }: MultiAutocompleteProps) {
-  const tc = useTranslateContent();
-  const sortByTranslation =
-    PLUGIN_CONTENT_TRANSLATION.useSortByContentTranslation();
-
-  const sortedData = useMemo(() => {
-    const parsedData = getParsedComboboxData(data);
-
-    const hasTranslations = parsedData.some((item) => {
-      if (isOptionsGroup(item)) {
-        return item.items.some((option) => tc(option.value) !== option.value);
-      }
-      return tc(item.value) !== item.value;
-    });
-
-    if (hasTranslations) {
-      return parsedData
-        .map((item) => {
-          if (isOptionsGroup(item)) {
-            return {
-              ...item,
-              items: [...item.items].sort((a, b) =>
-                sortByTranslation(tc(a.value), tc(b.value)),
-              ),
-            };
-          }
-          return item;
-        })
-        .sort((a, b) => {
-          const aValue = isOptionsGroup(a) ? a.group : a.value;
-          const bValue = isOptionsGroup(b) ? b.group : b.value;
-          return sortByTranslation(tc(aValue), tc(bValue));
-        });
-    }
-
-    return parsedData;
-  }, [data, tc, sortByTranslation]);
-
   const {
     combobox,
     pillValues,
@@ -143,7 +100,7 @@ export function MultiAutocomplete({
     handleOptionSubmit,
   } = useMultiAutocomplete({
     values: value,
-    data: sortedData,
+    data,
     parseValue,
     onChange,
     onSearchChange,
@@ -155,7 +112,7 @@ export function MultiAutocomplete({
     <Tooltip
       label={
         <Text c="inherit" maw="20rem">
-          {t`Separate values with commas, tabs, or newlines. Use double quotes if what you're searching for has commas — and if it itself includes quotes, use backslashes like this: "searching, you see, is a \\"simple\\" thing."`}
+          {t`Separate values with commas, tabs, or newlines. Use double quotes if what you’re searching for has commas — and if it itself includes quotes, use backslashes like this: “searching, you see, is a \\“simple\\” thing.”`}
         </Text>
       }
     >
