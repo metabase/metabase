@@ -827,8 +827,8 @@
    :main-opts   ["-m" "dev.migrate"]}
 
   ;; run tests against MLv2. Very fast since this is almost all ^:parallel
-  :test/mlv2
-  {:exec-args {:only ["test/metabase/lib"]}}
+  :test/lib
+  {:exec-args {:only ["test/metabase/lib" "test/metabase/lib_be"]}}
 
   ;; test the Query Processor
   ;;
@@ -852,6 +852,7 @@
   :test/mbql
   {:exec-args {:only ["test/mbql"
                       "test/metabase/lib"
+                      "test/metabase/lib_be"
                       "test/metabase/legacy_mbql"
                       "test/metabase/driver"
                       "test/metabase/query_processor"
