@@ -39,7 +39,7 @@
 
 (defn- handle-transform-put
   [{:keys [params body]}]
-  (log/trace "Handling transform PUT request")
+  (log/info "Handling transform PUT request")
   (if (.tryAcquire semaphore)
     (let [{:keys [run-id]} params
           {:keys [driver transform-details opts mb-source]} (mc/coerce
