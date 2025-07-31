@@ -3,7 +3,7 @@ import type { FunctionComponent } from "react";
 import { useMetabaseProviderPropsStore } from "embedding-sdk/sdk-shared/hooks/use-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk/sdk-shared/lib/get-window";
 import { ClientSideOnlyWrapper } from "embedding-sdk/sdk-wrapper/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
-import { ErrorMessage } from "embedding-sdk/sdk-wrapper/components/private/ErrorMessage/ErrorMessage";
+import { Error } from "embedding-sdk/sdk-wrapper/components/private/Error/Error";
 import { Loader } from "embedding-sdk/sdk-wrapper/components/private/Loader/Loader";
 import {
   SDK_BUNDLE_LOADING_ERROR_MESSAGE,
@@ -24,11 +24,11 @@ const ComponentWrapperInner = <TComponentProps,>({
   const { isNotStartedLoading, isLoading, isError } = useWaitForSdkBundle();
 
   if (isNotStartedLoading) {
-    return <ErrorMessage message={SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE} />;
+    return <Error message={SDK_BUNDLE_NOT_STARTED_LOADING_MESSAGE} />;
   }
 
   if (isError) {
-    return <ErrorMessage message={SDK_BUNDLE_LOADING_ERROR_MESSAGE} />;
+    return <Error message={SDK_BUNDLE_LOADING_ERROR_MESSAGE} />;
   }
 
   if (isLoading || !metabaseProviderProps.initialized) {
