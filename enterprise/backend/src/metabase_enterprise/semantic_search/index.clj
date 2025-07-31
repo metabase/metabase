@@ -160,7 +160,9 @@
   "Returns the default index spec for a model."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
-        table-name (str "index_table_" provider "_" model-name "_" vector-dimensions)]
+        ;; This is a hack to ensure we don't exceed postgres' limit of 63 chars for identifier names.
+        abbreviated-model-name (embedding/model->abbrev model-name model-name)
+        table-name (str "index_table_" provider "_" abbreviated-model-name "_" vector-dimensions)]
     {:embedding-model embedding-model
      :table-name table-name
      :version 0}))
@@ -210,7 +212,6 @@
 
 ;; We can't use full column names in the various index names, because otherwise we overflow postgres' max name length.
 ;; NOTE If you add a new index, add it to index-embedding-name-length-test as well
-;; TODO Maybe we should also abbreviate the model / provider names in the :table-name to give some breathing room.
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
