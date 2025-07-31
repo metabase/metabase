@@ -1,5 +1,3 @@
-import fetchMock from "fetch-mock";
-
 import {
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
@@ -22,64 +20,24 @@ import { createMockState } from "metabase-types/store/mocks";
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
 interface SetupOpts {
+  modelCount: number;
   hasModels?: boolean;
-  modelCount?: number;
   entityTypes?: EmbeddingEntityType[];
 }
 
-const DEFAULT_OPTS: Partial<SetupOpts> = {
-  hasModels: true,
-  modelCount: 2,
-};
-
 export function setup({
-  hasModels = DEFAULT_OPTS.hasModels,
-  modelCount = DEFAULT_OPTS.modelCount,
-  entityTypes,
-}: SetupOpts = {}) {
+  hasModels = true,
+  modelCount,
+  entityTypes = [],
+}: SetupOpts) {
   const query = createEmptyQuery();
 
   setupEmbeddingDataPickerDecisionEndpoints("staged");
 
   if (hasModels) {
-    // Mock the specific model count query made by EmbeddingDataPicker
-    const modelResults = createMockSearchResults(modelCount ?? 2);
-    setupSearchEndpoints(modelResults);
-
-    fetchMock.get(
-      {
-        url: "path:/api/search",
-        query: { models: "dataset", limit: "0" },
-      },
-      {
-        data: modelResults,
-        total: modelResults.length,
-        models: ["dataset"],
-        available_models: ["dataset"],
-        limit: 0,
-        offset: 0,
-      },
-      { overwriteRoutes: false },
-    );
+    setupSearchEndpoints(createSearchResults(modelCount ?? 2));
   } else {
     setupSearchEndpoints([]);
-
-    // Mock empty model count query
-    fetchMock.get(
-      {
-        url: "path:/api/search",
-        query: { models: "dataset", limit: "0" },
-      },
-      {
-        data: [],
-        total: 0,
-        models: ["dataset"],
-        available_models: [],
-        limit: 0,
-        offset: 0,
-      },
-      { overwriteRoutes: false },
-    );
   }
   setupDatabasesEndpoints([createDatabase()]);
 
@@ -95,9 +53,7 @@ export function setup({
     />,
     {
       storeInitialState: createMockState({
-        embeddingDataPicker: {
-          entityTypes: entityTypes || [], // Use empty array to indicate "use defaults"
-        },
+        embeddingDataPicker: { entityTypes },
       }),
     },
   );
@@ -114,7 +70,7 @@ function createDatabase() {
   });
 }
 
-function createMockSearchResults(modelCount: number = 2) {
+function createSearchResults(modelCount = 2) {
   return Array.from({ length: modelCount }, (_, i) =>
     createMockModelResult({ id: i, name: `Model ${i + 1}` }),
   );
