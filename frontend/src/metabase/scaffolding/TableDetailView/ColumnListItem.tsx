@@ -57,7 +57,7 @@ export function ColumnListItem({
       }}
       ref={setNodeRef}
     >
-      <Flex align="center" justify="space-between">
+      <Flex pl="md" align="center" justify="space-between">
         <Group gap="sm">
           <Icon
             name="grabber"
