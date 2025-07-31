@@ -134,6 +134,12 @@ describe("scenarios > visualizations > maps", () => {
 
   it("should display a pins when a breakout column sets a base-type (metabase#59984)", () => {
     cy.intercept("/app/tiles/**").as("tiles");
+    
+    // this should not create a 400 error
+    cy.wait("@tiles").then((xhr) => {
+      expect(xhr.response.statusCode).to.equal(200);
+    });
+    
     H.visitQuestionAdhoc({
       display: "map",
       dataset_query: {
@@ -166,11 +172,6 @@ describe("scenarios > visualizations > maps", () => {
         "table.pivot_column": "LATITUDE",
         "table.cell_column": "LONGITUDE",
       },
-    });
-
-    // this should not create a 400 error
-    cy.wait("@tiles").then((xhr) => {
-      expect(xhr.response.statusCode).to.equal(200);
     });
   });
 
