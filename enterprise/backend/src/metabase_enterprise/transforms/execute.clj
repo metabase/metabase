@@ -41,22 +41,24 @@
         (.resolve path)
         str)))
 
+(defn- json-body [{:keys [body]}]
+  (json/decode+kw body))
+
 (defn execute-mbql-transform-remote!
   "Execute a transform on a remote worker."
   [data]
   (log/info "executing remote transform" (pr-str (:work-id data)))
-  (let [{:keys [body]} (http/post (worker-route "/transform")
-                                  {:form-params data
-                                   :content-type :json})
-        {:keys [run-id]} (json/decode+kw body)
+  (let [{:keys [run-id]} (json-body (http/post (worker-route "/transform")
+                                               {:form-params data
+                                                :content-type :json}))
         ;; timeout after 4 hours
         timeout-limit (+ (System/currentTimeMillis) (* 4 60 60 1000))
         wait 2000]
     (loop []
       (Thread/sleep (long (* wait (inc (- (/ (rand) 5) 0.1)))))
       (log/trace "polling for remote transform" (pr-str (:work-id data)) "after wait" wait)
-      (let [{poll-body :body} (http/get (worker-route (str "/transform/" run-id)))]
-        (case poll-body
+      (let [{:keys [status]} (json-body (http/get (worker-route (str "/transform/" run-id))))]
+        (case status
           "running"
           (if (> (System/currentTimeMillis) timeout-limit)
             (throw (ex-info "Remote execution of transform timed out"
@@ -71,7 +73,7 @@
           (throw (ex-info (str "Remote execution of" (pr-str (:work-id data)) " failed.")
                           {:transform data}))
 
-          (throw (ex-info (str "Unrecognized status response from remote worker: " poll-body)
+          (throw (ex-info (str "Unrecognized status response from remote worker: " status)
                           {:transform data})))))))
 
 (defn execute-mbql-transform-local!

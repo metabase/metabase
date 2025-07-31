@@ -7,10 +7,13 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.tracking :as transforms.track]
    [metabase.api.util.handlers :as handlers]
+   [metabase.server.core :as server]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [ring.adapter.jetty :as ring-jetty]
+   [ring.middleware.keyword-params :refer [wrap-keyword-params]]
    [ring.util.response :as response])
   (:import (java.util.concurrent Executors ExecutorService Semaphore)
            (org.eclipse.jetty.util.thread QueuedThreadPool)))
@@ -22,40 +25,14 @@
 
 (defonce ^:private ^ExecutorService executor (Executors/newVirtualThreadPerTaskExecutor))
 
-(defn- parse-body
-  "Parse request body based on Content-Type header"
-  [body content-type]
-  (when body
-    (let [body-str (slurp body)]
-      (cond
-        (str/includes? content-type "application/json")
-        (json/decode body-str keyword)
-
-        (or (str/includes? content-type "application/yaml")
-            (str/includes? content-type "text/yaml"))
-        (yaml/parse-string body-str)
-
-        (str/includes? content-type "application/edn")
-        (edn/read-string body-str)
-
-        :else
-        body-str))))
-
-(defn wrap-body-parser
-  "Middleware to parse request body based on Content-Type header"
+(defn- apply-middleware
   [handler]
-  (fn [request]
-    (if-let [content-type (get-in request [:headers "content-type"])]
-      (try
-        (let [parsed-body (parse-body (:body request) content-type)
-              updated-request (assoc request :parsed-body parsed-body)]
-          (handler updated-request))
-        (catch Exception e
-          (-> (response/response {:error "Failed to parse request body"
-                                  :message (.getMessage e)})
-              (response/status 400)
-              (response/content-type "application/json"))))
-      (handler request))))
+  (reduce (fn [handler middleware-fn]
+            (middleware-fn handler))
+          handler
+          [#'server/wrap-json-body
+           #'server/wrap-streamed-json-response
+           #'wrap-keyword-params]))
 
 (defn handle-transform
   "Handle POST /transform requests"
@@ -63,11 +40,11 @@
   (prn "handling transform post")
   (let [success? (.tryAcquire semaphore)]
     (if success?
-      (let [{:keys [work-id mb-source] :as parsed-data} (:parsed-body request)
+      (let [{:keys [work-id mb-source] :as body} (:body request)
             run-id (transforms.track/track-start! work-id "transform" mb-source)]
         (.submit executor
                  ^Runnable #(try
-                              (-> (assoc parsed-data :run-id run-id)
+                              (-> (assoc body :run-id run-id)
                                   transforms.execute/execute-transform!)
                               (transforms.track/track-finish! run-id)
                               (catch Throwable t
@@ -75,8 +52,8 @@
                                 (transforms.track/track-error! run-id))
                               (finally
                                 (.release semaphore))))
-        (-> (response/response (json/encode {:message "Transform started"
-                                             :run-id run-id}))
+        (-> (response/response {:message "Transform started"
+                                :run-id run-id})
             (response/content-type "application/json")))
 
       (-> (response/response "Too many requests")
@@ -87,7 +64,7 @@
   (prn "handling transform get")
   (let [resp (transforms.track/get-status (Integer/parseInt run-id) "mb-1")]
     (if (seq resp)
-      (response/response (first resp))
+      (response/response {:status (first resp)})
       (-> (response/response "Not found")
           (response/status 404)))))
 
@@ -100,7 +77,7 @@
 
 (def ^:private handler
   (-> routes
-      wrap-body-parser))
+      apply-middleware))
 
 (defonce ^:private instance (atom nil))
 
