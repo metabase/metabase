@@ -11,26 +11,36 @@ import {
 } from "metabase-types/api/mocks";
 
 export function setupActionEndpoints(action: WritebackAction) {
-  fetchMock.get(`path:/api/action/${action.id}`, action);
-  fetchMock.put(`path:/api/action/${action.id}`, action);
+  const getName = `action-${action.id}-get`;
+  const putName = `action-${action.id}-put`;
+  
+  try {
+    fetchMock.removeRoute(getName);
+  } catch {
+    // Route might not exist, ignore
+  }
+  try {
+    fetchMock.removeRoute(putName);
+  } catch {
+    // Route might not exist, ignore
+  }
+  
+  fetchMock.get(`path:/api/action/${action.id}`, action, { name: getName });
+  fetchMock.put(`path:/api/action/${action.id}`, action, { name: putName });
   fetchMock.delete(`path:/api/action/${action.id}`, action);
 }
 
 function setupActionPostEndpoint() {
-  fetchMock.post(
-    { url: "path:/api/action", overwriteRoutes: true },
-    async (url) => {
-      const call = fetchMock.lastCall(url);
-      const data = await call?.request?.json();
-      if (data.type === "implicit") {
-        return createMockImplicitQueryAction(data);
-      }
-      if (data.type === "query") {
-        return createMockQueryAction(data);
-      }
-      throw new Error(`Unknown action type: ${data.type}`);
-    },
-  );
+  fetchMock.post("path:/api/action", async (callLog) => {
+    const data = await callLog?.request?.json();
+    if (data.type === "implicit") {
+      return createMockImplicitQueryAction(data);
+    }
+    if (data.type === "query") {
+      return createMockQueryAction(data);
+    }
+    throw new Error(`Unknown action type: ${data.type}`);
+  }, { name: "action-post" });
 }
 
 export function setupActionsEndpoints(actions: WritebackAction[]) {
@@ -45,14 +55,13 @@ export function setupModelActionsEndpoints(
   actions: WritebackAction[],
   modelId: CardId,
 ) {
-  fetchMock.get(
-    {
-      url: "path:/api/action",
-      query: { "model-id": modelId },
-      overwriteRoutes: false,
+  fetchMock.get({
+    url: "path:/api/action",
+    query: { "model-id": modelId },
+    response: {
+      actions,
     },
-    actions,
-  );
+  });
 
   setupActionPostEndpoint();
 

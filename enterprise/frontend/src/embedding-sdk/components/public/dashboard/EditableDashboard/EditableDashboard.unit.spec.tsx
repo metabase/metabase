@@ -97,6 +97,7 @@ describe("EditableDashboard", () => {
     ).not.toBeInTheDocument();
   });
 
+
   it("should allow to create a new question in addition to adding existing questions", async () => {
     await setup();
     setupSimpleDataPickerEndpoints();
@@ -120,7 +121,7 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
 
     // Default `entityTypes` should be `["model", "table"]`
-    const dataPickerDataCalls = fetchMock.calls("path:/api/search");
+    const dataPickerDataCalls = fetchMock.callHistory.calls("path:/api/search");
     expect(dataPickerDataCalls).toHaveLength(1);
     const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
     expect(dataPickerDataCallUrl).toContain("models=dataset");
@@ -159,6 +160,7 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
   });
 
+
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
     await setup({
       dataPickerProps: {
@@ -185,9 +187,9 @@ describe("EditableDashboard", () => {
       await screen.findByRole("button", { name: "Pick your starting data" }),
     ).toBeInTheDocument();
 
-    const dataPickerDataCalls = fetchMock.calls("path:/api/search");
+    const dataPickerDataCalls = fetchMock.callHistory.calls("path:/api/search");
     expect(dataPickerDataCalls).toHaveLength(1);
-    const [[dataPickerDataCallUrl]] = dataPickerDataCalls;
+    const dataPickerDataCallUrl = dataPickerDataCalls[0].url;
     expect(dataPickerDataCallUrl).toContain("models=dataset");
     expect(dataPickerDataCallUrl).not.toContain("models=table");
   });

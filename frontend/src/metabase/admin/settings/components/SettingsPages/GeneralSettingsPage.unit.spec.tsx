@@ -93,12 +93,12 @@ describe("GeneralSettingsPage", () => {
     await setup();
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
-      const urls = calls.map((call) => call[0]);
+      const calls = fetchMock.callHistory.calls();
+      const urls = calls.map((call) => call.url);
       expect(urls).toHaveLength(5);
     });
-    const calls = fetchMock.calls();
-    const urls = calls.map((call) => call[0]);
+    const calls = fetchMock.callHistory.calls();
+    const urls = calls.map((call) => call.url);
     expect(urls).toContain("https://mysite.biz/api/health");
     expect(urls).toContainEqual(expect.stringContaining("/api/dashboard/4242"));
     expect(urls).toContainEqual(expect.stringContaining("/api/setting"));
@@ -157,7 +157,7 @@ describe("GeneralSettingsPage", () => {
 });
 
 async function findPuts() {
-  const calls = fetchMock.calls();
+  const calls = fetchMock.callHistory.calls();
   const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
 
   const puts = data.map(async ([putUrl, putDetails]) => {

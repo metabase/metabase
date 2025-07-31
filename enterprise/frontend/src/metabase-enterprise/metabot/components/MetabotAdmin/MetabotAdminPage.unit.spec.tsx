@@ -163,7 +163,7 @@ describe("MetabotAdminPage", () => {
     await setup(1);
 
     expect(
-      fetchMock.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
+      fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
         .length,
     ).toEqual(1); // should have loaded prompt suggestions
 
@@ -193,7 +193,7 @@ describe("MetabotAdminPage", () => {
     ).toBeTruthy();
 
     expect(
-      fetchMock.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
+      fetchMock.callHistory.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
         .length,
     ).toEqual(3); // +1 refetch for DELETE, +1 for PUT
   });

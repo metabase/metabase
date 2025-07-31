@@ -43,7 +43,7 @@ describe("CloudPanel", () => {
   });
 
   afterEach(() => {
-    fetchMock.reset();
+    fetchMock.removeRoutes();
   });
 
   it("should be able to successfully go through migration flow", async () => {
@@ -102,7 +102,7 @@ describe("CloudPanel", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.called(`path:/api/cloud-migration/cancel`, {
+        fetchMock.callHistory.called(`path:/api/cloud-migration/cancel`, {
           method: "PUT",
         }),
       ).toBeTruthy();
@@ -128,7 +128,8 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a failed migration", async () => {
-    fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE);
+    try { fetchMock.removeRoute("cloud-migration-get"); } catch {}
+    fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE, { name: "cloud-migration-get" });
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
     await expectErrorState();
@@ -149,7 +150,8 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a successful migration", async () => {
-    fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE);
+    try { fetchMock.removeRoute("cloud-migration-get"); } catch {}
+    fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE, { name: "cloud-migration-get" });
 
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
@@ -289,14 +291,19 @@ const startMigration = async (migrationResponses: MockResponse[]) => {
 function fetchMockCloudMigrationGetSequence(responses: MockResponse[]) {
   let called = 0;
 
+  // Remove any existing GET route for cloud-migration
+  try {
+    fetchMock.removeRoute("cloud-migration-get");
+  } catch {
+    // Route might not exist, ignore
+  }
+
   return fetchMock.get(
     `path:/api/cloud-migration`,
     () => {
       // hold the last response
       return responses[Math.min(called++, responses.length - 1)];
     },
-    {
-      overwriteRoutes: true,
-    },
+    { name: "cloud-migration-get" }
   );
 }

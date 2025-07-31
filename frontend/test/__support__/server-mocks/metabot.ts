@@ -1,7 +1,4 @@
-import fetchMock, {
-  type MockOptionsMethodGet,
-  type MockOptionsMethodPost,
-} from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
   MetabotApiEntity,
@@ -18,7 +15,6 @@ export function setupMetabotsEndpoint(
   fetchMock.get(
     "path:/api/ee/metabot-v3/metabot",
     statusCode ? { status: statusCode } : { items: metabots },
-    { overwriteRoutes: true },
   );
 }
 
@@ -26,11 +22,9 @@ export function setupMetabotEntitiesEndpoint(
   metabotId: MetabotId,
   entities: MetabotApiEntity[],
 ) {
-  fetchMock.get(
-    `path:/api/ee/metabot-v3/metabot/${metabotId}/entities`,
-    { items: entities },
-    { overwriteRoutes: true },
-  );
+  fetchMock.get(`path:/api/ee/metabot-v3/metabot/${metabotId}/entities`, {
+    items: entities,
+  });
 }
 
 export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
@@ -62,20 +56,21 @@ export function setupMetabotPromptSuggestionsEndpoint(
     limit: number;
     total: number;
   },
-  options?: MockOptionsMethodGet,
+  options?: UserRouteConfig,
 ) {
   const { total, limit, offset } = paginationContext;
 
   const page = prompts.slice(offset, offset + limit);
   const body = { prompts: page, limit, offset, total };
-  fetchMock.get(
-    {
-      url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
-      query: { limit, offset },
+  fetchMock.get({
+    url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
+    query: { limit, offset },
+    response: {
+      status: 200,
+      body,
     },
-    { status: 200, body },
-    { overwriteRoutes: true, ...(options || {}) },
-  );
+    ...options,
+  });
 
   return {
     ...paginationContext,
@@ -95,7 +90,7 @@ export function setupRemoveMetabotPromptSuggestionEndpoint(
 
 export function setupRegenerateMetabotPromptSuggestionsEndpoint(
   metabotId: MetabotId,
-  options?: MockOptionsMethodPost,
+  options?: UserRouteConfig,
 ) {
   fetchMock.post(
     `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/regenerate`,

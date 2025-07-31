@@ -57,7 +57,7 @@ describe("Logs", () => {
 
     afterEach(() => {
       utilSpy.mockClear();
-      fetchMock.restore();
+      fetchMock.removeRoutes();
       jest.useRealTimers();
     });
 

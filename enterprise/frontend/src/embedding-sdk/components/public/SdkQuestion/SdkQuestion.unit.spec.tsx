@@ -338,7 +338,7 @@ describe("InteractiveQuestion", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const lastQuery = fetchMock.lastCall(
+    const lastQuery = fetchMock.callHistory.lastCall(
       `path:/api/card/${TEST_CARD.id}/query`,
     );
     const queryRequest = await lastQuery?.request?.json();

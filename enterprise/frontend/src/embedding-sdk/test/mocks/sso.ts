@@ -1,7 +1,4 @@
-import fetchMock, {
-  type MockResponse,
-  type MockResponseFunction,
-} from "fetch-mock";
+import fetchMock from "fetch-mock";
 
 // ===== MOCK CONSTANTS =====
 
@@ -34,7 +31,7 @@ interface BaseMockConfig {
 export interface SamlMockConfig extends BaseMockConfig {}
 
 export interface JwtMockConfig extends BaseMockConfig {
-  providerResponse?: MockResponse | MockResponseFunction;
+  providerResponse?: number | Record<string, any>;
 }
 
 // ===== MOCK SETUP FUNCTIONS =====
@@ -67,22 +64,24 @@ export const setupMockSamlEndpoints = ({
 }: SamlMockConfig = {}) => {
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
-  const ssoInitMock = fetchMock.get(`begin:${ssoUrl.toString()}`, (url) => {
-    const urlObj = new URL(url);
-    const preferredMethod = urlObj.searchParams.get("preferred_method");
+  const ssoInitMock = fetchMock
+    .mockGlobal()
+    .get(`begin:${ssoUrl.toString()}`, (callLog) => {
+      const urlObj = new URL(callLog.url);
+      const preferredMethod = urlObj.searchParams.get("preferred_method");
 
-    if (preferredMethod === "jwt") {
+      if (preferredMethod === "jwt") {
+        return {
+          status: 400,
+          body: { error: "JWT method not supported in SAML mock" },
+        };
+      }
+
       return {
-        status: 400,
-        body: { error: "JWT method not supported in SAML mock" },
+        url: providerUri,
+        method: "saml",
       };
-    }
-
-    return {
-      url: providerUri,
-      method: "saml",
-    };
-  });
+    });
 
   const samlCallbackMock = fetchMock.post(`${instanceUrl}/auth/sso`, {
     body: {
@@ -177,11 +176,30 @@ export const setupMockJwtEndpoints = ({
   const ssoUrl = new URL("/auth/sso", instanceUrl);
 
   const ssoInitMock = fetchMock.get(
-    (url) =>
-      url.startsWith(ssoUrl.toString()) &&
-      (url.includes("preferred_method=") || !url.includes("?")),
     (url) => {
-      const urlObj = new URL(url);
+      // Handle different URL types in fetch-mock v12+
+      let urlString: string;
+      if (typeof url === 'string') {
+        urlString = url;
+      } else if (url && typeof url === 'object' && 'href' in url) {
+        // URL object with href property
+        urlString = (url as any).href;
+      } else if (url && typeof url === 'object' && 'url' in url) {
+        // fetch-mock v12+ object with url property
+        urlString = (url as any).url;
+      } else if (url && typeof url === 'object' && url.toString && typeof url.toString === 'function') {
+        urlString = url.toString();
+      } else {
+        console.log('JWT Mock: Unknown URL type:', typeof url, Object.keys(url || {}));
+        return false;
+      }
+      
+      // console.log('JWT Mock: URL matcher called with:', urlString, 'Expected to start with:', ssoUrl.toString());
+      return urlString.startsWith(ssoUrl.toString()) &&
+        (urlString.includes("preferred_method=") || !urlString.includes("?"));
+    },
+    (callLog) => {
+      const urlObj = new URL(callLog.request?.url || "");
       const preferredMethod = urlObj.searchParams.get("preferred_method");
 
       if (preferredMethod === "saml") {
@@ -198,20 +216,17 @@ export const setupMockJwtEndpoints = ({
     },
   );
 
-  const jwtProviderMock = fetchMock.get(
-    (url) => url.startsWith(providerUri),
-    (url) => {
-      const urlObj = new URL(url);
-      const responseParam = urlObj.searchParams.get("response");
+  const jwtProviderMock = fetchMock.get(`begin:${providerUri}`, (callLog) => {
+    const urlObj = new URL(callLog.request?.url || "");
+    const responseParam = urlObj.searchParams.get("response");
 
-      if (responseParam === "json") {
-        return providerResponse;
-      }
+    if (responseParam === "json") {
+      return providerResponse;
+    }
 
-      // Return a default response or error for other cases
-      return { status: 400, body: { error: "Invalid request" } };
-    },
-  );
+    // Return a default response or error for other cases
+    return { status: 400, body: { error: "Invalid request" } };
+  });
 
   const jwtValidationMock = fetchMock.get(
     `${instanceUrl}/auth/sso?jwt=${MOCK_VALID_JWT_RESPONSE}`,

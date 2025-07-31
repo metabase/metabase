@@ -48,7 +48,7 @@ describe("DownloadsStatus", () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllMocks();
-    fetchMock.restore();
+    fetchMock.removeRoutes();
   });
 
   it("should show and update downloads status", async () => {

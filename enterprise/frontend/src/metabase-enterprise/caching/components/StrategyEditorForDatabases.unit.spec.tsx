@@ -31,7 +31,7 @@ describe("StrategyEditorForDatabases", () => {
   });
 
   afterEach(() => {
-    fetchMock.restore();
+    fetchMock.hardReset();
   });
 
   it("lets user override root strategy on enterprise instance", async () => {

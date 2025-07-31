@@ -60,12 +60,12 @@ export async function setup({
 }
 
 export const getLastHomepageSettingSettingCall = () =>
-  fetchMock.lastCall("path:/api/setting/embedding-homepage", {
+  fetchMock.callHistory.lastCall("path:/api/setting/embedding-homepage", {
     method: "PUT",
   });
 
 export const getLastFeedbackCall = () =>
-  fetchMock.lastCall("path:/api/product-feedback", {
+  fetchMock.callHistory.lastCall("path:/api/product-feedback", {
     method: "POST",
   });
 

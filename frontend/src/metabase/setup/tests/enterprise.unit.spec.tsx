@@ -37,7 +37,7 @@ const airgapToken = "airgap_toucan";
 
 describe("setup (EE build, but no token)", () => {
   beforeEach(() => {
-    fetchMock.reset();
+    fetchMock.removeRoutes();
   });
 
   it("default step order should be correct, with the license step and data usage steps", async () => {
@@ -181,6 +181,6 @@ const submit = async () => {
   await userEvent.click(await submitBtn());
 
   const settingEndpoint = "path:/api/setting/premium-embedding-token";
-  await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));
-  return fetchMock.lastCall(settingEndpoint);
+  await waitFor(() => expect(fetchMock.callHistory.done(settingEndpoint)).toBe(true));
+  return fetchMock.callHistory.lastCall(settingEndpoint);
 };

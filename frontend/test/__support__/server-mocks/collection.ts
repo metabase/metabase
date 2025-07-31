@@ -34,27 +34,30 @@ export function setupCollectionsEndpoints({
   rootCollection = createMockCollection(ROOT_COLLECTION),
   trashCollection = mockTrashCollection,
 }: CollectionEndpoints) {
-  fetchMock.get("path:/api/collection/root", rootCollection);
-  fetchMock.get(`path:/api/collection/trash`, trashCollection);
-  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection);
-  fetchMock.get(
+  fetchMock.get("path:/api/collection/root", rootCollection, { name: "collection-root" });
+  fetchMock.get(`path:/api/collection/trash`, trashCollection, { name: "collection-trash" });
+  fetchMock.get(`path:/api/collection/${trashCollection.id}`, trashCollection, { name: `collection-${trashCollection.id}` });
+  fetchMock.mockGlobal().get(
     {
       url: "path:/api/collection/tree",
       query: { "exclude-archived": true },
-      overwriteRoutes: false,
     },
     collections.filter((collection) => !collection.archived),
+    { name: "collection-tree-exclude-archived" }
   );
   fetchMock.get(
     {
       url: "path:/api/collection/tree",
-      overwriteRoutes: false,
     },
     collections,
+    { name: "collection-tree" }
   );
   fetchMock.get(
-    { url: "path:/api/collection", overwriteRoutes: false },
+    {
+      url: "path:/api/collection",
+    },
     collections,
+    { name: "collection-list" }
   );
 }
 
@@ -84,8 +87,8 @@ export function setupCollectionVirtualSchemaEndpoints(
     convertSavedQuestionToVirtualTable,
   );
 
-  fetchMock.get(urls.questions, questionVirtualTables);
-  fetchMock.get(urls.models, modelVirtualTables);
+  fetchMock.get(urls.questions, questionVirtualTables, { name: "collection-questions-virtual-tables" });
+  fetchMock.get(urls.models, modelVirtualTables, { name: "collection-models-virtual-tables" });
 }
 
 export function setupCollectionItemsEndpoint({
@@ -97,8 +100,8 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/collection/${collection.id}/items`, (uri) => {
-    const url = new URL(uri);
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, (callLog) => {
+    const url = new URL(callLog.url);
     const models = modelsParam ?? url.searchParams.getAll("models");
     const matchedItems = collectionItems.filter(({ model }) =>
       models.includes(model),
@@ -114,7 +117,7 @@ export function setupCollectionItemsEndpoint({
       limit,
       offset,
     };
-  });
+  }, { name: `collection-${collection.id}-items` });
 }
 
 export function setupDashboardItemsEndpoint({
@@ -126,8 +129,8 @@ export function setupDashboardItemsEndpoint({
   dashboardItems: CollectionItem[];
   models?: string[];
 }) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, (uri) => {
-    const url = new URL(uri);
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/items`, (callLog) => {
+    const url = new URL(callLog.url);
     const models = modelsParam ?? url.searchParams.getAll("models") ?? ["card"];
     const limit =
       Number(url.searchParams.get("limit")) || dashboardItems.length;
@@ -185,15 +188,17 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+$/, (url) => {
-    const collectionIdParam = url.split("/")[5];
+  fetchMock.get(/api\/collection\/\d+$/, (callLog) => {
+    const urlString = callLog.url;
+    const parts = urlString.split("/");
+    const collectionIdParam = parts[parts.length - 1];
     const collectionId = Number(collectionIdParam);
 
     const collection = collections.find(
       (collection) => collection.id === collectionId,
     );
 
-    return collection;
+    return collection || { status: 404, body: "Collection not found" };
   });
 }
 
@@ -211,8 +216,10 @@ function setupCollectionWithErrorById({
 }
 
 export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
-  fetchMock.get(/api\/collection\/(\d+|root)\/items/, (url) => {
-    const collectionIdParam = url.split("/")[5];
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, (callLog) => {
+    const urlString = callLog.url;
+    const parts = urlString.split("/");
+    const collectionIdParam = parts[parts.indexOf("collection") + 1];
     const collectionId =
       collectionIdParam !== "root" ? Number(collectionIdParam) : null;
 

@@ -33,11 +33,11 @@ import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 describe("CreateOrEditQuestionAlertModal", () => {
   beforeEach(() => {
-    fetchMock.reset();
+    fetchMock.removeRoutes();
   });
 
   afterEach(() => {
-    fetchMock.restore();
+    fetchMock.removeRoutes();
   });
 
   it("should display first available channel by default - Email", async () => {
@@ -238,6 +238,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(sendOnceSwitch).not.toBeChecked();
   });
 
+
   it("should create a new notification with daily schedule at 8am", async () => {
     // Setup fetchMock for API call - note we use '*' matcher to capture any request to this endpoint
     fetchMock.postOnce("path:/api/notification", { body: { id: 123 } });
@@ -267,11 +268,11 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
-    const calls = fetchMock.calls("path:/api/notification");
+    const calls = fetchMock.callHistory.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
     await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+      const requestBody = await calls[0].options?.body;
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -280,6 +281,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
   });
+
 
   it("should create a new notification with custom schedule", async () => {
     // Setup fetchMock for API call - note we use '*' matcher to capture any request to this endpoint
@@ -312,11 +314,11 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
-    const calls = fetchMock.calls("path:/api/notification");
+    const calls = fetchMock.callHistory.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
     await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+      const requestBody = await calls[0].options?.body;
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -325,6 +327,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
   });
+
 
   it("should update an existing notification when in edit mode", async () => {
     const notificationId = 42;
@@ -372,11 +375,11 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for Tuesday at 2pm
-    const calls = fetchMock.calls(`path:/api/notification/${notificationId}`);
+    const calls = fetchMock.callHistory.calls(`path:/api/notification/${notificationId}`);
     expect(calls.length).toBe(1);
 
     await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+      const requestBody = await calls[0].options?.body;
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)

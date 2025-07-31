@@ -25,7 +25,7 @@ describe("EditUserModal - enterprise", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.lastCall("path:/api/user/97", { method: "PUT" });
+    const call = fetchMock.callHistory.lastCall("path:/api/user/97", { method: "PUT" });
     const req = await call?.request?.json();
 
     expect(req).toEqual({
@@ -38,6 +38,7 @@ describe("EditUserModal - enterprise", () => {
       },
     });
   });
+
 
   it("can add a user attribute to a user with no name (metabase#40750)", async () => {
     setup({
@@ -65,7 +66,7 @@ describe("EditUserModal - enterprise", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.lastCall("path:/api/user/97", { method: "PUT" });
+    const call = fetchMock.callHistory.lastCall("path:/api/user/97", { method: "PUT" });
     const req = await call?.request?.json();
 
     expect(req).toEqual({

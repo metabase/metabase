@@ -24,7 +24,7 @@ describe("useCreateDashboardApi", () => {
     await userEvent.click(screen.getByText("Create dashboard"));
 
     expect(
-      fetchMock.calls(`path:/api/dashboard`, { method: "POST" }),
+      fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
     ).toHaveLength(1);
   });
 
@@ -47,12 +47,12 @@ describe("useCreateDashboardApi", () => {
 
     await userEvent.click(screen.getByText("Create dashboard"));
 
-    const calls = fetchMock.calls(`path:/api/dashboard`, { method: "POST" });
+    const calls = fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" });
     expect(calls).toHaveLength(1);
 
-    const [_url, options] = calls[0];
+    const call = calls[0];
 
-    const requestBody = (await options?.body) as string;
+    const requestBody = (await call.options?.body) as string;
     expect(JSON.parse(requestBody)).toMatchObject({
       collection_id: TEST_PERSONAL_COLLECTION_ID,
     });

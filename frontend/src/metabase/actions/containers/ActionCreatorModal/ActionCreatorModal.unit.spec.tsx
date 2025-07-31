@@ -81,7 +81,7 @@ async function setup({
 
 describe("actions > containers > ActionCreatorModal", () => {
   afterEach(() => {
-    fetchMock.reset();
+    fetchMock.removeRoutes();
   });
 
   it("renders correctly", async () => {
@@ -289,14 +289,12 @@ describe("actions > containers > ActionCreatorModal", () => {
       await userEvent.type(screen.getByDisplayValue(action.name), "a change");
       await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
-      fetchMock.put(
-        `path:/api/action/${action.id}`,
-        {
+      fetchMock.modifyRoute(`action-${action.id}-put`, {
+        response: {
           ...action,
           name: `${action.name}a change`,
-        },
-        { overwriteRoutes: true },
-      );
+        }
+      });
 
       await userEvent.click(screen.getByRole("button", { name: "Update" }));
 

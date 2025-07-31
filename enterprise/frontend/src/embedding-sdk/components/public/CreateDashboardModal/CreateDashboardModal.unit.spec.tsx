@@ -89,7 +89,7 @@ describe("CreateDashboardModal", () => {
 
     await waitFor(() => {
       return expect(
-        fetchMock.called(`path:/api/collection/${PERSONAL_COLLECTION.id}`),
+        fetchMock.callHistory.called(`path:/api/collection/${PERSONAL_COLLECTION.id}`),
       ).toBe(true);
     });
 
@@ -100,14 +100,14 @@ describe("CreateDashboardModal", () => {
     await userEvent.click(screen.getByText("Create"));
 
     expect(
-      fetchMock.calls(`path:/api/dashboard`, { method: "POST" }),
+      fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" }),
     ).toHaveLength(1);
 
     // api called with typed form input
+    const calls = fetchMock.callHistory.calls(`path:/api/dashboard`, { method: "POST" });
+    const lastCall = calls[calls.length - 1];
     expect(
-      await fetchMock
-        .lastCall(`path:/api/dashboard`, { method: "POST" })
-        ?.request?.json(),
+      await lastCall?.request?.json(),
     ).toMatchObject({
       name: "My awesome dashboard title",
       collection_id: PERSONAL_COLLECTION.id,

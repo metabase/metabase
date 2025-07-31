@@ -32,7 +32,7 @@ const setup = async (
   config: MetabaseAuthConfig,
   jwtProviderResponse?: JwtMockConfig["providerResponse"],
 ) => {
-  fetchMock.reset();
+  fetchMock.hardReset();
 
   const { jwtProviderMock } = setupMockJwtEndpoints({
     providerResponse: jwtProviderResponse,
@@ -57,7 +57,8 @@ const setup = async (
 
   await waitForLoaderToBeRemoved();
 
-  const getLastAuthProviderApiCall = () => jwtProviderMock.lastCall();
+  const getLastAuthProviderApiCall = () =>
+    jwtProviderMock.callHistory.lastCall();
 
   return { getLastAuthProviderApiCall };
 };

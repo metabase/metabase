@@ -1,4 +1,4 @@
-import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 import { match } from "ts-pattern";
 
 import type { CollectionItem, SearchResult } from "metabase-types/api";
@@ -6,12 +6,20 @@ import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-pi
 
 export function setupSearchEndpoints(
   items: (CollectionItem | SearchResult)[],
-  options?: MockOptionsMethodGet,
+  options?: UserRouteConfig,
 ) {
+  const name = "search";
+  if (options?.overwriteRoutes) {
+    try {
+      fetchMock.removeRoute(name);
+    } catch {
+      // Route might not exist, ignore
+    }
+  }
   fetchMock.get(
     "path:/api/search",
-    (uri) => {
-      const url = new URL(uri);
+    (callLog) => {
+      const url = new URL(callLog.url);
       const models = url.searchParams.getAll("models");
       const limit = Number(url.searchParams.get("limit")) || 50;
       const offset = Number(url.searchParams.get("offset"));
@@ -41,7 +49,7 @@ export function setupSearchEndpoints(
         table_db_id,
       };
     },
-    options,
+    { name, ...options },
   );
 }
 

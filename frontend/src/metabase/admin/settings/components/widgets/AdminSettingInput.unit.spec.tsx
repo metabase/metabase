@@ -168,7 +168,7 @@ describe("AdminSettingInput", () => {
     });
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
+      const calls = fetchMock.callHistory.calls();
       expect(calls).toHaveLength(2);
     });
 
@@ -438,11 +438,15 @@ describe("AdminSettingInput", () => {
 });
 
 async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
+  const calls = fetchMock.callHistory.calls();
+  const putCall = calls.find((call) => call.request?.method === "PUT");
+  
+  if (!putCall) {
+    return [undefined, {}];
+  }
 
-  const body = ((await putDetails?.body) as string) ?? "{}";
+  const putUrl = putCall.request?.url;
+  const body = ((await putCall.options?.body) as string) ?? "{}";
 
   return [putUrl, JSON.parse(body)];
 }

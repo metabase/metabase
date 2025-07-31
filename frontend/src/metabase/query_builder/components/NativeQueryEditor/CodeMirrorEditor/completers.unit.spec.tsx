@@ -103,14 +103,14 @@ describe("useSchemaCompletion", () => {
 
     const results = await complete("SELECT {{ foo|");
     expect(results).toBe(null);
-    expect(fetchMock.calls(url)).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
   });
 
   it("should not call the endpoint if the cursor is inside a closed tag", async () => {
     const { complete, url } = setup({ matchStyle: "prefix" });
     const results = await complete("SELECT {{ foo| }}");
     expect(results).toBe(null);
-    expect(fetchMock.calls(url)).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
   });
 
   it("should not call the endpoint if the cursor is inside an open snippet tag", async () => {
@@ -118,7 +118,7 @@ describe("useSchemaCompletion", () => {
     const results = await complete("SELECT {{ snippet: foo|");
 
     expect(results).toBe(null);
-    expect(fetchMock.calls(url)).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
   });
 
   it("should not call the endpoint if the cursor is inside a closed snippet tag", async () => {
@@ -126,7 +126,7 @@ describe("useSchemaCompletion", () => {
     const results = await complete("SELECT {{ snippet: foo| }}");
 
     expect(results).toBe(null);
-    expect(fetchMock.calls(url)).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
   });
 
   it("should not call the endpoint if the cursor is inside an open card tag", async () => {
@@ -134,7 +134,7 @@ describe("useSchemaCompletion", () => {
     const results = await complete("SELECT {{ #foo|");
 
     expect(results).toBe(null);
-    expect(fetchMock.calls(url)).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
   });
 
   it("should not call the endpoint if the cursor is inside a closed card tag", async () => {
@@ -142,7 +142,7 @@ describe("useSchemaCompletion", () => {
     const results = await complete("SELECT {{ #foo| }}");
 
     expect(results).toBe(null);
-    expect(fetchMock.calls(url)).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
   });
 
   it("should complete even when inside a word", async () => {
@@ -164,7 +164,7 @@ describe("useSchemaCompletion", () => {
         },
       ],
     });
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
   it("should deduplicate results", async () => {
@@ -187,7 +187,7 @@ describe("useSchemaCompletion", () => {
         },
       ],
     });
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
   describe("native-query-autocomplete-match-style = off", () => {
@@ -198,7 +198,7 @@ describe("useSchemaCompletion", () => {
       const result = await complete("SELECT S|");
 
       expect(result).toEqual(null);
-      expect(fetchMock.calls(url)).toHaveLength(0);
+      expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
     });
   });
 
@@ -209,9 +209,9 @@ describe("useSchemaCompletion", () => {
       const { complete, url } = setup({ matchStyle });
       const result = await complete("SELECT S|");
 
-      const calls = fetchMock.calls(url);
+      const calls = fetchMock.callHistory.calls(url);
       expect(calls).toHaveLength(1);
-      expect(new URL(calls[0][0]).searchParams.get("prefix")).toBe("S");
+      expect(new URL(calls[0].request?.url).searchParams.get("prefix")).toBe("S");
 
       expect(result).toEqual({
         from: 7,
@@ -237,10 +237,10 @@ describe("useSchemaCompletion", () => {
       const { complete, url } = setup({ matchStyle });
       const result = await complete("SELECT S|");
 
-      const calls = fetchMock.calls(url);
+      const calls = fetchMock.callHistory.calls(url);
 
       expect(calls).toHaveLength(1);
-      expect(new URL(calls[0][0]).searchParams.get("substring")).toBe("S");
+      expect(new URL(calls[0].request?.url).searchParams.get("substring")).toBe("S");
 
       expect(result).toEqual({
         from: 7,
@@ -280,7 +280,7 @@ describe("useSnippetCompletion", () => {
     const complete = completer(() => useSnippetCompletion());
 
     // the call gets made once before completing so it's always made
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
 
     return { complete };
   }
@@ -428,7 +428,7 @@ describe("useCardTagCompletion", () => {
       expect(result).toBe(null);
     }
 
-    expect(fetchMock.calls(url)).toHaveLength(0);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(0);
   });
 
   it("should autocomplete cards when inside an open card tag", async () => {
@@ -452,7 +452,7 @@ describe("useCardTagCompletion", () => {
         },
       ],
     });
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
   it("should autocomplete cards when inside an open card tag, inside a word", async () => {
@@ -476,7 +476,7 @@ describe("useCardTagCompletion", () => {
         },
       ],
     });
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
   it("should autocomplete cards when inside a closed card tag", async () => {
@@ -500,7 +500,7 @@ describe("useCardTagCompletion", () => {
         },
       ],
     });
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
   it("should autocomplete cards when inside a closed card tag, inside a word", async () => {
@@ -524,7 +524,7 @@ describe("useCardTagCompletion", () => {
         },
       ],
     });
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 });
 
@@ -586,7 +586,7 @@ describe("useReferencedCardCompletion", () => {
       expect(result).toBe(null);
     }
 
-    expect(fetchMock.calls("/api/card/*")).toHaveLength(0);
+    expect(fetchMock.callHistory.calls("/api/card/*")).toHaveLength(0);
   });
 
   it("should return columns from referenced cards", async () => {
@@ -601,7 +601,7 @@ describe("useReferencedCardCompletion", () => {
       ],
     });
 
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 
   it("should return columns from referenced cards, inside word", async () => {
@@ -616,7 +616,7 @@ describe("useReferencedCardCompletion", () => {
         { label: "Bar", detail: "Referenced Question varchar" },
       ],
     });
-    expect(fetchMock.calls(url)).toHaveLength(1);
+    expect(fetchMock.callHistory.calls(url)).toHaveLength(1);
   });
 });
 

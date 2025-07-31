@@ -12,8 +12,8 @@ import { PERMISSION_ERROR } from "./constants";
 
 export function setupFieldEndpoints(field: Field) {
   fetchMock.get(`path:/api/field/${field.id}`, field);
-  fetchMock.post(`path:/api/field/${field.id}/rescan_values`, {});
-  fetchMock.post(`path:/api/field/${field.id}/discard_values`, {});
+  fetchMock.post(`path:/api/field/${field.id}/rescan_values`, {}, { name: `field-${field.id}-rescan-values` });
+  fetchMock.post(`path:/api/field/${field.id}/discard_values`, {}, { name: `field-${field.id}-discard-values` });
 }
 
 export function setupFieldValuesEndpoint(fieldValues: GetFieldValuesResponse) {
@@ -21,7 +21,7 @@ export function setupFieldValuesEndpoint(fieldValues: GetFieldValuesResponse) {
   fetchMock.post(
     `path:/api/field/${fieldValues.field_id}/values`,
     async (url) => {
-      const lastCall = fetchMock.lastCall(url);
+      const lastCall = fetchMock.callHistory.lastCall(url);
       return createMockFieldValues(await lastCall?.request?.json());
     },
   );
@@ -33,27 +33,31 @@ export function setupRemappedFieldValueEndpoint(
   value: string,
   fieldValue: FieldValue,
 ) {
-  fetchMock.get(
-    {
-      url: `path:/api/field/${fieldId}/remapping/${remappedFieldId}`,
-      query: { value },
-    },
-    fieldValue,
-    { overwriteRoutes: false },
-  );
+  fetchMock.get({
+    url: `path:/api/field/${fieldId}/remapping/${remappedFieldId}`,
+    query: { value },
+  }, fieldValue);
 }
 
 export function setupUnauthorizedFieldEndpoint(
   field: Field,
   options?: MockOptionsMethodGet,
 ) {
+  const name = `field-${field.id}-get`;
+  if (options?.overwriteRoutes) {
+    try {
+      fetchMock.removeRoute(name);
+    } catch {
+      // Route might not exist, ignore
+    }
+  }
   fetchMock.get(
     `path:/api/field/${field.id}`,
     {
       status: 403,
       body: PERMISSION_ERROR,
     },
-    options,
+    { name, ...options },
   );
 }
 
@@ -61,13 +65,21 @@ export function setupUnauthorizedFieldValuesEndpoints(
   fieldId: FieldId,
   options?: MockOptionsMethodGet,
 ) {
+  const name = `field-${fieldId}-values`;
+  if (options?.overwriteRoutes) {
+    try {
+      fetchMock.removeRoute(name);
+    } catch {
+      // Route might not exist, ignore
+    }
+  }
   fetchMock.get(
     `path:/api/field/${fieldId}/values`,
     {
       status: 403,
       body: PERMISSION_ERROR,
     },
-    options,
+    { name, ...options },
   );
 }
 
@@ -83,17 +95,13 @@ export function setupFieldSearchValuesEndpoint(
   searchValue: string,
   result: FieldValue[] = [],
 ) {
-  fetchMock.get(
-    {
-      url: `path:/api/field/${fieldId}/search/${searchFieldId}`,
-      query: {
-        value: searchValue,
-        limit: 100, // corresponds to MAX_SEARCH_RESULTS in FieldValuesWidget
-      },
+  fetchMock.get({
+    url: `path:/api/field/${fieldId}/search/${searchFieldId}`,
+    query: {
+      value: searchValue,
+      limit: 100, // corresponds to MAX_SEARCH_RESULTS in FieldValuesWidget
     },
-    {
-      body: result,
-    },
-    { overwriteRoutes: false },
-  );
+  }, {
+    body: result,
+  });
 }

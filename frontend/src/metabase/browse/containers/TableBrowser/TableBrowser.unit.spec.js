@@ -25,20 +25,19 @@ describe("TableBrowser", () => {
       expect(screen.getByText("foo")).toBeInTheDocument();
     });
     // check only one call has been made
-    const calls = await fetchMock.calls(/\/api\/database\/1\/schema\/public/);
+    const calls = await fetchMock.callHistory.calls(/\/api\/database\/1\/schema\/public/);
     expect(calls.length).toBe(1);
     // check the loading spinner is present
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     // change the table to have initial_sync_status='complete'
-    fetchMock.get(
-      "path:/api/database/1/schema/public",
-      [{ id: 123, name: "foo", initial_sync_status: "complete" }],
-      { overwriteRoutes: true },
-    );
+    fetchMock.removeRoute("path:/api/database/1/schema/public");
+    fetchMock.get("path:/api/database/1/schema/public", [
+      { id: 123, name: "foo", initial_sync_status: "complete" },
+    ]);
     await waitFor(
       () => {
         expect(
-          fetchMock.calls(/\/api\/database\/1\/schema\/public/).length,
+          fetchMock.callHistory.calls(/\/api\/database\/1\/schema\/public/).length,
         ).toBe(2);
       },
       { timeout: 3000 },

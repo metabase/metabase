@@ -51,13 +51,14 @@ describe("LegaleseStep", () => {
     expect(screen.getByText("Agree and continue")).toBeInTheDocument();
   });
 
+
   it("calls goToNextStep and updates setting on clicking 'Agree and continue'", async () => {
     fetchMock.put("path:/api/setting/show-static-embed-terms", 204);
 
     const { goToNextStep } = setup();
     await userEvent.click(screen.getByText("Agree and continue"));
 
-    const settingPutCalls = fetchMock.calls(
+    const settingPutCalls = fetchMock.callHistory.calls(
       "path:/api/setting/show-static-embed-terms",
     );
 

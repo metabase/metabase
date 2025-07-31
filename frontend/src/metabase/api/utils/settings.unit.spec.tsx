@@ -74,6 +74,7 @@ describe("useAdminSetting", () => {
     expect(await screen.findByText(/MB_SPECIAL_SITE_NAME/)).toBeInTheDocument();
   });
 
+
   it("should allow setting mutation", async () => {
     await setup();
     const updateButton = await screen.findByText("change site name");
@@ -89,9 +90,9 @@ describe("useAdminSetting", () => {
       expect(screen.getByText(/New Site Name/)).toBeInTheDocument();
     });
 
-    const apiCalls = fetchMock.calls();
-    const putCall = apiCalls.find((call) => call[1]?.method === "PUT");
+    const apiCalls = fetchMock.callHistory.calls();
+    const putCall = apiCalls.find((call) => call.request?.method === "PUT");
 
-    expect(putCall?.[0]).toContain("/api/setting/site-name");
+    expect(putCall?.request?.url).toContain("/api/setting/site-name");
   });
 });

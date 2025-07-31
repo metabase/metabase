@@ -15,13 +15,13 @@ export function setupDatabaseEndpoints(db: Database) {
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   fetchMock.get(`path:/api/database/${db.id}/healthcheck`, {
     body: { status: "ok" },
-  });
+  }, { name: `database-${db.id}-healthcheck` });
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach((table) => setupTableEndpoints({ ...table, db }));
 
   fetchMock.put(`path:/api/database/${db.id}`, async (url) => {
-    const call = fetchMock.lastCall(url);
+    const call = fetchMock.callHistory.lastCall(url);
     const body = await call?.request?.json();
     return { ...db, ...body };
   });
@@ -38,9 +38,15 @@ export function setupDatabaseListEndpoint(
   databases: Database[],
   { overwriteRoutes = false }: { overwriteRoutes?: boolean } = {},
 ) {
+  try {
+    fetchMock.removeRoute("database-list");
+  } catch {
+    // Route might not exist, ignore
+  }
   fetchMock.get(
-    { url: "path:/api/database", overwriteRoutes },
+    "path:/api/database",
     { data: databases, total: databases.length },
+    { name: "database-list" }
   );
 }
 
@@ -56,18 +62,18 @@ export function setupDatabasesEndpoints(
     {
       url: "path:/api/database",
       query,
-      overwriteRoutes: false,
     },
     {
       data: databasesWithSavedQuestions,
       total: databasesWithSavedQuestions.length,
     },
+    { name: "database-list-with-query" }
   );
   setupDatabaseListEndpoint(databases);
   fetchMock.post("path:/api/database", async (url) => {
-    const lastCall = fetchMock.lastCall(url);
+    const lastCall = fetchMock.callHistory.lastCall(url);
     return await lastCall?.request?.json();
-  });
+  }, { name: "database-post" });
 
   databases.forEach((db) => setupDatabaseEndpoints(db));
 }
@@ -82,6 +88,7 @@ export const setupSchemaEndpoints = (db: Database) => {
     fetchMock.get(
       `path:/api/database/${db.id}/schema/${schema}`,
       schemas[schema],
+      { name: `database-${db.id}-schema-${schema}` }
     );
   });
 };
@@ -96,7 +103,16 @@ export function setupDatabaseIdFieldsEndpoints(
       .map((field) => ({ ...field, table })),
   );
 
-  fetchMock.get(`path:/api/database/${id}/idfields`, fields, options);
+  const name = `database-${id}-idfields`;
+  if (options?.overwriteRoutes) {
+    try {
+      fetchMock.removeRoute(name);
+    } catch {
+      // Route might not exist, ignore
+    }
+  }
+
+  fetchMock.get(`path:/api/database/${id}/idfields`, fields, { name, ...options });
 }
 
 export const setupUnauthorizedSchemaEndpoints = (db: Database) => {

@@ -60,7 +60,7 @@ const getWarnMessages = (): string[] =>
 
 describe("SDK auth errors", () => {
   beforeEach(() => {
-    fetchMock.reset();
+    fetchMock.hardReset();
 
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
     (getEmbeddingSdkVersion as jest.Mock).mockClear();

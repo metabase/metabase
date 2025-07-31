@@ -52,6 +52,7 @@ describe("AIQuestionAnalysisSidebar", () => {
     expect(copyButton).toBeInTheDocument();
   });
 
+
   it("should send only visible timeline events with ones from the same collection", async () => {
     const collectionId = 42;
 
@@ -134,7 +135,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       expect(screen.getByText("Filtered analysis")).toBeInTheDocument();
     });
 
-    const lastCallRequest = fetchMock.lastCall(
+    const lastCallRequest = fetchMock.callHistory.lastCall(
       "path:/api/ee/ai-entity-analysis/analyze-chart",
     )?.request;
     const body = await lastCallRequest?.json();

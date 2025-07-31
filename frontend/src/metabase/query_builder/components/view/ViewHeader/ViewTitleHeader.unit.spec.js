@@ -207,7 +207,7 @@ function setupSavedNative(props = {}) {
 
 describe("ViewTitleHeader", () => {
   beforeEach(() => {
-    fetchMock.reset();
+    fetchMock.removeRoutes();
   });
 
   const TEST_CASE = {

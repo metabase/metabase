@@ -34,7 +34,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
 
     fetchMock.put(`path:/api/collection/${folder.id}`, async (url) => {
       return createMockCollection(
-        await fetchMock.lastCall(url)?.request?.json(),
+        await fetchMock.callHistory.lastCall(url)?.request?.json(),
       );
     });
   }
@@ -53,7 +53,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   );
 
   fetchMock.post("path:/api/collection", async (url) => {
-    return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
+    return createMockCollection(await fetchMock.callHistory.lastCall(url)?.request?.json());
   });
 
   renderWithProviders(

@@ -161,7 +161,7 @@ describe("useLicenseTokenMissingBanner", () => {
   };
 
   beforeEach(() => {
-    fetchMock.reset();
+    fetchMock.removeRoutes();
     jest.useFakeTimers();
     jest.setSystemTime(NOW);
   });
