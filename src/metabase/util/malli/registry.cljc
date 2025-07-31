@@ -3,10 +3,10 @@
   (:require
    #?@(:clj ([malli.experimental.time :as malli.time]
              [net.cgrand.macrovich :as macros]))
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut]
-   [metabase.util.performance :as perf])
+   [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -21,7 +21,7 @@
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
   (or (some-> x meta ::key)
-      (perf/postwalk
+      (walk/postwalk
        (fn [x]
          (cond
            (instance? #?(:clj java.util.regex.Pattern
@@ -57,7 +57,7 @@
                              :arguments arguments
                              :replacements replacements})))
         argument-replacement (zipmap arguments replacements)]
-    (perf/postwalk
+    (walk/postwalk
      (fn [x] (if-let [new (argument-replacement x)] new x))
      form)))
 
@@ -67,7 +67,7 @@
 
 (defn- stabilize-schema-fn-args
   [form]
-  (perf/postwalk
+  (walk/postwalk
    (fn [frm] (if (fn-form-generated-by-reader-macro? frm)
                (stabilize-reader-fn-args frm)
                frm))
