@@ -1554,6 +1554,9 @@
    {:error/message "Distinct, non-empty sequence of Field clauses"}
    (helpers/distinct [:sequential {:min 1} Field])])
 
+(mr/def ::OrderBys
+  (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]]))
+
 (mr/def ::Page
   "`page` = page num, starting with 1. `items` = number of items per page.
   e.g.
@@ -1575,7 +1578,7 @@
     [:fields       {:optional true} Fields]
     [:filter       {:optional true} Filter]
     [:limit        {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
-    [:order-by     {:optional true} (helpers/distinct [:sequential {:min 1} [:ref ::OrderBy]])]
+    [:order-by     {:optional true} [:ref ::OrderBys]]
     [:page         {:optional true} [:ref ::Page]]
     [:joins        {:optional true} [:ref ::Joins]]
 
