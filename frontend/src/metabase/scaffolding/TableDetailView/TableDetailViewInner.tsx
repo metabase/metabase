@@ -226,7 +226,7 @@ export function TableDetailViewInner({
   const rowName = nameIndex == null ? null : row[nameIndex];
 
   // Check if we have relationships to show
-  const hasRelationships = false; //tableForeignKeys.length > 0; // TODO: this crashes
+  const hasRelationships = tableForeignKeys.length > 0; // TODO: this crashes
 
   const DetailContainer = ({ children }: { children: ReactNode }) => (
     <Stack

@@ -5,13 +5,11 @@ import { jt, t } from "ttag";
 import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
-import { Icon, Loader } from "metabase/ui";
+import { Box, type BoxProps, Icon, Loader } from "metabase/ui";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
-import {
-  ObjectRelationContent,
-  ObjectRelationships,
-} from "./ObjectRelationships.styled";
+import S from "./ObjectRelationships.module.css";
+import { ObjectRelationContent } from "./ObjectRelationships.styled";
 import type { ForeignKeyReferences } from "./types";
 
 export interface RelationshipsProps {
@@ -26,21 +24,20 @@ export function Relationships({
   tableForeignKeys,
   tableForeignKeyReferences,
   foreignKeyClicked,
-}: RelationshipsProps): JSX.Element | null {
+  ...rest
+}: RelationshipsProps & BoxProps): JSX.Element | null {
   if (!tableForeignKeys || !tableForeignKeys?.length) {
     return null;
   }
 
   const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
-  const sortedForeignTables = tableForeignKeys.sort((a, b) =>
-    (a.origin?.table?.displayName() ?? "").localeCompare(
-      b.origin?.table?.displayName() ?? "",
-    ),
+  const sortedForeignTables = tableForeignKeys.toSorted((a, b) =>
+    extractDisplayName(a).localeCompare(extractDisplayName(b)),
   );
 
   return (
-    <ObjectRelationships>
+    <Box className={S.objectRelationships} {...rest}>
       <div className={cx(CS.textBold, CS.textMedium)}>
         {jt`${(
           <span className={CS.textDark} key={objectName}>
@@ -68,7 +65,13 @@ export function Relationships({
           />
         ))}
       </ul>
-    </ObjectRelationships>
+    </Box>
+  );
+}
+
+function extractDisplayName(fk: ForeignKey) {
+  return (
+    fk.origin?.table?.displayName?.() ?? fk.origin?.table?.display_name ?? ""
   );
 }
 
@@ -93,7 +96,7 @@ function Relationship({
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
   const fkClickable = isLoaded && Boolean(fkCountInfo.value);
-  const originTableName = fk.origin?.table?.displayName() ?? "";
+  const originTableName = extractDisplayName(fk);
 
   const relationName = inflect(originTableName, fkCountValue);
 
