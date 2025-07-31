@@ -206,7 +206,18 @@
                              {:fields      [$total [:expression "foo"]]
                               :expressions {"foo" [:+ $total 0]}})
           card-cols        (-> (qp.preprocess/query->expected-cols (lib/query meta/metadata-provider card-query))
-                               (assoc-in [1 :semantic_type] :type/Quantity))
+                               (update 1 assoc
+                                       :semantic_type :type/Quantity
+                                       ;; apparently the fingerprint in the [[meta/field-metadata]] is stale or
+                                       ;; something. See
+                                       ;; https://metaboat.slack.com/archives/C0645JP1W81/p1753993801175699
+                                       :fingerprint   {:global {:distinct-count 4957, :nil% 0.0}
+                                                       :type   {:type/Number {:min -45.48
+                                                                              :q1  51.15112909560095
+                                                                              :q3  110.89552922878748
+                                                                              :max 159.35
+                                                                              :sd  34.46092341352156
+                                                                              :avg 80.52333155650321}}}))
           mp               (lib.tu/mock-metadata-provider
                             meta/metadata-provider
                             {:cards [{:id              1
@@ -223,15 +234,15 @@
       (testing "without filter"
         (is (=? {:query {:breakout [[:field
                                      "foo"
-                                     {:base-type :type/Float,
+                                     {:base-type :type/Float
                                       :binning   {:strategy :num-bins, :num-bins 10, :min-value -50.0, :max-value 175.0, :bin-width 25.0}}]]}}
-                (update-binning-strategy mp (-> (lib/filter query (lib/between expr-col 20 40))
+                (update-binning-strategy mp (-> query
                                                 lib.convert/->legacy-MBQL
                                                 (assoc-in [:query :source-metadata] card-cols))))))
       (testing "with filter"
         (is (=? {:query {:breakout [[:field
                                      "foo"
-                                     {:base-type :type/Float,
+                                     {:base-type :type/Float
                                       :binning   {:strategy :num-bins, :num-bins 10, :min-value 20.0, :max-value 40.0, :bin-width 2.0}}]]}}
                 (update-binning-strategy mp (-> (lib/filter query (lib/between expr-col 20 40))
                                                 lib.convert/->legacy-MBQL

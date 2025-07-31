@@ -4,13 +4,11 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -296,22 +294,20 @@
                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
                    :order-by [[:asc $latitude]]}))))))))
 
-(deftest bin-nested-queries-no-fingerprint-test
+(deftest ^:parallel bin-nested-queries-no-fingerprint-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
-      ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
-      ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
-      ;; middleware is doing the right thing
-      (with-redefs [lib.card/card-metadata-columns                     (constantly nil)
-                    qp.add-source-metadata/mbql-source-query->metadata (constantly nil)]
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                          [(mt/mbql-query venues)])
-          (is (thrown-with-msg?
-               Exception
-               #"Cannot update binned field: query is missing source-metadata"
-               (qp.test-util/rows
-                (qp/process-query
-                 (nested-venues-query 1))))))))))
+      (qp.store/with-metadata-provider (-> (qp.test-util/metadata-provider-with-cards-for-queries
+                                            [(mt/mbql-query venues)])
+                                           (lib.tu/merged-mock-metadata-provider
+                                            {:fields [{:id          (mt/id :venues :latitude)
+                                                       :fingerprint nil}]}))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"\QUnable to bin Field without a min/max value (missing or incomplete fingerprint)\E"
+             (qp.test-util/rows
+              (qp/process-query
+               (nested-venues-query 1)))))))))
 
 (deftest ^:parallel field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
