@@ -60,7 +60,7 @@
 
 (defn- handle-status-get
   [run-id]
-  (prn "handling task get")
+  (log/info "Handling transform status GET request")
   (let [resp (transforms/get-status (Integer/parseInt run-id) "mb-1")]
     (if (seq resp)
       (response/response {:status (first resp)})
@@ -82,7 +82,7 @@
 
 (defn stop! []
   (when @instance
-    (prn "stopping worker server")
+    (log/info "Stopping worker server")
     (.stop ^QueuedThreadPool @instance)
     (reset! instance nil)))
 
@@ -90,7 +90,7 @@
   ([] (start! {}))
   ([opts]
    (stop!)
-   (prn "starting worker server")
+   (log/info "Starting worker server")
    (let [thread-pool (doto (new QueuedThreadPool)
                        (.setVirtualThreadsExecutor (Executors/newVirtualThreadPerTaskExecutor)))]
      (reset! instance (ring-jetty/run-jetty handler
