@@ -89,7 +89,7 @@
        (pr-str table-name)))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
-  [driver ^Connection conn table-schema table-name]
+  [driver ^Connection outer-conn table-schema table-name & {:keys [retry?]}]
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)
@@ -97,7 +97,7 @@
         ;; else if the connection closes, even if we manage to reopen it in this local context
         ;; outer unrealized resultsets (like the [[all-schemas]] results) may get
         ;; unrecoverably closed
-        conn (sql-jdbc.execute/try-ensure-open-conn! driver conn :force-context-local? true)]
+        conn (sql-jdbc.execute/try-ensure-open-conn! driver outer-conn :force-context-local? true)]
     (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
                 (pr-table table-schema table-name)
                 (pr-str sql-args))
@@ -112,7 +112,7 @@
               ;; Snowflake closes the connection but doesn't set it as  closed in the object,
               ;; so we must explicitely check if it's valid so that subsequent calls to [[sql-jdbc.execute/try-ensure-open-conn!]]
               ;; will obtain a new connection
-              _is-open (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
+              is-open (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
 
               allow? (driver/query-canceled? driver e)]
 
@@ -125,7 +125,9 @@
           (try (when-not (.getAutoCommit conn)
                  (.rollback conn))
                (catch Throwable _))
-          allow?)))))
+          (if (and (not allow?) (not retry?) (not is-open))
+            (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name :retry? true)
+            allow?))))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
