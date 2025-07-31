@@ -238,7 +238,8 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
+   {cider/cider-nrepl            {:mvn/version "0.57.0"}                    ; nREPL server for CIDER
+    clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2025.04.07"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
@@ -248,7 +249,6 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    cider/cider-nrepl            {:mvn/version "0.57.0"}                    ; nREPL server for CIDER
     dev.weavejester/hashp        {:mvn/version "0.4.0"}                     ; debugging/spying utility
     djblue/portal                {:mvn/version "0.59.2"}                    ; ui for inspecting values
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
