@@ -120,21 +120,7 @@ const ItemBase = forwardRef<HTMLLIElement, Props>(
       });
     };
 
-    return renderItem ? (
-      renderItem({
-        dragOverlay: Boolean(dragOverlay),
-        dragging: Boolean(dragging),
-        sorting: Boolean(sorting),
-        index,
-        fadeIn: Boolean(fadeIn),
-        listeners,
-        ref,
-        style,
-        transform,
-        transition,
-        value,
-      })
-    ) : (
+    return (
       <Box
         className={classNames(
           styles.Wrapper,

@@ -267,6 +267,7 @@ export function DetailViewSidebar({
       columns={columns}
       sections={sections}
       onUpdateSection={onUpdateSection}
+      onRemoveSection={onRemoveSection}
     />
   );
 

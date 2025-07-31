@@ -47,7 +47,9 @@ export function useDetailViewSections(
   };
 
   const removeSection = (id: number) => {
-    setSections((sections) => sections.filter((section) => section.id !== id));
+    setSections((sections) =>
+      sections.filter((section) => String(section.id) !== String(id)),
+    );
   };
 
   const updateSection = (
@@ -55,20 +57,22 @@ export function useDetailViewSections(
     update: Partial<ObjectViewSectionSettings>,
   ) => {
     setSections((sections) =>
-      sections.map((s) => (s.id === id ? { ...s, ...update } : s)),
+      sections.map((s) =>
+        String(s.id) === String(id) ? { ...s, ...update } : s,
+      ),
     );
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
+    if (over && String(active.id) !== String(over.id)) {
       setSections((sections) => {
         const oldIndex = sections.findIndex(
-          (section) => section.id === active.id,
+          (section) => String(section.id) === String(active.id),
         );
         const newIndex = sections.findIndex(
-          (section) => section.id === over.id,
+          (section) => String(section.id) === String(over.id),
         );
 
         return arrayMove(sections, oldIndex, newIndex);

@@ -127,6 +127,7 @@ export function SectionSettings({
           )}
         </Group>
       </Flex>
+
       {columnIds.length === 0 ? (
         <EmptyDropZone sectionId={String(section.id)} />
       ) : (

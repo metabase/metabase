@@ -1,19 +1,15 @@
 .Container {
-  display: flex;
-  flex-direction: column;
   grid-auto-rows: max-content;
   overflow: hidden;
   box-sizing: border-box;
   appearance: none;
   outline: none;
-  min-width: 350px;
-  margin: 10px;
+  /* margin: 10px; */
   border-radius: 5px;
-  min-height: 200px;
   transition: background-color 350ms ease;
-  background-color: rgba(246, 246, 246, 1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  font-size: 1em;
+  /* border: 1px solid rgba(0, 0, 0, 0.05); */
+  /* background-color: red; */
+  /* font-size: 1em; */
 
   ul {
     display: grid;
@@ -63,13 +59,13 @@
   }
 
   &.shadow {
-    box-shadow: 0 1px 10px 0 rgba(34, 33, 81, 0.1);
+    /* box-shadow: 0 1px 10px 0 rgba(34, 33, 81, 0.1); */
   }
 
-  &:focus-visible {
+  /* &:focus-visible {
     border-color: transparent;
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0), 0 0px 0px 2px #4c9ffe;
-  }
+  } */
 }
 
 .Header {

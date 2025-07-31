@@ -58,7 +58,6 @@ const animateLayoutChanges: AnimateLayoutChanges = (args) =>
 
 function DroppableContainer({
   children,
-  columns = 1,
   disabled,
   id,
   items,
@@ -106,7 +105,6 @@ function DroppableContainer({
         ...attributes,
         ...listeners,
       }}
-      columns={columns}
       {...props}
     >
       {children}
@@ -160,6 +158,7 @@ interface Props {
     id: ObjectViewSectionSettings["id"],
     section: Partial<ObjectViewSectionSettings>,
   ) => void;
+  onRemoveSection: (id: ObjectViewSectionSettings["id"]) => void;
 }
 
 export const TRASH_ID = "void";
@@ -187,27 +186,34 @@ export function Dnd({
   columns,
   sections,
   onUpdateSection,
+  onRemoveSection,
 }: Props) {
   function getSection(id: UniqueIdentifier) {
-    return sections.find((s) => s.id === id)!;
+    const s = sections.find((s) => String(s.id) === String(id));
+    return s!;
   }
 
   function getColumn(id: UniqueIdentifier): DatasetColumn {
-    return columns.find((c) => c.id === id)!;
+    return columns.find((c) => String(c.id) === String(id))!;
   }
 
   function getFieldSettings(id: UniqueIdentifier) {
     const section = getFieldSection(id)!;
-    return section.fields.find((f) => f.field_id === id)!;
+    return section.fields.find((f) => String(f.field_id) === String(id))!;
   }
 
   function getFieldSection(id: UniqueIdentifier) {
-    return sections.find((s) => s.fields.some((f) => f.field_id === id));
+    return sections.find((s) =>
+      s.fields.some((f) => String(f.field_id) === String(id)),
+    );
   }
 
   function getItems() {
     return Object.fromEntries(
-      sections.map((s) => [s.id, s.fields.map((f) => f.field_id)]),
+      sections.map((s) => [
+        String(s.id),
+        s.fields.map((f) => String(f.field_id)),
+      ]),
     );
   }
 
@@ -220,6 +226,17 @@ export function Dnd({
   const recentlyMovedToNewContainer = useRef(false);
   const isSortingContainer =
     activeId != null ? containers.includes(activeId) : false;
+
+  useEffect(() => {
+    const items = Object.fromEntries(
+      sections.map((s) => [
+        String(s.id),
+        s.fields.map((f) => String(f.field_id)),
+      ]),
+    );
+    setItems(items);
+    setContainers(Object.keys(items) as UniqueIdentifier[]);
+  }, [sections]);
 
   /**
    * Custom collision detection strategy optimized for multiple containers
@@ -482,14 +499,7 @@ export function Dnd({
       onDragCancel={onDragCancel}
       modifiers={modifiers}
     >
-      <div
-        style={{
-          display: "inline-grid",
-          boxSizing: "border-box",
-          padding: 20,
-          gridAutoFlow: vertical ? "row" : "column",
-        }}
-      >
+      <div>
         <SortableContext
           items={[...containers, PLACEHOLDER_ID]}
           strategy={
@@ -507,7 +517,20 @@ export function Dnd({
               scrollable={scrollable}
               style={containerStyle}
               unstyled={minimal}
-              onRemove={() => handleRemove(containerId)}
+              columns={columns}
+              section={getSection(containerId)}
+              onUpdateSection={(update) => {
+                debugger;
+                onUpdateSection(containerId, update);
+              }}
+              onRemoveSection={
+                sections.length > 1
+                  ? () => {
+                      handleRemove(containerId);
+                      return onRemoveSection(containerId);
+                    }
+                  : undefined
+              }
             >
               <SortableContext items={items[containerId]} strategy={strategy}>
                 {items[containerId].map((value, index) => {
@@ -532,17 +555,6 @@ export function Dnd({
               </SortableContext>
             </DroppableContainer>
           ))}
-          {minimal ? undefined : (
-            <DroppableContainer
-              id={PLACEHOLDER_ID}
-              disabled={isSortingContainer}
-              items={empty}
-              onClick={handleAddColumn}
-              placeholder
-            >
-              {t`+ Add column`}
-            </DroppableContainer>
-          )}
         </SortableContext>
       </div>
       {createPortal(
@@ -594,12 +606,15 @@ export function Dnd({
     return (
       <Container
         label={`Column ${containerId}`}
-        columns={1}
         style={{
           height: "100%",
         }}
         shadow
         unstyled={false}
+        columns={columns}
+        section={getSection(containerId)}
+        onUpdateSection={(update) => {}}
+        onRemoveSection={() => {}}
       >
         {items[containerId].map((item, index) => (
           <Item
@@ -637,17 +652,17 @@ export function Dnd({
     );
   }
 
-  function handleAddColumn() {
-    const newContainerId = getNextContainerId();
+  // function handleAddColumn() {
+  //   const newContainerId = getNextContainerId();
 
-    unstable_batchedUpdates(() => {
-      setContainers((containers) => [...containers, newContainerId]);
-      setItems((items) => ({
-        ...items,
-        [newContainerId]: [],
-      }));
-    });
-  }
+  //   unstable_batchedUpdates(() => {
+  //     setContainers((containers) => [...containers, newContainerId]);
+  //     setItems((items) => ({
+  //       ...items,
+  //       [newContainerId]: [],
+  //     }));
+  //   });
+  // }
 
   function getNextContainerId() {
     const containerIds = Object.keys(items);
@@ -751,20 +766,22 @@ function SortableItem({
   const mountedWhileDragging = isDragging && !mounted;
 
   function getSection(id: UniqueIdentifier) {
-    return sections.find((s) => s.id === id)!;
+    return sections.find((s) => String(s.id) === String(id))!;
   }
 
   function getColumn(id: UniqueIdentifier): DatasetColumn {
-    return columns.find((c) => c.id === id)!;
+    return columns.find((c) => String(c.id) === String(id))!;
   }
 
   function getFieldSettings(id: UniqueIdentifier) {
     const section = getFieldSection(id)!;
-    return section.fields.find((f) => f.field_id === id)!;
+    return section.fields.find((f) => String(f.field_id) === String(id))!;
   }
 
   function getFieldSection(id: UniqueIdentifier) {
-    return sections.find((s) => s.fields.some((f) => f.field_id === id));
+    return sections.find((s) =>
+      s.fields.some((f) => String(f.field_id) === String(id)),
+    );
   }
 
   return (
