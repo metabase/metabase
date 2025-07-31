@@ -9,7 +9,6 @@ import {
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
 } from "metabase/selectors/data";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
@@ -28,7 +27,6 @@ const mapStateToProps = (
   hasNativeWrite: getHasNativeWrite(databases),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(databases),
   isAdmin: getUserIsAdmin(state),
-  isSimpleEmbeddingEnabled: getSetting(state, "enable-embedding-simple"),
 });
 
 const mapDispatchToProps = {

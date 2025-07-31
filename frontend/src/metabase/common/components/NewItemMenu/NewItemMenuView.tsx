@@ -24,7 +24,6 @@ export interface NewItemMenuProps {
   hasDatabaseWithJsonEngine: boolean;
   onCloseNavbar: () => void;
   isAdmin: boolean;
-  isSimpleEmbeddingEnabled?: boolean;
 }
 
 const NewItemMenuView = ({
@@ -34,7 +33,6 @@ const NewItemMenuView = ({
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
   isAdmin,
-  isSimpleEmbeddingEnabled,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
 
@@ -95,10 +93,10 @@ const NewItemMenuView = ({
     );
 
     // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
-    // We hide the "Embed" menu item if the user is not an admin and simple embedding is disabled.
+    // We hide the "Embed" menu item if the user is not an admin
     if (
       PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu() &&
-      (isAdmin || isSimpleEmbeddingEnabled)
+      isAdmin
     ) {
       items.push(
         <Menu.Item
@@ -118,7 +116,6 @@ const NewItemMenuView = ({
     hasDataAccess,
     hasNativeWrite,
     isAdmin,
-    isSimpleEmbeddingEnabled,
     collectionId,
     lastUsedDatabaseId,
     hasDatabaseWithJsonEngine,
