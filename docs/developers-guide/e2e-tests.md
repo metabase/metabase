@@ -228,10 +228,6 @@ You can configure these via ENVs or via the `cypress.env.json` file (see `cypres
 
 For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
 
-```
-MB_EDITION=ee ENTERPRISE_TOKEN=xxxxxx yarn test-cypress
-```
-
 If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 
 - If tests start running but the enterprise features are missing: make sure that the token you use has corresponding feature flags enabled.
