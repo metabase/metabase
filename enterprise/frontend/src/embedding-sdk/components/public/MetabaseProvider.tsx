@@ -87,6 +87,8 @@ export const MetabaseProviderInternal = ({
         <RenderSingleCopy>
           <Global styles={SCOPED_CSS_RESET} />
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
+
+          <SdkIncompatibilityWithInstanceBanner />
           <SdkUsageProblemDisplay
             authConfig={authConfig}
             allowConsoleLog={allowConsoleLog}

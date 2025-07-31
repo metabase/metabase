@@ -222,7 +222,7 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
 
       getSdkRoot().within(() => {
         cy.findByText(
-          /Please verify that all SDK components are wrapped in the `MetabaseProvider` component/,
+          /Ensure all SDK components are wrapped in the Provider component./,
         ).should("exist");
       });
     });
@@ -285,40 +285,113 @@ describe("scenarios > embedding-sdk > sdk-bundle", () => {
       getSdkBundleScriptElement()?.remove();
     });
 
-    it("should show an error if sdk bundle can't be loaded", () => {
-      cy.intercept("GET", "**/app/embedding-sdk.js", {
-        statusCode: 404,
+    describe("when the SDK bundle can't be loaded", () => {
+      it("should show an error", () => {
+        cy.intercept("GET", "**/app/embedding-sdk.js", {
+          statusCode: 404,
+        });
+
+        cy.mount(
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={1} />
+          </MetabaseProvider>,
+        );
+
+        cy.findByTestId("sdk-error-container").should(
+          "contain.text",
+          "Error loading the Embedding Analytics SDK",
+        );
       });
 
-      cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion questionId={1} />
-        </MetabaseProvider>,
-      );
+      it("should show a custom error", () => {
+        cy.intercept("GET", "**/app/embedding-sdk.js", {
+          statusCode: 404,
+        });
 
-      cy.findByTestId("sdk-error-container").should("be.visible");
+        cy.mount(
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            errorComponent={({ message }: { message: string }) => (
+              <div>Custom error: {message}</div>
+            )}
+          >
+            <InteractiveQuestion questionId={1} />
+          </MetabaseProvider>,
+        );
+
+        cy.findByTestId("sdk-error-container").should(
+          "contain.text",
+          "Custom error: Error loading the Embedding Analytics SDK",
+        );
+      });
     });
 
-    it("should show a custom error if sdk bundle can't be loaded", () => {
-      cy.intercept("GET", "**/app/embedding-sdk.js", {
-        statusCode: 404,
+    describe("when the SDK bundle is incompatible with an instance", () => {
+      it("should show an error with a close button", () => {
+        cy.intercept("GET", "**/api/session/properties", {
+          version: {
+            tag: "v0.0.0", // incompatible version
+          },
+        });
+
+        cy.mount(
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={1} />
+          </MetabaseProvider>,
+        );
+
+        cy.findByTestId("sdk-error-container").should(
+          "contain.text",
+          "Embedding SDK version incompatible with the Instance version",
+        );
+
+        cy.findByTestId("sdk-error-container").within(() => {
+          cy.findByTestId("alert-close-button").click();
+
+          cy.findByTestId("sdk-error-container").should("not.exist");
+        });
       });
 
-      cy.mount(
-        <MetabaseProvider
-          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-          errorComponent={({ message }: { message: string }) => (
-            <div>Custom error: {message}</div>
-          )}
-        >
-          <InteractiveQuestion questionId={1} />
-        </MetabaseProvider>,
-      );
+      it("should show a custom error with a close button", () => {
+        cy.intercept("GET", "**/api/session/properties", {
+          version: {
+            tag: "v0.0.0", // incompatible version
+          },
+        });
 
-      cy.findByTestId("sdk-error-container").should(
-        "contain.text",
-        "Custom error: Error loading Metabase Embedding SDK",
-      );
+        cy.mount(
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            errorComponent={({
+              message,
+              onClose,
+            }: {
+              message: string;
+              onClose: () => void;
+            }) => (
+              <div>
+                <span>Custom error: {message}</span>
+                <div data-testid="custom-alert-close-icon" onClick={onClose}>
+                  x
+                </div>
+              </div>
+            )}
+          >
+            <InteractiveQuestion questionId={1} />
+          </MetabaseProvider>,
+        );
+
+        cy.findByTestId("sdk-error-container").should(
+          "contain.text",
+          "Embedding SDK version incompatible with the Instance version",
+        );
+
+        cy.findByTestId("sdk-error-container").within(() => {
+          cy.findByTestId("custom-alert-close-icon").click();
+
+          cy.findByTestId("sdk-error-container").should("not.exist");
+        });
+      });
     });
   });
 });
