@@ -11,6 +11,7 @@ on:
       - feature-visualizer
       - internal-tools
       - viz-1048-only-visualizer-compatible
+      - feature/reports
     paths-ignore:
       # config files
       - ".**"
