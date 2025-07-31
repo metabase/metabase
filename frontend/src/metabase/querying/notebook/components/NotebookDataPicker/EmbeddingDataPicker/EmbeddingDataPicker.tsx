@@ -57,7 +57,7 @@ export function EmbeddingDataPicker({
    */
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
 
-  const entityTypes = useSelector(getEntityTypes);
+  const userDefinedEntityTypes = useSelector(getEntityTypes);
   const forceMultiStagedDataPicker = useSelector(
     (state) => getEmbedOptions(state).data_picker === "staged",
   );
@@ -70,18 +70,18 @@ export function EmbeddingDataPicker({
   } = useSourceEntityCollectionId(query);
 
   const effectiveEntityTypes = useMemo(() => {
-    const modelCount = modelCountData?.total ?? 0;
-
-    // Auto-hide tables when there are more than a certain number of models
-    if (entityTypes.length === 0) {
-      return modelCount > HIDE_TABLES_IF_MORE_THAN_N_MODELS
-        ? DEFAULT_EMBEDDING_ENTITY_TYPES.filter((type) => type !== "table")
-        : DEFAULT_EMBEDDING_ENTITY_TYPES;
+    if (userDefinedEntityTypes.length > 0) {
+      return userDefinedEntityTypes;
     }
 
-    // EntityTypes were explicitly set, use them as-is
-    return entityTypes;
-  }, [modelCountData, entityTypes]);
+    // Hide tables when there are more than a certain number of models.
+    // This is to reduce clutter in the data picker by default.
+    const modelCount = modelCountData?.total ?? 0;
+
+    return modelCount > HIDE_TABLES_IF_MORE_THAN_N_MODELS
+      ? DEFAULT_EMBEDDING_ENTITY_TYPES.filter((type) => type !== "table")
+      : DEFAULT_EMBEDDING_ENTITY_TYPES;
+  }, [modelCountData, userDefinedEntityTypes]);
 
   if (isDataSourceCountLoading || isModelCountLoading) {
     return null;
